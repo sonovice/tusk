@@ -44,8 +44,23 @@ pub struct SerializeConfig {
     pub include_declaration: bool,
     /// Whether to use indentation for pretty-printing.
     pub indent: Option<IndentConfig>,
-    /// MEI namespace URI.
+    /// MEI namespace URI (default namespace for the document).
     pub mei_namespace: Option<&'static str>,
+    /// Additional namespace declarations (e.g., xlink, tei).
+    pub additional_namespaces: Vec<NamespaceDecl>,
+}
+
+impl SerializeConfig {
+    /// Add an additional namespace declaration.
+    pub fn add_namespace(&mut self, decl: NamespaceDecl) {
+        self.additional_namespaces.push(decl);
+    }
+
+    /// Add the xlink namespace (commonly used for href attributes).
+    pub fn with_xlink(mut self) -> Self {
+        self.add_namespace(NamespaceDecl::prefixed("xlink", namespaces::XLINK));
+        self
+    }
 }
 
 /// Indentation configuration.
@@ -65,7 +80,8 @@ impl Default for SerializeConfig {
                 indent_char: b' ',
                 indent_size: 2,
             }),
-            mei_namespace: Some("http://www.music-encoding.org/ns/mei"),
+            mei_namespace: Some(namespaces::MEI),
+            additional_namespaces: Vec::new(),
         }
     }
 }
@@ -204,6 +220,24 @@ impl<W: Write> MeiWriter<W> {
     pub fn inner_mut(&mut self) -> &mut Writer<W> {
         &mut self.writer
     }
+
+    /// Add namespace declarations to a root element's start tag.
+    ///
+    /// This should be called on the root `<mei>` element to add:
+    /// - The default MEI namespace (xmlns="...")
+    /// - Any additional namespaces (xmlns:xlink="...", etc.)
+    pub fn add_root_namespaces(&self, start: &mut BytesStart<'_>) {
+        // Add default MEI namespace
+        if let Some(ns) = self.config.mei_namespace {
+            start.push_attribute(("xmlns", ns));
+        }
+
+        // Add additional namespaces
+        for decl in &self.config.additional_namespaces {
+            let attr_name = decl.attr_name();
+            start.push_attribute((attr_name.as_str(), decl.uri));
+        }
+    }
 }
 
 /// Helper trait to collect attributes from flattened attribute class structs.
@@ -237,6 +271,50 @@ pub fn serialize_vec<T: Display>(vec: &[T]) -> Option<String> {
     }
 }
 
+/// MEI namespace constants.
+pub mod namespaces {
+    /// The MEI namespace URI.
+    pub const MEI: &str = "http://www.music-encoding.org/ns/mei";
+
+    /// The XML namespace URI (implicitly declared, used for xml:id, xml:base, xml:lang).
+    pub const XML: &str = "http://www.w3.org/XML/1998/namespace";
+
+    /// The XLink namespace URI (optional, for xlink:href etc.).
+    pub const XLINK: &str = "http://www.w3.org/1999/xlink";
+}
+
+/// A namespace declaration to be added to an element.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NamespaceDecl {
+    /// The namespace prefix (None for default namespace).
+    pub prefix: Option<&'static str>,
+    /// The namespace URI.
+    pub uri: &'static str,
+}
+
+impl NamespaceDecl {
+    /// Create a default namespace declaration (xmlns="...").
+    pub fn default_ns(uri: &'static str) -> Self {
+        Self { prefix: None, uri }
+    }
+
+    /// Create a prefixed namespace declaration (xmlns:prefix="...").
+    pub fn prefixed(prefix: &'static str, uri: &'static str) -> Self {
+        Self {
+            prefix: Some(prefix),
+            uri,
+        }
+    }
+
+    /// Get the attribute name for this namespace declaration.
+    pub fn attr_name(&self) -> String {
+        match self.prefix {
+            Some(prefix) => format!("xmlns:{}", prefix),
+            None => "xmlns".to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,6 +325,103 @@ mod tests {
         let config = SerializeConfig::default();
         assert!(config.include_declaration);
         assert!(config.indent.is_some());
+    }
+
+    // ============================================================================
+    // Namespace handling tests
+    // ============================================================================
+
+    #[test]
+    fn namespace_decl_default_creates_xmlns_attribute() {
+        let decl = NamespaceDecl::default_ns(namespaces::MEI);
+        assert_eq!(decl.attr_name(), "xmlns");
+        assert_eq!(decl.uri, "http://www.music-encoding.org/ns/mei");
+    }
+
+    #[test]
+    fn namespace_decl_prefixed_creates_xmlns_prefix_attribute() {
+        let decl = NamespaceDecl::prefixed("xlink", namespaces::XLINK);
+        assert_eq!(decl.attr_name(), "xmlns:xlink");
+        assert_eq!(decl.uri, "http://www.w3.org/1999/xlink");
+    }
+
+    #[test]
+    fn mei_writer_writes_namespace_declaration_on_root() {
+        let mut buffer = Vec::new();
+        let config = SerializeConfig {
+            include_declaration: false,
+            indent: None,
+            mei_namespace: Some(namespaces::MEI),
+            additional_namespaces: Vec::new(),
+        };
+        let mut writer = MeiWriter::new(&mut buffer, config);
+
+        // Write a root element with namespace
+        let mut start = writer.start_element("mei").unwrap();
+        writer.add_root_namespaces(&mut start);
+        start.push_attribute(("meiversion", "5.1"));
+        writer.write_empty(start).expect("should write element");
+
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(
+            result.contains("xmlns=\"http://www.music-encoding.org/ns/mei\""),
+            "should have MEI namespace: {}",
+            result
+        );
+        assert!(
+            result.contains("meiversion=\"5.1\""),
+            "should have meiversion: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn mei_writer_skips_namespace_when_none_configured() {
+        let mut buffer = Vec::new();
+        let config = SerializeConfig {
+            include_declaration: false,
+            indent: None,
+            mei_namespace: None,
+            additional_namespaces: Vec::new(),
+        };
+        let mut writer = MeiWriter::new(&mut buffer, config);
+
+        let mut start = writer.start_element("mei").unwrap();
+        writer.add_root_namespaces(&mut start);
+        start.push_attribute(("meiversion", "5.1"));
+        writer.write_empty(start).expect("should write element");
+
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(
+            !result.contains("xmlns="),
+            "should not have xmlns when not configured: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn mei_writer_writes_xlink_namespace_when_configured() {
+        let mut buffer = Vec::new();
+        let mut config = SerializeConfig {
+            include_declaration: false,
+            indent: None,
+            mei_namespace: Some(namespaces::MEI),
+            additional_namespaces: Vec::new(),
+        };
+        config.add_namespace(NamespaceDecl::prefixed("xlink", namespaces::XLINK));
+
+        let mut writer = MeiWriter::new(&mut buffer, config);
+
+        let mut start = writer.start_element("mei").unwrap();
+        writer.add_root_namespaces(&mut start);
+        writer.write_empty(start).expect("should write element");
+
+        let result = String::from_utf8(buffer).unwrap();
+        assert!(
+            result.contains("xmlns:xlink=\"http://www.w3.org/1999/xlink\""),
+            "should have xlink namespace: {}",
+            result
+        );
     }
 
     #[test]
@@ -294,6 +469,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
         writer.write_declaration().expect("should succeed");
@@ -312,6 +488,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
         let mut start = writer.start_element("note").unwrap();
@@ -335,6 +512,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
 
@@ -368,6 +546,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
 
@@ -391,6 +570,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
 
@@ -414,6 +594,7 @@ mod tests {
             include_declaration: false,
             indent: None,
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
 
@@ -440,6 +621,7 @@ mod tests {
                 indent_size: 2,
             }),
             mei_namespace: None,
+            additional_namespaces: Vec::new(),
         };
         let mut writer = MeiWriter::new(&mut buffer, config);
 

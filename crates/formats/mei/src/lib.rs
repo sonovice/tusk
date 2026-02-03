@@ -19,10 +19,14 @@ pub mod serializer;
 pub mod versions;
 
 pub use deserializer::{
-    DeserializeConfig, DeserializeError, DeserializeResult, ExtractAttributes, MeiDeserialize,
-    MeiReader,
+    DeserializeConfig, DeserializeError, DeserializeResult, ExtractAttributes, MEI_NAMESPACE,
+    MeiDeserialize, MeiReader, extract_namespaces, is_namespace_declaration,
+    strip_namespace_prefix,
 };
-pub use serializer::{MeiSerialize, MeiWriter, SerializeConfig, SerializeError, SerializeResult};
+pub use serializer::{
+    CollectAttributes, IndentConfig, MeiSerialize, MeiWriter, NamespaceDecl, SerializeConfig,
+    SerializeError, SerializeResult, namespaces,
+};
 
 #[cfg(test)]
 mod tests {

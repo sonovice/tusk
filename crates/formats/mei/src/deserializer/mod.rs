@@ -12,6 +12,13 @@
 //! Each attribute class implements `ExtractAttributes` to extract its attributes from
 //! an attribute map. Elements then combine these attributes and deserialize child elements
 //! using quick-xml's events API.
+//!
+//! # Namespace Handling
+//!
+//! MEI documents use the namespace `http://www.music-encoding.org/ns/mei`. The deserializer:
+//! - Accepts documents with or without namespace declarations (lenient mode)
+//! - Strips namespace prefixes from element/attribute names when parsing
+//! - Optionally validates namespace URIs (strict mode)
 
 mod impls;
 
@@ -49,6 +56,9 @@ pub enum DeserializeError {
 /// Result type for deserialization operations.
 pub type DeserializeResult<T> = Result<T, DeserializeError>;
 
+/// The expected MEI namespace URI.
+pub const MEI_NAMESPACE: &str = "http://www.music-encoding.org/ns/mei";
+
 /// Configuration options for MEI deserialization.
 #[derive(Debug, Clone)]
 pub struct DeserializeConfig {
@@ -56,6 +66,9 @@ pub struct DeserializeConfig {
     pub ignore_unknown_attributes: bool,
     /// Whether to ignore unknown elements (lenient mode).
     pub ignore_unknown_elements: bool,
+    /// Whether to validate that the document uses the correct MEI namespace.
+    /// When false (default), namespace declarations are accepted but not validated.
+    pub validate_namespace: bool,
 }
 
 impl Default for DeserializeConfig {
@@ -63,12 +76,27 @@ impl Default for DeserializeConfig {
         Self {
             ignore_unknown_attributes: true,
             ignore_unknown_elements: true,
+            validate_namespace: false,
+        }
+    }
+}
+
+impl DeserializeConfig {
+    /// Create a strict configuration that validates namespace.
+    pub fn strict() -> Self {
+        Self {
+            ignore_unknown_attributes: false,
+            ignore_unknown_elements: false,
+            validate_namespace: true,
         }
     }
 }
 
 /// Map of attribute names to values extracted from an XML element.
 pub type AttributeMap = HashMap<String, String>;
+
+/// Raw child element data: (element_name, attributes, is_empty, text_content).
+pub type RawChildElement = (String, AttributeMap, bool, Option<String>);
 
 /// Trait for types that can be deserialized from MEI XML.
 ///
@@ -105,6 +133,7 @@ pub struct MeiReader<R: BufRead> {
 
 impl MeiReader<&[u8]> {
     /// Create a new MEI reader from a string slice.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> MeiReader<&[u8]> {
         let mut reader = Reader::from_str(s);
         reader.config_mut().trim_text(true);
@@ -203,12 +232,11 @@ impl<R: BufRead> MeiReader<R> {
 
     /// Read child elements until the end tag for the given element name.
     ///
-    /// Returns a vector of (element_name, attributes, is_empty) tuples for
-    /// each child element encountered.
+    /// Returns a vector of raw child element data for each child element encountered.
     pub fn read_children_raw(
         &mut self,
         parent_name: &str,
-    ) -> DeserializeResult<Vec<(String, AttributeMap, bool, Option<String>)>> {
+    ) -> DeserializeResult<Vec<RawChildElement>> {
         let mut children = Vec::new();
 
         loop {
@@ -384,6 +412,61 @@ pub fn identity_parser(s: &str) -> Result<String, String> {
     Ok(s.to_string())
 }
 
+/// Strip namespace prefix from an element or attribute name.
+///
+/// MEI documents may use namespace prefixes like `mei:note` instead of just `note`.
+/// This function removes such prefixes, but preserves special prefixes like `xml:`.
+///
+/// Examples:
+/// - `"mei:note"` → `"note"`
+/// - `"note"` → `"note"`
+/// - `"xml:id"` → `"xml:id"` (preserved)
+/// - `"xlink:href"` → `"xlink:href"` (preserved)
+pub fn strip_namespace_prefix(name: &str) -> &str {
+    // Preserve xml: and xlink: prefixes as they have semantic meaning
+    if name.starts_with("xml:") || name.starts_with("xlink:") {
+        return name;
+    }
+
+    // Strip any other namespace prefix
+    if let Some(pos) = name.find(':') {
+        &name[pos + 1..]
+    } else {
+        name
+    }
+}
+
+/// Check if an attribute is a namespace declaration.
+pub fn is_namespace_declaration(name: &str) -> bool {
+    name == "xmlns" || name.starts_with("xmlns:")
+}
+
+/// Extract namespace declarations from an attribute map.
+///
+/// Returns the extracted namespaces as (prefix, uri) pairs where prefix is None
+/// for the default namespace.
+pub fn extract_namespaces(attrs: &mut AttributeMap) -> Vec<(Option<String>, String)> {
+    let mut namespaces = Vec::new();
+    let ns_keys: Vec<String> = attrs
+        .keys()
+        .filter(|k| is_namespace_declaration(k))
+        .cloned()
+        .collect();
+
+    for key in ns_keys {
+        if let Some(uri) = attrs.remove(&key) {
+            let prefix = if key == "xmlns" {
+                None
+            } else {
+                Some(key.strip_prefix("xmlns:").unwrap_or(&key).to_string())
+            };
+            namespaces.push((prefix, uri));
+        }
+    }
+
+    namespaces
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -393,6 +476,138 @@ mod tests {
         let config = DeserializeConfig::default();
         assert!(config.ignore_unknown_attributes);
         assert!(config.ignore_unknown_elements);
+        assert!(!config.validate_namespace);
+    }
+
+    #[test]
+    fn deserialize_config_strict_validates_namespace() {
+        let config = DeserializeConfig::strict();
+        assert!(!config.ignore_unknown_attributes);
+        assert!(!config.ignore_unknown_elements);
+        assert!(config.validate_namespace);
+    }
+
+    // ============================================================================
+    // Namespace handling tests
+    // ============================================================================
+
+    #[test]
+    fn strip_namespace_prefix_removes_mei_prefix() {
+        assert_eq!(strip_namespace_prefix("mei:note"), "note");
+        assert_eq!(strip_namespace_prefix("mei:measure"), "measure");
+    }
+
+    #[test]
+    fn strip_namespace_prefix_preserves_unprefixed_names() {
+        assert_eq!(strip_namespace_prefix("note"), "note");
+        assert_eq!(strip_namespace_prefix("dur"), "dur");
+    }
+
+    #[test]
+    fn strip_namespace_prefix_preserves_xml_prefix() {
+        assert_eq!(strip_namespace_prefix("xml:id"), "xml:id");
+        assert_eq!(strip_namespace_prefix("xml:base"), "xml:base");
+        assert_eq!(strip_namespace_prefix("xml:lang"), "xml:lang");
+    }
+
+    #[test]
+    fn strip_namespace_prefix_preserves_xlink_prefix() {
+        assert_eq!(strip_namespace_prefix("xlink:href"), "xlink:href");
+        assert_eq!(strip_namespace_prefix("xlink:actuate"), "xlink:actuate");
+    }
+
+    #[test]
+    fn is_namespace_declaration_detects_xmlns() {
+        assert!(is_namespace_declaration("xmlns"));
+        assert!(is_namespace_declaration("xmlns:mei"));
+        assert!(is_namespace_declaration("xmlns:xlink"));
+        assert!(!is_namespace_declaration("xml:id"));
+        assert!(!is_namespace_declaration("dur"));
+    }
+
+    #[test]
+    fn extract_namespaces_extracts_default_namespace() {
+        let mut attrs = HashMap::new();
+        attrs.insert("xmlns".to_string(), MEI_NAMESPACE.to_string());
+        attrs.insert("meiversion".to_string(), "5.1".to_string());
+
+        let namespaces = extract_namespaces(&mut attrs);
+
+        assert_eq!(namespaces.len(), 1);
+        assert_eq!(namespaces[0].0, None); // default namespace
+        assert_eq!(namespaces[0].1, MEI_NAMESPACE);
+
+        // xmlns should be removed, meiversion should remain
+        assert!(!attrs.contains_key("xmlns"));
+        assert!(attrs.contains_key("meiversion"));
+    }
+
+    #[test]
+    fn extract_namespaces_extracts_prefixed_namespaces() {
+        let mut attrs = HashMap::new();
+        attrs.insert("xmlns".to_string(), MEI_NAMESPACE.to_string());
+        attrs.insert(
+            "xmlns:xlink".to_string(),
+            "http://www.w3.org/1999/xlink".to_string(),
+        );
+        attrs.insert("meiversion".to_string(), "5.1".to_string());
+
+        let namespaces = extract_namespaces(&mut attrs);
+
+        assert_eq!(namespaces.len(), 2);
+
+        // Check default namespace
+        let default_ns = namespaces.iter().find(|(p, _)| p.is_none());
+        assert!(default_ns.is_some());
+        assert_eq!(default_ns.unwrap().1, MEI_NAMESPACE);
+
+        // Check xlink namespace
+        let xlink_ns = namespaces
+            .iter()
+            .find(|(p, _)| p.as_deref() == Some("xlink"));
+        assert!(xlink_ns.is_some());
+        assert_eq!(xlink_ns.unwrap().1, "http://www.w3.org/1999/xlink");
+
+        // Both xmlns attrs should be removed
+        assert!(!attrs.contains_key("xmlns"));
+        assert!(!attrs.contains_key("xmlns:xlink"));
+    }
+
+    #[test]
+    fn mei_reader_handles_document_with_namespace() {
+        let xml = r#"<?xml version="1.0"?><mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.1"><music/></mei>"#;
+        let mut reader = MeiReader::from_str(xml);
+
+        // Skip declaration
+        match reader.read_event().unwrap() {
+            Event::Decl(_) => {}
+            other => panic!("Expected Decl, got {:?}", other),
+        }
+
+        // Read mei element
+        match reader.read_event().unwrap() {
+            Event::Start(start) => {
+                let name_bytes = start.name();
+                let name = std::str::from_utf8(name_bytes.as_ref()).unwrap();
+                assert_eq!(name, "mei");
+
+                let mut attrs = reader.extract_attributes(&start).unwrap();
+
+                // Should have xmlns and meiversion
+                assert!(attrs.contains_key("xmlns"));
+                assert!(attrs.contains_key("meiversion"));
+
+                // Extract namespaces
+                let namespaces = extract_namespaces(&mut attrs);
+                assert_eq!(namespaces.len(), 1);
+                assert_eq!(namespaces[0].1, MEI_NAMESPACE);
+
+                // xmlns should be removed, meiversion should remain
+                assert!(!attrs.contains_key("xmlns"));
+                assert_eq!(attrs.get("meiversion"), Some(&"5.1".to_string()));
+            }
+            other => panic!("Expected Start, got {:?}", other),
+        }
     }
 
     #[test]
