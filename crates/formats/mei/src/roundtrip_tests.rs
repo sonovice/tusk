@@ -4442,3 +4442,461 @@ fn hierarchy_deep_nesting_preserved() {
         other => panic!("Expected Mdiv, got {:?}", other),
     }
 }
+
+// ============================================================================
+// ScoreDef Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_scoredef() {
+    use tusk_model::elements::ScoreDef;
+
+    let original = ScoreDef::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.score_def_log.meter_count.is_none());
+    assert!(parsed.score_def_log.meter_unit.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_scoredef_with_xml_id() {
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.common.xml_id = Some("sd1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"sd1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sd1".to_string()));
+}
+
+#[test]
+fn roundtrip_scoredef_with_meter_attributes() {
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_log.meter_count = Some("4".to_string());
+    original.score_def_log.meter_unit = Some(4.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("meter.count=\"4\""),
+        "xml should contain meter.count: {}",
+        xml
+    );
+    assert!(
+        xml.contains("meter.unit=\"4\""),
+        "xml should contain meter.unit: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_log.meter_count, Some("4".to_string()));
+    assert_eq!(parsed.score_def_log.meter_unit, Some(4.0));
+}
+
+#[test]
+fn roundtrip_scoredef_with_meter_sym() {
+    use tusk_model::data::DataMetersign;
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_log.meter_count = Some("4".to_string());
+    original.score_def_log.meter_unit = Some(4.0);
+    original.score_def_log.meter_sym = Some(DataMetersign::Common);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("meter.sym=\"common\""),
+        "xml should contain meter.sym: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_log.meter_sym, Some(DataMetersign::Common));
+}
+
+#[test]
+fn roundtrip_scoredef_with_keysig() {
+    use tusk_model::data::DataKeyfifths;
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    // 3 flats (e.g., E-flat major or C minor)
+    original.score_def_log.keysig = vec![DataKeyfifths("-3".to_string())];
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("keysig=\"-3\"") || xml.contains("keysig=\"3f\""),
+        "xml should contain keysig: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert!(!parsed.score_def_log.keysig.is_empty());
+}
+
+#[test]
+fn roundtrip_scoredef_with_clef_attributes() {
+    use tusk_model::data::{DataClefline, DataClefshape};
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_log.clef_shape = Some(DataClefshape::G);
+    original.score_def_log.clef_line = Some(DataClefline(2));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("clef.shape=\"G\""),
+        "xml should contain clef.shape: {}",
+        xml
+    );
+    assert!(
+        xml.contains("clef.line=\"2\""),
+        "xml should contain clef.line: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_log.clef_shape, Some(DataClefshape::G));
+    assert_eq!(parsed.score_def_log.clef_line, Some(DataClefline(2)));
+}
+
+#[test]
+fn roundtrip_scoredef_with_gestural_ppq() {
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_ges.ppq = Some(480);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("ppq=\"480\""),
+        "xml should contain ppq: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_ges.ppq, Some(480));
+}
+
+#[test]
+fn roundtrip_scoredef_with_midi_bpm() {
+    use tusk_model::data::DataMidibpm;
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_ges.midi_bpm = Some(DataMidibpm(120.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    // midi.bpm may serialize as "120" or "120.0" depending on float representation
+    assert!(
+        xml.contains("midi.bpm=\"120") && xml.contains('"'),
+        "xml should contain midi.bpm: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.score_def_ges.midi_bpm.is_some());
+}
+
+#[test]
+fn roundtrip_scoredef_with_analytical_key() {
+    use tusk_model::data::{DataMode, DataModeCmn, DataPitchname};
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_anl.key_pname = Some(DataPitchname::from("c".to_string()));
+    original.score_def_anl.key_mode = Some(DataMode::DataModeCmn(DataModeCmn::Major));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("key.pname=\"c\""),
+        "xml should contain key.pname: {}",
+        xml
+    );
+    assert!(
+        xml.contains("key.mode=\"major\""),
+        "xml should contain key.mode: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(
+        parsed.score_def_anl.key_pname,
+        Some(DataPitchname::from("c".to_string()))
+    );
+    assert_eq!(
+        parsed.score_def_anl.key_mode,
+        Some(DataMode::DataModeCmn(DataModeCmn::Major))
+    );
+}
+
+#[test]
+fn roundtrip_scoredef_with_tune_hz() {
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_ges.tune_hz = Some(440.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("tune.Hz=\"440\""),
+        "xml should contain tune.Hz: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_ges.tune_hz, Some(440.0));
+}
+
+#[test]
+fn roundtrip_scoredef_with_visual_meter_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::ScoreDef;
+
+    let mut original = ScoreDef::default();
+    original.score_def_vis.meter_visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("meter.visible=\"true\""),
+        "xml should contain meter.visible: {}",
+        xml
+    );
+
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.score_def_vis.meter_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_scoredef_comprehensive() {
+    use tusk_model::data::{DataClefline, DataClefshape, DataMode, DataModeCmn, DataPitchname};
+    use tusk_model::elements::ScoreDef;
+
+    // A realistic scoreDef with common attributes
+    let mut original = ScoreDef::default();
+    original.common.xml_id = Some("sd1".to_string());
+    original.score_def_log.clef_shape = Some(DataClefshape::G);
+    original.score_def_log.clef_line = Some(DataClefline(2));
+    original.score_def_log.meter_count = Some("4".to_string());
+    original.score_def_log.meter_unit = Some(4.0);
+    original.score_def_anl.key_pname = Some(DataPitchname::from("c".to_string()));
+    original.score_def_anl.key_mode = Some(DataMode::DataModeCmn(DataModeCmn::Major));
+    original.score_def_ges.ppq = Some(960);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.score_def_log.clef_shape, Some(DataClefshape::G));
+    assert_eq!(parsed.score_def_log.clef_line, Some(DataClefline(2)));
+    assert_eq!(parsed.score_def_log.meter_count, Some("4".to_string()));
+    assert_eq!(parsed.score_def_log.meter_unit, Some(4.0));
+    assert_eq!(
+        parsed.score_def_anl.key_pname,
+        Some(DataPitchname::from("c".to_string()))
+    );
+    assert_eq!(
+        parsed.score_def_anl.key_mode,
+        Some(DataMode::DataModeCmn(DataModeCmn::Major))
+    );
+    assert_eq!(parsed.score_def_ges.ppq, Some(960));
+}
+
+// External XML parsing tests for scoreDef
+
+#[test]
+fn parse_external_scoredef_minimal() {
+    use tusk_model::elements::ScoreDef;
+
+    let xml = r#"<scoreDef/>"#;
+    let parsed = ScoreDef::from_mei_str(xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn parse_external_scoredef_with_meter() {
+    use tusk_model::elements::ScoreDef;
+
+    let xml = r#"<scoreDef meter.count="4" meter.unit="4"/>"#;
+    let parsed = ScoreDef::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.score_def_log.meter_count, Some("4".to_string()));
+    assert_eq!(parsed.score_def_log.meter_unit, Some(4.0));
+}
+
+#[test]
+fn parse_external_scoredef_with_keysig_fifths() {
+    use tusk_model::elements::ScoreDef;
+
+    // keysig="3f" means 3 flats
+    let xml = r#"<scoreDef keysig="3f" meter.count="4" meter.sym="common" meter.unit="4"/>"#;
+    let parsed = ScoreDef::from_mei_str(xml).expect("deserialize");
+
+    // keysig should be parsed
+    assert!(!parsed.score_def_log.keysig.is_empty());
+    assert_eq!(parsed.score_def_log.meter_count, Some("4".to_string()));
+}
+
+#[test]
+fn parse_external_scoredef_with_staffgrp_child() {
+    use tusk_model::elements::{ScoreDef, ScoreDefChild};
+
+    let xml = r#"<scoreDef>
+        <staffGrp xml:id="sg1">
+            <staffDef xml:id="sd1" n="1" lines="5" clef.shape="G" clef.line="2"/>
+        </staffGrp>
+    </scoreDef>"#;
+
+    let parsed = ScoreDef::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(sg) => {
+            assert_eq!(sg.common.xml_id, Some("sg1".to_string()));
+            assert_eq!(sg.children.len(), 1);
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}
+
+#[test]
+fn parse_external_scoredef_mensural_example() {
+    use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffGrpChild};
+
+    // From specs/mei/examples/verovio/notes_rests.mei
+    let xml = r#"<scoreDef>
+        <staffGrp>
+            <staffDef label="notes" n="1" notationtype="mensural.white" lines="5" clef.shape="G" clef.line="2"/>
+            <staffDef label="rests" n="2" notationtype="mensural.white" lines="5" clef.shape="G" clef.line="2"/>
+        </staffGrp>
+    </scoreDef>"#;
+
+    let parsed = ScoreDef::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(sg) => {
+            assert_eq!(sg.children.len(), 2);
+            // Check first staffDef - label is in labelled.label for StaffDef
+            match &sg.children[0] {
+                StaffGrpChild::StaffDef(sd) => {
+                    assert_eq!(sd.labelled.label, Some("notes".to_string()));
+                }
+                other => panic!("Expected StaffDef, got {:?}", other),
+            }
+            // Check second staffDef
+            match &sg.children[1] {
+                StaffGrpChild::StaffDef(sd) => {
+                    assert_eq!(sd.labelled.label, Some("rests".to_string()));
+                }
+                other => panic!("Expected StaffDef, got {:?}", other),
+            }
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_scoredef_with_staffgrp_child() {
+    use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrpChild};
+
+    let mut staff_def = StaffDef::default();
+    staff_def.basic.xml_id = Some("staff1".to_string());
+    staff_def.n_integer.n = Some(1);
+
+    let mut staff_grp = StaffGrp::default();
+    staff_grp.common.xml_id = Some("sg1".to_string());
+    staff_grp
+        .children
+        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+    let mut original = ScoreDef::default();
+    original.common.xml_id = Some("sd1".to_string());
+    original
+        .children
+        .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(sg) => {
+            assert_eq!(sg.common.xml_id, Some("sg1".to_string()));
+            assert_eq!(sg.children.len(), 1);
+            match &sg.children[0] {
+                StaffGrpChild::StaffDef(sd) => {
+                    assert_eq!(sd.basic.xml_id, Some("staff1".to_string()));
+                    assert_eq!(sd.n_integer.n, Some(1));
+                }
+                other => panic!("Expected StaffDef, got {:?}", other),
+            }
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_scoredef_with_keysig_child() {
+    use tusk_model::elements::{KeySig, ScoreDef, ScoreDefChild};
+
+    let mut keysig = KeySig::default();
+    keysig.common.xml_id = Some("ks1".to_string());
+
+    let mut original = ScoreDef::default();
+    original.common.xml_id = Some("sd1".to_string());
+    original
+        .children
+        .push(ScoreDefChild::KeySig(Box::new(keysig)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::KeySig(ks) => {
+            assert_eq!(ks.common.xml_id, Some("ks1".to_string()));
+        }
+        other => panic!("Expected KeySig, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_scoredef_with_metersig_child() {
+    use tusk_model::elements::{MeterSig, ScoreDef, ScoreDefChild};
+
+    let mut metersig = MeterSig::default();
+    metersig.common.xml_id = Some("ms1".to_string());
+
+    let mut original = ScoreDef::default();
+    original
+        .children
+        .push(ScoreDefChild::MeterSig(Box::new(metersig)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = ScoreDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::MeterSig(ms) => {
+            assert_eq!(ms.common.xml_id, Some("ms1".to_string()));
+        }
+        other => panic!("Expected MeterSig, got {:?}", other),
+    }
+}

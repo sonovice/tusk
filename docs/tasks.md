@@ -60,7 +60,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add structural hierarchy tests
 
 ### 2.3 Definition Elements
-- [ ] Implement MEI parsing for `<scoreDef>` element
+- [x] Implement MEI parsing for `<scoreDef>` element
 - [ ] Implement MEI parsing for `<staffDef>` element
 - [ ] Implement MEI parsing for `<layerDef>` element
 - [ ] Implement MEI parsing for `<staffGrp>` element

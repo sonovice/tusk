@@ -16,13 +16,14 @@ use tusk_model::att::{
     AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
     AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNoteAnl, AttNoteGes,
     AttNoteLog, AttNoteVis, AttPointing, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
-    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl, AttSpaceGes,
-    AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval,
+    AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes,
+    AttSectionLog, AttSectionVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl,
+    AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Mdiv, MdivChild, Measure,
-    MeasureChild, Note, NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff,
-    StaffChild,
+    MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild,
+    Space, Staff, StaffChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -822,6 +823,206 @@ impl ExtractAttributes for AttMdivAnl {
 }
 
 // ============================================================================
+// ScoreDef attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttScoreDefLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // Clef attributes
+        extract_attr!(attrs, "clef.shape", self.clef_shape);
+        extract_attr!(attrs, "clef.line", self.clef_line);
+        extract_attr!(attrs, "clef.dis", self.clef_dis);
+        extract_attr!(attrs, "clef.dis.place", self.clef_dis_place);
+
+        // Duration defaults
+        extract_attr!(attrs, "dur.default", self.dur_default);
+        extract_attr!(attrs, "num.default", self.num_default);
+        extract_attr!(attrs, "numbase.default", self.numbase_default);
+
+        // Key signature
+        extract_attr!(attrs, "keysig", vec self.keysig);
+
+        // Meter attributes
+        extract_attr!(attrs, "meter.count", string self.meter_count);
+        extract_attr!(attrs, "meter.unit", self.meter_unit);
+        extract_attr!(attrs, "meter.sym", self.meter_sym);
+
+        // Octave default
+        extract_attr!(attrs, "oct.default", self.oct_default);
+
+        // Transposition
+        extract_attr!(attrs, "trans.diat", self.trans_diat);
+        extract_attr!(attrs, "trans.semi", self.trans_semi);
+
+        // Beam attributes
+        extract_attr!(attrs, "beam.group", string self.beam_group);
+        extract_attr!(attrs, "beam.rests", self.beam_rests);
+
+        // Mensural attributes
+        extract_attr!(attrs, "modusmaior", self.modusmaior);
+        extract_attr!(attrs, "modusminor", self.modusminor);
+        extract_attr!(attrs, "prolatio", self.prolatio);
+        extract_attr!(attrs, "tempus", self.tempus);
+        extract_attr!(attrs, "divisio", self.divisio);
+        extract_attr!(attrs, "proport.num", self.proport_num);
+        extract_attr!(attrs, "proport.numbase", self.proport_numbase);
+
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttScoreDefGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // MIDI attributes
+        extract_attr!(attrs, "midi.channel", self.midi_channel);
+        extract_attr!(attrs, "midi.duty", self.midi_duty);
+        extract_attr!(attrs, "midi.port", self.midi_port);
+        extract_attr!(attrs, "midi.track", self.midi_track);
+        extract_attr!(attrs, "ppq", self.ppq);
+        extract_attr!(attrs, "midi.bpm", self.midi_bpm);
+        extract_attr!(attrs, "midi.mspb", self.midi_mspb);
+
+        // Tuning attributes
+        extract_attr!(attrs, "tune.Hz", self.tune_hz);
+        extract_attr!(attrs, "tune.pname", self.tune_pname);
+        extract_attr!(attrs, "tune.temper", self.tune_temper);
+
+        // Metronome attributes
+        extract_attr!(attrs, "mm", self.mm);
+        extract_attr!(attrs, "mm.unit", self.mm_unit);
+        extract_attr!(attrs, "mm.dots", self.mm_dots);
+
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttScoreDefVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // Bar attributes
+        extract_attr!(attrs, "bar.len", self.bar_len);
+        extract_attr!(attrs, "bar.method", self.bar_method);
+        extract_attr!(attrs, "bar.place", self.bar_place);
+
+        // Clef visual attributes
+        extract_attr!(attrs, "clef.color", self.clef_color);
+        extract_attr!(attrs, "clef.visible", self.clef_visible);
+
+        // Distance attributes
+        extract_attr!(attrs, "dir.dist", self.dir_dist);
+        extract_attr!(attrs, "dynam.dist", self.dynam_dist);
+        extract_attr!(attrs, "harm.dist", self.harm_dist);
+        extract_attr!(attrs, "reh.dist", self.reh_dist);
+        extract_attr!(attrs, "tempo.dist", self.tempo_dist);
+
+        // Ending
+        extract_attr!(attrs, "ending.rend", self.ending_rend);
+
+        // Key signature visual
+        extract_attr!(attrs, "keysig.cancelaccid", self.keysig_cancelaccid);
+        extract_attr!(attrs, "keysig.visible", self.keysig_visible);
+
+        // Lyric attributes
+        extract_attr!(attrs, "lyric.align", self.lyric_align);
+        extract_attr!(attrs, "lyric.fam", self.lyric_fam);
+        extract_attr!(attrs, "lyric.name", self.lyric_name);
+        extract_attr!(attrs, "lyric.size", self.lyric_size);
+        extract_attr!(attrs, "lyric.style", self.lyric_style);
+        extract_attr!(attrs, "lyric.weight", self.lyric_weight);
+
+        // Measure number
+        extract_attr!(attrs, "mnum.visible", self.mnum_visible);
+
+        // Meter visual attributes
+        extract_attr!(attrs, "meter.form", self.meter_form);
+        extract_attr!(attrs, "meter.showchange", self.meter_showchange);
+        extract_attr!(attrs, "meter.visible", self.meter_visible);
+
+        // Multi-measure rests
+        extract_attr!(attrs, "multi.number", self.multi_number);
+
+        // Music font
+        extract_attr!(attrs, "music.name", self.music_name);
+        extract_attr!(attrs, "music.size", self.music_size);
+
+        // Staff line placement
+        extract_attr!(attrs, "ontheline", self.ontheline);
+        extract_attr!(attrs, "optimize", self.optimize);
+
+        // Page dimensions
+        extract_attr!(attrs, "page.height", self.page_height);
+        extract_attr!(attrs, "page.width", self.page_width);
+        extract_attr!(attrs, "page.topmar", self.page_topmar);
+        extract_attr!(attrs, "page.botmar", self.page_botmar);
+        extract_attr!(attrs, "page.leftmar", self.page_leftmar);
+        extract_attr!(attrs, "page.rightmar", self.page_rightmar);
+        extract_attr!(attrs, "page.panels", self.page_panels);
+        extract_attr!(attrs, "page.scale", self.page_scale);
+
+        // Spacing
+        extract_attr!(attrs, "spacing.packexp", self.spacing_packexp);
+        extract_attr!(attrs, "spacing.packfact", self.spacing_packfact);
+        extract_attr!(attrs, "spacing.staff", self.spacing_staff);
+        extract_attr!(attrs, "spacing.system", self.spacing_system);
+
+        // Order attributes
+        extract_attr!(attrs, "aboveorder", vec self.aboveorder);
+        extract_attr!(attrs, "beloworder", vec self.beloworder);
+        extract_attr!(attrs, "betweenorder", vec self.betweenorder);
+
+        // System attributes
+        extract_attr!(attrs, "system.leftline", self.system_leftline);
+        extract_attr!(attrs, "system.leftmar", self.system_leftmar);
+        extract_attr!(attrs, "system.rightmar", self.system_rightmar);
+        extract_attr!(attrs, "system.topmar", self.system_topmar);
+
+        // Text font attributes
+        extract_attr!(attrs, "text.fam", self.text_fam);
+        extract_attr!(attrs, "text.name", self.text_name);
+        extract_attr!(attrs, "text.size", self.text_size);
+        extract_attr!(attrs, "text.style", self.text_style);
+        extract_attr!(attrs, "text.weight", self.text_weight);
+
+        // Beam visual attributes
+        extract_attr!(attrs, "beam.color", self.beam_color);
+        extract_attr!(attrs, "beam.rend", self.beam_rend);
+        extract_attr!(attrs, "beam.slope", self.beam_slope);
+
+        // Other visual attributes (vu.height, grid, pedal, reh.enclose, slur, tie, mensur)
+        // These are less common, but we should handle them for completeness
+        extract_attr!(attrs, "vu.height", self.vu_height);
+        extract_attr!(attrs, "grid.show", self.grid_show);
+        extract_attr!(attrs, "pedal.style", self.pedal_style);
+        extract_attr!(attrs, "reh.enclose", self.reh_enclose);
+        extract_attr!(attrs, "slur.lform", self.slur_lform);
+        extract_attr!(attrs, "slur.lwidth", self.slur_lwidth);
+        extract_attr!(attrs, "tie.lform", self.tie_lform);
+        extract_attr!(attrs, "tie.lwidth", self.tie_lwidth);
+
+        // Mensuration visual attributes
+        extract_attr!(attrs, "mensur.color", self.mensur_color);
+        extract_attr!(attrs, "mensur.dot", self.mensur_dot);
+        extract_attr!(attrs, "mensur.form", self.mensur_form);
+        extract_attr!(attrs, "mensur.loc", self.mensur_loc);
+        extract_attr!(attrs, "mensur.orient", self.mensur_orient);
+        extract_attr!(attrs, "mensur.sign", self.mensur_sign);
+        extract_attr!(attrs, "mensur.size", self.mensur_size);
+        extract_attr!(attrs, "mensur.slash", self.mensur_slash);
+
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttScoreDefAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // Key analytical attributes
+        extract_attr!(attrs, "key.accid", self.key_accid);
+        extract_attr!(attrs, "key.mode", self.key_mode);
+        extract_attr!(attrs, "key.pname", self.key_pname);
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1487,6 +1688,243 @@ impl MeiDeserialize for Mdiv {
 
         Ok(mdiv)
     }
+}
+
+impl MeiDeserialize for ScoreDef {
+    fn element_name() -> &'static str {
+        "scoreDef"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut score_def = ScoreDef::default();
+
+        // Extract attributes into each attribute class
+        score_def.common.extract_attributes(&mut attrs)?;
+        score_def.score_def_log.extract_attributes(&mut attrs)?;
+        score_def.score_def_ges.extract_attributes(&mut attrs)?;
+        score_def.score_def_vis.extract_attributes(&mut attrs)?;
+        score_def.score_def_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        // scoreDef can contain: staffGrp, keySig, meterSig, meterSigGrp, grpSym, ambitus,
+        // pgFoot, pgHead, symbolTable, chordTable, instrGrp
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("scoreDef")?
+            {
+                match name.as_str() {
+                    "staffGrp" => {
+                        let staff_grp =
+                            parse_staff_grp_from_event(reader, child_attrs, child_empty)?;
+                        score_def
+                            .children
+                            .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
+                    }
+                    "keySig" => {
+                        let key_sig = parse_key_sig_from_raw(child_attrs);
+                        if !child_empty {
+                            reader.skip_to_end("keySig")?;
+                        }
+                        score_def
+                            .children
+                            .push(ScoreDefChild::KeySig(Box::new(key_sig)));
+                    }
+                    "meterSig" => {
+                        let meter_sig = parse_meter_sig_from_raw(child_attrs);
+                        if !child_empty {
+                            reader.skip_to_end("meterSig")?;
+                        }
+                        score_def
+                            .children
+                            .push(ScoreDefChild::MeterSig(Box::new(meter_sig)));
+                    }
+                    "meterSigGrp" => {
+                        // MeterSigGrp - skip for now (complex element)
+                        if !child_empty {
+                            reader.skip_to_end("meterSigGrp")?;
+                        }
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(score_def)
+    }
+}
+
+/// Helper to parse StaffGrp from event (recursive parsing)
+fn parse_staff_grp_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<tusk_model::elements::StaffGrp> {
+    use tusk_model::elements::{StaffGrp, StaffGrpChild};
+
+    let mut staff_grp = StaffGrp::default();
+
+    // Extract attributes
+    let _ = staff_grp.common.extract_attributes(&mut attrs);
+    let _ = staff_grp.facsimile.extract_attributes(&mut attrs);
+    let _ = staff_grp.metadata_pointing.extract_attributes(&mut attrs);
+    // Note: We should implement AttStaffGrpLog/Ges/Vis/Anl eventually
+    // For now, we'll just parse the common attributes
+
+    // Parse children if not empty
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("staffGrp")?
+        {
+            match name.as_str() {
+                "staffDef" => {
+                    let staff_def = parse_staff_def_from_raw(child_attrs);
+                    if !child_empty {
+                        reader.skip_to_end("staffDef")?;
+                    }
+                    staff_grp
+                        .children
+                        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                }
+                "staffGrp" => {
+                    // Nested staffGrp - recursive call
+                    let nested_staff_grp =
+                        parse_staff_grp_from_event(reader, child_attrs, child_empty)?;
+                    staff_grp
+                        .children
+                        .push(StaffGrpChild::StaffGrp(Box::new(nested_staff_grp)));
+                }
+                "label" => {
+                    // Label element - skip for now
+                    if !child_empty {
+                        reader.skip_to_end("label")?;
+                    }
+                }
+                "labelAbbr" => {
+                    // LabelAbbr element - skip for now
+                    if !child_empty {
+                        reader.skip_to_end("labelAbbr")?;
+                    }
+                }
+                "grpSym" => {
+                    // GrpSym element - skip for now
+                    if !child_empty {
+                        reader.skip_to_end("grpSym")?;
+                    }
+                }
+                "instrDef" => {
+                    // InstrDef element - skip for now
+                    if !child_empty {
+                        reader.skip_to_end("instrDef")?;
+                    }
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(staff_grp)
+}
+
+/// Helper to parse StaffDef from raw attributes
+fn parse_staff_def_from_raw(mut attrs: AttributeMap) -> tusk_model::elements::StaffDef {
+    use tusk_model::elements::StaffDef;
+
+    let mut staff_def = StaffDef::default();
+
+    // Extract basic attributes
+    // AttBasic has xml_id
+    if let Some(id) = attrs.remove("xml:id") {
+        staff_def.basic.xml_id = Some(id);
+    }
+
+    // AttLabelled has label
+    if let Some(label) = attrs.remove("label") {
+        staff_def.labelled.label = Some(label);
+    }
+
+    // AttNInteger has n
+    if let Some(n_str) = attrs.remove("n") {
+        if let Ok(n) = n_str.parse::<u64>() {
+            staff_def.n_integer.n = Some(n);
+        }
+    }
+
+    // Extract other common staffDef attributes
+    if let Some(lines) = attrs.remove("lines") {
+        if let Ok(l) = lines.parse::<u64>() {
+            staff_def.staff_def_log.lines = Some(l);
+        }
+    }
+
+    // Clef attributes on staffDef
+    if let Some(clef_shape) = attrs.remove("clef.shape") {
+        if let Ok(v) = from_attr_string(&clef_shape) {
+            staff_def.staff_def_log.clef_shape = Some(v);
+        }
+    }
+    if let Some(clef_line) = attrs.remove("clef.line") {
+        if let Ok(v) = from_attr_string(&clef_line) {
+            staff_def.staff_def_log.clef_line = Some(v);
+        }
+    }
+
+    // Notation type (for mensural, etc.)
+    if let Some(notationtype) = attrs.remove("notationtype") {
+        if let Ok(v) = from_attr_string(&notationtype) {
+            staff_def.staff_def_log.notationtype = Some(v);
+        }
+    }
+
+    staff_def
+}
+
+/// Helper to parse KeySig from raw attributes
+fn parse_key_sig_from_raw(mut attrs: AttributeMap) -> tusk_model::elements::KeySig {
+    use tusk_model::elements::KeySig;
+
+    let mut key_sig = KeySig::default();
+
+    // Extract common attributes
+    if let Some(id) = attrs.remove("xml:id") {
+        key_sig.common.xml_id = Some(id);
+    }
+
+    // KeySig-specific attributes could be added here as needed
+
+    key_sig
+}
+
+/// Helper to parse MeterSig from raw attributes
+fn parse_meter_sig_from_raw(mut attrs: AttributeMap) -> tusk_model::elements::MeterSig {
+    use tusk_model::elements::MeterSig;
+
+    let mut meter_sig = MeterSig::default();
+
+    // Extract common attributes
+    if let Some(id) = attrs.remove("xml:id") {
+        meter_sig.common.xml_id = Some(id);
+    }
+
+    // MeterSig-specific attributes could be added here as needed
+
+    meter_sig
 }
 
 #[cfg(test)]
