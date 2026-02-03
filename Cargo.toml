@@ -1,0 +1,39 @@
+[workspace]
+members = [
+    # Core crates (TODO: create these)
+    # "crates/core/model",
+    # "crates/core/convert",
+    # "crates/formats/mei",
+    # "crates/formats/musicxml",
+    # "crates/bindings/cli",
+    # "crates/bindings/wasm",
+
+    # Tools
+    "tools/mei-codegen",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Simon Waloschek"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/waloschek/tusk"
+
+[workspace.dependencies]
+# Internal crates
+model = { path = "crates/core/model" }
+convert = { path = "crates/core/convert" }
+mei = { path = "crates/formats/mei" }
+musicxml = { path = "crates/formats/musicxml" }
+
+# External dependencies
+derive_more = { version = "2.1.1", features = ["full"] }
+indexmap = "2.13.0"
+smallvec = "1.15.1"
+thiserror = "2.0.18"
+tracing = "0.1.44"
+quick-xml = "0.39.0"
+anyhow = "1.0.100"
+clap = { version = "4.5.56", features = ["derive"] }
+indicatif = "0.18.3"
