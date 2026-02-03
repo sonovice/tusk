@@ -38,7 +38,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Implement custom serde deserializer for MEI XML format
 - [x] Handle `xml:id` attribute serialization correctly
 - [x] Handle namespace declarations and prefixes
-- [ ] Test round-trip serialization for simple elements
+- [x] Test round-trip serialization for simple elements
 
 ---
 

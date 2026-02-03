@@ -29,6 +29,9 @@ pub use serializer::{
 };
 
 #[cfg(test)]
+mod roundtrip_tests;
+
+#[cfg(test)]
 mod tests {
     use quick_xml::de::from_str;
     use quick_xml::se::to_string;
