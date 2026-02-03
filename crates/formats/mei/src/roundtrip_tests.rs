@@ -547,3 +547,265 @@ fn roundtrip_multiple_notes_sequentially() {
         assert_eq!(parsed.note_log.oct, Some(DataOctave(i % 10)));
     }
 }
+
+// ============================================================================
+// Note Child Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_note_with_accid_child() {
+    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+    use tusk_model::elements::{Accid, NoteChild};
+
+    let mut accid = Accid::default();
+    accid.accid_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+        DataAccidentalGesturalBasic::S,
+    ));
+
+    let mut original = Note::default();
+    original.common.xml_id = Some("n1".to_string());
+    original.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    original.note_log.oct = Some(DataOctave(4));
+    original.children.push(NoteChild::Accid(Box::new(accid)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify the serialized XML contains the accid child
+    assert!(
+        xml.contains("<accid"),
+        "should contain accid element: {}",
+        xml
+    );
+    assert!(
+        xml.contains("accid.ges=\"s\""),
+        "should contain accid.ges attribute: {}",
+        xml
+    );
+
+    let parsed = Note::from_mei_str(&xml).expect("deserialize");
+
+    // Verify attributes preserved
+    assert_eq!(parsed.common.xml_id, Some("n1".to_string()));
+    assert_eq!(parsed.note_log.dur, original.note_log.dur);
+
+    // Verify child preserved
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_note_with_artic_child() {
+    use tusk_model::elements::{Artic, NoteChild};
+
+    let mut artic = Artic::default();
+    artic.artic_log.artic = vec![DataArticulation::Stacc];
+
+    let mut original = Note::default();
+    original.common.xml_id = Some("n1".to_string());
+    original.children.push(NoteChild::Artic(Box::new(artic)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify the serialized XML contains the artic child
+    assert!(
+        xml.contains("<artic"),
+        "should contain artic element: {}",
+        xml
+    );
+    assert!(
+        xml.contains("artic=\"stacc\""),
+        "should contain artic attribute: {}",
+        xml
+    );
+
+    let parsed = Note::from_mei_str(&xml).expect("deserialize");
+
+    // Verify child preserved
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        NoteChild::Artic(artic) => {
+            assert!(!artic.artic_log.artic.is_empty());
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Stacc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_note_with_multiple_children() {
+    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+    use tusk_model::elements::{Accid, Artic, NoteChild};
+
+    let mut artic = Artic::default();
+    artic.artic_log.artic = vec![DataArticulation::Ten];
+
+    let mut accid = Accid::default();
+    accid.accid_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+        DataAccidentalGesturalBasic::F,
+    ));
+
+    let mut original = Note::default();
+    original.common.xml_id = Some("n2apf6t".to_string());
+    original.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    original.note_log.pname = Some(DataPitchname::from("f".to_string()));
+    original.note_log.oct = Some(DataOctave(5));
+    original.children.push(NoteChild::Artic(Box::new(artic)));
+    original.children.push(NoteChild::Accid(Box::new(accid)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify both children present
+    assert!(xml.contains("<artic"), "should contain artic: {}", xml);
+    assert!(xml.contains("<accid"), "should contain accid: {}", xml);
+
+    let parsed = Note::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 2);
+
+    // First should be artic
+    match &parsed.children[0] {
+        NoteChild::Artic(a) => {
+            assert_eq!(a.artic_log.artic[0], DataArticulation::Ten);
+        }
+        other => panic!("Expected Artic first, got {:?}", other),
+    }
+
+    // Second should be accid
+    match &parsed.children[1] {
+        NoteChild::Accid(a) => {
+            assert!(a.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid second, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// Integration Tests - Parsing Real MEI Example Fragments
+// ============================================================================
+
+/// Test parsing note elements from Tchaikovsky example style
+#[test]
+fn parse_tchaikovsky_style_note_with_children() {
+    // This mimics the structure from specs/mei/examples/verovio/tchaikovsky_scherzo.mei
+    let xml = r#"<note xml:id="n2apf6t" dur="8" pname="f" oct="5">
+        <artic artic="stacc"/>
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n2apf6t".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("f".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Stacc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+}
+
+/// Test parsing note with both artic and accid children
+#[test]
+fn parse_note_with_artic_and_accid() {
+    // From Tchaikovsky example: note with tenuto and gestural flat
+    let xml = r#"<note xml:id="n1v2c23j" dur="4" pname="e" oct="5">
+        <artic artic="ten"/>
+        <accid accid.ges="f"/>
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n1v2c23j".to_string()));
+    assert_eq!(note.children.len(), 2);
+
+    // Check artic
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Ten);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+
+    // Check accid
+    match &note.children[1] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Test parsing note with only gestural accidental
+#[test]
+fn parse_note_with_gestural_accidental_child() {
+    let xml = r#"<note xml:id="nz8c5kj" dur="8" pname="d" oct="5">
+        <accid accid.ges="f"/>
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("nz8c5kj".to_string()));
+    assert_eq!(note.children.len(), 1);
+
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Test parsing note with written accidental (sharp)
+#[test]
+fn parse_note_with_written_accidental() {
+    // From Tchaikovsky: C sharp
+    let xml = r#"<note xml:id="n1jlp1q2" pname="c" oct="4">
+        <accid accid="s"/>
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Test parsing note with accent articulation
+#[test]
+fn parse_note_with_accent() {
+    let xml = r#"<note xml:id="n2epqtj" dots="1" dur="4" pname="c" oct="5">
+        <artic artic="acc"/>
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n2epqtj".to_string()));
+    assert_eq!(note.note_log.dots, Some(DataAugmentdot(1)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Acc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+}

@@ -9,8 +9,11 @@
 use super::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader};
 use serde::Deserialize;
 use std::io::BufRead;
-use tusk_model::att::{AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis};
-use tusk_model::elements::Note;
+use tusk_model::att::{
+    AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
+    AttArticVis, AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+};
+use tusk_model::elements::{Accid, Artic, Note, NoteChild};
 
 /// Parse a value using serde_json from XML attribute string.
 /// Tries multiple JSON formats to handle different serde derives:
@@ -209,8 +212,220 @@ impl ExtractAttributes for AttNoteAnl {
 }
 
 // ============================================================================
+// Accid attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttAccidLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "accid", self.accid);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "func", self.func);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAccidGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "accid.ges", self.accid_ges);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAccidVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "onstaff", self.onstaff);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAccidAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttAccidAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Artic attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttArticLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "artic", vec self.artic);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttArticGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "artic.ges", vec self.artic_ges);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttArticVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "onstaff", self.onstaff);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttArticAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttArticAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
+
+impl MeiDeserialize for Accid {
+    fn element_name() -> &'static str {
+        "accid"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut accid = Accid::default();
+
+        // Extract attributes into each attribute class
+        accid.common.extract_attributes(&mut attrs)?;
+        accid.facsimile.extract_attributes(&mut attrs)?;
+        accid.accid_log.extract_attributes(&mut attrs)?;
+        accid.accid_ges.extract_attributes(&mut attrs)?;
+        accid.accid_vis.extract_attributes(&mut attrs)?;
+        accid.accid_anl.extract_attributes(&mut attrs)?;
+
+        // Skip to end if not empty (accid has no children we parse)
+        if !is_empty {
+            reader.skip_to_end("accid")?;
+        }
+
+        Ok(accid)
+    }
+}
+
+/// Helper to parse Accid from raw child element data
+fn parse_accid_from_raw(mut attrs: AttributeMap) -> Accid {
+    let mut accid = Accid::default();
+    let _ = accid.common.extract_attributes(&mut attrs);
+    let _ = accid.facsimile.extract_attributes(&mut attrs);
+    let _ = accid.accid_log.extract_attributes(&mut attrs);
+    let _ = accid.accid_ges.extract_attributes(&mut attrs);
+    let _ = accid.accid_vis.extract_attributes(&mut attrs);
+    let _ = accid.accid_anl.extract_attributes(&mut attrs);
+    accid
+}
+
+impl MeiDeserialize for Artic {
+    fn element_name() -> &'static str {
+        "artic"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut artic = Artic::default();
+
+        // Extract attributes into each attribute class
+        artic.common.extract_attributes(&mut attrs)?;
+        artic.facsimile.extract_attributes(&mut attrs)?;
+        artic.artic_log.extract_attributes(&mut attrs)?;
+        artic.artic_ges.extract_attributes(&mut attrs)?;
+        artic.artic_vis.extract_attributes(&mut attrs)?;
+        artic.artic_anl.extract_attributes(&mut attrs)?;
+
+        // Skip to end if not empty (artic has no children we parse)
+        if !is_empty {
+            reader.skip_to_end("artic")?;
+        }
+
+        Ok(artic)
+    }
+}
+
+/// Helper to parse Artic from raw child element data
+fn parse_artic_from_raw(mut attrs: AttributeMap) -> Artic {
+    let mut artic = Artic::default();
+    let _ = artic.common.extract_attributes(&mut attrs);
+    let _ = artic.facsimile.extract_attributes(&mut attrs);
+    let _ = artic.artic_log.extract_attributes(&mut attrs);
+    let _ = artic.artic_ges.extract_attributes(&mut attrs);
+    let _ = artic.artic_vis.extract_attributes(&mut attrs);
+    let _ = artic.artic_anl.extract_attributes(&mut attrs);
+    artic
+}
 
 impl MeiDeserialize for Note {
     fn element_name() -> &'static str {
@@ -238,11 +453,22 @@ impl MeiDeserialize for Note {
         // Read children if not an empty element
         if !is_empty {
             let children_raw = reader.read_children_raw("note")?;
-            // TODO: Parse children into NoteChild variants
-            // For now, we skip children (they require their own MeiDeserialize impls)
-            for (_name, _child_attrs, _child_empty, _content) in children_raw {
-                // Children parsing would go here
-                // e.g., if name == "accid" { note.children.push(NoteChild::Accid(...)); }
+            for (name, child_attrs, _child_empty, _content) in children_raw {
+                match name.as_str() {
+                    "accid" => {
+                        let accid = parse_accid_from_raw(child_attrs);
+                        note.children.push(NoteChild::Accid(Box::new(accid)));
+                    }
+                    "artic" => {
+                        let artic = parse_artic_from_raw(child_attrs);
+                        note.children.push(NoteChild::Artic(Box::new(artic)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        // Unknown child element - skip in lenient mode
+                    }
+                }
             }
         }
 
@@ -322,14 +548,20 @@ mod tests {
     }
 
     #[test]
-    fn note_deserializes_with_children_empty() {
-        // Note with children but we skip them for now
+    fn note_deserializes_with_accid_child() {
+        // Note with accid child element
         let xml = r#"<note xml:id="n1" dur="4"><accid accid="s"/></note>"#;
         let note = Note::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(note.common.xml_id, Some("n1".to_string()));
-        // Children not yet implemented
-        assert!(note.children.is_empty());
+        // Children should now be parsed
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            NoteChild::Accid(accid) => {
+                assert!(accid.accid_log.accid.is_some());
+            }
+            other => panic!("Expected Accid, got {:?}", other),
+        }
     }
 
     #[test]
@@ -398,5 +630,117 @@ mod tests {
         assert_eq!(original.note_log.dur, parsed.note_log.dur);
         assert_eq!(original.note_log.pname, parsed.note_log.pname);
         assert_eq!(original.note_log.oct, parsed.note_log.oct);
+    }
+
+    // ============================================================================
+    // Note with child elements tests
+    // ============================================================================
+
+    #[test]
+    fn note_deserializes_accid_child() {
+        let xml = r#"<note xml:id="n1" dur="4" pname="c" oct="4"><accid accid.ges="s"/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.common.xml_id, Some("n1".to_string()));
+        assert_eq!(note.children.len(), 1);
+
+        // Verify the child is an Accid
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Accid(accid) => {
+                assert!(accid.accid_ges.accid_ges.is_some());
+            }
+            other => panic!("Expected Accid child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_artic_child() {
+        let xml = r#"<note xml:id="n1" dur="4"><artic artic="stacc"/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+
+        // Verify the child is an Artic
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Artic(artic) => {
+                assert!(!artic.artic_log.artic.is_empty());
+            }
+            other => panic!("Expected Artic child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_multiple_children() {
+        let xml = r#"<note xml:id="n1" dur="4" pname="e" oct="5">
+            <artic artic="ten"/>
+            <accid accid.ges="f"/>
+        </note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 2);
+
+        // First child should be artic
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Artic(_) => {}
+            other => panic!("Expected Artic first, got {:?}", other),
+        }
+
+        // Second child should be accid
+        match &note.children[1] {
+            tusk_model::elements::NoteChild::Accid(_) => {}
+            other => panic!("Expected Accid second, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_accid_with_written_accidental() {
+        let xml = r#"<note><accid accid="s"/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Accid(accid) => {
+                assert!(accid.accid_log.accid.is_some());
+            }
+            other => panic!("Expected Accid, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_empty_accid_child() {
+        let xml = r#"<note><accid/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Accid(_) => {}
+            other => panic!("Expected Accid, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_empty_artic_child() {
+        let xml = r#"<note><artic/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Artic(_) => {}
+            other => panic!("Expected Artic, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_ignores_unknown_child_elements() {
+        // Unknown child elements should be skipped in lenient mode
+        let xml = r#"<note><unknownElement/><accid accid.ges="f"/></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        // Only the accid should be parsed, unknown element skipped
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Accid(_) => {}
+            other => panic!("Expected Accid, got {:?}", other),
+        }
     }
 }

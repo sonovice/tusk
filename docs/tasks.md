@@ -45,7 +45,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 ## Phase 2: MEI CMN Module
 
 ### 2.1 Core Note Elements
-- [ ] Implement MEI parsing for `<note>` element
+- [x] Implement MEI parsing for `<note>` element
 - [ ] Implement MEI parsing for `<rest>` element
 - [ ] Implement MEI parsing for `<chord>` element
 - [ ] Implement MEI parsing for `<space>` element

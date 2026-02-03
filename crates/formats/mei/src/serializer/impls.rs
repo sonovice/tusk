@@ -9,8 +9,11 @@
 use super::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use serde::Serialize;
 use std::io::Write;
-use tusk_model::att::{AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis};
-use tusk_model::elements::{Note, NoteChild};
+use tusk_model::att::{
+    AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
+    AttArticVis, AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+};
+use tusk_model::elements::{Accid, Artic, Note, NoteChild};
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
@@ -224,8 +227,194 @@ impl CollectAttributes for AttNoteAnl {
 }
 
 // ============================================================================
+// Accid attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttAccidLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "accid", self.accid);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "func", self.func);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttAccidGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "accid.ges", self.accid_ges);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttAccidVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "onstaff", self.onstaff);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttAccidAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttAccidAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
+// Artic attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttArticLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "artic", vec self.artic);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttArticGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "artic.ges", vec self.artic_ges);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttArticVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "onstaff", self.onstaff);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttArticAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttArticAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
+
+impl MeiSerialize for Accid {
+    fn element_name(&self) -> &'static str {
+        "accid"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.accid_log.collect_attributes());
+        attrs.extend(self.accid_ges.collect_attributes());
+        attrs.extend(self.accid_vis.collect_attributes());
+        attrs.extend(self.accid_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Accid has no children we serialize
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+impl MeiSerialize for Artic {
+    fn element_name(&self) -> &'static str {
+        "artic"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.artic_log.collect_attributes());
+        attrs.extend(self.artic_ges.collect_attributes());
+        attrs.extend(self.artic_vis.collect_attributes());
+        attrs.extend(self.artic_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Artic has no children we serialize
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
 
 impl MeiSerialize for Note {
     fn element_name(&self) -> &'static str {
@@ -285,20 +474,30 @@ impl MeiSerialize for NoteChild {
     }
 
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
-        // TODO: Implement for each child type
-        // For now, return empty - children will need their own implementations
-        Vec::new()
+        match self {
+            NoteChild::Accid(accid) => accid.collect_all_attributes(),
+            NoteChild::Artic(artic) => artic.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
     }
 
     fn has_children(&self) -> bool {
-        // Most child elements can have their own children
-        // TODO: Implement properly for each type
-        false
+        match self {
+            NoteChild::Accid(accid) => accid.has_children(),
+            NoteChild::Artic(artic) => artic.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // TODO: Implement for each child type
-        Ok(())
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            NoteChild::Accid(accid) => accid.serialize_children(writer),
+            NoteChild::Artic(artic) => artic.serialize_children(writer),
+            // Other child types - no-op
+            _ => Ok(()),
+        }
     }
 }
 
