@@ -12,11 +12,12 @@ use std::io::Write;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
-    AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl,
+    AttSpaceGes, AttSpaceLog, AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild,
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
 };
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
@@ -597,6 +598,65 @@ impl CollectAttributes for AttChordAnl {
 }
 
 // ============================================================================
+// Space attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttDurationQuality {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dur.quality", self.dur_quality);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSpaceLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dots", self.dots);
+        push_attr!(attrs, "dur", self.dur);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSpaceGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSpaceVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "cutout", self.cutout);
+        push_attr!(attrs, "compressable", self.compressable);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSpaceAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "beam", vec self.beam);
+        push_attr!(attrs, "fermata", self.fermata);
+        push_attr!(attrs, "tuplet", vec self.tuplet);
+        attrs
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -920,6 +980,32 @@ impl MeiSerialize for ChordChild {
     }
 }
 
+impl MeiSerialize for Space {
+    fn element_name(&self) -> &'static str {
+        "space"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.duration_quality.collect_attributes());
+        attrs.extend(self.space_log.collect_attributes());
+        attrs.extend(self.space_ges.collect_attributes());
+        attrs.extend(self.space_vis.collect_attributes());
+        attrs.extend(self.space_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Space has no children per MEI spec
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1015,5 +1101,60 @@ mod tests {
             "should have second note: {}",
             xml
         );
+    }
+
+    // ============================================================================
+    // Space serialization tests
+    // ============================================================================
+
+    #[test]
+    fn space_serializes_to_mei_xml() {
+        let mut space = Space::default();
+        space.common.xml_id = Some("s1".to_string());
+        space.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+        let xml = space.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<space"), "should have space element: {}", xml);
+        assert!(xml.contains("xml:id=\"s1\""), "should have xml:id: {}", xml);
+        assert!(xml.contains("dur=\"4\""), "should have dur: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+    }
+
+    #[test]
+    fn empty_space_serializes_minimal() {
+        let space = Space::default();
+        let xml = space.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<space"), "should have space element: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+        // Should not have any attributes
+        assert!(!xml.contains("dur="), "should not have dur: {}", xml);
+    }
+
+    #[test]
+    fn space_serializes_with_staff_and_layer() {
+        let mut space = Space::default();
+        space.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        space.space_log.staff = vec![1u64];
+        space.space_log.layer = vec![1u64];
+
+        let xml = space.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("staff=\"1\""), "should have staff: {}", xml);
+        assert!(xml.contains("layer=\"1\""), "should have layer: {}", xml);
+    }
+
+    #[test]
+    fn space_serializes_with_dots() {
+        use tusk_model::data::DataAugmentdot;
+
+        let mut space = Space::default();
+        space.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        space.space_log.dots = Some(DataAugmentdot(1));
+
+        let xml = space.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("dots=\"1\""), "should have dots: {}", xml);
     }
 }

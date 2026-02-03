@@ -48,7 +48,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Implement MEI parsing for `<note>` element
 - [x] Implement MEI parsing for `<rest>` element
 - [x] Implement MEI parsing for `<chord>` element
-- [ ] Implement MEI parsing for `<space>` element
+- [x] Implement MEI parsing for `<space>` element
 - [ ] Add tests against `specs/mei/examples/` CMN files
 
 ### 2.2 Structural Elements

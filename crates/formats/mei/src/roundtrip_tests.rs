@@ -1088,3 +1088,214 @@ fn roundtrip_rest_with_color() {
 
     assert!(parsed.rest_vis.color.is_some(), "color should be preserved");
 }
+
+// ============================================================================
+// Space Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_space() {
+    use tusk_model::elements::Space;
+
+    let original = Space::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.space_log.dur.is_none());
+}
+
+#[test]
+fn roundtrip_space_with_xml_id() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.common.xml_id = Some("space-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"space-1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("space-1".to_string()));
+}
+
+#[test]
+fn roundtrip_space_with_duration_quarter() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.space_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn roundtrip_space_with_duration_whole() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.space_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N1))
+    );
+}
+
+#[test]
+fn roundtrip_space_with_dots() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.space_log.dots = Some(DataAugmentdot(2));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.space_log.dots, Some(DataAugmentdot(2)));
+}
+
+#[test]
+fn roundtrip_space_complete_cmn() {
+    use tusk_model::elements::Space;
+
+    // Common Music Notation space with typical attributes
+    let mut original = Space::default();
+    original.common.xml_id = Some("s42".to_string());
+    original.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    original.space_log.dots = Some(DataAugmentdot(1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.space_log.dur, original.space_log.dur);
+    assert_eq!(parsed.space_log.dots, original.space_log.dots);
+}
+
+#[test]
+fn roundtrip_space_with_staff_and_layer() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.space_log.staff = vec![1u64];
+    original.space_log.layer = vec![1u64];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert!(
+        !parsed.space_log.staff.is_empty(),
+        "staff should be preserved"
+    );
+    assert!(
+        !parsed.space_log.layer.is_empty(),
+        "layer should be preserved"
+    );
+}
+
+#[test]
+fn roundtrip_space_with_label() {
+    use tusk_model::elements::Space;
+
+    let mut original = Space::default();
+    original.common.label = Some("fill space".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Space::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.label, Some("fill space".to_string()));
+}
+
+// ============================================================================
+// Space External XML Parsing Tests
+// ============================================================================
+
+#[test]
+fn parse_external_space_minimal() {
+    use tusk_model::elements::Space;
+
+    let xml = r#"<space/>"#;
+    let parsed = Space::from_mei_str(xml).expect("deserialize");
+
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Space::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert!(reparsed.common.xml_id.is_none());
+}
+
+#[test]
+fn parse_external_space_with_attributes() {
+    use tusk_model::elements::Space;
+
+    let xml = r#"<space xml:id="s1" dur="4"/>"#;
+    let parsed = Space::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("s1".to_string()));
+    assert_eq!(
+        parsed.space_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+
+    // Verify round-trip preserves values
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Space::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert_eq!(reparsed.common.xml_id, Some("s1".to_string()));
+    assert_eq!(reparsed.space_log.dur, parsed.space_log.dur);
+}
+
+#[test]
+fn parse_external_space_all_cmn_durations() {
+    use tusk_model::elements::Space;
+
+    // Test common music notation duration values for spaces
+    for (dur_str, expected) in [
+        ("long", DataDurationCmn::Long),
+        ("breve", DataDurationCmn::Breve),
+        ("1", DataDurationCmn::N1),
+        ("2", DataDurationCmn::N2),
+        ("4", DataDurationCmn::N4),
+        ("8", DataDurationCmn::N8),
+        ("16", DataDurationCmn::N16),
+        ("32", DataDurationCmn::N32),
+        ("64", DataDurationCmn::N64),
+        ("128", DataDurationCmn::N128),
+        ("256", DataDurationCmn::N256),
+    ] {
+        let xml = format!(r#"<space dur="{}"/>"#, dur_str);
+        let parsed =
+            Space::from_mei_str(&xml).unwrap_or_else(|_| panic!("deserialize dur={}", dur_str));
+        assert_eq!(
+            parsed.space_log.dur,
+            Some(DataDuration::DataDurationCmn(expected)),
+            "dur {} should parse correctly",
+            dur_str
+        );
+    }
+}
+
+#[test]
+fn space_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::Space;
+
+    let xml = r#"<space xml:id="s1" unknown="value" dur="4"/>"#;
+    let space = Space::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(space.common.xml_id, Some("s1".to_string()));
+}

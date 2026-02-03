@@ -12,11 +12,12 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
-    AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl,
+    AttSpaceGes, AttSpaceLog, AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild,
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -566,6 +567,60 @@ impl ExtractAttributes for AttChordAnl {
 }
 
 // ============================================================================
+// Space attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttDurationQuality {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.quality", self.dur_quality);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSpaceLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dots", self.dots);
+        extract_attr!(attrs, "dur", self.dur);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSpaceGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSpaceVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "cutout", self.cutout);
+        extract_attr!(attrs, "compressable", self.compressable);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSpaceAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam", vec self.beam);
+        extract_attr!(attrs, "fermata", self.fermata);
+        extract_attr!(attrs, "tuplet", vec self.tuplet);
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -845,6 +900,40 @@ fn parse_note_from_raw(mut attrs: AttributeMap) -> Note {
     let _ = note.note_vis.extract_attributes(&mut attrs);
     let _ = note.note_anl.extract_attributes(&mut attrs);
     note
+}
+
+impl MeiDeserialize for Space {
+    fn element_name() -> &'static str {
+        "space"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut space = Space::default();
+
+        // Extract attributes into each attribute class
+        space.common.extract_attributes(&mut attrs)?;
+        space.facsimile.extract_attributes(&mut attrs)?;
+        space.duration_quality.extract_attributes(&mut attrs)?;
+        space.space_log.extract_attributes(&mut attrs)?;
+        space.space_ges.extract_attributes(&mut attrs)?;
+        space.space_vis.extract_attributes(&mut attrs)?;
+        space.space_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Space has no children per MEI spec (<empty/>)
+        // Skip to end if not empty (handles malformed input gracefully)
+        if !is_empty {
+            reader.skip_to_end("space")?;
+        }
+
+        Ok(space)
+    }
 }
 
 #[cfg(test)]
@@ -1413,5 +1502,117 @@ mod tests {
         let chord = Chord::from_mei_str(xml).expect("should deserialize");
 
         assert!(chord.chord_anl.fermata.is_some());
+    }
+
+    // ============================================================================
+    // Space deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn space_deserializes_from_empty_element() {
+        let xml = r#"<space/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(space.common.xml_id.is_none());
+        assert!(space.space_log.dur.is_none());
+    }
+
+    #[test]
+    fn space_deserializes_xml_id() {
+        let xml = r#"<space xml:id="s1"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(space.common.xml_id, Some("s1".to_string()));
+    }
+
+    #[test]
+    fn space_deserializes_duration() {
+        let xml = r#"<space dur="4"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            space.space_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn space_deserializes_full_attributes() {
+        use tusk_model::data::DataAugmentdot;
+
+        let xml = r#"<space xml:id="s1" dur="2" dots="1"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(space.common.xml_id, Some("s1".to_string()));
+        assert_eq!(
+            space.space_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N2))
+        );
+        assert_eq!(space.space_log.dots, Some(DataAugmentdot(1)));
+    }
+
+    #[test]
+    fn space_deserializes_with_xml_declaration() {
+        let xml = r#"<?xml version="1.0"?><space xml:id="s1" dur="4"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(space.common.xml_id, Some("s1".to_string()));
+    }
+
+    #[test]
+    fn space_deserializes_staff_layer_vectors() {
+        let xml = r#"<space staff="1 2" layer="1"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        // staff and layer are Vec<> types
+        assert!(!space.space_log.staff.is_empty());
+    }
+
+    #[test]
+    fn space_handles_unknown_attributes_leniently() {
+        let xml = r#"<space xml:id="s1" unknown="value" dur="4"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(space.common.xml_id, Some("s1".to_string()));
+    }
+
+    #[test]
+    fn space_deserializes_visual_compressable() {
+        let xml = r#"<space dur="4" compressable="true"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(space.space_vis.compressable.is_some());
+    }
+
+    #[test]
+    fn space_deserializes_gestural_duration() {
+        let xml = r#"<space dur="4" dur.ges="8"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(space.space_ges.dur_ges.is_some());
+    }
+
+    #[test]
+    fn space_deserializes_analytical_fermata() {
+        let xml = r#"<space dur="4" fermata="above"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(space.space_anl.fermata.is_some());
+    }
+
+    #[test]
+    fn space_deserializes_analytical_beam() {
+        let xml = r#"<space dur="8" beam="i"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!space.space_anl.beam.is_empty());
+    }
+
+    #[test]
+    fn space_deserializes_analytical_tuplet() {
+        let xml = r#"<space dur="8" tuplet="i1"/>"#;
+        let space = Space::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!space.space_anl.tuplet.is_empty());
     }
 }
