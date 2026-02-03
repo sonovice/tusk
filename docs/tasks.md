@@ -33,7 +33,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add basic unit tests for generated element structs
 
 ### 1.4 Serialization Infrastructure
-- [ ] Add `quick-xml` dependency for XML parsing/serialization
+- [x] Add `quick-xml` dependency for XML parsing/serialization
 - [ ] Implement custom serde serializer for MEI XML format
 - [ ] Implement custom serde deserializer for MEI XML format
 - [ ] Handle `xml:id` attribute serialization correctly

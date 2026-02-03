@@ -33,7 +33,7 @@ indexmap = "2.13.0"
 smallvec = "1.15.1"
 thiserror = "2.0.18"
 tracing = "0.1.44"
-quick-xml = "0.39.0"
+quick-xml = { version = "0.39.0", features = ["serialize"] }
 anyhow = "1.0.100"
 clap = { version = "4.5.56", features = ["derive"] }
 indicatif = "0.18.3"
