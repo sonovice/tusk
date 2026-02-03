@@ -344,6 +344,69 @@ impl<R: BufRead> MeiReader<R> {
         self.skip_to_end_and_collect(element_name)?;
         Ok(())
     }
+
+    /// Read and parse a child element of type T.
+    ///
+    /// This method reads the next element event and deserializes it into the requested type.
+    /// The element must already have been detected via `read_children_raw` or similar;
+    /// this method handles the actual parsing with proper recursion.
+    pub fn read_child_element<T: MeiDeserialize>(
+        &mut self,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<T> {
+        T::from_mei_event(self, attrs, is_empty)
+    }
+
+    /// Read children of a parent element, returning start events for each child.
+    ///
+    /// Unlike `read_children_raw`, this method yields control back to the caller
+    /// for each child start event, allowing proper recursive parsing.
+    /// Returns None when the end tag for the parent is encountered.
+    pub fn read_next_child_start(
+        &mut self,
+        parent_name: &str,
+    ) -> DeserializeResult<Option<(String, AttributeMap, bool)>> {
+        loop {
+            match self.read_event()? {
+                Event::Start(start) => {
+                    let name = std::str::from_utf8(start.name().as_ref())?.to_string();
+                    let attrs = self.extract_attributes(&start)?;
+                    return Ok(Some((name, attrs, false)));
+                }
+                Event::Empty(start) => {
+                    let name = std::str::from_utf8(start.name().as_ref())?.to_string();
+                    let attrs = self.extract_attributes(&start)?;
+                    return Ok(Some((name, attrs, true)));
+                }
+                Event::End(end) => {
+                    let name_bytes = end.name();
+                    let name = std::str::from_utf8(name_bytes.as_ref())?;
+                    if name == parent_name {
+                        return Ok(None);
+                    }
+                    // Unexpected end tag - in lenient mode we might ignore this
+                    return Err(DeserializeError::ParseError(format!(
+                        "Unexpected end tag: </{}>",
+                        name
+                    )));
+                }
+                Event::Text(_) | Event::CData(_) => {
+                    // Skip text content
+                    continue;
+                }
+                Event::Comment(_) | Event::PI(_) | Event::Decl(_) | Event::DocType(_) => {
+                    continue;
+                }
+                Event::Eof => {
+                    return Err(DeserializeError::UnexpectedEof);
+                }
+                Event::GeneralRef(_) => {
+                    continue;
+                }
+            }
+        }
+    }
 }
 
 /// Helper trait to extract attributes from a map into attribute class structs.

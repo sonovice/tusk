@@ -1282,7 +1282,7 @@ pub use att_curve_ges::AttCurveGes;
 mod att_formework;
 pub use att_formework::AttFormework;
 mod att_layer_log;
-pub use att_layer_log::AttLayerLog;
+pub use att_layer_log::{AttLayerLog, AttLayerLogMetcon};
 mod att_beam_rend;
 pub use att_beam_rend::AttBeamRend;
 mod att_quilisma_ges;

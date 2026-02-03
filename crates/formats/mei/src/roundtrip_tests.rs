@@ -2693,3 +2693,564 @@ fn roundtrip_multiple_staves_in_measure() {
         other => panic!("Expected Staff 2, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Layer Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_layer() {
+    use tusk_model::elements::Layer;
+
+    let original = Layer::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.n_integer.n.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_layer_with_xml_id() {
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.basic.xml_id = Some("l1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"l1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.basic.xml_id, Some("l1".to_string()));
+}
+
+#[test]
+fn roundtrip_layer_with_n_attribute() {
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.basic.xml_id = Some("l1".to_string());
+    original.n_integer.n = Some(1);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("n=\"1\""), "xml should contain n: {}", xml);
+
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn roundtrip_layer_with_label() {
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.labelled.label = Some("Voice 1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.labelled.label, Some("Voice 1".to_string()));
+}
+
+#[test]
+fn roundtrip_layer_with_visible_attribute() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.layer_vis.visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.layer_vis.visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_layer_with_def_attribute() {
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.layer_log.def = Some(tusk_model::data::DataUri("layerdef1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.layer_log.def.is_some());
+}
+
+#[test]
+fn roundtrip_layer_with_metcon() {
+    use tusk_model::att::AttLayerLogMetcon;
+    use tusk_model::elements::Layer;
+
+    // Parse from XML to test metcon attribute deserialization
+    let xml = r#"<layer n="1" metcon="c" />"#;
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.layer_log.metcon, Some(AttLayerLogMetcon::C));
+
+    // Serialize and verify round-trip
+    let reserialized = parsed.to_mei_string().expect("serialize");
+    assert!(
+        reserialized.contains("metcon=\"c\""),
+        "metcon should be preserved: {}",
+        reserialized
+    );
+}
+
+#[test]
+fn roundtrip_layer_with_cue() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Layer;
+
+    let mut original = Layer::default();
+    original.layer_log.cue = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("cue=\"true\""),
+        "should contain cue attribute: {}",
+        xml
+    );
+
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.layer_log.cue, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_layer_complete_cmn() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Layer;
+
+    // Common Music Notation layer with all typical attributes
+    let mut original = Layer::default();
+    original.basic.xml_id = Some("l1".to_string());
+    original.n_integer.n = Some(1);
+    original.labelled.label = Some("Voice 1".to_string());
+    original.layer_vis.visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, original.basic.xml_id);
+    assert_eq!(parsed.n_integer.n, original.n_integer.n);
+    assert_eq!(parsed.labelled.label, original.labelled.label);
+    assert_eq!(parsed.layer_vis.visible, original.layer_vis.visible);
+}
+
+#[test]
+fn layer_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<layer xml:id="l1" unknown="value" n="1"/>"#;
+    let layer = Layer::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(layer.basic.xml_id, Some("l1".to_string()));
+    assert_eq!(layer.n_integer.n, Some(1));
+}
+
+#[test]
+fn layer_deserializes_with_xml_declaration() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<?xml version="1.0"?><layer xml:id="l1" n="1"/>"#;
+    let layer = Layer::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(layer.basic.xml_id, Some("l1".to_string()));
+}
+
+#[test]
+fn layer_ignores_unknown_child_elements() {
+    use tusk_model::elements::Layer;
+
+    // Layer with unknown child element should parse gracefully
+    let xml = r#"<layer xml:id="l1"><unknownElement/></layer>"#;
+    let layer = Layer::from_mei_str(xml).expect("should deserialize");
+
+    // Unknown child should be skipped
+    assert_eq!(layer.basic.xml_id, Some("l1".to_string()));
+    // Children should be empty since we skip unknown children
+    assert!(layer.children.is_empty());
+}
+
+// ============================================================================
+// Layer with Child Elements Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_layer_with_note_child() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Layer, LayerChild, Note};
+
+    let mut note = Note::default();
+    note.common.xml_id = Some("n1".to_string());
+    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note.note_log.oct = Some(DataOctave(4));
+
+    let mut original = Layer::default();
+    original.basic.xml_id = Some("l1".to_string());
+    original.n_integer.n = Some(1);
+    original.children.push(LayerChild::Note(Box::new(note)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("l1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LayerChild::Note(note) => {
+            assert_eq!(note.common.xml_id, Some("n1".to_string()));
+            assert_eq!(
+                note.note_log.dur,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            );
+        }
+        other => panic!("Expected Note child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_layer_with_rest_child() {
+    use tusk_model::data::{DataDurationCmn, DataDurationrests};
+    use tusk_model::elements::{Layer, LayerChild, Rest};
+
+    let mut rest = Rest::default();
+    rest.common.xml_id = Some("r1".to_string());
+    rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+
+    let mut original = Layer::default();
+    original.n_integer.n = Some(1);
+    original.children.push(LayerChild::Rest(Box::new(rest)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LayerChild::Rest(rest) => {
+            assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        }
+        other => panic!("Expected Rest child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_layer_with_chord_child() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Chord, Layer, LayerChild};
+
+    let mut chord = Chord::default();
+    chord.common.xml_id = Some("c1".to_string());
+    chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let mut original = Layer::default();
+    original.n_integer.n = Some(1);
+    original.children.push(LayerChild::Chord(Box::new(chord)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LayerChild::Chord(chord) => {
+            assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+        }
+        other => panic!("Expected Chord child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_layer_with_space_child() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Layer, LayerChild, Space};
+
+    let mut space = Space::default();
+    space.common.xml_id = Some("s1".to_string());
+    space.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let mut original = Layer::default();
+    original.n_integer.n = Some(1);
+    original.children.push(LayerChild::Space(Box::new(space)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LayerChild::Space(space) => {
+            assert_eq!(space.common.xml_id, Some("s1".to_string()));
+        }
+        other => panic!("Expected Space child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_layer_with_multiple_children() {
+    use tusk_model::data::{
+        DataDuration, DataDurationCmn, DataDurationrests, DataOctave, DataPitchname,
+    };
+    use tusk_model::elements::{Layer, LayerChild, Note, Rest};
+
+    let mut note1 = Note::default();
+    note1.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut note2 = Note::default();
+    note2.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note2.note_log.pname = Some(DataPitchname::from("d".to_string()));
+    note2.note_log.oct = Some(DataOctave(4));
+
+    let mut rest = Rest::default();
+    rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2));
+
+    let mut original = Layer::default();
+    original.n_integer.n = Some(1);
+    original.children.push(LayerChild::Note(Box::new(note1)));
+    original.children.push(LayerChild::Note(Box::new(note2)));
+    original.children.push(LayerChild::Rest(Box::new(rest)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 3);
+
+    // Verify order is preserved
+    match &parsed.children[0] {
+        LayerChild::Note(note) => {
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("c".to_string()))
+            );
+        }
+        other => panic!("Expected Note 1, got {:?}", other),
+    }
+
+    match &parsed.children[1] {
+        LayerChild::Note(note) => {
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("d".to_string()))
+            );
+        }
+        other => panic!("Expected Note 2, got {:?}", other),
+    }
+
+    match &parsed.children[2] {
+        LayerChild::Rest(_) => {}
+        other => panic!("Expected Rest, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// Layer External XML Parsing Tests
+// ============================================================================
+
+#[test]
+fn parse_external_layer_minimal() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<layer/>"#;
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Layer::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert!(reparsed.basic.xml_id.is_none());
+}
+
+#[test]
+fn parse_external_layer_with_attributes() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<layer xml:id="l1" n="1"/>"#;
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("l1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+
+    // Verify round-trip preserves values
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Layer::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert_eq!(reparsed.basic.xml_id, Some("l1".to_string()));
+    assert_eq!(reparsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn parse_external_layer_various_n_values() {
+    use tusk_model::elements::Layer;
+
+    for n in [1, 2, 3, 10] {
+        let xml = format!(r#"<layer n="{}"/>"#, n);
+        let parsed = Layer::from_mei_str(&xml).expect("deserialize");
+        assert_eq!(parsed.n_integer.n, Some(n));
+    }
+}
+
+#[test]
+fn mei_example_layer_structure() {
+    use tusk_model::elements::{Layer, LayerChild};
+
+    // Based on specs/mei/examples/usersymbols/usersymbols-sample347.txt
+    let xml = r#"<layer n="1">
+        <rest dur="4" xml:id="r1"/>
+        <note dur="8" oct="4" pname="c" xml:id="n1"/>
+    </layer>"#;
+
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.children.len(), 2);
+
+    // First child should be rest
+    match &parsed.children[0] {
+        LayerChild::Rest(rest) => {
+            assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        }
+        other => panic!("Expected Rest, got {:?}", other),
+    }
+
+    // Second child should be note
+    match &parsed.children[1] {
+        LayerChild::Note(note) => {
+            assert_eq!(note.common.xml_id, Some("n1".to_string()));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+}
+
+#[test]
+fn mei_example_layer_self_closing() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<layer n="1"/>"#;
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn mei_example_layer_without_id() {
+    use tusk_model::elements::Layer;
+
+    let xml = r#"<layer n="2"><rest dur="4"/></layer>"#;
+    let parsed = Layer::from_mei_str(xml).expect("deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert_eq!(parsed.n_integer.n, Some(2));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_layer_in_staff_context() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Layer, LayerChild, Note, Staff, StaffChild};
+
+    // Create a note
+    let mut note = Note::default();
+    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note.note_log.oct = Some(DataOctave(4));
+
+    // Create a layer containing the note
+    let mut layer = Layer::default();
+    layer.n_integer.n = Some(1);
+    layer.children.push(LayerChild::Note(Box::new(note)));
+
+    // Create a staff containing the layer
+    let mut staff = Staff::default();
+    staff.basic.xml_id = Some("s1".to_string());
+    staff.n_integer.n = Some(1);
+    staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+    let xml = staff.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        StaffChild::Layer(layer) => {
+            assert_eq!(layer.n_integer.n, Some(1));
+            assert_eq!(layer.children.len(), 1);
+
+            match &layer.children[0] {
+                LayerChild::Note(note) => {
+                    assert_eq!(
+                        note.note_log.pname,
+                        Some(DataPitchname::from("c".to_string()))
+                    );
+                }
+                other => panic!("Expected Note, got {:?}", other),
+            }
+        }
+        other => panic!("Expected Layer, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_multiple_layers_in_staff() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Layer, LayerChild, Note, Staff, StaffChild};
+
+    // First layer with note
+    let mut note1 = Note::default();
+    note1.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut layer1 = Layer::default();
+    layer1.n_integer.n = Some(1);
+    layer1.children.push(LayerChild::Note(Box::new(note1)));
+
+    // Second layer with different note
+    let mut note2 = Note::default();
+    note2.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2));
+    note2.note_log.pname = Some(DataPitchname::from("g".to_string()));
+    note2.note_log.oct = Some(DataOctave(3));
+
+    let mut layer2 = Layer::default();
+    layer2.n_integer.n = Some(2);
+    layer2.children.push(LayerChild::Note(Box::new(note2)));
+
+    // Staff with both layers
+    let mut staff = Staff::default();
+    staff.n_integer.n = Some(1);
+    staff.children.push(StaffChild::Layer(Box::new(layer1)));
+    staff.children.push(StaffChild::Layer(Box::new(layer2)));
+
+    let xml = staff.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 2);
+
+    // First layer
+    match &parsed.children[0] {
+        StaffChild::Layer(layer) => {
+            assert_eq!(layer.n_integer.n, Some(1));
+        }
+        other => panic!("Expected Layer 1, got {:?}", other),
+    }
+
+    // Second layer
+    match &parsed.children[1] {
+        StaffChild::Layer(layer) => {
+            assert_eq!(layer.n_integer.n, Some(2));
+        }
+        other => panic!("Expected Layer 2, got {:?}", other),
+    }
+}

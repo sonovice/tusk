@@ -13,14 +13,15 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLabelled,
-    AttLinking, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing,
-    AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog,
-    AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
+    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
+    AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes,
+    AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
-    Space, Staff,
+    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
+    NoteChild, Rest, RestChild, Space, Staff, StaffChild,
 };
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
@@ -824,6 +825,42 @@ impl CollectAttributes for AttStaffAnl {
 }
 
 // ============================================================================
+// Layer attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttLayerLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "cue", self.cue);
+        push_attr!(attrs, "metcon", self.metcon);
+        push_attr!(attrs, "def", self.def);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttLayerGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttLayerGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttLayerVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "visible", self.visible);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttLayerAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttLayerAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1199,10 +1236,138 @@ impl MeiSerialize for Staff {
         !self.children.is_empty()
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // Staff children (layer, etc.) will be implemented in later tasks
-        // For now, staff children are not serialized
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
         Ok(())
+    }
+}
+
+impl MeiSerialize for StaffChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            StaffChild::Layer(_) => "layer",
+            // Other child types will have their element names here
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            StaffChild::Layer(layer) => layer.collect_all_attributes(),
+            // Other child types - not yet implemented
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            StaffChild::Layer(layer) => layer.has_children(),
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            StaffChild::Layer(layer) => layer.serialize_children(writer),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl MeiSerialize for Layer {
+    fn element_name(&self) -> &'static str {
+        "layer"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.n_integer.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs.extend(self.typed.collect_attributes());
+        attrs.extend(self.layer_log.collect_attributes());
+        attrs.extend(self.layer_vis.collect_attributes());
+        attrs.extend(self.layer_ges.collect_attributes());
+        attrs.extend(self.layer_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LayerChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LayerChild::Note(_) => "note",
+            LayerChild::Rest(_) => "rest",
+            LayerChild::Chord(_) => "chord",
+            LayerChild::Space(_) => "space",
+            LayerChild::Beam(_) => "beam",
+            LayerChild::Tuplet(_) => "tuplet",
+            LayerChild::Clef(_) => "clef",
+            LayerChild::Accid(_) => "accid",
+            LayerChild::Artic(_) => "artic",
+            LayerChild::Dot(_) => "dot",
+            LayerChild::BarLine(_) => "barLine",
+            LayerChild::KeySig(_) => "keySig",
+            LayerChild::MeterSig(_) => "meterSig",
+            LayerChild::MRest(_) => "mRest",
+            LayerChild::MSpace(_) => "mSpace",
+            LayerChild::MultiRest(_) => "multiRest",
+            // Many other child types...
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            LayerChild::Note(note) => note.collect_all_attributes(),
+            LayerChild::Rest(rest) => rest.collect_all_attributes(),
+            LayerChild::Chord(chord) => chord.collect_all_attributes(),
+            LayerChild::Space(space) => space.collect_all_attributes(),
+            LayerChild::Accid(accid) => accid.collect_all_attributes(),
+            LayerChild::Artic(artic) => artic.collect_all_attributes(),
+            LayerChild::Dot(dot) => dot.collect_all_attributes(),
+            // Other child types - not yet implemented
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            LayerChild::Note(note) => note.has_children(),
+            LayerChild::Rest(rest) => rest.has_children(),
+            LayerChild::Chord(chord) => chord.has_children(),
+            LayerChild::Accid(_) => false,
+            LayerChild::Artic(_) => false,
+            LayerChild::Dot(_) => false,
+            LayerChild::Space(_) => false, // Space has no children per MEI spec
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LayerChild::Note(note) => note.serialize_children(writer),
+            LayerChild::Rest(rest) => rest.serialize_children(writer),
+            LayerChild::Chord(chord) => chord.serialize_children(writer),
+            _ => Ok(()),
+        }
     }
 }
 

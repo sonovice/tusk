@@ -12,15 +12,15 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
-    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttMeasureAnl,
-    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttPointing, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog,
-    AttStaffVis, AttTargetEval,
+    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLayerAnl, AttLayerGes,
+    AttLayerLog, AttLayerVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
+    AttMetadataPointing, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttRestAnl,
+    AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
-    Space, Staff,
+    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
+    NoteChild, Rest, RestChild, Space, Staff, StaffChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -722,6 +722,40 @@ impl ExtractAttributes for AttStaffAnl {
 }
 
 // ============================================================================
+// Layer attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttLayerLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "cue", self.cue);
+        extract_attr!(attrs, "metcon", self.metcon);
+        extract_attr!(attrs, "def", self.def);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttLayerGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "visible", self.visible);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttLayerAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1081,10 +1115,25 @@ impl MeiDeserialize for Staff {
         staff.staff_ges.extract_attributes(&mut attrs)?;
         staff.staff_anl.extract_attributes(&mut attrs)?;
 
-        // Read children if not empty
-        // For now, skip all children (they will be implemented in the layer task)
+        // Read children if not empty - use recursive parsing for layer children
         if !is_empty {
-            reader.skip_to_end("staff")?;
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("staff")?
+            {
+                match name.as_str() {
+                    "layer" => {
+                        let layer = Layer::from_mei_event(reader, child_attrs, child_empty)?;
+                        staff.children.push(StaffChild::Layer(Box::new(layer)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(staff)
@@ -1098,7 +1147,10 @@ fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
     if let Some(v) = attrs.remove("xml:id") {
         staff.basic.xml_id = Some(v);
     }
-    if let Some(v) = attrs.remove("xml:base").and_then(|v| from_attr_string(&v).ok()) {
+    if let Some(v) = attrs
+        .remove("xml:base")
+        .and_then(|v| from_attr_string(&v).ok())
+    {
         staff.basic.xml_base = Some(v);
     }
     // AttLabelled
@@ -1106,7 +1158,10 @@ fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
         staff.labelled.label = Some(v);
     }
     // AttNInteger
-    if let Some(n) = attrs.remove("n").and_then(|v| from_attr_string::<u64>(&v).ok()) {
+    if let Some(n) = attrs
+        .remove("n")
+        .and_then(|v| from_attr_string::<u64>(&v).ok())
+    {
         staff.n_integer.n = Some(n);
     }
     // AttFacsimile
@@ -1119,6 +1174,87 @@ fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
     let _ = staff.staff_ges.extract_attributes(&mut attrs);
     let _ = staff.staff_anl.extract_attributes(&mut attrs);
     staff
+}
+
+impl MeiDeserialize for Layer {
+    fn element_name() -> &'static str {
+        "layer"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut layer = Layer::default();
+
+        // Extract attributes from the various attribute classes
+        // AttBasic
+        extract_attr!(attrs, "xml:id", string layer.basic.xml_id);
+        extract_attr!(attrs, "xml:base", layer.basic.xml_base);
+        // AttLabelled
+        extract_attr!(attrs, "label", string layer.labelled.label);
+        // AttLinking
+        extract_attr!(attrs, "copyof", layer.linking.copyof);
+        extract_attr!(attrs, "corresp", vec layer.linking.corresp);
+        extract_attr!(attrs, "follows", vec layer.linking.follows);
+        extract_attr!(attrs, "next", vec layer.linking.next);
+        extract_attr!(attrs, "precedes", vec layer.linking.precedes);
+        extract_attr!(attrs, "prev", vec layer.linking.prev);
+        extract_attr!(attrs, "sameas", vec layer.linking.sameas);
+        extract_attr!(attrs, "synch", vec layer.linking.synch);
+        // AttNInteger
+        extract_attr!(attrs, "n", layer.n_integer.n);
+        // AttResponsibility
+        extract_attr!(attrs, "resp", vec layer.responsibility.resp);
+        // AttTyped
+        extract_attr!(attrs, "class", vec layer.typed.class);
+        extract_attr!(attrs, "type", vec layer.typed.r#type);
+        // AttFacsimile
+        layer.facsimile.extract_attributes(&mut attrs)?;
+        // AttMetadataPointing
+        layer.metadata_pointing.extract_attributes(&mut attrs)?;
+        // Layer-specific attribute classes
+        layer.layer_log.extract_attributes(&mut attrs)?;
+        layer.layer_vis.extract_attributes(&mut attrs)?;
+        layer.layer_ges.extract_attributes(&mut attrs)?;
+        layer.layer_anl.extract_attributes(&mut attrs)?;
+
+        // Read children if not empty - use recursive parsing for proper child element handling
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("layer")?
+            {
+                match name.as_str() {
+                    "note" => {
+                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Note(Box::new(note)));
+                    }
+                    "rest" => {
+                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Rest(Box::new(rest)));
+                    }
+                    "chord" => {
+                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Chord(Box::new(chord)));
+                    }
+                    "space" => {
+                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Space(Box::new(space)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(layer)
+    }
 }
 
 impl MeiDeserialize for Measure {
