@@ -1299,3 +1299,731 @@ fn space_handles_unknown_attributes_leniently() {
 
     assert_eq!(space.common.xml_id, Some("s1".to_string()));
 }
+
+// ============================================================================
+// Tests Against specs/mei/examples/ CMN Files
+// ============================================================================
+//
+// These tests verify that note, rest, chord, and space elements from real MEI
+// example files can be parsed correctly. The XML fragments are extracted from
+// the following files in specs/mei/examples/:
+//
+// - tchaikovsky_scherzo.mei (CMN with notes, rests, chords)
+// - accid-03.mei (notes with accidentals)
+// - tempo-01.mei (notes in beams)
+// - notes_rests.mei (mensural durations)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Tests from tchaikovsky_scherzo.mei
+// ----------------------------------------------------------------------------
+
+/// Note with staccato articulation child from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_note_with_staccato() {
+    let xml = r#"<note xml:id="n2apf6t" dur="8" pname="f" oct="5">
+        <artic artic="stacc" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n2apf6t".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("f".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Stacc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+}
+
+/// Note with tenuto and gestural flat from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_note_with_tenuto_and_accid() {
+    let xml = r#"<note xml:id="n1v2c23j" dur="4" pname="e" oct="5">
+        <artic artic="ten" />
+        <accid accid.ges="f" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n1v2c23j".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("e".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 2);
+
+    // First child: tenuto articulation
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Ten);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+
+    // Second child: gestural flat accidental
+    match &note.children[1] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with only gestural accidental from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_note_with_gestural_accid_only() {
+    let xml = r#"<note xml:id="nz8c5kj" dur="8" pname="d" oct="5">
+        <accid accid.ges="f" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("nz8c5kj".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("d".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Quarter rest from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_quarter_rest() {
+    let xml = r#"<rest xml:id="r12gwbz0" dur="4" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(rest.common.xml_id, Some("r12gwbz0".to_string()));
+    assert_eq!(
+        rest.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+/// Eighth rest from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_eighth_rest() {
+    let xml = r#"<rest xml:id="r1e6h2le" dur="8" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(rest.common.xml_id, Some("r1e6h2le".to_string()));
+    assert_eq!(
+        rest.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N8))
+    );
+}
+
+/// Dotted quarter rest from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_dotted_quarter_rest() {
+    let xml = r#"<rest xml:id="r176694i" dots="1" dur="4" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(rest.common.xml_id, Some("r176694i".to_string()));
+    assert_eq!(
+        rest.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(rest.rest_log.dots, Some(DataAugmentdot(1)));
+}
+
+/// Chord with two notes and gestural accidentals from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_chord_with_two_notes() {
+    use tusk_model::elements::Chord;
+
+    let xml = r#"<chord xml:id="c1xfnie3" dots="1" dur="4">
+        <note xml:id="n9stwxq" pname="d" oct="4">
+            <accid accid.ges="f" />
+        </note>
+        <note xml:id="n103nrpj" pname="a" oct="4">
+            <accid accid.ges="f" />
+        </note>
+    </chord>"#;
+
+    let chord = Chord::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(chord.common.xml_id, Some("c1xfnie3".to_string()));
+    assert_eq!(
+        chord.chord_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(chord.chord_log.dots, Some(DataAugmentdot(1)));
+
+    assert_eq!(chord.children.len(), 2);
+
+    // First note: D4
+    match &chord.children[0] {
+        tusk_model::elements::ChordChild::Note(note) => {
+            assert_eq!(note.common.xml_id, Some("n9stwxq".to_string()));
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("d".to_string()))
+            );
+            assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+
+    // Second note: A4
+    match &chord.children[1] {
+        tusk_model::elements::ChordChild::Note(note) => {
+            assert_eq!(note.common.xml_id, Some("n103nrpj".to_string()));
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("a".to_string()))
+            );
+            assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+}
+
+/// Chord with artic child from Tchaikovsky scherzo (measure 3)
+#[test]
+fn mei_example_tchaikovsky_chord_with_artic() {
+    use tusk_model::elements::Chord;
+
+    let xml = r#"<chord xml:id="c8kn0ob" dots="1" dur="4">
+        <artic artic="acc" />
+        <note xml:id="n1ao12g4" pname="a" oct="3">
+            <accid accid.ges="f" />
+        </note>
+        <note xml:id="n1wm5qw9" pname="f" oct="4" />
+    </chord>"#;
+
+    let chord = Chord::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(chord.common.xml_id, Some("c8kn0ob".to_string()));
+    assert_eq!(
+        chord.chord_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(chord.chord_log.dots, Some(DataAugmentdot(1)));
+
+    assert_eq!(chord.children.len(), 3);
+
+    // First child: accent articulation
+    match &chord.children[0] {
+        tusk_model::elements::ChordChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Acc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+
+    // Second child: A3 note
+    match &chord.children[1] {
+        tusk_model::elements::ChordChild::Note(note) => {
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("a".to_string()))
+            );
+            assert_eq!(note.note_log.oct, Some(DataOctave(3)));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+
+    // Third child: F4 note
+    match &chord.children[2] {
+        tusk_model::elements::ChordChild::Note(note) => {
+            assert_eq!(
+                note.note_log.pname,
+                Some(DataPitchname::from("f".to_string()))
+            );
+            assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+}
+
+/// Note with dotted quarter and accent from Tchaikovsky scherzo
+#[test]
+fn mei_example_tchaikovsky_dotted_note_with_accent() {
+    let xml = r#"<note xml:id="n2epqtj" dots="1" dur="4" pname="c" oct="5">
+        <artic artic="acc" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n2epqtj".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(note.note_log.dots, Some(DataAugmentdot(1)));
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("c".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Acc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Tests from accid-03.mei
+// ----------------------------------------------------------------------------
+
+/// Note with written sharp accidental from accid-03 example
+#[test]
+fn mei_example_accid03_note_with_sharp() {
+    let xml = r#"<note dur="1" oct="5" pname="f">
+        <accid accid="s" func="edit" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N1))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("f".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with written flat accidental from accid-03 example
+#[test]
+fn mei_example_accid03_note_with_flat() {
+    let xml = r#"<note dur="1" oct="5" pname="f">
+        <accid accid="f" func="edit" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N1))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with written natural accidental from accid-03 example
+#[test]
+fn mei_example_accid03_note_with_natural() {
+    let xml = r#"<note dur="1" oct="5" pname="f">
+        <accid accid="n" func="edit" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with double sharp from accid-03 example
+#[test]
+fn mei_example_accid03_note_with_double_sharp() {
+    let xml = r#"<note dur="1" oct="5" pname="f">
+        <accid accid="x" func="edit" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with double flat from accid-03 example
+#[test]
+fn mei_example_accid03_note_with_double_flat() {
+    let xml = r#"<note dur="1" oct="5" pname="f">
+        <accid accid="ff" func="edit" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Tests from tempo-01.mei
+// ----------------------------------------------------------------------------
+
+/// Note from tempo example (self-closing element)
+#[test]
+fn mei_example_tempo01_note_self_closing() {
+    let xml = r#"<note xml:id="m0_s2_e1" dur="8" oct="5" pname="e" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("m0_s2_e1".to_string()));
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("e".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+    assert!(note.children.is_empty());
+}
+
+/// Note with dots attribute (not dots child) from tempo example
+#[test]
+fn mei_example_tempo01_note_with_dots_attr() {
+    let xml = r#"<note dots="1" dur="4" oct="5" pname="g" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(note.note_log.dots, Some(DataAugmentdot(1)));
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("g".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+}
+
+// ----------------------------------------------------------------------------
+// Tests from notes_rests.mei (mensural notation)
+// ----------------------------------------------------------------------------
+
+/// Note with mensural maxima duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_maxima() {
+    // Note: mensural durations use the same DataDuration type but different variants
+    let xml = r#"<note dur="maxima" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    // Verify it parsed something for dur (may be mensural variant)
+    assert!(note.note_log.dur.is_some());
+}
+
+/// Note with mensural longa duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_longa() {
+    let xml = r#"<note dur="longa" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert!(note.note_log.dur.is_some());
+}
+
+/// Note with mensural brevis duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_brevis() {
+    let xml = r#"<note dur="brevis" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert!(note.note_log.dur.is_some());
+}
+
+/// Note with mensural semibrevis duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_semibrevis() {
+    let xml = r#"<note dur="semibrevis" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert!(note.note_log.dur.is_some());
+}
+
+/// Note with mensural minima duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_minima() {
+    let xml = r#"<note dur="minima" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert!(note.note_log.dur.is_some());
+}
+
+/// Rest with mensural maxima duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_rest_maxima() {
+    let xml = r#"<rest dur="maxima" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert!(rest.rest_log.dur.is_some());
+}
+
+/// Rest with mensural longa duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_rest_longa() {
+    let xml = r#"<rest dur="longa" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert!(rest.rest_log.dur.is_some());
+}
+
+/// Rest with mensural brevis duration from notes_rests example
+#[test]
+fn mei_example_notes_rests_rest_brevis() {
+    let xml = r#"<rest dur="brevis" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert!(rest.rest_log.dur.is_some());
+}
+
+// ----------------------------------------------------------------------------
+// Edge case tests from real MEI files
+// ----------------------------------------------------------------------------
+
+/// Note without xml:id (common in hand-written MEI)
+#[test]
+fn mei_example_note_without_id() {
+    let xml = r#"<note dur="8" pname="g" oct="4" />"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert!(note.common.xml_id.is_none());
+    assert_eq!(
+        note.note_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+}
+
+/// Rest without xml:id
+#[test]
+fn mei_example_rest_without_id() {
+    let xml = r#"<rest dur="2" />"#;
+
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert!(rest.common.xml_id.is_none());
+    assert_eq!(
+        rest.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2))
+    );
+}
+
+/// Chord without xml:id
+#[test]
+fn mei_example_chord_without_id() {
+    use tusk_model::elements::Chord;
+
+    let xml = r#"<chord dur="4">
+        <note pname="c" oct="4" />
+        <note pname="e" oct="4" />
+    </chord>"#;
+
+    let chord = Chord::from_mei_str(xml).expect("should parse");
+
+    assert!(chord.common.xml_id.is_none());
+    assert_eq!(chord.children.len(), 2);
+}
+
+/// Note with written sharp accidental (like C# in Tchaikovsky)
+#[test]
+fn mei_example_tchaikovsky_written_sharp() {
+    let xml = r#"<note xml:id="n1jlp1q2" pname="c" oct="4">
+        <accid accid="s" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("n1jlp1q2".to_string()));
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("c".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_log.accid.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+/// Note with both accent and gestural accidental
+#[test]
+fn mei_example_tchaikovsky_accent_and_accid() {
+    let xml = r#"<note xml:id="ni3fhhf" dots="1" dur="4" pname="a" oct="2">
+        <artic artic="acc" />
+        <accid accid.ges="f" />
+    </note>"#;
+
+    let note = Note::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(note.common.xml_id, Some("ni3fhhf".to_string()));
+    assert_eq!(note.note_log.dots, Some(DataAugmentdot(1)));
+    assert_eq!(
+        note.note_log.pname,
+        Some(DataPitchname::from("a".to_string()))
+    );
+    assert_eq!(note.note_log.oct, Some(DataOctave(2)));
+
+    assert_eq!(note.children.len(), 2);
+
+    match &note.children[0] {
+        tusk_model::elements::NoteChild::Artic(artic) => {
+            assert_eq!(artic.artic_log.artic[0], DataArticulation::Acc);
+        }
+        other => panic!("Expected Artic, got {:?}", other),
+    }
+
+    match &note.children[1] {
+        tusk_model::elements::NoteChild::Accid(accid) => {
+            assert!(accid.accid_ges.accid_ges.is_some());
+        }
+        other => panic!("Expected Accid, got {:?}", other),
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Complex real-world scenarios
+// ----------------------------------------------------------------------------
+
+/// Multiple notes in sequence (simulating layer content)
+#[test]
+fn mei_example_multiple_notes_sequence() {
+    // Parse multiple notes individually (as our parser handles single elements)
+    let notes = [
+        r#"<note xml:id="n1" dur="8" pname="f" oct="5"><artic artic="stacc"/></note>"#,
+        r#"<note xml:id="n2" dur="8" pname="f" oct="5"><artic artic="stacc"/></note>"#,
+        r#"<note xml:id="n3" dur="8" pname="f" oct="5"><artic artic="stacc"/></note>"#,
+    ];
+
+    for (i, xml) in notes.iter().enumerate() {
+        let note = Note::from_mei_str(xml).expect("should parse");
+        assert_eq!(note.common.xml_id, Some(format!("n{}", i + 1)));
+        assert_eq!(
+            note.note_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+        );
+        assert_eq!(note.children.len(), 1);
+    }
+}
+
+/// Notes with varying octaves (testing octave range)
+#[test]
+fn mei_example_notes_various_octaves() {
+    for oct in 0u64..=9 {
+        let xml = format!(r#"<note dur="4" pname="c" oct="{}" />"#, oct);
+        let note = Note::from_mei_str(&xml).expect("should parse");
+        assert_eq!(note.note_log.oct, Some(DataOctave(oct)));
+    }
+}
+
+/// Notes with all pitch names
+#[test]
+fn mei_example_notes_all_pitch_names() {
+    for pname in ["a", "b", "c", "d", "e", "f", "g"] {
+        let xml = format!(r#"<note dur="4" pname="{}" oct="4" />"#, pname);
+        let note = Note::from_mei_str(&xml).expect("should parse");
+        assert_eq!(
+            note.note_log.pname,
+            Some(DataPitchname::from(pname.to_string()))
+        );
+    }
+}
+
+/// Chord with three notes (triad)
+#[test]
+fn mei_example_triad_chord() {
+    use tusk_model::elements::Chord;
+
+    let xml = r#"<chord xml:id="c1" dur="2">
+        <note pname="c" oct="4" />
+        <note pname="e" oct="4" />
+        <note pname="g" oct="4" />
+    </chord>"#;
+
+    let chord = Chord::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+    assert_eq!(
+        chord.chord_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N2))
+    );
+    assert_eq!(chord.children.len(), 3);
+
+    // Verify C major triad (C-E-G)
+    let expected_pitches = ["c", "e", "g"];
+    for (i, expected_pname) in expected_pitches.iter().enumerate() {
+        match &chord.children[i] {
+            tusk_model::elements::ChordChild::Note(note) => {
+                assert_eq!(
+                    note.note_log.pname,
+                    Some(DataPitchname::from(expected_pname.to_string()))
+                );
+            }
+            other => panic!("Expected Note at index {}, got {:?}", i, other),
+        }
+    }
+}
