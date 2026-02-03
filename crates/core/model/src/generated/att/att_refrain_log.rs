@@ -1,0 +1,6 @@
+//! Attribute class: `#ac.ident`
+use serde::{Deserialize, Serialize};
+/**Logical domain attributes. The n attribute should be used for verse numbers. Numbers need
+not be consecutive; they may also be expressed as ranges,e.g., 2-3,6.*/
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct AttRefrainLog {}

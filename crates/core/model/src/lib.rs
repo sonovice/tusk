@@ -6,15 +6,32 @@
 //!
 //! # Module Organization
 //!
-//! - `generated/` - Types generated from MEI ODD specification
-//!   - `data` - Data types from `macroSpec type="dt"`
-//!   - `att/` - Attribute classes from `classSpec type="atts"`
-//!   - `elements/` - Elements from `elementSpec`
+//! - `data` - Data types from `macroSpec type="dt"`
+//! - `att/` - Attribute classes from `classSpec type="atts"`
+//! - `model` - Model classes from `classSpec type="model"`
+//! - `pattern_entities` - Pattern entities from `macroSpec type="pe"`
+//! - `elements/` - Elements from `elementSpec`
+//! - `validation` - Validation support
+//!
+//! All types are generated from MEI ODD specification by `tools/mei-codegen`.
+//!
+//! DO NOT EDIT generated/ - regenerate with: cargo run -p mei-codegen -- --input specs/mei/modules --output crates/core/model/src/generated
 
 pub mod generated;
 
+// Re-export all generated modules at crate root for cleaner imports
+pub use generated::SpaceSeparated;
+pub use generated::att;
+pub use generated::data;
+pub use generated::elements;
+pub use generated::model;
+pub use generated::pattern_entities;
+pub use generated::validation;
+
 // Re-export commonly used types
-pub use generated::*;
+pub use data::*;
+pub use elements::*;
+pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
 #[cfg(test)]
 mod tests {

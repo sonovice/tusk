@@ -10,6 +10,9 @@ repository.workspace = true
 [dependencies]
 derive_more = { workspace = true }
 indexmap = { workspace = true }
+once_cell = "1.21.3"
+regex = "1.12.3"
+serde = { version = "1.0.228", features = ["derive"] }
 smallvec = { workspace = true }
 thiserror = { workspace = true }
 

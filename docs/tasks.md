@@ -22,7 +22,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Generate elements from `elementSpec` → Rust structs with children
 - [x] Parse Schematron constraints from `constraintSpec`
 - [x] Generate validation framework from constraints
-- [ ] Output generated code to `crates/core/model/src/generated/`
+- [x] Output generated code to `crates/core/model/src/generated/`
 
 ### 1.3 Core Model Setup
 - [ ] Create `crates/core/model/` crate with Cargo.toml

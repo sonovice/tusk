@@ -35,7 +35,7 @@ pub fn generate_all(defs: &OddDefinitions, output: &Path) -> Result<()> {
     generate_validation(defs, output)?;
 
     // Generate lib.rs
-    generate_lib_rs(defs, output)?;
+    generate_mod_rs(defs, output)?;
 
     // Print constraint statistics
     print_constraint_stats(defs);
@@ -66,7 +66,10 @@ fn print_constraint_stats(defs: &OddDefinitions) {
 
     println!("  Parsed: {} constraints", total_constraints);
     println!("  Parsed: {} rng:list attributes", list_attrs);
-    println!("  Parsed: {} rng:interleave content models", interleave_count);
+    println!(
+        "  Parsed: {} rng:interleave content models",
+        interleave_count
+    );
 }
 
 /// Count Interleave items in content model.
@@ -111,7 +114,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
         //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
 
         use serde::{Deserialize, Serialize};
-        use crate::validation::{ValidationContext, Validate};
+        use crate::generated::validation::{ValidationContext, Validate};
         use once_cell::sync::Lazy;
         use regex::Regex;
 
@@ -127,7 +130,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
         for dt in types {
             if let Some(type_tokens) = generate_data_type(dt, defs) {
                 tokens.extend(type_tokens);
-                tokens.extend(quote! { });
+                tokens.extend(quote! {});
             }
         }
     }
@@ -202,7 +205,13 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
             };
 
             // Generate validation implementation if there are constraints
-            let validation_impl = generate_primitive_validation(&name, pattern, min_inclusive, max_inclusive, rust_type);
+            let validation_impl = generate_primitive_validation(
+                &name,
+                pattern,
+                min_inclusive,
+                max_inclusive,
+                rust_type,
+            );
 
             Some(quote! {
                 #[doc = #full_doc]
@@ -352,7 +361,7 @@ fn generate_primitive_validation(
             let min_str = min.clone();
             quote! {
                 if (self.0 as f64) < (#min_val as f64) {
-                    ctx.add_error(crate::validation::ValidationError::RangeViolation {
+                    ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
                         location: ctx.location(#name_str, None),
                         attribute: #name_str.to_string(),
                         value: self.0.to_string(),
@@ -370,7 +379,7 @@ fn generate_primitive_validation(
             let max_str = max.clone();
             quote! {
                 if (self.0 as f64) > (#max_val as f64) {
-                    ctx.add_error(crate::validation::ValidationError::RangeViolation {
+                    ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
                         location: ctx.location(#name_str, None),
                         attribute: #name_str.to_string(),
                         value: self.0.to_string(),
@@ -457,11 +466,7 @@ fn generate_att_class(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
             if !values.is_empty() {
                 // Generate enum name from attribute ident (sanitize special chars)
                 let sanitized_ident = attr.ident.replace(['.', '-', ':'], "_");
-                let enum_name = format_ident!(
-                    "{}{}",
-                    name,
-                    sanitized_ident.to_upper_camel_case()
-                );
+                let enum_name = format_ident!("{}{}", name, sanitized_ident.to_upper_camel_case());
 
                 let variants: Vec<_> = values
                     .iter()
@@ -559,7 +564,7 @@ fn attribute_inner_type_tokens(datatype: &AttributeDataType, defs: &OddDefinitio
         AttributeDataType::Ref(ref_name) => {
             if defs.data_types.contains_key(ref_name) {
                 let type_name = mei_ident_to_type(ref_name);
-                quote! { crate::data::#type_name }
+                quote! { crate::generated::data::#type_name }
             } else {
                 quote! { String }
             }
@@ -593,9 +598,9 @@ fn attribute_type_tokens(
             if defs.data_types.contains_key(ref_name) {
                 let type_name = mei_ident_to_type(ref_name);
                 if is_unbounded {
-                    quote! { Vec<crate::data::#type_name> }
+                    quote! { Vec<crate::generated::data::#type_name> }
                 } else {
-                    quote! { Option<crate::data::#type_name> }
+                    quote! { Option<crate::generated::data::#type_name> }
                 }
             } else {
                 // Type not found, fall back to String
@@ -627,7 +632,7 @@ fn attribute_type_tokens(
             // Space-separated list - get the raw inner type without Option wrapper
             let inner_type = attribute_inner_type_tokens(inner, defs);
             // We use a custom wrapper for space-separated serialization
-            quote! { Option<crate::SpaceSeparated<#inner_type>> }
+            quote! { Option<crate::generated::SpaceSeparated<#inner_type>> }
         }
         None => {
             if is_unbounded {
@@ -705,7 +710,7 @@ fn generate_pattern_entities(defs: &OddDefinitions, output: &Path) -> Result<()>
         for pe in entities {
             let pe_tokens = generate_pattern_entity(pe, defs);
             tokens.extend(pe_tokens);
-            tokens.extend(quote! { });
+            tokens.extend(quote! {});
         }
     }
 
@@ -754,7 +759,7 @@ fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions) -> TokenSt
         let xml_name = child;
         variants.push(quote! {
             #[serde(rename = #xml_name)]
-            #var_name(Box<crate::elements::#var_name>),
+            #var_name(Box<crate::generated::elements::#var_name>),
         });
     }
 
@@ -834,12 +839,15 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         .map(|m| {
             let field_name = format_ident!(
                 "{}",
-                m.strip_prefix("att.").unwrap().replace('.', "_").to_snake_case()
+                m.strip_prefix("att.")
+                    .unwrap()
+                    .replace('.', "_")
+                    .to_snake_case()
             );
             let type_name = mei_ident_to_type(m);
             quote! {
                 #[serde(flatten)]
-                pub #field_name: crate::att::#type_name,
+                pub #field_name: crate::generated::att::#type_name,
             }
         })
         .collect();
@@ -855,7 +863,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         .map(|m| {
             let trait_name = mei_ident_to_type(m);
             quote! {
-                impl crate::model::#trait_name for #name {}
+                impl crate::generated::model::#trait_name for #name {}
             }
         })
         .collect();
@@ -870,7 +878,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         #![doc = #module_doc]
 
         use serde::{Deserialize, Serialize};
-        use crate::validation::{ValidationContext, Validate};
+        use crate::generated::validation::{ValidationContext, Validate};
 
         #child_enum
 
@@ -911,7 +919,10 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
         .map(|m| {
             let _field_name = format_ident!(
                 "{}",
-                m.strip_prefix("att.").unwrap().replace('.', "_").to_snake_case()
+                m.strip_prefix("att.")
+                    .unwrap()
+                    .replace('.', "_")
+                    .to_snake_case()
             );
             quote! {
                 // Validate attribute class: #m
@@ -959,7 +970,10 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
     }
 }
 
-fn generate_child_content(elem: &Element, defs: &OddDefinitions) -> (TokenStream, Option<TokenStream>) {
+fn generate_child_content(
+    elem: &Element,
+    defs: &OddDefinitions,
+) -> (TokenStream, Option<TokenStream>) {
     if elem.content.is_empty() {
         return (quote! {}, None);
     }
@@ -999,7 +1013,7 @@ fn generate_child_content(elem: &Element, defs: &OddDefinitions) -> (TokenStream
         let xml_name = child;
         variants.push(quote! {
             #[serde(rename = #xml_name)]
-            #var_name(Box<crate::elements::#var_name>),
+            #var_name(Box<crate::generated::elements::#var_name>),
         });
         validation_arms.push(quote! {
             #enum_name::#var_name(elem) => {
@@ -1114,7 +1128,11 @@ fn translate_constraint(constraint: &crate::ast::Constraint) -> (TokenStream, bo
 }
 
 /// Try to translate simple constraint patterns.
-fn try_translate_simple_constraint(test: &str, _message: &str, _ident: &str) -> Option<TokenStream> {
+fn try_translate_simple_constraint(
+    test: &str,
+    _message: &str,
+    _ident: &str,
+) -> Option<TokenStream> {
     // Pattern: @attr (attribute must exist)
     if test.starts_with('@') && !test.contains(' ') && !test.contains('[') {
         let attr_name = test.trim_start_matches('@');
@@ -1146,7 +1164,10 @@ fn try_translate_simple_constraint(test: &str, _message: &str, _ident: &str) -> 
         if test.contains(pat) {
             // Extract attribute and value
             if let Some((attr_part, rest)) = test.split_once(pat) {
-                let attr_name = attr_part.trim().trim_start_matches('@').trim_start_matches("not(");
+                let attr_name = attr_part
+                    .trim()
+                    .trim_start_matches('@')
+                    .trim_start_matches("not(");
                 if let Some(value) = rest.strip_suffix("')").or(rest.strip_suffix("'")) {
                     let _field_name = format_ident!(
                         "{}",
@@ -1440,12 +1461,11 @@ fn generate_validation(defs: &OddDefinitions, output: &Path) -> Result<()> {
 // lib.rs
 // ============================================================================
 
-fn generate_lib_rs(_defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_mod_rs(_defs: &OddDefinitions, output: &Path) -> Result<()> {
     let tokens = quote! {
-        //! MEI model types (generated from ODD).
+        //! Generated types from MEI ODD specification.
         //!
-        //! This crate provides Rust types that map 1:1 to MEI elements,
-        //! attribute classes, and data types.
+        //! This module contains Rust types that map 1:1 to MEI constructs.
         //!
         //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
 
@@ -1458,7 +1478,7 @@ fn generate_lib_rs(_defs: &OddDefinitions, output: &Path) -> Result<()> {
 
         pub use data::*;
         pub use elements::*;
-        pub use validation::{ValidationContext, ValidationError, ValidationResult};
+        pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
         use serde::{Deserialize, Deserializer, Serialize, Serializer};
         use std::fmt;
@@ -1510,8 +1530,8 @@ fn generate_lib_rs(_defs: &OddDefinitions, output: &Path) -> Result<()> {
         }
     };
 
-    write_tokens_to_file(&tokens, &output.join("lib.rs"))?;
-    println!("  Generated: lib.rs");
+    write_tokens_to_file(&tokens, &output.join("mod.rs"))?;
+    println!("  Generated: mod.rs");
 
     Ok(())
 }
@@ -1565,7 +1585,13 @@ fn mei_value_to_variant(ident: &str) -> Ident {
         let camel = sanitized.to_upper_camel_case();
         // to_upper_camel_case can return empty for non-alphanumeric inputs
         if camel.is_empty() {
-            format!("V{}", ident.chars().filter(|c| c.is_alphanumeric()).collect::<String>())
+            format!(
+                "V{}",
+                ident
+                    .chars()
+                    .filter(|c| c.is_alphanumeric())
+                    .collect::<String>()
+            )
         } else {
             camel
         }
@@ -1615,13 +1641,11 @@ fn rng_data_to_rust(type_name: &str) -> &'static str {
 
 /// Rust keywords that need special handling.
 const RUST_KEYWORDS: &[&str] = &[
-    "as", "async", "await", "break", "const", "continue", "crate", "dyn",
-    "else", "enum", "extern", "false", "fn", "for", "if", "impl", "in",
-    "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return",
-    "self", "Self", "static", "struct", "super", "trait", "true", "type",
-    "unsafe", "use", "where", "while", "abstract", "become", "box", "do",
-    "final", "macro", "override", "priv", "try", "typeof", "unsized",
-    "virtual", "yield",
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern",
+    "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub",
+    "ref", "return", "self", "Self", "static", "struct", "super", "trait", "true", "type",
+    "unsafe", "use", "where", "while", "abstract", "become", "box", "do", "final", "macro",
+    "override", "priv", "try", "typeof", "unsized", "virtual", "yield",
 ];
 
 /// Create an identifier, escaping Rust keywords with r# prefix.
