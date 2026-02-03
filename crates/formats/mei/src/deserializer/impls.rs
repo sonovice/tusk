@@ -15,12 +15,13 @@ use tusk_model::att::{
     AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLayerAnl, AttLayerGes,
     AttLayerLog, AttLayerVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
     AttMetadataPointing, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttRestAnl,
-    AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
-    AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval,
+    AttRestGes, AttRestLog, AttRestVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog,
+    AttStaffVis, AttTargetEval,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
-    NoteChild, Rest, RestChild, Space, Staff, StaffChild,
+    NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff, StaffChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -756,6 +757,38 @@ impl ExtractAttributes for AttLayerAnl {
 }
 
 // ============================================================================
+// Section attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttSectionLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSectionGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "attacca", self.attacca);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSectionVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "restart", self.restart);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSectionAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttSectionAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1302,6 +1335,71 @@ impl MeiDeserialize for Measure {
         }
 
         Ok(measure)
+    }
+}
+
+impl MeiDeserialize for Section {
+    fn element_name() -> &'static str {
+        "section"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut section = Section::default();
+
+        // Extract attributes into each attribute class
+        section.common.extract_attributes(&mut attrs)?;
+        section.facsimile.extract_attributes(&mut attrs)?;
+        section.metadata_pointing.extract_attributes(&mut attrs)?;
+        section.pointing.extract_attributes(&mut attrs)?;
+        section.target_eval.extract_attributes(&mut attrs)?;
+        section.section_log.extract_attributes(&mut attrs)?;
+        section.section_ges.extract_attributes(&mut attrs)?;
+        section.section_vis.extract_attributes(&mut attrs)?;
+        section.section_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("section")?
+            {
+                match name.as_str() {
+                    "measure" => {
+                        let measure = Measure::from_mei_event(reader, child_attrs, child_empty)?;
+                        section
+                            .children
+                            .push(SectionChild::Measure(Box::new(measure)));
+                    }
+                    "staff" => {
+                        let staff = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+                        section.children.push(SectionChild::Staff(Box::new(staff)));
+                    }
+                    "section" => {
+                        // Handle nested sections recursively
+                        let nested_section =
+                            Section::from_mei_event(reader, child_attrs, child_empty)?;
+                        section
+                            .children
+                            .push(SectionChild::Section(Box::new(nested_section)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(section)
     }
 }
 

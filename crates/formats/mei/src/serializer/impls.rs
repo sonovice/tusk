@@ -16,12 +16,13 @@ use tusk_model::att::{
     AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMeasureAnl, AttMeasureGes,
     AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
     AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes,
-    AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
+    AttRestVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl,
+    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
-    NoteChild, Rest, RestChild, Space, Staff, StaffChild,
+    NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff, StaffChild,
 };
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
@@ -861,6 +862,41 @@ impl CollectAttributes for AttLayerAnl {
 }
 
 // ============================================================================
+// Section attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttSectionLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSectionGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "attacca", self.attacca);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSectionVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "restart", self.restart);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSectionAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttSectionAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1492,6 +1528,107 @@ impl MeiSerialize for MeasureChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             MeasureChild::Staff(staff) => staff.serialize_children(writer),
+            // Other child types - no-op
+            _ => Ok(()),
+        }
+    }
+}
+
+impl MeiSerialize for Section {
+    fn element_name(&self) -> &'static str {
+        "section"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs.extend(self.section_log.collect_attributes());
+        attrs.extend(self.section_ges.collect_attributes());
+        attrs.extend(self.section_vis.collect_attributes());
+        attrs.extend(self.section_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for SectionChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            SectionChild::Measure(_) => "measure",
+            SectionChild::Staff(_) => "staff",
+            SectionChild::Section(_) => "section",
+            SectionChild::Expansion(_) => "expansion",
+            SectionChild::Subst(_) => "subst",
+            SectionChild::App(_) => "app",
+            SectionChild::Ending(_) => "ending",
+            SectionChild::Sb(_) => "sb",
+            SectionChild::AnchoredText(_) => "anchoredText",
+            SectionChild::Orig(_) => "orig",
+            SectionChild::ScoreDef(_) => "scoreDef",
+            SectionChild::Relation(_) => "relation",
+            SectionChild::Annot(_) => "annot",
+            SectionChild::Choice(_) => "choice",
+            SectionChild::Add(_) => "add",
+            SectionChild::Sic(_) => "sic",
+            SectionChild::Reg(_) => "reg",
+            SectionChild::Damage(_) => "damage",
+            SectionChild::Curve(_) => "curve",
+            SectionChild::Cb(_) => "cb",
+            SectionChild::ColLayout(_) => "colLayout",
+            SectionChild::Unclear(_) => "unclear",
+            SectionChild::Pb(_) => "pb",
+            SectionChild::Div(_) => "div",
+            SectionChild::Gap(_) => "gap",
+            SectionChild::Del(_) => "del",
+            SectionChild::Line(_) => "line",
+            SectionChild::HandShift(_) => "handShift",
+            SectionChild::Restore(_) => "restore",
+            SectionChild::StaffDef(_) => "staffDef",
+            SectionChild::RelationList(_) => "relationList",
+            SectionChild::Supplied(_) => "supplied",
+            SectionChild::Corr(_) => "corr",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            SectionChild::Measure(measure) => measure.collect_all_attributes(),
+            SectionChild::Staff(staff) => staff.collect_all_attributes(),
+            SectionChild::Section(section) => section.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            SectionChild::Measure(measure) => measure.has_children(),
+            SectionChild::Staff(staff) => staff.has_children(),
+            SectionChild::Section(section) => section.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            SectionChild::Measure(measure) => measure.serialize_children(writer),
+            SectionChild::Staff(staff) => staff.serialize_children(writer),
+            SectionChild::Section(section) => section.serialize_children(writer),
             // Other child types - no-op
             _ => Ok(()),
         }

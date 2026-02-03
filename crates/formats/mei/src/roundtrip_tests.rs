@@ -3254,3 +3254,381 @@ fn roundtrip_multiple_layers_in_staff() {
         other => panic!("Expected Layer 2, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Section Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_section() {
+    use tusk_model::elements::Section;
+
+    let original = Section::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_section_with_xml_id() {
+    use tusk_model::elements::Section;
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"sec1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sec1".to_string()));
+}
+
+#[test]
+fn roundtrip_section_with_n_attribute() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::Section;
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original.common.n = Some(DataWord("1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("n=\"1\""), "xml should contain n: {}", xml);
+
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.n, Some(DataWord("1".to_string())));
+}
+
+#[test]
+fn roundtrip_section_with_label() {
+    use tusk_model::elements::Section;
+
+    let mut original = Section::default();
+    original.common.label = Some("Introduction".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.label, Some("Introduction".to_string()));
+}
+
+#[test]
+fn roundtrip_section_with_restart_attribute() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Section;
+
+    let mut original = Section::default();
+    original.section_vis.restart = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.section_vis.restart, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_section_with_attacca_attribute() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Section;
+
+    let mut original = Section::default();
+    original.section_ges.attacca = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.section_ges.attacca, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_section_with_measure_child() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::{Measure, Section, SectionChild};
+
+    let mut measure = Measure::default();
+    measure.common.xml_id = Some("m1".to_string());
+    measure.common.n = Some(DataWord("1".to_string()));
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original
+        .children
+        .push(SectionChild::Measure(Box::new(measure)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    assert!(xml.contains("<section"), "should have section: {}", xml);
+    assert!(xml.contains("<measure"), "should have measure: {}", xml);
+    assert!(
+        xml.contains("</section>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sec1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        SectionChild::Measure(measure) => {
+            assert_eq!(measure.common.xml_id, Some("m1".to_string()));
+        }
+        other => panic!("Expected Measure, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_section_with_multiple_measure_children() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::{Measure, Section, SectionChild};
+
+    let mut measure1 = Measure::default();
+    measure1.common.xml_id = Some("m1".to_string());
+    measure1.common.n = Some(DataWord("1".to_string()));
+
+    let mut measure2 = Measure::default();
+    measure2.common.xml_id = Some("m2".to_string());
+    measure2.common.n = Some(DataWord("2".to_string()));
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original
+        .children
+        .push(SectionChild::Measure(Box::new(measure1)));
+    original
+        .children
+        .push(SectionChild::Measure(Box::new(measure2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_section_with_staff_child() {
+    use tusk_model::elements::{Section, SectionChild, Staff};
+
+    let mut staff = Staff::default();
+    staff.basic.xml_id = Some("s1".to_string());
+    staff.n_integer.n = Some(1);
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original.children.push(SectionChild::Staff(Box::new(staff)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        SectionChild::Staff(staff) => {
+            assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+        }
+        other => panic!("Expected Staff, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_section_with_nested_section() {
+    use tusk_model::elements::{Section, SectionChild};
+
+    let mut inner_section = Section::default();
+    inner_section.common.xml_id = Some("sec2".to_string());
+
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original
+        .children
+        .push(SectionChild::Section(Box::new(inner_section)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        SectionChild::Section(section) => {
+            assert_eq!(section.common.xml_id, Some("sec2".to_string()));
+        }
+        other => panic!("Expected nested Section, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_section_complete_cmn() {
+    use tusk_model::data::{DataBoolean, DataWord};
+    use tusk_model::elements::Section;
+
+    // Common Music Notation section with all typical attributes
+    let mut original = Section::default();
+    original.common.xml_id = Some("sec1".to_string());
+    original.common.n = Some(DataWord("1".to_string()));
+    original.common.label = Some("First Section".to_string());
+    original.section_vis.restart = Some(DataBoolean::False);
+    original.section_ges.attacca = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Section::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.common.n, original.common.n);
+    assert_eq!(parsed.common.label, original.common.label);
+    assert_eq!(parsed.section_vis.restart, original.section_vis.restart);
+    assert_eq!(parsed.section_ges.attacca, original.section_ges.attacca);
+}
+
+#[test]
+fn section_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section xml:id="sec1" unknown="value" n="1"/>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+}
+
+#[test]
+fn section_ignores_unknown_child_elements() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section xml:id="sec1"><unknownElement/></section>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize");
+
+    // Unknown child should be skipped
+    assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+    assert!(section.children.is_empty());
+}
+
+#[test]
+fn section_deserializes_with_xml_declaration() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<?xml version="1.0"?><section xml:id="sec1" n="1"/>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+}
+
+// ============================================================================
+// Section External XML Parsing Tests
+// ============================================================================
+
+#[test]
+fn parse_external_section_minimal() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section/>"#;
+    let parsed = Section::from_mei_str(xml).expect("deserialize");
+
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Section::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert!(reparsed.common.xml_id.is_none());
+}
+
+#[test]
+fn parse_external_section_with_attributes() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section xml:id="sec1" n="1"/>"#;
+    let parsed = Section::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sec1".to_string()));
+    assert_eq!(parsed.common.n, Some(DataWord("1".to_string())));
+
+    // Verify round-trip preserves values
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Section::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert_eq!(reparsed.common.xml_id, Some("sec1".to_string()));
+    assert_eq!(reparsed.common.n, Some(DataWord("1".to_string())));
+}
+
+#[test]
+fn mei_example_section_structure() {
+    use tusk_model::elements::{Section, SectionChild};
+
+    // Basic section structure
+    let xml = r#"<section xml:id="section1" label="Movement I">
+        <measure xml:id="m1" n="1"/>
+        <measure xml:id="m2" n="2"/>
+    </section>"#;
+
+    let parsed = Section::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(parsed.common.xml_id, Some("section1".to_string()));
+    assert_eq!(parsed.common.label, Some("Movement I".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+
+    // First measure
+    match &parsed.children[0] {
+        SectionChild::Measure(m) => {
+            assert_eq!(m.common.xml_id, Some("m1".to_string()));
+        }
+        other => panic!("Expected Measure 1, got {:?}", other),
+    }
+
+    // Second measure
+    match &parsed.children[1] {
+        SectionChild::Measure(m) => {
+            assert_eq!(m.common.xml_id, Some("m2".to_string()));
+        }
+        other => panic!("Expected Measure 2, got {:?}", other),
+    }
+}
+
+#[test]
+fn mei_example_section_self_closing() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section xml:id="sec1" n="1" />"#;
+    let section = Section::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+    assert!(section.children.is_empty());
+}
+
+#[test]
+fn mei_example_section_without_id() {
+    use tusk_model::elements::Section;
+
+    let xml = r#"<section n="2" />"#;
+    let section = Section::from_mei_str(xml).expect("should parse");
+
+    assert!(section.common.xml_id.is_none());
+}
+
+#[test]
+fn mei_example_section_with_restart() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Section;
+
+    // Section with restart attribute (indicates staves restart)
+    let xml = r#"<section xml:id="sec1" restart="true" />"#;
+    let section = Section::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(section.section_vis.restart, Some(DataBoolean::True));
+}
+
+#[test]
+fn mei_example_section_with_attacca() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Section;
+
+    // Section with attacca attribute (indicates next section should begin immediately)
+    let xml = r#"<section xml:id="sec1" attacca="true" />"#;
+    let section = Section::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(section.section_ges.attacca, Some(DataBoolean::True));
+}
