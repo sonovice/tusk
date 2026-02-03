@@ -29,7 +29,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add re-exports and public API in `crates/core/model/src/lib.rs`
 - [x] Verify generated types compile with `cargo build`
 - [x] Add basic unit tests for generated data types
-- [ ] Add basic unit tests for generated attribute classes
+- [x] Add basic unit tests for generated attribute classes
 - [ ] Add basic unit tests for generated element structs
 
 ### 1.4 Serialization Infrastructure

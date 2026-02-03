@@ -11,6 +11,8 @@ pub mod pattern_entities;
 pub mod validation;
 
 #[cfg(test)]
+mod att_tests;
+#[cfg(test)]
 mod data_tests;
 pub use data::*;
 pub use elements::*;
