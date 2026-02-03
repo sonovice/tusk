@@ -30,7 +30,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Verify generated types compile with `cargo build`
 - [x] Add basic unit tests for generated data types
 - [x] Add basic unit tests for generated attribute classes
-- [ ] Add basic unit tests for generated element structs
+- [x] Add basic unit tests for generated element structs
 
 ### 1.4 Serialization Infrastructure
 - [ ] Add `quick-xml` dependency for XML parsing/serialization

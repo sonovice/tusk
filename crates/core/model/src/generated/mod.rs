@@ -14,6 +14,8 @@ pub mod validation;
 mod att_tests;
 #[cfg(test)]
 mod data_tests;
+#[cfg(test)]
+mod elements_tests;
 pub use data::*;
 pub use elements::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
