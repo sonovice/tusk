@@ -25,10 +25,10 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Output generated code to `crates/core/model/src/generated/`
 
 ### 1.3 Core Model Setup
-- [ ] Create `crates/core/model/` crate with Cargo.toml
-- [ ] Add re-exports and public API in `crates/core/model/src/lib.rs`
-- [ ] Verify generated types compile with `cargo build`
-- [ ] Add basic unit tests for generated data types
+- [x] Create `crates/core/model/` crate with Cargo.toml
+- [x] Add re-exports and public API in `crates/core/model/src/lib.rs`
+- [x] Verify generated types compile with `cargo build`
+- [x] Add basic unit tests for generated data types
 - [ ] Add basic unit tests for generated attribute classes
 - [ ] Add basic unit tests for generated element structs
 

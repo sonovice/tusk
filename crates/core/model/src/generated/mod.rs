@@ -9,6 +9,9 @@ pub mod elements;
 pub mod model;
 pub mod pattern_entities;
 pub mod validation;
+
+#[cfg(test)]
+mod data_tests;
 pub use data::*;
 pub use elements::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
