@@ -18,10 +18,10 @@ use crate::serializer::{MeiSerialize, SerializeConfig};
 use tusk_model::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
     DataAccidentalWrittenBasic, DataArticulation, DataAugmentdot, DataColor, DataColorvalues,
-    DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname, DataStemdirection,
-    DataStemdirectionBasic, DataTie,
+    DataDuration, DataDurationCmn, DataDurationrests, DataGrace, DataOctave, DataPitchname,
+    DataStemdirection, DataStemdirectionBasic, DataTie,
 };
-use tusk_model::elements::Note;
+use tusk_model::elements::{Note, Rest};
 
 // ============================================================================
 // Note Element Round-Trip Tests
@@ -808,4 +808,283 @@ fn parse_note_with_accent() {
         }
         other => panic!("Expected Artic, got {:?}", other),
     }
+}
+
+// ============================================================================
+// Rest Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_rest() {
+    let original = Rest::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.rest_log.dur.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_rest_with_xml_id() {
+    let mut original = Rest::default();
+    original.common.xml_id = Some("r1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"r1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("r1".to_string()));
+}
+
+#[test]
+fn roundtrip_rest_with_duration_quarter() {
+    let mut original = Rest::default();
+    original.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn roundtrip_rest_with_duration_whole() {
+    let mut original = Rest::default();
+    original.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1))
+    );
+}
+
+#[test]
+fn roundtrip_rest_with_dots() {
+    let mut original = Rest::default();
+    original.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+    original.rest_log.dots = Some(DataAugmentdot(1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.rest_log.dots, Some(DataAugmentdot(1)));
+}
+
+#[test]
+fn roundtrip_rest_complete_cmn() {
+    // Common Music Notation rest with typical attributes
+    let mut original = Rest::default();
+    original.common.xml_id = Some("r42".to_string());
+    original.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N8));
+    original.rest_log.dots = Some(DataAugmentdot(1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.rest_log.dur, original.rest_log.dur);
+    assert_eq!(parsed.rest_log.dots, original.rest_log.dots);
+}
+
+#[test]
+fn roundtrip_rest_with_staff_and_layer() {
+    let mut original = Rest::default();
+    original.rest_log.staff = vec![1u64];
+    original.rest_log.layer = vec![1u64];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert!(
+        !parsed.rest_log.staff.is_empty(),
+        "staff should be preserved"
+    );
+    assert!(
+        !parsed.rest_log.layer.is_empty(),
+        "layer should be preserved"
+    );
+}
+
+#[test]
+fn roundtrip_rest_with_label() {
+    let mut original = Rest::default();
+    original.common.label = Some("whole rest".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.label, Some("whole rest".to_string()));
+}
+
+// ============================================================================
+// Rest External XML Parsing Tests
+// ============================================================================
+
+#[test]
+fn parse_external_rest_minimal() {
+    let xml = r#"<rest/>"#;
+    let parsed = Rest::from_mei_str(xml).expect("deserialize");
+
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Rest::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert!(reparsed.common.xml_id.is_none());
+}
+
+#[test]
+fn parse_external_rest_with_attributes() {
+    let xml = r#"<rest xml:id="r1" dur="4"/>"#;
+    let parsed = Rest::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("r1".to_string()));
+    assert_eq!(
+        parsed.rest_log.dur,
+        Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
+    );
+
+    // Verify round-trip preserves values
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Rest::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert_eq!(reparsed.common.xml_id, Some("r1".to_string()));
+    assert_eq!(reparsed.rest_log.dur, parsed.rest_log.dur);
+}
+
+#[test]
+fn parse_external_rest_all_cmn_durations() {
+    // Test common music notation duration values for rests
+    for (dur_str, expected) in [
+        ("long", DataDurationCmn::Long),
+        ("breve", DataDurationCmn::Breve),
+        ("1", DataDurationCmn::N1),
+        ("2", DataDurationCmn::N2),
+        ("4", DataDurationCmn::N4),
+        ("8", DataDurationCmn::N8),
+        ("16", DataDurationCmn::N16),
+        ("32", DataDurationCmn::N32),
+        ("64", DataDurationCmn::N64),
+        ("128", DataDurationCmn::N128),
+        ("256", DataDurationCmn::N256),
+    ] {
+        let xml = format!(r#"<rest dur="{}"/>"#, dur_str);
+        let parsed =
+            Rest::from_mei_str(&xml).unwrap_or_else(|_| panic!("deserialize dur={}", dur_str));
+        assert_eq!(
+            parsed.rest_log.dur,
+            Some(DataDurationrests::DataDurationCmn(expected)),
+            "dur {} should parse correctly",
+            dur_str
+        );
+    }
+}
+
+#[test]
+fn rest_handles_unknown_attributes_leniently() {
+    let xml = r#"<rest xml:id="r1" unknown="value" dur="4"/>"#;
+    let rest = Rest::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+}
+
+// ============================================================================
+// Rest with Child Elements Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_rest_with_dot_child() {
+    use tusk_model::elements::{Dot, RestChild};
+
+    let dot = Dot::default();
+
+    let mut original = Rest::default();
+    original.common.xml_id = Some("r1".to_string());
+    original.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+    original.children.push(RestChild::Dot(Box::new(dot)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify the serialized XML contains the dot child
+    assert!(xml.contains("<dot"), "should contain dot element: {}", xml);
+
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    // Verify attributes preserved
+    assert_eq!(parsed.common.xml_id, Some("r1".to_string()));
+    assert_eq!(parsed.rest_log.dur, original.rest_log.dur);
+
+    // Verify child preserved
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        RestChild::Dot(_) => {}
+        other => panic!("Expected Dot, got {:?}", other),
+    }
+}
+
+#[test]
+fn parse_rest_with_dot_child_from_xml() {
+    // Test parsing a rest with dot child element
+    let xml = r#"<rest xml:id="r1" dur="2"><dot/></rest>"#;
+    let rest = Rest::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+    assert_eq!(rest.children.len(), 1);
+
+    match &rest.children[0] {
+        tusk_model::elements::RestChild::Dot(_) => {}
+        other => panic!("Expected Dot, got {:?}", other),
+    }
+}
+
+#[test]
+fn rest_ignores_unknown_child_elements() {
+    // Unknown child elements should be skipped in lenient mode
+    let xml = r#"<rest><unknownElement/><dot/></rest>"#;
+    let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+    // Only the dot should be parsed, unknown element skipped
+    assert_eq!(rest.children.len(), 1);
+    match &rest.children[0] {
+        tusk_model::elements::RestChild::Dot(_) => {}
+        other => panic!("Expected Dot, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// Rest Visual Attribute Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_rest_with_loc() {
+    let mut original = Rest::default();
+    original.rest_vis.loc = Some(tusk_model::data::DataStaffloc(4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.rest_vis.loc.is_some(), "loc should be preserved");
+}
+
+#[test]
+fn roundtrip_rest_with_color() {
+    let mut original = Rest::default();
+    original.rest_vis.color = Some(DataColor::DataColorvalues(DataColorvalues::from(
+        "#0000FF".to_string(),
+    )));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rest::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.rest_vis.color.is_some(), "color should be preserved");
 }

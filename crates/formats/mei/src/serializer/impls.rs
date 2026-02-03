@@ -11,9 +11,10 @@ use serde::Serialize;
 use std::io::Write;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+    AttArticVis, AttCommon, AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl,
+    AttNoteGes, AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
 };
-use tusk_model::elements::{Accid, Artic, Note, NoteChild};
+use tusk_model::elements::{Accid, Artic, Dot, Note, NoteChild, Rest, RestChild};
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
@@ -295,6 +296,145 @@ impl CollectAttributes for AttAccidAnl {
 }
 
 // ============================================================================
+// Rest attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttRestLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dots", self.dots);
+        push_attr!(attrs, "cue", self.cue);
+        push_attr!(attrs, "dur", self.dur);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRestGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "num", self.num);
+        push_attr!(attrs, "numbase", self.numbase);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRestVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "breaksec", self.breaksec);
+        push_attr!(attrs, "spaces", self.spaces);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRestAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "beam", vec self.beam);
+        push_attr!(attrs, "fermata", self.fermata);
+        push_attr!(attrs, "tuplet", vec self.tuplet);
+        attrs
+    }
+}
+
+// ============================================================================
+// Dot attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttDotLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "form", self.form);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttDotGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttDotGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttDotVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttDotAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttDotAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Artic attribute class implementations
 // ============================================================================
 
@@ -477,6 +617,7 @@ impl MeiSerialize for NoteChild {
         match self {
             NoteChild::Accid(accid) => accid.collect_all_attributes(),
             NoteChild::Artic(artic) => artic.collect_all_attributes(),
+            NoteChild::Dot(dot) => dot.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -486,6 +627,7 @@ impl MeiSerialize for NoteChild {
         match self {
             NoteChild::Accid(accid) => accid.has_children(),
             NoteChild::Artic(artic) => artic.has_children(),
+            NoteChild::Dot(dot) => dot.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -495,6 +637,107 @@ impl MeiSerialize for NoteChild {
         match self {
             NoteChild::Accid(accid) => accid.serialize_children(writer),
             NoteChild::Artic(artic) => artic.serialize_children(writer),
+            NoteChild::Dot(dot) => dot.serialize_children(writer),
+            // Other child types - no-op
+            _ => Ok(()),
+        }
+    }
+}
+
+impl MeiSerialize for Dot {
+    fn element_name(&self) -> &'static str {
+        "dot"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.dot_log.collect_attributes());
+        attrs.extend(self.dot_ges.collect_attributes());
+        attrs.extend(self.dot_vis.collect_attributes());
+        attrs.extend(self.dot_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Dot has no children we serialize
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+impl MeiSerialize for Rest {
+    fn element_name(&self) -> &'static str {
+        "rest"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.rest_log.collect_attributes());
+        attrs.extend(self.rest_ges.collect_attributes());
+        attrs.extend(self.rest_vis.collect_attributes());
+        attrs.extend(self.rest_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for RestChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            RestChild::Dot(_) => "dot",
+            RestChild::Add(_) => "add",
+            RestChild::Damage(_) => "damage",
+            RestChild::App(_) => "app",
+            RestChild::HandShift(_) => "handShift",
+            RestChild::Reg(_) => "reg",
+            RestChild::Gap(_) => "gap",
+            RestChild::Unclear(_) => "unclear",
+            RestChild::Subst(_) => "subst",
+            RestChild::Choice(_) => "choice",
+            RestChild::Restore(_) => "restore",
+            RestChild::Del(_) => "del",
+            RestChild::Corr(_) => "corr",
+            RestChild::Orig(_) => "orig",
+            RestChild::Sic(_) => "sic",
+            RestChild::Supplied(_) => "supplied",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            RestChild::Dot(dot) => dot.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            RestChild::Dot(dot) => dot.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            RestChild::Dot(dot) => dot.serialize_children(writer),
             // Other child types - no-op
             _ => Ok(()),
         }

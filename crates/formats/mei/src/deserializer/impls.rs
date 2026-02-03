@@ -11,9 +11,10 @@ use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttCommon, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+    AttArticVis, AttCommon, AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl,
+    AttNoteGes, AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
 };
-use tusk_model::elements::{Accid, Artic, Note, NoteChild};
+use tusk_model::elements::{Accid, Artic, Dot, Note, NoteChild, Rest, RestChild};
 
 /// Parse a value using serde_json from XML attribute string.
 /// Tries multiple JSON formats to handle different serde derives:
@@ -277,6 +278,139 @@ impl ExtractAttributes for AttAccidAnl {
 }
 
 // ============================================================================
+// Rest attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttRestLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dots", self.dots);
+        extract_attr!(attrs, "cue", self.cue);
+        extract_attr!(attrs, "dur", self.dur);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRestGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "num", self.num);
+        extract_attr!(attrs, "numbase", self.numbase);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRestVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "breaksec", self.breaksec);
+        extract_attr!(attrs, "spaces", self.spaces);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRestAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam", vec self.beam);
+        extract_attr!(attrs, "fermata", self.fermata);
+        extract_attr!(attrs, "tuplet", vec self.tuplet);
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Dot attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttDotLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "form", self.form);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDotGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttDotGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDotVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDotAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttDotAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Artic attribute class implementations
 // ============================================================================
 
@@ -473,6 +607,92 @@ impl MeiDeserialize for Note {
         }
 
         Ok(note)
+    }
+}
+
+impl MeiDeserialize for Dot {
+    fn element_name() -> &'static str {
+        "dot"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut dot = Dot::default();
+
+        // Extract attributes into each attribute class
+        dot.common.extract_attributes(&mut attrs)?;
+        dot.facsimile.extract_attributes(&mut attrs)?;
+        dot.dot_log.extract_attributes(&mut attrs)?;
+        dot.dot_ges.extract_attributes(&mut attrs)?;
+        dot.dot_vis.extract_attributes(&mut attrs)?;
+        dot.dot_anl.extract_attributes(&mut attrs)?;
+
+        // Skip to end if not empty (dot has no children we parse)
+        if !is_empty {
+            reader.skip_to_end("dot")?;
+        }
+
+        Ok(dot)
+    }
+}
+
+/// Helper to parse Dot from raw child element data
+fn parse_dot_from_raw(mut attrs: AttributeMap) -> Dot {
+    let mut dot = Dot::default();
+    let _ = dot.common.extract_attributes(&mut attrs);
+    let _ = dot.facsimile.extract_attributes(&mut attrs);
+    let _ = dot.dot_log.extract_attributes(&mut attrs);
+    let _ = dot.dot_ges.extract_attributes(&mut attrs);
+    let _ = dot.dot_vis.extract_attributes(&mut attrs);
+    let _ = dot.dot_anl.extract_attributes(&mut attrs);
+    dot
+}
+
+impl MeiDeserialize for Rest {
+    fn element_name() -> &'static str {
+        "rest"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut rest = Rest::default();
+
+        // Extract attributes into each attribute class
+        rest.common.extract_attributes(&mut attrs)?;
+        rest.facsimile.extract_attributes(&mut attrs)?;
+        rest.rest_log.extract_attributes(&mut attrs)?;
+        rest.rest_ges.extract_attributes(&mut attrs)?;
+        rest.rest_vis.extract_attributes(&mut attrs)?;
+        rest.rest_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        if !is_empty {
+            let children_raw = reader.read_children_raw("rest")?;
+            for (name, child_attrs, _child_empty, _content) in children_raw {
+                match name.as_str() {
+                    "dot" => {
+                        let dot = parse_dot_from_raw(child_attrs);
+                        rest.children.push(RestChild::Dot(Box::new(dot)));
+                    }
+                    // Other child types (add, damage, app, etc.) can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        // Unknown child element - skip in lenient mode
+                    }
+                }
+            }
+        }
+
+        Ok(rest)
     }
 }
 
@@ -742,5 +962,135 @@ mod tests {
             tusk_model::elements::NoteChild::Accid(_) => {}
             other => panic!("Expected Accid, got {:?}", other),
         }
+    }
+
+    // ============================================================================
+    // Rest deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn rest_deserializes_from_empty_element() {
+        let xml = r#"<rest/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert!(rest.common.xml_id.is_none());
+        assert!(rest.rest_log.dur.is_none());
+        assert!(rest.children.is_empty());
+    }
+
+    #[test]
+    fn rest_deserializes_xml_id() {
+        let xml = r#"<rest xml:id="r1"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+    }
+
+    #[test]
+    fn rest_deserializes_duration() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+
+        let xml = r#"<rest dur="4"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            rest.rest_log.dur,
+            Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn rest_deserializes_full_attributes() {
+        use tusk_model::data::{DataAugmentdot, DataDurationCmn, DataDurationrests};
+
+        let xml = r#"<rest xml:id="r1" dur="2" dots="1"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        assert_eq!(
+            rest.rest_log.dur,
+            Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2))
+        );
+        assert_eq!(rest.rest_log.dots, Some(DataAugmentdot(1)));
+    }
+
+    #[test]
+    fn rest_deserializes_with_xml_declaration() {
+        let xml = r#"<?xml version="1.0"?><rest xml:id="r1" dur="4"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+    }
+
+    #[test]
+    fn rest_deserializes_staff_layer_vectors() {
+        let xml = r#"<rest staff="1 2" layer="1"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        // staff and layer are Vec<> types
+        assert!(!rest.rest_log.staff.is_empty());
+    }
+
+    #[test]
+    fn rest_handles_unknown_attributes_leniently() {
+        let xml = r#"<rest xml:id="r1" unknown="value" dur="4"/>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+    }
+
+    #[test]
+    fn rest_deserializes_with_dot_child() {
+        let xml = r#"<rest xml:id="r1" dur="4"><dot/></rest>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        assert_eq!(rest.children.len(), 1);
+        match &rest.children[0] {
+            tusk_model::elements::RestChild::Dot(_) => {}
+            other => panic!("Expected Dot, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn rest_ignores_unknown_child_elements() {
+        let xml = r#"<rest><unknownElement/><dot/></rest>"#;
+        let rest = Rest::from_mei_str(xml).expect("should deserialize");
+
+        // Only the dot should be parsed, unknown element skipped
+        assert_eq!(rest.children.len(), 1);
+        match &rest.children[0] {
+            tusk_model::elements::RestChild::Dot(_) => {}
+            other => panic!("Expected Dot, got {:?}", other),
+        }
+    }
+
+    // ============================================================================
+    // Dot deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn dot_deserializes_from_empty_element() {
+        let xml = r#"<dot/>"#;
+        let dot = Dot::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dot.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn dot_deserializes_xml_id() {
+        let xml = r#"<dot xml:id="d1"/>"#;
+        let dot = Dot::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dot.common.xml_id, Some("d1".to_string()));
+    }
+
+    #[test]
+    fn dot_deserializes_form_attribute() {
+        let xml = r#"<dot form="aug"/>"#;
+        let dot = Dot::from_mei_str(xml).expect("should deserialize");
+
+        // Just verify that form was parsed (the actual enum variant isn't easily accessible)
+        assert!(dot.dot_log.form.is_some());
     }
 }
