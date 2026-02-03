@@ -1098,20 +1098,16 @@ fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
     if let Some(v) = attrs.remove("xml:id") {
         staff.basic.xml_id = Some(v);
     }
-    if let Some(v) = attrs.remove("xml:base") {
-        if let Ok(val) = from_attr_string(&v) {
-            staff.basic.xml_base = Some(val);
-        }
+    if let Some(v) = attrs.remove("xml:base").and_then(|v| from_attr_string(&v).ok()) {
+        staff.basic.xml_base = Some(v);
     }
     // AttLabelled
     if let Some(v) = attrs.remove("label") {
         staff.labelled.label = Some(v);
     }
     // AttNInteger
-    if let Some(v) = attrs.remove("n") {
-        if let Ok(val) = from_attr_string::<u64>(&v) {
-            staff.n_integer.n = Some(val);
-        }
+    if let Some(n) = attrs.remove("n").and_then(|v| from_attr_string::<u64>(&v).ok()) {
+        staff.n_integer.n = Some(n);
     }
     // AttFacsimile
     let _ = staff.facsimile.extract_attributes(&mut attrs);

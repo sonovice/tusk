@@ -2307,3 +2307,389 @@ fn measure_deserializes_with_xml_declaration() {
 
     assert_eq!(measure.common.xml_id, Some("m1".to_string()));
 }
+
+// ============================================================================
+// Staff Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_staff() {
+    use tusk_model::elements::Staff;
+
+    let original = Staff::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.n_integer.n.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_staff_with_xml_id() {
+    use tusk_model::elements::Staff;
+
+    let mut original = Staff::default();
+    original.basic.xml_id = Some("s1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"s1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.basic.xml_id, Some("s1".to_string()));
+}
+
+#[test]
+fn roundtrip_staff_with_n_attribute() {
+    use tusk_model::elements::Staff;
+
+    let mut original = Staff::default();
+    original.basic.xml_id = Some("s1".to_string());
+    original.n_integer.n = Some(1);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("n=\"1\""), "xml should contain n: {}", xml);
+
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn roundtrip_staff_with_label() {
+    use tusk_model::elements::Staff;
+
+    let mut original = Staff::default();
+    original.labelled.label = Some("Violin I".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.labelled.label, Some("Violin I".to_string()));
+}
+
+#[test]
+fn roundtrip_staff_with_visible_attribute() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Staff;
+
+    let mut original = Staff::default();
+    original.staff_vis.visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.staff_vis.visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_staff_with_def_attribute() {
+    use tusk_model::elements::Staff;
+
+    let mut original = Staff::default();
+    original.staff_log.def = Some(tusk_model::data::DataUri("staffdef1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.staff_log.def.is_some());
+}
+
+#[test]
+fn roundtrip_staff_with_metcon() {
+    use tusk_model::elements::Staff;
+
+    // Parse from XML to test metcon attribute deserialization
+    let xml = r#"<staff n="1" metcon="c" />"#;
+    let parsed = Staff::from_mei_str(xml).expect("deserialize");
+
+    assert!(parsed.staff_log.metcon.is_some());
+
+    // Serialize and verify round-trip
+    let reserialized = parsed.to_mei_string().expect("serialize");
+    assert!(
+        reserialized.contains("metcon=\"c\""),
+        "metcon should be preserved: {}",
+        reserialized
+    );
+}
+
+#[test]
+fn roundtrip_staff_complete_cmn() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Staff;
+
+    // Common Music Notation staff with all typical attributes
+    let mut original = Staff::default();
+    original.basic.xml_id = Some("s1".to_string());
+    original.n_integer.n = Some(1);
+    original.labelled.label = Some("Piano".to_string());
+    original.staff_vis.visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Staff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, original.basic.xml_id);
+    assert_eq!(parsed.n_integer.n, original.n_integer.n);
+    assert_eq!(parsed.labelled.label, original.labelled.label);
+    assert_eq!(parsed.staff_vis.visible, original.staff_vis.visible);
+}
+
+#[test]
+fn staff_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff xml:id="s1" unknown="value" n="1"/>"#;
+    let staff = Staff::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(staff.n_integer.n, Some(1));
+}
+
+#[test]
+fn staff_deserializes_with_xml_declaration() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<?xml version="1.0"?><staff xml:id="s1" n="1"/>"#;
+    let staff = Staff::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+}
+
+#[test]
+fn staff_ignores_unknown_child_elements() {
+    use tusk_model::elements::Staff;
+
+    // Staff with unknown child element should parse gracefully
+    let xml = r#"<staff xml:id="s1"><unknownElement/></staff>"#;
+    let staff = Staff::from_mei_str(xml).expect("should deserialize");
+
+    // Unknown child should be skipped
+    assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+    // Children should be empty since we skip unknown children
+    assert!(staff.children.is_empty());
+}
+
+// ============================================================================
+// Staff External XML Parsing Tests
+// ============================================================================
+
+#[test]
+fn parse_external_staff_minimal() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff/>"#;
+    let parsed = Staff::from_mei_str(xml).expect("deserialize");
+
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Staff::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert!(reparsed.basic.xml_id.is_none());
+}
+
+#[test]
+fn parse_external_staff_with_attributes() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff xml:id="s1" n="1"/>"#;
+    let parsed = Staff::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+
+    // Verify round-trip preserves values
+    let reserialized = parsed.to_mei_string().expect("re-serialize");
+    let reparsed = Staff::from_mei_str(&reserialized).expect("re-deserialize");
+
+    assert_eq!(reparsed.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(reparsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn parse_external_staff_various_n_values() {
+    use tusk_model::elements::Staff;
+
+    // Test various staff numbers
+    for n in 1u64..=10 {
+        let xml = format!(r#"<staff n="{}"/>"#, n);
+        let parsed = Staff::from_mei_str(&xml).expect("should parse");
+        assert_eq!(parsed.n_integer.n, Some(n));
+
+        let reserialized = parsed.to_mei_string().expect("re-serialize");
+        let reparsed = Staff::from_mei_str(&reserialized).expect("re-deserialize");
+        assert_eq!(reparsed.n_integer.n, Some(n));
+    }
+}
+
+// ============================================================================
+// Tests from MEI Example Files
+// ============================================================================
+
+/// Staff from tempo-01.mei
+#[test]
+fn mei_example_tempo01_staff() {
+    use tusk_model::elements::Staff;
+
+    // From specs/mei/examples/verovio/tempo-01.mei
+    // Note: Layer children are not yet parsed (next task), so we just verify attributes
+    let xml = r#"<staff n="1">
+                <layer n="1">
+                  <note dots="1" dur="4" oct="5" pname="g" />
+                  <note dur="8" oct="5" pname="g" />
+                </layer>
+              </staff>"#;
+
+    let staff = Staff::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(staff.n_integer.n, Some(1));
+    // Children are skipped for now until layer parsing is implemented
+}
+
+/// Staff with multiple layers (from Tchaikovsky example pattern)
+#[test]
+fn mei_example_staff_structure() {
+    use tusk_model::elements::Staff;
+
+    // Structure from typical CMN MEI files
+    let xml = r#"<staff xml:id="s1" n="1" label="Piano Right Hand">
+        <layer n="1">
+            <note dur="4" pname="c" oct="5"/>
+        </layer>
+    </staff>"#;
+
+    let staff = Staff::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(staff.n_integer.n, Some(1));
+    assert_eq!(staff.labelled.label, Some("Piano Right Hand".to_string()));
+}
+
+/// Self-closing staff element
+#[test]
+fn mei_example_staff_self_closing() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff xml:id="s1" n="1" />"#;
+
+    let staff = Staff::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+    assert_eq!(staff.n_integer.n, Some(1));
+    assert!(staff.children.is_empty());
+}
+
+/// Staff without xml:id (common pattern)
+#[test]
+fn mei_example_staff_without_id() {
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff n="2" />"#;
+
+    let staff = Staff::from_mei_str(xml).expect("should parse");
+
+    assert!(staff.basic.xml_id.is_none());
+    assert_eq!(staff.n_integer.n, Some(2));
+}
+
+/// Staff visibility attribute
+#[test]
+fn mei_example_staff_hidden() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Staff;
+
+    let xml = r#"<staff n="1" visible="false" />"#;
+
+    let staff = Staff::from_mei_str(xml).expect("should parse");
+
+    assert_eq!(staff.staff_vis.visible, Some(DataBoolean::False));
+}
+
+// ============================================================================
+// Staff in Measure Context Tests
+// ============================================================================
+
+/// Test that Staff parsed as child of Measure round-trips correctly
+#[test]
+fn roundtrip_staff_in_measure_context() {
+    use tusk_model::elements::{Measure, MeasureChild, Staff};
+
+    let mut staff = Staff::default();
+    staff.basic.xml_id = Some("s1".to_string());
+    staff.n_integer.n = Some(1);
+    staff.labelled.label = Some("Violin".to_string());
+
+    let mut measure = Measure::default();
+    measure.common.xml_id = Some("m1".to_string());
+    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+
+    let xml = measure.to_mei_string().expect("serialize");
+
+    // Verify structure
+    assert!(xml.contains("<measure"), "should have measure: {}", xml);
+    assert!(xml.contains("<staff"), "should have staff: {}", xml);
+    assert!(
+        xml.contains("label=\"Violin\""),
+        "should have label: {}",
+        xml
+    );
+
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MeasureChild::Staff(staff) => {
+            assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+            assert_eq!(staff.n_integer.n, Some(1));
+            assert_eq!(staff.labelled.label, Some("Violin".to_string()));
+        }
+        other => panic!("Expected Staff, got {:?}", other),
+    }
+}
+
+/// Multiple staves in a measure
+#[test]
+fn roundtrip_multiple_staves_in_measure() {
+    use tusk_model::elements::{Measure, MeasureChild, Staff};
+
+    let mut staff1 = Staff::default();
+    staff1.basic.xml_id = Some("s1".to_string());
+    staff1.n_integer.n = Some(1);
+    staff1.labelled.label = Some("Violin I".to_string());
+
+    let mut staff2 = Staff::default();
+    staff2.basic.xml_id = Some("s2".to_string());
+    staff2.n_integer.n = Some(2);
+    staff2.labelled.label = Some("Violin II".to_string());
+
+    let mut measure = Measure::default();
+    measure.common.xml_id = Some("m1".to_string());
+    measure.children.push(MeasureChild::Staff(Box::new(staff1)));
+    measure.children.push(MeasureChild::Staff(Box::new(staff2)));
+
+    let xml = measure.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 2);
+
+    // First staff
+    match &parsed.children[0] {
+        MeasureChild::Staff(staff) => {
+            assert_eq!(staff.n_integer.n, Some(1));
+            assert_eq!(staff.labelled.label, Some("Violin I".to_string()));
+        }
+        other => panic!("Expected Staff 1, got {:?}", other),
+    }
+
+    // Second staff
+    match &parsed.children[1] {
+        MeasureChild::Staff(staff) => {
+            assert_eq!(staff.n_integer.n, Some(2));
+            assert_eq!(staff.labelled.label, Some("Violin II".to_string()));
+        }
+        other => panic!("Expected Staff 2, got {:?}", other),
+    }
+}
