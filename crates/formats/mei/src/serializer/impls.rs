@@ -11,13 +11,16 @@ use serde::Serialize;
 use std::io::Write;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
-    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl,
-    AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
+    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLabelled,
+    AttLinking, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing,
+    AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
+    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog,
+    AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
+    Accid, Artic, Chord, ChordChild, Dot, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
+    Space, Staff,
 };
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
@@ -657,6 +660,170 @@ impl CollectAttributes for AttSpaceAnl {
 }
 
 // ============================================================================
+// Measure attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttMeasureLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "metcon", self.metcon);
+        push_attr!(attrs, "control", self.control);
+        push_attr!(attrs, "left", self.left);
+        push_attr!(attrs, "right", self.right);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMeasureGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMeasureVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "bar.len", self.bar_len);
+        push_attr!(attrs, "bar.method", self.bar_method);
+        push_attr!(attrs, "bar.place", self.bar_place);
+        push_attr!(attrs, "width", self.width);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMeasureAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "join", vec self.join);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMetadataPointing {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "decls", vec self.decls);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttPointing {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "xlink:actuate", self.xlink_actuate);
+        push_attr!(attrs, "xlink:role", self.xlink_role);
+        push_attr!(attrs, "xlink:show", self.xlink_show);
+        push_attr!(attrs, "target", vec self.target);
+        push_attr!(attrs, "targettype", clone self.targettype);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTargetEval {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "evaluate", self.evaluate);
+        attrs
+    }
+}
+
+// ============================================================================
+// Staff attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttBasic {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "xml:id", clone self.xml_id);
+        push_attr!(attrs, "xml:base", self.xml_base);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttLabelled {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "label", clone self.label);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttLinking {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "copyof", self.copyof);
+        push_attr!(attrs, "corresp", vec self.corresp);
+        push_attr!(attrs, "follows", vec self.follows);
+        push_attr!(attrs, "next", vec self.next);
+        push_attr!(attrs, "precedes", vec self.precedes);
+        push_attr!(attrs, "prev", vec self.prev);
+        push_attr!(attrs, "sameas", vec self.sameas);
+        push_attr!(attrs, "synch", vec self.synch);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttNInteger {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "n", self.n);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttResponsibility {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "resp", vec self.resp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTyped {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "class", vec self.class);
+        push_attr!(attrs, "type", vec self.r#type);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "metcon", self.metcon);
+        push_attr!(attrs, "def", self.def);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttStaffGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttStaffVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "visible", self.visible);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttStaffAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1003,6 +1170,166 @@ impl MeiSerialize for Space {
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         Ok(())
+    }
+}
+
+impl MeiSerialize for Staff {
+    fn element_name(&self) -> &'static str {
+        "staff"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.n_integer.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs.extend(self.typed.collect_attributes());
+        attrs.extend(self.staff_log.collect_attributes());
+        attrs.extend(self.staff_vis.collect_attributes());
+        attrs.extend(self.staff_ges.collect_attributes());
+        attrs.extend(self.staff_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        // Staff children (layer, etc.) will be implemented in later tasks
+        // For now, staff children are not serialized
+        Ok(())
+    }
+}
+
+impl MeiSerialize for Measure {
+    fn element_name(&self) -> &'static str {
+        "measure"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.measure_log.collect_attributes());
+        attrs.extend(self.measure_ges.collect_attributes());
+        attrs.extend(self.measure_vis.collect_attributes());
+        attrs.extend(self.measure_anl.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for MeasureChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            MeasureChild::Staff(_) => "staff",
+            MeasureChild::Hairpin(_) => "hairpin",
+            MeasureChild::Slur(_) => "slur",
+            MeasureChild::Tie(_) => "tie",
+            MeasureChild::Dynam(_) => "dynam",
+            MeasureChild::Dir(_) => "dir",
+            MeasureChild::Tempo(_) => "tempo",
+            MeasureChild::Fermata(_) => "fermata",
+            MeasureChild::Breath(_) => "breath",
+            MeasureChild::Caesura(_) => "caesura",
+            MeasureChild::Trill(_) => "trill",
+            MeasureChild::Mordent(_) => "mordent",
+            MeasureChild::Turn(_) => "turn",
+            MeasureChild::Harm(_) => "harm",
+            MeasureChild::Pedal(_) => "pedal",
+            MeasureChild::Arpeg(_) => "arpeg",
+            MeasureChild::Gliss(_) => "gliss",
+            MeasureChild::Bend(_) => "bend",
+            MeasureChild::Octave(_) => "octave",
+            MeasureChild::BeamSpan(_) => "beamSpan",
+            MeasureChild::TupletSpan(_) => "tupletSpan",
+            MeasureChild::BracketSpan(_) => "bracketSpan",
+            MeasureChild::Phrase(_) => "phrase",
+            MeasureChild::Lv(_) => "lv",
+            MeasureChild::Ornam(_) => "ornam",
+            MeasureChild::RepeatMark(_) => "repeatMark",
+            MeasureChild::HarpPedal(_) => "harpPedal",
+            MeasureChild::Fing(_) => "fing",
+            MeasureChild::FingGrp(_) => "fingGrp",
+            MeasureChild::AnchoredText(_) => "anchoredText",
+            MeasureChild::Curve(_) => "curve",
+            MeasureChild::Line(_) => "line",
+            MeasureChild::Midi(_) => "midi",
+            MeasureChild::Attacca(_) => "attacca",
+            MeasureChild::CpMark(_) => "cpMark",
+            MeasureChild::MetaMark(_) => "metaMark",
+            MeasureChild::Reh(_) => "reh",
+            MeasureChild::MNum(_) => "mNum",
+            MeasureChild::StaffDef(_) => "staffDef",
+            MeasureChild::Ossia(_) => "ossia",
+            MeasureChild::Annot(_) => "annot",
+            MeasureChild::Relation(_) => "relation",
+            MeasureChild::RelationList(_) => "relationList",
+            MeasureChild::Sp(_) => "sp",
+            MeasureChild::StageDir(_) => "stageDir",
+            MeasureChild::Pb(_) => "pb",
+            MeasureChild::Sb(_) => "sb",
+            MeasureChild::Cb(_) => "cb",
+            MeasureChild::ColLayout(_) => "colLayout",
+            MeasureChild::Gap(_) => "gap",
+            MeasureChild::HandShift(_) => "handShift",
+            // Editorial elements
+            MeasureChild::Add(_) => "add",
+            MeasureChild::App(_) => "app",
+            MeasureChild::Choice(_) => "choice",
+            MeasureChild::Corr(_) => "corr",
+            MeasureChild::Damage(_) => "damage",
+            MeasureChild::Del(_) => "del",
+            MeasureChild::Orig(_) => "orig",
+            MeasureChild::Reg(_) => "reg",
+            MeasureChild::Restore(_) => "restore",
+            MeasureChild::Sic(_) => "sic",
+            MeasureChild::Subst(_) => "subst",
+            MeasureChild::Supplied(_) => "supplied",
+            MeasureChild::Unclear(_) => "unclear",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            MeasureChild::Staff(staff) => staff.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            MeasureChild::Staff(staff) => staff.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            MeasureChild::Staff(staff) => staff.serialize_children(writer),
+            // Other child types - no-op
+            _ => Ok(()),
+        }
     }
 }
 

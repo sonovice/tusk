@@ -52,7 +52,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add tests against `specs/mei/examples/` CMN files
 
 ### 2.2 Structural Elements
-- [ ] Implement MEI parsing for `<measure>` element
+- [x] Implement MEI parsing for `<measure>` element
 - [ ] Implement MEI parsing for `<staff>` element
 - [ ] Implement MEI parsing for `<layer>` element
 - [ ] Implement MEI parsing for `<section>` element

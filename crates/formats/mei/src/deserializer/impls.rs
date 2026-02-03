@@ -12,12 +12,15 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
-    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl,
-    AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttMeasureAnl,
+    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog,
+    AttStaffVis, AttTargetEval,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
+    Accid, Artic, Chord, ChordChild, Dot, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
+    Space, Staff,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -621,6 +624,104 @@ impl ExtractAttributes for AttSpaceAnl {
 }
 
 // ============================================================================
+// Measure attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttMeasureLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "metcon", self.metcon);
+        extract_attr!(attrs, "control", self.control);
+        extract_attr!(attrs, "left", self.left);
+        extract_attr!(attrs, "right", self.right);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeasureGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeasureVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "bar.len", self.bar_len);
+        extract_attr!(attrs, "bar.method", self.bar_method);
+        extract_attr!(attrs, "bar.place", self.bar_place);
+        extract_attr!(attrs, "width", self.width);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeasureAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "join", vec self.join);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMetadataPointing {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "decls", vec self.decls);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPointing {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "xlink:actuate", self.xlink_actuate);
+        extract_attr!(attrs, "xlink:role", self.xlink_role);
+        extract_attr!(attrs, "xlink:show", self.xlink_show);
+        extract_attr!(attrs, "target", vec self.target);
+        extract_attr!(attrs, "targettype", string self.targettype);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTargetEval {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Staff attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttStaffLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "metcon", self.metcon);
+        extract_attr!(attrs, "def", self.def);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttStaffGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "visible", self.visible);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttStaffAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -933,6 +1034,142 @@ impl MeiDeserialize for Space {
         }
 
         Ok(space)
+    }
+}
+
+impl MeiDeserialize for Staff {
+    fn element_name() -> &'static str {
+        "staff"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut staff = Staff::default();
+
+        // Extract attributes from the various attribute classes
+        // AttBasic
+        extract_attr!(attrs, "xml:id", string staff.basic.xml_id);
+        extract_attr!(attrs, "xml:base", staff.basic.xml_base);
+        // AttLabelled
+        extract_attr!(attrs, "label", string staff.labelled.label);
+        // AttLinking
+        extract_attr!(attrs, "copyof", staff.linking.copyof);
+        extract_attr!(attrs, "corresp", vec staff.linking.corresp);
+        extract_attr!(attrs, "follows", vec staff.linking.follows);
+        extract_attr!(attrs, "next", vec staff.linking.next);
+        extract_attr!(attrs, "precedes", vec staff.linking.precedes);
+        extract_attr!(attrs, "prev", vec staff.linking.prev);
+        extract_attr!(attrs, "sameas", vec staff.linking.sameas);
+        extract_attr!(attrs, "synch", vec staff.linking.synch);
+        // AttNInteger
+        extract_attr!(attrs, "n", staff.n_integer.n);
+        // AttResponsibility
+        extract_attr!(attrs, "resp", vec staff.responsibility.resp);
+        // AttTyped
+        extract_attr!(attrs, "class", vec staff.typed.class);
+        extract_attr!(attrs, "type", vec staff.typed.r#type);
+        // AttFacsimile
+        staff.facsimile.extract_attributes(&mut attrs)?;
+        // AttMetadataPointing
+        staff.metadata_pointing.extract_attributes(&mut attrs)?;
+        // Staff-specific attribute classes
+        staff.staff_log.extract_attributes(&mut attrs)?;
+        staff.staff_vis.extract_attributes(&mut attrs)?;
+        staff.staff_ges.extract_attributes(&mut attrs)?;
+        staff.staff_anl.extract_attributes(&mut attrs)?;
+
+        // Read children if not empty
+        // For now, skip all children (they will be implemented in the layer task)
+        if !is_empty {
+            reader.skip_to_end("staff")?;
+        }
+
+        Ok(staff)
+    }
+}
+
+/// Helper to parse Staff from raw child element data
+fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
+    let mut staff = Staff::default();
+    // AttBasic
+    if let Some(v) = attrs.remove("xml:id") {
+        staff.basic.xml_id = Some(v);
+    }
+    if let Some(v) = attrs.remove("xml:base") {
+        if let Ok(val) = from_attr_string(&v) {
+            staff.basic.xml_base = Some(val);
+        }
+    }
+    // AttLabelled
+    if let Some(v) = attrs.remove("label") {
+        staff.labelled.label = Some(v);
+    }
+    // AttNInteger
+    if let Some(v) = attrs.remove("n") {
+        if let Ok(val) = from_attr_string::<u64>(&v) {
+            staff.n_integer.n = Some(val);
+        }
+    }
+    // AttFacsimile
+    let _ = staff.facsimile.extract_attributes(&mut attrs);
+    // AttMetadataPointing
+    let _ = staff.metadata_pointing.extract_attributes(&mut attrs);
+    // Staff-specific
+    let _ = staff.staff_log.extract_attributes(&mut attrs);
+    let _ = staff.staff_vis.extract_attributes(&mut attrs);
+    let _ = staff.staff_ges.extract_attributes(&mut attrs);
+    let _ = staff.staff_anl.extract_attributes(&mut attrs);
+    staff
+}
+
+impl MeiDeserialize for Measure {
+    fn element_name() -> &'static str {
+        "measure"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut measure = Measure::default();
+
+        // Extract attributes into each attribute class
+        measure.common.extract_attributes(&mut attrs)?;
+        measure.facsimile.extract_attributes(&mut attrs)?;
+        measure.metadata_pointing.extract_attributes(&mut attrs)?;
+        measure.pointing.extract_attributes(&mut attrs)?;
+        measure.measure_log.extract_attributes(&mut attrs)?;
+        measure.measure_ges.extract_attributes(&mut attrs)?;
+        measure.measure_vis.extract_attributes(&mut attrs)?;
+        measure.measure_anl.extract_attributes(&mut attrs)?;
+        measure.target_eval.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        if !is_empty {
+            let children_raw = reader.read_children_raw("measure")?;
+            for (name, child_attrs, _child_empty, _content) in children_raw {
+                match name.as_str() {
+                    "staff" => {
+                        let staff = parse_staff_from_raw(child_attrs);
+                        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        // Unknown child element - skip in lenient mode
+                    }
+                }
+            }
+        }
+
+        Ok(measure)
     }
 }
 

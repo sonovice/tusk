@@ -2027,3 +2027,283 @@ fn mei_example_triad_chord() {
         }
     }
 }
+
+// ============================================================================
+// Measure Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_measure() {
+    use tusk_model::elements::Measure;
+
+    let original = Measure::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    // All fields should remain None/empty
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.measure_log.right.is_none());
+    assert!(parsed.measure_log.left.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_measure_with_xml_id() {
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"m1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("m1".to_string()));
+}
+
+#[test]
+fn roundtrip_measure_with_n_attribute() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m1".to_string());
+    original.common.n = Some(DataWord("1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("n=\"1\""), "xml should contain n: {}", xml);
+
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.n, Some(DataWord("1".to_string())));
+}
+
+#[test]
+fn roundtrip_measure_with_barline_right() {
+    use tusk_model::data::DataBarrendition;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m1".to_string());
+    original.measure_log.right = Some(DataBarrendition::Dbl);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("right=\"dbl\""),
+        "xml should contain right: {}",
+        xml
+    );
+
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.measure_log.right, Some(DataBarrendition::Dbl));
+}
+
+#[test]
+fn roundtrip_measure_with_barline_left() {
+    use tusk_model::data::DataBarrendition;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_log.left = Some(DataBarrendition::Rptstart);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.measure_log.left, Some(DataBarrendition::Rptstart));
+}
+
+#[test]
+fn roundtrip_measure_with_metcon() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_log.metcon = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.measure_log.metcon, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_measure_with_control() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_log.control = Some(DataBoolean::False);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.measure_log.control, Some(DataBoolean::False));
+}
+
+#[test]
+fn roundtrip_measure_with_visual_width() {
+    use tusk_model::data::DataMeasurementunsigned;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_vis.width = Some(DataMeasurementunsigned("100vu".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.measure_vis.width,
+        Some(DataMeasurementunsigned("100vu".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_measure_with_bar_len() {
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_vis.bar_len = Some(8.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.measure_vis.bar_len, Some(8.0));
+}
+
+#[test]
+fn roundtrip_measure_with_gestural_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Measure;
+
+    let mut original = Measure::default();
+    original.measure_ges.tstamp_ges = Some(DataBeat(0.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.measure_ges.tstamp_ges.is_some());
+}
+
+#[test]
+fn roundtrip_measure_with_staff_child() {
+    use tusk_model::elements::{Measure, MeasureChild, Staff};
+
+    let mut staff = Staff::default();
+    staff.basic.xml_id = Some("s1".to_string());
+    staff.n_integer.n = Some(1);
+
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m1".to_string());
+    original.children.push(MeasureChild::Staff(Box::new(staff)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify the serialized XML contains the staff child
+    assert!(
+        xml.contains("<staff"),
+        "should contain staff element: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</measure>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("m1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        MeasureChild::Staff(staff) => {
+            assert_eq!(staff.basic.xml_id, Some("s1".to_string()));
+        }
+        other => panic!("Expected Staff, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_measure_with_multiple_staff_children() {
+    use tusk_model::elements::{Measure, MeasureChild, Staff};
+
+    let mut staff1 = Staff::default();
+    staff1.basic.xml_id = Some("s1".to_string());
+    staff1.n_integer.n = Some(1);
+
+    let mut staff2 = Staff::default();
+    staff2.basic.xml_id = Some("s2".to_string());
+    staff2.n_integer.n = Some(2);
+
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m1".to_string());
+    original
+        .children
+        .push(MeasureChild::Staff(Box::new(staff1)));
+    original
+        .children
+        .push(MeasureChild::Staff(Box::new(staff2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_measure_complete_cmn() {
+    use tusk_model::data::{DataBarrendition, DataBoolean, DataWord};
+    use tusk_model::elements::Measure;
+
+    // Common Music Notation measure with all typical attributes
+    let mut original = Measure::default();
+    original.common.xml_id = Some("m42".to_string());
+    original.common.n = Some(DataWord("42".to_string()));
+    original.measure_log.right = Some(DataBarrendition::Single);
+    original.measure_log.metcon = Some(DataBoolean::True);
+    original.measure_log.control = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.common.n, original.common.n);
+    assert_eq!(parsed.measure_log.right, original.measure_log.right);
+    assert_eq!(parsed.measure_log.metcon, original.measure_log.metcon);
+    assert_eq!(parsed.measure_log.control, original.measure_log.control);
+}
+
+#[test]
+fn measure_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::Measure;
+
+    let xml = r#"<measure xml:id="m1" unknown="value" n="1"/>"#;
+    let measure = Measure::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(measure.common.xml_id, Some("m1".to_string()));
+}
+
+#[test]
+fn measure_ignores_unknown_child_elements() {
+    use tusk_model::elements::Measure;
+
+    let xml = r#"<measure xml:id="m1"><unknownElement/></measure>"#;
+    let measure = Measure::from_mei_str(xml).expect("should deserialize");
+
+    // Unknown child should be skipped
+    assert_eq!(measure.common.xml_id, Some("m1".to_string()));
+    assert!(measure.children.is_empty());
+}
+
+#[test]
+fn measure_deserializes_with_xml_declaration() {
+    use tusk_model::elements::Measure;
+
+    let xml = r#"<?xml version="1.0"?><measure xml:id="m1" n="1"/>"#;
+    let measure = Measure::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(measure.common.xml_id, Some("m1".to_string()));
+}
