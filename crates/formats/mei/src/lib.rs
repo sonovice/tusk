@@ -14,7 +14,10 @@
 //! For large files (100+ MB operas), use `MeiReader` for chunked processing
 //! by `<mdiv>` elements to maintain constant memory usage.
 
+pub mod serializer;
 pub mod versions;
+
+pub use serializer::{MeiSerialize, MeiWriter, SerializeConfig, SerializeError, SerializeResult};
 
 #[cfg(test)]
 mod tests {
