@@ -4900,3 +4900,381 @@ fn roundtrip_scoredef_with_metersig_child() {
         other => panic!("Expected MeterSig, got {:?}", other),
     }
 }
+
+// ============================================================================
+// StaffDef parsing tests
+// ============================================================================
+
+#[test]
+fn staffdef_deserializes_from_empty_element() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.n_integer.n.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn staffdef_deserializes_xml_id() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef xml:id="sd1"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("sd1".to_string()));
+}
+
+#[test]
+fn staffdef_deserializes_n_attribute() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef n="1"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn staffdef_deserializes_label() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef label="Soprano"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.labelled.label, Some("Soprano".to_string()));
+}
+
+#[test]
+fn staffdef_deserializes_lines() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef lines="5"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.lines, Some(5));
+}
+
+#[test]
+fn staffdef_deserializes_clef_attributes() {
+    use tusk_model::data::{DataClefline, DataClefshape};
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef clef.shape="G" clef.line="2"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.clef_shape, Some(DataClefshape::G));
+    assert_eq!(parsed.staff_def_log.clef_line, Some(DataClefline(2)));
+}
+
+#[test]
+fn staffdef_deserializes_clef_dis_attributes() {
+    use tusk_model::data::{DataOctaveDis, DataStaffrelBasic};
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef clef.dis="8" clef.dis.place="below"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.clef_dis, Some(DataOctaveDis(8)));
+    assert_eq!(
+        parsed.staff_def_log.clef_dis_place,
+        Some(DataStaffrelBasic::Below)
+    );
+}
+
+#[test]
+fn staffdef_deserializes_notationtype() {
+    use tusk_model::data::DataNotationtype;
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef notationtype="mensural.white"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.staff_def_log.notationtype,
+        Some(DataNotationtype::MensuralWhite)
+    );
+}
+
+#[test]
+fn staffdef_deserializes_meter_attributes() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef meter.count="4" meter.unit="4"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.meter_count, Some("4".to_string()));
+    assert_eq!(parsed.staff_def_log.meter_unit, Some(4.0));
+}
+
+#[test]
+fn staffdef_deserializes_meter_sym() {
+    use tusk_model::data::DataMetersign;
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef meter.sym="common"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.meter_sym, Some(DataMetersign::Common));
+}
+
+#[test]
+fn staffdef_deserializes_transposition() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef trans.diat="-2" trans.semi="-3"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_log.trans_diat, Some(-2));
+    assert_eq!(parsed.staff_def_log.trans_semi, Some(-3));
+}
+
+#[test]
+fn staffdef_deserializes_keysig() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef keysig="2s"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert!(!parsed.staff_def_log.keysig.is_empty());
+}
+
+#[test]
+fn staffdef_deserializes_ppq() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef ppq="960"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_ges.ppq, Some(960));
+}
+
+#[test]
+fn staffdef_deserializes_tuning_attributes() {
+    use tusk_model::data::DataPitchname;
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef tune.Hz="440" tune.pname="a"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_ges.tune_hz, Some(440.0));
+    assert_eq!(
+        parsed.staff_def_ges.tune_pname,
+        Some(DataPitchname::from("a".to_string()))
+    );
+}
+
+#[test]
+fn staffdef_deserializes_key_attributes() {
+    use tusk_model::data::{DataMode, DataModeCmn, DataPitchname};
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef key.pname="c" key.mode="major"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.staff_def_anl.key_pname,
+        Some(DataPitchname::from("c".to_string()))
+    );
+    assert_eq!(
+        parsed.staff_def_anl.key_mode,
+        Some(DataMode::DataModeCmn(DataModeCmn::Major))
+    );
+}
+
+#[test]
+fn staffdef_deserializes_visual_attributes() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef clef.visible="true" lines.visible="true"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.staff_def_vis.clef_visible, Some(DataBoolean::True));
+    assert_eq!(parsed.staff_def_vis.lines_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn staffdef_deserializes_scale() {
+    use tusk_model::data::DataPercent;
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef scale="75%"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.staff_def_vis.scale,
+        Some(DataPercent("75%".to_string()))
+    );
+}
+
+#[test]
+fn staffdef_deserializes_full_common_staff_attributes() {
+    use tusk_model::data::{DataClefline, DataClefshape, DataNotationtype};
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef xml:id="sd1" n="1" label="Tenor" lines="5" clef.shape="C" clef.line="4" notationtype="cmn"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.labelled.label, Some("Tenor".to_string()));
+    assert_eq!(parsed.staff_def_log.lines, Some(5));
+    assert_eq!(parsed.staff_def_log.clef_shape, Some(DataClefshape::C));
+    assert_eq!(parsed.staff_def_log.clef_line, Some(DataClefline(4)));
+    assert_eq!(
+        parsed.staff_def_log.notationtype,
+        Some(DataNotationtype::Cmn)
+    );
+}
+
+#[test]
+fn staffdef_deserializes_with_clef_child() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1"><clef xml:id="c1" shape="G" line="2"/></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::Clef(clef) => {
+            assert_eq!(clef.common.xml_id, Some("c1".to_string()));
+        }
+        other => panic!("Expected Clef, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffdef_deserializes_with_keysig_child() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1"><keySig xml:id="ks1"/></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::KeySig(ks) => {
+            assert_eq!(ks.common.xml_id, Some("ks1".to_string()));
+        }
+        other => panic!("Expected KeySig, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffdef_deserializes_with_metersig_child() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1"><meterSig xml:id="ms1" count="4" unit="4"/></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::MeterSig(ms) => {
+            assert_eq!(ms.common.xml_id, Some("ms1".to_string()));
+        }
+        other => panic!("Expected MeterSig, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffdef_deserializes_with_label_child() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1"><label xml:id="l1">Violin I</label></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::Label(label) => {
+            assert_eq!(label.common.xml_id, Some("l1".to_string()));
+        }
+        other => panic!("Expected Label, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffdef_deserializes_with_layerdef_child() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1"><layerDef xml:id="ld1" n="1"/></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::LayerDef(ld) => {
+            assert_eq!(ld.basic.xml_id, Some("ld1".to_string()));
+        }
+        other => panic!("Expected LayerDef, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffdef_deserializes_multiple_children() {
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1">
+        <label>Violin</label>
+        <clef shape="G" line="2"/>
+        <keySig/>
+    </staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 3);
+    assert!(matches!(&parsed.children[0], StaffDefChild::Label(_)));
+    assert!(matches!(&parsed.children[1], StaffDefChild::Clef(_)));
+    assert!(matches!(&parsed.children[2], StaffDefChild::KeySig(_)));
+}
+
+#[test]
+fn staffdef_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::StaffDef;
+
+    let xml = r#"<staffDef xml:id="sd1" unknown="value" n="1"/>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(parsed.basic.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn staffdef_roundtrip_basic() {
+    use tusk_model::elements::StaffDef;
+
+    let mut original = StaffDef::default();
+    original.basic.xml_id = Some("sd1".to_string());
+    original.n_integer.n = Some(1);
+    original.staff_def_log.lines = Some(5);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = StaffDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.staff_def_log.lines, Some(5));
+}
+
+// Note: Full roundtrip with children requires serialization implementation.
+// Testing deserialization from manually constructed XML instead.
+#[test]
+fn staffdef_parses_with_clef_from_xml() {
+    use tusk_model::data::{DataClefline, DataClefshape};
+    use tusk_model::elements::{StaffDef, StaffDefChild};
+
+    // Use manually constructed XML to verify deserialization
+    let xml = r#"<staffDef xml:id="sd1"><clef xml:id="c1" shape="G" line="2"/></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::Clef(c) => {
+            assert_eq!(c.common.xml_id, Some("c1".to_string()));
+            assert_eq!(c.clef_log.shape, Some(DataClefshape::G));
+            assert_eq!(c.clef_log.line, Some(DataClefline(2)));
+        }
+        other => panic!("Expected Clef, got {:?}", other),
+    }
+}
