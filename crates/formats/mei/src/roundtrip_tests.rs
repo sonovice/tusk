@@ -5278,3 +5278,379 @@ fn staffdef_parses_with_clef_from_xml() {
         other => panic!("Expected Clef, got {:?}", other),
     }
 }
+
+// ============================================================================
+// LayerDef parsing tests
+// ============================================================================
+
+#[test]
+fn layerdef_deserializes_from_empty_element() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.n_integer.n.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn layerdef_deserializes_xml_id() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef xml:id="ld1"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("ld1".to_string()));
+}
+
+#[test]
+fn layerdef_deserializes_n_attribute() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef n="1"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn layerdef_deserializes_label() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef label="Voice 1"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.labelled.label, Some("Voice 1".to_string()));
+}
+
+#[test]
+fn layerdef_deserializes_dur_default() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef dur.default="4"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.layer_def_log.dur_default,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn layerdef_deserializes_oct_default() {
+    use tusk_model::data::DataOctave;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef oct.default="4"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_log.oct_default, Some(DataOctave(4)));
+}
+
+#[test]
+fn layerdef_deserializes_num_default_and_numbase_default() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef num.default="3" numbase.default="2"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_log.num_default, Some(3));
+    assert_eq!(parsed.layer_def_log.numbase_default, Some(2));
+}
+
+#[test]
+fn layerdef_deserializes_beam_group() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef beam.group="4,4,4,4"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_log.beam_group, Some("4,4,4,4".to_string()));
+}
+
+#[test]
+fn layerdef_deserializes_beam_rests() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef beam.rests="true"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_log.beam_rests, Some(DataBoolean::True));
+}
+
+#[test]
+fn layerdef_deserializes_transposition() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef trans.diat="-1" trans.semi="-2"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_log.trans_diat, Some(-1));
+    assert_eq!(parsed.layer_def_log.trans_semi, Some(-2));
+}
+
+#[test]
+fn layerdef_deserializes_gestural_instr() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r##"<layerDef instr="#instr1"/>"##;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.layer_def_ges.instr,
+        Some(DataUri("#instr1".to_string()))
+    );
+}
+
+#[test]
+fn layerdef_deserializes_tuning_attributes() {
+    use tusk_model::data::DataPitchname;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef tune.Hz="442" tune.pname="a"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_ges.tune_hz, Some(442.0));
+    assert_eq!(
+        parsed.layer_def_ges.tune_pname,
+        Some(DataPitchname::from("a".to_string()))
+    );
+}
+
+#[test]
+fn layerdef_deserializes_visual_beam_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef beam.color="red"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.layer_def_vis.beam_color,
+        Some(DataColor::DataColornames(DataColornames::Red))
+    );
+}
+
+#[test]
+fn layerdef_deserializes_beam_rend() {
+    use tusk_model::att::AttLayerDefVisBeamRend;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef beam.rend="acc"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(
+        parsed.layer_def_vis.beam_rend,
+        Some(AttLayerDefVisBeamRend::Acc)
+    );
+}
+
+#[test]
+fn layerdef_deserializes_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef visible="false"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.layer_def_vis.visible, Some(DataBoolean::False));
+}
+
+#[test]
+fn layerdef_deserializes_full_common_attributes() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave};
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef xml:id="ld1" n="1" label="Melody" dur.default="8" oct.default="5"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("ld1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.labelled.label, Some("Melody".to_string()));
+    assert_eq!(
+        parsed.layer_def_log.dur_default,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+    );
+    assert_eq!(parsed.layer_def_log.oct_default, Some(DataOctave(5)));
+}
+
+#[test]
+fn layerdef_deserializes_with_label_child() {
+    use tusk_model::elements::{LayerDef, LayerDefChild};
+
+    let xml = r#"<layerDef n="1"><label xml:id="l1">Voice I</label></layerDef>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        LayerDefChild::Label(label) => {
+            assert_eq!(label.common.xml_id, Some("l1".to_string()));
+        }
+        other => panic!("Expected Label, got {:?}", other),
+    }
+}
+
+#[test]
+fn layerdef_deserializes_with_labelabbr_child() {
+    use tusk_model::elements::{LayerDef, LayerDefChild};
+
+    let xml = r#"<layerDef n="1"><labelAbbr xml:id="la1">V.I</labelAbbr></layerDef>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        LayerDefChild::LabelAbbr(label_abbr) => {
+            assert_eq!(label_abbr.common.xml_id, Some("la1".to_string()));
+        }
+        other => panic!("Expected LabelAbbr, got {:?}", other),
+    }
+}
+
+#[test]
+fn layerdef_deserializes_with_instrdef_child() {
+    use tusk_model::elements::{LayerDef, LayerDefChild};
+
+    let xml = r#"<layerDef n="1"><instrDef xml:id="id1"/></layerDef>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        LayerDefChild::InstrDef(instr_def) => {
+            assert_eq!(instr_def.basic.xml_id, Some("id1".to_string()));
+        }
+        other => panic!("Expected InstrDef, got {:?}", other),
+    }
+}
+
+#[test]
+fn layerdef_deserializes_with_metersig_child() {
+    use tusk_model::elements::{LayerDef, LayerDefChild};
+
+    let xml = r#"<layerDef n="1"><meterSig xml:id="ms1" count="4" unit="4"/></layerDef>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        LayerDefChild::MeterSig(meter_sig) => {
+            assert_eq!(meter_sig.common.xml_id, Some("ms1".to_string()));
+        }
+        other => panic!("Expected MeterSig, got {:?}", other),
+    }
+}
+
+#[test]
+fn layerdef_deserializes_multiple_children() {
+    use tusk_model::elements::{LayerDef, LayerDefChild};
+
+    let xml = r#"<layerDef n="1">
+        <label>Voice</label>
+        <labelAbbr>V.</labelAbbr>
+        <instrDef/>
+    </layerDef>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(parsed.children.len(), 3);
+    assert!(matches!(&parsed.children[0], LayerDefChild::Label(_)));
+    assert!(matches!(&parsed.children[1], LayerDefChild::LabelAbbr(_)));
+    assert!(matches!(&parsed.children[2], LayerDefChild::InstrDef(_)));
+}
+
+#[test]
+fn layerdef_handles_unknown_attributes_leniently() {
+    use tusk_model::elements::LayerDef;
+
+    let xml = r#"<layerDef xml:id="ld1" unknown="value" n="1"/>"#;
+    let parsed = LayerDef::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+    assert_eq!(parsed.basic.xml_id, Some("ld1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+}
+
+#[test]
+fn layerdef_roundtrip_basic() {
+    use tusk_model::elements::LayerDef;
+
+    let mut original = LayerDef::default();
+    original.basic.xml_id = Some("ld1".to_string());
+    original.n_integer.n = Some(1);
+    original.labelled.label = Some("Voice 1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = LayerDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("ld1".to_string()));
+    assert_eq!(parsed.n_integer.n, Some(1));
+    assert_eq!(parsed.labelled.label, Some("Voice 1".to_string()));
+}
+
+#[test]
+fn layerdef_roundtrip_with_log_attributes() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave};
+    use tusk_model::elements::LayerDef;
+
+    let mut original = LayerDef::default();
+    original.layer_def_log.dur_default = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.layer_def_log.oct_default = Some(DataOctave(4));
+    original.layer_def_log.beam_group = Some("8,8,8,8".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = LayerDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.layer_def_log.dur_default,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+    assert_eq!(parsed.layer_def_log.oct_default, Some(DataOctave(4)));
+    assert_eq!(parsed.layer_def_log.beam_group, Some("8,8,8,8".to_string()));
+}
+
+#[test]
+fn layerdef_roundtrip_with_ges_attributes() {
+    use tusk_model::data::{DataPitchname, DataUri};
+    use tusk_model::elements::LayerDef;
+
+    let mut original = LayerDef::default();
+    original.layer_def_ges.instr = Some(DataUri("#piano".to_string()));
+    original.layer_def_ges.tune_hz = Some(440.0);
+    original.layer_def_ges.tune_pname = Some(DataPitchname::from("a".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = LayerDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.layer_def_ges.instr,
+        Some(DataUri("#piano".to_string()))
+    );
+    assert_eq!(parsed.layer_def_ges.tune_hz, Some(440.0));
+    assert_eq!(
+        parsed.layer_def_ges.tune_pname,
+        Some(DataPitchname::from("a".to_string()))
+    );
+}
+
+#[test]
+fn layerdef_roundtrip_with_vis_attributes() {
+    use tusk_model::att::AttLayerDefVisBeamRend;
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::LayerDef;
+
+    let mut original = LayerDef::default();
+    original.layer_def_vis.beam_rend = Some(AttLayerDefVisBeamRend::Rit);
+    original.layer_def_vis.beam_slope = Some(0.5);
+    original.layer_def_vis.visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = LayerDef::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.layer_def_vis.beam_rend,
+        Some(AttLayerDefVisBeamRend::Rit)
+    );
+    assert_eq!(parsed.layer_def_vis.beam_slope, Some(0.5));
+    assert_eq!(parsed.layer_def_vis.visible, Some(DataBoolean::True));
+}

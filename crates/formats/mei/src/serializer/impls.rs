@@ -2303,6 +2303,140 @@ impl MeiSerialize for tusk_model::elements::MeterSig {
     }
 }
 
+// LayerDef serialization
+impl MeiSerialize for tusk_model::elements::LayerDef {
+    fn element_name(&self) -> &'static str {
+        "layerDef"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+
+        // Basic attributes (xml:id)
+        if let Some(id) = &self.basic.xml_id {
+            attrs.push(("xml:id", id.clone()));
+        }
+
+        // Labelled attributes
+        if let Some(label) = &self.labelled.label {
+            attrs.push(("label", label.clone()));
+        }
+
+        // N integer
+        if let Some(n) = &self.n_integer.n {
+            attrs.push(("n", n.to_string()));
+        }
+
+        // LayerDefLog attributes
+        if let Some(v) = &self.layer_def_log.dur_default {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("dur.default", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_log.num_default {
+            attrs.push(("num.default", v.to_string()));
+        }
+        if let Some(v) = &self.layer_def_log.numbase_default {
+            attrs.push(("numbase.default", v.to_string()));
+        }
+        if let Some(v) = &self.layer_def_log.beam_group {
+            attrs.push(("beam.group", v.clone()));
+        }
+        if let Some(v) = &self.layer_def_log.beam_rests {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("beam.rests", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_log.oct_default {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("oct.default", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_log.trans_diat {
+            attrs.push(("trans.diat", v.to_string()));
+        }
+        if let Some(v) = &self.layer_def_log.trans_semi {
+            attrs.push(("trans.semi", v.to_string()));
+        }
+
+        // LayerDefGes attributes
+        if let Some(v) = &self.layer_def_ges.instr {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("instr", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_ges.tune_hz {
+            attrs.push(("tune.Hz", v.to_string()));
+        }
+        if let Some(v) = &self.layer_def_ges.tune_pname {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("tune.pname", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_ges.tune_temper {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("tune.temper", s));
+            }
+        }
+
+        // LayerDefVis attributes
+        if let Some(v) = &self.layer_def_vis.beam_color {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("beam.color", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.beam_rend {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("beam.rend", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.beam_slope {
+            attrs.push(("beam.slope", v.to_string()));
+        }
+        if let Some(v) = &self.layer_def_vis.text_fam {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.fam", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.text_name {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.name", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.text_size {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.size", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.text_style {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.style", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.text_weight {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.weight", s));
+            }
+        }
+        if let Some(v) = &self.layer_def_vis.visible {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("visible", s));
+            }
+        }
+
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        // LayerDef children serialization not yet fully implemented
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

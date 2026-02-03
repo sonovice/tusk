@@ -13,19 +13,20 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLabelled,
-    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes,
-    AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
-    AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
-    AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl,
-    AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog,
-    AttSectionVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
-    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTyped,
+    AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes,
+    AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis,
+    AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger,
+    AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl,
+    AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
+    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl,
+    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes,
+    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef, Mdiv,
-    MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Space, Staff, StaffChild, StaffDef, StaffDefChild,
+    Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef,
+    LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
+    ScoreDef, ScoreDefChild, Section, SectionChild, Space, Staff, StaffChild, StaffDef,
+    StaffDefChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1269,6 +1270,64 @@ impl ExtractAttributes for AttStaffDefAnl {
 }
 
 // ============================================================================
+// LayerDef attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttLayerDefLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // Duration defaults
+        extract_attr!(attrs, "dur.default", self.dur_default);
+        extract_attr!(attrs, "num.default", self.num_default);
+        extract_attr!(attrs, "numbase.default", self.numbase_default);
+
+        // Beaming
+        extract_attr!(attrs, "beam.group", string self.beam_group);
+        extract_attr!(attrs, "beam.rests", self.beam_rests);
+
+        // Octave default
+        extract_attr!(attrs, "oct.default", self.oct_default);
+
+        // Transposition
+        extract_attr!(attrs, "trans.diat", self.trans_diat);
+        extract_attr!(attrs, "trans.semi", self.trans_semi);
+
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerDefGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "instr", self.instr);
+        extract_attr!(attrs, "tune.Hz", self.tune_hz);
+        extract_attr!(attrs, "tune.pname", self.tune_pname);
+        extract_attr!(attrs, "tune.temper", self.tune_temper);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerDefVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam.color", self.beam_color);
+        extract_attr!(attrs, "beam.rend", self.beam_rend);
+        extract_attr!(attrs, "beam.slope", self.beam_slope);
+        extract_attr!(attrs, "text.fam", self.text_fam);
+        extract_attr!(attrs, "text.name", self.text_name);
+        extract_attr!(attrs, "text.size", self.text_size);
+        extract_attr!(attrs, "text.style", self.text_style);
+        extract_attr!(attrs, "text.weight", self.text_weight);
+        extract_attr!(attrs, "visible", self.visible);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttLayerDefAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttLayerDefAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -2198,6 +2257,20 @@ fn parse_staff_def_from_event<R: BufRead>(
     StaffDef::from_mei_event(reader, attrs, is_empty)
 }
 
+impl MeiDeserialize for LayerDef {
+    fn element_name() -> &'static str {
+        "layerDef"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_layer_def_from_event(reader, attrs, is_empty)
+    }
+}
+
 /// Helper to parse Clef from event
 fn parse_clef_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -2270,14 +2343,69 @@ fn parse_layer_def_from_event<R: BufRead>(
 ) -> DeserializeResult<LayerDef> {
     let mut layer_def = LayerDef::default();
 
-    // Extract basic attributes
+    // Extract all attribute classes
     layer_def.basic.extract_attributes(&mut attrs)?;
     layer_def.labelled.extract_attributes(&mut attrs)?;
+    layer_def.linking.extract_attributes(&mut attrs)?;
+    layer_def.metadata_pointing.extract_attributes(&mut attrs)?;
     layer_def.n_integer.extract_attributes(&mut attrs)?;
+    layer_def.responsibility.extract_attributes(&mut attrs)?;
+    layer_def.typed.extract_attributes(&mut attrs)?;
+    layer_def.layer_def_log.extract_attributes(&mut attrs)?;
+    layer_def.layer_def_ges.extract_attributes(&mut attrs)?;
+    layer_def.layer_def_vis.extract_attributes(&mut attrs)?;
+    layer_def.layer_def_anl.extract_attributes(&mut attrs)?;
 
-    // Skip children if any
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // layerDef can contain: label, labelAbbr, instrDef, meterSig, meterSigGrp, ambitus
     if !is_empty {
-        reader.skip_to_end("layerDef")?;
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("layerDef")?
+        {
+            match name.as_str() {
+                "label" => {
+                    let label = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    layer_def
+                        .children
+                        .push(LayerDefChild::Label(Box::new(label)));
+                }
+                "labelAbbr" => {
+                    let label_abbr = parse_label_abbr_from_event(reader, child_attrs, child_empty)?;
+                    layer_def
+                        .children
+                        .push(LayerDefChild::LabelAbbr(Box::new(label_abbr)));
+                }
+                "instrDef" => {
+                    let instr_def = parse_instr_def_from_event(reader, child_attrs, child_empty)?;
+                    layer_def
+                        .children
+                        .push(LayerDefChild::InstrDef(Box::new(instr_def)));
+                }
+                "meterSig" => {
+                    let meter_sig = parse_meter_sig_from_raw(child_attrs);
+                    if !child_empty {
+                        reader.skip_to_end("meterSig")?;
+                    }
+                    layer_def
+                        .children
+                        .push(LayerDefChild::MeterSig(Box::new(meter_sig)));
+                }
+                "meterSigGrp" | "ambitus" => {
+                    // These elements are supported but not fully parsed yet - skip for now
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+                _ => {
+                    // Unknown children are skipped (lenient mode)
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
     }
 
     Ok(layer_def)

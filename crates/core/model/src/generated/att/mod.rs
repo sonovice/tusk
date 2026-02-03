@@ -666,7 +666,7 @@ pub use att_lv_present::AttLvPresent;
 mod att_harm_anl;
 pub use att_harm_anl::AttHarmAnl;
 mod att_layer_def_vis;
-pub use att_layer_def_vis::AttLayerDefVis;
+pub use att_layer_def_vis::{AttLayerDefVis, AttLayerDefVisBeamRend};
 mod att_meter_sig_grp_log;
 pub use att_meter_sig_grp_log::AttMeterSigGrpLog;
 mod att_mensur_anl;
