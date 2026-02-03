@@ -10,7 +10,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 1.1 Project Setup
 - [x] Create Cargo workspace with all crates structure
-- [ ] Add requirements documentation in `docs/requirements.md`
+- [x] Add requirements documentation in `docs/requirements.md`
 - [x] Add project plan in `docs/plan.md`
 
 ### 1.2 MEI Code Generator (tools/mei-codegen)
