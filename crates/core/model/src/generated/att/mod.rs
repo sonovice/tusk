@@ -538,7 +538,7 @@ pub use att_measure_log::AttMeasureLog;
 mod att_multi_rest_log;
 pub use att_multi_rest_log::AttMultiRestLog;
 mod att_staff_grp_vis;
-pub use att_staff_grp_vis::AttStaffGrpVis;
+pub use att_staff_grp_vis::{AttStaffGrpVis, AttStaffGrpVisSymbol};
 mod att_meter_sig_ges;
 pub use att_meter_sig_ges::AttMeterSigGes;
 mod att_volta_anl;

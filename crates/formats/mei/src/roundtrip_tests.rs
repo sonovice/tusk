@@ -5654,3 +5654,164 @@ fn layerdef_roundtrip_with_vis_attributes() {
     assert_eq!(parsed.layer_def_vis.beam_slope, Some(0.5));
     assert_eq!(parsed.layer_def_vis.visible, Some(DataBoolean::True));
 }
+
+// ============================================================================
+// StaffGrp tests with full attribute support
+// ============================================================================
+
+#[test]
+fn staffgrp_parse_with_vis_attributes() {
+    use tusk_model::att::AttStaffGrpVisSymbol;
+    use tusk_model::data::{DataBarmethod, DataBoolean};
+    use tusk_model::elements::{ScoreDef, ScoreDefChild};
+
+    let xml = r#"<scoreDef>
+        <staffGrp xml:id="sg1" symbol="bracket" bar.thru="true" bar.method="mensur" bar.len="8" visible="true">
+            <staffDef n="1" lines="5"/>
+            <staffDef n="2" lines="5"/>
+        </staffGrp>
+    </scoreDef>"#;
+
+    let parsed = ScoreDef::from_mei_str(xml).expect("parse");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(sg) => {
+            assert_eq!(sg.common.xml_id, Some("sg1".to_string()));
+            assert_eq!(sg.staff_grp_vis.symbol, Some(AttStaffGrpVisSymbol::Bracket));
+            assert_eq!(sg.staff_grp_vis.bar_thru, Some(DataBoolean::True));
+            assert_eq!(sg.staff_grp_vis.bar_method, Some(DataBarmethod::Mensur));
+            assert_eq!(sg.staff_grp_vis.bar_len, Some(8.0));
+            assert_eq!(sg.staff_grp_vis.visible, Some(DataBoolean::True));
+            assert_eq!(sg.children.len(), 2);
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffgrp_parse_with_ges_attributes() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{ScoreDef, ScoreDefChild};
+
+    let xml = r##"<scoreDef>
+        <staffGrp xml:id="sg1" instr="#piano">
+            <staffDef n="1" lines="5"/>
+        </staffGrp>
+    </scoreDef>"##;
+
+    let parsed = ScoreDef::from_mei_str(xml).expect("parse");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(sg) => {
+            assert_eq!(sg.common.xml_id, Some("sg1".to_string()));
+            assert_eq!(sg.staff_grp_ges.instr, Some(DataUri("#piano".to_string())));
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}
+
+#[test]
+fn staffgrp_roundtrip_with_vis_attributes() {
+    use tusk_model::att::AttStaffGrpVisSymbol;
+    use tusk_model::data::{DataBarmethod, DataBoolean, DataStaffloc};
+    use tusk_model::elements::{StaffDef, StaffGrp, StaffGrpChild};
+
+    let mut staff_grp = StaffGrp::default();
+    staff_grp.common.xml_id = Some("sg1".to_string());
+    staff_grp.staff_grp_vis.symbol = Some(AttStaffGrpVisSymbol::Brace);
+    staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::True);
+    staff_grp.staff_grp_vis.bar_method = Some(DataBarmethod::Mensur);
+    staff_grp.staff_grp_vis.bar_len = Some(8.0);
+    staff_grp.staff_grp_vis.bar_place = Some(DataStaffloc::from(0));
+    staff_grp.staff_grp_vis.visible = Some(DataBoolean::True);
+
+    let mut staff_def = StaffDef::default();
+    staff_def.n_integer.n = Some(1);
+    staff_grp
+        .children
+        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+    let xml = staff_grp.to_mei_string().expect("serialize");
+    let parsed = StaffGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sg1".to_string()));
+    assert_eq!(
+        parsed.staff_grp_vis.symbol,
+        Some(AttStaffGrpVisSymbol::Brace)
+    );
+    assert_eq!(parsed.staff_grp_vis.bar_thru, Some(DataBoolean::True));
+    assert_eq!(parsed.staff_grp_vis.bar_method, Some(DataBarmethod::Mensur));
+    assert_eq!(parsed.staff_grp_vis.bar_len, Some(8.0));
+    assert_eq!(parsed.staff_grp_vis.bar_place, Some(DataStaffloc::from(0)));
+    assert_eq!(parsed.staff_grp_vis.visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn staffgrp_roundtrip_with_ges_attributes() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{StaffDef, StaffGrp, StaffGrpChild};
+
+    let mut staff_grp = StaffGrp::default();
+    staff_grp.common.xml_id = Some("sg1".to_string());
+    staff_grp.staff_grp_ges.instr = Some(DataUri("#strings".to_string()));
+
+    let mut staff_def = StaffDef::default();
+    staff_def.n_integer.n = Some(1);
+    staff_grp
+        .children
+        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+    let xml = staff_grp.to_mei_string().expect("serialize");
+    let parsed = StaffGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sg1".to_string()));
+    assert_eq!(
+        parsed.staff_grp_ges.instr,
+        Some(DataUri("#strings".to_string()))
+    );
+}
+
+#[test]
+fn staffgrp_nested_with_attributes() {
+    use tusk_model::att::AttStaffGrpVisSymbol;
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffGrpChild};
+
+    let xml = r#"<scoreDef>
+        <staffGrp xml:id="outer" symbol="bracket" bar.thru="true">
+            <staffGrp xml:id="inner" symbol="brace">
+                <staffDef n="1" lines="5"/>
+                <staffDef n="2" lines="5"/>
+            </staffGrp>
+            <staffDef n="3" lines="5"/>
+        </staffGrp>
+    </scoreDef>"#;
+
+    let parsed = ScoreDef::from_mei_str(xml).expect("parse");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ScoreDefChild::StaffGrp(outer) => {
+            assert_eq!(outer.common.xml_id, Some("outer".to_string()));
+            assert_eq!(
+                outer.staff_grp_vis.symbol,
+                Some(AttStaffGrpVisSymbol::Bracket)
+            );
+            assert_eq!(outer.staff_grp_vis.bar_thru, Some(DataBoolean::True));
+            assert_eq!(outer.children.len(), 2);
+
+            // Check nested staffGrp
+            match &outer.children[0] {
+                StaffGrpChild::StaffGrp(inner) => {
+                    assert_eq!(inner.common.xml_id, Some("inner".to_string()));
+                    assert_eq!(
+                        inner.staff_grp_vis.symbol,
+                        Some(AttStaffGrpVisSymbol::Brace)
+                    );
+                    assert_eq!(inner.children.len(), 2);
+                }
+                other => panic!("Expected nested StaffGrp, got {:?}", other),
+            }
+        }
+        other => panic!("Expected StaffGrp, got {:?}", other),
+    }
+}

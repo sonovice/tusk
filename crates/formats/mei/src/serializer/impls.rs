@@ -19,7 +19,8 @@ use tusk_model::att::{
     AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl,
     AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog,
     AttSectionVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes,
-    AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
+    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Mdiv, MdivChild, Measure,
@@ -1251,6 +1252,54 @@ impl CollectAttributes for AttScoreDefAnl {
 }
 
 // ============================================================================
+// StaffGrp attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttStaffGrpLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttStaffGrpLog is empty - no attributes to collect
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttStaffGrpGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "instr", self.instr);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffGrpVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+
+        // Bar line attributes
+        if let Some(v) = &self.bar_len {
+            attrs.push(("bar.len", v.to_string()));
+        }
+        push_attr!(attrs, "bar.method", self.bar_method);
+        push_attr!(attrs, "bar.place", self.bar_place);
+        push_attr!(attrs, "bar.thru", self.bar_thru);
+
+        // Grouping symbol
+        push_attr!(attrs, "symbol", self.symbol);
+
+        // Visibility
+        push_attr!(attrs, "visible", self.visible);
+
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffGrpAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttStaffGrpAnl is empty - no attributes to collect
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -2144,7 +2193,10 @@ impl MeiSerialize for tusk_model::elements::StaffGrp {
         attrs.extend(self.common.collect_attributes());
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.metadata_pointing.collect_attributes());
-        // Note: StaffGrp-specific attributes not yet implemented
+        attrs.extend(self.staff_grp_log.collect_attributes());
+        attrs.extend(self.staff_grp_ges.collect_attributes());
+        attrs.extend(self.staff_grp_vis.collect_attributes());
+        attrs.extend(self.staff_grp_anl.collect_attributes());
         attrs
     }
 

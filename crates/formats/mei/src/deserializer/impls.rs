@@ -20,13 +20,14 @@ use tusk_model::att::{
     AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
     AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl,
     AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes,
-    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
+    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog,
+    AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef,
     LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
     ScoreDef, ScoreDefChild, Section, SectionChild, Space, Staff, StaffChild, StaffDef,
-    StaffDefChild,
+    StaffDefChild, StaffGrp, StaffGrpChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1270,6 +1271,49 @@ impl ExtractAttributes for AttStaffDefAnl {
 }
 
 // ============================================================================
+// StaffGrp attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttStaffGrpLog {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttStaffGrpLog is empty - no attributes to extract
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffGrpGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "instr", self.instr);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffGrpVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // Bar line attributes
+        extract_attr!(attrs, "bar.len", self.bar_len);
+        extract_attr!(attrs, "bar.method", self.bar_method);
+        extract_attr!(attrs, "bar.place", self.bar_place);
+        extract_attr!(attrs, "bar.thru", self.bar_thru);
+
+        // Grouping symbol
+        extract_attr!(attrs, "symbol", self.symbol);
+
+        // Visibility
+        extract_attr!(attrs, "visible", self.visible);
+
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttStaffGrpAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttStaffGrpAnl is empty - no attributes to extract
+        Ok(())
+    }
+}
+
+// ============================================================================
 // LayerDef attribute class implementations
 // ============================================================================
 
@@ -2076,17 +2120,19 @@ fn parse_staff_grp_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
-) -> DeserializeResult<tusk_model::elements::StaffGrp> {
-    use tusk_model::elements::{StaffGrp, StaffGrpChild};
-
+) -> DeserializeResult<StaffGrp> {
     let mut staff_grp = StaffGrp::default();
 
-    // Extract attributes
-    let _ = staff_grp.common.extract_attributes(&mut attrs);
-    let _ = staff_grp.facsimile.extract_attributes(&mut attrs);
-    let _ = staff_grp.metadata_pointing.extract_attributes(&mut attrs);
-    // Note: We should implement AttStaffGrpLog/Ges/Vis/Anl eventually
-    // For now, we'll just parse the common attributes
+    // Extract common attributes
+    staff_grp.common.extract_attributes(&mut attrs)?;
+    staff_grp.facsimile.extract_attributes(&mut attrs)?;
+    staff_grp.metadata_pointing.extract_attributes(&mut attrs)?;
+
+    // Extract domain-specific attributes
+    staff_grp.staff_grp_log.extract_attributes(&mut attrs)?;
+    staff_grp.staff_grp_ges.extract_attributes(&mut attrs)?;
+    staff_grp.staff_grp_vis.extract_attributes(&mut attrs)?;
+    staff_grp.staff_grp_anl.extract_attributes(&mut attrs)?;
 
     // Parse children if not empty
     if !is_empty {
@@ -2142,6 +2188,20 @@ fn parse_staff_grp_from_event<R: BufRead>(
     }
 
     Ok(staff_grp)
+}
+
+impl MeiDeserialize for StaffGrp {
+    fn element_name() -> &'static str {
+        "staffGrp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_staff_grp_from_event(reader, attrs, is_empty)
+    }
 }
 
 impl MeiDeserialize for StaffDef {
