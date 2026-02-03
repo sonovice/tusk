@@ -13,16 +13,17 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLabelled,
-    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl,
-    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTyped,
+    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes,
+    AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
+    AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
+    AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog,
+    AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
-    NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff, StaffChild,
+    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Mdiv, MdivChild, Measure,
+    MeasureChild, Note, NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff,
+    StaffChild,
 };
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
@@ -897,6 +898,40 @@ impl CollectAttributes for AttSectionAnl {
 }
 
 // ============================================================================
+// Mdiv attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttMdivLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMdivGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "attacca", self.attacca);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMdivVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttMdivVis has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttMdivAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttMdivAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1635,6 +1670,72 @@ impl MeiSerialize for SectionChild {
     }
 }
 
+impl MeiSerialize for Mdiv {
+    fn element_name(&self) -> &'static str {
+        "mdiv"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.mdiv_log.collect_attributes());
+        attrs.extend(self.mdiv_ges.collect_attributes());
+        attrs.extend(self.mdiv_vis.collect_attributes());
+        attrs.extend(self.mdiv_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for MdivChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            MdivChild::Mdiv(_) => "mdiv",
+            MdivChild::Score(_) => "score",
+            MdivChild::Parts(_) => "parts",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            MdivChild::Mdiv(mdiv) => mdiv.collect_all_attributes(),
+            // Score and Parts not yet fully implemented - return empty
+            MdivChild::Score(_) => Vec::new(),
+            MdivChild::Parts(_) => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            MdivChild::Mdiv(mdiv) => mdiv.has_children(),
+            // Score and Parts - assume they have children
+            MdivChild::Score(_) => true,
+            MdivChild::Parts(_) => true,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            MdivChild::Mdiv(mdiv) => mdiv.serialize_children(writer),
+            // Score and Parts not yet fully implemented - no-op
+            MdivChild::Score(_) => Ok(()),
+            MdivChild::Parts(_) => Ok(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1785,5 +1886,100 @@ mod tests {
         let xml = space.to_mei_string().expect("should serialize");
 
         assert!(xml.contains("dots=\"1\""), "should have dots: {}", xml);
+    }
+
+    // ============================================================================
+    // Mdiv serialization tests
+    // ============================================================================
+
+    #[test]
+    fn mdiv_serializes_to_mei_xml() {
+        let mut mdiv = Mdiv::default();
+        mdiv.common.xml_id = Some("m1".to_string());
+
+        let xml = mdiv.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<mdiv"), "should have mdiv element: {}", xml);
+        assert!(xml.contains("xml:id=\"m1\""), "should have xml:id: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+    }
+
+    #[test]
+    fn empty_mdiv_serializes_minimal() {
+        let mdiv = Mdiv::default();
+        let xml = mdiv.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<mdiv"), "should have mdiv element: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+    }
+
+    #[test]
+    fn mdiv_serializes_with_label() {
+        let mut mdiv = Mdiv::default();
+        mdiv.common.xml_id = Some("m1".to_string());
+        mdiv.common.label = Some("Movement 1".to_string());
+
+        let xml = mdiv.to_mei_string().expect("should serialize");
+
+        assert!(
+            xml.contains("label=\"Movement 1\""),
+            "should have label: {}",
+            xml
+        );
+    }
+
+    #[test]
+    fn mdiv_serializes_with_nested_mdiv() {
+        let mut mdiv = Mdiv::default();
+        mdiv.common.xml_id = Some("m1".to_string());
+
+        // Add nested mdiv
+        let mut nested = Mdiv::default();
+        nested.common.xml_id = Some("m1a".to_string());
+        mdiv.children.push(MdivChild::Mdiv(Box::new(nested)));
+
+        let xml = mdiv.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<mdiv"), "should have mdiv element: {}", xml);
+        assert!(xml.contains("</mdiv>"), "should have closing tag: {}", xml);
+        assert!(
+            xml.contains("xml:id=\"m1a\""),
+            "should have nested mdiv: {}",
+            xml
+        );
+    }
+
+    #[test]
+    fn mdiv_roundtrip_serialization_deserialization() {
+        use crate::deserializer::MeiDeserialize;
+
+        // Create an mdiv
+        let mut original = Mdiv::default();
+        original.common.xml_id = Some("m1".to_string());
+        original.common.label = Some("Movement 1".to_string());
+
+        // Add nested mdiv
+        let mut nested = Mdiv::default();
+        nested.common.xml_id = Some("m1a".to_string());
+        original.children.push(MdivChild::Mdiv(Box::new(nested)));
+
+        // Serialize
+        let xml = original.to_mei_string().expect("should serialize");
+
+        // Deserialize
+        let parsed = Mdiv::from_mei_str(&xml).expect("should deserialize");
+
+        // Compare
+        assert_eq!(original.common.xml_id, parsed.common.xml_id);
+        assert_eq!(original.common.label, parsed.common.label);
+        assert_eq!(original.children.len(), parsed.children.len());
+
+        // Check nested mdiv
+        match (&original.children[0], &parsed.children[0]) {
+            (MdivChild::Mdiv(orig_nested), MdivChild::Mdiv(parsed_nested)) => {
+                assert_eq!(orig_nested.common.xml_id, parsed_nested.common.xml_id);
+            }
+            _ => panic!("Expected nested Mdiv"),
+        }
     }
 }

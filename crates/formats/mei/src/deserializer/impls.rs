@@ -13,15 +13,16 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
     AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLayerAnl, AttLayerGes,
-    AttLayerLog, AttLayerVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
-    AttMetadataPointing, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttRestAnl,
-    AttRestGes, AttRestLog, AttRestVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog,
-    AttStaffVis, AttTargetEval,
+    AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
+    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl, AttSpaceGes,
+    AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis, AttTargetEval,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Measure, MeasureChild, Note,
-    NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff, StaffChild,
+    Accid, Artic, Chord, ChordChild, Dot, Layer, LayerChild, Mdiv, MdivChild, Measure,
+    MeasureChild, Note, NoteChild, Rest, RestChild, Section, SectionChild, Space, Staff,
+    StaffChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -789,6 +790,38 @@ impl ExtractAttributes for AttSectionAnl {
 }
 
 // ============================================================================
+// Mdiv attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttMdivLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMdivGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "attacca", self.attacca);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMdivVis {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttMdivVis has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMdivAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttMdivAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -1400,6 +1433,59 @@ impl MeiDeserialize for Section {
         }
 
         Ok(section)
+    }
+}
+
+impl MeiDeserialize for Mdiv {
+    fn element_name() -> &'static str {
+        "mdiv"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut mdiv = Mdiv::default();
+
+        // Extract attributes into each attribute class
+        mdiv.common.extract_attributes(&mut attrs)?;
+        mdiv.facsimile.extract_attributes(&mut attrs)?;
+        mdiv.metadata_pointing.extract_attributes(&mut attrs)?;
+        mdiv.mdiv_log.extract_attributes(&mut attrs)?;
+        mdiv.mdiv_ges.extract_attributes(&mut attrs)?;
+        mdiv.mdiv_vis.extract_attributes(&mut attrs)?;
+        mdiv.mdiv_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        // mdiv can contain: nested mdiv, score, or parts
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("mdiv")?
+            {
+                match name.as_str() {
+                    "mdiv" => {
+                        // Handle nested mdiv recursively
+                        let nested_mdiv = Mdiv::from_mei_event(reader, child_attrs, child_empty)?;
+                        mdiv.children.push(MdivChild::Mdiv(Box::new(nested_mdiv)));
+                    }
+                    // Note: score and parts are more complex elements that would need
+                    // their own MeiDeserialize implementations. For now, we skip them
+                    // in lenient mode and only parse nested mdiv elements.
+                    // Other child types can be added here as needed
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(mdiv)
     }
 }
 
@@ -2081,5 +2167,119 @@ mod tests {
         let space = Space::from_mei_str(xml).expect("should deserialize");
 
         assert!(!space.space_anl.tuplet.is_empty());
+    }
+
+    // ============================================================================
+    // Mdiv deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn mdiv_deserializes_from_empty_element() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<mdiv/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert!(mdiv.common.xml_id.is_none());
+        assert!(mdiv.children.is_empty());
+    }
+
+    #[test]
+    fn mdiv_deserializes_xml_id() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<mdiv xml:id="m1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_common_attributes() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<mdiv xml:id="m1" n="1" label="Movement 1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+        assert!(mdiv.common.n.is_some());
+        assert_eq!(mdiv.common.label, Some("Movement 1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_attacca() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<mdiv attacca="true"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert!(mdiv.mdiv_ges.attacca.is_some());
+    }
+
+    #[test]
+    fn mdiv_deserializes_with_nested_mdiv() {
+        use tusk_model::elements::{Mdiv, MdivChild};
+
+        let xml = r#"<mdiv xml:id="m1">
+            <mdiv xml:id="m1a"/>
+            <mdiv xml:id="m1b"/>
+        </mdiv>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+        assert_eq!(mdiv.children.len(), 2);
+
+        // First child should be mdiv
+        match &mdiv.children[0] {
+            MdivChild::Mdiv(child_mdiv) => {
+                assert_eq!(child_mdiv.common.xml_id, Some("m1a".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
+
+        // Second child should be mdiv
+        match &mdiv.children[1] {
+            MdivChild::Mdiv(child_mdiv) => {
+                assert_eq!(child_mdiv.common.xml_id, Some("m1b".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn mdiv_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<mdiv xml:id="m1" unknown="value"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_with_xml_declaration() {
+        use tusk_model::elements::Mdiv;
+
+        let xml = r#"<?xml version="1.0"?><mdiv xml:id="m1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_ignores_unknown_child_elements() {
+        use tusk_model::elements::{Mdiv, MdivChild};
+
+        let xml = r#"<mdiv><unknownElement/><mdiv xml:id="nested"/></mdiv>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        // Only the mdiv child should be parsed, unknown element skipped
+        assert_eq!(mdiv.children.len(), 1);
+        match &mdiv.children[0] {
+            MdivChild::Mdiv(child) => {
+                assert_eq!(child.common.xml_id, Some("nested".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
     }
 }
