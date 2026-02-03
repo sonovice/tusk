@@ -11,10 +11,13 @@ use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttCommon, AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl,
-    AttNoteGes, AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
+    AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+    AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
 };
-use tusk_model::elements::{Accid, Artic, Dot, Note, NoteChild, Rest, RestChild};
+use tusk_model::elements::{
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild,
+};
 
 /// Parse a value using serde_json from XML attribute string.
 /// Tries multiple JSON formats to handle different serde derives:
@@ -476,6 +479,93 @@ impl ExtractAttributes for AttArticAnl {
 }
 
 // ============================================================================
+// Chord attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttChordLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "artic", vec self.artic);
+        extract_attr!(attrs, "dots", self.dots);
+        extract_attr!(attrs, "grace", self.grace);
+        extract_attr!(attrs, "grace.time", self.grace_time);
+        extract_attr!(attrs, "cue", self.cue);
+        extract_attr!(attrs, "dur", self.dur);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "syl", string self.syl);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttChordGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "artic.ges", vec self.artic_ges);
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "instr", self.instr);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttChordVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "stem.with", self.stem_with);
+        extract_attr!(attrs, "stem.form", self.stem_form);
+        extract_attr!(attrs, "stem.dir", self.stem_dir);
+        extract_attr!(attrs, "stem.len", self.stem_len);
+        extract_attr!(attrs, "stem.mod", self.stem_mod);
+        extract_attr!(attrs, "stem.pos", self.stem_pos);
+        extract_attr!(attrs, "stem.sameas", self.stem_sameas);
+        extract_attr!(attrs, "stem.visible", self.stem_visible);
+        extract_attr!(attrs, "stem.x", self.stem_x);
+        extract_attr!(attrs, "stem.y", self.stem_y);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "visible", self.visible);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "breaksec", self.breaksec);
+        extract_attr!(attrs, "cluster", self.cluster);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttChordAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam", vec self.beam);
+        extract_attr!(attrs, "fermata", self.fermata);
+        extract_attr!(attrs, "lv", self.lv);
+        extract_attr!(attrs, "ornam", vec self.ornam);
+        extract_attr!(attrs, "slur", vec self.slur);
+        extract_attr!(attrs, "tie", vec self.tie);
+        extract_attr!(attrs, "tuplet", vec self.tuplet);
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -694,6 +784,67 @@ impl MeiDeserialize for Rest {
 
         Ok(rest)
     }
+}
+
+impl MeiDeserialize for Chord {
+    fn element_name() -> &'static str {
+        "chord"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut chord = Chord::default();
+
+        // Extract attributes into each attribute class
+        chord.common.extract_attributes(&mut attrs)?;
+        chord.facsimile.extract_attributes(&mut attrs)?;
+        chord.chord_log.extract_attributes(&mut attrs)?;
+        chord.chord_ges.extract_attributes(&mut attrs)?;
+        chord.chord_vis.extract_attributes(&mut attrs)?;
+        chord.chord_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        if !is_empty {
+            let children_raw = reader.read_children_raw("chord")?;
+            for (name, child_attrs, _child_empty, _content) in children_raw {
+                match name.as_str() {
+                    "note" => {
+                        let note = parse_note_from_raw(child_attrs);
+                        chord.children.push(ChordChild::Note(Box::new(note)));
+                    }
+                    "artic" => {
+                        let artic = parse_artic_from_raw(child_attrs);
+                        chord.children.push(ChordChild::Artic(Box::new(artic)));
+                    }
+                    // Other child types (verse, syl, etc.) can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        // Unknown child element - skip in lenient mode
+                    }
+                }
+            }
+        }
+
+        Ok(chord)
+    }
+}
+
+/// Helper to parse Note from raw child element data
+fn parse_note_from_raw(mut attrs: AttributeMap) -> Note {
+    let mut note = Note::default();
+    let _ = note.common.extract_attributes(&mut attrs);
+    let _ = note.facsimile.extract_attributes(&mut attrs);
+    let _ = note.note_log.extract_attributes(&mut attrs);
+    let _ = note.note_ges.extract_attributes(&mut attrs);
+    let _ = note.note_vis.extract_attributes(&mut attrs);
+    let _ = note.note_anl.extract_attributes(&mut attrs);
+    note
 }
 
 #[cfg(test)]
@@ -1092,5 +1243,175 @@ mod tests {
 
         // Just verify that form was parsed (the actual enum variant isn't easily accessible)
         assert!(dot.dot_log.form.is_some());
+    }
+
+    // ============================================================================
+    // Chord deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn chord_deserializes_from_empty_element() {
+        let xml = r#"<chord/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert!(chord.common.xml_id.is_none());
+        assert!(chord.chord_log.dur.is_none());
+        assert!(chord.children.is_empty());
+    }
+
+    #[test]
+    fn chord_deserializes_xml_id() {
+        let xml = r#"<chord xml:id="c1"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+    }
+
+    #[test]
+    fn chord_deserializes_duration() {
+        let xml = r#"<chord dur="4"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            chord.chord_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn chord_deserializes_full_attributes() {
+        let xml = r#"<chord xml:id="c1" dur="4" dots="1" staff="1" layer="1"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+        assert_eq!(
+            chord.chord_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+        assert_eq!(
+            chord.chord_log.dots,
+            Some(tusk_model::data::DataAugmentdot(1))
+        );
+        assert!(!chord.chord_log.staff.is_empty());
+    }
+
+    #[test]
+    fn chord_deserializes_with_xml_declaration() {
+        let xml = r#"<?xml version="1.0"?><chord xml:id="c1" dur="4"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+    }
+
+    #[test]
+    fn chord_deserializes_with_note_children() {
+        let xml = r#"<chord xml:id="c1" dur="4">
+            <note pname="c" oct="4"/>
+            <note pname="e" oct="4"/>
+            <note pname="g" oct="4"/>
+        </chord>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+        assert_eq!(chord.children.len(), 3);
+
+        // First child should be a note with pname c
+        match &chord.children[0] {
+            tusk_model::elements::ChordChild::Note(note) => {
+                assert_eq!(
+                    note.note_log.pname,
+                    Some(DataPitchname::from("c".to_string()))
+                );
+                assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+            }
+            other => panic!("Expected Note, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn chord_deserializes_with_artic_child() {
+        let xml = r#"<chord dur="4"><artic artic="stacc"/></chord>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.children.len(), 1);
+        match &chord.children[0] {
+            tusk_model::elements::ChordChild::Artic(_) => {}
+            other => panic!("Expected Artic, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn chord_deserializes_mixed_children() {
+        let xml = r#"<chord dur="4">
+            <note pname="c" oct="4"/>
+            <artic artic="ten"/>
+            <note pname="e" oct="4"/>
+        </chord>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.children.len(), 3);
+
+        // First should be note
+        match &chord.children[0] {
+            tusk_model::elements::ChordChild::Note(_) => {}
+            other => panic!("Expected Note first, got {:?}", other),
+        }
+
+        // Second should be artic
+        match &chord.children[1] {
+            tusk_model::elements::ChordChild::Artic(_) => {}
+            other => panic!("Expected Artic second, got {:?}", other),
+        }
+
+        // Third should be note
+        match &chord.children[2] {
+            tusk_model::elements::ChordChild::Note(_) => {}
+            other => panic!("Expected Note third, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn chord_handles_unknown_attributes_leniently() {
+        let xml = r#"<chord xml:id="c1" unknown="value" dur="4"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+    }
+
+    #[test]
+    fn chord_ignores_unknown_child_elements() {
+        let xml = r#"<chord><unknownElement/><note pname="c" oct="4"/></chord>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        // Only the note should be parsed, unknown element skipped
+        assert_eq!(chord.children.len(), 1);
+        match &chord.children[0] {
+            tusk_model::elements::ChordChild::Note(_) => {}
+            other => panic!("Expected Note, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn chord_deserializes_gestural_attributes() {
+        let xml = r#"<chord dur="4" dur.ges="8"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert!(chord.chord_ges.dur_ges.is_some());
+    }
+
+    #[test]
+    fn chord_deserializes_visual_attributes() {
+        let xml = r#"<chord dur="4" stem.dir="up"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert!(chord.chord_vis.stem_dir.is_some());
+    }
+
+    #[test]
+    fn chord_deserializes_analytical_attributes() {
+        let xml = r#"<chord dur="4" fermata="above"/>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert!(chord.chord_anl.fermata.is_some());
     }
 }

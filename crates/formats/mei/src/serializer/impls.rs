@@ -11,10 +11,13 @@ use serde::Serialize;
 use std::io::Write;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttCommon, AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl,
-    AttNoteGes, AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDotAnl,
+    AttDotGes, AttDotLog, AttDotVis, AttFacsimile, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
+    AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
 };
-use tusk_model::elements::{Accid, Artic, Dot, Note, NoteChild, Rest, RestChild};
+use tusk_model::elements::{
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild,
+};
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
@@ -503,6 +506,97 @@ impl CollectAttributes for AttArticAnl {
 }
 
 // ============================================================================
+// Chord attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttChordLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "artic", vec self.artic);
+        push_attr!(attrs, "dots", self.dots);
+        push_attr!(attrs, "grace", self.grace);
+        push_attr!(attrs, "grace.time", self.grace_time);
+        push_attr!(attrs, "cue", self.cue);
+        push_attr!(attrs, "dur", self.dur);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "syl", clone self.syl);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttChordGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "artic.ges", vec self.artic_ges);
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "instr", self.instr);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttChordVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "stem.with", self.stem_with);
+        push_attr!(attrs, "stem.form", self.stem_form);
+        push_attr!(attrs, "stem.dir", self.stem_dir);
+        push_attr!(attrs, "stem.len", self.stem_len);
+        push_attr!(attrs, "stem.mod", self.stem_mod);
+        push_attr!(attrs, "stem.pos", self.stem_pos);
+        push_attr!(attrs, "stem.sameas", self.stem_sameas);
+        push_attr!(attrs, "stem.visible", self.stem_visible);
+        push_attr!(attrs, "stem.x", self.stem_x);
+        push_attr!(attrs, "stem.y", self.stem_y);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "visible", self.visible);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        push_attr!(attrs, "breaksec", self.breaksec);
+        push_attr!(attrs, "cluster", self.cluster);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttChordAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "beam", vec self.beam);
+        push_attr!(attrs, "fermata", self.fermata);
+        push_attr!(attrs, "lv", self.lv);
+        push_attr!(attrs, "ornam", vec self.ornam);
+        push_attr!(attrs, "slur", vec self.slur);
+        push_attr!(attrs, "tie", vec self.tie);
+        push_attr!(attrs, "tuplet", vec self.tuplet);
+        attrs
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -744,6 +838,88 @@ impl MeiSerialize for RestChild {
     }
 }
 
+impl MeiSerialize for Chord {
+    fn element_name(&self) -> &'static str {
+        "chord"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.chord_log.collect_attributes());
+        attrs.extend(self.chord_ges.collect_attributes());
+        attrs.extend(self.chord_vis.collect_attributes());
+        attrs.extend(self.chord_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ChordChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ChordChild::Verse(_) => "verse",
+            ChordChild::Corr(_) => "corr",
+            ChordChild::Del(_) => "del",
+            ChordChild::HandShift(_) => "handShift",
+            ChordChild::Note(_) => "note",
+            ChordChild::Damage(_) => "damage",
+            ChordChild::Subst(_) => "subst",
+            ChordChild::Syl(_) => "syl",
+            ChordChild::Gap(_) => "gap",
+            ChordChild::Reg(_) => "reg",
+            ChordChild::Restore(_) => "restore",
+            ChordChild::Supplied(_) => "supplied",
+            ChordChild::Choice(_) => "choice",
+            ChordChild::Artic(_) => "artic",
+            ChordChild::Add(_) => "add",
+            ChordChild::Orig(_) => "orig",
+            ChordChild::Unclear(_) => "unclear",
+            ChordChild::Refrain(_) => "refrain",
+            ChordChild::App(_) => "app",
+            ChordChild::Sic(_) => "sic",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            ChordChild::Note(note) => note.collect_all_attributes(),
+            ChordChild::Artic(artic) => artic.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            ChordChild::Note(note) => note.has_children(),
+            ChordChild::Artic(artic) => artic.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ChordChild::Note(note) => note.serialize_children(writer),
+            ChordChild::Artic(artic) => artic.serialize_children(writer),
+            // Other child types - no-op
+            _ => Ok(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -776,5 +952,68 @@ mod tests {
         assert!(xml.contains("/>"), "should be self-closing: {}", xml);
         // Should not have any attributes
         assert!(!xml.contains("dur="), "should not have dur: {}", xml);
+    }
+
+    // ============================================================================
+    // Chord serialization tests
+    // ============================================================================
+
+    #[test]
+    fn chord_serializes_to_mei_xml() {
+        let mut chord = Chord::default();
+        chord.common.xml_id = Some("c1".to_string());
+        chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+        let xml = chord.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<chord"), "should have chord element: {}", xml);
+        assert!(xml.contains("xml:id=\"c1\""), "should have xml:id: {}", xml);
+        assert!(xml.contains("dur=\"4\""), "should have dur: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+    }
+
+    #[test]
+    fn empty_chord_serializes_minimal() {
+        let chord = Chord::default();
+        let xml = chord.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<chord"), "should have chord element: {}", xml);
+        assert!(xml.contains("/>"), "should be self-closing: {}", xml);
+        // Should not have any attributes
+        assert!(!xml.contains("dur="), "should not have dur: {}", xml);
+    }
+
+    #[test]
+    fn chord_with_notes_serializes() {
+        let mut chord = Chord::default();
+        chord.common.xml_id = Some("c1".to_string());
+        chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+        // Add notes as children
+        let mut note1 = Note::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave(4));
+        chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut note2 = Note::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave(4));
+        chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let xml = chord.to_mei_string().expect("should serialize");
+
+        assert!(xml.contains("<chord"), "should have chord element: {}", xml);
+        assert!(xml.contains("</chord>"), "should have closing tag: {}", xml);
+        assert!(xml.contains("<note"), "should have note child: {}", xml);
+        assert!(
+            xml.contains("pname=\"c\""),
+            "should have first note: {}",
+            xml
+        );
+        assert!(
+            xml.contains("pname=\"e\""),
+            "should have second note: {}",
+            xml
+        );
     }
 }
