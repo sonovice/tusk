@@ -1,0 +1,16 @@
+[package]
+name = "tusk-mei"
+description = "MEI parsing and serialization for Tusk"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tusk-model = { workspace = true }
+quick-xml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]

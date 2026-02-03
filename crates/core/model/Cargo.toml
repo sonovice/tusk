@@ -1,0 +1,16 @@
+[package]
+name = "tusk-model"
+description = "MEI-based internal model for Tusk (MusicXML ↔ MEI converter)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+derive_more = { workspace = true }
+indexmap = { workspace = true }
+smallvec = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

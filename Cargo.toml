@@ -1,12 +1,12 @@
 [workspace]
 members = [
-    # Core crates (TODO: create these)
-    # "crates/core/model",
-    # "crates/core/convert",
-    # "crates/formats/mei",
-    # "crates/formats/musicxml",
-    # "crates/bindings/cli",
-    # "crates/bindings/wasm",
+    # Core crates
+    "crates/core/model",
+    "crates/core/convert",
+    "crates/formats/mei",
+    "crates/formats/musicxml",
+    "crates/bindings/cli",
+    "crates/bindings/wasm",
 
     # Tools
     "tools/mei-codegen",
@@ -22,10 +22,10 @@ repository = "https://github.com/waloschek/tusk"
 
 [workspace.dependencies]
 # Internal crates
-model = { path = "crates/core/model" }
-convert = { path = "crates/core/convert" }
-mei = { path = "crates/formats/mei" }
-musicxml = { path = "crates/formats/musicxml" }
+tusk-model = { path = "crates/core/model" }
+tusk-convert = { path = "crates/core/convert" }
+tusk-mei = { path = "crates/formats/mei" }
+tusk-musicxml = { path = "crates/formats/musicxml" }
 
 # External dependencies
 derive_more = { version = "2.1.1", features = ["full"] }

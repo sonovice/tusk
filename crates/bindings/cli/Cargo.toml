@@ -1,0 +1,23 @@
+[package]
+name = "tusk-cli"
+description = "CLI tool for Tusk (MusicXML ↔ MEI converter)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "tusk"
+path = "src/main.rs"
+
+[dependencies]
+tusk-convert = { workspace = true }
+tusk-mei = { workspace = true }
+tusk-musicxml = { workspace = true }
+clap = { workspace = true }
+indicatif = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]

@@ -10,7 +10,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 1.1 Project Setup
 - [x] Create Cargo workspace with all crates structure
-- [x] Add requirements documentation in `docs/requirements.md`
+- [ ] Add requirements documentation in `docs/requirements.md`
 - [x] Add project plan in `docs/plan.md`
 
 ### 1.2 MEI Code Generator (tools/mei-codegen)
@@ -22,10 +22,10 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Generate elements from `elementSpec` → Rust structs with children
 - [x] Parse Schematron constraints from `constraintSpec`
 - [x] Generate validation framework from constraints
-- [x] Output generated code to `generated/` directory
+- [ ] Output generated code to `crates/core/model/src/generated/`
 
-### 1.3 Core Model Integration
-- [ ] Integrate generated code into `crates/core/model`
+### 1.3 Core Model Setup
+- [ ] Create `crates/core/model/` crate with Cargo.toml
 - [ ] Add re-exports and public API in `crates/core/model/src/lib.rs`
 - [ ] Verify generated types compile with `cargo build`
 - [ ] Add basic unit tests for generated data types
@@ -391,19 +391,3 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [ ] Export conversion functions to JavaScript
 - [ ] Add WASM tests
 - [ ] Build and publish WASM package
-
----
-
-## Maintenance Tasks
-
-### Documentation Updates
-- [ ] Keep `docs/mei-mapping.md` updated with element mappings
-- [ ] Keep `docs/musicxml-mapping.md` updated with element mappings
-- [ ] Keep `docs/conversion-notes.md` updated with lossy conversions
-- [ ] Keep `docs/architecture.md` updated with module structure
-
-### Continuous Integration
-- [ ] Set up CI with `cargo test`
-- [ ] Set up CI with `cargo clippy`
-- [ ] Set up CI with `cargo fmt --check`
-- [ ] Set up coverage reporting
