@@ -218,9 +218,19 @@ impl MeiSerialize for AddressChild {
         Ok(())
     }
 
-    fn serialize_mei<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // Address children need their own serializers - skip for now
-        Ok(())
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            AddressChild::Settlement(elem) => elem.serialize_mei(writer),
+            AddressChild::Country(elem) => elem.serialize_mei(writer),
+            AddressChild::PostCode(elem) => elem.serialize_mei(writer),
+            AddressChild::Street(elem) => elem.serialize_mei(writer),
+            AddressChild::District(elem) => elem.serialize_mei(writer),
+            AddressChild::Bloc(elem) => elem.serialize_mei(writer),
+            AddressChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            AddressChild::PostBox(elem) => elem.serialize_mei(writer),
+            AddressChild::Region(elem) => elem.serialize_mei(writer),
+            AddressChild::AddrLine(elem) => elem.serialize_mei(writer),
+        }
     }
 }
 

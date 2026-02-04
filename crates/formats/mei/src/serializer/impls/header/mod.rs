@@ -10,7 +10,9 @@
 //! - `work_list`: Work list and work elements
 //! - `manifestation`: Manifestation list elements
 //! - `work_elements`: Work-specific child elements (Key, Meter, etc.)
+//! - `address`: Address-related elements (AddrLine, GeogName, etc.)
 
+mod address;
 mod agents;
 mod bibl;
 mod encoding_desc;
