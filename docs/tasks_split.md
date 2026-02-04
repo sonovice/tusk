@@ -64,28 +64,15 @@ Target: `crates/core/convert/src/musicxml_to_mei.rs` → split into `musicxml_to
 
 ---
 
-## Phase 5: MEI → MusicXML Converter (4,716 lines)
-
-Target: `crates/core/convert/src/mei_to_musicxml.rs` → split into `mei_to_musicxml/` submodules
-
-- [ ] Extract note/rest/chord conversion → `mei_to_musicxml/note.rs`
-- [ ] Extract scoreDef/staffDef → attributes conversion → `mei_to_musicxml/attributes.rs`
-- [ ] Extract control events → direction conversion → `mei_to_musicxml/direction.rs`
-- [ ] Extract measure/section/mdiv structure conversion → `mei_to_musicxml/structure.rs`
-- [ ] Extract staffGrp → part-list conversion → `mei_to_musicxml/parts.rs`
-- [ ] Extract duration/pitch/ID helpers → `mei_to_musicxml/utils.rs`, verify main file only has entry point
-
----
-
 ## Phase 6: MusicXML Model (5,870 lines total)
 
 ### 6.1 Direction Types (2,074 lines)
 Target: `crates/formats/musicxml/src/model/direction.rs` → split into `direction/` submodules
 
-- [ ] Extract dynamics types → `direction/dynamics.rs`
-- [ ] Extract wedge/hairpin types → `direction/wedge.rs`
-- [ ] Extract metronome types → `direction/metronome.rs`
-- [ ] Extract remaining direction types → `direction/misc.rs`
+- [x] Extract dynamics types → `direction/dynamics.rs`
+- [x] Extract wedge/hairpin types → `direction/wedge.rs`
+- [x] Extract metronome types → `direction/metronome.rs`
+- [x] Extract remaining direction types → `direction/misc.rs`
 
 ### 6.2 Data Types (2,048 lines)
 Target: `crates/formats/musicxml/src/model/data.rs` → split into `data/` submodules
@@ -100,6 +87,19 @@ Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements
 - [ ] Extract score/part types → `elements/score.rs`
 - [ ] Extract measure types → `elements/measure.rs`
 - [ ] Extract barline/ending types → `elements/barline.rs`
+
+---
+
+## Phase 5: MEI → MusicXML Converter (4,716 lines)
+
+Target: `crates/core/convert/src/mei_to_musicxml.rs` → split into `mei_to_musicxml/` submodules
+
+- [ ] Extract note/rest/chord conversion → `mei_to_musicxml/note.rs`
+- [ ] Extract scoreDef/staffDef → attributes conversion → `mei_to_musicxml/attributes.rs`
+- [ ] Extract control events → direction conversion → `mei_to_musicxml/direction.rs`
+- [ ] Extract measure/section/mdiv structure conversion → `mei_to_musicxml/structure.rs`
+- [ ] Extract staffGrp → part-list conversion → `mei_to_musicxml/parts.rs`
+- [ ] Extract duration/pitch/ID helpers → `mei_to_musicxml/utils.rs`, verify main file only has entry point
 
 
 ---

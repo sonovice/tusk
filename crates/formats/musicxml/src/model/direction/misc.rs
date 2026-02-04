@@ -1,155 +1,27 @@
-//! MusicXML 4.0 direction types.
+//! MusicXML 4.0 miscellaneous direction types.
 //!
-//! This module contains types for the `<direction>` element and its children,
-//! including dynamics, tempo, pedals, wedges, and other musical directions.
+//! This module contains direction types not in the specialized modules:
+//! - Text directions (Words, Rehearsal, Symbol)
+//! - Signs (Segno, Coda)
+//! - Dashes and Brackets
+//! - Pedal marks
+//! - Octave shifts
+//! - Harp pedals and damping
+//! - Scordatura
+//! - Images
+//! - Principal voice
+//! - Percussion
+//! - Accordion registration
+//! - Staff divide
+//! - Other direction types
+//! - Offset and Sound
 
 use serde::{Deserialize, Serialize};
 
-use super::data::*;
-
-// ============================================================================
-// Direction Element
-// ============================================================================
-
-/// A musical direction that is not necessarily attached to a specific note.
-///
-/// Directions include dynamics, tempo markings, pedal markings, wedges (crescendo/diminuendo),
-/// and other performance instructions. Multiple direction-type elements can be combined
-/// (e.g., words followed by the start of a dashed line).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Direction {
-    /// One or more direction types (required)
-    #[serde(rename = "direction-type")]
-    pub direction_types: Vec<DirectionType>,
-
-    /// Offset from current position in divisions
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<Offset>,
-
-    /// Staff number if different from default
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staff: Option<u32>,
-
-    /// Sound/playback information
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sound: Option<Sound>,
-
-    /// Placement above or below the staff
-    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
-    pub placement: Option<AboveBelow>,
-
-    /// Whether this is a directive (performance instruction)
-    #[serde(rename = "@directive", skip_serializing_if = "Option::is_none")]
-    pub directive: Option<YesNo>,
-
-    /// Optional unique ID
-    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
-
-impl Direction {
-    /// Create a new direction with the given direction types.
-    pub fn new(direction_types: Vec<DirectionType>) -> Self {
-        Self {
-            direction_types,
-            offset: None,
-            staff: None,
-            sound: None,
-            placement: None,
-            directive: None,
-            id: None,
-        }
-    }
-
-    /// Create a direction with a single wedge.
-    pub fn wedge(wedge: Wedge) -> Self {
-        Self::new(vec![DirectionType {
-            content: DirectionTypeContent::Wedge(wedge),
-            id: None,
-        }])
-    }
-
-    /// Create a direction with dynamics.
-    pub fn dynamics(dynamics: Vec<DynamicsValue>) -> Self {
-        Self::new(vec![DirectionType {
-            content: DirectionTypeContent::Dynamics(Dynamics { values: dynamics }),
-            id: None,
-        }])
-    }
-}
-
-// ============================================================================
-// Direction Type Container
-// ============================================================================
-
-/// Container for the type of direction.
-///
-/// A direction can contain one or more of these types. The direction-type
-/// element groups together elements that represent different kinds of directions.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DirectionType {
-    /// The content of this direction type
-    #[serde(rename = "$value")]
-    pub content: DirectionTypeContent,
-
-    /// Optional unique ID
-    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
-
-/// The actual content of a direction type.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum DirectionTypeContent {
-    /// Rehearsal marks (letters, numbers, section names)
-    Rehearsal(Vec<Rehearsal>),
-    /// Segno sign
-    Segno(Vec<Segno>),
-    /// Coda sign
-    Coda(Vec<Coda>),
-    /// Text direction (words)
-    Words(Vec<Words>),
-    /// Musical symbol using SMuFL glyph
-    Symbol(Vec<Symbol>),
-    /// Crescendo/diminuendo wedge
-    Wedge(Wedge),
-    /// Dynamic markings
-    Dynamics(Dynamics),
-    /// Dashes (for cresc./dim. text)
-    Dashes(Dashes),
-    /// Bracket line
-    Bracket(Bracket),
-    /// Piano pedal marks
-    Pedal(Pedal),
-    /// Metronome/tempo marking
-    Metronome(Metronome),
-    /// Octave shift (8va, 8vb, 15ma, etc.)
-    OctaveShift(OctaveShift),
-    /// Harp pedal diagram
-    HarpPedals(HarpPedals),
-    /// Harp damping mark
-    Damp(Damp),
-    /// Damp all strings
-    DampAll(DampAll),
-    /// Eyeglasses symbol (commercial music)
-    Eyeglasses(Eyeglasses),
-    /// String mute on/off
-    StringMute(StringMute),
-    /// Scordatura (string tuning changes)
-    Scordatura(Scordatura),
-    /// Embedded image
-    Image(DirectionImage),
-    /// Principal voice marking
-    PrincipalVoice(PrincipalVoice),
-    /// Percussion pictogram
-    Percussion(Vec<Percussion>),
-    /// Accordion registration diagram
-    AccordionRegistration(AccordionRegistration),
-    /// Staff division symbol
-    StaffDivide(StaffDivide),
-    /// Other direction not covered
-    OtherDirection(OtherDirection),
-}
+use crate::model::data::{
+    EnclosureShape, FontSize, FontStyle, FontWeight, LeftCenterRight, StartStop, StartStopContinue,
+    Valign, ValignImage, YesNo,
+};
 
 // ============================================================================
 // Text Directions
@@ -424,189 +296,6 @@ pub struct Coda {
 }
 
 // ============================================================================
-// Wedge (Crescendo/Diminuendo)
-// ============================================================================
-
-/// Wedge type for crescendo/diminuendo.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum WedgeType {
-    /// Crescendo (closed at left, open at right)
-    Crescendo,
-    /// Diminuendo (open at left, closed at right)
-    Diminuendo,
-    /// Stop the wedge
-    Stop,
-    /// Continue across system break
-    Continue,
-}
-
-/// Crescendo or diminuendo wedge.
-///
-/// Spread is measured in tenths of staff line space.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Wedge {
-    /// Type of wedge (required)
-    #[serde(rename = "@type")]
-    pub wedge_type: WedgeType,
-
-    /// Number level for distinguishing overlapping wedges
-    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
-    pub number: Option<u8>,
-
-    /// Spread in tenths
-    #[serde(rename = "@spread", skip_serializing_if = "Option::is_none")]
-    pub spread: Option<f64>,
-
-    /// Circle at point indicating crescendo from nothing or diminuendo to nothing
-    #[serde(rename = "@niente", skip_serializing_if = "Option::is_none")]
-    pub niente: Option<YesNo>,
-
-    /// Line type (solid, dashed, dotted, wavy)
-    #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
-    pub line_type: Option<LineType>,
-
-    /// Dash length in tenths
-    #[serde(rename = "@dash-length", skip_serializing_if = "Option::is_none")]
-    pub dash_length: Option<f64>,
-
-    /// Space length in tenths
-    #[serde(rename = "@space-length", skip_serializing_if = "Option::is_none")]
-    pub space_length: Option<f64>,
-
-    /// Default X position
-    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
-    pub default_x: Option<f64>,
-
-    /// Default Y position
-    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
-    pub default_y: Option<f64>,
-
-    /// Relative X position
-    #[serde(rename = "@relative-x", skip_serializing_if = "Option::is_none")]
-    pub relative_x: Option<f64>,
-
-    /// Relative Y position
-    #[serde(rename = "@relative-y", skip_serializing_if = "Option::is_none")]
-    pub relative_y: Option<f64>,
-
-    /// Color
-    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-
-    /// Optional unique ID
-    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
-
-impl Wedge {
-    /// Create a new wedge of the given type.
-    pub fn new(wedge_type: WedgeType) -> Self {
-        Self {
-            wedge_type,
-            number: None,
-            spread: None,
-            niente: None,
-            line_type: None,
-            dash_length: None,
-            space_length: None,
-            default_x: None,
-            default_y: None,
-            relative_x: None,
-            relative_y: None,
-            color: None,
-            id: None,
-        }
-    }
-
-    /// Create a crescendo wedge.
-    pub fn crescendo() -> Self {
-        Self::new(WedgeType::Crescendo)
-    }
-
-    /// Create a diminuendo wedge.
-    pub fn diminuendo() -> Self {
-        Self::new(WedgeType::Diminuendo)
-    }
-
-    /// Create a stop wedge.
-    pub fn stop() -> Self {
-        Self::new(WedgeType::Stop)
-    }
-}
-
-// ============================================================================
-// Dynamics
-// ============================================================================
-
-/// Dynamic marking container.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Dynamics {
-    /// Dynamic values (ppp, pp, p, mp, mf, f, ff, fff, etc.)
-    #[serde(rename = "$value")]
-    pub values: Vec<DynamicsValue>,
-}
-
-/// Individual dynamic marking.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum DynamicsValue {
-    /// Pianississimo (ppp)
-    Ppp,
-    /// Pianissimo (pp)
-    Pp,
-    /// Piano (p)
-    P,
-    /// Mezzo-piano (mp)
-    Mp,
-    /// Mezzo-forte (mf)
-    Mf,
-    /// Forte (f)
-    F,
-    /// Fortissimo (ff)
-    Ff,
-    /// Fortississimo (fff)
-    Fff,
-    /// Forte-piano (fp)
-    Fp,
-    /// Sforzando (sf)
-    Sf,
-    /// Sforzando-forte (sfz)
-    Sfz,
-    /// Sforzando-piano (sfp)
-    Sfp,
-    /// Sforzando-pianissimo (sfpp)
-    Sfpp,
-    /// Sforzando-fortissimo (sffz)
-    Sffz,
-    /// Sforzando-forte-piano (sfzp) - MusicXML 4.0
-    Sfzp,
-    /// Rinforzando (rf)
-    Rf,
-    /// Rinforzando-forte (rfz)
-    Rfz,
-    /// Fortepiano (fz)
-    Fz,
-    /// Niente (n)
-    N,
-    /// Pianissississimo (pppp) - very rare
-    Pppp,
-    /// Fortissississimo (ffff) - very rare
-    Ffff,
-    /// Pianississississimo (ppppp) - very rare
-    Ppppp,
-    /// Fortississississimo (fffff) - very rare
-    Fffff,
-    /// Pianissississississimo (pppppp) - very rare
-    Pppppp,
-    /// Fortississississimo (ffffff) - very rare
-    Ffffff,
-    /// Other dynamics not in the standard list
-    #[serde(rename = "other-dynamics")]
-    OtherDynamics(String),
-}
-
-// ============================================================================
 // Dashes and Brackets
 // ============================================================================
 
@@ -694,7 +383,7 @@ pub struct Bracket {
 
     /// Line type (solid, dashed, dotted, wavy)
     #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
-    pub line_type: Option<LineType>,
+    pub line_type: Option<crate::model::data::LineType>,
 
     /// Dash length in tenths
     #[serde(rename = "@dash-length", skip_serializing_if = "Option::is_none")]
@@ -848,120 +537,6 @@ impl Pedal {
     /// Create a pedal stop.
     pub fn stop() -> Self {
         Self::new(PedalType::Stop)
-    }
-}
-
-// ============================================================================
-// Metronome
-// ============================================================================
-
-/// Metronome/tempo marking.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Metronome {
-    /// Metronome content (beat-unit based or metric modulation)
-    #[serde(flatten)]
-    pub content: MetronomeContent,
-
-    /// Whether to display parentheses
-    #[serde(rename = "@parentheses", skip_serializing_if = "Option::is_none")]
-    pub parentheses: Option<YesNo>,
-
-    /// Whether to print
-    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
-    pub print_object: Option<YesNo>,
-
-    /// Text justification
-    #[serde(rename = "@justify", skip_serializing_if = "Option::is_none")]
-    pub justify: Option<LeftCenterRight>,
-
-    /// Default X position
-    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
-    pub default_x: Option<f64>,
-
-    /// Default Y position
-    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
-    pub default_y: Option<f64>,
-
-    /// Horizontal alignment
-    #[serde(rename = "@halign", skip_serializing_if = "Option::is_none")]
-    pub halign: Option<LeftCenterRight>,
-
-    /// Vertical alignment
-    #[serde(rename = "@valign", skip_serializing_if = "Option::is_none")]
-    pub valign: Option<Valign>,
-
-    /// Optional unique ID
-    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
-
-/// Content of a metronome marking.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum MetronomeContent {
-    /// Standard beat-unit = per-minute format
-    BeatUnit {
-        /// The beat unit (e.g., "quarter", "eighth")
-        #[serde(rename = "beat-unit")]
-        beat_unit: String,
-        /// Dots on the beat unit
-        #[serde(
-            rename = "beat-unit-dot",
-            default,
-            skip_serializing_if = "Vec::is_empty"
-        )]
-        beat_unit_dots: Vec<()>,
-        /// Per-minute value (number or text)
-        #[serde(rename = "per-minute")]
-        per_minute: String,
-    },
-    /// Beat-unit = beat-unit format (metric modulation)
-    BeatUnitEquivalent(MetricModulation),
-}
-
-/// Metric modulation (beat-unit = beat-unit).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct MetricModulation {
-    /// The first beat unit
-    #[serde(rename = "beat-unit")]
-    pub beat_unit_1: String,
-    /// Dots on the first beat unit
-    #[serde(
-        rename = "beat-unit-dot",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
-    pub beat_unit_dots_1: Vec<()>,
-    /// The second beat unit
-    #[serde(rename = "beat-unit-2")]
-    pub beat_unit_2: String,
-    /// Dots on the second beat unit
-    #[serde(
-        rename = "beat-unit-dot-2",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
-    pub beat_unit_dots_2: Vec<()>,
-}
-
-impl Metronome {
-    /// Create a simple metronome marking (e.g., quarter = 120).
-    pub fn simple(beat_unit: impl Into<String>, per_minute: u32) -> Self {
-        Self {
-            content: MetronomeContent::BeatUnit {
-                beat_unit: beat_unit.into(),
-                beat_unit_dots: Vec::new(),
-                per_minute: per_minute.to_string(),
-            },
-            parentheses: None,
-            print_object: None,
-            justify: None,
-            default_x: None,
-            default_y: None,
-            halign: None,
-            valign: None,
-            id: None,
-        }
     }
 }
 
@@ -1694,88 +1269,9 @@ impl Sound {
     }
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========================================================================
-    // Wedge Tests
-    // ========================================================================
-
-    #[test]
-    fn test_wedge_creation() {
-        let wedge = Wedge::crescendo();
-        assert_eq!(wedge.wedge_type, WedgeType::Crescendo);
-        assert!(wedge.number.is_none());
-        assert!(wedge.spread.is_none());
-        assert!(wedge.niente.is_none());
-    }
-
-    #[test]
-    fn test_wedge_diminuendo() {
-        let wedge = Wedge::diminuendo();
-        assert_eq!(wedge.wedge_type, WedgeType::Diminuendo);
-    }
-
-    #[test]
-    fn test_wedge_stop() {
-        let wedge = Wedge::stop();
-        assert_eq!(wedge.wedge_type, WedgeType::Stop);
-    }
-
-    #[test]
-    fn test_wedge_with_attributes() {
-        let mut wedge = Wedge::crescendo();
-        wedge.number = Some(1);
-        wedge.spread = Some(15.0);
-        wedge.niente = Some(YesNo::Yes);
-        wedge.line_type = Some(LineType::Dashed);
-
-        assert_eq!(wedge.number, Some(1));
-        assert_eq!(wedge.spread, Some(15.0));
-        assert_eq!(wedge.niente, Some(YesNo::Yes));
-        assert_eq!(wedge.line_type, Some(LineType::Dashed));
-    }
-
-    // ========================================================================
-    // Dynamics Tests
-    // ========================================================================
-
-    #[test]
-    fn test_dynamics_values() {
-        let dynamics = Dynamics {
-            values: vec![DynamicsValue::Mf],
-        };
-        assert_eq!(dynamics.values.len(), 1);
-    }
-
-    #[test]
-    fn test_dynamics_multiple_values() {
-        let dynamics = Dynamics {
-            values: vec![DynamicsValue::Sf, DynamicsValue::P],
-        };
-        assert_eq!(dynamics.values.len(), 2);
-    }
-
-    #[test]
-    fn test_dynamics_other() {
-        let dynamics = Dynamics {
-            values: vec![DynamicsValue::OtherDynamics("sfffz".to_string())],
-        };
-        if let DynamicsValue::OtherDynamics(s) = &dynamics.values[0] {
-            assert_eq!(s, "sfffz");
-        } else {
-            panic!("Expected OtherDynamics");
-        }
-    }
-
-    // ========================================================================
-    // Pedal Tests
-    // ========================================================================
 
     #[test]
     fn test_pedal_start() {
@@ -1807,37 +1303,6 @@ mod tests {
         assert_eq!(format!("{:?}", PedalType::Resume), "Resume");
     }
 
-    // ========================================================================
-    // Metronome Tests
-    // ========================================================================
-
-    #[test]
-    fn test_metronome_simple() {
-        let metronome = Metronome::simple("quarter", 120);
-        if let MetronomeContent::BeatUnit {
-            beat_unit,
-            per_minute,
-            ..
-        } = &metronome.content
-        {
-            assert_eq!(beat_unit, "quarter");
-            assert_eq!(per_minute, "120");
-        } else {
-            panic!("Expected BeatUnit content");
-        }
-    }
-
-    #[test]
-    fn test_metronome_with_parentheses() {
-        let mut metronome = Metronome::simple("half", 60);
-        metronome.parentheses = Some(YesNo::Yes);
-        assert_eq!(metronome.parentheses, Some(YesNo::Yes));
-    }
-
-    // ========================================================================
-    // Octave Shift Tests
-    // ========================================================================
-
     #[test]
     fn test_octave_shift() {
         let shift = OctaveShift::new(OctaveShiftType::Up);
@@ -1851,10 +1316,6 @@ mod tests {
         shift.size = Some(15);
         assert_eq!(shift.size, Some(15));
     }
-
-    // ========================================================================
-    // Dashes and Bracket Tests
-    // ========================================================================
 
     #[test]
     fn test_dashes() {
@@ -1877,10 +1338,6 @@ mod tests {
         assert_eq!(format!("{:?}", LineEnd::None), "None");
     }
 
-    // ========================================================================
-    // Words and Rehearsal Tests
-    // ========================================================================
-
     #[test]
     fn test_words() {
         let words = Words::new("dolce");
@@ -1901,33 +1358,6 @@ mod tests {
         assert_eq!(rehearsal.enclosure, Some(EnclosureShape::Circle));
     }
 
-    // ========================================================================
-    // Direction Tests
-    // ========================================================================
-
-    #[test]
-    fn test_direction_with_wedge() {
-        let direction = Direction::wedge(Wedge::crescendo());
-        assert_eq!(direction.direction_types.len(), 1);
-    }
-
-    #[test]
-    fn test_direction_with_dynamics() {
-        let direction = Direction::dynamics(vec![DynamicsValue::F]);
-        assert_eq!(direction.direction_types.len(), 1);
-    }
-
-    #[test]
-    fn test_direction_with_placement() {
-        let mut direction = Direction::dynamics(vec![DynamicsValue::P]);
-        direction.placement = Some(AboveBelow::Below);
-        assert_eq!(direction.placement, Some(AboveBelow::Below));
-    }
-
-    // ========================================================================
-    // Offset and Sound Tests
-    // ========================================================================
-
     #[test]
     fn test_offset() {
         let offset = Offset::new(4.0);
@@ -1946,10 +1376,6 @@ mod tests {
         let sound = Sound::with_dynamics(80.0);
         assert_eq!(sound.dynamics, Some(80.0));
     }
-
-    // ========================================================================
-    // Harp Pedals Tests
-    // ========================================================================
 
     #[test]
     fn test_harp_pedals() {
@@ -1975,10 +1401,6 @@ mod tests {
         assert_eq!(pedals.pedal_tunings[1].pedal_alter, 1.0);
     }
 
-    // ========================================================================
-    // Scordatura Tests
-    // ========================================================================
-
     #[test]
     fn test_scordatura() {
         let scordatura = Scordatura {
@@ -1995,10 +1417,6 @@ mod tests {
         assert_eq!(scordatura.accords[0].tuning_step, "D");
     }
 
-    // ========================================================================
-    // String Mute Tests
-    // ========================================================================
-
     #[test]
     fn test_string_mute() {
         let mute = StringMute {
@@ -2011,10 +1429,6 @@ mod tests {
         };
         assert_eq!(mute.mute_type, StringMuteType::On);
     }
-
-    // ========================================================================
-    // Accordion Registration Tests
-    // ========================================================================
 
     #[test]
     fn test_accordion_registration() {
@@ -2029,10 +1443,6 @@ mod tests {
         assert!(reg.accordion_low.is_none());
     }
 
-    // ========================================================================
-    // Staff Divide Tests
-    // ========================================================================
-
     #[test]
     fn test_staff_divide() {
         let divide = StaffDivide {
@@ -2046,19 +1456,11 @@ mod tests {
         assert_eq!(divide.divide_type, StaffDivideType::UpDown);
     }
 
-    // ========================================================================
-    // Symbol Tests
-    // ========================================================================
-
     #[test]
     fn test_symbol() {
         let symbol = Symbol::new("segno");
         assert_eq!(symbol.value, "segno");
     }
-
-    // ========================================================================
-    // Segno and Coda Tests
-    // ========================================================================
 
     #[test]
     fn test_segno() {
