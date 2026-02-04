@@ -71,6 +71,10 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Note element: verse child not parsed - skipped instead of deserialized, losing lyrics (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 - [x] [DESERIALIZER_BUG] Editor element: persName child not parsed - skipped instead of deserialized (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 - [x] [DESERIALIZER_BUG] Dir element: rend child not parsed - skipped instead of deserialized, losing styled text (source: Ahle_Jesu_meines_Herzens_Freud.mei)
+- [x] [DESERIALIZER_BUG] Measure: catch-all skips empty elements incorrectly - missing `if !child_empty` check before skip_to_end (source: Altenburg_Concerto_C-major.mei)
+- [ ] [DESERIALIZER_BUG] PgHead: seg element not parsed - skipped instead of deserialized (source: Altenburg_Concerto_C-major.mei)
+- [ ] [DESERIALIZER_BUG] LabelAbbr: text content not preserved - content lost during deserialization (source: Altenburg_Concerto_C-major.mei)
+- [ ] [SERIALIZER_BUG] Text with ampersand: & character in URLs/text being lost during roundtrip (source: Altenburg_Concerto_C-major.mei)
 
 ---
 

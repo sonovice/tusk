@@ -1,15 +1,15 @@
 //! Serializer implementations for MEI definition elements.
 //!
 //! This module contains implementations for ScoreDef, StaffDef, LayerDef, StaffGrp,
-//! and their related attribute classes and child elements (KeySig, MeterSig).
+//! PgHead, PgFoot, and their related attribute classes and child elements (KeySig, MeterSig).
 
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::att::{
-    AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis,
+    AttFormework, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttStaffGrpAnl,
+    AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
-use tusk_model::elements::{ScoreDef, ScoreDefChild};
+use tusk_model::elements::{PgFoot, PgFootChild, PgHead, PgHeadChild, ScoreDef, ScoreDefChild};
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
 
@@ -432,13 +432,13 @@ impl MeiSerialize for ScoreDefChild {
             ScoreDefChild::StaffGrp(sg) => sg.collect_all_attributes(),
             ScoreDefChild::KeySig(ks) => ks.collect_all_attributes(),
             ScoreDefChild::MeterSig(ms) => ms.collect_all_attributes(),
+            ScoreDefChild::PgHead(pg) => pg.collect_all_attributes(),
+            ScoreDefChild::PgFoot(pg) => pg.collect_all_attributes(),
             // Other children - return common attributes only for now
             ScoreDefChild::GrpSym(_)
             | ScoreDefChild::InstrGrp(_)
             | ScoreDefChild::Ambitus(_)
-            | ScoreDefChild::PgFoot(_)
             | ScoreDefChild::SymbolTable(_)
-            | ScoreDefChild::PgHead(_)
             | ScoreDefChild::MeterSigGrp(_)
             | ScoreDefChild::ChordTable(_) => Vec::new(),
         }
@@ -447,6 +447,8 @@ impl MeiSerialize for ScoreDefChild {
     fn has_children(&self) -> bool {
         match self {
             ScoreDefChild::StaffGrp(sg) => !sg.children.is_empty(),
+            ScoreDefChild::PgHead(pg) => !pg.children.is_empty(),
+            ScoreDefChild::PgFoot(pg) => !pg.children.is_empty(),
             // Most scoreDef children may have children
             _ => false,
         }
@@ -455,6 +457,8 @@ impl MeiSerialize for ScoreDefChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             ScoreDefChild::StaffGrp(sg) => sg.serialize_children(writer),
+            ScoreDefChild::PgHead(pg) => pg.serialize_children(writer),
+            ScoreDefChild::PgFoot(pg) => pg.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "ScoreDefChild::{}::serialize_children",
                 other.element_name()
@@ -860,5 +864,245 @@ impl MeiSerialize for tusk_model::elements::LayerDef {
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         // LayerDef children serialization not yet fully implemented
         Ok(())
+    }
+}
+
+// ============================================================================
+// PgHead and PgFoot serialization
+// ============================================================================
+
+impl CollectAttributes for AttFormework {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "func", self.func);
+        attrs
+    }
+}
+
+impl MeiSerialize for PgHead {
+    fn element_name(&self) -> &'static str {
+        "pgHead"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.formework.collect_attributes());
+        attrs.extend(self.horizontal_align.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for PgHeadChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            PgHeadChild::Text(_) => "#text",
+            PgHeadChild::Rend(_) => "rend",
+            PgHeadChild::Lb(_) => "lb",
+            PgHeadChild::PersName(_) => "persName",
+            PgHeadChild::CorpName(_) => "corpName",
+            PgHeadChild::Name(_) => "name",
+            PgHeadChild::Title(_) => "title",
+            PgHeadChild::Date(_) => "date",
+            PgHeadChild::Identifier(_) => "identifier",
+            PgHeadChild::Ref(_) => "ref",
+            PgHeadChild::Ptr(_) => "ptr",
+            PgHeadChild::Lg(_) => "lg",
+            PgHeadChild::P(_) => "p",
+            PgHeadChild::List(_) => "list",
+            // Many other child types exist but are not commonly used
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            PgHeadChild::Rend(r) => r.collect_all_attributes(),
+            PgHeadChild::Lb(lb) => lb.collect_all_attributes(),
+            PgHeadChild::PersName(pn) => pn.collect_all_attributes(),
+            PgHeadChild::CorpName(cn) => cn.collect_all_attributes(),
+            PgHeadChild::Name(n) => n.collect_all_attributes(),
+            PgHeadChild::Title(t) => t.collect_all_attributes(),
+            PgHeadChild::Date(d) => d.collect_all_attributes(),
+            PgHeadChild::Identifier(i) => i.collect_all_attributes(),
+            PgHeadChild::Ref(r) => r.collect_all_attributes(),
+            PgHeadChild::Ptr(p) => p.collect_all_attributes(),
+            PgHeadChild::P(p) => p.collect_all_attributes(),
+            PgHeadChild::List(l) => l.collect_all_attributes(),
+            // Lg and other elements - not yet implemented
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            PgHeadChild::Text(_) => false,
+            PgHeadChild::Rend(r) => !r.children.is_empty(),
+            PgHeadChild::Lb(_) => false,
+            PgHeadChild::PersName(pn) => !pn.children.is_empty(),
+            PgHeadChild::CorpName(cn) => !cn.children.is_empty(),
+            PgHeadChild::Name(n) => !n.children.is_empty(),
+            PgHeadChild::Title(t) => !t.children.is_empty(),
+            PgHeadChild::Date(d) => !d.children.is_empty(),
+            PgHeadChild::Identifier(i) => !i.children.is_empty(),
+            PgHeadChild::Ref(r) => !r.children.is_empty(),
+            PgHeadChild::Ptr(_) => false,
+            PgHeadChild::P(p) => !p.children.is_empty(),
+            PgHeadChild::List(l) => !l.children.is_empty(),
+            // Lg and other elements
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            PgHeadChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            PgHeadChild::Rend(r) => r.serialize_children(writer),
+            PgHeadChild::Lb(_) => Ok(()),
+            PgHeadChild::PersName(pn) => pn.serialize_children(writer),
+            PgHeadChild::CorpName(cn) => cn.serialize_children(writer),
+            PgHeadChild::Name(n) => n.serialize_children(writer),
+            PgHeadChild::Title(t) => t.serialize_children(writer),
+            PgHeadChild::Date(d) => d.serialize_children(writer),
+            PgHeadChild::Identifier(i) => i.serialize_children(writer),
+            PgHeadChild::Ref(r) => r.serialize_children(writer),
+            PgHeadChild::Ptr(_) => Ok(()),
+            PgHeadChild::P(p) => p.serialize_children(writer),
+            PgHeadChild::List(l) => l.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PgHeadChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+impl MeiSerialize for PgFoot {
+    fn element_name(&self) -> &'static str {
+        "pgFoot"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.formework.collect_attributes());
+        attrs.extend(self.horizontal_align.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for PgFootChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            PgFootChild::Text(_) => "#text",
+            PgFootChild::Rend(_) => "rend",
+            PgFootChild::Lb(_) => "lb",
+            PgFootChild::PersName(_) => "persName",
+            PgFootChild::CorpName(_) => "corpName",
+            PgFootChild::Name(_) => "name",
+            PgFootChild::Title(_) => "title",
+            PgFootChild::Date(_) => "date",
+            PgFootChild::Identifier(_) => "identifier",
+            PgFootChild::Ref(_) => "ref",
+            PgFootChild::Ptr(_) => "ptr",
+            PgFootChild::Lg(_) => "lg",
+            PgFootChild::P(_) => "p",
+            PgFootChild::List(_) => "list",
+            // Many other child types exist but are not commonly used
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            PgFootChild::Rend(r) => r.collect_all_attributes(),
+            PgFootChild::Lb(lb) => lb.collect_all_attributes(),
+            PgFootChild::PersName(pn) => pn.collect_all_attributes(),
+            PgFootChild::CorpName(cn) => cn.collect_all_attributes(),
+            PgFootChild::Name(n) => n.collect_all_attributes(),
+            PgFootChild::Title(t) => t.collect_all_attributes(),
+            PgFootChild::Date(d) => d.collect_all_attributes(),
+            PgFootChild::Identifier(i) => i.collect_all_attributes(),
+            PgFootChild::Ref(r) => r.collect_all_attributes(),
+            PgFootChild::Ptr(p) => p.collect_all_attributes(),
+            PgFootChild::P(p) => p.collect_all_attributes(),
+            PgFootChild::List(l) => l.collect_all_attributes(),
+            // Lg and other elements - not yet implemented
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            PgFootChild::Text(_) => false,
+            PgFootChild::Rend(r) => !r.children.is_empty(),
+            PgFootChild::Lb(_) => false,
+            PgFootChild::PersName(pn) => !pn.children.is_empty(),
+            PgFootChild::CorpName(cn) => !cn.children.is_empty(),
+            PgFootChild::Name(n) => !n.children.is_empty(),
+            PgFootChild::Title(t) => !t.children.is_empty(),
+            PgFootChild::Date(d) => !d.children.is_empty(),
+            PgFootChild::Identifier(i) => !i.children.is_empty(),
+            PgFootChild::Ref(r) => !r.children.is_empty(),
+            PgFootChild::Ptr(_) => false,
+            PgFootChild::P(p) => !p.children.is_empty(),
+            PgFootChild::List(l) => !l.children.is_empty(),
+            // Lg and other elements
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            PgFootChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            PgFootChild::Rend(r) => r.serialize_children(writer),
+            PgFootChild::Lb(_) => Ok(()),
+            PgFootChild::PersName(pn) => pn.serialize_children(writer),
+            PgFootChild::CorpName(cn) => cn.serialize_children(writer),
+            PgFootChild::Name(n) => n.serialize_children(writer),
+            PgFootChild::Title(t) => t.serialize_children(writer),
+            PgFootChild::Date(d) => d.serialize_children(writer),
+            PgFootChild::Identifier(i) => i.serialize_children(writer),
+            PgFootChild::Ref(r) => r.serialize_children(writer),
+            PgFootChild::Ptr(_) => Ok(()),
+            PgFootChild::P(p) => p.serialize_children(writer),
+            PgFootChild::List(l) => l.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PgFootChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
     }
 }

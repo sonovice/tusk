@@ -12,10 +12,10 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidental, AttAuthorized, AttBasic, AttBibl, AttCalendared, AttClassed, AttCommon,
     AttComponentType, AttDataPointing, AttDatable, AttEdit, AttEvidence, AttFacsimile, AttFiling,
-    AttFoliationScheme, AttInternetMedia, AttKeyMode, AttLabelled, AttLang, AttLinking,
-    AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing, AttMeterSigLog, AttNInteger,
-    AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing, AttQuantity,
-    AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
+    AttFoliationScheme, AttFormework, AttInternetMedia, AttKeyMode, AttLabelled, AttLang,
+    AttLinking, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing, AttMeterSigLog,
+    AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing,
+    AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
 };
 
 mod control;
@@ -467,6 +467,13 @@ impl ExtractAttributes for AttPerfRes {
         extract_attr!(attrs, "trans.diat", self.trans_diat);
         extract_attr!(attrs, "trans.semi", self.trans_semi);
         extract_attr!(attrs, "solo", self.solo);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFormework {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "func", self.func);
         Ok(())
     }
 }

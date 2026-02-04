@@ -513,7 +513,9 @@ impl MeiDeserialize for Measure {
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {
-                        reader.skip_to_end(&name)?;
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
                     }
                 }
             }

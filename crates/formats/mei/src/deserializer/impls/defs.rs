@@ -1,6 +1,7 @@
 //! Deserializer implementations for definition MEI elements.
 //!
-//! This module contains implementations for ScoreDef, StaffDef, LayerDef, StaffGrp.
+//! This module contains implementations for ScoreDef, StaffDef, LayerDef, StaffGrp,
+//! PgHead, and PgFoot.
 
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
@@ -12,8 +13,8 @@ use tusk_model::att::{
     AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
 use tusk_model::elements::{
-    Clef, InstrDef, LabelChild, LayerDef, LayerDefChild, ScoreDef, ScoreDefChild, StaffDef,
-    StaffDefChild, StaffGrp, StaffGrpChild,
+    Clef, InstrDef, LabelChild, LayerDef, LayerDefChild, PgFoot, PgFootChild, PgHead, PgHeadChild,
+    ScoreDef, ScoreDefChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -573,6 +574,18 @@ impl MeiDeserialize for ScoreDef {
                             reader.skip_to_end("meterSigGrp")?;
                         }
                     }
+                    "pgHead" => {
+                        let pg_head = parse_pg_head_from_event(reader, child_attrs, child_empty)?;
+                        score_def
+                            .children
+                            .push(ScoreDefChild::PgHead(Box::new(pg_head)));
+                    }
+                    "pgFoot" => {
+                        let pg_foot = parse_pg_foot_from_event(reader, child_attrs, child_empty)?;
+                        score_def
+                            .children
+                            .push(ScoreDefChild::PgFoot(Box::new(pg_foot)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -1106,4 +1119,312 @@ fn parse_meter_sig_from_raw(mut attrs: AttributeMap) -> tusk_model::elements::Me
     // MeterSig-specific attributes could be added here as needed
 
     meter_sig
+}
+
+// ============================================================================
+// PgHead and PgFoot implementations
+// ============================================================================
+
+/// Parse a `<pgHead>` element from within another element.
+///
+/// PgHead (page header) can contain mixed content with text and many child elements.
+pub(crate) fn parse_pg_head_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PgHead> {
+    let mut pg_head = PgHead::default();
+
+    // Extract all attribute classes
+    pg_head.common.extract_attributes(&mut attrs)?;
+    pg_head.facsimile.extract_attributes(&mut attrs)?;
+    pg_head.formework.extract_attributes(&mut attrs)?;
+    pg_head.horizontal_align.extract_attributes(&mut attrs)?;
+    pg_head.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("pgHead")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        pg_head.children.push(PgHeadChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            pg_head.children.push(PgHeadChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head
+                                .children
+                                .push(PgHeadChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head
+                                .children
+                                .push(PgHeadChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head
+                                .children
+                                .push(PgHeadChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head
+                                .children
+                                .push(PgHeadChild::Identifier(Box::new(identifier)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Ptr(Box::new(ptr)));
+                        }
+                        "lg" => {
+                            let lg = tusk_model::elements::Lg::from_mei_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Lg(Box::new(lg)));
+                        }
+                        "p" => {
+                            let p = super::header::parse_p_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::P(Box::new(p)));
+                        }
+                        "list" => {
+                            let list = super::text::parse_list_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::List(Box::new(list)));
+                        }
+                        // Skip unknown child elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pg_head)
+}
+
+/// Parse a `<pgFoot>` element from within another element.
+///
+/// PgFoot (page footer) can contain mixed content with text and many child elements.
+pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PgFoot> {
+    let mut pg_foot = PgFoot::default();
+
+    // Extract all attribute classes
+    pg_foot.common.extract_attributes(&mut attrs)?;
+    pg_foot.facsimile.extract_attributes(&mut attrs)?;
+    pg_foot.formework.extract_attributes(&mut attrs)?;
+    pg_foot.horizontal_align.extract_attributes(&mut attrs)?;
+    pg_foot.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("pgFoot")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        pg_foot.children.push(PgFootChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            pg_foot.children.push(PgFootChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot
+                                .children
+                                .push(PgFootChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot
+                                .children
+                                .push(PgFootChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot
+                                .children
+                                .push(PgFootChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot
+                                .children
+                                .push(PgFootChild::Identifier(Box::new(identifier)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Ptr(Box::new(ptr)));
+                        }
+                        "lg" => {
+                            let lg = tusk_model::elements::Lg::from_mei_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Lg(Box::new(lg)));
+                        }
+                        "p" => {
+                            let p = super::header::parse_p_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::P(Box::new(p)));
+                        }
+                        "list" => {
+                            let list = super::text::parse_list_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::List(Box::new(list)));
+                        }
+                        // Skip unknown child elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pg_foot)
 }

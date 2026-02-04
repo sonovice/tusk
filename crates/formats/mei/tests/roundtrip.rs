@@ -214,3 +214,15 @@ fn test_roundtrip_ahle_jesu_meines_herzens_freud() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_altenburg_concerto_c_major() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Altenburg_Concerto_C-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Altenburg_Concerto_C-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
