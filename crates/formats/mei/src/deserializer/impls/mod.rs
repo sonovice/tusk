@@ -14,8 +14,8 @@ use tusk_model::att::{
     AttComponentType, AttDataPointing, AttDatable, AttEdit, AttEvidence, AttFacsimile, AttFiling,
     AttFoliationScheme, AttInternetMedia, AttKeyMode, AttLabelled, AttLang, AttLinking,
     AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing, AttMeterSigLog, AttNInteger,
-    AttNNumberLike, AttName, AttPitch, AttPointing, AttQuantity, AttRecordType, AttResponsibility,
-    AttTargetEval, AttTyped, AttWhitespace, AttXy,
+    AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing, AttQuantity,
+    AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
 };
 
 mod control;
@@ -448,6 +448,25 @@ impl ExtractAttributes for AttMensurVis {
         extract_attr!(attrs, "form", self.form);
         extract_attr!(attrs, "orient", self.orient);
         extract_attr!(attrs, "sign", self.sign);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPerfResBasic {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "adlib", self.adlib);
+        extract_attr!(attrs, "count", self.count);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPerfRes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "adlib", self.adlib);
+        extract_attr!(attrs, "count", self.count);
+        extract_attr!(attrs, "trans.diat", self.trans_diat);
+        extract_attr!(attrs, "trans.semi", self.trans_semi);
+        extract_attr!(attrs, "solo", self.solo);
         Ok(())
     }
 }

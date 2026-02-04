@@ -7,7 +7,7 @@ use std::io::Write;
 use tusk_model::elements::{
     AltId, AltIdChild, Classification, ClassificationChild, Creation, CreationChild, ExtMeta,
     ExtMetaChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, KeyChild, Meter, MeterChild,
-    PerfMedium, PerfMediumChild,
+    PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild,
 };
 
 // ============================================================================
@@ -586,13 +586,197 @@ impl MeiSerialize for PerfMediumChild {
         match self {
             PerfMediumChild::Head(elem) => elem.serialize_mei(writer),
             PerfMediumChild::Annot(elem) => elem.serialize_mei(writer),
-            // The following children need dedicated serializers - for now write empty element
-            _ => {
+            PerfMediumChild::PerfResList(elem) => elem.serialize_mei(writer),
+            PerfMediumChild::CastList(_) => {
+                // CastList needs its own serializer - for now write empty element
                 let name = self.element_name();
                 let start = writer.start_element(name)?;
                 writer.write_empty(start)?;
                 Ok(())
             }
+        }
+    }
+}
+
+// ============================================================================
+// PerfResList
+// ============================================================================
+
+impl MeiSerialize for PerfResList {
+    fn element_name(&self) -> &'static str {
+        "perfResList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.perf_res_basic.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for PerfResListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            PerfResListChild::Head(_) => "head",
+            PerfResListChild::Annot(_) => "annot",
+            PerfResListChild::PerfRes(_) => "perfRes",
+            PerfResListChild::PerfResList(_) => "perfResList",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            PerfResListChild::Head(elem) => elem.serialize_mei(writer),
+            PerfResListChild::Annot(elem) => elem.serialize_mei(writer),
+            PerfResListChild::PerfRes(elem) => elem.serialize_mei(writer),
+            PerfResListChild::PerfResList(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// PerfRes
+// ============================================================================
+
+impl MeiSerialize for PerfRes {
+    fn element_name(&self) -> &'static str {
+        "perfRes"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.perf_res.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for PerfResChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            PerfResChild::Text(_) => "#text",
+            PerfResChild::PerfRes(_) => "perfRes",
+            PerfResChild::RelationList(_) => "relationList",
+            PerfResChild::Stamp(_) => "stamp",
+            PerfResChild::Signatures(_) => "signatures",
+            PerfResChild::StyleName(_) => "styleName",
+            PerfResChild::GeogFeat(_) => "geogFeat",
+            PerfResChild::LocusGrp(_) => "locusGrp",
+            PerfResChild::Address(_) => "address",
+            PerfResChild::Abbr(_) => "abbr",
+            PerfResChild::SecFolio(_) => "secFolio",
+            PerfResChild::Bloc(_) => "bloc",
+            PerfResChild::Width(_) => "width",
+            PerfResChild::Annot(_) => "annot",
+            PerfResChild::Depth(_) => "depth",
+            PerfResChild::Catchwords(_) => "catchwords",
+            PerfResChild::Dimensions(_) => "dimensions",
+            PerfResChild::Ptr(_) => "ptr",
+            PerfResChild::Country(_) => "country",
+            PerfResChild::Q(_) => "q",
+            PerfResChild::Date(_) => "date",
+            PerfResChild::PostCode(_) => "postCode",
+            PerfResChild::Region(_) => "region",
+            PerfResChild::Settlement(_) => "settlement",
+            PerfResChild::BiblStruct(_) => "biblStruct",
+            PerfResChild::Relation(_) => "relation",
+            PerfResChild::Title(_) => "title",
+            PerfResChild::Locus(_) => "locus",
+            PerfResChild::PersName(_) => "persName",
+            PerfResChild::PostBox(_) => "postBox",
+            PerfResChild::Seg(_) => "seg",
+            PerfResChild::Extent(_) => "extent",
+            PerfResChild::Heraldry(_) => "heraldry",
+            PerfResChild::Identifier(_) => "identifier",
+            PerfResChild::Height(_) => "height",
+            PerfResChild::Name(_) => "name",
+            PerfResChild::PeriodName(_) => "periodName",
+            PerfResChild::Ref(_) => "ref",
+            PerfResChild::Expan(_) => "expan",
+            PerfResChild::Num(_) => "num",
+            PerfResChild::Repository(_) => "repository",
+            PerfResChild::Stack(_) => "stack",
+            PerfResChild::Symbol(_) => "symbol",
+            PerfResChild::Rend(_) => "rend",
+            PerfResChild::Term(_) => "term",
+            PerfResChild::Lb(_) => "lb",
+            PerfResChild::Fig(_) => "fig",
+            PerfResChild::Street(_) => "street",
+            PerfResChild::Bibl(_) => "bibl",
+            PerfResChild::GeogName(_) => "geogName",
+            PerfResChild::CorpName(_) => "corpName",
+            PerfResChild::District(_) => "district",
+            PerfResChild::Dim(_) => "dim",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, PerfResChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            PerfResChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            PerfResChild::Annot(elem) => elem.serialize_mei(writer),
+            PerfResChild::PerfRes(elem) => elem.serialize_mei(writer),
+            PerfResChild::Rend(elem) => elem.serialize_mei(writer),
+            PerfResChild::Lb(elem) => elem.serialize_mei(writer),
+            // Most children need dedicated serializers - skip for now
+            _ => Ok(()),
         }
     }
 }

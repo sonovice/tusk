@@ -12,10 +12,10 @@ use tusk_model::att::{
     AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttFoliationScheme,
     AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
     AttInternetMedia, AttKeyMode, AttLabelled, AttLinking, AttMeasurement, AttMeiVersion,
-    AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttPitch,
-    AttPointing, AttRanging, AttRecordType, AttRegularMethod, AttResponsibility, AttSource,
-    AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
-    AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttPerfRes,
+    AttPerfResBasic, AttPitch, AttPointing, AttRanging, AttRecordType, AttRegularMethod,
+    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
+    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
     Beam, BeamChild, GraceGrp, GraceGrpChild, Li, LiChild, List, ListChild, Num, Ptr, Ref, Tuplet,
@@ -420,6 +420,35 @@ impl CollectAttributes for AttDataPointing {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "data", vec self.data);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttPerfResBasic {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "adlib", self.adlib);
+        if let Some(ref v) = self.count {
+            attrs.push(("count", v.to_string()));
+        }
+        attrs
+    }
+}
+
+impl CollectAttributes for AttPerfRes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "adlib", self.adlib);
+        if let Some(ref v) = self.count {
+            attrs.push(("count", v.to_string()));
+        }
+        if let Some(ref v) = self.trans_diat {
+            attrs.push(("trans.diat", v.to_string()));
+        }
+        if let Some(ref v) = self.trans_semi {
+            attrs.push(("trans.semi", v.to_string()));
+        }
+        push_attr!(attrs, "solo", self.solo);
         attrs
     }
 }

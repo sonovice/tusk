@@ -6,6 +6,7 @@
 //! - Expression, ExpressionList, ComponentList, RelationList
 //! - Various supporting elements (Dedication, Creation, History, etc.)
 
+use super::header::parse_annot_from_event;
 use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
     from_attr_string, parse_bibl_from_event, parse_bibl_struct_from_event, parse_clef_from_event,
@@ -13,6 +14,7 @@ use super::{
     parse_identifier_from_event, parse_label_from_event, parse_p_from_event,
     parse_resp_stmt_from_event, parse_title_from_event,
 };
+use crate::deserializer::MixedContent;
 use std::io::BufRead;
 use tusk_model::elements::{
     Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
@@ -21,9 +23,9 @@ use tusk_model::elements::{
     EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
     Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, LangUsage,
     LangUsageChild, Language, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar,
-    PerfDuration, PerfMedium, PerfMediumChild, RelationList, RelationListChild, RevisionDesc,
-    RevisionDescChild, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList,
-    WorkListChild,
+    PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
+    PerfResListChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild,
+    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -237,6 +239,26 @@ fn parse_perf_medium_from_event<R: BufRead>(
                         .children
                         .push(PerfMediumChild::Head(Box::new(head)));
                 }
+                "annot" => {
+                    let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                    perf_medium
+                        .children
+                        .push(PerfMediumChild::Annot(Box::new(annot)));
+                }
+                "perfResList" => {
+                    let perf_res_list =
+                        parse_perf_res_list_from_event(reader, child_attrs, child_empty)?;
+                    perf_medium
+                        .children
+                        .push(PerfMediumChild::PerfResList(Box::new(perf_res_list)));
+                }
+                "castList" => {
+                    // castList needs its own parser - for now skip
+                    // TODO: implement parse_cast_list_from_event
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -247,6 +269,118 @@ fn parse_perf_medium_from_event<R: BufRead>(
     }
 
     Ok(perf_medium)
+}
+
+/// Parse a `<perfResList>` element from within another element.
+fn parse_perf_res_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PerfResList> {
+    let mut perf_res_list = PerfResList::default();
+
+    // Extract attributes
+    perf_res_list.common.extract_attributes(&mut attrs)?;
+    perf_res_list.authorized.extract_attributes(&mut attrs)?;
+    perf_res_list.bibl.extract_attributes(&mut attrs)?;
+    perf_res_list.edit.extract_attributes(&mut attrs)?;
+    perf_res_list.lang.extract_attributes(&mut attrs)?;
+    perf_res_list
+        .perf_res_basic
+        .extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // perfResList can contain: annot*, perfRes*, head*, perfResList* (recursive)
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("perfResList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    perf_res_list
+                        .children
+                        .push(PerfResListChild::Head(Box::new(head)));
+                }
+                "annot" => {
+                    let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                    perf_res_list
+                        .children
+                        .push(PerfResListChild::Annot(Box::new(annot)));
+                }
+                "perfRes" => {
+                    let perf_res = parse_perf_res_from_event(reader, child_attrs, child_empty)?;
+                    perf_res_list
+                        .children
+                        .push(PerfResListChild::PerfRes(Box::new(perf_res)));
+                }
+                "perfResList" => {
+                    // Recursive call for nested perfResList
+                    let nested = parse_perf_res_list_from_event(reader, child_attrs, child_empty)?;
+                    perf_res_list
+                        .children
+                        .push(PerfResListChild::PerfResList(Box::new(nested)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(perf_res_list)
+}
+
+/// Parse a `<perfRes>` element from within another element.
+fn parse_perf_res_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PerfRes> {
+    let mut perf_res = PerfRes::default();
+
+    // Extract attributes
+    perf_res.common.extract_attributes(&mut attrs)?;
+    perf_res.authorized.extract_attributes(&mut attrs)?;
+    perf_res.bibl.extract_attributes(&mut attrs)?;
+    perf_res.edit.extract_attributes(&mut attrs)?;
+    perf_res.lang.extract_attributes(&mut attrs)?;
+    perf_res.perf_res.extract_attributes(&mut attrs)?;
+
+    // perfRes has mixed content - text and many possible child elements
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("perfRes")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        perf_res.children.push(PerfResChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "perfRes" => {
+                            // Recursive call for nested perfRes
+                            let nested =
+                                parse_perf_res_from_event(reader, child_attrs, child_empty)?;
+                            perf_res
+                                .children
+                                .push(PerfResChild::PerfRes(Box::new(nested)));
+                        }
+                        // For now, skip other complex child elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(perf_res)
 }
 
 /// Parse a `<perfDuration>` element from within another element.
@@ -3134,6 +3268,55 @@ mod tests {
                 }
             }
             _ => panic!("Expected Incip child"),
+        }
+    }
+
+    #[test]
+    fn perf_medium_deserializes_perf_res_list_with_perf_res() {
+        use tusk_model::elements::{
+            PerfMediumChild, PerfResChild, PerfResListChild, Work, WorkChild,
+        };
+
+        let xml = r#"<work>
+            <title>Test Work</title>
+            <perfMedium>
+                <perfResList>
+                    <perfRes n="1" codedval="tb">Guitar</perfRes>
+                </perfResList>
+            </perfMedium>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        match &work.children[1] {
+            WorkChild::PerfMedium(perf_medium) => {
+                assert_eq!(perf_medium.children.len(), 1);
+                match &perf_medium.children[0] {
+                    PerfMediumChild::PerfResList(perf_res_list) => {
+                        assert_eq!(perf_res_list.children.len(), 1);
+                        match &perf_res_list.children[0] {
+                            PerfResListChild::PerfRes(perf_res) => {
+                                // Check that n attribute is parsed
+                                assert!(perf_res.common.n.is_some());
+                                assert_eq!(perf_res.common.n.as_ref().unwrap().0, "1");
+                                // Check that codedval attribute is parsed (in authorized)
+                                assert_eq!(perf_res.authorized.codedval, vec!["tb"]);
+                                // Check that text content is parsed
+                                assert_eq!(perf_res.children.len(), 1);
+                                match &perf_res.children[0] {
+                                    PerfResChild::Text(text) => {
+                                        assert_eq!(text, "Guitar");
+                                    }
+                                    _ => panic!("Expected Text child in perfRes"),
+                                }
+                            }
+                            _ => panic!("Expected PerfRes child in perfResList"),
+                        }
+                    }
+                    _ => panic!("Expected PerfResList child in perfMedium"),
+                }
+            }
+            _ => panic!("Expected PerfMedium child"),
         }
     }
 }
