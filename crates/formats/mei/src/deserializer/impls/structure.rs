@@ -553,3 +553,106 @@ impl MeiDeserialize for Mdiv {
         Ok(mdiv)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ============================================================================
+    // Mdiv deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn mdiv_deserializes_from_empty_element() {
+        let xml = r#"<mdiv/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert!(mdiv.common.xml_id.is_none());
+        assert!(mdiv.children.is_empty());
+    }
+
+    #[test]
+    fn mdiv_deserializes_xml_id() {
+        let xml = r#"<mdiv xml:id="m1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_common_attributes() {
+        let xml = r#"<mdiv xml:id="m1" n="1" label="Movement 1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+        assert!(mdiv.common.n.is_some());
+        assert_eq!(mdiv.common.label, Some("Movement 1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_attacca() {
+        let xml = r#"<mdiv attacca="true"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert!(mdiv.mdiv_ges.attacca.is_some());
+    }
+
+    #[test]
+    fn mdiv_deserializes_with_nested_mdiv() {
+        let xml = r#"<mdiv xml:id="m1">
+            <mdiv xml:id="m1a"/>
+            <mdiv xml:id="m1b"/>
+        </mdiv>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+        assert_eq!(mdiv.children.len(), 2);
+
+        // First child should be mdiv
+        match &mdiv.children[0] {
+            MdivChild::Mdiv(child_mdiv) => {
+                assert_eq!(child_mdiv.common.xml_id, Some("m1a".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
+
+        // Second child should be mdiv
+        match &mdiv.children[1] {
+            MdivChild::Mdiv(child_mdiv) => {
+                assert_eq!(child_mdiv.common.xml_id, Some("m1b".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn mdiv_handles_unknown_attributes_leniently() {
+        let xml = r#"<mdiv xml:id="m1" unknown="value"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_deserializes_with_xml_declaration() {
+        let xml = r#"<?xml version="1.0"?><mdiv xml:id="m1"/>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mdiv.common.xml_id, Some("m1".to_string()));
+    }
+
+    #[test]
+    fn mdiv_ignores_unknown_child_elements() {
+        let xml = r#"<mdiv><unknownElement/><mdiv xml:id="nested"/></mdiv>"#;
+        let mdiv = Mdiv::from_mei_str(xml).expect("should deserialize");
+
+        // Only the mdiv child should be parsed, unknown element skipped
+        assert_eq!(mdiv.children.len(), 1);
+        match &mdiv.children[0] {
+            MdivChild::Mdiv(child) => {
+                assert_eq!(child.common.xml_id, Some("nested".to_string()));
+            }
+            other => panic!("Expected Mdiv, got {:?}", other),
+        }
+    }
+}
