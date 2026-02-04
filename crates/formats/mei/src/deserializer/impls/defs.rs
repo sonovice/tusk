@@ -13,8 +13,9 @@ use tusk_model::att::{
     AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
 use tusk_model::elements::{
-    Clef, InstrDef, LabelChild, LayerDef, LayerDefChild, PgFoot, PgFootChild, PgHead, PgHeadChild,
-    ScoreDef, ScoreDefChild, Seg, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+    Clef, InstrDef, LabelAbbrChild, LabelChild, LayerDef, LayerDefChild, PgFoot, PgFootChild,
+    PgHead, PgHeadChild, ScoreDef, ScoreDefChild, Seg, StaffDef, StaffDefChild, StaffGrp,
+    StaffGrpChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -981,12 +982,119 @@ fn parse_label_abbr_from_event<R: BufRead>(
 ) -> DeserializeResult<tusk_model::elements::LabelAbbr> {
     let mut label_abbr = tusk_model::elements::LabelAbbr::default();
 
-    // Extract common attributes
+    // Extract all attribute classes
     label_abbr.common.extract_attributes(&mut attrs)?;
+    label_abbr.facsimile.extract_attributes(&mut attrs)?;
+    label_abbr.lang.extract_attributes(&mut attrs)?;
+    label_abbr.source.extract_attributes(&mut attrs)?;
 
-    // Skip children
+    // Parse mixed content (text and child elements)
     if !is_empty {
-        reader.skip_to_end("labelAbbr")?;
+        while let Some(content) = reader.read_next_mixed_content("labelAbbr")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve text content
+                    if !text.trim().is_empty() {
+                        label_abbr.children.push(LabelAbbrChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Rend(Box::new(rend)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Ref(Box::new(ref_elem)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            label_abbr.children.push(LabelAbbrChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Date(Box::new(date)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label_abbr
+                                .children
+                                .push(LabelAbbrChild::Identifier(Box::new(identifier)));
+                        }
+                        _ => {
+                            // Skip unknown children (lenient mode)
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(label_abbr)

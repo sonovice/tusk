@@ -1059,7 +1059,7 @@ fn layerdef_deserializes_with_label_child() {
 
 #[test]
 fn layerdef_deserializes_with_labelabbr_child() {
-    use tusk_model::elements::{LayerDef, LayerDefChild};
+    use tusk_model::elements::{LabelAbbrChild, LayerDef, LayerDefChild};
 
     let xml = r#"<layerDef n="1"><labelAbbr xml:id="la1">V.I</labelAbbr></layerDef>"#;
     let parsed = LayerDef::from_mei_str(xml).expect("should deserialize");
@@ -1068,6 +1068,61 @@ fn layerdef_deserializes_with_labelabbr_child() {
     match &parsed.children[0] {
         LayerDefChild::LabelAbbr(label_abbr) => {
             assert_eq!(label_abbr.common.xml_id, Some("la1".to_string()));
+            // Verify text content is preserved
+            assert_eq!(label_abbr.children.len(), 1);
+            match &label_abbr.children[0] {
+                LabelAbbrChild::Text(text) => {
+                    assert_eq!(text, "V.I");
+                }
+                other => panic!("Expected Text, got {:?}", other),
+            }
+        }
+        other => panic!("Expected LabelAbbr, got {:?}", other),
+    }
+}
+
+/// Test labelAbbr text content roundtrip (parse → serialize → parse)
+#[test]
+fn labelabbr_text_content_roundtrip() {
+    use tusk_model::elements::{LabelAbbrChild, StaffDef, StaffDefChild};
+
+    let xml = r#"<staffDef n="1" lines="5"><labelAbbr>Cl.-Solo</labelAbbr></staffDef>"#;
+    let parsed = StaffDef::from_mei_str(xml).expect("should deserialize");
+
+    // Check parsed content
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StaffDefChild::LabelAbbr(label_abbr) => {
+            assert_eq!(label_abbr.children.len(), 1);
+            match &label_abbr.children[0] {
+                LabelAbbrChild::Text(text) => {
+                    assert_eq!(text, "Cl.-Solo");
+                }
+                other => panic!("Expected Text, got {:?}", other),
+            }
+        }
+        other => panic!("Expected LabelAbbr, got {:?}", other),
+    }
+
+    // Roundtrip: serialize and parse again
+    let serialized = parsed.to_mei_string().expect("should serialize");
+    assert!(
+        serialized.contains("Cl.-Solo"),
+        "serialized: {}",
+        serialized
+    );
+
+    let reparsed = StaffDef::from_mei_str(&serialized).expect("should reparse");
+    assert_eq!(reparsed.children.len(), 1);
+    match &reparsed.children[0] {
+        StaffDefChild::LabelAbbr(label_abbr) => {
+            assert_eq!(label_abbr.children.len(), 1);
+            match &label_abbr.children[0] {
+                LabelAbbrChild::Text(text) => {
+                    assert_eq!(text, "Cl.-Solo");
+                }
+                other => panic!("Expected Text, got {:?}", other),
+            }
         }
         other => panic!("Expected LabelAbbr, got {:?}", other),
     }
