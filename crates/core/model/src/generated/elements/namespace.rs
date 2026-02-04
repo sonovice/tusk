@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NamespaceChild {
-    #[serde(rename = "tagUsage")]
-    TagUsage(Box<crate::generated::elements::TagUsage>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "tagUsage")]
+    TagUsage(Box<crate::generated::elements::TagUsage>),
     #[serde(rename = "attUsage")]
     AttUsage(Box<crate::generated::elements::AttUsage>),
 }
@@ -16,13 +16,13 @@ impl NamespaceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            NamespaceChild::TagUsage(elem) => {
-                ctx.enter("tagUsage", index);
+            NamespaceChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            NamespaceChild::TagUsage(elem) => {
+                ctx.enter("tagUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -198,8 +198,10 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
             let full_doc = doc_parts.join("");
 
             // f64 doesn't implement Eq/Hash, so use different derives
+            // For f64, we don't use #[derive(Serialize, Deserialize)] because we need
+            // custom impls that format whole numbers without decimal points
             let derives = if rust_type == "f64" {
-                quote! { #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)] }
+                quote! { #[derive(Debug, Clone, PartialEq)] }
             } else {
                 quote! { #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)] }
             };
@@ -215,8 +217,9 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
 
             // For f64 types, we need a special Display impl that formats whole numbers
             // without the decimal point (e.g., "1" instead of "1.0")
-            let display_impl = if rust_type == "f64" {
-                quote! {
+            // We also need custom Serialize/Deserialize impls that use this formatting
+            let (display_impl, serde_impls, serde_attr) = if rust_type == "f64" {
+                let display = quote! {
                     impl std::fmt::Display for #name {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             // Format whole numbers without decimal point
@@ -227,21 +230,45 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
                             }
                         }
                     }
-                }
+                };
+                // Custom serde impls that serialize using Display (whole numbers without decimals)
+                let serde = quote! {
+                    impl serde::Serialize for #name {
+                        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                        where
+                            S: serde::Serializer,
+                        {
+                            // Use Display impl which formats whole numbers without decimals
+                            serializer.serialize_str(&self.to_string())
+                        }
+                    }
+
+                    impl<'de> serde::Deserialize<'de> for #name {
+                        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                        where
+                            D: serde::Deserializer<'de>,
+                        {
+                            let s = String::deserialize(deserializer)?;
+                            s.parse().map_err(serde::de::Error::custom)
+                        }
+                    }
+                };
+                (display, serde, quote! {})
             } else {
-                quote! {
+                let display = quote! {
                     impl std::fmt::Display for #name {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             write!(f, "{}", self.0)
                         }
                     }
-                }
+                };
+                (display, quote! {}, quote! { #[serde(transparent)] })
             };
 
             Some(quote! {
                 #[doc = #full_doc]
                 #derives
-                #[serde(transparent)]
+                #serde_attr
                 pub struct #name(pub #rust_type_tokens);
 
                 impl From<#rust_type_tokens> for #name {
@@ -251,6 +278,8 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
                 }
 
                 #display_impl
+
+                #serde_impls
 
                 impl std::str::FromStr for #name {
                     type Err = <#rust_type_tokens as std::str::FromStr>::Err;

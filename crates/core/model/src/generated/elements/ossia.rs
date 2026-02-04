@@ -5,26 +5,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OssiaChild {
-    #[serde(rename = "oStaff")]
-    OStaff(Box<crate::generated::elements::OStaff>),
-    #[serde(rename = "staff")]
-    Staff(Box<crate::generated::elements::Staff>),
-    #[serde(rename = "layer")]
-    Layer(Box<crate::generated::elements::Layer>),
     #[serde(rename = "oLayer")]
     OLayer(Box<crate::generated::elements::OLayer>),
+    #[serde(rename = "layer")]
+    Layer(Box<crate::generated::elements::Layer>),
+    #[serde(rename = "staff")]
+    Staff(Box<crate::generated::elements::Staff>),
+    #[serde(rename = "oStaff")]
+    OStaff(Box<crate::generated::elements::OStaff>),
 }
 impl OssiaChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            OssiaChild::OStaff(elem) => {
-                ctx.enter("oStaff", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            OssiaChild::Staff(elem) => {
-                ctx.enter("staff", index);
+            OssiaChild::OLayer(elem) => {
+                ctx.enter("oLayer", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +28,13 @@ impl OssiaChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            OssiaChild::OLayer(elem) => {
-                ctx.enter("oLayer", index);
+            OssiaChild::Staff(elem) => {
+                ctx.enter("staff", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            OssiaChild::OStaff(elem) => {
+                ctx.enter("oStaff", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

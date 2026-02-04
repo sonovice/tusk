@@ -5,36 +5,36 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ApplicationChild {
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "ptr")]
     Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
     #[serde(rename = "ref")]
     Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl ApplicationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ApplicationChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ApplicationChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ApplicationChild::Ptr(elem) => {
                 ctx.enter("ptr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ApplicationChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ApplicationChild::Ref(elem) => {
                 ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ApplicationChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

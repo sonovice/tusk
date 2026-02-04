@@ -5,16 +5,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LayerDefChild {
-    #[serde(rename = "meterSigGrp")]
-    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
-    #[serde(rename = "ambitus")]
-    Ambitus(Box<crate::generated::elements::Ambitus>),
-    #[serde(rename = "instrDef")]
-    InstrDef(Box<crate::generated::elements::InstrDef>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "labelAbbr")]
     LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
+    #[serde(rename = "meterSigGrp")]
+    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
+    #[serde(rename = "instrDef")]
+    InstrDef(Box<crate::generated::elements::InstrDef>),
+    #[serde(rename = "ambitus")]
+    Ambitus(Box<crate::generated::elements::Ambitus>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "meterSig")]
     MeterSig(Box<crate::generated::elements::MeterSig>),
 }
@@ -22,13 +22,13 @@ impl LayerDefChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            LayerDefChild::MeterSigGrp(elem) => {
-                ctx.enter("meterSigGrp", index);
+            LayerDefChild::LabelAbbr(elem) => {
+                ctx.enter("labelAbbr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LayerDefChild::Ambitus(elem) => {
-                ctx.enter("ambitus", index);
+            LayerDefChild::MeterSigGrp(elem) => {
+                ctx.enter("meterSigGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -37,13 +37,13 @@ impl LayerDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LayerDefChild::Label(elem) => {
-                ctx.enter("label", index);
+            LayerDefChild::Ambitus(elem) => {
+                ctx.enter("ambitus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LayerDefChild::LabelAbbr(elem) => {
-                ctx.enter("labelAbbr", index);
+            LayerDefChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

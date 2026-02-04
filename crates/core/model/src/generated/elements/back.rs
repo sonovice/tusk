@@ -5,54 +5,29 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BackChild {
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
     #[serde(rename = "relation")]
     Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "titlePage")]
     TitlePage(Box<crate::generated::elements::TitlePage>),
     #[serde(rename = "cb")]
     Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
 }
 impl BackChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BackChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             BackChild::Relation(elem) => {
                 ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BackChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BackChild::Pb(elem) => {
-                ctx.enter("pb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BackChild::Div(elem) => {
-                ctx.enter("div", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BackChild::Lb(elem) => {
-                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -63,6 +38,31 @@ impl BackChild {
             }
             BackChild::Cb(elem) => {
                 ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::Pb(elem) => {
+                ctx.enter("pb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::Div(elem) => {
+                ctx.enter("div", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,30 +5,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RespStmtChild {
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
     #[serde(rename = "resp")]
     Resp(Box<crate::generated::elements::Resp>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
     #[serde(rename = "annot")]
     Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "persName")]
     PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl RespStmtChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RespStmtChild::Name(elem) => {
-                ctx.enter("name", index);
+            RespStmtChild::Resp(elem) => {
+                ctx.enter("resp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RespStmtChild::Resp(elem) => {
-                ctx.enter("resp", index);
+            RespStmtChild::Name(elem) => {
+                ctx.enter("name", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,13 +42,13 @@ impl RespStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RespStmtChild::Head(elem) => {
-                ctx.enter("head", index);
+            RespStmtChild::PersName(elem) => {
+                ctx.enter("persName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RespStmtChild::PersName(elem) => {
-                ctx.enter("persName", index);
+            RespStmtChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

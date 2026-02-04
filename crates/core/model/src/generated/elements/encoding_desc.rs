@@ -5,54 +5,34 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EncodingDescChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "domainsDecl")]
-    DomainsDecl(Box<crate::generated::elements::DomainsDecl>),
     #[serde(rename = "tagsDecl")]
     TagsDecl(Box<crate::generated::elements::TagsDecl>),
-    #[serde(rename = "appInfo")]
-    AppInfo(Box<crate::generated::elements::AppInfo>),
-    #[serde(rename = "editorialDecl")]
-    EditorialDecl(Box<crate::generated::elements::EditorialDecl>),
-    #[serde(rename = "projectDesc")]
-    ProjectDesc(Box<crate::generated::elements::ProjectDesc>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "samplingDecl")]
     SamplingDecl(Box<crate::generated::elements::SamplingDecl>),
+    #[serde(rename = "editorialDecl")]
+    EditorialDecl(Box<crate::generated::elements::EditorialDecl>),
     #[serde(rename = "classDecls")]
     ClassDecls(Box<crate::generated::elements::ClassDecls>),
+    #[serde(rename = "appInfo")]
+    AppInfo(Box<crate::generated::elements::AppInfo>),
+    #[serde(rename = "domainsDecl")]
+    DomainsDecl(Box<crate::generated::elements::DomainsDecl>),
+    #[serde(rename = "projectDesc")]
+    ProjectDesc(Box<crate::generated::elements::ProjectDesc>),
 }
 impl EncodingDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            EncodingDescChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EncodingDescChild::DomainsDecl(elem) => {
-                ctx.enter("domainsDecl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             EncodingDescChild::TagsDecl(elem) => {
                 ctx.enter("tagsDecl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EncodingDescChild::AppInfo(elem) => {
-                ctx.enter("appInfo", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EncodingDescChild::EditorialDecl(elem) => {
-                ctx.enter("editorialDecl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EncodingDescChild::ProjectDesc(elem) => {
-                ctx.enter("projectDesc", index);
+            EncodingDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -61,8 +41,28 @@ impl EncodingDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            EncodingDescChild::EditorialDecl(elem) => {
+                ctx.enter("editorialDecl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             EncodingDescChild::ClassDecls(elem) => {
                 ctx.enter("classDecls", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EncodingDescChild::AppInfo(elem) => {
+                ctx.enter("appInfo", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EncodingDescChild::DomainsDecl(elem) => {
+                ctx.enter("domainsDecl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EncodingDescChild::ProjectDesc(elem) => {
+                ctx.enter("projectDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

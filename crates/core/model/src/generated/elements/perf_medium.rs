@@ -5,26 +5,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PerfMediumChild {
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "perfResList")]
+    PerfResList(Box<crate::generated::elements::PerfResList>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "perfResList")]
-    PerfResList(Box<crate::generated::elements::PerfResList>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
 }
 impl PerfMediumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PerfMediumChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PerfMediumChild::Head(elem) => {
-                ctx.enter("head", index);
+            PerfMediumChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +28,13 @@ impl PerfMediumChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PerfMediumChild::Annot(elem) => {
-                ctx.enter("annot", index);
+            PerfMediumChild::CastList(elem) => {
+                ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PerfMediumChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

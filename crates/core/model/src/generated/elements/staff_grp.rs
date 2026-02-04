@@ -5,25 +5,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StaffGrpChild {
-    #[serde(rename = "labelAbbr")]
-    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
-    #[serde(rename = "grpSym")]
-    GrpSym(Box<crate::generated::elements::GrpSym>),
     #[serde(rename = "staffDef")]
     StaffDef(Box<crate::generated::elements::StaffDef>),
-    #[serde(rename = "staffGrp")]
-    StaffGrp(Box<crate::generated::elements::StaffGrp>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "instrDef")]
     InstrDef(Box<crate::generated::elements::InstrDef>),
+    #[serde(rename = "grpSym")]
+    GrpSym(Box<crate::generated::elements::GrpSym>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "labelAbbr")]
+    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
+    #[serde(rename = "staffGrp")]
+    StaffGrp(Box<crate::generated::elements::StaffGrp>),
 }
 impl StaffGrpChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            StaffGrpChild::LabelAbbr(elem) => {
-                ctx.enter("labelAbbr", index);
+            StaffGrpChild::StaffDef(elem) => {
+                ctx.enter("staffDef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffGrpChild::InstrDef(elem) => {
+                ctx.enter("instrDef", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -32,23 +37,18 @@ impl StaffGrpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffGrpChild::StaffDef(elem) => {
-                ctx.enter("staffDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffGrpChild::StaffGrp(elem) => {
-                ctx.enter("staffGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             StaffGrpChild::Label(elem) => {
                 ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffGrpChild::InstrDef(elem) => {
-                ctx.enter("instrDef", index);
+            StaffGrpChild::LabelAbbr(elem) => {
+                ctx.enter("labelAbbr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffGrpChild::StaffGrp(elem) => {
+                ctx.enter("staffGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

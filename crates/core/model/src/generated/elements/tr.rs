@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TrChild {
-    #[serde(rename = "th")]
-    Th(Box<crate::generated::elements::Th>),
     #[serde(rename = "td")]
     Td(Box<crate::generated::elements::Td>),
+    #[serde(rename = "th")]
+    Th(Box<crate::generated::elements::Th>),
 }
 impl TrChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TrChild::Th(elem) => {
-                ctx.enter("th", index);
+            TrChild::Td(elem) => {
+                ctx.enter("td", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TrChild::Td(elem) => {
-                ctx.enter("td", index);
+            TrChild::Th(elem) => {
+                ctx.enter("th", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

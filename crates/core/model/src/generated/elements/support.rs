@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SupportChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "condition")]
-    Condition(Box<crate::generated::elements::Condition>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "dimensions")]
     Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "condition")]
+    Condition(Box<crate::generated::elements::Condition>),
     #[serde(rename = "decoNote")]
     DecoNote(Box<crate::generated::elements::DecoNote>),
 }
@@ -20,23 +20,23 @@ impl SupportChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SupportChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SupportChild::Condition(elem) => {
-                ctx.enter("condition", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             SupportChild::Head(elem) => {
                 ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SupportChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SupportChild::Dimensions(elem) => {
                 ctx.enter("dimensions", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SupportChild::Condition(elem) => {
+                ctx.enter("condition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

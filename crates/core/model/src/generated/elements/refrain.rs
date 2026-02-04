@@ -5,68 +5,33 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RefrainChild {
-    #[serde(rename = "space")]
-    Space(Box<crate::generated::elements::Space>),
-    #[serde(rename = "dir")]
-    Dir(Box<crate::generated::elements::Dir>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "volta")]
-    Volta(Box<crate::generated::elements::Volta>),
-    #[serde(rename = "dynam")]
-    Dynam(Box<crate::generated::elements::Dynam>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "syl")]
-    Syl(Box<crate::generated::elements::Syl>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
     #[serde(rename = "tempo")]
     Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "dir")]
+    Dir(Box<crate::generated::elements::Dir>),
+    #[serde(rename = "space")]
+    Space(Box<crate::generated::elements::Space>),
+    #[serde(rename = "syl")]
+    Syl(Box<crate::generated::elements::Syl>),
+    #[serde(rename = "dynam")]
+    Dynam(Box<crate::generated::elements::Dynam>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "volta")]
+    Volta(Box<crate::generated::elements::Volta>),
 }
 impl RefrainChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RefrainChild::Space(elem) => {
-                ctx.enter("space", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Dir(elem) => {
-                ctx.enter("dir", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Volta(elem) => {
-                ctx.enter("volta", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Dynam(elem) => {
-                ctx.enter("dynam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Syl(elem) => {
-                ctx.enter("syl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RefrainChild::Lb(elem) => {
-                ctx.enter("lb", index);
+            RefrainChild::Tempo(elem) => {
+                ctx.enter("tempo", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -75,8 +40,43 @@ impl RefrainChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RefrainChild::Tempo(elem) => {
-                ctx.enter("tempo", index);
+            RefrainChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Dir(elem) => {
+                ctx.enter("dir", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Space(elem) => {
+                ctx.enter("space", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Syl(elem) => {
+                ctx.enter("syl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Dynam(elem) => {
+                ctx.enter("dynam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RefrainChild::Volta(elem) => {
+                ctx.enter("volta", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

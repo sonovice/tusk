@@ -5,35 +5,25 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BiblStructChild {
-    #[serde(rename = "relatedItem")]
-    RelatedItem(Box<crate::generated::elements::RelatedItem>),
     #[serde(rename = "analytic")]
     Analytic(Box<crate::generated::elements::Analytic>),
-    #[serde(rename = "monogr")]
-    Monogr(Box<crate::generated::elements::Monogr>),
     #[serde(rename = "annot")]
     Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "series")]
-    Series(Box<crate::generated::elements::Series>),
+    #[serde(rename = "relatedItem")]
+    RelatedItem(Box<crate::generated::elements::RelatedItem>),
+    #[serde(rename = "monogr")]
+    Monogr(Box<crate::generated::elements::Monogr>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "series")]
+    Series(Box<crate::generated::elements::Series>),
 }
 impl BiblStructChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BiblStructChild::RelatedItem(elem) => {
-                ctx.enter("relatedItem", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             BiblStructChild::Analytic(elem) => {
                 ctx.enter("analytic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BiblStructChild::Monogr(elem) => {
-                ctx.enter("monogr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,13 +32,23 @@ impl BiblStructChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BiblStructChild::Series(elem) => {
-                ctx.enter("series", index);
+            BiblStructChild::RelatedItem(elem) => {
+                ctx.enter("relatedItem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BiblStructChild::Monogr(elem) => {
+                ctx.enter("monogr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             BiblStructChild::Identifier(elem) => {
                 ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BiblStructChild::Series(elem) => {
+                ctx.enter("series", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

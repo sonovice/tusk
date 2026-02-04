@@ -5,26 +5,26 @@
 //!
 /*!///
 /// # Sample constraints (showing 20 of 241):
-/// - `check_chordrefTarget` (context: `@chordref`)
-/// - `check_chordrefTarget` (context: `@chordref`)
-/// - `check_endidTarget` (context: `@endid`)
-/// - `check_endidTarget` (context: `@endid`)
-/// - `check_classURI` (context: `@class`)
-/// - `check_plistTarget` (context: `@plist`)
-/// - `check_plistTarget` (context: `@plist`)
-/// - `check_barmethod` (context: `@bar.method[parent::*[matches(local-name(), '(staffDef|measure)')]]`)
-/// - `check_facsTarget` (context: `@facs`)
-/// - `check_facsTarget` (context: `@facs`)
-/// - `check_duplex_quality` (context: `(mei:note|mei:space)[@dur.quality='duplex']`)
-/// - `check_maiorminor_quality` (context: `(mei:note|mei:space)[@dur.quality='maior' or @dur.quality='minor']`)
-/// - `check_head.altsymTarget` (context: `@head.altsym`)
-/// - `check_head.altsymTarget` (context: `@head.altsym`)
-/// - `check_head.auth` (context: `mei:*[lower-case(@head.auth) eq 'smufl']`)
-/// - `check_headshape_num` (context: `mei:*[(matches(@head.shape, '#x') or matches(@head.shape, 'U+')) and (lower-case(@head.auth) eq 'smufl')]`)
-/// - `check_defTarget_staff` (context: `mei:staff/@def`)
-/// - `check_defTarget_staff` (context: `mei:staff/@def`)
 /// - `check_glyph.name` (context: `@glyph.name`)
-/// - `check_glyph.num` (context: `mei:*[@glyph.num and (lower-case(@glyph.auth) eq 'smufl' or @glyph.uri eq 'http://www.smufl.org/')]`)*/
+/// - `check_glyph.num` (context: `mei:*[@glyph.num and (lower-case(@glyph.auth) eq 'smufl' or @glyph.uri eq 'http://www.smufl.org/')]`)
+/// - `check_declsTarget` (context: `@decls`)
+/// - `check_declsTarget` (context: `@decls`)
+/// - `check_declsTarget` (context: `@decls`)
+/// - `check_instrTarget` (context: `@instr`)
+/// - `check_instrTarget` (context: `@instr`)
+/// - `check_lsegs` (context: `@lsegs`)
+/// - `checkComponentType` (context: `mei:*[@comptype]`)
+/// - `check_defTarget_layer` (context: `mei:layer/@def`)
+/// - `check_defTarget_layer` (context: `mei:layer/@def`)
+/// - `check_accid_duplication` (context: `@accid.ges`)
+/// - `check_attaccaTarget` (context: `mei:attacca/@target`)
+/// - `check_attaccaTarget` (context: `mei:attacca/@target`)
+/// - `dots_attribute_requires_dur` (context: `mei:*[@dots]`)
+/// - `check_facsTarget` (context: `@facs`)
+/// - `check_facsTarget` (context: `@facs`)
+/// - `check_beams.floating` (context: `mei:fTrem[@beams and @beams.float]`)
+/// - `check_extent` (context: `@extent[matches(normalize-space(.), '^\d+(\.\d+)?$')]`)
+/// - `check_extent` (context: `@extent[matches(., '\d+(\.\d+)?\s')]`)*/
 //!
 //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
 use std::fmt;

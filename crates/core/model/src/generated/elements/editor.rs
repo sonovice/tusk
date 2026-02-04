@@ -8,23 +8,18 @@ pub enum EditorChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
     #[serde(rename = "persName")]
     PersName(Box<crate::generated::elements::PersName>),
     #[serde(rename = "name")]
     Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
 }
 impl EditorChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             EditorChild::Text(_) => {}
-            EditorChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             EditorChild::PersName(elem) => {
                 ctx.enter("persName", index);
                 elem.validate_with_context(ctx);
@@ -32,6 +27,11 @@ impl EditorChild {
             }
             EditorChild::Name(elem) => {
                 ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EditorChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

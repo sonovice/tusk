@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 pub enum ContentsChild {
     #[serde(rename = "contentItem")]
     ContentItem(Box<crate::generated::elements::ContentItem>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl ContentsChild {
     /// Validate this child element.
@@ -23,8 +23,8 @@ impl ContentsChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ContentsChild::P(elem) => {
-                ctx.enter("p", index);
+            ContentsChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +33,8 @@ impl ContentsChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ContentsChild::Head(elem) => {
-                ctx.enter("head", index);
+            ContentsChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

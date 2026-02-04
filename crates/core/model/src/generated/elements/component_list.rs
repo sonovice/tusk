@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 pub enum ComponentListChild {
     #[serde(rename = "item")]
     Item(Box<crate::generated::elements::Item>),
-    #[serde(rename = "manifestation")]
-    Manifestation(Box<crate::generated::elements::Manifestation>),
-    #[serde(rename = "expression")]
-    Expression(Box<crate::generated::elements::Expression>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "work")]
     Work(Box<crate::generated::elements::Work>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "expression")]
+    Expression(Box<crate::generated::elements::Expression>),
+    #[serde(rename = "manifestation")]
+    Manifestation(Box<crate::generated::elements::Manifestation>),
 }
 impl ComponentListChild {
     /// Validate this child element.
@@ -25,13 +25,8 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Manifestation(elem) => {
-                ctx.enter("manifestation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ComponentListChild::Expression(elem) => {
-                ctx.enter("expression", index);
+            ComponentListChild::Work(elem) => {
+                ctx.enter("work", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -40,8 +35,13 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Work(elem) => {
-                ctx.enter("work", index);
+            ComponentListChild::Expression(elem) => {
+                ctx.enter("expression", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ComponentListChild::Manifestation(elem) => {
+                ctx.enter("manifestation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

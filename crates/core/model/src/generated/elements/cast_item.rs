@@ -10,12 +10,12 @@ pub enum CastItemChild {
     Text(String),
     #[serde(rename = "actor")]
     Actor(Box<crate::generated::elements::Actor>),
-    #[serde(rename = "role")]
-    Role(Box<crate::generated::elements::Role>),
     #[serde(rename = "roleDesc")]
     RoleDesc(Box<crate::generated::elements::RoleDesc>),
     #[serde(rename = "perfRes")]
     PerfRes(Box<crate::generated::elements::PerfRes>),
+    #[serde(rename = "role")]
+    Role(Box<crate::generated::elements::Role>),
 }
 impl CastItemChild {
     /// Validate this child element.
@@ -27,11 +27,6 @@ impl CastItemChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CastItemChild::Role(elem) => {
-                ctx.enter("role", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             CastItemChild::RoleDesc(elem) => {
                 ctx.enter("roleDesc", index);
                 elem.validate_with_context(ctx);
@@ -39,6 +34,11 @@ impl CastItemChild {
             }
             CastItemChild::PerfRes(elem) => {
                 ctx.enter("perfRes", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            CastItemChild::Role(elem) => {
+                ctx.enter("role", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,46 +5,36 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VoltaChild {
-    #[serde(rename = "dir")]
-    Dir(Box<crate::generated::elements::Dir>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "syl")]
-    Syl(Box<crate::generated::elements::Syl>),
-    #[serde(rename = "tempo")]
-    Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "space")]
-    Space(Box<crate::generated::elements::Space>),
     #[serde(rename = "dynam")]
     Dynam(Box<crate::generated::elements::Dynam>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "dir")]
+    Dir(Box<crate::generated::elements::Dir>),
+    #[serde(rename = "tempo")]
+    Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "syl")]
+    Syl(Box<crate::generated::elements::Syl>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
     #[serde(rename = "subst")]
     Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "space")]
+    Space(Box<crate::generated::elements::Space>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
 }
 impl VoltaChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            VoltaChild::Dynam(elem) => {
+                ctx.enter("dynam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             VoltaChild::Dir(elem) => {
                 ctx.enter("dir", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VoltaChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VoltaChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VoltaChild::Syl(elem) => {
-                ctx.enter("syl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -53,13 +43,23 @@ impl VoltaChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            VoltaChild::Space(elem) => {
-                ctx.enter("space", index);
+            VoltaChild::Syl(elem) => {
+                ctx.enter("syl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            VoltaChild::Dynam(elem) => {
-                ctx.enter("dynam", index);
+            VoltaChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VoltaChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VoltaChild::Space(elem) => {
+                ctx.enter("space", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +68,8 @@ impl VoltaChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            VoltaChild::Subst(elem) => {
-                ctx.enter("subst", index);
+            VoltaChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,27 +5,32 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiHeadChild {
-    #[serde(rename = "fileDesc")]
-    FileDesc(Box<crate::generated::elements::FileDesc>),
+    #[serde(rename = "encodingDesc")]
+    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
+    #[serde(rename = "workList")]
+    WorkList(Box<crate::generated::elements::WorkList>),
     #[serde(rename = "manifestationList")]
     ManifestationList(Box<crate::generated::elements::ManifestationList>),
     #[serde(rename = "extMeta")]
     ExtMeta(Box<crate::generated::elements::ExtMeta>),
-    #[serde(rename = "encodingDesc")]
-    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
+    #[serde(rename = "fileDesc")]
+    FileDesc(Box<crate::generated::elements::FileDesc>),
     #[serde(rename = "revisionDesc")]
     RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
     #[serde(rename = "altId")]
     AltId(Box<crate::generated::elements::AltId>),
-    #[serde(rename = "workList")]
-    WorkList(Box<crate::generated::elements::WorkList>),
 }
 impl MeiHeadChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiHeadChild::FileDesc(elem) => {
-                ctx.enter("fileDesc", index);
+            MeiHeadChild::EncodingDesc(elem) => {
+                ctx.enter("encodingDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MeiHeadChild::WorkList(elem) => {
+                ctx.enter("workList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,8 +44,8 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::EncodingDesc(elem) => {
-                ctx.enter("encodingDesc", index);
+            MeiHeadChild::FileDesc(elem) => {
+                ctx.enter("fileDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -51,11 +56,6 @@ impl MeiHeadChild {
             }
             MeiHeadChild::AltId(elem) => {
                 ctx.enter("altId", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MeiHeadChild::WorkList(elem) => {
-                ctx.enter("workList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

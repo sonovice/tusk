@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ChordDefChild {
-    #[serde(rename = "chordMember")]
-    ChordMember(Box<crate::generated::elements::ChordMember>),
     #[serde(rename = "barre")]
     Barre(Box<crate::generated::elements::Barre>),
+    #[serde(rename = "chordMember")]
+    ChordMember(Box<crate::generated::elements::ChordMember>),
 }
 impl ChordDefChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ChordDefChild::ChordMember(elem) => {
-                ctx.enter("chordMember", index);
+            ChordDefChild::Barre(elem) => {
+                ctx.enter("barre", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ChordDefChild::Barre(elem) => {
-                ctx.enter("barre", index);
+            ChordDefChild::ChordMember(elem) => {
+                ctx.enter("chordMember", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

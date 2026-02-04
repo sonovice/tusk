@@ -5,35 +5,45 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VerseChild {
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "volta")]
+    Volta(Box<crate::generated::elements::Volta>),
     #[serde(rename = "dir")]
     Dir(Box<crate::generated::elements::Dir>),
     #[serde(rename = "tempo")]
     Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "labelAbbr")]
-    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
     #[serde(rename = "space")]
     Space(Box<crate::generated::elements::Space>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "dynam")]
-    Dynam(Box<crate::generated::elements::Dynam>),
-    #[serde(rename = "volta")]
-    Volta(Box<crate::generated::elements::Volta>),
-    #[serde(rename = "syl")]
-    Syl(Box<crate::generated::elements::Syl>),
     #[serde(rename = "app")]
     App(Box<crate::generated::elements::App>),
     #[serde(rename = "choice")]
     Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "labelAbbr")]
+    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
+    #[serde(rename = "dynam")]
+    Dynam(Box<crate::generated::elements::Dynam>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "syl")]
+    Syl(Box<crate::generated::elements::Syl>),
 }
 impl VerseChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            VerseChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VerseChild::Volta(elem) => {
+                ctx.enter("volta", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             VerseChild::Dir(elem) => {
                 ctx.enter("dir", index);
                 elem.validate_with_context(ctx);
@@ -44,33 +54,8 @@ impl VerseChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            VerseChild::LabelAbbr(elem) => {
-                ctx.enter("labelAbbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             VerseChild::Space(elem) => {
                 ctx.enter("space", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VerseChild::Label(elem) => {
-                ctx.enter("label", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VerseChild::Dynam(elem) => {
-                ctx.enter("dynam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VerseChild::Volta(elem) => {
-                ctx.enter("volta", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            VerseChild::Syl(elem) => {
-                ctx.enter("syl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -84,13 +69,28 @@ impl VerseChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            VerseChild::Subst(elem) => {
-                ctx.enter("subst", index);
+            VerseChild::Label(elem) => {
+                ctx.enter("label", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VerseChild::LabelAbbr(elem) => {
+                ctx.enter("labelAbbr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VerseChild::Dynam(elem) => {
+                ctx.enter("dynam", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             VerseChild::Lb(elem) => {
                 ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            VerseChild::Syl(elem) => {
+                ctx.enter("syl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PatchChild {
-    #[serde(rename = "folium")]
-    Folium(Box<crate::generated::elements::Folium>),
     #[serde(rename = "bifolium")]
     Bifolium(Box<crate::generated::elements::Bifolium>),
+    #[serde(rename = "folium")]
+    Folium(Box<crate::generated::elements::Folium>),
 }
 impl PatchChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PatchChild::Folium(elem) => {
-                ctx.enter("folium", index);
+            PatchChild::Bifolium(elem) => {
+                ctx.enter("bifolium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PatchChild::Bifolium(elem) => {
-                ctx.enter("bifolium", index);
+            PatchChild::Folium(elem) => {
+                ctx.enter("folium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

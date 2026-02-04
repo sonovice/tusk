@@ -8,18 +8,23 @@ pub enum MNumChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
+    #[serde(rename = "stack")]
+    Stack(Box<crate::generated::elements::Stack>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "rend")]
     Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "stack")]
-    Stack(Box<crate::generated::elements::Stack>),
 }
 impl MNumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             MNumChild::Text(_) => {}
+            MNumChild::Stack(elem) => {
+                ctx.enter("stack", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             MNumChild::Lb(elem) => {
                 ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
@@ -27,11 +32,6 @@ impl MNumChild {
             }
             MNumChild::Rend(elem) => {
                 ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MNumChild::Stack(elem) => {
-                ctx.enter("stack", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

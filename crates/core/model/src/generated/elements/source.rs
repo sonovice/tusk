@@ -5,21 +5,26 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceChild {
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
     #[serde(rename = "biblStruct")]
     BiblStruct(Box<crate::generated::elements::BiblStruct>),
     #[serde(rename = "bibl")]
     Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
 }
 impl SourceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            SourceChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SourceChild::BiblStruct(elem) => {
                 ctx.enter("biblStruct", index);
                 elem.validate_with_context(ctx);
@@ -30,18 +35,13 @@ impl SourceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SourceChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SourceChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             SourceChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SourceChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

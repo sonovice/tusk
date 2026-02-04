@@ -8,509 +8,364 @@ pub enum UnclearChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "tupletSpan")]
-    TupletSpan(Box<crate::generated::elements::TupletSpan>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
-    #[serde(rename = "meterSigGrp")]
-    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
-    #[serde(rename = "pad")]
-    Pad(Box<crate::generated::elements::Pad>),
-    #[serde(rename = "halfmRpt")]
-    HalfmRpt(Box<crate::generated::elements::HalfmRpt>),
-    #[serde(rename = "staffDef")]
-    StaffDef(Box<crate::generated::elements::StaffDef>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "castList")]
-    CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "attacca")]
-    Attacca(Box<crate::generated::elements::Attacca>),
-    #[serde(rename = "mordent")]
-    Mordent(Box<crate::generated::elements::Mordent>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
-    #[serde(rename = "stageDir")]
-    StageDir(Box<crate::generated::elements::StageDir>),
-    #[serde(rename = "curve")]
-    Curve(Box<crate::generated::elements::Curve>),
-    #[serde(rename = "multiRest")]
-    MultiRest(Box<crate::generated::elements::MultiRest>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "mRest")]
-    MRest(Box<crate::generated::elements::MRest>),
-    #[serde(rename = "hairpin")]
-    Hairpin(Box<crate::generated::elements::Hairpin>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "metaMark")]
-    MetaMark(Box<crate::generated::elements::MetaMark>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "tempo")]
-    Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "beatRpt")]
-    BeatRpt(Box<crate::generated::elements::BeatRpt>),
-    #[serde(rename = "tie")]
-    Tie(Box<crate::generated::elements::Tie>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "reh")]
-    Reh(Box<crate::generated::elements::Reh>),
-    #[serde(rename = "syllable")]
-    Syllable(Box<crate::generated::elements::Syllable>),
-    #[serde(rename = "beamSpan")]
-    BeamSpan(Box<crate::generated::elements::BeamSpan>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "mRpt")]
-    MRpt(Box<crate::generated::elements::MRpt>),
-    #[serde(rename = "barLine")]
-    BarLine(Box<crate::generated::elements::BarLine>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "custos")]
-    Custos(Box<crate::generated::elements::Custos>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "repeatMark")]
-    RepeatMark(Box<crate::generated::elements::RepeatMark>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "oriscus")]
-    Oriscus(Box<crate::generated::elements::Oriscus>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "ligature")]
-    Ligature(Box<crate::generated::elements::Ligature>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
     #[serde(rename = "graceGrp")]
     GraceGrp(Box<crate::generated::elements::GraceGrp>),
-    #[serde(rename = "breath")]
-    Breath(Box<crate::generated::elements::Breath>),
-    #[serde(rename = "keyAccid")]
-    KeyAccid(Box<crate::generated::elements::KeyAccid>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
-    #[serde(rename = "tabGrp")]
-    TabGrp(Box<crate::generated::elements::TabGrp>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "space")]
-    Space(Box<crate::generated::elements::Space>),
-    #[serde(rename = "sb")]
-    Sb(Box<crate::generated::elements::Sb>),
-    #[serde(rename = "mensur")]
-    Mensur(Box<crate::generated::elements::Mensur>),
-    #[serde(rename = "verse")]
-    Verse(Box<crate::generated::elements::Verse>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
-    #[serde(rename = "bend")]
-    Bend(Box<crate::generated::elements::Bend>),
-    #[serde(rename = "line")]
-    Line(Box<crate::generated::elements::Line>),
-    #[serde(rename = "strophicus")]
-    Strophicus(Box<crate::generated::elements::Strophicus>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "meterSig")]
-    MeterSig(Box<crate::generated::elements::MeterSig>),
-    #[serde(rename = "caesura")]
-    Caesura(Box<crate::generated::elements::Caesura>),
-    #[serde(rename = "tabDurSym")]
-    TabDurSym(Box<crate::generated::elements::TabDurSym>),
-    #[serde(rename = "dir")]
-    Dir(Box<crate::generated::elements::Dir>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "height")]
-    Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "quilisma")]
-    Quilisma(Box<crate::generated::elements::Quilisma>),
-    #[serde(rename = "nc")]
-    Nc(Box<crate::generated::elements::Nc>),
-    #[serde(rename = "keySig")]
-    KeySig(Box<crate::generated::elements::KeySig>),
-    #[serde(rename = "neume")]
-    Neume(Box<crate::generated::elements::Neume>),
-    #[serde(rename = "proport")]
-    Proport(Box<crate::generated::elements::Proport>),
-    #[serde(rename = "fTrem")]
-    FTrem(Box<crate::generated::elements::FTrem>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "volta")]
-    Volta(Box<crate::generated::elements::Volta>),
-    #[serde(rename = "midi")]
-    Midi(Box<crate::generated::elements::Midi>),
-    #[serde(rename = "bTrem")]
-    BTrem(Box<crate::generated::elements::BTrem>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "cpMark")]
-    CpMark(Box<crate::generated::elements::CpMark>),
-    #[serde(rename = "street")]
-    Street(Box<crate::generated::elements::Street>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "turn")]
-    Turn(Box<crate::generated::elements::Turn>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "ornam")]
-    Ornam(Box<crate::generated::elements::Ornam>),
-    #[serde(rename = "ending")]
-    Ending(Box<crate::generated::elements::Ending>),
-    #[serde(rename = "harm")]
-    Harm(Box<crate::generated::elements::Harm>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "scoreDef")]
-    ScoreDef(Box<crate::generated::elements::ScoreDef>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "trill")]
-    Trill(Box<crate::generated::elements::Trill>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
-    #[serde(rename = "phrase")]
-    Phrase(Box<crate::generated::elements::Phrase>),
-    #[serde(rename = "pedal")]
-    Pedal(Box<crate::generated::elements::Pedal>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "arpeg")]
-    Arpeg(Box<crate::generated::elements::Arpeg>),
-    #[serde(rename = "divLine")]
-    DivLine(Box<crate::generated::elements::DivLine>),
-    #[serde(rename = "mRpt2")]
-    MRpt2(Box<crate::generated::elements::MRpt2>),
-    #[serde(rename = "liquescent")]
-    Liquescent(Box<crate::generated::elements::Liquescent>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "fing")]
-    Fing(Box<crate::generated::elements::Fing>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "rest")]
-    Rest(Box<crate::generated::elements::Rest>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "harpPedal")]
-    HarpPedal(Box<crate::generated::elements::HarpPedal>),
-    #[serde(rename = "signifLet")]
-    SignifLet(Box<crate::generated::elements::SignifLet>),
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "syl")]
-    Syl(Box<crate::generated::elements::Syl>),
-    #[serde(rename = "section")]
-    Section(Box<crate::generated::elements::Section>),
-    #[serde(rename = "dynam")]
-    Dynam(Box<crate::generated::elements::Dynam>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
-    #[serde(rename = "staff")]
-    Staff(Box<crate::generated::elements::Staff>),
-    #[serde(rename = "note")]
-    Note(Box<crate::generated::elements::Note>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "layer")]
-    Layer(Box<crate::generated::elements::Layer>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "lv")]
-    Lv(Box<crate::generated::elements::Lv>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "quote")]
-    Quote(Box<crate::generated::elements::Quote>),
-    #[serde(rename = "accid")]
-    Accid(Box<crate::generated::elements::Accid>),
-    #[serde(rename = "dot")]
-    Dot(Box<crate::generated::elements::Dot>),
-    #[serde(rename = "slur")]
-    Slur(Box<crate::generated::elements::Slur>),
-    #[serde(rename = "staffGrp")]
-    StaffGrp(Box<crate::generated::elements::StaffGrp>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "hispanTick")]
-    HispanTick(Box<crate::generated::elements::HispanTick>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "chord")]
-    Chord(Box<crate::generated::elements::Chord>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "octave")]
-    Octave(Box<crate::generated::elements::Octave>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
-    #[serde(rename = "gliss")]
-    Gliss(Box<crate::generated::elements::Gliss>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "beam")]
-    Beam(Box<crate::generated::elements::Beam>),
-    #[serde(rename = "sp")]
-    Sp(Box<crate::generated::elements::Sp>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "multiRpt")]
-    MultiRpt(Box<crate::generated::elements::MultiRpt>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "bracketSpan")]
-    BracketSpan(Box<crate::generated::elements::BracketSpan>),
-    #[serde(rename = "fermata")]
-    Fermata(Box<crate::generated::elements::Fermata>),
-    #[serde(rename = "measure")]
-    Measure(Box<crate::generated::elements::Measure>),
-    #[serde(rename = "clefGrp")]
-    ClefGrp(Box<crate::generated::elements::ClefGrp>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "bloc")]
-    Bloc(Box<crate::generated::elements::Bloc>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "episema")]
-    Episema(Box<crate::generated::elements::Episema>),
-    #[serde(rename = "fingGrp")]
-    FingGrp(Box<crate::generated::elements::FingGrp>),
-    #[serde(rename = "ncGrp")]
-    NcGrp(Box<crate::generated::elements::NcGrp>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "clef")]
-    Clef(Box<crate::generated::elements::Clef>),
-    #[serde(rename = "refrain")]
-    Refrain(Box<crate::generated::elements::Refrain>),
-    #[serde(rename = "tuplet")]
-    Tuplet(Box<crate::generated::elements::Tuplet>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "district")]
-    District(Box<crate::generated::elements::District>),
-    #[serde(rename = "f")]
-    F(Box<crate::generated::elements::F>),
-    #[serde(rename = "anchoredText")]
-    AnchoredText(Box<crate::generated::elements::AnchoredText>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "trill")]
+    Trill(Box<crate::generated::elements::Trill>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "mensur")]
+    Mensur(Box<crate::generated::elements::Mensur>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
     #[serde(rename = "artic")]
     Artic(Box<crate::generated::elements::Artic>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "caesura")]
+    Caesura(Box<crate::generated::elements::Caesura>),
+    #[serde(rename = "neume")]
+    Neume(Box<crate::generated::elements::Neume>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "attacca")]
+    Attacca(Box<crate::generated::elements::Attacca>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "syllable")]
+    Syllable(Box<crate::generated::elements::Syllable>),
+    #[serde(rename = "arpeg")]
+    Arpeg(Box<crate::generated::elements::Arpeg>),
+    #[serde(rename = "custos")]
+    Custos(Box<crate::generated::elements::Custos>),
+    #[serde(rename = "proport")]
+    Proport(Box<crate::generated::elements::Proport>),
+    #[serde(rename = "sb")]
+    Sb(Box<crate::generated::elements::Sb>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "barLine")]
+    BarLine(Box<crate::generated::elements::BarLine>),
+    #[serde(rename = "lv")]
+    Lv(Box<crate::generated::elements::Lv>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "fing")]
+    Fing(Box<crate::generated::elements::Fing>),
+    #[serde(rename = "layer")]
+    Layer(Box<crate::generated::elements::Layer>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "dynam")]
+    Dynam(Box<crate::generated::elements::Dynam>),
+    #[serde(rename = "line")]
+    Line(Box<crate::generated::elements::Line>),
+    #[serde(rename = "stageDir")]
+    StageDir(Box<crate::generated::elements::StageDir>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "gliss")]
+    Gliss(Box<crate::generated::elements::Gliss>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "tie")]
+    Tie(Box<crate::generated::elements::Tie>),
+    #[serde(rename = "ligature")]
+    Ligature(Box<crate::generated::elements::Ligature>),
+    #[serde(rename = "octave")]
+    Octave(Box<crate::generated::elements::Octave>),
+    #[serde(rename = "mRpt")]
+    MRpt(Box<crate::generated::elements::MRpt>),
+    #[serde(rename = "quote")]
+    Quote(Box<crate::generated::elements::Quote>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "dot")]
+    Dot(Box<crate::generated::elements::Dot>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "anchoredText")]
+    AnchoredText(Box<crate::generated::elements::AnchoredText>),
+    #[serde(rename = "signifLet")]
+    SignifLet(Box<crate::generated::elements::SignifLet>),
+    #[serde(rename = "bend")]
+    Bend(Box<crate::generated::elements::Bend>),
+    #[serde(rename = "repeatMark")]
+    RepeatMark(Box<crate::generated::elements::RepeatMark>),
+    #[serde(rename = "meterSig")]
+    MeterSig(Box<crate::generated::elements::MeterSig>),
+    #[serde(rename = "multiRpt")]
+    MultiRpt(Box<crate::generated::elements::MultiRpt>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
+    #[serde(rename = "metaMark")]
+    MetaMark(Box<crate::generated::elements::MetaMark>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "sp")]
+    Sp(Box<crate::generated::elements::Sp>),
+    #[serde(rename = "hispanTick")]
+    HispanTick(Box<crate::generated::elements::HispanTick>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "ncGrp")]
+    NcGrp(Box<crate::generated::elements::NcGrp>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "beamSpan")]
+    BeamSpan(Box<crate::generated::elements::BeamSpan>),
+    #[serde(rename = "pad")]
+    Pad(Box<crate::generated::elements::Pad>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "fingGrp")]
+    FingGrp(Box<crate::generated::elements::FingGrp>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "cpMark")]
+    CpMark(Box<crate::generated::elements::CpMark>),
+    #[serde(rename = "reh")]
+    Reh(Box<crate::generated::elements::Reh>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "slur")]
+    Slur(Box<crate::generated::elements::Slur>),
+    #[serde(rename = "f")]
+    F(Box<crate::generated::elements::F>),
+    #[serde(rename = "mRpt2")]
+    MRpt2(Box<crate::generated::elements::MRpt2>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "midi")]
+    Midi(Box<crate::generated::elements::Midi>),
+    #[serde(rename = "rest")]
+    Rest(Box<crate::generated::elements::Rest>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "clef")]
+    Clef(Box<crate::generated::elements::Clef>),
+    #[serde(rename = "dir")]
+    Dir(Box<crate::generated::elements::Dir>),
+    #[serde(rename = "turn")]
+    Turn(Box<crate::generated::elements::Turn>),
+    #[serde(rename = "staffDef")]
+    StaffDef(Box<crate::generated::elements::StaffDef>),
     #[serde(rename = "mSpace")]
     MSpace(Box<crate::generated::elements::MSpace>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "beatRpt")]
+    BeatRpt(Box<crate::generated::elements::BeatRpt>),
+    #[serde(rename = "keySig")]
+    KeySig(Box<crate::generated::elements::KeySig>),
+    #[serde(rename = "pedal")]
+    Pedal(Box<crate::generated::elements::Pedal>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "verse")]
+    Verse(Box<crate::generated::elements::Verse>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "accid")]
+    Accid(Box<crate::generated::elements::Accid>),
+    #[serde(rename = "space")]
+    Space(Box<crate::generated::elements::Space>),
     #[serde(rename = "region")]
     Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "district")]
+    District(Box<crate::generated::elements::District>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "phrase")]
+    Phrase(Box<crate::generated::elements::Phrase>),
+    #[serde(rename = "volta")]
+    Volta(Box<crate::generated::elements::Volta>),
+    #[serde(rename = "bloc")]
+    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "height")]
+    Height(Box<crate::generated::elements::Height>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "fTrem")]
+    FTrem(Box<crate::generated::elements::FTrem>),
+    #[serde(rename = "tabDurSym")]
+    TabDurSym(Box<crate::generated::elements::TabDurSym>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "staffGrp")]
+    StaffGrp(Box<crate::generated::elements::StaffGrp>),
+    #[serde(rename = "nc")]
+    Nc(Box<crate::generated::elements::Nc>),
+    #[serde(rename = "bTrem")]
+    BTrem(Box<crate::generated::elements::BTrem>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "mRest")]
+    MRest(Box<crate::generated::elements::MRest>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "scoreDef")]
+    ScoreDef(Box<crate::generated::elements::ScoreDef>),
+    #[serde(rename = "divLine")]
+    DivLine(Box<crate::generated::elements::DivLine>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "hairpin")]
+    Hairpin(Box<crate::generated::elements::Hairpin>),
+    #[serde(rename = "ending")]
+    Ending(Box<crate::generated::elements::Ending>),
+    #[serde(rename = "street")]
+    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "liquescent")]
+    Liquescent(Box<crate::generated::elements::Liquescent>),
+    #[serde(rename = "section")]
+    Section(Box<crate::generated::elements::Section>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "oriscus")]
+    Oriscus(Box<crate::generated::elements::Oriscus>),
+    #[serde(rename = "quilisma")]
+    Quilisma(Box<crate::generated::elements::Quilisma>),
+    #[serde(rename = "ornam")]
+    Ornam(Box<crate::generated::elements::Ornam>),
+    #[serde(rename = "breath")]
+    Breath(Box<crate::generated::elements::Breath>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "tuplet")]
+    Tuplet(Box<crate::generated::elements::Tuplet>),
+    #[serde(rename = "chord")]
+    Chord(Box<crate::generated::elements::Chord>),
+    #[serde(rename = "halfmRpt")]
+    HalfmRpt(Box<crate::generated::elements::HalfmRpt>),
+    #[serde(rename = "harpPedal")]
+    HarpPedal(Box<crate::generated::elements::HarpPedal>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
+    #[serde(rename = "harm")]
+    Harm(Box<crate::generated::elements::Harm>),
+    #[serde(rename = "mordent")]
+    Mordent(Box<crate::generated::elements::Mordent>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "refrain")]
+    Refrain(Box<crate::generated::elements::Refrain>),
+    #[serde(rename = "beam")]
+    Beam(Box<crate::generated::elements::Beam>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "note")]
+    Note(Box<crate::generated::elements::Note>),
+    #[serde(rename = "tabGrp")]
+    TabGrp(Box<crate::generated::elements::TabGrp>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "measure")]
+    Measure(Box<crate::generated::elements::Measure>),
+    #[serde(rename = "tupletSpan")]
+    TupletSpan(Box<crate::generated::elements::TupletSpan>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "episema")]
+    Episema(Box<crate::generated::elements::Episema>),
+    #[serde(rename = "strophicus")]
+    Strophicus(Box<crate::generated::elements::Strophicus>),
+    #[serde(rename = "meterSigGrp")]
+    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
+    #[serde(rename = "staff")]
+    Staff(Box<crate::generated::elements::Staff>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "clefGrp")]
+    ClefGrp(Box<crate::generated::elements::ClefGrp>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "bracketSpan")]
+    BracketSpan(Box<crate::generated::elements::BracketSpan>),
+    #[serde(rename = "castList")]
+    CastList(Box<crate::generated::elements::CastList>),
+    #[serde(rename = "curve")]
+    Curve(Box<crate::generated::elements::Curve>),
+    #[serde(rename = "fermata")]
+    Fermata(Box<crate::generated::elements::Fermata>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "tempo")]
+    Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "multiRest")]
+    MultiRest(Box<crate::generated::elements::MultiRest>),
+    #[serde(rename = "keyAccid")]
+    KeyAccid(Box<crate::generated::elements::KeyAccid>),
+    #[serde(rename = "syl")]
+    Syl(Box<crate::generated::elements::Syl>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
 }
 impl UnclearChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             UnclearChild::Text(_) => {}
-            UnclearChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::TupletSpan(elem) => {
-                ctx.enter("tupletSpan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Lg(elem) => {
-                ctx.enter("lg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MeterSigGrp(elem) => {
-                ctx.enter("meterSigGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Pad(elem) => {
-                ctx.enter("pad", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::HalfmRpt(elem) => {
-                ctx.enter("halfmRpt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::StaffDef(elem) => {
-                ctx.enter("staffDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Attacca(elem) => {
-                ctx.enter("attacca", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Mordent(elem) => {
-                ctx.enter("mordent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::StageDir(elem) => {
-                ctx.enter("stageDir", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Curve(elem) => {
-                ctx.enter("curve", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MultiRest(elem) => {
-                ctx.enter("multiRest", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MRest(elem) => {
-                ctx.enter("mRest", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Hairpin(elem) => {
-                ctx.enter("hairpin", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MetaMark(elem) => {
-                ctx.enter("metaMark", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Tempo(elem) => {
-                ctx.enter("tempo", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BeatRpt(elem) => {
-                ctx.enter("beatRpt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Tie(elem) => {
-                ctx.enter("tie", index);
+            UnclearChild::GraceGrp(elem) => {
+                ctx.enter("graceGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -519,458 +374,8 @@ impl UnclearChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Reh(elem) => {
-                ctx.enter("reh", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Syllable(elem) => {
-                ctx.enter("syllable", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BeamSpan(elem) => {
-                ctx.enter("beamSpan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             UnclearChild::LocusGrp(elem) => {
                 ctx.enter("locusGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MRpt(elem) => {
-                ctx.enter("mRpt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BarLine(elem) => {
-                ctx.enter("barLine", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Custos(elem) => {
-                ctx.enter("custos", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::RepeatMark(elem) => {
-                ctx.enter("repeatMark", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Oriscus(elem) => {
-                ctx.enter("oriscus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Ligature(elem) => {
-                ctx.enter("ligature", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::GraceGrp(elem) => {
-                ctx.enter("graceGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Breath(elem) => {
-                ctx.enter("breath", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::KeyAccid(elem) => {
-                ctx.enter("keyAccid", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Table(elem) => {
-                ctx.enter("table", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::TabGrp(elem) => {
-                ctx.enter("tabGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Space(elem) => {
-                ctx.enter("space", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Sb(elem) => {
-                ctx.enter("sb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Mensur(elem) => {
-                ctx.enter("mensur", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Verse(elem) => {
-                ctx.enter("verse", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Bend(elem) => {
-                ctx.enter("bend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Line(elem) => {
-                ctx.enter("line", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Strophicus(elem) => {
-                ctx.enter("strophicus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MeterSig(elem) => {
-                ctx.enter("meterSig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Caesura(elem) => {
-                ctx.enter("caesura", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::TabDurSym(elem) => {
-                ctx.enter("tabDurSym", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Dir(elem) => {
-                ctx.enter("dir", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Height(elem) => {
-                ctx.enter("height", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Quilisma(elem) => {
-                ctx.enter("quilisma", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Nc(elem) => {
-                ctx.enter("nc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::KeySig(elem) => {
-                ctx.enter("keySig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Neume(elem) => {
-                ctx.enter("neume", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Proport(elem) => {
-                ctx.enter("proport", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::FTrem(elem) => {
-                ctx.enter("fTrem", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Expan(elem) => {
-                ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::PostBox(elem) => {
-                ctx.enter("postBox", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Volta(elem) => {
-                ctx.enter("volta", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Midi(elem) => {
-                ctx.enter("midi", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BTrem(elem) => {
-                ctx.enter("bTrem", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::CpMark(elem) => {
-                ctx.enter("cpMark", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Street(elem) => {
-                ctx.enter("street", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Turn(elem) => {
-                ctx.enter("turn", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Ornam(elem) => {
-                ctx.enter("ornam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Ending(elem) => {
-                ctx.enter("ending", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Harm(elem) => {
-                ctx.enter("harm", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::ScoreDef(elem) => {
-                ctx.enter("scoreDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Dim(elem) => {
-                ctx.enter("dim", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Trill(elem) => {
-                ctx.enter("trill", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Phrase(elem) => {
-                ctx.enter("phrase", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Pedal(elem) => {
-                ctx.enter("pedal", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Arpeg(elem) => {
-                ctx.enter("arpeg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::DivLine(elem) => {
-                ctx.enter("divLine", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MRpt2(elem) => {
-                ctx.enter("mRpt2", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Liquescent(elem) => {
-                ctx.enter("liquescent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::List(elem) => {
-                ctx.enter("list", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Fing(elem) => {
-                ctx.enter("fing", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Rest(elem) => {
-                ctx.enter("rest", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::HarpPedal(elem) => {
-                ctx.enter("harpPedal", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::SignifLet(elem) => {
-                ctx.enter("signifLet", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Div(elem) => {
-                ctx.enter("div", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Syl(elem) => {
-                ctx.enter("syl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Section(elem) => {
-                ctx.enter("section", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Dynam(elem) => {
-                ctx.enter("dynam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::P(elem) => {
-                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -979,248 +384,28 @@ impl UnclearChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Staff(elem) => {
-                ctx.enter("staff", index);
+            UnclearChild::Rend(elem) => {
+                ctx.enter("rend", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Note(elem) => {
-                ctx.enter("note", index);
+            UnclearChild::Trill(elem) => {
+                ctx.enter("trill", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Seg(elem) => {
-                ctx.enter("seg", index);
+            UnclearChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Layer(elem) => {
-                ctx.enter("layer", index);
+            UnclearChild::Mensur(elem) => {
+                ctx.enter("mensur", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            UnclearChild::Relation(elem) => {
-                ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Lv(elem) => {
-                ctx.enter("lv", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Quote(elem) => {
-                ctx.enter("quote", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Accid(elem) => {
-                ctx.enter("accid", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Dot(elem) => {
-                ctx.enter("dot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Slur(elem) => {
-                ctx.enter("slur", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::StaffGrp(elem) => {
-                ctx.enter("staffGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Abbr(elem) => {
-                ctx.enter("abbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::HispanTick(elem) => {
-                ctx.enter("hispanTick", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Chord(elem) => {
-                ctx.enter("chord", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Pb(elem) => {
-                ctx.enter("pb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Octave(elem) => {
-                ctx.enter("octave", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Gliss(elem) => {
-                ctx.enter("gliss", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Term(elem) => {
-                ctx.enter("term", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Beam(elem) => {
-                ctx.enter("beam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Sp(elem) => {
-                ctx.enter("sp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::MultiRpt(elem) => {
-                ctx.enter("multiRpt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BracketSpan(elem) => {
-                ctx.enter("bracketSpan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Fermata(elem) => {
-                ctx.enter("fermata", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Measure(elem) => {
-                ctx.enter("measure", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::ClefGrp(elem) => {
-                ctx.enter("clefGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::EventList(elem) => {
-                ctx.enter("eventList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Bloc(elem) => {
-                ctx.enter("bloc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Episema(elem) => {
-                ctx.enter("episema", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::FingGrp(elem) => {
-                ctx.enter("fingGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::NcGrp(elem) => {
-                ctx.enter("ncGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Clef(elem) => {
-                ctx.enter("clef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Refrain(elem) => {
-                ctx.enter("refrain", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Tuplet(elem) => {
-                ctx.enter("tuplet", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::District(elem) => {
-                ctx.enter("district", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::F(elem) => {
-                ctx.enter("f", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            UnclearChild::AnchoredText(elem) => {
-                ctx.enter("anchoredText", index);
+            UnclearChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -1229,13 +414,828 @@ impl UnclearChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            UnclearChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Caesura(elem) => {
+                ctx.enter("caesura", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Neume(elem) => {
+                ctx.enter("neume", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Attacca(elem) => {
+                ctx.enter("attacca", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Syllable(elem) => {
+                ctx.enter("syllable", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Arpeg(elem) => {
+                ctx.enter("arpeg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Custos(elem) => {
+                ctx.enter("custos", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Proport(elem) => {
+                ctx.enter("proport", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Sb(elem) => {
+                ctx.enter("sb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BarLine(elem) => {
+                ctx.enter("barLine", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Lv(elem) => {
+                ctx.enter("lv", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Fing(elem) => {
+                ctx.enter("fing", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Layer(elem) => {
+                ctx.enter("layer", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Dynam(elem) => {
+                ctx.enter("dynam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Line(elem) => {
+                ctx.enter("line", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::StageDir(elem) => {
+                ctx.enter("stageDir", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Term(elem) => {
+                ctx.enter("term", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Table(elem) => {
+                ctx.enter("table", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Gliss(elem) => {
+                ctx.enter("gliss", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Tie(elem) => {
+                ctx.enter("tie", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Ligature(elem) => {
+                ctx.enter("ligature", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Octave(elem) => {
+                ctx.enter("octave", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MRpt(elem) => {
+                ctx.enter("mRpt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Quote(elem) => {
+                ctx.enter("quote", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Dot(elem) => {
+                ctx.enter("dot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::PostBox(elem) => {
+                ctx.enter("postBox", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::AnchoredText(elem) => {
+                ctx.enter("anchoredText", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::SignifLet(elem) => {
+                ctx.enter("signifLet", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Bend(elem) => {
+                ctx.enter("bend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::RepeatMark(elem) => {
+                ctx.enter("repeatMark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MeterSig(elem) => {
+                ctx.enter("meterSig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MultiRpt(elem) => {
+                ctx.enter("multiRpt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Div(elem) => {
+                ctx.enter("div", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MetaMark(elem) => {
+                ctx.enter("metaMark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Sp(elem) => {
+                ctx.enter("sp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::HispanTick(elem) => {
+                ctx.enter("hispanTick", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::NcGrp(elem) => {
+                ctx.enter("ncGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BeamSpan(elem) => {
+                ctx.enter("beamSpan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Pad(elem) => {
+                ctx.enter("pad", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::FingGrp(elem) => {
+                ctx.enter("fingGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Seg(elem) => {
+                ctx.enter("seg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::CpMark(elem) => {
+                ctx.enter("cpMark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Reh(elem) => {
+                ctx.enter("reh", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Slur(elem) => {
+                ctx.enter("slur", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::F(elem) => {
+                ctx.enter("f", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MRpt2(elem) => {
+                ctx.enter("mRpt2", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::PersName(elem) => {
+                ctx.enter("persName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Midi(elem) => {
+                ctx.enter("midi", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Rest(elem) => {
+                ctx.enter("rest", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::List(elem) => {
+                ctx.enter("list", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Clef(elem) => {
+                ctx.enter("clef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Dir(elem) => {
+                ctx.enter("dir", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Turn(elem) => {
+                ctx.enter("turn", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::StaffDef(elem) => {
+                ctx.enter("staffDef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             UnclearChild::MSpace(elem) => {
                 ctx.enter("mSpace", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            UnclearChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BeatRpt(elem) => {
+                ctx.enter("beatRpt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::KeySig(elem) => {
+                ctx.enter("keySig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Pedal(elem) => {
+                ctx.enter("pedal", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Verse(elem) => {
+                ctx.enter("verse", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Accid(elem) => {
+                ctx.enter("accid", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Space(elem) => {
+                ctx.enter("space", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             UnclearChild::Region(elem) => {
                 ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::District(elem) => {
+                ctx.enter("district", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Phrase(elem) => {
+                ctx.enter("phrase", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Volta(elem) => {
+                ctx.enter("volta", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Bloc(elem) => {
+                ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Height(elem) => {
+                ctx.enter("height", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Cb(elem) => {
+                ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::FTrem(elem) => {
+                ctx.enter("fTrem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::TabDurSym(elem) => {
+                ctx.enter("tabDurSym", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Pb(elem) => {
+                ctx.enter("pb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::StaffGrp(elem) => {
+                ctx.enter("staffGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Nc(elem) => {
+                ctx.enter("nc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BTrem(elem) => {
+                ctx.enter("bTrem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MRest(elem) => {
+                ctx.enter("mRest", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::ScoreDef(elem) => {
+                ctx.enter("scoreDef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::DivLine(elem) => {
+                ctx.enter("divLine", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Hairpin(elem) => {
+                ctx.enter("hairpin", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Ending(elem) => {
+                ctx.enter("ending", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Street(elem) => {
+                ctx.enter("street", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Liquescent(elem) => {
+                ctx.enter("liquescent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Section(elem) => {
+                ctx.enter("section", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Oriscus(elem) => {
+                ctx.enter("oriscus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Quilisma(elem) => {
+                ctx.enter("quilisma", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Ornam(elem) => {
+                ctx.enter("ornam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Breath(elem) => {
+                ctx.enter("breath", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Tuplet(elem) => {
+                ctx.enter("tuplet", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Chord(elem) => {
+                ctx.enter("chord", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::HalfmRpt(elem) => {
+                ctx.enter("halfmRpt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::HarpPedal(elem) => {
+                ctx.enter("harpPedal", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Expan(elem) => {
+                ctx.enter("expan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Harm(elem) => {
+                ctx.enter("harm", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Mordent(elem) => {
+                ctx.enter("mordent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Lg(elem) => {
+                ctx.enter("lg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Refrain(elem) => {
+                ctx.enter("refrain", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Beam(elem) => {
+                ctx.enter("beam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Note(elem) => {
+                ctx.enter("note", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::TabGrp(elem) => {
+                ctx.enter("tabGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Measure(elem) => {
+                ctx.enter("measure", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::TupletSpan(elem) => {
+                ctx.enter("tupletSpan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Episema(elem) => {
+                ctx.enter("episema", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Strophicus(elem) => {
+                ctx.enter("strophicus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MeterSigGrp(elem) => {
+                ctx.enter("meterSigGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Staff(elem) => {
+                ctx.enter("staff", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Abbr(elem) => {
+                ctx.enter("abbr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::ClefGrp(elem) => {
+                ctx.enter("clefGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::BracketSpan(elem) => {
+                ctx.enter("bracketSpan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::CastList(elem) => {
+                ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Curve(elem) => {
+                ctx.enter("curve", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Fermata(elem) => {
+                ctx.enter("fermata", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Tempo(elem) => {
+                ctx.enter("tempo", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::MultiRest(elem) => {
+                ctx.enter("multiRest", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::KeyAccid(elem) => {
+                ctx.enter("keyAccid", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Syl(elem) => {
+                ctx.enter("syl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            UnclearChild::Corr(elem) => {
+                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

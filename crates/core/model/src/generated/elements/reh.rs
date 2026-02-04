@@ -10,10 +10,10 @@ pub enum RehChild {
     Text(String),
     #[serde(rename = "rend")]
     Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
 }
 impl RehChild {
     /// Validate this child element.
@@ -25,13 +25,13 @@ impl RehChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RehChild::Lb(elem) => {
-                ctx.enter("lb", index);
+            RehChild::Stack(elem) => {
+                ctx.enter("stack", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RehChild::Stack(elem) => {
-                ctx.enter("stack", index);
+            RehChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

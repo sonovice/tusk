@@ -5,32 +5,27 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MusicChild {
-    #[serde(rename = "genDesc")]
-    GenDesc(Box<crate::generated::elements::GenDesc>),
-    #[serde(rename = "front")]
-    Front(Box<crate::generated::elements::Front>),
+    #[serde(rename = "body")]
+    Body(Box<crate::generated::elements::Body>),
     #[serde(rename = "back")]
     Back(Box<crate::generated::elements::Back>),
     #[serde(rename = "group")]
     Group(Box<crate::generated::elements::Group>),
-    #[serde(rename = "body")]
-    Body(Box<crate::generated::elements::Body>),
-    #[serde(rename = "performance")]
-    Performance(Box<crate::generated::elements::Performance>),
+    #[serde(rename = "genDesc")]
+    GenDesc(Box<crate::generated::elements::GenDesc>),
     #[serde(rename = "facsimile")]
     Facsimile(Box<crate::generated::elements::Facsimile>),
+    #[serde(rename = "performance")]
+    Performance(Box<crate::generated::elements::Performance>),
+    #[serde(rename = "front")]
+    Front(Box<crate::generated::elements::Front>),
 }
 impl MusicChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MusicChild::GenDesc(elem) => {
-                ctx.enter("genDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MusicChild::Front(elem) => {
-                ctx.enter("front", index);
+            MusicChild::Body(elem) => {
+                ctx.enter("body", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,8 +39,13 @@ impl MusicChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MusicChild::Body(elem) => {
-                ctx.enter("body", index);
+            MusicChild::GenDesc(elem) => {
+                ctx.enter("genDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MusicChild::Facsimile(elem) => {
+                ctx.enter("facsimile", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,8 +54,8 @@ impl MusicChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MusicChild::Facsimile(elem) => {
-                ctx.enter("facsimile", index);
+            MusicChild::Front(elem) => {
+                ctx.enter("front", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

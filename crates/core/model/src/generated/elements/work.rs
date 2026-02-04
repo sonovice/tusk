@@ -5,58 +5,58 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WorkChild {
-    #[serde(rename = "key")]
-    Key(Box<crate::generated::elements::Key>),
-    #[serde(rename = "audience")]
-    Audience(Box<crate::generated::elements::Audience>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "creation")]
-    Creation(Box<crate::generated::elements::Creation>),
-    #[serde(rename = "meter")]
-    Meter(Box<crate::generated::elements::Meter>),
-    #[serde(rename = "notesStmt")]
-    NotesStmt(Box<crate::generated::elements::NotesStmt>),
-    #[serde(rename = "context")]
-    Context(Box<crate::generated::elements::Context>),
-    #[serde(rename = "langUsage")]
-    LangUsage(Box<crate::generated::elements::LangUsage>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "mensuration")]
-    Mensuration(Box<crate::generated::elements::Mensuration>),
-    #[serde(rename = "dedication")]
-    Dedication(Box<crate::generated::elements::Dedication>),
+    #[serde(rename = "perfDuration")]
+    PerfDuration(Box<crate::generated::elements::PerfDuration>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "respStmt")]
     RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "tempo")]
-    Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "contents")]
-    Contents(Box<crate::generated::elements::Contents>),
-    #[serde(rename = "classification")]
-    Classification(Box<crate::generated::elements::Classification>),
     #[serde(rename = "incip")]
     Incip(Box<crate::generated::elements::Incip>),
+    #[serde(rename = "tempo")]
+    Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "creation")]
+    Creation(Box<crate::generated::elements::Creation>),
+    #[serde(rename = "langUsage")]
+    LangUsage(Box<crate::generated::elements::LangUsage>),
+    #[serde(rename = "audience")]
+    Audience(Box<crate::generated::elements::Audience>),
     #[serde(rename = "history")]
     History(Box<crate::generated::elements::History>),
-    #[serde(rename = "perfMedium")]
-    PerfMedium(Box<crate::generated::elements::PerfMedium>),
+    #[serde(rename = "mensuration")]
+    Mensuration(Box<crate::generated::elements::Mensuration>),
+    #[serde(rename = "contents")]
+    Contents(Box<crate::generated::elements::Contents>),
+    #[serde(rename = "key")]
+    Key(Box<crate::generated::elements::Key>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
     #[serde(rename = "otherChar")]
     OtherChar(Box<crate::generated::elements::OtherChar>),
-    #[serde(rename = "perfDuration")]
-    PerfDuration(Box<crate::generated::elements::PerfDuration>),
+    #[serde(rename = "perfMedium")]
+    PerfMedium(Box<crate::generated::elements::PerfMedium>),
+    #[serde(rename = "context")]
+    Context(Box<crate::generated::elements::Context>),
+    #[serde(rename = "notesStmt")]
+    NotesStmt(Box<crate::generated::elements::NotesStmt>),
     #[serde(rename = "expressionList")]
     ExpressionList(Box<crate::generated::elements::ExpressionList>),
     #[serde(rename = "extMeta")]
     ExtMeta(Box<crate::generated::elements::ExtMeta>),
     #[serde(rename = "componentList")]
     ComponentList(Box<crate::generated::elements::ComponentList>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "meter")]
+    Meter(Box<crate::generated::elements::Meter>),
+    #[serde(rename = "classification")]
+    Classification(Box<crate::generated::elements::Classification>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "dedication")]
+    Dedication(Box<crate::generated::elements::Dedication>),
     /// Creator element (for deprecated composer/lyricist/arranger/author migration from MEI 5.x).
     /// Not in MEI 6.0 ODD for Work, but needed for backwards compatibility.
     #[serde(rename = "creator")]
@@ -66,63 +66,8 @@ impl WorkChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            WorkChild::Key(elem) => {
-                ctx.enter("key", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Audience(elem) => {
-                ctx.enter("audience", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Creation(elem) => {
-                ctx.enter("creation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Meter(elem) => {
-                ctx.enter("meter", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::NotesStmt(elem) => {
-                ctx.enter("notesStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Context(elem) => {
-                ctx.enter("context", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::LangUsage(elem) => {
-                ctx.enter("langUsage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Mensuration(elem) => {
-                ctx.enter("mensuration", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            WorkChild::Dedication(elem) => {
-                ctx.enter("dedication", index);
+            WorkChild::PerfDuration(elem) => {
+                ctx.enter("perfDuration", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -136,23 +81,28 @@ impl WorkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            WorkChild::Incip(elem) => {
+                ctx.enter("incip", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             WorkChild::Tempo(elem) => {
                 ctx.enter("tempo", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WorkChild::Contents(elem) => {
-                ctx.enter("contents", index);
+            WorkChild::Creation(elem) => {
+                ctx.enter("creation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WorkChild::Classification(elem) => {
-                ctx.enter("classification", index);
+            WorkChild::LangUsage(elem) => {
+                ctx.enter("langUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WorkChild::Incip(elem) => {
-                ctx.enter("incip", index);
+            WorkChild::Audience(elem) => {
+                ctx.enter("audience", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -161,8 +111,23 @@ impl WorkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WorkChild::PerfMedium(elem) => {
-                ctx.enter("perfMedium", index);
+            WorkChild::Mensuration(elem) => {
+                ctx.enter("mensuration", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Contents(elem) => {
+                ctx.enter("contents", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Key(elem) => {
+                ctx.enter("key", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -171,8 +136,18 @@ impl WorkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WorkChild::PerfDuration(elem) => {
-                ctx.enter("perfDuration", index);
+            WorkChild::PerfMedium(elem) => {
+                ctx.enter("perfMedium", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Context(elem) => {
+                ctx.enter("context", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::NotesStmt(elem) => {
+                ctx.enter("notesStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -191,8 +166,33 @@ impl WorkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            WorkChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Meter(elem) => {
+                ctx.enter("meter", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Classification(elem) => {
+                ctx.enter("classification", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             WorkChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Dedication(elem) => {
+                ctx.enter("dedication", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

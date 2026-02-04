@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RelationListChild {
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
     #[serde(rename = "relation")]
     Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
 }
@@ -16,13 +16,13 @@ impl RelationListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RelationListChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
+            RelationListChild::Relation(elem) => {
+                ctx.enter("relation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RelationListChild::Relation(elem) => {
-                ctx.enter("relation", index);
+            RelationListChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

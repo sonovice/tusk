@@ -8,20 +8,20 @@ pub enum CreatorChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
 }
 impl CreatorChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             CreatorChild::Text(_) => {}
-            CreatorChild::Name(elem) => {
-                ctx.enter("name", index);
+            CreatorChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -30,8 +30,8 @@ impl CreatorChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CreatorChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            CreatorChild::Name(elem) => {
+                ctx.enter("name", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

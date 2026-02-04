@@ -5,21 +5,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PhysLocChild {
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "history")]
     History(Box<crate::generated::elements::History>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
 }
 impl PhysLocChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PhysLocChild::Repository(elem) => {
-                ctx.enter("repository", index);
+            PhysLocChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +33,8 @@ impl PhysLocChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysLocChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            PhysLocChild::Repository(elem) => {
+                ctx.enter("repository", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

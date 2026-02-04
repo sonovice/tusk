@@ -5,53 +5,58 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IncipChild {
-    #[serde(rename = "graphic")]
-    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "meter")]
-    Meter(Box<crate::generated::elements::Meter>),
-    #[serde(rename = "mensuration")]
-    Mensuration(Box<crate::generated::elements::Mensuration>),
-    #[serde(rename = "clefGrp")]
-    ClefGrp(Box<crate::generated::elements::ClefGrp>),
+    #[serde(rename = "key")]
+    Key(Box<crate::generated::elements::Key>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "incipCode")]
     IncipCode(Box<crate::generated::elements::IncipCode>),
+    #[serde(rename = "mensuration")]
+    Mensuration(Box<crate::generated::elements::Mensuration>),
+    #[serde(rename = "role")]
+    Role(Box<crate::generated::elements::Role>),
+    #[serde(rename = "clefGrp")]
+    ClefGrp(Box<crate::generated::elements::ClefGrp>),
+    #[serde(rename = "perfRes")]
+    PerfRes(Box<crate::generated::elements::PerfRes>),
+    #[serde(rename = "meter")]
+    Meter(Box<crate::generated::elements::Meter>),
     #[serde(rename = "clef")]
     Clef(Box<crate::generated::elements::Clef>),
     #[serde(rename = "tempo")]
     Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "perfRes")]
-    PerfRes(Box<crate::generated::elements::PerfRes>),
     #[serde(rename = "perfResList")]
     PerfResList(Box<crate::generated::elements::PerfResList>),
-    #[serde(rename = "role")]
-    Role(Box<crate::generated::elements::Role>),
-    #[serde(rename = "score")]
-    Score(Box<crate::generated::elements::Score>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "graphic")]
+    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "incipText")]
     IncipText(Box<crate::generated::elements::IncipText>),
-    #[serde(rename = "key")]
-    Key(Box<crate::generated::elements::Key>),
+    #[serde(rename = "score")]
+    Score(Box<crate::generated::elements::Score>),
 }
 impl IncipChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            IncipChild::Graphic(elem) => {
-                ctx.enter("graphic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             IncipChild::Head(elem) => {
                 ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipChild::Meter(elem) => {
-                ctx.enter("meter", index);
+            IncipChild::Key(elem) => {
+                ctx.enter("key", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            IncipChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            IncipChild::IncipCode(elem) => {
+                ctx.enter("incipCode", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -60,13 +65,23 @@ impl IncipChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            IncipChild::Role(elem) => {
+                ctx.enter("role", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             IncipChild::ClefGrp(elem) => {
                 ctx.enter("clefGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipChild::IncipCode(elem) => {
-                ctx.enter("incipCode", index);
+            IncipChild::PerfRes(elem) => {
+                ctx.enter("perfRes", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            IncipChild::Meter(elem) => {
+                ctx.enter("meter", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -80,28 +95,13 @@ impl IncipChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipChild::PerfRes(elem) => {
-                ctx.enter("perfRes", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             IncipChild::PerfResList(elem) => {
                 ctx.enter("perfResList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipChild::Role(elem) => {
-                ctx.enter("role", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            IncipChild::Score(elem) => {
-                ctx.enter("score", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            IncipChild::Annot(elem) => {
-                ctx.enter("annot", index);
+            IncipChild::Graphic(elem) => {
+                ctx.enter("graphic", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -110,8 +110,8 @@ impl IncipChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipChild::Key(elem) => {
-                ctx.enter("key", index);
+            IncipChild::Score(elem) => {
+                ctx.enter("score", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -7,24 +7,24 @@ use serde::{Deserialize, Serialize};
 pub enum PubStmtChild {
     #[serde(rename = "publisher")]
     Publisher(Box<crate::generated::elements::Publisher>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "availability")]
-    Availability(Box<crate::generated::elements::Availability>),
     #[serde(rename = "unpub")]
     Unpub(Box<crate::generated::elements::Unpub>),
-    #[serde(rename = "distributor")]
-    Distributor(Box<crate::generated::elements::Distributor>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "pubPlace")]
     PubPlace(Box<crate::generated::elements::PubPlace>),
+    #[serde(rename = "distributor")]
+    Distributor(Box<crate::generated::elements::Distributor>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "availability")]
+    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
 }
 impl PubStmtChild {
     /// Validate this child element.
@@ -35,38 +35,13 @@ impl PubStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PubStmtChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PubStmtChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PubStmtChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PubStmtChild::Availability(elem) => {
-                ctx.enter("availability", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PubStmtChild::Unpub(elem) => {
                 ctx.enter("unpub", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::Distributor(elem) => {
-                ctx.enter("distributor", index);
+            PubStmtChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -77,6 +52,31 @@ impl PubStmtChild {
             }
             PubStmtChild::PubPlace(elem) => {
                 ctx.enter("pubPlace", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Distributor(elem) => {
+                ctx.enter("distributor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Availability(elem) => {
+                ctx.enter("availability", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Date(elem) => {
+                ctx.enter("date", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

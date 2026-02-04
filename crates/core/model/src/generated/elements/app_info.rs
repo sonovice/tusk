@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AppInfoChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "application")]
     Application(Box<crate::generated::elements::Application>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl AppInfoChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            AppInfoChild::Head(elem) => {
-                ctx.enter("head", index);
+            AppInfoChild::Application(elem) => {
+                ctx.enter("application", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AppInfoChild::Application(elem) => {
-                ctx.enter("application", index);
+            AppInfoChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

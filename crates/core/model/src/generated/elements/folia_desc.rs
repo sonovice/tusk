@@ -7,18 +7,18 @@ use serde::{Deserialize, Serialize};
 pub enum FoliaDescChild {
     #[serde(rename = "folium")]
     Folium(Box<crate::generated::elements::Folium>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "bifolium")]
     Bifolium(Box<crate::generated::elements::Bifolium>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
 }
 impl FoliaDescChild {
     /// Validate this child element.
@@ -29,13 +29,18 @@ impl FoliaDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Gap(elem) => {
-                ctx.enter("gap", index);
+            FoliaDescChild::Add(elem) => {
+                ctx.enter("add", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Del(elem) => {
-                ctx.enter("del", index);
+            FoliaDescChild::Bifolium(elem) => {
+                ctx.enter("bifolium", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FoliaDescChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,18 +49,13 @@ impl FoliaDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             FoliaDescChild::Damage(elem) => {
                 ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Bifolium(elem) => {
-                ctx.enter("bifolium", index);
+            FoliaDescChild::Del(elem) => {
+                ctx.enter("del", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

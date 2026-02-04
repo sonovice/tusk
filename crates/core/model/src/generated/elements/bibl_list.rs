@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BiblListChild {
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
     #[serde(rename = "biblStruct")]
     BiblStruct(Box<crate::generated::elements::BiblStruct>),
 }
@@ -20,23 +20,23 @@ impl BiblListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BiblListChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             BiblListChild::Label(elem) => {
                 ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BiblListChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
+            BiblListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BiblListChild::Head(elem) => {
-                ctx.enter("head", index);
+            BiblListChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BiblListChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

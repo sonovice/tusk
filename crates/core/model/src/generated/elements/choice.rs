@@ -9,20 +9,20 @@ pub enum ChoiceChild {
     Abbr(Box<crate::generated::elements::Abbr>),
     #[serde(rename = "orig")]
     Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
     #[serde(rename = "subst")]
     Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
 }
 impl ChoiceChild {
     /// Validate this child element.
@@ -38,8 +38,8 @@ impl ChoiceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ChoiceChild::Reg(elem) => {
-                ctx.enter("reg", index);
+            ChoiceChild::Subst(elem) => {
+                ctx.enter("subst", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -48,18 +48,13 @@ impl ChoiceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ChoiceChild::Expan(elem) => {
-                ctx.enter("expan", index);
+            ChoiceChild::Reg(elem) => {
+                ctx.enter("reg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ChoiceChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ChoiceChild::Subst(elem) => {
-                ctx.enter("subst", index);
+            ChoiceChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +63,13 @@ impl ChoiceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ChoiceChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
+            ChoiceChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ChoiceChild::Expan(elem) => {
+                ctx.enter("expan", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
