@@ -2674,6 +2674,23 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
                                 .children
                                 .push(TitleChild::BiblStruct(Box::new(bibl_struct)));
                         }
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            title.children.push(TitleChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Lb(Box::new(lb)));
+                        }
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Ref(Box::new(ref_elem)));
+                        }
                         // Skip unknown elements
                         _ => {
                             if !child_empty {
@@ -3380,6 +3397,30 @@ pub(crate) fn parse_pers_name_from_event<R: BufRead>(
                             pers_name
                                 .children
                                 .push(PersNameChild::Name(Box::new(name_elem)));
+                        }
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pers_name.children.push(PersNameChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            pers_name.children.push(PersNameChild::Lb(Box::new(lb)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            pers_name.children.push(PersNameChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            pers_name
+                                .children
+                                .push(PersNameChild::Identifier(Box::new(identifier)));
                         }
                         _ => {
                             // Skip unknown children in lenient mode

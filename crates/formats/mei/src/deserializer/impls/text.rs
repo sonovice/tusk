@@ -272,11 +272,15 @@ impl MeiDeserialize for Rend {
 }
 
 /// Parse a `<rend>` element from within another element.
+///
+/// Rend has mixed content - text and various child elements including nested rend, lb, etc.
 pub(crate) fn parse_rend_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Rend> {
+    use tusk_model::elements::RendChild;
+
     let mut rend = Rend::default();
 
     // Extract attributes
@@ -290,13 +294,99 @@ pub(crate) fn parse_rend_from_event<R: BufRead>(
     rend.vertical_align.extract_attributes(&mut attrs)?;
     rend.whitespace.extract_attributes(&mut attrs)?;
 
-    // Rend has many possible children - for now we just collect text content
-    // and skip other children in lenient mode
+    // Rend has mixed content - text and various child elements
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("rend")? {
-            if !text.trim().is_empty() {
-                rend.children
-                    .push(tusk_model::elements::RendChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("rend")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        rend.children.push(RendChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            rend.children.push(RendChild::Lb(Box::new(lb)));
+                        }
+                        "rend" => {
+                            let nested_rend =
+                                parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            rend.children.push(RendChild::Rend(Box::new(nested_rend)));
+                        }
+                        "persName" => {
+                            let pers = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::PersName(Box::new(pers)));
+                        }
+                        "corpName" => {
+                            let corp = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::CorpName(Box::new(corp)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Ptr(Box::new(ptr)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children
+                                .push(RendChild::Identifier(Box::new(identifier)));
+                        }
+                        // Skip unknown children in lenient mode
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -256,6 +256,18 @@ impl MeiSerialize for TitleChild {
         match self {
             TitleChild::Text(_) => "#text",
             TitleChild::TitlePart(_) => "titlePart",
+            TitleChild::Rend(_) => "rend",
+            TitleChild::CorpName(_) => "corpName",
+            TitleChild::Name(_) => "name",
+            TitleChild::PersName(_) => "persName",
+            TitleChild::Date(_) => "date",
+            TitleChild::Lb(_) => "lb",
+            TitleChild::Ref(_) => "ref",
+            TitleChild::Identifier(_) => "identifier",
+            TitleChild::Ptr(_) => "ptr",
+            TitleChild::Address(_) => "address",
+            TitleChild::Bibl(_) => "bibl",
+            TitleChild::BiblStruct(_) => "biblStruct",
             _ => "unknown",
         }
     }
@@ -284,6 +296,13 @@ impl MeiSerialize for TitleChild {
             TitleChild::Name(elem) => elem.serialize_mei(writer),
             TitleChild::PersName(elem) => elem.serialize_mei(writer),
             TitleChild::Date(elem) => elem.serialize_mei(writer),
+            TitleChild::Lb(elem) => elem.serialize_mei(writer),
+            TitleChild::Ref(elem) => elem.serialize_mei(writer),
+            TitleChild::Identifier(elem) => elem.serialize_mei(writer),
+            TitleChild::Ptr(elem) => elem.serialize_mei(writer),
+            TitleChild::Address(elem) => elem.serialize_mei(writer),
+            TitleChild::Bibl(elem) => elem.serialize_mei(writer),
+            TitleChild::BiblStruct(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "TitleChild::{}",
                 other.element_name()

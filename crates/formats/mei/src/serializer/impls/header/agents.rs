@@ -534,6 +534,10 @@ impl MeiSerialize for PersNameChild {
             PersNameChild::CorpName(_) => "corpName",
             PersNameChild::Name(_) => "name",
             PersNameChild::PersName(_) => "persName",
+            PersNameChild::Rend(_) => "rend",
+            PersNameChild::Lb(_) => "lb",
+            PersNameChild::Date(_) => "date",
+            PersNameChild::Identifier(_) => "identifier",
             _ => "unknown",
         }
     }
@@ -559,6 +563,10 @@ impl MeiSerialize for PersNameChild {
             PersNameChild::CorpName(elem) => elem.serialize_mei(writer),
             PersNameChild::Name(elem) => elem.serialize_mei(writer),
             PersNameChild::PersName(elem) => elem.serialize_mei(writer),
+            PersNameChild::Rend(elem) => elem.serialize_mei(writer),
+            PersNameChild::Lb(elem) => elem.serialize_mei(writer),
+            PersNameChild::Date(elem) => elem.serialize_mei(writer),
+            PersNameChild::Identifier(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PersNameChild::{}",
                 other.element_name()
@@ -851,6 +859,9 @@ impl MeiSerialize for RendChild {
             RendChild::CorpName(_) => "corpName",
             RendChild::Title(_) => "title",
             RendChild::Lb(_) => "lb",
+            RendChild::Ref(_) => "ref",
+            RendChild::Ptr(_) => "ptr",
+            RendChild::Identifier(_) => "identifier",
             _ => "unknown",
         }
     }
@@ -860,7 +871,7 @@ impl MeiSerialize for RendChild {
     }
 
     fn has_children(&self) -> bool {
-        !matches!(self, RendChild::Text(_))
+        !matches!(self, RendChild::Text(_) | RendChild::Lb(_))
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
@@ -880,6 +891,9 @@ impl MeiSerialize for RendChild {
             RendChild::CorpName(elem) => elem.serialize_mei(writer),
             RendChild::Title(elem) => elem.serialize_mei(writer),
             RendChild::Lb(elem) => elem.serialize_mei(writer),
+            RendChild::Ref(elem) => elem.serialize_mei(writer),
+            RendChild::Ptr(elem) => elem.serialize_mei(writer),
+            RendChild::Identifier(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "RendChild::{}",
                 other.element_name()
