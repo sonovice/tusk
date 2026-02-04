@@ -3002,13 +3002,35 @@ pub(crate) fn parse_editor_from_event<R: BufRead>(
 
     // Remaining attributes are unknown - in lenient mode we ignore them
 
-    // Parse text content if not empty
-    // editor can contain text and various child elements
-    // For now, we collect text content as EditorChild::Text
+    // editor has mixed content: text and child elements (persName, name, corpName)
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("editor")? {
-            if !text.trim().is_empty() {
-                editor.children.push(EditorChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("editor")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        editor.children.push(EditorChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "persName" => {
+                        let pers = parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                        editor.children.push(EditorChild::PersName(Box::new(pers)));
+                    }
+                    "name" => {
+                        let name_elem = parse_name_from_event(reader, child_attrs, child_empty)?;
+                        editor.children.push(EditorChild::Name(Box::new(name_elem)));
+                    }
+                    "corpName" => {
+                        let corp = parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                        editor.children.push(EditorChild::CorpName(Box::new(corp)));
+                    }
+                    _ => {
+                        // Skip unknown children in lenient mode
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
             }
         }
     }
@@ -5165,6 +5187,59 @@ mod tests {
                         false
                     }
                 }));
+            }
+            other => panic!("expected Editor child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn editor_deserializes_pers_name_child() {
+        use tusk_model::elements::BiblChild;
+
+        // editor with persName child element
+        let xml = r#"<source>
+          <bibl>
+            <editor>
+              <persName>John Smith</persName>
+            </editor>
+          </bibl>
+        </source>"#;
+
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+
+        let bibl = source
+            .children
+            .iter()
+            .find_map(|c| {
+                if let SourceChild::Bibl(b) = c {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .expect("should have bibl child");
+
+        // Should have one editor
+        assert_eq!(bibl.children.len(), 1);
+
+        // First child should be Editor
+        match &bibl.children[0] {
+            BiblChild::Editor(editor) => {
+                // Should have one persName child
+                assert_eq!(editor.children.len(), 1);
+                match &editor.children[0] {
+                    EditorChild::PersName(pers_name) => {
+                        // Check text content of persName
+                        assert!(pers_name.children.iter().any(|c| {
+                            if let tusk_model::elements::PersNameChild::Text(t) = c {
+                                t.contains("John Smith")
+                            } else {
+                                false
+                            }
+                        }));
+                    }
+                    other => panic!("expected PersName child, got {:?}", other),
+                }
             }
             other => panic!("expected Editor child, got {:?}", other),
         }
