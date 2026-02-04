@@ -7,6 +7,7 @@
 //! - XML declaration differences
 //! - Empty vs self-closing element syntax
 //! - meiversion attribute on root `<mei>` element (export uses codegen version)
+//! - MEI version element migrations (e.g., composer→creator for MEI 5.1→6.0)
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -88,6 +89,40 @@ fn strip_namespace_prefix(name: &str) -> &str {
     } else {
         name
     }
+}
+
+/// Check if two element names are equivalent considering MEI version migrations.
+///
+/// MEI 5.1 deprecated several elements that were renamed in MEI 6.0:
+/// - composer, lyricist, arranger, author → creator
+///
+/// When comparing roundtrip output, we need to treat these as equivalent since
+/// import converts deprecated elements to their replacements, and export always
+/// uses the current (6.0) element names.
+fn elements_are_equivalent(name1: &str, name2: &str) -> bool {
+    if name1 == name2 {
+        return true;
+    }
+
+    // Deprecated element → replacement mappings (MEI 5.1 → 6.0)
+    // Format: (deprecated_name, replacement_name)
+    const ELEMENT_MIGRATIONS: &[(&str, &str)] = &[
+        ("composer", "creator"),
+        ("lyricist", "creator"),
+        ("arranger", "creator"),
+        ("author", "creator"),
+    ];
+
+    for &(deprecated, replacement) in ELEMENT_MIGRATIONS {
+        // Check both directions: deprecated→replacement or replacement←deprecated
+        if (name1 == deprecated && name2 == replacement)
+            || (name1 == replacement && name2 == deprecated)
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Parse XML string into a canonical tree representation.
@@ -237,8 +272,8 @@ fn compare_elements(
     // Check if this is the root <mei> element
     let is_root_mei = path.is_empty() && elem1.name == "mei";
 
-    // Compare element names
-    if elem1.name != elem2.name {
+    // Compare element names (considering MEI version migrations like composer→creator)
+    if !elements_are_equivalent(&elem1.name, &elem2.name) {
         diffs.push(Difference {
             path: current_path.clone(),
             description: format!(
@@ -627,5 +662,126 @@ mod tests {
         if let Err(CompareError::Differences(diffs)) = result {
             assert!(diffs.iter().any(|d| d.description.contains("meiversion")));
         }
+    }
+
+    // ============================================================================
+    // MEI Version Migration Tests (deprecated element → replacement)
+    // ============================================================================
+
+    #[test]
+    fn test_elements_are_equivalent_same_name() {
+        assert!(elements_are_equivalent("note", "note"));
+        assert!(elements_are_equivalent("creator", "creator"));
+    }
+
+    #[test]
+    fn test_elements_are_equivalent_composer_creator() {
+        // composer (MEI 5.1 deprecated) → creator (MEI 6.0)
+        assert!(elements_are_equivalent("composer", "creator"));
+        assert!(elements_are_equivalent("creator", "composer"));
+    }
+
+    #[test]
+    fn test_elements_are_equivalent_lyricist_creator() {
+        // lyricist (MEI 5.1 deprecated) → creator (MEI 6.0)
+        assert!(elements_are_equivalent("lyricist", "creator"));
+        assert!(elements_are_equivalent("creator", "lyricist"));
+    }
+
+    #[test]
+    fn test_elements_are_equivalent_arranger_creator() {
+        // arranger (MEI 5.1 deprecated) → creator (MEI 6.0)
+        assert!(elements_are_equivalent("arranger", "creator"));
+        assert!(elements_are_equivalent("creator", "arranger"));
+    }
+
+    #[test]
+    fn test_elements_are_equivalent_author_creator() {
+        // author (MEI 5.1 deprecated) → creator (MEI 6.0)
+        assert!(elements_are_equivalent("author", "creator"));
+        assert!(elements_are_equivalent("creator", "author"));
+    }
+
+    #[test]
+    fn test_elements_are_equivalent_different_elements() {
+        // Unrelated elements should NOT be equivalent
+        assert!(!elements_are_equivalent("note", "rest"));
+        assert!(!elements_are_equivalent("composer", "editor"));
+        assert!(!elements_are_equivalent("lyricist", "contributor"));
+    }
+
+    #[test]
+    fn test_composer_to_creator_migration_in_compare() {
+        // Test that composer→creator is accepted in full XML comparison
+        let xml1 = r#"<titleStmt><composer>Johann S. Bach</composer></titleStmt>"#;
+        let xml2 = r#"<titleStmt><creator>Johann S. Bach</creator></titleStmt>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "composer→creator migration should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_lyricist_to_creator_migration_in_compare() {
+        let xml1 = r#"<titleStmt><lyricist>Text Author</lyricist></titleStmt>"#;
+        let xml2 = r#"<titleStmt><creator>Text Author</creator></titleStmt>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "lyricist→creator migration should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_arranger_to_creator_migration_in_compare() {
+        let xml1 = r#"<titleStmt><arranger>Arr. Name</arranger></titleStmt>"#;
+        let xml2 = r#"<titleStmt><creator>Arr. Name</creator></titleStmt>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "arranger→creator migration should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_author_to_creator_migration_in_compare() {
+        let xml1 = r#"<titleStmt><author>Author Name</author></titleStmt>"#;
+        let xml2 = r#"<titleStmt><creator>Author Name</creator></titleStmt>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "author→creator migration should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_multiple_migrations_in_same_document() {
+        // Test multiple deprecated elements in the same document
+        let xml1 = r#"<titleStmt>
+            <composer>Composer Name</composer>
+            <lyricist>Lyricist Name</lyricist>
+        </titleStmt>"#;
+        let xml2 = r#"<titleStmt>
+            <creator>Composer Name</creator>
+            <creator>Lyricist Name</creator>
+        </titleStmt>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "multiple migrations should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_migration_with_nested_content() {
+        // Test that nested content is still compared correctly after migration
+        let xml1 = r#"<composer><persName>J.S. Bach</persName></composer>"#;
+        let xml2 = r#"<creator><persName>J.S. Bach</persName></creator>"#;
+        assert!(compare_xml(xml1, xml2).is_ok());
+    }
+
+    #[test]
+    fn test_migration_with_different_nested_content_fails() {
+        // Migration equivalence doesn't mean content is ignored
+        let xml1 = r#"<composer><persName>J.S. Bach</persName></composer>"#;
+        let xml2 = r#"<creator><persName>W.A. Mozart</persName></creator>"#;
+        let result = compare_xml(xml1, xml2);
+        assert!(result.is_err(), "different content should still fail");
     }
 }
