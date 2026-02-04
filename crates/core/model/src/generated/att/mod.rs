@@ -368,7 +368,9 @@ pub use att_line_rend::AttLineRend;
 mod att_parts_ges;
 pub use att_parts_ges::AttPartsGes;
 mod att_fermata_vis;
-pub use att_fermata_vis::AttFermataVis;
+pub use att_fermata_vis::{
+    AttFermataVis, AttFermataVisForm, AttFermataVisGlyphAuth, AttFermataVisShape,
+};
 mod att_ambitus_ges;
 pub use att_ambitus_ges::AttAmbitusGes;
 mod att_lyric_style;

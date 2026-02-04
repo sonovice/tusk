@@ -14,22 +14,23 @@ use tusk_model::att::{
     AttArticVis, AttBasic, AttBibl, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
     AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttFacsimile,
-    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl,
-    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog,
-    AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
-    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl,
-    AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes,
-    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
-    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
-    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttHairpinAnl, AttHairpinGes,
+    AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
+    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
+    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
+    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
     AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
     AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
     AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dir, Dot, Dynam, Hairpin, InstrDef, Label, Layer,
-    LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild,
-    Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff,
+    Accid, Artic, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, Hairpin, InstrDef, Label,
+    Layer, LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note,
+    NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff,
     StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
 };
 
@@ -1504,6 +1505,72 @@ impl ExtractAttributes for AttTieGes {
 impl ExtractAttributes for AttTieAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttTieAnl has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFermataLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFermataVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "form", self.form);
+        extract_attr!(attrs, "shape", self.shape);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFermataGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFermataAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttFermataAnl has no attributes
         Ok(())
     }
 }
@@ -3161,6 +3228,37 @@ impl MeiDeserialize for Tempo {
         }
 
         Ok(tempo)
+    }
+}
+
+impl MeiDeserialize for Fermata {
+    fn element_name() -> &'static str {
+        "fermata"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut fermata = Fermata::default();
+
+        // Extract attributes into each attribute class
+        fermata.common.extract_attributes(&mut attrs)?;
+        fermata.facsimile.extract_attributes(&mut attrs)?;
+        fermata.fermata_log.extract_attributes(&mut attrs)?;
+        fermata.fermata_vis.extract_attributes(&mut attrs)?;
+        fermata.fermata_ges.extract_attributes(&mut attrs)?;
+        fermata.fermata_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Fermata has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("fermata")?;
+        }
+
+        Ok(fermata)
     }
 }
 
@@ -5275,5 +5373,238 @@ mod tests {
 
         assert!(tempo.tempo_vis.lform.is_some());
         assert!(tempo.tempo_vis.lwidth.is_some());
+    }
+
+    // ============================================================================
+    // Fermata tests
+    // ============================================================================
+
+    #[test]
+    fn fermata_deserializes_from_empty_element() {
+        let xml = r#"<fermata/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.common.xml_id.is_none());
+        assert!(fermata.fermata_log.startid.is_none());
+        assert!(fermata.fermata_vis.form.is_none());
+    }
+
+    #[test]
+    fn fermata_deserializes_xml_id() {
+        let xml = r#"<fermata xml:id="f1"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
+    }
+
+    #[test]
+    fn fermata_deserializes_startid() {
+        let xml = r##"<fermata startid="#note1"/>"##;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_log.startid.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_staff_and_tstamp() {
+        let xml = r#"<fermata staff="1" tstamp="1"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_log.staff, vec![1]);
+        assert!(fermata.fermata_log.tstamp.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_form_norm() {
+        use tusk_model::att::AttFermataVisForm;
+
+        let xml = r#"<fermata form="norm"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.form, Some(AttFermataVisForm::Norm));
+    }
+
+    #[test]
+    fn fermata_deserializes_form_inv() {
+        use tusk_model::att::AttFermataVisForm;
+
+        let xml = r#"<fermata form="inv"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.form, Some(AttFermataVisForm::Inv));
+    }
+
+    #[test]
+    fn fermata_deserializes_shape_curved() {
+        use tusk_model::att::AttFermataVisShape;
+
+        let xml = r#"<fermata shape="curved"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.shape, Some(AttFermataVisShape::Curved));
+    }
+
+    #[test]
+    fn fermata_deserializes_shape_square() {
+        use tusk_model::att::AttFermataVisShape;
+
+        let xml = r#"<fermata shape="square"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.shape, Some(AttFermataVisShape::Square));
+    }
+
+    #[test]
+    fn fermata_deserializes_shape_angular() {
+        use tusk_model::att::AttFermataVisShape;
+
+        let xml = r#"<fermata shape="angular"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.shape, Some(AttFermataVisShape::Angular));
+    }
+
+    #[test]
+    fn fermata_deserializes_place_attribute() {
+        let xml = r#"<fermata place="above"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_vis.place.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_color_attribute() {
+        let xml = r#"<fermata color="red"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_vis.color.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_coordinate_attributes() {
+        let xml = r#"<fermata x="100" y="200"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.x, Some(100.0));
+        assert_eq!(fermata.fermata_vis.y, Some(200.0));
+    }
+
+    #[test]
+    fn fermata_deserializes_layer_attribute() {
+        let xml = r#"<fermata layer="1"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn fermata_deserializes_endid() {
+        let xml = r##"<fermata startid="#note1" endid="#note2"/>"##;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_log.startid.is_some());
+        assert!(fermata.fermata_log.endid.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_plist_attribute() {
+        let xml = r##"<fermata plist="#note1 #note2"/>"##;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_log.plist.len(), 2);
+    }
+
+    #[test]
+    fn fermata_deserializes_gestural_duration() {
+        let xml = r#"<fermata dur.ppq="480" dur.real="2.5"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_ges.dur_ppq, Some(480));
+        assert_eq!(fermata.fermata_ges.dur_real, Some(2.5));
+    }
+
+    #[test]
+    fn fermata_deserializes_glyph_attributes() {
+        use tusk_model::att::AttFermataVisGlyphAuth;
+
+        let xml = r#"<fermata glyph.auth="smufl" glyph.name="fermataAbove"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            fermata.fermata_vis.glyph_auth,
+            Some(AttFermataVisGlyphAuth::Smufl)
+        );
+        assert_eq!(
+            fermata.fermata_vis.glyph_name,
+            Some("fermataAbove".to_string())
+        );
+    }
+
+    #[test]
+    fn fermata_deserializes_visual_offset_attributes() {
+        let xml = r#"<fermata ho="2" vo="-1" to="0.5"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_vis.ho.is_some());
+        assert!(fermata.fermata_vis.vo.is_some());
+        assert!(fermata.fermata_vis.to.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_vgrp_attribute() {
+        let xml = r#"<fermata vgrp="1"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.fermata_vis.vgrp, Some(1));
+    }
+
+    #[test]
+    fn fermata_handles_unknown_attributes_leniently() {
+        let xml = r#"<fermata xml:id="f1" unknown="value"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
+    }
+
+    #[test]
+    fn fermata_deserializes_all_common_attributes() {
+        use tusk_model::att::{AttFermataVisForm, AttFermataVisShape};
+
+        let xml = r##"<fermata xml:id="f1" startid="#note1" staff="1" tstamp="2.5" form="norm" shape="curved" place="above" color="blue"/>"##;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
+        assert!(fermata.fermata_log.startid.is_some());
+        assert_eq!(fermata.fermata_log.staff, vec![1]);
+        assert!(fermata.fermata_log.tstamp.is_some());
+        assert_eq!(fermata.fermata_vis.form, Some(AttFermataVisForm::Norm));
+        assert_eq!(fermata.fermata_vis.shape, Some(AttFermataVisShape::Curved));
+        assert!(fermata.fermata_vis.place.is_some());
+        assert!(fermata.fermata_vis.color.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_enclose_attribute() {
+        let xml = r#"<fermata enclose="paren"/>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_vis.enclose.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_altsym_attribute() {
+        let xml = r##"<fermata altsym="#mySymbol"/>"##;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert!(fermata.fermata_vis.altsym.is_some());
+    }
+
+    #[test]
+    fn fermata_deserializes_with_non_empty_element() {
+        // Even though fermata has empty content, we handle non-empty elements gracefully
+        let xml = r#"<fermata xml:id="f1">   </fermata>"#;
+        let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
     }
 }
