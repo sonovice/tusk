@@ -15,7 +15,7 @@ use tusk_model::att::{
     AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space, Verse,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -654,23 +654,34 @@ impl MeiDeserialize for Note {
         // Remaining attributes are unknown - in lenient mode we ignore them
         // In strict mode, we could warn or error
 
-        // Read children if not an empty element
+        // Read children if not an empty element - use recursive parsing for proper child handling
         if !is_empty {
-            let children_raw = reader.read_children_raw("note")?;
-            for (name, child_attrs, _child_empty, _content) in children_raw {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("note")?
+            {
                 match name.as_str() {
                     "accid" => {
-                        let accid = parse_accid_from_raw(child_attrs);
+                        let accid = Accid::from_mei_event(reader, child_attrs, child_empty)?;
                         note.children.push(NoteChild::Accid(Box::new(accid)));
                     }
                     "artic" => {
-                        let artic = parse_artic_from_raw(child_attrs);
+                        let artic = Artic::from_mei_event(reader, child_attrs, child_empty)?;
                         note.children.push(NoteChild::Artic(Box::new(artic)));
+                    }
+                    "dot" => {
+                        let dot = Dot::from_mei_event(reader, child_attrs, child_empty)?;
+                        note.children.push(NoteChild::Dot(Box::new(dot)));
+                    }
+                    "verse" => {
+                        let verse = Verse::from_mei_event(reader, child_attrs, child_empty)?;
+                        note.children.push(NoteChild::Verse(Box::new(verse)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        // Unknown child element - skip in lenient mode
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
                     }
                 }
             }

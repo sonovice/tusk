@@ -11,10 +11,12 @@ use tusk_model::att::{
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttDotAnl, AttDotGes,
     AttDotLog, AttDotVis, AttDurationQuality, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
     AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog,
-    AttSpaceVis,
+    AttSpaceVis, AttSylAnl, AttSylGes, AttSylLog, AttSylVis, AttVerseAnl, AttVerseGes, AttVerseLog,
+    AttVerseVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space,
+    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space, Syl, SylChild,
+    Verse, VerseChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -688,6 +690,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Accid(accid) => accid.collect_all_attributes(),
             NoteChild::Artic(artic) => artic.collect_all_attributes(),
             NoteChild::Dot(dot) => dot.collect_all_attributes(),
+            NoteChild::Verse(verse) => verse.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -698,6 +701,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Accid(accid) => accid.has_children(),
             NoteChild::Artic(artic) => artic.has_children(),
             NoteChild::Dot(dot) => dot.has_children(),
+            NoteChild::Verse(verse) => verse.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -708,6 +712,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Accid(accid) => accid.serialize_children(writer),
             NoteChild::Artic(artic) => artic.serialize_children(writer),
             NoteChild::Dot(dot) => dot.serialize_children(writer),
+            NoteChild::Verse(verse) => verse.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "NoteChild::{}::serialize_children",
                 other.element_name()
@@ -924,6 +929,219 @@ impl MeiSerialize for Space {
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Verse attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttVerseLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttVerseLog has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttVerseVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "voltasym", self.voltasym);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttVerseGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttVerseGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttVerseAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttVerseAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
+// Verse element implementation
+// ============================================================================
+
+impl MeiSerialize for Verse {
+    fn element_name(&self) -> &'static str {
+        "verse"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.verse_log.collect_attributes());
+        attrs.extend(self.verse_vis.collect_attributes());
+        attrs.extend(self.verse_ges.collect_attributes());
+        attrs.extend(self.verse_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for VerseChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            VerseChild::Syl(_) => "syl",
+            VerseChild::Lb(_) => "lb",
+            VerseChild::Label(_) => "label",
+            VerseChild::LabelAbbr(_) => "labelAbbr",
+            VerseChild::Dir(_) => "dir",
+            VerseChild::Dynam(_) => "dynam",
+            VerseChild::Tempo(_) => "tempo",
+            VerseChild::Space(_) => "space",
+            VerseChild::Volta(_) => "volta",
+            VerseChild::App(_) => "app",
+            VerseChild::Choice(_) => "choice",
+            VerseChild::Subst(_) => "subst",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            VerseChild::Syl(syl) => syl.collect_all_attributes(),
+            VerseChild::Lb(lb) => lb.collect_all_attributes(),
+            // Other child types not yet implemented
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            VerseChild::Syl(syl) => syl.has_children(),
+            VerseChild::Lb(_) => false,
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            VerseChild::Syl(syl) => syl.serialize_children(writer),
+            VerseChild::Lb(_) => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "VerseChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// Syl attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttSylLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "con", self.con);
+        push_attr!(attrs, "wordpos", self.wordpos);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSylVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSylGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttSylGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttSylAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttSylAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
+// Syl element implementation
+// ============================================================================
+
+impl MeiSerialize for Syl {
+    fn element_name(&self) -> &'static str {
+        "syl"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.syl_log.collect_attributes());
+        attrs.extend(self.syl_vis.collect_attributes());
+        attrs.extend(self.syl_ges.collect_attributes());
+        attrs.extend(self.syl_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                SylChild::Text(text) => writer.write_text(text)?,
+                other => {
+                    // For now, skip non-text children as they're rare in syl
+                    // but don't fail - just write as placeholder element
+                    let _ = other;
+                }
+            }
+        }
         Ok(())
     }
 }

@@ -10,10 +10,12 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAnnotAnl, AttAnnotGes, AttAnnotLog, AttAnnotVis, AttAudience, AttColor, AttExtSymAuth,
     AttHorizontalAlign, AttLyricsAnl, AttLyricsGes, AttLyricsLog, AttLyricsVis, AttPlist,
-    AttSource, AttTypography, AttVerseAnl, AttVerseGes, AttVerseLog, AttVerseVis, AttVerticalAlign,
+    AttSource, AttSylAnl, AttSylGes, AttSylLog, AttSylVis, AttTypography, AttVerseAnl, AttVerseGes,
+    AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
 use tusk_model::elements::{
-    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Verse,
+    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Syl,
+    SylChild, Verse, VerseChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -168,6 +170,46 @@ impl ExtractAttributes for AttVerseGes {
 impl ExtractAttributes for AttVerseAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttVerseAnl has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSylLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "con", self.con);
+        extract_attr!(attrs, "wordpos", self.wordpos);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSylVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSylGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttSylGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSylAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttSylAnl has no attributes
         Ok(())
     }
 }
@@ -576,12 +618,101 @@ impl MeiDeserialize for Verse {
 
         // Read children if not an empty element
         // Verse can contain: subst*, lb*, choice*, volta*, label*, space*, app*, labelAbbr*, dynam*, syl*, dir*, tempo*
-        // For now we skip children in lenient mode
         if !is_empty {
-            reader.skip_to_end("verse")?;
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("verse")?
+            {
+                match name.as_str() {
+                    "syl" => {
+                        let syl = Syl::from_mei_event(reader, child_attrs, child_empty)?;
+                        verse.children.push(VerseChild::Syl(Box::new(syl)));
+                    }
+                    "lb" => {
+                        let lb = Lb::from_mei_event(reader, child_attrs, child_empty)?;
+                        verse.children.push(VerseChild::Lb(Box::new(lb)));
+                    }
+                    // Other verse children can be added here as needed
+                    _ => {
+                        // Unknown child element - skip in lenient mode
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(verse)
+    }
+}
+
+impl MeiDeserialize for Lb {
+    fn element_name() -> &'static str {
+        "lb"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut lb = Lb::default();
+
+        // Extract attributes
+        lb.common.extract_attributes(&mut attrs)?;
+        lb.facsimile.extract_attributes(&mut attrs)?;
+        lb.source.extract_attributes(&mut attrs)?;
+
+        // Lb is an empty element per MEI spec
+        if !is_empty {
+            reader.skip_to_end("lb")?;
+        }
+
+        Ok(lb)
+    }
+}
+
+impl MeiDeserialize for Syl {
+    fn element_name() -> &'static str {
+        "syl"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut syl = Syl::default();
+
+        // Extract attributes
+        syl.common.extract_attributes(&mut attrs)?;
+        syl.facsimile.extract_attributes(&mut attrs)?;
+        syl.lang.extract_attributes(&mut attrs)?;
+        syl.syl_log.extract_attributes(&mut attrs)?;
+        syl.syl_vis.extract_attributes(&mut attrs)?;
+        syl.syl_ges.extract_attributes(&mut attrs)?;
+        syl.syl_anl.extract_attributes(&mut attrs)?;
+
+        // Read children if not an empty element
+        // Syl is typically mixed content with text and possibly other elements
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("syl")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        syl.children.push(SylChild::Text(text));
+                    }
+                    MixedContent::Element(name, _child_attrs, child_empty) => {
+                        // Syl can contain many child elements, but text is the most common
+                        // For now we skip other children in lenient mode
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(syl)
     }
 }
 
