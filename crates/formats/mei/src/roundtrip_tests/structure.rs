@@ -2512,3 +2512,110 @@ fn hierarchy_deep_nesting_preserved() {
         other => panic!("Expected Mdiv, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Sb (System Break) Element Tests
+// ============================================================================
+
+#[test]
+fn sb_deserializes_empty_element() {
+    use tusk_model::elements::Sb;
+
+    let xml = r#"<sb xml:id="sb1"/>"#;
+    let sb = Sb::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(sb.common.xml_id, Some("sb1".to_string()));
+}
+
+#[test]
+fn sb_serializes_to_empty_element() {
+    use tusk_model::elements::Sb;
+
+    let mut sb = Sb::default();
+    sb.common.xml_id = Some("sb1".to_string());
+
+    let serialized = sb.to_mei_string().expect("should serialize");
+    assert!(serialized.contains("<sb"));
+    assert!(serialized.contains("xml:id=\"sb1\""));
+}
+
+#[test]
+fn sb_roundtrip() {
+    use tusk_model::elements::Sb;
+
+    let xml = r#"<sb xml:id="sb1"/>"#;
+    let sb = Sb::from_mei_str(xml).expect("should deserialize");
+
+    let serialized = sb.to_mei_string().expect("should serialize");
+    let reparsed = Sb::from_mei_str(&serialized).expect("should deserialize again");
+
+    assert_eq!(reparsed.common.xml_id, Some("sb1".to_string()));
+}
+
+#[test]
+fn section_with_sb_child_deserializes() {
+    use tusk_model::elements::{Section, SectionChild};
+
+    let xml = r#"<section xml:id="sec1"><sb xml:id="sb1"/></section>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+    assert_eq!(section.children.len(), 1);
+
+    match &section.children[0] {
+        SectionChild::Sb(sb) => {
+            assert_eq!(sb.common.xml_id, Some("sb1".to_string()));
+        }
+        other => panic!("Expected Sb, got {:?}", other),
+    }
+}
+
+#[test]
+fn section_with_sb_child_roundtrip() {
+    use tusk_model::elements::{Section, SectionChild};
+
+    let xml = r#"<section xml:id="sec1"><sb xml:id="sb1"/></section>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize");
+
+    let serialized = section.to_mei_string().expect("should serialize");
+    let reparsed = Section::from_mei_str(&serialized).expect("should deserialize again");
+
+    assert_eq!(reparsed.common.xml_id, Some("sec1".to_string()));
+    assert_eq!(reparsed.children.len(), 1);
+
+    match &reparsed.children[0] {
+        SectionChild::Sb(sb) => {
+            assert_eq!(sb.common.xml_id, Some("sb1".to_string()));
+        }
+        other => panic!("Expected Sb, got {:?}", other),
+    }
+}
+
+#[test]
+fn section_with_multiple_sb_children_preserves_order() {
+    use tusk_model::elements::{Section, SectionChild};
+
+    let xml = r#"<section xml:id="sec1">
+        <sb xml:id="sb1"/>
+        <measure xml:id="m1"/>
+        <sb xml:id="sb2"/>
+    </section>"#;
+    let section = Section::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(section.children.len(), 3);
+
+    match &section.children[0] {
+        SectionChild::Sb(sb) => assert_eq!(sb.common.xml_id, Some("sb1".to_string())),
+        other => panic!("Expected Sb as first child, got {:?}", other),
+    }
+
+    match &section.children[1] {
+        SectionChild::Measure(m) => assert_eq!(m.common.xml_id, Some("m1".to_string())),
+        other => panic!("Expected Measure as second child, got {:?}", other),
+    }
+
+    match &section.children[2] {
+        SectionChild::Sb(sb) => assert_eq!(sb.common.xml_id, Some("sb2".to_string())),
+        other => panic!("Expected Sb as third child, got {:?}", other),
+    }
+}

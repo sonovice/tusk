@@ -8,14 +8,14 @@ use crate::deserializer::{
 use std::io::BufRead;
 use tusk_model::att::{
     AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog,
-    AttStaffVis,
+    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSbAnl, AttSbGes,
+    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
+    AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, Mdiv, MdivChild,
-    Measure, MeasureChild, Note, Rest, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur,
-    Space, Staff, StaffChild, Tempo, Tie, Tuplet,
+    Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild,
+    Slur, Space, Staff, StaffChild, Tempo, Tie, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -160,6 +160,50 @@ impl ExtractAttributes for AttSectionAnl {
 }
 
 // ============================================================================
+// Sb (system break) attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttSbLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSbGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttSbGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSbVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "form", self.form);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSbAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttSbAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Mdiv attribute class implementations
 // ============================================================================
 
@@ -188,6 +232,52 @@ impl ExtractAttributes for AttMdivAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttMdivAnl has no attributes
         Ok(())
+    }
+}
+
+// ============================================================================
+// Sb (system break) implementation
+// ============================================================================
+
+/// Parse a `<sb>` (system break) element from within another element.
+/// Sb is an empty element with only attributes (no children).
+fn parse_sb_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Sb> {
+    let mut sb = Sb::default();
+
+    // Extract common attributes
+    sb.common.extract_attributes(&mut attrs)?;
+    sb.facsimile.extract_attributes(&mut attrs)?;
+    sb.source.extract_attributes(&mut attrs)?;
+
+    // Extract Sb-specific attribute classes
+    sb.sb_log.extract_attributes(&mut attrs)?;
+    sb.sb_ges.extract_attributes(&mut attrs)?;
+    sb.sb_vis.extract_attributes(&mut attrs)?;
+    sb.sb_anl.extract_attributes(&mut attrs)?;
+
+    // Sb should be an empty element, but if not, skip any content
+    if !is_empty {
+        reader.skip_to_end("sb")?;
+    }
+
+    Ok(sb)
+}
+
+impl MeiDeserialize for Sb {
+    fn element_name() -> &'static str {
+        "sb"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_sb_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -482,6 +572,10 @@ impl MeiDeserialize for Section {
                         section
                             .children
                             .push(SectionChild::Section(Box::new(nested_section)));
+                    }
+                    "sb" => {
+                        let sb = parse_sb_from_event(reader, child_attrs, child_empty)?;
+                        section.children.push(SectionChild::Sb(Box::new(sb)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

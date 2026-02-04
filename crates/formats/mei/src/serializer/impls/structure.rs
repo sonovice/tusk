@@ -7,13 +7,13 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::att::{
     AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog,
-    AttStaffVis,
+    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSbAnl, AttSbGes,
+    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
+    AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Score, ScoreChild,
-    Section, SectionChild, Staff, StaffChild,
+    Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Sb, Score,
+    ScoreChild, Section, SectionChild, Staff, StaffChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -164,6 +164,52 @@ impl CollectAttributes for AttSectionVis {
 impl CollectAttributes for AttSectionAnl {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         // AttSectionAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
+// Sb (system break) attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttSbLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSbGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttSbGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttSbVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "form", self.form);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttSbAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttSbAnl has no attributes
         Vec::new()
     }
 }
@@ -566,6 +612,38 @@ impl MeiSerialize for Section {
     }
 }
 
+// ============================================================================
+// Sb (system break) element implementation
+// ============================================================================
+
+impl MeiSerialize for Sb {
+    fn element_name(&self) -> &'static str {
+        "sb"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs.extend(self.sb_log.collect_attributes());
+        attrs.extend(self.sb_ges.collect_attributes());
+        attrs.extend(self.sb_vis.collect_attributes());
+        attrs.extend(self.sb_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        // Sb is an empty element
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        // Sb has no children
+        Ok(())
+    }
+}
+
 impl MeiSerialize for SectionChild {
     fn element_name(&self) -> &'static str {
         match self {
@@ -610,6 +688,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.collect_all_attributes(),
             SectionChild::Staff(staff) => staff.collect_all_attributes(),
             SectionChild::Section(section) => section.collect_all_attributes(),
+            SectionChild::Sb(sb) => sb.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -620,6 +699,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.has_children(),
             SectionChild::Staff(staff) => staff.has_children(),
             SectionChild::Section(section) => section.has_children(),
+            SectionChild::Sb(sb) => sb.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -630,6 +710,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.serialize_children(writer),
             SectionChild::Staff(staff) => staff.serialize_children(writer),
             SectionChild::Section(section) => section.serialize_children(writer),
+            SectionChild::Sb(sb) => sb.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "SectionChild::{}::serialize_children",
                 other.element_name()
