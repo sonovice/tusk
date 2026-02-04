@@ -717,3 +717,17 @@ fn test_roundtrip_spec_echigo_jishi() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_faur_reve_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("FaurReveSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for FaurReveSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for FaurReveSample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
