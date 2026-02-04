@@ -816,7 +816,7 @@ pub use att_bracket_span_anl::AttBracketSpanAnl;
 mod att_mdiv_vis;
 pub use att_mdiv_vis::AttMdivVis;
 mod att_beam_vis;
-pub use att_beam_vis::AttBeamVis;
+pub use att_beam_vis::{AttBeamVis, AttBeamVisForm};
 mod att_ligature_anl;
 pub use att_ligature_anl::AttLigatureAnl;
 mod att_fing_grp_ges;

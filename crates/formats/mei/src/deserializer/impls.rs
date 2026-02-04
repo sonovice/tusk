@@ -11,27 +11,28 @@ use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttBasic, AttBibl, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
-    AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
-    AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttFacsimile,
-    AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttHairpinAnl, AttHairpinGes,
-    AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
-    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
-    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
-    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
-    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
+    AttArticVis, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl, AttChordAnl,
+    AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDirAnl, AttDirGes, AttDirLog, AttDirVis,
+    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
+    AttDynamLog, AttDynamVis, AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog,
+    AttFermataVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled,
+    AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis,
+    AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog,
+    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing,
+    AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
+    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
+    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
+    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
+    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, Hairpin, InstrDef, Label,
-    Layer, LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note,
-    NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff,
-    StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
+    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, Hairpin,
+    InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure,
+    MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild,
+    Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1382,6 +1383,46 @@ impl ExtractAttributes for AttLayerDefAnl {
     }
 }
 
+impl ExtractAttributes for AttBeamLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "beam.with", self.beam_with);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBeamVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "cue", self.cue);
+        extract_attr!(attrs, "form", self.form);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "slash", self.slash);
+        extract_attr!(attrs, "slope", self.slope);
+        extract_attr!(attrs, "visible", self.visible);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBeamGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttBeamGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBeamAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttBeamAnl has no attributes
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttSlurLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -2348,6 +2389,10 @@ impl MeiDeserialize for Layer {
                         let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::Space(Box::new(space)));
                     }
+                    "beam" => {
+                        let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Beam(Box::new(beam)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -3259,6 +3304,70 @@ impl MeiDeserialize for Fermata {
         }
 
         Ok(fermata)
+    }
+}
+
+impl MeiDeserialize for Beam {
+    fn element_name() -> &'static str {
+        "beam"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut beam = Beam::default();
+
+        // Extract attributes into each attribute class
+        beam.common.extract_attributes(&mut attrs)?;
+        beam.facsimile.extract_attributes(&mut attrs)?;
+        beam.beam_log.extract_attributes(&mut attrs)?;
+        beam.beam_vis.extract_attributes(&mut attrs)?;
+        beam.beam_ges.extract_attributes(&mut attrs)?;
+        beam.beam_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Read children if not empty
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("beam")?
+            {
+                match name.as_str() {
+                    "note" => {
+                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Note(Box::new(note)));
+                    }
+                    "rest" => {
+                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Rest(Box::new(rest)));
+                    }
+                    "chord" => {
+                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Chord(Box::new(chord)));
+                    }
+                    "space" => {
+                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Space(Box::new(space)));
+                    }
+                    "beam" => {
+                        // Nested beams are allowed
+                        let nested_beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Beam(Box::new(nested_beam)));
+                    }
+                    // Other child types (clef, tuplet, etc.) can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(beam)
     }
 }
 
@@ -5606,5 +5715,285 @@ mod tests {
         let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
+    }
+
+    // ============================================================================
+    // Beam tests
+    // ============================================================================
+
+    #[test]
+    fn beam_deserializes_from_empty_element() {
+        let xml = r#"<beam/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(beam.common.xml_id.is_none());
+        assert!(beam.children.is_empty());
+    }
+
+    #[test]
+    fn beam_deserializes_xml_id() {
+        let xml = r#"<beam xml:id="b1"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+    }
+
+    #[test]
+    fn beam_deserializes_with_note_children() {
+        let xml = r#"<beam xml:id="b1">
+            <note xml:id="n1" pname="c" oct="4" dur="8"/>
+            <note xml:id="n2" pname="d" oct="4" dur="8"/>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+        assert_eq!(beam.children.len(), 2);
+
+        // Check first child is a note
+        match &beam.children[0] {
+            BeamChild::Note(note) => {
+                assert_eq!(note.common.xml_id, Some("n1".to_string()));
+            }
+            _ => panic!("Expected note child"),
+        }
+
+        // Check second child is a note
+        match &beam.children[1] {
+            BeamChild::Note(note) => {
+                assert_eq!(note.common.xml_id, Some("n2".to_string()));
+            }
+            _ => panic!("Expected note child"),
+        }
+    }
+
+    #[test]
+    fn beam_deserializes_with_mixed_children() {
+        let xml = r#"<beam xml:id="b1">
+            <note xml:id="n1" pname="c" oct="4" dur="8"/>
+            <rest xml:id="r1" dur="8"/>
+            <chord xml:id="ch1" dur="8">
+                <note pname="e" oct="4"/>
+                <note pname="g" oct="4"/>
+            </chord>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.children.len(), 3);
+
+        match &beam.children[0] {
+            BeamChild::Note(_) => {}
+            _ => panic!("Expected note"),
+        }
+        match &beam.children[1] {
+            BeamChild::Rest(_) => {}
+            _ => panic!("Expected rest"),
+        }
+        match &beam.children[2] {
+            BeamChild::Chord(_) => {}
+            _ => panic!("Expected chord"),
+        }
+    }
+
+    #[test]
+    fn beam_deserializes_nested_beams() {
+        let xml = r#"<beam xml:id="b1">
+            <note xml:id="n1" dur="16"/>
+            <beam xml:id="b2">
+                <note xml:id="n2" dur="32"/>
+                <note xml:id="n3" dur="32"/>
+            </beam>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+        assert_eq!(beam.children.len(), 2);
+
+        match &beam.children[1] {
+            BeamChild::Beam(nested) => {
+                assert_eq!(nested.common.xml_id, Some("b2".to_string()));
+                assert_eq!(nested.children.len(), 2);
+            }
+            _ => panic!("Expected nested beam"),
+        }
+    }
+
+    #[test]
+    fn beam_deserializes_staff_attribute() {
+        let xml = r#"<beam staff="1"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_log.staff, vec![1]);
+    }
+
+    #[test]
+    fn beam_deserializes_layer_attribute() {
+        let xml = r#"<beam layer="1"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn beam_deserializes_beam_with_attribute() {
+        use tusk_model::data::DataNeighboringlayer;
+
+        let xml = r#"<beam beam.with="above"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_log.beam_with, Some(DataNeighboringlayer::Above));
+    }
+
+    #[test]
+    fn beam_deserializes_form_attribute() {
+        use tusk_model::att::AttBeamVisForm;
+
+        let xml = r#"<beam form="acc"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.form, Some(AttBeamVisForm::Acc));
+
+        let xml = r#"<beam form="rit"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.form, Some(AttBeamVisForm::Rit));
+
+        let xml = r#"<beam form="mixed"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.form, Some(AttBeamVisForm::Mixed));
+
+        let xml = r#"<beam form="norm"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.form, Some(AttBeamVisForm::Norm));
+    }
+
+    #[test]
+    fn beam_deserializes_place_attribute() {
+        use tusk_model::data::DataBeamplace;
+
+        let xml = r#"<beam place="above"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.place, Some(DataBeamplace::Above));
+
+        let xml = r#"<beam place="below"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.place, Some(DataBeamplace::Below));
+
+        let xml = r#"<beam place="mixed"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.place, Some(DataBeamplace::Mixed));
+    }
+
+    #[test]
+    fn beam_deserializes_slash_attribute() {
+        use tusk_model::data::DataBoolean;
+
+        let xml = r#"<beam slash="true"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.slash, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn beam_deserializes_slope_attribute() {
+        let xml = r#"<beam slope="15.5"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.slope, Some(15.5));
+    }
+
+    #[test]
+    fn beam_deserializes_color_attribute() {
+        let xml = r#"<beam color="red"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(beam.beam_vis.color.is_some());
+    }
+
+    #[test]
+    fn beam_deserializes_cue_attribute() {
+        use tusk_model::data::DataBoolean;
+
+        let xml = r#"<beam cue="true"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.cue, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn beam_deserializes_visible_attribute() {
+        use tusk_model::data::DataBoolean;
+
+        let xml = r#"<beam visible="false"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.beam_vis.visible, Some(DataBoolean::False));
+    }
+
+    #[test]
+    fn beam_handles_unknown_attributes_leniently() {
+        let xml = r#"<beam xml:id="b1" unknown="value"/>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+    }
+
+    #[test]
+    fn beam_handles_unknown_children_leniently() {
+        let xml = r#"<beam xml:id="b1">
+            <note xml:id="n1" dur="8"/>
+            <unknownElement>ignored</unknownElement>
+            <note xml:id="n2" dur="8"/>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+        assert_eq!(beam.children.len(), 2); // unknown element was skipped
+    }
+
+    #[test]
+    fn beam_deserializes_all_common_attributes() {
+        use tusk_model::att::AttBeamVisForm;
+        use tusk_model::data::{DataBeamplace, DataBoolean, DataNeighboringlayer};
+
+        let xml = r##"<beam xml:id="b1" staff="1 2" layer="1" beam.with="above" form="acc" place="above" slash="true" slope="10.0" color="blue" cue="true" visible="true"/>"##;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+        assert_eq!(beam.beam_log.staff, vec![1, 2]);
+        assert_eq!(beam.beam_log.layer, vec![1]);
+        assert_eq!(beam.beam_log.beam_with, Some(DataNeighboringlayer::Above));
+        assert_eq!(beam.beam_vis.form, Some(AttBeamVisForm::Acc));
+        assert_eq!(beam.beam_vis.place, Some(DataBeamplace::Above));
+        assert_eq!(beam.beam_vis.slash, Some(DataBoolean::True));
+        assert_eq!(beam.beam_vis.slope, Some(10.0));
+        assert!(beam.beam_vis.color.is_some());
+        assert_eq!(beam.beam_vis.cue, Some(DataBoolean::True));
+        assert_eq!(beam.beam_vis.visible, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn beam_inside_layer_deserializes() {
+        let xml = r#"<layer xml:id="l1">
+            <beam xml:id="b1">
+                <note xml:id="n1" dur="8"/>
+                <note xml:id="n2" dur="8"/>
+            </beam>
+        </layer>"#;
+        let layer = Layer::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(layer.children.len(), 1);
+
+        match &layer.children[0] {
+            LayerChild::Beam(beam) => {
+                assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+                assert_eq!(beam.children.len(), 2);
+            }
+            _ => panic!("Expected beam child"),
+        }
     }
 }

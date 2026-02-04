@@ -77,7 +77,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add control event tests
 
 ### 2.5 Grouping Elements
-- [ ] Implement MEI parsing for `<beam>` element
+- [x] Implement MEI parsing for `<beam>` element
 - [ ] Implement MEI parsing for `<tuplet>` element
 - [ ] Implement MEI parsing for `<graceGrp>` element
 - [ ] Add beam and tuplet tests
