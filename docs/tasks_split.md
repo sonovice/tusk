@@ -32,7 +32,7 @@ Target: `crates/formats/mei/src/serializer/impls.rs` → split into `impls/` sub
 - [x] Extract measure/staff/layer/section/mdiv serializers → `impls/structure.rs`
 - [x] Extract scoreDef/staffDef/layerDef/staffGrp serializers → `impls/defs.rs`
 - [x] Extract control event serializers → `impls/control.rs`
-- [ ] Extract header serializers → `impls/header.rs`
+- [x] Extract header serializers → `impls/header.rs`
 - [ ] Extract remaining serializers → `impls/misc.rs`, verify impls.rs only has re-exports
 
 ---
