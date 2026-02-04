@@ -619,3 +619,17 @@ fn test_roundtrip_spec_actor_prelude_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_beet_an_ge_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("BeetAnGeSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for BeetAnGeSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for BeetAnGeSample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
