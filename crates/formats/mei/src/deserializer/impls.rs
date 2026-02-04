@@ -12,32 +12,34 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl,
-    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttDataPointing,
-    AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
-    AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEvidence,
+    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttComponentType,
+    AttDataPointing, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog,
+    AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEvidence,
     AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttFiling,
-    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes,
-    AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
-    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
-    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike,
-    AttName, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
-    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
-    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
-    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
-    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
+    AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis,
+    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl,
+    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog,
+    AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
+    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger,
+    AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
+    AttRecordType, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes,
+    AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl,
+    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes,
+    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog,
+    AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog,
+    AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes,
+    AttTupletLog, AttTupletVis, AttTyped, AttXy,
 };
 use tusk_model::elements::{
-    Accid, Artic, Availability, Beam, BeamChild, Chord, ChordChild, Clef, Contributor,
-    ContributorChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor,
-    EditorChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild,
-    Hairpin, Head, HeadChild, Identifier, InstrDef, Label, Layer, LayerChild, LayerDef,
-    LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Note, NoteChild,
-    PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest, RestChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Slur, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef,
+    Accid, Artic, Availability, Beam, BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef,
+    Contributor, ContributorChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam,
+    Editor, EditorChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
+    GraceGrpChild, Hairpin, Head, HeadChild, Identifier, InstrDef, Label, Layer, LayerChild,
+    LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
+    MeiHeadChild, Note, NoteChild, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest,
+    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Source, SourceChild,
+    SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef,
     StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt,
     TitleStmtChild, Tuplet, TupletChild, Unpub,
 };
@@ -788,6 +790,29 @@ impl ExtractAttributes for AttPointing {
 impl ExtractAttributes for AttTargetEval {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "evaluate", self.evaluate);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttComponentType {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "comptype", self.comptype);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRecordType {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "recordtype", self.recordtype);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFoliationScheme {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        if let Some(value) = attrs.remove("scheme") {
+            self.scheme = Some(tusk_model::generated::data::DataUri(value));
+        }
         Ok(())
     }
 }
@@ -2842,7 +2867,14 @@ fn parse_file_desc_from_event<R: BufRead>(
                         .children
                         .push(FileDescChild::PubStmt(Box::new(pub_stmt)));
                 }
-                // Other child elements (sourceDesc, editionStmt, etc.) are not
+                "sourceDesc" => {
+                    let source_desc =
+                        parse_source_desc_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::SourceDesc(Box::new(source_desc)));
+                }
+                // Other child elements (editionStmt, etc.) are not
                 // yet implemented for parsing. Skip them in lenient mode.
                 _ => {
                     if !child_empty {
@@ -3025,6 +3057,245 @@ fn parse_pub_stmt_from_event<R: BufRead>(
     }
 
     Ok(pub_stmt)
+}
+
+/// Parse a `<sourceDesc>` element from within another element.
+fn parse_source_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<SourceDesc> {
+    let mut source_desc = SourceDesc::default();
+
+    // Extract attributes into AttCommon (sourceDesc only has common attributes)
+    source_desc.common.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // sourceDesc can contain: head*, source+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("sourceDesc")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    source_desc
+                        .children
+                        .push(SourceDescChild::Head(Box::new(head)));
+                }
+                "source" => {
+                    let source = parse_source_from_event(reader, child_attrs, child_empty)?;
+                    source_desc
+                        .children
+                        .push(SourceDescChild::Source(Box::new(source)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(source_desc)
+}
+
+/// Parse a `<source>` element from within another element.
+fn parse_source_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Source> {
+    let mut source = Source::default();
+
+    // Extract attributes into each attribute class
+    source.common.extract_attributes(&mut attrs)?;
+    source.authorized.extract_attributes(&mut attrs)?;
+    source.bibl.extract_attributes(&mut attrs)?;
+    source.component_type.extract_attributes(&mut attrs)?;
+    source.data_pointing.extract_attributes(&mut attrs)?;
+    source.pointing.extract_attributes(&mut attrs)?;
+    source.record_type.extract_attributes(&mut attrs)?;
+    source.target_eval.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // source can contain: head*, (locus | locusGrp)*, (bibl | biblStruct)*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("source")? {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    source.children.push(SourceChild::Head(Box::new(head)));
+                }
+                "locus" => {
+                    let locus = parse_locus_from_event(reader, child_attrs, child_empty)?;
+                    source.children.push(SourceChild::Locus(Box::new(locus)));
+                }
+                "locusGrp" => {
+                    let locus_grp = parse_locus_grp_from_event(reader, child_attrs, child_empty)?;
+                    source
+                        .children
+                        .push(SourceChild::LocusGrp(Box::new(locus_grp)));
+                }
+                "bibl" => {
+                    let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                    source.children.push(SourceChild::Bibl(Box::new(bibl)));
+                }
+                "biblStruct" => {
+                    let bibl_struct =
+                        parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                    source
+                        .children
+                        .push(SourceChild::BiblStruct(Box::new(bibl_struct)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(source)
+}
+
+/// Parse a `<bibl>` element from within another element.
+fn parse_bibl_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Bibl> {
+    let mut bibl = Bibl::default();
+
+    // Extract attributes
+    bibl.common.extract_attributes(&mut attrs)?;
+    bibl.bibl.extract_attributes(&mut attrs)?;
+    bibl.facsimile.extract_attributes(&mut attrs)?;
+    bibl.lang.extract_attributes(&mut attrs)?;
+    bibl.pointing.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // bibl can contain text and various child elements (for now, just text)
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("bibl")? {
+            if !text.trim().is_empty() {
+                bibl.children
+                    .push(tusk_model::elements::BiblChild::Text(text));
+            }
+        }
+    }
+
+    Ok(bibl)
+}
+
+/// Parse a `<locus>` element from within another element.
+fn parse_locus_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Locus> {
+    let mut locus = Locus::default();
+
+    // Extract attributes
+    locus.common.extract_attributes(&mut attrs)?;
+    locus.bibl.extract_attributes(&mut attrs)?;
+    locus.foliation_scheme.extract_attributes(&mut attrs)?;
+    locus.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // locus can contain text and some child elements (for now, just text)
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("locus")? {
+            if !text.trim().is_empty() {
+                locus
+                    .children
+                    .push(tusk_model::elements::LocusChild::Text(text));
+            }
+        }
+    }
+
+    Ok(locus)
+}
+
+/// Parse a `<locusGrp>` element from within another element.
+fn parse_locus_grp_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<LocusGrp> {
+    let mut locus_grp = LocusGrp::default();
+
+    // Extract attributes
+    locus_grp.common.extract_attributes(&mut attrs)?;
+    locus_grp.bibl.extract_attributes(&mut attrs)?;
+    locus_grp.foliation_scheme.extract_attributes(&mut attrs)?;
+    locus_grp.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // locusGrp can contain: locus+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("locusGrp")?
+        {
+            match name.as_str() {
+                "locus" => {
+                    let locus = parse_locus_from_event(reader, child_attrs, child_empty)?;
+                    locus_grp
+                        .children
+                        .push(tusk_model::elements::LocusGrpChild::Locus(Box::new(locus)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(locus_grp)
+}
+
+/// Parse a `<biblStruct>` element from within another element.
+fn parse_bibl_struct_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<BiblStruct> {
+    let mut bibl_struct = BiblStruct::default();
+
+    // Extract attributes
+    bibl_struct.common.extract_attributes(&mut attrs)?;
+    bibl_struct.bibl.extract_attributes(&mut attrs)?;
+    bibl_struct.data_pointing.extract_attributes(&mut attrs)?;
+    bibl_struct.lang.extract_attributes(&mut attrs)?;
+    bibl_struct.pointing.extract_attributes(&mut attrs)?;
+    bibl_struct.record_type.extract_attributes(&mut attrs)?;
+    bibl_struct.target_eval.extract_attributes(&mut attrs)?;
+
+    // For now, skip all children (biblStruct can contain analytic, monogr, series, etc.)
+    // In lenient mode, we just skip unknown children
+    if !is_empty {
+        while let Some((name, _child_attrs, child_empty)) =
+            reader.read_next_child_start("biblStruct")?
+        {
+            // Skip all children for now - biblStruct children are complex
+            if !child_empty {
+                reader.skip_to_end(&name)?;
+            }
+        }
+    }
+
+    Ok(bibl_struct)
 }
 
 /// Parse an `<unpub>` element from within another element.
@@ -3512,6 +3783,34 @@ impl MeiDeserialize for PubStmt {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_pub_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for SourceDesc {
+    fn element_name() -> &'static str {
+        "sourceDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_source_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Source {
+    fn element_name() -> &'static str {
+        "source"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_source_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -8397,5 +8696,422 @@ mod tests {
             PubStmtChild::Availability(_)
         ));
         assert!(matches!(pub_stmt.children[7], PubStmtChild::RespStmt(_)));
+    }
+
+    // ========== SourceDesc Tests ==========
+
+    #[test]
+    fn source_desc_deserializes_empty_element() {
+        use tusk_model::elements::SourceDesc;
+
+        let xml = r#"<sourceDesc/>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert!(source_desc.common.xml_id.is_none());
+        assert!(source_desc.children.is_empty());
+    }
+
+    #[test]
+    fn source_desc_deserializes_xml_id() {
+        use tusk_model::elements::SourceDesc;
+
+        let xml = r#"<sourceDesc xml:id="sd1"/>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.common.xml_id, Some("sd1".to_string()));
+    }
+
+    #[test]
+    fn source_desc_deserializes_label_attribute() {
+        use tusk_model::elements::SourceDesc;
+
+        let xml = r#"<sourceDesc label="Source Description"/>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(
+            source_desc.common.label,
+            Some("Source Description".to_string())
+        );
+    }
+
+    #[test]
+    fn source_desc_deserializes_head_child() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+
+        let xml = r#"<sourceDesc>
+            <head>Sources Used</head>
+        </sourceDesc>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.children.len(), 1);
+        assert!(matches!(source_desc.children[0], SourceDescChild::Head(_)));
+    }
+
+    #[test]
+    fn source_desc_deserializes_source_child() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+
+        let xml = r#"<sourceDesc>
+            <source xml:id="src1"/>
+        </sourceDesc>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.children.len(), 1);
+        match &source_desc.children[0] {
+            SourceDescChild::Source(src) => {
+                assert_eq!(src.common.xml_id, Some("src1".to_string()));
+            }
+            _ => panic!("expected Source child"),
+        }
+    }
+
+    #[test]
+    fn source_desc_deserializes_multiple_sources() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+
+        let xml = r#"<sourceDesc xml:id="sd1">
+            <source xml:id="src1"/>
+            <source xml:id="src2"/>
+            <source xml:id="src3"/>
+        </sourceDesc>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.common.xml_id, Some("sd1".to_string()));
+        assert_eq!(source_desc.children.len(), 3);
+        assert!(matches!(
+            source_desc.children[0],
+            SourceDescChild::Source(_)
+        ));
+        assert!(matches!(
+            source_desc.children[1],
+            SourceDescChild::Source(_)
+        ));
+        assert!(matches!(
+            source_desc.children[2],
+            SourceDescChild::Source(_)
+        ));
+    }
+
+    #[test]
+    fn source_desc_preserves_child_order() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+
+        let xml = r#"<sourceDesc>
+            <head>Source List</head>
+            <source xml:id="src1"/>
+            <source xml:id="src2"/>
+        </sourceDesc>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.children.len(), 3);
+        assert!(matches!(source_desc.children[0], SourceDescChild::Head(_)));
+        assert!(matches!(
+            source_desc.children[1],
+            SourceDescChild::Source(_)
+        ));
+        assert!(matches!(
+            source_desc.children[2],
+            SourceDescChild::Source(_)
+        ));
+    }
+
+    #[test]
+    fn source_desc_skips_unknown_children_leniently() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+
+        let xml = r#"<sourceDesc>
+            <unknownElement>ignored</unknownElement>
+            <source xml:id="src1"/>
+        </sourceDesc>"#;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source_desc.children.len(), 1);
+        assert!(matches!(
+            source_desc.children[0],
+            SourceDescChild::Source(_)
+        ));
+    }
+
+    // ========== Source Element Tests ==========
+
+    #[test]
+    fn source_deserializes_empty_element() {
+        use tusk_model::elements::Source;
+
+        let xml = r#"<source/>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert!(source.common.xml_id.is_none());
+        assert!(source.children.is_empty());
+    }
+
+    #[test]
+    fn source_deserializes_xml_id() {
+        use tusk_model::elements::Source;
+
+        let xml = r#"<source xml:id="src1"/>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.common.xml_id, Some("src1".to_string()));
+    }
+
+    #[test]
+    fn source_deserializes_bibl_attribute() {
+        use tusk_model::elements::Source;
+
+        let xml = r#"<source analog="RISM"/>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.bibl.analog, Some("RISM".to_string()));
+    }
+
+    #[test]
+    fn source_deserializes_authorized_attributes() {
+        use tusk_model::elements::Source;
+        use tusk_model::generated::data::DataUri;
+
+        let xml = r#"<source auth="Library of Congress" auth.uri="http://id.loc.gov/"/>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(
+            source.authorized.auth,
+            Some("Library of Congress".to_string())
+        );
+        assert_eq!(
+            source.authorized.auth_uri,
+            Some(DataUri("http://id.loc.gov/".to_string()))
+        );
+    }
+
+    #[test]
+    fn source_deserializes_pointing_attribute() {
+        use tusk_model::elements::Source;
+        use tusk_model::generated::data::DataUri;
+
+        let xml = r##"<source target="#manuscript1"/>"##;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(
+            source.pointing.target,
+            vec![DataUri("#manuscript1".to_string())]
+        );
+    }
+
+    #[test]
+    fn source_deserializes_head_child() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <head>Primary Source</head>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        assert!(matches!(source.children[0], SourceChild::Head(_)));
+    }
+
+    #[test]
+    fn source_deserializes_bibl_child() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <bibl xml:id="b1">Bach, J.S. Manuscript</bibl>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        match &source.children[0] {
+            SourceChild::Bibl(bibl) => {
+                assert_eq!(bibl.common.xml_id, Some("b1".to_string()));
+            }
+            _ => panic!("expected Bibl child"),
+        }
+    }
+
+    #[test]
+    fn source_deserializes_locus_child() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <locus xml:id="loc1">ff. 1r-20v</locus>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        match &source.children[0] {
+            SourceChild::Locus(locus) => {
+                assert_eq!(locus.common.xml_id, Some("loc1".to_string()));
+            }
+            _ => panic!("expected Locus child"),
+        }
+    }
+
+    #[test]
+    fn source_deserializes_locus_grp_child() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <locusGrp xml:id="lg1">
+                <locus>ff. 1r-10v</locus>
+                <locus>ff. 25r-35v</locus>
+            </locusGrp>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        match &source.children[0] {
+            SourceChild::LocusGrp(lg) => {
+                assert_eq!(lg.common.xml_id, Some("lg1".to_string()));
+            }
+            _ => panic!("expected LocusGrp child"),
+        }
+    }
+
+    #[test]
+    fn source_deserializes_bibl_struct_child() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <biblStruct xml:id="bs1"/>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        match &source.children[0] {
+            SourceChild::BiblStruct(bs) => {
+                assert_eq!(bs.common.xml_id, Some("bs1".to_string()));
+            }
+            _ => panic!("expected BiblStruct child"),
+        }
+    }
+
+    #[test]
+    fn source_deserializes_multiple_children() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source xml:id="src1">
+            <head>Manuscript Source</head>
+            <locus>ff. 1r-20v</locus>
+            <bibl>Bach, J.S. Autograph</bibl>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.common.xml_id, Some("src1".to_string()));
+        assert_eq!(source.children.len(), 3);
+        assert!(matches!(source.children[0], SourceChild::Head(_)));
+        assert!(matches!(source.children[1], SourceChild::Locus(_)));
+        assert!(matches!(source.children[2], SourceChild::Bibl(_)));
+    }
+
+    #[test]
+    fn source_skips_unknown_children_leniently() {
+        use tusk_model::elements::{Source, SourceChild};
+
+        let xml = r#"<source>
+            <unknownElement>ignored</unknownElement>
+            <bibl xml:id="b1"/>
+        </source>"#;
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(source.children.len(), 1);
+        assert!(matches!(source.children[0], SourceChild::Bibl(_)));
+    }
+
+    // ========== Integration Tests ==========
+
+    #[test]
+    fn file_desc_deserializes_source_desc_child() {
+        use tusk_model::elements::{FileDesc, FileDescChild};
+
+        let xml = r#"<fileDesc>
+            <titleStmt><title>Test</title></titleStmt>
+            <sourceDesc xml:id="sd1">
+                <source xml:id="src1"/>
+            </sourceDesc>
+        </fileDesc>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(file_desc.children.len(), 2);
+        assert!(matches!(file_desc.children[0], FileDescChild::TitleStmt(_)));
+        match &file_desc.children[1] {
+            FileDescChild::SourceDesc(sd) => {
+                assert_eq!(sd.common.xml_id, Some("sd1".to_string()));
+                assert_eq!(sd.children.len(), 1);
+            }
+            _ => panic!("expected SourceDesc child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_with_file_desc_containing_source_desc() {
+        use tusk_model::elements::{FileDescChild, MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1">
+                <titleStmt><title>Test Score</title></titleStmt>
+                <pubStmt xml:id="ps1"/>
+                <sourceDesc xml:id="sd1">
+                    <head>Source Materials</head>
+                    <source xml:id="src1">
+                        <bibl>Primary manuscript</bibl>
+                    </source>
+                    <source xml:id="src2">
+                        <bibl>Secondary source</bibl>
+                    </source>
+                </sourceDesc>
+            </fileDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+                assert_eq!(fd.children.len(), 3);
+                assert!(matches!(fd.children[0], FileDescChild::TitleStmt(_)));
+                assert!(matches!(fd.children[1], FileDescChild::PubStmt(_)));
+                match &fd.children[2] {
+                    FileDescChild::SourceDesc(sd) => {
+                        assert_eq!(sd.common.xml_id, Some("sd1".to_string()));
+                        assert_eq!(sd.children.len(), 3); // 1 head + 2 sources
+                    }
+                    _ => panic!("expected SourceDesc child"),
+                }
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    #[test]
+    fn source_desc_full_manuscript_example() {
+        use tusk_model::elements::{SourceDesc, SourceDescChild};
+        use tusk_model::generated::data::DataUri;
+
+        let xml = r##"<sourceDesc xml:id="sd1" label="Manuscript Sources">
+            <head>List of Sources</head>
+            <source xml:id="src1" analog="RISM" target="#ms-berlin">
+                <head>Berlin Manuscript</head>
+                <locus>ff. 1r-45v</locus>
+                <bibl>Staatsbibliothek zu Berlin, Mus.ms.autogr. Bach P 200</bibl>
+            </source>
+            <source xml:id="src2" target="#ms-leipzig">
+                <head>Leipzig Print</head>
+                <biblStruct xml:id="bs1"/>
+            </source>
+        </sourceDesc>"##;
+        let source_desc = SourceDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(source_desc.common.xml_id, Some("sd1".to_string()));
+        assert_eq!(
+            source_desc.common.label,
+            Some("Manuscript Sources".to_string())
+        );
+        assert_eq!(source_desc.children.len(), 3);
+
+        // Verify first child is head
+        assert!(matches!(source_desc.children[0], SourceDescChild::Head(_)));
+
+        // Verify second child is source with nested children
+        match &source_desc.children[1] {
+            SourceDescChild::Source(src) => {
+                assert_eq!(src.common.xml_id, Some("src1".to_string()));
+                assert_eq!(src.bibl.analog, Some("RISM".to_string()));
+                assert_eq!(src.pointing.target, vec![DataUri("#ms-berlin".to_string())]);
+                assert_eq!(src.children.len(), 3);
+            }
+            _ => panic!("expected Source child"),
+        }
+
+        // Verify third child is source with biblStruct
+        match &source_desc.children[2] {
+            SourceDescChild::Source(src) => {
+                assert_eq!(src.common.xml_id, Some("src2".to_string()));
+                assert_eq!(
+                    src.pointing.target,
+                    vec![DataUri("#ms-leipzig".to_string())]
+                );
+                assert_eq!(src.children.len(), 2); // head + biblStruct
+            }
+            _ => panic!("expected Source child"),
+        }
     }
 }
