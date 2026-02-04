@@ -867,32 +867,158 @@ impl MeiSerialize for DirChild {
     fn element_name(&self) -> &'static str {
         match self {
             DirChild::Text(_) => "$text",
-            _ => "unknown", // Other children not yet fully implemented
+            DirChild::Rend(_) => "rend",
+            DirChild::Lb(_) => "lb",
+            DirChild::Ref(_) => "ref",
+            DirChild::PersName(_) => "persName",
+            DirChild::CorpName(_) => "corpName",
+            DirChild::Name(_) => "name",
+            DirChild::Date(_) => "date",
+            DirChild::Title(_) => "title",
+            DirChild::Identifier(_) => "identifier",
+            DirChild::Num(_) => "num",
+            DirChild::Ptr(_) => "ptr",
+            DirChild::Annot(_) => "annot",
+            // Other variants - return element name for error messages
+            DirChild::Stack(_) => "stack",
+            DirChild::RelationList(_) => "relationList",
+            DirChild::Locus(_) => "locus",
+            DirChild::Width(_) => "width",
+            DirChild::Orig(_) => "orig",
+            DirChild::Address(_) => "address",
+            DirChild::Curve(_) => "curve",
+            DirChild::Restore(_) => "restore",
+            DirChild::Relation(_) => "relation",
+            DirChild::Term(_) => "term",
+            DirChild::Choice(_) => "choice",
+            DirChild::PostBox(_) => "postBox",
+            DirChild::Corr(_) => "corr",
+            DirChild::GeogName(_) => "geogName",
+            DirChild::Add(_) => "add",
+            DirChild::Bloc(_) => "bloc",
+            DirChild::AnchoredText(_) => "anchoredText",
+            DirChild::Bibl(_) => "bibl",
+            DirChild::Sic(_) => "sic",
+            DirChild::BiblStruct(_) => "biblStruct",
+            DirChild::Symbol(_) => "symbol",
+            DirChild::Dim(_) => "dim",
+            DirChild::Reg(_) => "reg",
+            DirChild::PeriodName(_) => "periodName",
+            DirChild::Subst(_) => "subst",
+            DirChild::Unclear(_) => "unclear",
+            DirChild::Height(_) => "height",
+            DirChild::Street(_) => "street",
+            DirChild::Stamp(_) => "stamp",
+            DirChild::LocusGrp(_) => "locusGrp",
+            DirChild::Del(_) => "del",
+            DirChild::HandShift(_) => "handShift",
+            DirChild::Depth(_) => "depth",
+            DirChild::Heraldry(_) => "heraldry",
+            DirChild::PostCode(_) => "postCode",
+            DirChild::Catchwords(_) => "catchwords",
+            DirChild::Line(_) => "line",
+            DirChild::Region(_) => "region",
+            DirChild::District(_) => "district",
+            DirChild::Extent(_) => "extent",
+            DirChild::Abbr(_) => "abbr",
+            DirChild::Expan(_) => "expan",
+            DirChild::SecFolio(_) => "secFolio",
+            DirChild::Fig(_) => "fig",
+            DirChild::GeogFeat(_) => "geogFeat",
+            DirChild::Q(_) => "q",
+            DirChild::Seg(_) => "seg",
+            DirChild::Gap(_) => "gap",
+            DirChild::StyleName(_) => "styleName",
+            DirChild::Dimensions(_) => "dimensions",
+            DirChild::Country(_) => "country",
+            DirChild::Repository(_) => "repository",
+            DirChild::Signatures(_) => "signatures",
+            DirChild::Supplied(_) => "supplied",
+            DirChild::Settlement(_) => "settlement",
+            DirChild::Damage(_) => "damage",
         }
     }
 
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
+        match self {
+            DirChild::Text(_) => Vec::new(),
+            DirChild::Rend(elem) => elem.collect_all_attributes(),
+            DirChild::Lb(elem) => elem.collect_all_attributes(),
+            DirChild::Ref(elem) => elem.collect_all_attributes(),
+            DirChild::PersName(elem) => elem.collect_all_attributes(),
+            DirChild::CorpName(elem) => elem.collect_all_attributes(),
+            DirChild::Name(elem) => elem.collect_all_attributes(),
+            DirChild::Date(elem) => elem.collect_all_attributes(),
+            DirChild::Title(elem) => elem.collect_all_attributes(),
+            DirChild::Identifier(elem) => elem.collect_all_attributes(),
+            DirChild::Num(elem) => elem.collect_all_attributes(),
+            DirChild::Ptr(elem) => elem.collect_all_attributes(),
+            DirChild::Annot(elem) => elem.collect_all_attributes(),
+            _ => Vec::new(),
+        }
     }
 
     fn has_children(&self) -> bool {
-        false
+        match self {
+            DirChild::Text(_) => false,
+            DirChild::Rend(elem) => elem.has_children(),
+            DirChild::Lb(_) => false,
+            DirChild::Ref(elem) => elem.has_children(),
+            DirChild::PersName(elem) => elem.has_children(),
+            DirChild::CorpName(elem) => elem.has_children(),
+            DirChild::Name(elem) => elem.has_children(),
+            DirChild::Date(elem) => elem.has_children(),
+            DirChild::Title(elem) => elem.has_children(),
+            DirChild::Identifier(elem) => elem.has_children(),
+            DirChild::Num(elem) => elem.has_children(),
+            DirChild::Ptr(_) => false,
+            DirChild::Annot(elem) => elem.has_children(),
+            _ => false,
+        }
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        Ok(())
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            DirChild::Text(_) => Ok(()),
+            DirChild::Rend(elem) => elem.serialize_children(writer),
+            DirChild::Lb(_) => Ok(()),
+            DirChild::Ref(elem) => elem.serialize_children(writer),
+            DirChild::PersName(elem) => elem.serialize_children(writer),
+            DirChild::CorpName(elem) => elem.serialize_children(writer),
+            DirChild::Name(elem) => elem.serialize_children(writer),
+            DirChild::Date(elem) => elem.serialize_children(writer),
+            DirChild::Title(elem) => elem.serialize_children(writer),
+            DirChild::Identifier(elem) => elem.serialize_children(writer),
+            DirChild::Num(elem) => elem.serialize_children(writer),
+            DirChild::Ptr(_) => Ok(()),
+            DirChild::Annot(elem) => elem.serialize_children(writer),
+            _ => Ok(()),
+        }
     }
 
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             DirChild::Text(text) => {
                 writer.write_text(text)?;
+                Ok(())
             }
-            _ => {
-                // Other children not yet fully implemented
-            }
+            DirChild::Rend(elem) => elem.serialize_mei(writer),
+            DirChild::Lb(elem) => elem.serialize_mei(writer),
+            DirChild::Ref(elem) => elem.serialize_mei(writer),
+            DirChild::PersName(elem) => elem.serialize_mei(writer),
+            DirChild::CorpName(elem) => elem.serialize_mei(writer),
+            DirChild::Name(elem) => elem.serialize_mei(writer),
+            DirChild::Date(elem) => elem.serialize_mei(writer),
+            DirChild::Title(elem) => elem.serialize_mei(writer),
+            DirChild::Identifier(elem) => elem.serialize_mei(writer),
+            DirChild::Num(elem) => elem.serialize_mei(writer),
+            DirChild::Ptr(elem) => elem.serialize_mei(writer),
+            DirChild::Annot(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "DirChild::{}",
+                other.element_name()
+            ))),
         }
-        Ok(())
     }
 }
 
