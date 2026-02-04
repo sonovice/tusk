@@ -84,9 +84,9 @@ Target: `crates/formats/musicxml/src/model/data.rs` → split into `data/` submo
 ### 6.3 Element Types (1,748 lines)
 Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements/` submodules
 
-- [ ] Extract score/part types → `elements/score.rs`
-- [ ] Extract measure types → `elements/measure.rs`
-- [ ] Extract barline/ending types → `elements/barline.rs`
+- [x] Extract score/part types → `elements/score.rs`
+- [x] Extract measure types → `elements/measure.rs`
+- [x] Extract barline/ending types → `elements/barline.rs`
 
 ---
 
