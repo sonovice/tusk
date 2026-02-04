@@ -128,7 +128,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Create MusicXML element structs (part-list, part, measure)
 - [x] Create MusicXML note/rest/chord types
 - [x] Create MusicXML attributes types (divisions, key, time, clef)
-- [ ] Create MusicXML direction types
+- [x] Create MusicXML direction types
 
 ### 4.2 MusicXML Parser
 - [ ] Implement MusicXML parser for score-partwise documents

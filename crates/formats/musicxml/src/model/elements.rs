@@ -1319,16 +1319,11 @@ pub enum MeasureContent {
     Forward(Box<super::note::Forward>),
     /// Attributes (key, time, clef, divisions, etc.).
     Attributes(Box<super::attributes::Attributes>),
-    /// Direction (dynamics, tempo, etc.) - placeholder for Phase 4.2.
-    Direction(Box<DirectionPlaceholder>),
+    /// Direction (dynamics, tempo, pedals, wedges, etc.).
+    Direction(Box<super::direction::Direction>),
     /// Barline - placeholder for Phase 4.2.
     Barline(Box<BarlinePlaceholder>),
 }
-
-/// Direction placeholder - dynamics, tempo, etc.
-/// Will be expanded in Phase 4.2.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct DirectionPlaceholder;
 
 /// Barline placeholder.
 /// Will be expanded in Phase 4.2.
