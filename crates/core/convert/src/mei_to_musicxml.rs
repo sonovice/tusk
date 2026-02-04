@@ -1044,6 +1044,267 @@ fn add_note_conversion_warnings(
 }
 
 // ============================================================================
+// MEI Rest → MusicXML Rest Conversion
+// ============================================================================
+
+/// Convert an MEI rest to a MusicXML note containing a rest.
+///
+/// This converts an MEI rest element to MusicXML. In MusicXML, rests are
+/// represented as `<note>` elements containing a `<rest>` child rather than
+/// pitch information.
+///
+/// # Conversion Details
+///
+/// - Duration: MEI `@dur` → MusicXML `<type>` (graphical); calculated duration in divisions
+/// - Dots: MEI `@dots` → MusicXML `<dot>` elements
+/// - Cue rests: MEI `@cue` → MusicXML `<cue>` element
+/// - IDs: MEI `xml:id` → MusicXML `@id` attribute
+///
+/// # Lossy Conversion Notes
+///
+/// The following MEI attributes are lost in conversion:
+/// - Timing attributes (@tstamp, @tstamp.ges, @tstamp.real) - MusicXML uses position in measure
+/// - Staff/layer positioning (@staff, @layer) - determined by measure/note sequence
+/// - Analytical attributes - no MusicXML equivalent
+/// - Editorial child elements (app, choice, etc.) - no MusicXML equivalent
+/// - Facsimile references (@facs) - no MusicXML equivalent
+///
+/// # Arguments
+///
+/// * `mei_rest` - The MEI rest to convert
+/// * `ctx` - The conversion context for state tracking
+///
+/// # Returns
+///
+/// A MusicXML Note element containing a Rest, or an error if conversion fails.
+pub fn convert_mei_rest(
+    mei_rest: &tusk_model::elements::Rest,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<tusk_musicxml::model::note::Note> {
+    use tusk_musicxml::model::elements::Empty;
+    use tusk_musicxml::model::note::{Dot, Note as MxmlNote, NoteType, Rest as MxmlRest};
+
+    // Calculate duration from MEI rest attributes
+    let duration = calculate_mei_rest_duration(mei_rest, ctx);
+
+    // Create the MusicXML rest element
+    let mxml_rest = MxmlRest::new();
+
+    // Create the MusicXML note containing the rest
+    let mut mxml_note = MxmlNote::rest(mxml_rest, duration);
+
+    // Set ID from xml:id
+    if let Some(ref xml_id) = mei_rest.common.xml_id {
+        mxml_note.id = Some(xml_id.clone());
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    // Convert note type (graphical duration)
+    if let Some(note_type_value) = mei_rest
+        .rest_log
+        .dur
+        .as_ref()
+        .and_then(convert_mei_duration_rests_to_note_type)
+    {
+        mxml_note.note_type = Some(NoteType::new(note_type_value));
+    }
+
+    // Convert dots - check both @dots attribute and <dot> children
+    let dot_count = get_mei_rest_dot_count(mei_rest);
+    for _ in 0..dot_count {
+        mxml_note.dots.push(Dot::default());
+    }
+
+    // Convert cue rest
+    if let Some(DataBoolean::True) = mei_rest.rest_log.cue {
+        mxml_note.cue = Some(Empty);
+    }
+
+    // Add warnings for lossy attributes
+    add_rest_conversion_warnings(mei_rest, ctx);
+
+    Ok(mxml_note)
+}
+
+/// Calculate MEI rest duration in MusicXML divisions.
+fn calculate_mei_rest_duration(
+    mei_rest: &tusk_model::elements::Rest,
+    ctx: &ConversionContext,
+) -> f64 {
+    // First check if we have gestural duration in ppq (most accurate)
+    if let Some(dur_ppq) = mei_rest.rest_ges.dur_ppq {
+        return dur_ppq as f64;
+    }
+
+    // Calculate from written duration
+    let divisions = ctx.divisions();
+    let base_duration = if let Some(ref dur) = mei_rest.rest_log.dur {
+        duration_rests_to_quarter_notes(dur)
+    } else {
+        1.0 // Default to quarter note
+    };
+
+    // Apply dots
+    let dot_count = get_mei_rest_dot_count(mei_rest);
+
+    let dotted_duration = apply_dots(base_duration, dot_count);
+
+    // Convert to divisions
+    dotted_duration * divisions
+}
+
+/// Convert MEI rest duration (DataDurationrests) to quarter note units.
+fn duration_rests_to_quarter_notes(dur: &tusk_model::data::DataDurationrests) -> f64 {
+    use tusk_model::data::{DataDurationCmn, DataDurationrests};
+
+    match dur {
+        DataDurationrests::DataDurationCmn(cmn) => match cmn {
+            DataDurationCmn::Long => 16.0,    // Long = 4 whole notes
+            DataDurationCmn::Breve => 8.0,    // Breve = 2 whole notes
+            DataDurationCmn::N1 => 4.0,       // Whole = 4 quarters
+            DataDurationCmn::N2 => 2.0,       // Half = 2 quarters
+            DataDurationCmn::N4 => 1.0,       // Quarter
+            DataDurationCmn::N8 => 0.5,       // Eighth
+            DataDurationCmn::N16 => 0.25,     // 16th
+            DataDurationCmn::N32 => 0.125,    // 32nd
+            DataDurationCmn::N64 => 0.0625,   // 64th
+            DataDurationCmn::N128 => 0.03125, // 128th
+            DataDurationCmn::N256 => 0.015625,
+            DataDurationCmn::N512 => 0.0078125,
+            DataDurationCmn::N1024 => 0.00390625,
+            DataDurationCmn::N2048 => 0.001953125,
+        },
+        // For mensural rest durations, return quarter note as fallback
+        DataDurationrests::DataDurationrestsMensural(_) => 1.0,
+    }
+}
+
+/// Convert MEI rest duration (DataDurationrests) to MusicXML NoteTypeValue.
+fn convert_mei_duration_rests_to_note_type(
+    dur: &tusk_model::data::DataDurationrests,
+) -> Option<tusk_musicxml::model::note::NoteTypeValue> {
+    use tusk_model::data::{DataDurationCmn, DataDurationrests};
+    use tusk_musicxml::model::note::NoteTypeValue;
+
+    match dur {
+        DataDurationrests::DataDurationCmn(cmn) => {
+            let value = match cmn {
+                DataDurationCmn::Long => NoteTypeValue::Long,
+                DataDurationCmn::Breve => NoteTypeValue::Breve,
+                DataDurationCmn::N1 => NoteTypeValue::Whole,
+                DataDurationCmn::N2 => NoteTypeValue::Half,
+                DataDurationCmn::N4 => NoteTypeValue::Quarter,
+                DataDurationCmn::N8 => NoteTypeValue::Eighth,
+                DataDurationCmn::N16 => NoteTypeValue::N16th,
+                DataDurationCmn::N32 => NoteTypeValue::N32nd,
+                DataDurationCmn::N64 => NoteTypeValue::N64th,
+                DataDurationCmn::N128 => NoteTypeValue::N128th,
+                DataDurationCmn::N256 => NoteTypeValue::N256th,
+                DataDurationCmn::N512 => NoteTypeValue::N512th,
+                DataDurationCmn::N1024 => NoteTypeValue::N1024th,
+                DataDurationCmn::N2048 => NoteTypeValue::N1024th, // MusicXML doesn't have 2048th
+            };
+            Some(value)
+        }
+        // Mensural rest durations have no direct MusicXML equivalent
+        DataDurationrests::DataDurationrestsMensural(_) => None,
+    }
+}
+
+/// Get the total dot count from MEI rest (both @dots attribute and <dot> children).
+fn get_mei_rest_dot_count(mei_rest: &tusk_model::elements::Rest) -> u64 {
+    use tusk_model::elements::RestChild;
+
+    // First check the @dots attribute
+    if let Some(ref dots) = mei_rest.rest_log.dots {
+        return dots.to_string().parse::<u64>().unwrap_or(0);
+    }
+
+    // Count <dot> children as fallback
+    mei_rest
+        .children
+        .iter()
+        .filter(|c| matches!(c, RestChild::Dot(_)))
+        .count() as u64
+}
+
+/// Add warnings for MEI rest attributes that are lost in conversion.
+fn add_rest_conversion_warnings(
+    mei_rest: &tusk_model::elements::Rest,
+    ctx: &mut ConversionContext,
+) {
+    use tusk_model::elements::RestChild;
+
+    // Warn about timing attributes (100% loss)
+    if mei_rest.rest_log.tstamp.is_some()
+        || mei_rest.rest_log.tstamp_ges.is_some()
+        || mei_rest.rest_log.tstamp_real.is_some()
+    {
+        ctx.add_warning(
+            "rest",
+            "MEI timing attributes (@tstamp, @tstamp.ges, @tstamp.real) are lost in MusicXML conversion",
+        );
+    }
+
+    // Warn about staff/layer positioning (position determined by sequence in MusicXML)
+    if !mei_rest.rest_log.staff.is_empty() || !mei_rest.rest_log.layer.is_empty() {
+        ctx.add_warning(
+            "rest",
+            "MEI @staff/@layer attributes are not directly mapped; position in MusicXML is determined by sequence",
+        );
+    }
+
+    // Warn about facsimile links
+    if !mei_rest.facsimile.facs.is_empty() {
+        ctx.add_warning(
+            "rest",
+            "MEI @facs (facsimile link) has no MusicXML equivalent",
+        );
+    }
+
+    // Warn about analytical attributes
+    if mei_rest.rest_anl != tusk_model::att::AttRestAnl::default() {
+        ctx.add_warning(
+            "rest",
+            "MEI analytical attributes have no MusicXML equivalent",
+        );
+    }
+
+    // Warn about editorial children
+    for child in &mei_rest.children {
+        match child {
+            RestChild::App(_)
+            | RestChild::Choice(_)
+            | RestChild::Corr(_)
+            | RestChild::Sic(_)
+            | RestChild::Del(_)
+            | RestChild::Add(_)
+            | RestChild::Subst(_) => {
+                ctx.add_warning(
+                    "rest",
+                    "MEI editorial markup (app, choice, corr, sic, etc.) is lost in MusicXML conversion",
+                );
+                break; // Only warn once
+            }
+            _ => {}
+        }
+    }
+
+    // Warn about mensural durations
+    if mei_rest.rest_log.dur.as_ref().is_some_and(|dur| {
+        matches!(
+            dur,
+            tusk_model::data::DataDurationrests::DataDurationrestsMensural(_)
+        )
+    }) {
+        ctx.add_warning(
+            "rest",
+            "MEI mensural rest duration has no direct MusicXML equivalent",
+        );
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -2003,5 +2264,263 @@ mod tests {
                 mei_dur
             );
         }
+    }
+
+    // ========================================================================
+    // MEI Rest → MusicXML Rest Conversion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_rest_basic() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Check that it's a rest
+        assert!(mxml_note.is_rest());
+        // Check duration (quarter note = 1 quarter = 4 divisions)
+        assert_eq!(mxml_note.duration, Some(4.0));
+    }
+
+    #[test]
+    fn test_convert_mei_rest_with_duration_type() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+        use tusk_musicxml::model::note::NoteTypeValue;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2)); // Half rest
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Check note type (graphical duration)
+        assert!(mxml_note.note_type.is_some());
+        assert_eq!(
+            mxml_note.note_type.as_ref().unwrap().value,
+            NoteTypeValue::Half
+        );
+        // Check duration in divisions (half rest = 2 quarters = 8 divisions)
+        assert_eq!(mxml_note.duration, Some(8.0));
+    }
+
+    #[test]
+    fn test_convert_mei_rest_with_dots() {
+        use tusk_model::data::{DataAugmentdot, DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dots = Some(DataAugmentdot::from(1u64)); // Dotted quarter
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Check dots
+        assert_eq!(mxml_note.dots.len(), 1);
+        // Dotted quarter = 1.5 quarters = 6 divisions
+        assert_eq!(mxml_note.duration.unwrap(), 6.0);
+    }
+
+    #[test]
+    fn test_convert_mei_rest_with_id() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.common.xml_id = Some("rest-1".to_string());
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Check ID mapping
+        assert!(mxml_note.id.is_some());
+        assert_eq!(mxml_note.id.as_ref().unwrap(), "rest-1");
+    }
+
+    #[test]
+    fn test_convert_mei_rest_cue() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.cue = Some(DataBoolean::True);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        assert!(mxml_note.is_cue());
+    }
+
+    #[test]
+    fn test_convert_mei_rest_with_dur_ppq() {
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        // Set gestural duration directly (12 ppq)
+        mei_rest.rest_ges.dur_ppq = Some(12);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0); // Even with divisions set, dur.ppq takes precedence
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Duration should be exactly the dur.ppq value
+        assert_eq!(mxml_note.duration, Some(12.0));
+    }
+
+    #[test]
+    fn test_convert_mei_rest_whole_rest() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+        use tusk_musicxml::model::note::NoteTypeValue;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1)); // Whole rest
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        assert!(mxml_note.is_rest());
+        assert!(mxml_note.note_type.is_some());
+        assert_eq!(
+            mxml_note.note_type.as_ref().unwrap().value,
+            NoteTypeValue::Whole
+        );
+        // Whole rest = 4 quarters = 16 divisions
+        assert_eq!(mxml_note.duration, Some(16.0));
+    }
+
+    #[test]
+    fn test_convert_mei_rest_all_durations() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+        use tusk_musicxml::model::note::NoteTypeValue;
+
+        let duration_mappings = [
+            (DataDurationCmn::Breve, NoteTypeValue::Breve),
+            (DataDurationCmn::N1, NoteTypeValue::Whole),
+            (DataDurationCmn::N2, NoteTypeValue::Half),
+            (DataDurationCmn::N4, NoteTypeValue::Quarter),
+            (DataDurationCmn::N8, NoteTypeValue::Eighth),
+            (DataDurationCmn::N16, NoteTypeValue::N16th),
+            (DataDurationCmn::N32, NoteTypeValue::N32nd),
+            (DataDurationCmn::N64, NoteTypeValue::N64th),
+        ];
+
+        for (mei_dur, expected_type) in duration_mappings {
+            let mut mei_rest = MeiRest::default();
+            mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(mei_dur));
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+            ctx.set_divisions(4.0);
+
+            let result = convert_mei_rest(&mei_rest, &mut ctx);
+            assert!(result.is_ok(), "Failed for duration {:?}", mei_dur);
+
+            let mxml_note = result.unwrap();
+            assert!(
+                mxml_note.note_type.is_some(),
+                "No note type for {:?}",
+                mei_dur
+            );
+            assert_eq!(
+                mxml_note.note_type.as_ref().unwrap().value,
+                expected_type,
+                "Duration mismatch for {:?}",
+                mei_dur
+            );
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_rest_double_dotted() {
+        use tusk_model::data::{DataAugmentdot, DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2));
+        mei_rest.rest_log.dots = Some(DataAugmentdot::from(2u64)); // Double-dotted half
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Check dots
+        assert_eq!(mxml_note.dots.len(), 2);
+        // Double-dotted half = 2 + 1 + 0.5 = 3.5 quarters = 14 divisions
+        assert_eq!(mxml_note.duration.unwrap(), 14.0);
+    }
+
+    #[test]
+    fn test_convert_mei_rest_generates_warnings_for_timing() {
+        use tusk_model::data::{DataBeat, DataDurationCmn, DataDurationrests};
+        use tusk_model::elements::Rest as MeiRest;
+
+        let mut mei_rest = MeiRest::default();
+        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.tstamp = Some(DataBeat::from(1.0));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let _ = convert_mei_rest(&mei_rest, &mut ctx);
+
+        // Should have warnings about timing attributes being lost
+        assert!(ctx.has_warnings());
+    }
+
+    #[test]
+    fn test_convert_mei_rest_default_duration() {
+        use tusk_model::elements::Rest as MeiRest;
+
+        // Rest with no duration specified
+        let mei_rest = MeiRest::default();
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_rest(&mei_rest, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_note = result.unwrap();
+        // Should default to quarter note = 4 divisions
+        assert_eq!(mxml_note.duration, Some(4.0));
     }
 }

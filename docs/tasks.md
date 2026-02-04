@@ -160,7 +160,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Convert MEI staffGrp/staffDef to MusicXML part-list
 - [x] Convert MEI measure to MusicXML measure
 - [x] Convert MEI note to MusicXML note
-- [ ] Convert MEI rest to MusicXML rest
+- [x] Convert MEI rest to MusicXML rest
 - [ ] Convert MEI chord to MusicXML chord
 - [ ] Convert MEI scoreDef/staffDef to MusicXML attributes
 - [ ] Convert MEI control events to MusicXML directions
