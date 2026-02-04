@@ -10,13 +10,15 @@ use tusk_model::att::{
     AttAccidental, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis,
     AttCalendared, AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable,
     AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
-    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttKeyMode, AttLabelled, AttLinking,
-    AttMeiVersion, AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName,
-    AttPitch, AttPointing, AttRecordType, AttRegularMethod, AttResponsibility, AttSource,
-    AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
-    AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttInternetMedia, AttKeyMode, AttLabelled,
+    AttLinking, AttMeasurement, AttMeiVersion, AttMetadataPointing, AttMeterSigLog, AttNInteger,
+    AttNNumberLike, AttName, AttPitch, AttPointing, AttRanging, AttRecordType, AttRegularMethod,
+    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
+    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
-use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
+use tusk_model::elements::{
+    Beam, BeamChild, GraceGrp, GraceGrpChild, Num, Ptr, Ref, Tuplet, TupletChild,
+};
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
 
@@ -915,5 +917,146 @@ impl CollectAttributes for AttMeterSigLog {
             attrs.push(("unit", v.to_string()));
         }
         attrs
+    }
+}
+
+impl CollectAttributes for AttInternetMedia {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "mimetype", clone self.mimetype);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMeasurement {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "unit", self.unit);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRanging {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        if let Some(ref v) = self.atleast {
+            attrs.push(("atleast", v.to_string()));
+        }
+        if let Some(ref v) = self.atmost {
+            attrs.push(("atmost", v.to_string()));
+        }
+        if let Some(ref v) = self.min {
+            attrs.push(("min", v.to_string()));
+        }
+        if let Some(ref v) = self.max {
+            attrs.push(("max", v.to_string()));
+        }
+        push_attr!(attrs, "confidence", self.confidence);
+        attrs
+    }
+}
+
+// ============================================================================
+// Num element implementation
+// ============================================================================
+
+impl MeiSerialize for Num {
+    fn element_name(&self) -> &'static str {
+        "num"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.measurement.collect_attributes());
+        attrs.extend(self.ranging.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                tusk_model::elements::NumChild::Text(text) => writer.write_text(text)?,
+                // Other children delegate to their own serialize_mei
+                _ => {
+                    // Most child types need their own serializer implementations
+                    // For now, skip unimplemented children
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Ref element implementation
+// ============================================================================
+
+impl MeiSerialize for Ref {
+    fn element_name(&self) -> &'static str {
+        "ref"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.internet_media.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                tusk_model::elements::RefChild::Text(text) => writer.write_text(text)?,
+                // Other children delegate to their own serialize_mei
+                _ => {
+                    // Most child types need their own serializer implementations
+                    // For now, skip unimplemented children
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Ptr element implementation
+// ============================================================================
+
+impl MeiSerialize for Ptr {
+    fn element_name(&self) -> &'static str {
+        "ptr"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.internet_media.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Ptr is an empty element
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
     }
 }

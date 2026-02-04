@@ -10,8 +10,8 @@ use tusk_model::elements::{
     AppInfo, AppInfoChild, Application, ApplicationChild, Category, CategoryChild, ClassDecls,
     ClassDeclsChild, Correction, CorrectionChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
     EncodingDescChild, Interpretation, InterpretationChild, Normalization, NormalizationChild,
-    ProjectDesc, ProjectDescChild, SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild,
-    StdVals, StdValsChild, Taxonomy, TaxonomyChild,
+    ProjectDesc, ProjectDescChild, SamplingDecl, SamplingDeclChild, Segmentation,
+    SegmentationChild, StdVals, StdValsChild, Taxonomy, TaxonomyChild,
 };
 
 // ============================================================================
@@ -185,8 +185,8 @@ impl MeiSerialize for ApplicationChild {
         match self {
             ApplicationChild::Name(elem) => elem.serialize_mei(writer),
             ApplicationChild::P(elem) => elem.serialize_mei(writer),
-            ApplicationChild::Ptr(_) => Ok(()), // TODO: implement Ptr serializer
-            ApplicationChild::Ref(_) => Ok(()), // TODO: implement Ref serializer
+            ApplicationChild::Ptr(elem) => elem.serialize_mei(writer),
+            ApplicationChild::Ref(elem) => elem.serialize_mei(writer),
         }
     }
 }
