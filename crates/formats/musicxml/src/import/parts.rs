@@ -6,18 +6,18 @@
 //! - MusicXML `<part-group>` → nested MEI `<staffGrp>`
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
-use crate::musicxml_to_mei::{
+use crate::convert_error::ConversionResult;
+use crate::import::{
     convert_clef_attributes, convert_key_fifths, convert_key_to_context, convert_time_signature,
 };
+use crate::model::attributes::KeyContent;
+use crate::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 use tusk_model::att::AttStaffGrpVisSymbol;
 use tusk_model::data::{DataBoolean, DataClefline, DataClefshape};
 use tusk_model::elements::{
     Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild, StaffGrp,
     StaffGrpChild,
 };
-use tusk_musicxml::model::attributes::KeyContent;
-use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 
 /// Convert MusicXML part-list to MEI scoreDef.
 pub fn convert_score_def(
@@ -88,12 +88,12 @@ pub fn convert_staff_grp(
                 let group_number = part_group.number.clone().unwrap_or_else(|| "1".to_string());
 
                 match part_group.group_type {
-                    tusk_musicxml::model::data::StartStop::Start => {
+                    crate::model::data::StartStop::Start => {
                         // Start a new group
                         let new_grp = convert_staff_grp_from_part_group(part_group, ctx)?;
                         group_stack.push((group_number, new_grp));
                     }
-                    tusk_musicxml::model::data::StartStop::Stop => {
+                    crate::model::data::StartStop::Stop => {
                         // Find and close the matching group
                         if let Some(idx) = group_stack
                             .iter()
@@ -180,10 +180,8 @@ fn convert_staff_grp_from_part_group(
 }
 
 /// Convert MusicXML GroupSymbol to MEI AttStaffGrpVisSymbol.
-fn convert_group_symbol(
-    symbol: tusk_musicxml::model::elements::GroupSymbol,
-) -> AttStaffGrpVisSymbol {
-    use tusk_musicxml::model::elements::GroupSymbol;
+fn convert_group_symbol(symbol: crate::model::elements::GroupSymbol) -> AttStaffGrpVisSymbol {
+    use crate::model::elements::GroupSymbol;
 
     match symbol {
         GroupSymbol::Brace => AttStaffGrpVisSymbol::Brace,
@@ -195,8 +193,8 @@ fn convert_group_symbol(
 }
 
 /// Convert MusicXML GroupBarline to MEI DataBoolean for bar.thru attribute.
-fn convert_group_barline(barline: tusk_musicxml::model::elements::GroupBarline) -> DataBoolean {
-    use tusk_musicxml::model::elements::GroupBarline;
+fn convert_group_barline(barline: crate::model::elements::GroupBarline) -> DataBoolean {
+    use crate::model::elements::GroupBarline;
 
     match barline {
         GroupBarline::Yes => DataBoolean::True,
@@ -213,8 +211,8 @@ fn convert_group_barline(barline: tusk_musicxml::model::elements::GroupBarline) 
 fn extract_first_measure_attributes<'a>(
     score: &'a ScorePartwise,
     part_id: &str,
-) -> Option<&'a tusk_musicxml::model::attributes::Attributes> {
-    use tusk_musicxml::model::elements::MeasureContent;
+) -> Option<&'a crate::model::attributes::Attributes> {
+    use crate::model::elements::MeasureContent;
 
     // Find the part by ID
     let part = score.parts.iter().find(|p| p.id == part_id)?;
@@ -243,7 +241,7 @@ fn extract_first_measure_attributes<'a>(
 pub fn convert_staff_def_from_score_part(
     score_part: &ScorePart,
     staff_number: u32,
-    initial_attrs: Option<&tusk_musicxml::model::attributes::Attributes>,
+    initial_attrs: Option<&crate::model::attributes::Attributes>,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<StaffDef> {
     let mut staff_def = StaffDef::default();
@@ -371,7 +369,7 @@ pub fn convert_staff_def(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_musicxml::model::elements::{PartList, PartListItem, PartName, ScorePart};
+    use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
 
     /// Helper to create a ScorePart with the given id and name.
     fn make_score_part(id: &str, name: &str) -> ScorePart {
@@ -527,8 +525,8 @@ mod tests {
 
     #[test]
     fn convert_part_group_creates_nested_staff_grp() {
-        use tusk_musicxml::model::data::StartStop;
-        use tusk_musicxml::model::elements::{
+        use crate::model::data::StartStop;
+        use crate::model::elements::{
             GroupBarline, GroupBarlineValue, GroupSymbol, GroupSymbolValue, PartGroup,
         };
 
@@ -636,8 +634,8 @@ mod tests {
 
     #[test]
     fn convert_part_group_brace_symbol() {
-        use tusk_musicxml::model::data::StartStop;
-        use tusk_musicxml::model::elements::{GroupSymbol, GroupSymbolValue, PartGroup};
+        use crate::model::data::StartStop;
+        use crate::model::elements::{GroupSymbol, GroupSymbolValue, PartGroup};
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -690,8 +688,8 @@ mod tests {
 
     #[test]
     fn convert_part_group_mensurstrich_barline() {
-        use tusk_musicxml::model::data::StartStop;
-        use tusk_musicxml::model::elements::{GroupBarline, GroupBarlineValue, PartGroup};
+        use crate::model::data::StartStop;
+        use crate::model::elements::{GroupBarline, GroupBarlineValue, PartGroup};
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {

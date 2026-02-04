@@ -26,12 +26,10 @@ use crate::context::ConversionContext;
 pub fn convert_mei_dynam(
     dynam: &tusk_model::elements::Dynam,
     ctx: &mut ConversionContext,
-) -> Option<tusk_musicxml::model::direction::Direction> {
+) -> Option<crate::model::direction::Direction> {
+    use crate::model::data::AboveBelow;
+    use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Dynamics};
     use tusk_model::elements::DynamChild;
-    use tusk_musicxml::model::data::AboveBelow;
-    use tusk_musicxml::model::direction::{
-        Direction, DirectionType, DirectionTypeContent, Dynamics,
-    };
 
     // Extract text content from dynam element
     let text_content: String = dynam
@@ -87,8 +85,8 @@ pub fn convert_mei_dynam(
 }
 
 /// Parse dynamics text to a MusicXML DynamicsValue.
-fn parse_dynamics_text(text: &str) -> tusk_musicxml::model::direction::DynamicsValue {
-    use tusk_musicxml::model::direction::DynamicsValue;
+fn parse_dynamics_text(text: &str) -> crate::model::direction::DynamicsValue {
+    use crate::model::direction::DynamicsValue;
 
     match text.trim() {
         "pppppp" => DynamicsValue::Pppppp,
@@ -139,13 +137,13 @@ fn parse_dynamics_text(text: &str) -> tusk_musicxml::model::direction::DynamicsV
 pub fn convert_mei_hairpin(
     hairpin: &tusk_model::elements::Hairpin,
     ctx: &mut ConversionContext,
-) -> Vec<tusk_musicxml::model::direction::Direction> {
-    use tusk_model::att::AttHairpinLogForm;
-    use tusk_model::data::DataBoolean;
-    use tusk_musicxml::model::data::{AboveBelow, YesNo};
-    use tusk_musicxml::model::direction::{
+) -> Vec<crate::model::direction::Direction> {
+    use crate::model::data::{AboveBelow, YesNo};
+    use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Wedge, WedgeType,
     };
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::data::DataBoolean;
 
     let mut directions = Vec::new();
 
@@ -217,10 +215,10 @@ pub fn convert_mei_hairpin(
 pub fn convert_mei_dir(
     dir: &tusk_model::elements::Dir,
     ctx: &mut ConversionContext,
-) -> Option<tusk_musicxml::model::direction::Direction> {
+) -> Option<crate::model::direction::Direction> {
+    use crate::model::data::AboveBelow;
+    use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Words};
     use tusk_model::elements::DirChild;
-    use tusk_musicxml::model::data::AboveBelow;
-    use tusk_musicxml::model::direction::{Direction, DirectionType, DirectionTypeContent, Words};
 
     // Extract text content
     let text_content: String = dir
@@ -286,12 +284,12 @@ pub fn convert_mei_dir(
 pub fn convert_mei_tempo(
     tempo: &tusk_model::elements::Tempo,
     ctx: &mut ConversionContext,
-) -> Option<tusk_musicxml::model::direction::Direction> {
-    use tusk_model::elements::TempoChild;
-    use tusk_musicxml::model::data::AboveBelow;
-    use tusk_musicxml::model::direction::{
+) -> Option<crate::model::direction::Direction> {
+    use crate::model::data::AboveBelow;
+    use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Metronome, MetronomeContent, Sound, Words,
     };
+    use tusk_model::elements::TempoChild;
 
     let mut direction_types = Vec::new();
 
@@ -409,7 +407,7 @@ mod tests {
         let dir = direction.unwrap();
         assert_eq!(dir.direction_types.len(), 1);
         // Check dynamics content
-        if let tusk_musicxml::model::direction::DirectionTypeContent::Dynamics(dyn_content) =
+        if let crate::model::direction::DirectionTypeContent::Dynamics(dyn_content) =
             &dir.direction_types[0].content
         {
             assert_eq!(dyn_content.values.len(), 1);
@@ -438,9 +436,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_dynam_recognizes_standard_dynamics() {
+        use crate::model::direction::{DirectionTypeContent, DynamicsValue};
         use tusk_model::elements::{Dynam, DynamChild};
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::direction::{DirectionTypeContent, DynamicsValue};
 
         for (text, expected) in [
             ("ppp", DynamicsValue::Ppp),
@@ -478,10 +476,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_hairpin_crescendo() {
+        use crate::model::direction::{DirectionTypeContent, WedgeType};
         use tusk_model::att::AttHairpinLogForm;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::direction::{DirectionTypeContent, WedgeType};
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some(AttHairpinLogForm::Cres);
@@ -502,10 +500,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_hairpin_diminuendo() {
+        use crate::model::direction::{DirectionTypeContent, WedgeType};
         use tusk_model::att::AttHairpinLogForm;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::direction::{DirectionTypeContent, WedgeType};
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some(AttHairpinLogForm::Dim);
@@ -526,12 +524,12 @@ mod tests {
 
     #[test]
     fn test_convert_mei_hairpin_with_niente() {
+        use crate::model::data::YesNo;
+        use crate::model::direction::DirectionTypeContent;
         use tusk_model::att::AttHairpinLogForm;
         use tusk_model::data::DataBoolean;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::direction::DirectionTypeContent;
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some(AttHairpinLogForm::Cres);
@@ -552,9 +550,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_dir_basic() {
+        use crate::model::direction::DirectionTypeContent;
         use tusk_model::elements::{Dir, DirChild};
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::direction::DirectionTypeContent;
 
         let mut dir = Dir::default();
         dir.children.push(DirChild::Text("dolce".to_string()));
@@ -575,9 +573,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_tempo_basic() {
+        use crate::model::direction::DirectionTypeContent;
         use tusk_model::elements::{Tempo, TempoChild};
         use tusk_model::generated::data::DataBeat;
-        use tusk_musicxml::model::direction::DirectionTypeContent;
 
         let mut tempo = Tempo::default();
         tempo.children.push(TempoChild::Text("Allegro".to_string()));
@@ -599,10 +597,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_tempo_with_metronome() {
+        use crate::model::direction::{DirectionTypeContent, MetronomeContent};
         use tusk_model::data::{DataDuration, DataDurationCmn};
         use tusk_model::elements::Tempo;
         use tusk_model::generated::data::{DataBeat, DataTempovalue};
-        use tusk_musicxml::model::direction::{DirectionTypeContent, MetronomeContent};
 
         let mut tempo = Tempo::default();
         tempo.tempo_log.mm = Some(DataTempovalue::from(120.0));

@@ -1,16 +1,16 @@
 //! Note, rest, and chord conversion from MusicXML to MEI.
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
-use crate::musicxml_to_mei::utils::{
+use crate::convert_error::ConversionResult;
+use crate::import::utils::{
     convert_accidental_value, convert_alter_to_gestural_accid, convert_grace,
     convert_note_type_to_duration, convert_note_type_to_duration_cmn, convert_pitch_name,
     convert_stem_direction,
 };
+use crate::model::note::FullNoteContent;
 use tusk_model::att::AttAccidLogFunc;
 use tusk_model::data::{DataAugmentdot, DataBoolean, DataOctave};
 use tusk_model::elements::{Accid, Chord, ChordChild, NoteChild};
-use tusk_musicxml::model::note::FullNoteContent;
 
 /// Convert a MusicXML note to MEI note.
 ///
@@ -31,7 +31,7 @@ use tusk_musicxml::model::note::FullNoteContent;
 ///
 /// An MEI Note element, or an error if conversion fails.
 pub fn convert_note(
-    note: &tusk_musicxml::model::note::Note,
+    note: &crate::model::note::Note,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Note> {
     use tusk_model::elements::Note as MeiNote;
@@ -93,7 +93,7 @@ pub fn convert_note(
 
 /// Convert note duration information from MusicXML to MEI.
 pub(crate) fn convert_note_duration(
-    note: &tusk_musicxml::model::note::Note,
+    note: &crate::model::note::Note,
     mei_note: &mut tusk_model::elements::Note,
     ctx: &ConversionContext,
 ) {
@@ -121,10 +121,10 @@ pub(crate) fn convert_note_duration(
 
 /// Convert MusicXML accidental to MEI accid element.
 pub(crate) fn convert_accidental(
-    accidental: &tusk_musicxml::model::note::Accidental,
+    accidental: &crate::model::note::Accidental,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<Accid> {
-    use tusk_musicxml::model::data::YesNo;
+    use crate::model::data::YesNo;
 
     let mut accid = Accid::default();
 
@@ -172,7 +172,7 @@ pub(crate) fn convert_accidental(
 ///
 /// An MEI Rest element, or an error if conversion fails.
 pub fn convert_rest(
-    note: &tusk_musicxml::model::note::Note,
+    note: &crate::model::note::Note,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Rest> {
     use tusk_model::elements::Rest as MeiRest;
@@ -234,7 +234,7 @@ pub fn convert_rest(
 ///
 /// An MEI MRest element, or an error if conversion fails.
 pub fn convert_measure_rest(
-    note: &tusk_musicxml::model::note::Note,
+    note: &crate::model::note::Note,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::MRest> {
     use tusk_model::elements::MRest;
@@ -266,9 +266,9 @@ pub fn convert_measure_rest(
 }
 
 /// Check if a MusicXML rest is a whole-measure rest.
-pub fn is_measure_rest(note: &tusk_musicxml::model::note::Note) -> bool {
-    use tusk_musicxml::model::data::YesNo;
-    use tusk_musicxml::model::note::FullNoteContent;
+pub fn is_measure_rest(note: &crate::model::note::Note) -> bool {
+    use crate::model::data::YesNo;
+    use crate::model::note::FullNoteContent;
 
     match &note.content {
         FullNoteContent::Rest(rest) => rest.measure == Some(YesNo::Yes),
@@ -292,7 +292,7 @@ pub fn is_measure_rest(note: &tusk_musicxml::model::note::Note) -> bool {
 ///
 /// An MEI Chord element containing all the notes, or an error if conversion fails.
 pub fn convert_chord(
-    notes: &[tusk_musicxml::model::note::Note],
+    notes: &[crate::model::note::Note],
     ctx: &mut ConversionContext,
 ) -> ConversionResult<Chord> {
     let mut mei_chord = Chord::default();
@@ -363,8 +363,8 @@ mod tests {
 
     #[test]
     fn convert_note_sets_pitch_name() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -376,8 +376,8 @@ mod tests {
 
     #[test]
     fn convert_note_sets_octave() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::new(Step::G, 5), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -389,9 +389,9 @@ mod tests {
 
     #[test]
     fn convert_note_with_sharp_alter() {
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
         use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::with_alter(Step::F, 1.0, 4), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -409,9 +409,9 @@ mod tests {
 
     #[test]
     fn convert_note_with_flat_alter() {
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
         use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::with_alter(Step::B, -1.0, 4), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -429,8 +429,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_duration() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::E, 4), 4.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -446,8 +446,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_dots() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::D, 4), 6.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -465,8 +465,8 @@ mod tests {
 
     #[test]
     fn convert_note_infers_duration_from_divisions() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         // No note_type, but duration is set
         let note = Note::pitched(Pitch::new(Step::A, 4), 4.0);
@@ -485,8 +485,8 @@ mod tests {
 
     #[test]
     fn convert_note_stores_gestural_duration() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::new(Step::C, 4), 96.0);
 
@@ -499,8 +499,8 @@ mod tests {
 
     #[test]
     fn convert_grace_note_unaccented() {
-        use tusk_musicxml::model::data::{Step, YesNo};
-        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+        use crate::model::data::{Step, YesNo};
+        use crate::model::note::{Grace, Note, Pitch};
 
         let mut grace = Grace::default();
         grace.slash = Some(YesNo::Yes); // Slashed grace note
@@ -515,8 +515,8 @@ mod tests {
 
     #[test]
     fn convert_grace_note_accented() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Grace, Note, Pitch};
 
         // No slash = accented grace note
         let note = Note::grace_note(Pitch::new(Step::E, 4), Grace::default());
@@ -529,8 +529,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_written_accidental_sharp() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::with_alter(Step::F, 1.0, 4), 4.0);
         note.accidental = Some(Accidental::new(AccidentalValue::Sharp));
@@ -557,8 +557,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_written_accidental_flat() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::with_alter(Step::B, -1.0, 4), 4.0);
         note.accidental = Some(Accidental::new(AccidentalValue::Flat));
@@ -584,8 +584,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_cautionary_accidental() {
-        use tusk_musicxml::model::data::{Step, YesNo};
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::{Step, YesNo};
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
         let mut accidental = Accidental::new(AccidentalValue::Natural);
@@ -604,8 +604,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_editorial_accidental() {
-        use tusk_musicxml::model::data::{Step, YesNo};
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::{Step, YesNo};
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::G, 4), 4.0);
         let mut accidental = Accidental::new(AccidentalValue::Sharp);
@@ -624,8 +624,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_parentheses_accidental() {
-        use tusk_musicxml::model::data::{Step, YesNo};
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::{Step, YesNo};
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::A, 4), 4.0);
         let mut accidental = Accidental::new(AccidentalValue::Natural);
@@ -647,8 +647,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_stem_up() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch, Stem, StemValue};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch, Stem, StemValue};
 
         let mut note = Note::pitched(Pitch::new(Step::E, 4), 4.0);
         note.stem = Some(Stem::new(StemValue::Up));
@@ -666,8 +666,8 @@ mod tests {
 
     #[test]
     fn convert_note_with_stem_down() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch, Stem, StemValue};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch, Stem, StemValue};
 
         let mut note = Note::pitched(Pitch::new(Step::A, 5), 4.0);
         note.stem = Some(Stem::new(StemValue::Down));
@@ -685,9 +685,9 @@ mod tests {
 
     #[test]
     fn convert_cue_note() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::C, 5), 4.0);
         note.cue = Some(Empty);
@@ -700,8 +700,8 @@ mod tests {
 
     #[test]
     fn convert_note_generates_xml_id() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let note = Note::pitched(Pitch::new(Step::D, 4), 4.0);
 
@@ -714,8 +714,8 @@ mod tests {
 
     #[test]
     fn convert_note_maps_original_id() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let mut note = Note::pitched(Pitch::new(Step::F, 4), 4.0);
         note.id = Some("original-note-id".to_string());
@@ -731,8 +731,8 @@ mod tests {
 
     #[test]
     fn convert_note_all_pitch_names() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, Pitch};
 
         let steps = [
             (Step::A, "a"),
@@ -760,8 +760,8 @@ mod tests {
 
     #[test]
     fn convert_note_various_durations() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let durations = [
             (NoteTypeValue::Whole, DataDurationCmn::N1),
@@ -791,8 +791,8 @@ mod tests {
 
     #[test]
     fn convert_note_double_sharp_accidental() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::with_alter(Step::F, 2.0, 4), 4.0);
         note.accidental = Some(Accidental::new(AccidentalValue::DoubleSharp));
@@ -814,8 +814,8 @@ mod tests {
 
     #[test]
     fn convert_note_double_flat_accidental() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::note::{Accidental, AccidentalValue, Note, Pitch};
 
         let mut note = Note::pitched(Pitch::with_alter(Step::B, -2.0, 4), 4.0);
         note.accidental = Some(Accidental::new(AccidentalValue::FlatFlat));
@@ -841,7 +841,7 @@ mod tests {
 
     #[test]
     fn convert_rest_creates_mei_rest() {
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::note::{Note, Rest};
 
         let note = Note::rest(Rest::new(), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -854,8 +854,8 @@ mod tests {
 
     #[test]
     fn convert_rest_with_duration() {
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
         use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Rest};
 
         let mut note = Note::rest(Rest::new(), 4.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -872,8 +872,8 @@ mod tests {
 
     #[test]
     fn convert_rest_with_dots() {
+        use crate::model::note::{Dot, Note, NoteType, NoteTypeValue, Rest};
         use tusk_model::generated::data::DataAugmentdot;
-        use tusk_musicxml::model::note::{Dot, Note, NoteType, NoteTypeValue, Rest};
 
         let mut note = Note::rest(Rest::new(), 6.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -888,8 +888,8 @@ mod tests {
 
     #[test]
     fn convert_rest_infers_duration_from_divisions() {
+        use crate::model::note::{Note, Rest};
         use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
-        use tusk_musicxml::model::note::{Note, Rest};
 
         // A rest with duration 4 when divisions=4 is a quarter note
         let note = Note::rest(Rest::new(), 4.0);
@@ -906,7 +906,7 @@ mod tests {
 
     #[test]
     fn convert_rest_stores_gestural_duration() {
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::note::{Note, Rest};
 
         let note = Note::rest(Rest::new(), 8.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -917,7 +917,7 @@ mod tests {
 
     #[test]
     fn convert_rest_generates_xml_id() {
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::note::{Note, Rest};
 
         let note = Note::rest(Rest::new(), 4.0);
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
@@ -929,7 +929,7 @@ mod tests {
 
     #[test]
     fn convert_rest_maps_original_id() {
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::note::{Note, Rest};
 
         let mut note = Note::rest(Rest::new(), 4.0);
         note.id = Some("original-rest-id".to_string());
@@ -945,9 +945,9 @@ mod tests {
 
     #[test]
     fn convert_cue_rest() {
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Rest};
         use tusk_model::generated::data::DataBoolean;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Rest};
 
         let mut note = Note::rest(Rest::new(), 4.0);
         note.cue = Some(Empty);
@@ -960,8 +960,8 @@ mod tests {
 
     #[test]
     fn convert_rest_various_durations() {
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
         use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Rest};
 
         let test_cases = [
             (NoteTypeValue::Whole, DataDurationCmn::N1),
@@ -989,8 +989,8 @@ mod tests {
 
     #[test]
     fn convert_measure_rest_creates_mrest() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::data::YesNo;
+        use crate::model::note::{Note, Rest};
 
         let mut rest = Rest::new();
         rest.measure = Some(YesNo::Yes);
@@ -1004,8 +1004,8 @@ mod tests {
 
     #[test]
     fn convert_measure_rest_generates_xml_id() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::data::YesNo;
+        use crate::model::note::{Note, Rest};
 
         let mut rest = Rest::new();
         rest.measure = Some(YesNo::Yes);
@@ -1019,8 +1019,8 @@ mod tests {
 
     #[test]
     fn convert_measure_rest_stores_gestural_duration() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::data::YesNo;
+        use crate::model::note::{Note, Rest};
 
         let mut rest = Rest::new();
         rest.measure = Some(YesNo::Yes);
@@ -1034,10 +1034,10 @@ mod tests {
 
     #[test]
     fn convert_cue_measure_rest() {
+        use crate::model::data::YesNo;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Rest};
         use tusk_model::generated::data::DataBoolean;
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Rest};
 
         let mut rest = Rest::new();
         rest.measure = Some(YesNo::Yes);
@@ -1056,9 +1056,9 @@ mod tests {
 
     #[test]
     fn convert_chord_creates_mei_chord() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         // Create a C major chord (C4, E4, G4)
         let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0); // First note - no chord flag
@@ -1078,9 +1078,9 @@ mod tests {
 
     #[test]
     fn convert_chord_contains_all_notes() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         // Create a C major chord (C4, E4, G4)
         let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
@@ -1105,9 +1105,9 @@ mod tests {
 
     #[test]
     fn convert_chord_sets_duration() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
         note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -1129,9 +1129,9 @@ mod tests {
 
     #[test]
     fn convert_chord_sets_dots() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
 
         let mut note1 = Note::pitched(Pitch::new(Step::D, 4), 6.0);
         note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -1151,9 +1151,9 @@ mod tests {
 
     #[test]
     fn convert_chord_stores_gestural_duration() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         let note1 = Note::pitched(Pitch::new(Step::A, 3), 96.0);
         let mut note2 = Note::pitched(Pitch::new(Step::C, 4), 96.0);
@@ -1169,9 +1169,9 @@ mod tests {
 
     #[test]
     fn convert_chord_generates_xml_id() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
         let mut note2 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
@@ -1188,9 +1188,9 @@ mod tests {
 
     #[test]
     fn convert_chord_note_pitches_preserved() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
         let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
@@ -1218,9 +1218,9 @@ mod tests {
 
     #[test]
     fn convert_chord_with_accidentals() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Note, Pitch};
 
         // C# E G# chord
         let note1 = Note::pitched(Pitch::with_alter(Step::C, 1.0, 4), 4.0);
@@ -1255,9 +1255,9 @@ mod tests {
 
     #[test]
     fn convert_chord_grace_notes() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::Empty;
-        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::Empty;
+        use crate::model::note::{Grace, Note, Pitch};
 
         let note1 = Note::grace_note(Pitch::new(Step::C, 4), Grace::default());
         let mut note2 = Note::grace_note(Pitch::new(Step::E, 4), Grace::default());

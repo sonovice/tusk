@@ -164,6 +164,26 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Convert MEI chord to MusicXML chord
 - [x] Convert MEI scoreDef/staffDef to MusicXML attributes
 - [x] Convert MEI control events to MusicXML directions
+
+### 4.4a Architecture Migration (remove convert crate)
+
+Prerequisite: Complete tasks_split.md Phase 4 & 5 first (splits conversion files into submodules).
+
+- [x] Move `crates/core/convert/src/context.rs` → `crates/formats/musicxml/src/context.rs`
+- [x] Move `crates/core/convert/src/error.rs` → `crates/formats/musicxml/src/error.rs` (merge with existing)
+- [x] Move `crates/core/convert/src/musicxml_to_mei/` → `crates/formats/musicxml/src/import/`
+- [x] Move `crates/core/convert/src/mei_to_musicxml/` → `crates/formats/musicxml/src/export/`
+- [x] Create public `musicxml::import()` function in `crates/formats/musicxml/src/lib.rs`
+- [x] Create public `musicxml::export()` function in `crates/formats/musicxml/src/lib.rs`
+- [x] Create public `mei::import()` function in `crates/formats/mei/src/lib.rs`
+- [x] Create public `mei::export()` function in `crates/formats/mei/src/lib.rs`
+- [x] Update `crates/formats/musicxml/Cargo.toml` dependencies (add what convert had)
+- [x] Remove `crates/core/convert/` crate entirely
+- [x] Update root `Cargo.toml` workspace members (remove convert)
+- [x] Update CLI crate to use new `musicxml::import()`/`export()` API
+- [x] Verify all tests pass after migration
+
+### 4.4b Remaining MEI → MusicXML work
 - [ ] Handle MEI duration → MusicXML divisions conversion
 - [ ] Add MEI → MusicXML conversion tests
 - [ ] Add tests against `specs/musicxml/examples/`

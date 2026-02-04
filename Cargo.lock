@@ -583,19 +583,7 @@ dependencies = [
  "clap",
  "indicatif",
  "tracing",
- "tusk-convert",
  "tusk-mei",
- "tusk-musicxml",
-]
-
-[[package]]
-name = "tusk-convert"
-version = "0.1.0"
-dependencies = [
- "thiserror",
- "tracing",
- "tusk-mei",
- "tusk-model",
  "tusk-musicxml",
 ]
 
@@ -641,7 +629,6 @@ dependencies = [
 name = "tusk-wasm"
 version = "0.1.0"
 dependencies = [
- "tusk-convert",
  "tusk-mei",
  "tusk-musicxml",
  "wasm-bindgen",

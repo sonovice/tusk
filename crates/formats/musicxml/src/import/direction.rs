@@ -7,16 +7,14 @@
 //! - `<words>` → `<dir>`
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
-use crate::musicxml_to_mei::utils::{
+use crate::convert_error::ConversionResult;
+use crate::import::utils::{
     beat_unit_string_to_duration, dynamics_value_to_string, format_metronome_text,
 };
+use crate::model::direction::{Direction, DirectionTypeContent, MetronomeContent, WedgeType};
 use tusk_model::att::{AttHairpinLogForm, AttTempoLogFunc};
 use tusk_model::data::{DataAugmentdot, DataBeat, DataBoolean, DataTempovalue};
 use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
-use tusk_musicxml::model::direction::{
-    Direction, DirectionTypeContent, MetronomeContent, WedgeType,
-};
 
 // ============================================================================
 // Direction to Control Event Conversion
@@ -114,7 +112,7 @@ fn calculate_tstamp(direction: &Direction, ctx: &ConversionContext) -> DataBeat 
 /// - ppp, pp, p, mp, mf, f, ff, fff → text content
 /// - Combined dynamics (sfp, sfz, etc.) → text content
 fn convert_dynamics(
-    dynamics: &tusk_musicxml::model::direction::Dynamics,
+    dynamics: &crate::model::direction::Dynamics,
     tstamp: DataBeat,
     staff: u32,
     ctx: &mut ConversionContext,
@@ -152,12 +150,12 @@ fn convert_dynamics(
 /// Returns None for stop wedges since they don't create new elements,
 /// but rather close existing ones.
 fn convert_wedge(
-    wedge: &tusk_musicxml::model::direction::Wedge,
+    wedge: &crate::model::direction::Wedge,
     tstamp: DataBeat,
     staff: u32,
     ctx: &mut ConversionContext,
 ) -> Option<Hairpin> {
-    use tusk_musicxml::model::data::YesNo;
+    use crate::model::data::YesNo;
 
     match wedge.wedge_type {
         WedgeType::Crescendo | WedgeType::Diminuendo => {
@@ -209,7 +207,7 @@ fn convert_wedge(
 /// Maps metronome content:
 /// - beat-unit + per-minute → tempo with mm, mm.unit attributes
 fn convert_metronome(
-    metronome: &tusk_musicxml::model::direction::Metronome,
+    metronome: &crate::model::direction::Metronome,
     tstamp: DataBeat,
     staff: u32,
     ctx: &mut ConversionContext,
@@ -271,7 +269,7 @@ fn convert_metronome(
 ///
 /// Words directions are converted to general directives.
 fn convert_words(
-    words: &[tusk_musicxml::model::direction::Words],
+    words: &[crate::model::direction::Words],
     tstamp: DataBeat,
     staff: u32,
     ctx: &mut ConversionContext,

@@ -7,11 +7,9 @@
 //! - MEI `<labelAbbr>` -> MusicXML `<part-abbreviation>`
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
-use tusk_model::elements::{
-    ScoreDef, ScoreDefChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
-};
-use tusk_musicxml::model::elements::{PartList, PartListItem, PartName, ScorePart};
+use crate::convert_error::ConversionResult;
+use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
+use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrpChild};
 
 use super::utils::{
     extract_label_abbr_text, extract_label_text, extract_staff_def_label,
@@ -50,8 +48,8 @@ pub fn convert_staff_grp_to_part_list(
     ctx: &mut ConversionContext,
     group_num: u32,
 ) -> ConversionResult<u32> {
-    use tusk_musicxml::model::data::StartStop;
-    use tusk_musicxml::model::elements::PartGroup;
+    use crate::model::data::StartStop;
+    use crate::model::elements::PartGroup;
 
     let mut current_group_num = group_num;
     let has_children = !staff_grp.children.is_empty();
@@ -130,9 +128,9 @@ pub fn convert_staff_grp_to_part_list(
 /// Convert MEI staffGrp @symbol to MusicXML group-symbol.
 pub fn convert_staff_grp_symbol(
     staff_grp: &StaffGrp,
-) -> Option<tusk_musicxml::model::elements::GroupSymbolValue> {
+) -> Option<crate::model::elements::GroupSymbolValue> {
+    use crate::model::elements::{GroupSymbol, GroupSymbolValue};
     use tusk_model::att::AttStaffGrpVisSymbol;
-    use tusk_musicxml::model::elements::{GroupSymbol, GroupSymbolValue};
 
     staff_grp.staff_grp_vis.symbol.as_ref().map(|sym| {
         let value = match sym {
@@ -154,9 +152,9 @@ pub fn convert_staff_grp_symbol(
 /// Convert MEI staffGrp @bar.thru to MusicXML group-barline.
 pub fn convert_staff_grp_barline(
     staff_grp: &StaffGrp,
-) -> Option<tusk_musicxml::model::elements::GroupBarlineValue> {
+) -> Option<crate::model::elements::GroupBarlineValue> {
+    use crate::model::elements::{GroupBarline, GroupBarlineValue};
     use tusk_model::data::DataBoolean;
-    use tusk_musicxml::model::elements::{GroupBarline, GroupBarlineValue};
 
     staff_grp.staff_grp_vis.bar_thru.as_ref().map(|bar_thru| {
         let value = match bar_thru {
@@ -207,7 +205,7 @@ mod tests {
     use crate::context::ConversionDirection;
     use tusk_model::att::AttStaffGrpVisSymbol;
     use tusk_model::data::DataBoolean;
-    use tusk_model::elements::{Label, LabelAbbr, LabelAbbrChild, LabelChild};
+    use tusk_model::elements::{Label, LabelAbbr, LabelAbbrChild, LabelChild, StaffDefChild};
 
     // ========================================================================
     // Part List Conversion Tests
@@ -366,7 +364,7 @@ mod tests {
         let result = convert_staff_grp_symbol(&staff_grp);
         assert!(result.is_some());
 
-        use tusk_musicxml::model::elements::GroupSymbol;
+        use crate::model::elements::GroupSymbol;
         assert_eq!(result.unwrap().value, GroupSymbol::Brace);
     }
 
@@ -378,7 +376,7 @@ mod tests {
         let result = convert_staff_grp_barline(&staff_grp);
         assert!(result.is_some());
 
-        use tusk_musicxml::model::elements::GroupBarline;
+        use crate::model::elements::GroupBarline;
         assert_eq!(result.unwrap().value, GroupBarline::Yes);
     }
 
@@ -522,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_convert_all_staff_grp_symbols() {
-        use tusk_musicxml::model::elements::GroupSymbol;
+        use crate::model::elements::GroupSymbol;
 
         let test_cases = [
             (AttStaffGrpVisSymbol::Brace, GroupSymbol::Brace),
@@ -544,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_convert_bar_thru_values() {
-        use tusk_musicxml::model::elements::GroupBarline;
+        use crate::model::elements::GroupBarline;
 
         // Test true -> yes
         let mut staff_grp = StaffGrp::default();

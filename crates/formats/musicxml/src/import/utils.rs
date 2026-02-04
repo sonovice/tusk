@@ -8,20 +8,20 @@
 //! - Grace note conversion
 //! - Beat unit conversion
 
+use crate::model::note::{AccidentalValue, NoteTypeValue, StemValue};
 use tusk_model::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
     DataAccidentalWrittenBasic, DataDuration, DataDurationCmn, DataGrace, DataPitchname,
     DataStemdirection, DataStemdirectionBasic,
 };
-use tusk_musicxml::model::note::{AccidentalValue, NoteTypeValue, StemValue};
 
 // ============================================================================
 // Pitch Conversion Helpers
 // ============================================================================
 
 /// Convert MusicXML Step to MEI DataPitchname.
-pub(crate) fn convert_pitch_name(step: tusk_musicxml::model::data::Step) -> DataPitchname {
-    use tusk_musicxml::model::data::Step;
+pub(crate) fn convert_pitch_name(step: crate::model::data::Step) -> DataPitchname {
+    use crate::model::data::Step;
 
     let name = match step {
         Step::A => "a",
@@ -174,8 +174,8 @@ pub(crate) fn beat_unit_string_to_duration(beat_unit: &str) -> Option<DataDurati
 }
 
 /// Convert MusicXML grace note to MEI grace attribute.
-pub(crate) fn convert_grace(grace: &tusk_musicxml::model::note::Grace) -> DataGrace {
-    use tusk_musicxml::model::data::YesNo;
+pub(crate) fn convert_grace(grace: &crate::model::note::Grace) -> DataGrace {
+    use crate::model::data::YesNo;
 
     // MusicXML grace/@slash="yes" → MEI @grace="unacc" (unaccented/slashed)
     // MusicXML grace/@slash="no" or absent → MEI @grace="acc" (accented/no slash)
@@ -210,10 +210,8 @@ pub(crate) fn convert_stem_direction(stem: StemValue) -> DataStemdirection {
 // ============================================================================
 
 /// Convert a MusicXML dynamics value to string.
-pub(crate) fn dynamics_value_to_string(
-    value: &tusk_musicxml::model::direction::DynamicsValue,
-) -> String {
-    use tusk_musicxml::model::direction::DynamicsValue;
+pub(crate) fn dynamics_value_to_string(value: &crate::model::direction::DynamicsValue) -> String {
+    use crate::model::direction::DynamicsValue;
 
     match value {
         DynamicsValue::Ppp => "ppp".to_string(),

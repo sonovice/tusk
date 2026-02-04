@@ -10,7 +10,7 @@ use super::utils::{
     convert_mei_stem_direction, duration_rests_to_quarter_notes, duration_to_quarter_notes,
 };
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
+use crate::convert_error::ConversionResult;
 use tusk_model::data::DataBoolean;
 
 // ============================================================================
@@ -47,9 +47,9 @@ use tusk_model::data::DataBoolean;
 pub fn convert_mei_note(
     mei_note: &tusk_model::elements::Note,
     ctx: &mut ConversionContext,
-) -> ConversionResult<tusk_musicxml::model::note::Note> {
-    use tusk_musicxml::model::elements::Empty;
-    use tusk_musicxml::model::note::{Dot, Note as MxmlNote, NoteType, Stem};
+) -> ConversionResult<crate::model::note::Note> {
+    use crate::model::elements::Empty;
+    use crate::model::note::{Dot, Note as MxmlNote, NoteType, Stem};
 
     // Build the MusicXML note
     let mut mxml_note: MxmlNote;
@@ -116,9 +116,9 @@ pub fn convert_mei_note(
 fn convert_mei_pitch(
     mei_note: &tusk_model::elements::Note,
     _ctx: &mut ConversionContext,
-) -> ConversionResult<tusk_musicxml::model::note::Pitch> {
-    use tusk_musicxml::model::data::Step;
-    use tusk_musicxml::model::note::Pitch;
+) -> ConversionResult<crate::model::note::Pitch> {
+    use crate::model::data::Step;
+    use crate::model::note::Pitch;
 
     // Get pitch name (pname)
     let step = if let Some(ref pname) = mei_note.note_log.pname {
@@ -148,8 +148,8 @@ fn convert_mei_pitch(
 /// Convert MEI pitch name to MusicXML Step.
 fn convert_mei_pname_to_step(
     pname: &tusk_model::data::DataPitchname,
-) -> ConversionResult<tusk_musicxml::model::data::Step> {
-    use tusk_musicxml::model::data::Step;
+) -> ConversionResult<crate::model::data::Step> {
+    use crate::model::data::Step;
 
     let name = pname.to_string().to_lowercase();
     match name.as_str() {
@@ -221,10 +221,10 @@ fn calculate_mei_note_duration(
 }
 
 /// Convert MEI grace attribute to MusicXML Grace element.
-fn convert_mei_grace(mei_note: &tusk_model::elements::Note) -> tusk_musicxml::model::note::Grace {
+fn convert_mei_grace(mei_note: &tusk_model::elements::Note) -> crate::model::note::Grace {
+    use crate::model::data::YesNo;
+    use crate::model::note::Grace;
     use tusk_model::data::DataGrace;
-    use tusk_musicxml::model::data::YesNo;
-    use tusk_musicxml::model::note::Grace;
 
     let mut grace = Grace::default();
 
@@ -252,11 +252,11 @@ fn convert_mei_grace(mei_note: &tusk_model::elements::Note) -> tusk_musicxml::mo
 fn convert_mei_accid_to_mxml(
     accid: &tusk_model::elements::Accid,
     _ctx: &mut ConversionContext,
-) -> ConversionResult<tusk_musicxml::model::note::Accidental> {
+) -> ConversionResult<crate::model::note::Accidental> {
+    use crate::model::data::YesNo;
+    use crate::model::note::{Accidental, AccidentalValue};
     use tusk_model::att::AttAccidLogFunc;
     use tusk_model::data::DataEnclosure;
-    use tusk_musicxml::model::data::YesNo;
-    use tusk_musicxml::model::note::{Accidental, AccidentalValue};
 
     let value = if let Some(ref accid_val) = accid.accid_log.accid {
         convert_mei_written_accid_to_mxml(accid_val)
@@ -301,9 +301,9 @@ fn convert_mei_accid_to_mxml(
 /// Convert MEI written accidental to MusicXML AccidentalValue.
 fn convert_mei_written_accid_to_mxml(
     accid: &tusk_model::data::DataAccidentalWritten,
-) -> tusk_musicxml::model::note::AccidentalValue {
+) -> crate::model::note::AccidentalValue {
+    use crate::model::note::AccidentalValue;
     use tusk_model::data::{DataAccidentalWritten, DataAccidentalWrittenBasic};
-    use tusk_musicxml::model::note::AccidentalValue;
 
     match accid {
         DataAccidentalWritten::DataAccidentalWrittenBasic(basic) => match basic {
@@ -405,9 +405,9 @@ fn add_note_conversion_warnings(
 pub fn convert_mei_rest(
     mei_rest: &tusk_model::elements::Rest,
     ctx: &mut ConversionContext,
-) -> ConversionResult<tusk_musicxml::model::note::Note> {
-    use tusk_musicxml::model::elements::Empty;
-    use tusk_musicxml::model::note::{Dot, Note as MxmlNote, NoteType, Rest as MxmlRest};
+) -> ConversionResult<crate::model::note::Note> {
+    use crate::model::elements::Empty;
+    use crate::model::note::{Dot, Note as MxmlNote, NoteType, Rest as MxmlRest};
 
     // Calculate duration from MEI rest attributes
     let duration = calculate_mei_rest_duration(mei_rest, ctx);
@@ -612,10 +612,10 @@ fn add_rest_conversion_warnings(
 pub fn convert_mei_chord(
     mei_chord: &tusk_model::elements::Chord,
     ctx: &mut ConversionContext,
-) -> ConversionResult<Vec<tusk_musicxml::model::note::Note>> {
+) -> ConversionResult<Vec<crate::model::note::Note>> {
+    use crate::model::elements::Empty;
+    use crate::model::note::{Dot, Note as MxmlNote, NoteType, Stem};
     use tusk_model::elements::ChordChild;
-    use tusk_musicxml::model::elements::Empty;
-    use tusk_musicxml::model::note::{Dot, Note as MxmlNote, NoteType, Stem};
 
     // Collect note children from the chord
     let mei_notes: Vec<&tusk_model::elements::Note> = mei_chord
@@ -758,21 +758,19 @@ fn calculate_mei_chord_duration(
 }
 
 /// Convert MEI chord grace attribute to MusicXML Grace element.
-fn convert_mei_grace_chord(
-    mei_chord: &tusk_model::elements::Chord,
-) -> tusk_musicxml::model::note::Grace {
+fn convert_mei_grace_chord(mei_chord: &tusk_model::elements::Chord) -> crate::model::note::Grace {
+    use crate::model::note::Grace;
     use tusk_model::data::DataGrace;
-    use tusk_musicxml::model::note::Grace;
 
     let mut grace = Grace::default();
 
     if let Some(ref grace_type) = mei_chord.chord_log.grace {
         match grace_type {
             DataGrace::Acc => {
-                grace.slash = Some(tusk_musicxml::model::data::YesNo::Yes);
+                grace.slash = Some(crate::model::data::YesNo::Yes);
             }
             DataGrace::Unacc => {
-                grace.slash = Some(tusk_musicxml::model::data::YesNo::No);
+                grace.slash = Some(crate::model::data::YesNo::No);
             }
             DataGrace::Unknown => {}
         }
@@ -902,10 +900,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_basic_pitch() {
+        use crate::model::data::Step;
+        use crate::model::note::FullNoteContent;
         use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::FullNoteContent;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
@@ -931,9 +929,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_with_duration() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("e".to_string()));
@@ -986,12 +984,12 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_with_accidental() {
+        use crate::model::note::AccidentalValue;
         use tusk_model::data::{
             DataAccidentalWritten, DataAccidentalWrittenBasic, DataDuration, DataDurationCmn,
             DataOctave, DataPitchname,
         };
         use tusk_model::elements::{Accid, Note as MeiNote, NoteChild};
-        use tusk_musicxml::model::note::AccidentalValue;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("f".to_string()));
@@ -1022,12 +1020,12 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_with_gestural_accidental() {
+        use crate::model::note::FullNoteContent;
         use tusk_model::data::{
             DataAccidentalGestural, DataAccidentalGesturalBasic, DataDuration, DataDurationCmn,
             DataOctave, DataPitchname,
         };
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::note::FullNoteContent;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("b".to_string()));
@@ -1055,12 +1053,12 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_with_stem_direction() {
+        use crate::model::note::StemValue;
         use tusk_model::data::{
             DataDuration, DataDurationCmn, DataOctave, DataPitchname, DataStemdirection,
             DataStemdirectionBasic,
         };
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::note::StemValue;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("d".to_string()));
@@ -1108,7 +1106,7 @@ mod tests {
         // Grace notes should not have duration
         assert!(mxml_note.duration.is_none());
         // Unaccented grace should have slash
-        use tusk_musicxml::model::data::YesNo;
+        use crate::model::data::YesNo;
         assert_eq!(mxml_note.grace.as_ref().unwrap().slash, Some(YesNo::Yes));
     }
 
@@ -1158,10 +1156,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_all_pitches() {
+        use crate::model::data::Step;
+        use crate::model::note::FullNoteContent;
         use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::FullNoteContent;
 
         let pitch_mappings = [
             ("c", Step::C),
@@ -1200,9 +1198,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_all_durations() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         let duration_mappings = [
             (DataDurationCmn::Breve, NoteTypeValue::Breve),
@@ -1269,9 +1267,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_rest_with_duration_type() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDurationCmn, DataDurationrests};
         use tusk_model::elements::Rest as MeiRest;
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         let mut mei_rest = MeiRest::default();
         mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2)); // Half rest
@@ -1376,9 +1374,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_rest_whole_rest() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDurationCmn, DataDurationrests};
         use tusk_model::elements::Rest as MeiRest;
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         let mut mei_rest = MeiRest::default();
         mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1)); // Whole rest
@@ -1402,9 +1400,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_rest_all_durations() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDurationCmn, DataDurationrests};
         use tusk_model::elements::Rest as MeiRest;
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         let duration_mappings = [
             (DataDurationCmn::Breve, NoteTypeValue::Breve),
@@ -1540,10 +1538,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_chord_pitches_preserved() {
+        use crate::model::data::Step;
+        use crate::model::note::FullNoteContent;
         use tusk_model::data::{DataOctave, DataPitchname};
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::note::FullNoteContent;
 
         // Create a C major chord (C4, E4, G4)
         let mut mei_chord = MeiChord::default();
@@ -1577,9 +1575,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_chord_duration() {
+        use crate::model::note::NoteTypeValue;
         use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
-        use tusk_musicxml::model::note::NoteTypeValue;
 
         // Create a chord with half note duration
         let mut mei_chord = MeiChord::default();
@@ -1740,11 +1738,11 @@ mod tests {
 
     #[test]
     fn test_convert_mei_chord_with_stem_direction() {
+        use crate::model::note::StemValue;
         use tusk_model::data::{
             DataOctave, DataPitchname, DataStemdirection, DataStemdirectionBasic,
         };
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
-        use tusk_musicxml::model::note::StemValue;
 
         let mut mei_chord = MeiChord::default();
         mei_chord.chord_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
@@ -1843,11 +1841,11 @@ mod tests {
 
     #[test]
     fn test_convert_mei_chord_with_accidentals() {
+        use crate::model::note::FullNoteContent;
         use tusk_model::data::{
             DataAccidentalGestural, DataAccidentalGesturalBasic, DataOctave, DataPitchname,
         };
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
-        use tusk_musicxml::model::note::FullNoteContent;
 
         // Create a chord with C# and F# (C#4, F#4)
         let mut mei_chord = MeiChord::default();

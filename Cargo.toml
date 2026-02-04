@@ -2,7 +2,6 @@
 members = [
     # Core crates
     "crates/core/model",
-    "crates/core/convert",
     "crates/formats/mei",
     "crates/formats/musicxml",
     "crates/bindings/cli",
@@ -23,7 +22,6 @@ repository = "https://github.com/waloschek/tusk"
 [workspace.dependencies]
 # Internal crates
 tusk-model = { path = "crates/core/model" }
-tusk-convert = { path = "crates/core/convert" }
 tusk-mei = { path = "crates/formats/mei" }
 tusk-musicxml = { path = "crates/formats/musicxml" }
 

@@ -57,9 +57,9 @@ pub fn convert_mei_keysig_to_fifths(keysig: &tusk_model::data::DataKeyfifths) ->
 /// - DataMetersign::Open → None (handled as senza misura)
 pub fn convert_mei_meter_sym_to_mxml(
     meter_sym: &tusk_model::data::DataMetersign,
-) -> Option<tusk_musicxml::model::attributes::TimeSymbol> {
+) -> Option<crate::model::attributes::TimeSymbol> {
+    use crate::model::attributes::TimeSymbol;
     use tusk_model::data::DataMetersign;
-    use tusk_musicxml::model::attributes::TimeSymbol;
 
     match meter_sym {
         DataMetersign::Common => Some(TimeSymbol::Common),
@@ -79,9 +79,9 @@ pub fn convert_mei_meter_sym_to_mxml(
 /// - TAB → TAB
 pub fn convert_mei_clef_shape_to_mxml(
     shape: &tusk_model::data::DataClefshape,
-) -> tusk_musicxml::model::attributes::ClefSign {
+) -> crate::model::attributes::ClefSign {
+    use crate::model::attributes::ClefSign;
     use tusk_model::data::DataClefshape;
-    use tusk_musicxml::model::attributes::ClefSign;
 
     match shape {
         DataClefshape::G => ClefSign::G,
@@ -142,8 +142,8 @@ fn convert_mei_clef_dis_to_octave_change(
 pub fn convert_score_def_to_attributes(
     score_def: &ScoreDef,
     ctx: &mut ConversionContext,
-) -> tusk_musicxml::model::attributes::Attributes {
-    use tusk_musicxml::model::attributes::{
+) -> crate::model::attributes::Attributes {
+    use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
         TimeSignature, TraditionalKey,
     };
@@ -266,8 +266,8 @@ pub fn convert_score_def_to_attributes(
 pub fn convert_staff_def_to_attributes(
     staff_def: &StaffDef,
     _ctx: &mut ConversionContext,
-) -> tusk_musicxml::model::attributes::Attributes {
-    use tusk_musicxml::model::attributes::{
+) -> crate::model::attributes::Attributes {
+    use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
         TimeContent, TimeSignature, TraditionalKey, Transpose,
     };
@@ -400,7 +400,7 @@ pub fn convert_staff_def_to_attributes(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_musicxml::model::attributes::KeyContent;
+    use crate::model::attributes::KeyContent;
 
     #[test]
     fn test_convert_mei_keysig_to_mxml_fifths() {
@@ -461,8 +461,8 @@ mod tests {
 
     #[test]
     fn test_convert_mei_meter_sym_to_mxml_time() {
+        use crate::model::attributes::TimeSymbol;
         use tusk_model::data::DataMetersign;
-        use tusk_musicxml::model::attributes::TimeSymbol;
 
         assert_eq!(
             convert_mei_meter_sym_to_mxml(&DataMetersign::Common),
@@ -480,8 +480,8 @@ mod tests {
 
     #[test]
     fn test_convert_mei_clef_shape_to_mxml() {
+        use crate::model::attributes::ClefSign;
         use tusk_model::data::DataClefshape;
-        use tusk_musicxml::model::attributes::ClefSign;
 
         assert_eq!(
             convert_mei_clef_shape_to_mxml(&DataClefshape::G),
@@ -542,11 +542,9 @@ mod tests {
         assert_eq!(attrs.times.len(), 1);
         assert_eq!(
             attrs.times[0].symbol,
-            Some(tusk_musicxml::model::attributes::TimeSymbol::Common)
+            Some(crate::model::attributes::TimeSymbol::Common)
         );
-        if let tusk_musicxml::model::attributes::TimeContent::Standard(std) =
-            &attrs.times[0].content
-        {
+        if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {
             assert_eq!(std.signatures[0].beats, "4");
             assert_eq!(std.signatures[0].beat_type, "4");
         } else {
@@ -555,10 +553,7 @@ mod tests {
 
         // Check clef
         assert_eq!(attrs.clefs.len(), 1);
-        assert_eq!(
-            attrs.clefs[0].sign,
-            tusk_musicxml::model::attributes::ClefSign::G
-        );
+        assert_eq!(attrs.clefs[0].sign, crate::model::attributes::ClefSign::G);
         assert_eq!(attrs.clefs[0].line, Some(2));
     }
 
@@ -592,9 +587,7 @@ mod tests {
 
         // Check time signature
         assert_eq!(attrs.times.len(), 1);
-        if let tusk_musicxml::model::attributes::TimeContent::Standard(std) =
-            &attrs.times[0].content
-        {
+        if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {
             assert_eq!(std.signatures[0].beats, "3");
             assert_eq!(std.signatures[0].beat_type, "4");
         } else {
@@ -603,10 +596,7 @@ mod tests {
 
         // Check clef
         assert_eq!(attrs.clefs.len(), 1);
-        assert_eq!(
-            attrs.clefs[0].sign,
-            tusk_musicxml::model::attributes::ClefSign::F
-        );
+        assert_eq!(attrs.clefs[0].sign, crate::model::attributes::ClefSign::F);
         assert_eq!(attrs.clefs[0].line, Some(4));
     }
 
@@ -626,10 +616,7 @@ mod tests {
         let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
 
         assert_eq!(attrs.clefs.len(), 1);
-        assert_eq!(
-            attrs.clefs[0].sign,
-            tusk_musicxml::model::attributes::ClefSign::G
-        );
+        assert_eq!(attrs.clefs[0].sign, crate::model::attributes::ClefSign::G);
         assert_eq!(attrs.clefs[0].line, Some(2));
         assert_eq!(attrs.clefs[0].clef_octave_change, Some(-1));
     }
@@ -720,9 +707,7 @@ mod tests {
         let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
-        if let tusk_musicxml::model::attributes::TimeContent::SenzaMisura(_) =
-            &attrs.times[0].content
-        {
+        if let crate::model::attributes::TimeContent::SenzaMisura(_) = &attrs.times[0].content {
             // Success
         } else {
             panic!("Expected senza misura");
@@ -741,9 +726,7 @@ mod tests {
         let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
-        if let tusk_musicxml::model::attributes::TimeContent::Standard(std) =
-            &attrs.times[0].content
-        {
+        if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {
             assert_eq!(std.signatures[0].beats, "6");
             assert_eq!(std.signatures[0].beat_type, "8");
         } else {
@@ -763,9 +746,7 @@ mod tests {
         let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
-        if let tusk_musicxml::model::attributes::TimeContent::Standard(std) =
-            &attrs.times[0].content
-        {
+        if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {
             assert_eq!(std.signatures[0].beats, "3+2");
             assert_eq!(std.signatures[0].beat_type, "8");
         } else {

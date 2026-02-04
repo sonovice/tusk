@@ -4,13 +4,13 @@
 //! Attributes define key signatures, time signatures, clefs, and divisions.
 
 use crate::context::ConversionContext;
+use crate::model::attributes::{
+    Clef, ClefSign, Key, KeyContent, Mode, Time, TimeContent, TimeSymbol,
+};
 use tusk_model::data::{
     DataClefline, DataClefshape, DataKeyfifths, DataMetersign, DataOctaveDis, DataStaffrelBasic,
 };
 use tusk_model::elements::StaffDef;
-use tusk_musicxml::model::attributes::{
-    Clef, ClefSign, Key, KeyContent, Mode, Time, TimeContent, TimeSymbol,
-};
 
 // ============================================================================
 // Attributes Conversion (Key, Time, Clef)
@@ -159,7 +159,7 @@ pub fn convert_clef_attributes(
 /// * `ctx` - The conversion context to update
 /// * `staff_def` - Optional StaffDef to update with the attributes
 pub fn process_attributes(
-    attrs: &tusk_musicxml::model::attributes::Attributes,
+    attrs: &crate::model::attributes::Attributes,
     ctx: &mut ConversionContext,
     mut staff_def: Option<&mut StaffDef>,
 ) {

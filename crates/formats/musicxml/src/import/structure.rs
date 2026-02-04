@@ -10,17 +10,17 @@
 //! - `<layer>` containing notes, rests, chords
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
-use crate::musicxml_to_mei::{
+use crate::convert_error::ConversionResult;
+use crate::import::{
     DirectionConversionResult, convert_chord, convert_direction, convert_measure_rest,
     convert_note, convert_rest, convert_score_def, is_measure_rest,
 };
+use crate::model::elements::ScorePartwise;
 use tusk_model::data::{DataBoolean, DataMeasurementunsigned, DataWord};
 use tusk_model::elements::{
     Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild, Section,
     SectionChild, StaffChild,
 };
-use tusk_musicxml::model::elements::ScorePartwise;
 
 /// Convert MusicXML content to MEI body.
 pub fn convert_body(score: &ScorePartwise, ctx: &mut ConversionContext) -> ConversionResult<Body> {
@@ -140,11 +140,11 @@ pub fn convert_measure(
 /// Processes all Direction elements in the measure content and converts them
 /// to the appropriate MEI control events (dynam, hairpin, tempo, dir).
 fn convert_measure_directions(
-    musicxml_measure: &tusk_musicxml::model::elements::Measure,
+    musicxml_measure: &crate::model::elements::Measure,
     mei_measure: &mut tusk_model::elements::Measure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
-    use tusk_musicxml::model::elements::MeasureContent;
+    use crate::model::elements::MeasureContent;
 
     for content in &musicxml_measure.content {
         if let MeasureContent::Direction(direction) = content {
@@ -187,11 +187,11 @@ fn convert_measure_directions(
 /// - `id` → `xml:id` (element ID)
 /// - `non_controlling="yes"` → `@control="false"` (non-controlling barline)
 fn convert_measure_attributes(
-    musicxml_measure: &tusk_musicxml::model::elements::Measure,
+    musicxml_measure: &crate::model::elements::Measure,
     mei_measure: &mut tusk_model::elements::Measure,
     ctx: &mut ConversionContext,
 ) {
-    use tusk_musicxml::model::data::YesNo;
+    use crate::model::data::YesNo;
 
     // Measure number → @n
     mei_measure.common.n = Some(DataWord::from(musicxml_measure.number.clone()));
@@ -227,7 +227,7 @@ fn convert_measure_attributes(
 
 /// Convert MusicXML measure content to MEI staff.
 pub fn convert_staff(
-    _measure: &tusk_musicxml::model::elements::Measure,
+    _measure: &crate::model::elements::Measure,
     staff_number: u32,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Staff> {
@@ -247,13 +247,13 @@ pub fn convert_staff(
 
 /// Convert MusicXML measure content to MEI layer.
 pub fn convert_layer(
-    measure: &tusk_musicxml::model::elements::Measure,
+    measure: &crate::model::elements::Measure,
     layer_number: u32,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Layer> {
-    use crate::musicxml_to_mei::process_attributes;
+    use crate::import::process_attributes;
+    use crate::model::elements::MeasureContent;
     use tusk_model::elements::Layer;
-    use tusk_musicxml::model::elements::MeasureContent;
 
     let mut layer = Layer::default();
     // Set layer number using n_integer.n (u64)
@@ -263,7 +263,7 @@ pub fn convert_layer(
     ctx.reset_beat_position();
 
     // Collect all notes from the measure content for chord detection
-    let notes: Vec<&tusk_musicxml::model::note::Note> = measure
+    let notes: Vec<&crate::model::note::Note> = measure
         .content
         .iter()
         .filter_map(|c| match c {
@@ -319,8 +319,7 @@ pub fn convert_layer(
                 }
 
                 // Check if this note is followed by chord notes
-                let mut chord_notes: Vec<tusk_musicxml::model::note::Note> =
-                    vec![note.as_ref().clone()];
+                let mut chord_notes: Vec<crate::model::note::Note> = vec![note.as_ref().clone()];
                 processed_note_indices.insert(current_note_index);
 
                 // Look ahead for chord notes
@@ -378,11 +377,11 @@ pub fn convert_layer(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use crate::musicxml_to_mei::convert_staff_grp;
+    use crate::import::convert_staff_grp;
+    use crate::model::elements::{Part, PartList, PartListItem, PartName, ScorePart};
     use tusk_model::elements::{
         LabelAbbrChild, LabelChild, MdivChild, StaffDefChild, StaffGrpChild,
     };
-    use tusk_musicxml::model::elements::{Part, PartList, PartListItem, PartName, ScorePart};
 
     /// Helper to create a ScorePart with the given id and name.
     fn make_score_part(id: &str, name: &str) -> ScorePart {
@@ -454,7 +453,7 @@ mod tests {
 
     #[test]
     fn convert_section_creates_measures() {
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -481,7 +480,7 @@ mod tests {
 
     #[test]
     fn convert_measure_sets_measure_number() {
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -509,8 +508,8 @@ mod tests {
 
     #[test]
     fn convert_measure_implicit_yes_sets_metcon_false() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::data::YesNo;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -537,8 +536,8 @@ mod tests {
 
     #[test]
     fn convert_measure_implicit_no_does_not_set_metcon() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::data::YesNo;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -565,7 +564,7 @@ mod tests {
 
     #[test]
     fn convert_measure_width_sets_width_attribute() {
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -594,7 +593,7 @@ mod tests {
 
     #[test]
     fn convert_measure_id_sets_xml_id_and_maps() {
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -626,8 +625,8 @@ mod tests {
 
     #[test]
     fn convert_measure_non_controlling_yes_sets_control_false() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::data::YesNo;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -654,7 +653,7 @@ mod tests {
 
     #[test]
     fn convert_measure_no_optional_attributes() {
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -685,8 +684,8 @@ mod tests {
 
     #[test]
     fn convert_measure_all_attributes_combined() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::Measure;
+        use crate::model::data::YesNo;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -728,8 +727,8 @@ mod tests {
 
     #[test]
     fn conversion_tracks_current_position() {
-        use crate::musicxml_to_mei::convert_score_with_context;
-        use tusk_musicxml::model::elements::Measure;
+        use crate::import::convert_score_with_context;
+        use crate::model::elements::Measure;
 
         let mut score = ScorePartwise::default();
         score.part_list = PartList {
@@ -756,9 +755,9 @@ mod tests {
 
     #[test]
     fn convert_layer_with_notes_creates_note_children() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::{Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::{Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut measure = Measure::new("1");
 
@@ -779,8 +778,8 @@ mod tests {
 
     #[test]
     fn convert_layer_with_rests_creates_rest_children() {
-        use tusk_musicxml::model::elements::{Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Rest};
+        use crate::model::elements::{Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
 
         let mut measure = Measure::new("1");
 
@@ -801,9 +800,9 @@ mod tests {
 
     #[test]
     fn convert_layer_with_measure_rest_creates_mrest_child() {
-        use tusk_musicxml::model::data::YesNo;
-        use tusk_musicxml::model::elements::{Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, Rest};
+        use crate::model::data::YesNo;
+        use crate::model::elements::{Measure, MeasureContent};
+        use crate::model::note::{Note, Rest};
 
         let mut measure = Measure::new("1");
 
@@ -825,8 +824,8 @@ mod tests {
 
     #[test]
     fn convert_layer_advances_beat_position_for_rest() {
-        use tusk_musicxml::model::elements::{Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Rest};
+        use crate::model::elements::{Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
 
         let mut measure = Measure::new("1");
 
@@ -846,9 +845,9 @@ mod tests {
 
     #[test]
     fn convert_layer_with_chord() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::{Empty, Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut measure = Measure::new("1");
 
@@ -874,9 +873,9 @@ mod tests {
 
     #[test]
     fn convert_layer_with_chord_advances_beat_position() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::{Empty, Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut measure = Measure::new("1");
 
@@ -901,9 +900,9 @@ mod tests {
 
     #[test]
     fn convert_layer_mixed_notes_and_chords() {
-        use tusk_musicxml::model::data::Step;
-        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
-        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+        use crate::model::data::Step;
+        use crate::model::elements::{Empty, Measure, MeasureContent};
+        use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let mut measure = Measure::new("1");
 

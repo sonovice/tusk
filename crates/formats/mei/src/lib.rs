@@ -13,6 +13,23 @@
 //!
 //! For large files (100+ MB operas), use `MeiReader` for chunked processing
 //! by `<mdiv>` elements to maintain constant memory usage.
+//!
+//! # Import/Export
+//!
+//! This crate provides `import()` and `export()` functions for reading/writing
+//! MEI documents. For conversion between MEI and MusicXML formats, see the
+//! `tusk-musicxml` crate which contains the conversion logic.
+//!
+//! ```ignore
+//! use tusk_mei::{import, export};
+//!
+//! // Parse MEI from XML string
+//! let xml = r#"<mei xmlns="http://www.music-encoding.org/ns/mei">...</mei>"#;
+//! let mei = import(xml)?;
+//!
+//! // Write MEI to XML string
+//! let xml_output = export(&mei)?;
+//! ```
 
 pub mod deserializer;
 pub mod serializer;
@@ -27,6 +44,41 @@ pub use serializer::{
     CollectAttributes, IndentConfig, MeiSerialize, MeiWriter, NamespaceDecl, SerializeConfig,
     SerializeError, SerializeResult, namespaces,
 };
+
+/// Import (parse) an MEI document from an XML string.
+///
+/// This parses an MEI XML string and returns the MEI document.
+///
+/// # Example
+///
+/// ```ignore
+/// use tusk_mei::import;
+///
+/// let xml = r#"<mei xmlns="http://www.music-encoding.org/ns/mei">...</mei>"#;
+/// let mei = import(xml)?;
+/// ```
+pub fn import(xml: &str) -> DeserializeResult<tusk_model::elements::Mei> {
+    // Note: MeiDeserialize trait must be in scope for from_mei_str()
+    <tusk_model::elements::Mei as MeiDeserialize>::from_mei_str(xml)
+}
+
+/// Export (serialize) an MEI document to an XML string.
+///
+/// This serializes an MEI document to an XML string.
+///
+/// # Example
+///
+/// ```ignore
+/// use tusk_mei::export;
+/// use tusk_model::elements::Mei;
+///
+/// let mei = Mei::default();
+/// let xml = export(&mei)?;
+/// ```
+pub fn export(mei: &tusk_model::elements::Mei) -> SerializeResult<String> {
+    // Note: MeiSerialize trait must be in scope for to_mei_string()
+    <tusk_model::elements::Mei as MeiSerialize>::to_mei_string(mei)
+}
 
 #[cfg(test)]
 mod roundtrip_tests;

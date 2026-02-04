@@ -14,7 +14,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use tusk_convert::musicxml_to_mei::convert_score;
+//! use tusk_musicxml::import::convert_score;
 //! use tusk_musicxml::model::elements::ScorePartwise;
 //!
 //! let score = ScorePartwise::default();
@@ -53,10 +53,10 @@ pub use parts::{
 };
 
 use crate::context::{ConversionContext, ConversionDirection};
-use crate::error::ConversionResult;
+use crate::convert_error::ConversionResult;
+use crate::model::elements::ScorePartwise;
 use tusk_model::att::AttMeiVersionMeiversion;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
-use tusk_musicxml::model::elements::ScorePartwise;
 
 /// Convert a MusicXML score-partwise document to MEI.
 ///
@@ -219,7 +219,7 @@ fn convert_music(score: &ScorePartwise, ctx: &mut ConversionContext) -> Conversi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tusk_musicxml::model::elements::Work;
+    use crate::model::elements::Work;
 
     // ============================================================================
     // Basic Document Structure Tests

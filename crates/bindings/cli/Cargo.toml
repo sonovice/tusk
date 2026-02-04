@@ -12,7 +12,6 @@ name = "tusk"
 path = "src/main.rs"
 
 [dependencies]
-tusk-convert = { workspace = true }
 tusk-mei = { workspace = true }
 tusk-musicxml = { workspace = true }
 clap = { workspace = true }

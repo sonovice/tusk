@@ -2,8 +2,6 @@
 //!
 //! Duration, pitch, and ID helper functions used across conversion modules.
 
-use crate::context::ConversionContext;
-
 /// Convert MEI duration to quarter note units.
 pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
     use tusk_model::data::{DataDuration, DataDurationCmn};
@@ -70,9 +68,9 @@ pub fn apply_dots(base_duration: f64, dots: u64) -> f64 {
 /// Convert MEI duration to MusicXML NoteTypeValue.
 pub fn convert_mei_duration_to_note_type(
     dur: &tusk_model::data::DataDuration,
-) -> tusk_musicxml::model::note::NoteTypeValue {
+) -> crate::model::note::NoteTypeValue {
+    use crate::model::note::NoteTypeValue;
     use tusk_model::data::{DataDuration, DataDurationCmn};
-    use tusk_musicxml::model::note::NoteTypeValue;
 
     match dur {
         DataDuration::DataDurationCmn(cmn) => match cmn {
@@ -99,9 +97,9 @@ pub fn convert_mei_duration_to_note_type(
 /// Convert MEI rest duration (DataDurationrests) to MusicXML NoteTypeValue.
 pub fn convert_mei_duration_rests_to_note_type(
     dur: &tusk_model::data::DataDurationrests,
-) -> Option<tusk_musicxml::model::note::NoteTypeValue> {
+) -> Option<crate::model::note::NoteTypeValue> {
+    use crate::model::note::NoteTypeValue;
     use tusk_model::data::{DataDurationCmn, DataDurationrests};
-    use tusk_musicxml::model::note::NoteTypeValue;
 
     match dur {
         DataDurationrests::DataDurationCmn(cmn) => {
@@ -156,9 +154,9 @@ pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -
 /// Convert MEI stem direction to MusicXML StemValue.
 pub fn convert_mei_stem_direction(
     stem_dir: &tusk_model::data::DataStemdirection,
-) -> tusk_musicxml::model::note::StemValue {
+) -> crate::model::note::StemValue {
+    use crate::model::note::StemValue;
     use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
-    use tusk_musicxml::model::note::StemValue;
 
     match stem_dir {
         DataStemdirection::DataStemdirectionBasic(basic) => match basic {
@@ -358,9 +356,9 @@ pub fn find_score_def(
 
 /// Create empty Part elements matching the part-list.
 pub fn create_empty_parts(
-    part_list: &tusk_musicxml::model::elements::PartList,
-) -> Vec<tusk_musicxml::model::elements::Part> {
-    use tusk_musicxml::model::elements::{Part, PartListItem};
+    part_list: &crate::model::elements::PartList,
+) -> Vec<crate::model::elements::Part> {
+    use crate::model::elements::{Part, PartListItem};
 
     let mut parts = Vec::new();
 

@@ -10,7 +10,7 @@
 //! # Example
 //!
 //! ```
-//! use tusk_convert::context::{ConversionContext, ConversionDirection};
+//! use tusk_musicxml::context::{ConversionContext, ConversionDirection};
 //!
 //! let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
 //!
@@ -24,7 +24,7 @@
 
 use std::collections::HashMap;
 
-use tusk_musicxml::model::duration::DurationContext;
+use crate::model::duration::DurationContext;
 
 /// Direction of conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

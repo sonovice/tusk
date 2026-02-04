@@ -4,10 +4,10 @@
 //! to MusicXML measure format.
 
 use crate::context::ConversionContext;
-use crate::error::ConversionResult;
+use crate::convert_error::ConversionResult;
+use crate::model::data::YesNo;
+use crate::model::elements::Measure;
 use tusk_model::data::DataBoolean;
-use tusk_musicxml::model::data::YesNo;
-use tusk_musicxml::model::elements::Measure;
 
 use super::utils::parse_mei_measurement;
 
@@ -138,9 +138,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_measure_implicit() {
+        use crate::model::data::YesNo;
         use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
-        use tusk_musicxml::model::data::YesNo;
 
         let mut mei_measure = MeiMeasure::default();
         mei_measure.common.n = Some(DataWord::from("0".to_string()));
@@ -159,9 +159,9 @@ mod tests {
 
     #[test]
     fn test_convert_mei_measure_non_controlling() {
+        use crate::model::data::YesNo;
         use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
-        use tusk_musicxml::model::data::YesNo;
 
         let mut mei_measure = MeiMeasure::default();
         mei_measure.common.n = Some(DataWord::from("2".to_string()));

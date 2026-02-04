@@ -1540,6 +1540,113 @@ pub(crate) fn parse_change_desc_from_event<R: BufRead>(
     Ok(change_desc)
 }
 
+// ============================================================================
+// Mei (root element) implementation
+// ============================================================================
+
+impl MeiDeserialize for tusk_model::elements::Mei {
+    fn element_name() -> &'static str {
+        "mei"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        use tusk_model::elements::{Mei, MeiChild};
+
+        let mut mei = Mei::default();
+
+        // Extract attributes
+        // Mei has: AttId, AttMeiVersion, AttResponsibility
+        // AttId: xml:id
+        extract_attr!(attrs, "xml:id", string mei.id.xml_id);
+        // AttMeiVersion: meiversion
+        mei.mei_version.extract_attributes(&mut attrs)?;
+        // AttResponsibility: resp
+        mei.responsibility.extract_attributes(&mut attrs)?;
+
+        // Parse children if not empty
+        // mei can contain: meiHead?, music?
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("mei")?
+            {
+                match name.as_str() {
+                    "meiHead" => {
+                        let mei_head = tusk_model::elements::MeiHead::from_mei_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
+                    }
+                    "music" => {
+                        let music = tusk_model::elements::Music::from_mei_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        mei.children.push(MeiChild::Music(Box::new(music)));
+                    }
+                    // Unknown children are skipped in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(mei)
+    }
+}
+
+// ============================================================================
+// Music element implementation
+// ============================================================================
+
+impl MeiDeserialize for tusk_model::elements::Music {
+    fn element_name() -> &'static str {
+        "music"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        use tusk_model::elements::Music;
+
+        let mut music = Music::default();
+
+        // Extract attributes
+        // Music has: AttCommon, AttMeiVersion, AttMetadataPointing
+        music.common.extract_attributes(&mut attrs)?;
+        music.mei_version.extract_attributes(&mut attrs)?;
+        music.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Parse children if not empty
+        // music can contain: genDesc?, performance?, facsimile?, body?
+        // Note: The current model doesn't include Body in MusicChild, so we skip it
+        if !is_empty {
+            while let Some((name, _child_attrs, child_empty)) =
+                reader.read_next_child_start("music")?
+            {
+                // For now, skip all children as the model doesn't include the main content
+                // elements like body. In a full implementation, we'd parse them.
+                if !child_empty {
+                    reader.skip_to_end(&name)?;
+                }
+            }
+        }
+
+        Ok(music)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

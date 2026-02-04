@@ -14,8 +14,8 @@
 //! # Example
 //!
 //! ```ignore
-//! use tusk_convert::mei_to_musicxml::convert_mei;
-//! use tusk_model::Mei;
+//! use tusk_musicxml::export::convert_mei;
+//! use tusk_model::elements::Mei;
 //!
 //! let mei = Mei::default();
 //! let musicxml = convert_mei(&mei)?;
@@ -50,11 +50,11 @@ pub use parts::{
 pub use structure::convert_mei_measure;
 
 use crate::context::{ConversionContext, ConversionDirection};
-use crate::error::ConversionResult;
-use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild};
-use tusk_musicxml::model::elements::{
+use crate::convert_error::ConversionResult;
+use crate::model::elements::{
     Encoding, Identification, Part, PartList, PartListItem, ScorePart, ScorePartwise, Work,
 };
+use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild};
 use utils::{
     create_empty_parts, extract_title_from_file_desc, find_body_in_music, find_first_mdiv_in_body,
     find_score_def, find_score_in_mdiv,
