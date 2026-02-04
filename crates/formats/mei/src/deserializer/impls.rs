@@ -13,36 +13,37 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl,
     AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttComponentType,
-    AttDataPointing, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog,
-    AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEvidence,
-    AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttFiling,
-    AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis,
-    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl,
-    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog,
-    AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
-    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger,
-    AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
-    AttRecordType, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
-    AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes,
-    AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl,
-    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes,
-    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog,
-    AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog,
-    AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes,
-    AttTupletLog, AttTupletVis, AttTyped, AttXy,
+    AttDataPointing, AttDatable, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes,
+    AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis,
+    AttEdit, AttEvidence, AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis,
+    AttFiling, AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis,
+    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttInternetMedia, AttLabelled,
+    AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis,
+    AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog,
+    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMeiVersion,
+    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog,
+    AttNoteVis, AttPointing, AttRecordType, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
+    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
+    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
+    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
+    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
 };
 use tusk_model::elements::{
-    Accid, AppInfo, AppInfoChild, Artic, Availability, Beam, BeamChild, Bibl, BiblStruct, Chord,
-    ChordChild, Clef, Contributor, ContributorChild, Creator, CreatorChild, Date, Dir, Distributor,
-    Dot, Dynam, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
-    EncodingDescChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
-    GraceGrpChild, Hairpin, Head, HeadChild, Identifier, InstrDef, Label, Layer, LayerChild,
-    LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
-    MeiHeadChild, Note, NoteChild, ProjectDesc, ProjectDescChild, PubPlace, PubStmt, PubStmtChild,
-    Publisher, RespStmt, Rest, RestChild, SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor,
-    SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
-    Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet, TupletChild, Unpub,
+    Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Availability, Beam,
+    BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef, Contributor, ContributorChild, Creator,
+    CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor, EditorChild, EditorialDecl,
+    EditorialDeclChild, EncodingDesc, EncodingDescChild, Fermata, FileDesc, FileDescChild, Funder,
+    FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, Identifier, InstrDef, Label,
+    Layer, LayerChild, LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure,
+    MeasureChild, MeiHead, MeiHeadChild, Name, NameChild, Note, NoteChild, ProjectDesc,
+    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest, RestChild,
+    SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Source,
+    SourceChild, SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff, StaffChild,
+    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt,
+    TitleStmtChild, Tuplet, TupletChild, Unpub,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -140,6 +141,24 @@ impl ExtractAttributes for AttBibl {
     }
 }
 
+impl ExtractAttributes for AttDatable {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "enddate", self.enddate);
+        extract_attr!(attrs, "isodate", self.isodate);
+        extract_attr!(attrs, "notafter", self.notafter);
+        extract_attr!(attrs, "notbefore", self.notbefore);
+        extract_attr!(attrs, "startdate", self.startdate);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttInternetMedia {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "mimetype", string self.mimetype);
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttAuthorized {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "codedval", vec_string self.codedval);
@@ -152,6 +171,15 @@ impl ExtractAttributes for AttAuthorized {
 impl ExtractAttributes for AttClassed {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "class", vec self.class);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttEdit {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "source", vec self.source);
+        extract_attr!(attrs, "cert", self.cert);
+        extract_attr!(attrs, "evidence", self.evidence);
         Ok(())
     }
 }
@@ -3398,7 +3426,13 @@ fn parse_app_info_from_event<R: BufRead>(
                     let head = parse_head_from_event(reader, child_attrs, child_empty)?;
                     app_info.children.push(AppInfoChild::Head(Box::new(head)));
                 }
-                // application is a complex element - skip for now
+                "application" => {
+                    let application =
+                        parse_application_from_event(reader, child_attrs, child_empty)?;
+                    app_info
+                        .children
+                        .push(AppInfoChild::Application(Box::new(application)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -3409,6 +3443,120 @@ fn parse_app_info_from_event<R: BufRead>(
     }
 
     Ok(app_info)
+}
+
+/// Parse an `<application>` element from within another element.
+fn parse_application_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Application> {
+    let mut application = Application::default();
+
+    // Extract attributes
+    application.common.extract_attributes(&mut attrs)?;
+    application.datable.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes (like @version) are unknown - ignore in lenient mode
+
+    // Read children if not an empty element
+    // application can contain: name+, then (ptr* | ref* | p*)
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("application")?
+        {
+            match name.as_str() {
+                "name" => {
+                    let name_elem = parse_name_from_event(reader, child_attrs, child_empty)?;
+                    application
+                        .children
+                        .push(ApplicationChild::Name(Box::new(name_elem)));
+                }
+                "ptr" => {
+                    let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                    application
+                        .children
+                        .push(ApplicationChild::Ptr(Box::new(ptr)));
+                }
+                "ref" => {
+                    // ref is more complex - for now just skip it
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+                "p" => {
+                    // p is complex - for now just skip it
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(application)
+}
+
+/// Parse a `<name>` element from within another element.
+fn parse_name_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Name> {
+    let mut name_elem = Name::default();
+
+    // Extract attributes
+    name_elem.basic.extract_attributes(&mut attrs)?;
+    name_elem.bibl.extract_attributes(&mut attrs)?;
+    name_elem.classed.extract_attributes(&mut attrs)?;
+    name_elem.edit.extract_attributes(&mut attrs)?;
+    name_elem.facsimile.extract_attributes(&mut attrs)?;
+    name_elem.labelled.extract_attributes(&mut attrs)?;
+    name_elem.lang.extract_attributes(&mut attrs)?;
+    name_elem.linking.extract_attributes(&mut attrs)?;
+    name_elem.name.extract_attributes(&mut attrs)?;
+    name_elem.n_number_like.extract_attributes(&mut attrs)?;
+    name_elem.responsibility.extract_attributes(&mut attrs)?;
+
+    // Read text content if not an empty element
+    // name can contain text and many element types - for simplicity, just handle text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("name")? {
+            if !text.trim().is_empty() {
+                name_elem.children.push(NameChild::Text(text));
+            }
+        }
+    }
+
+    Ok(name_elem)
+}
+
+/// Parse a `<ptr>` element from within another element.
+fn parse_ptr_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Ptr> {
+    let mut ptr = Ptr::default();
+
+    // Extract attributes
+    ptr.common.extract_attributes(&mut attrs)?;
+    ptr.internet_media.extract_attributes(&mut attrs)?;
+    ptr.metadata_pointing.extract_attributes(&mut attrs)?;
+    ptr.pointing.extract_attributes(&mut attrs)?;
+    ptr.target_eval.extract_attributes(&mut attrs)?;
+
+    // ptr has no children, but we still need to consume the end tag if not empty
+    if !is_empty {
+        reader.skip_to_end("ptr")?;
+    }
+
+    Ok(ptr)
 }
 
 /// Parse an `<editorialDecl>` element from within another element.
@@ -4054,6 +4202,34 @@ impl MeiDeserialize for EncodingDesc {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_encoding_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for AppInfo {
+    fn element_name() -> &'static str {
+        "appInfo"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_app_info_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Application {
+    fn element_name() -> &'static str {
+        "application"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_application_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -9532,5 +9708,189 @@ mod tests {
             mei_head.children[1],
             MeiHeadChild::EncodingDesc(_)
         ));
+    }
+
+    // ========== AppInfo tests ==========
+
+    #[test]
+    fn app_info_deserializes_empty_element() {
+        use tusk_model::elements::AppInfo;
+
+        let xml = r#"<appInfo/>"#;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(app_info.common.xml_id.is_none());
+        assert!(app_info.children.is_empty());
+    }
+
+    #[test]
+    fn app_info_deserializes_with_xml_id() {
+        use tusk_model::elements::AppInfo;
+
+        let xml = r#"<appInfo xml:id="ai1"/>"#;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(app_info.common.xml_id, Some("ai1".to_string()));
+    }
+
+    #[test]
+    fn app_info_deserializes_with_head_child() {
+        use tusk_model::elements::{AppInfo, AppInfoChild};
+
+        let xml = r#"<appInfo xml:id="ai1">
+            <head>Application Information</head>
+        </appInfo>"#;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(app_info.children.len(), 1);
+        assert!(matches!(app_info.children[0], AppInfoChild::Head(_)));
+    }
+
+    #[test]
+    fn app_info_deserializes_with_application_child() {
+        use tusk_model::elements::{AppInfo, AppInfoChild};
+
+        let xml = r#"<appInfo xml:id="ai1">
+            <application xml:id="app1">
+                <name>Test Application</name>
+            </application>
+        </appInfo>"#;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(app_info.children.len(), 1);
+        assert!(matches!(app_info.children[0], AppInfoChild::Application(_)));
+    }
+
+    #[test]
+    fn app_info_deserializes_with_multiple_applications() {
+        use tusk_model::elements::{AppInfo, AppInfoChild};
+
+        let xml = r#"<appInfo xml:id="ai1">
+            <application xml:id="app1">
+                <name>First App</name>
+            </application>
+            <application xml:id="app2">
+                <name>Second App</name>
+            </application>
+        </appInfo>"#;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(app_info.children.len(), 2);
+        assert!(matches!(app_info.children[0], AppInfoChild::Application(_)));
+        assert!(matches!(app_info.children[1], AppInfoChild::Application(_)));
+    }
+
+    #[test]
+    fn app_info_deserializes_real_world_example() {
+        use tusk_model::elements::{AppInfo, AppInfoChild, ApplicationChild};
+
+        // Example from MEI spec
+        let xml = r##"<appInfo>
+            <application isodate="2011-06-06" xml:id="app.MusicMarkupTool">
+                <name>Music Markup Tool</name>
+                <ptr target="#header.P1"/>
+                <ptr target="#header.P2"/>
+            </application>
+        </appInfo>"##;
+        let app_info = AppInfo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(app_info.children.len(), 1);
+        match &app_info.children[0] {
+            AppInfoChild::Application(app) => {
+                assert_eq!(app.common.xml_id, Some("app.MusicMarkupTool".to_string()));
+                assert_eq!(
+                    app.datable.isodate,
+                    Some(tusk_model::data::DataIsodate::from(
+                        "2011-06-06".to_string()
+                    ))
+                );
+                // Should have 1 name and 2 ptr children
+                assert_eq!(app.children.len(), 3);
+                assert!(matches!(app.children[0], ApplicationChild::Name(_)));
+                assert!(matches!(app.children[1], ApplicationChild::Ptr(_)));
+                assert!(matches!(app.children[2], ApplicationChild::Ptr(_)));
+            }
+            _ => panic!("expected Application child"),
+        }
+    }
+
+    #[test]
+    fn application_deserializes_with_name_text() {
+        use tusk_model::elements::{Application, ApplicationChild, NameChild};
+
+        let xml = r#"<application xml:id="app1">
+            <name>My Application</name>
+        </application>"#;
+        let application = Application::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(application.common.xml_id, Some("app1".to_string()));
+        assert_eq!(application.children.len(), 1);
+        match &application.children[0] {
+            ApplicationChild::Name(name) => {
+                assert_eq!(name.children.len(), 1);
+                match &name.children[0] {
+                    NameChild::Text(text) => assert_eq!(text, "My Application"),
+                    _ => panic!("expected text child"),
+                }
+            }
+            _ => panic!("expected Name child"),
+        }
+    }
+
+    #[test]
+    fn application_deserializes_with_ptr_children() {
+        use tusk_model::elements::{Application, ApplicationChild};
+
+        let xml = r##"<application xml:id="app1">
+            <name>App</name>
+            <ptr target="#ref1"/>
+            <ptr target="#ref2"/>
+        </application>"##;
+        let application = Application::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(application.children.len(), 3);
+        assert!(matches!(application.children[0], ApplicationChild::Name(_)));
+        assert!(matches!(application.children[1], ApplicationChild::Ptr(_)));
+        assert!(matches!(application.children[2], ApplicationChild::Ptr(_)));
+
+        // Verify ptr target attribute
+        match &application.children[1] {
+            ApplicationChild::Ptr(ptr) => {
+                assert_eq!(
+                    ptr.pointing.target,
+                    vec![tusk_model::data::DataUri("#ref1".to_string())]
+                );
+            }
+            _ => panic!("expected Ptr child"),
+        }
+    }
+
+    #[test]
+    fn application_deserializes_with_datable_attributes() {
+        use tusk_model::elements::Application;
+
+        let xml = r#"<application xml:id="app1" isodate="2023-01-15" startdate="2023-01-01" enddate="2023-12-31">
+            <name>Test</name>
+        </application>"#;
+        let application = Application::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            application.datable.isodate,
+            Some(tusk_model::data::DataIsodate::from(
+                "2023-01-15".to_string()
+            ))
+        );
+        assert_eq!(
+            application.datable.startdate,
+            Some(tusk_model::data::DataIsodate::from(
+                "2023-01-01".to_string()
+            ))
+        );
+        assert_eq!(
+            application.datable.enddate,
+            Some(tusk_model::data::DataIsodate::from(
+                "2023-12-31".to_string()
+            ))
+        );
     }
 }
