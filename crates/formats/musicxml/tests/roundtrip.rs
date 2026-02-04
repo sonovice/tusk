@@ -878,3 +878,23 @@ fn test_roundtrip_assess_and_player_elements() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_concert_score_and_for_part_elements() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("concert_score_and_for_part_elements.musicxml")
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Roundtrip failed for concert_score_and_for_part_elements: {}",
+                    e
+                )
+            });
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for concert_score_and_for_part_elements.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
