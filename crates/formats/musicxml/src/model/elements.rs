@@ -1305,47 +1305,38 @@ impl Measure {
     }
 }
 
-/// Measure content placeholder.
+/// Measure content - notes, rests, directions, and other music data.
 ///
-/// Will be expanded in Phase 4.2 to include notes, attributes, directions, etc.
+/// Represents the various elements that can appear within a measure.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeasureContent {
-    /// Placeholder for notes (to be expanded)
-    Note(Box<NotePlaceholder>),
-    /// Placeholder for backup element
-    Backup(Box<BackupPlaceholder>),
-    /// Placeholder for forward element
-    Forward(Box<ForwardPlaceholder>),
-    /// Placeholder for attributes
+    /// A note or rest.
+    Note(Box<super::note::Note>),
+    /// Backup - moves the cursor backward in time.
+    Backup(Box<super::note::Backup>),
+    /// Forward - moves the cursor forward in time.
+    Forward(Box<super::note::Forward>),
+    /// Attributes (key, time, clef, etc.) - placeholder for Phase 4.2.
     Attributes(Box<AttributesPlaceholder>),
-    /// Placeholder for direction
+    /// Direction (dynamics, tempo, etc.) - placeholder for Phase 4.2.
     Direction(Box<DirectionPlaceholder>),
-    /// Placeholder for barline
+    /// Barline - placeholder for Phase 4.2.
     Barline(Box<BarlinePlaceholder>),
 }
 
-/// Note placeholder - will be replaced with full implementation.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct NotePlaceholder;
-
-/// Backup placeholder - moves the cursor backward in time.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct BackupPlaceholder;
-
-/// Forward placeholder - moves the cursor forward in time.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ForwardPlaceholder;
-
 /// Attributes placeholder - key, time, clef, etc.
+/// Will be expanded in Phase 4.2.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AttributesPlaceholder;
 
 /// Direction placeholder - dynamics, tempo, etc.
+/// Will be expanded in Phase 4.2.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct DirectionPlaceholder;
 
 /// Barline placeholder.
+/// Will be expanded in Phase 4.2.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BarlinePlaceholder;
 

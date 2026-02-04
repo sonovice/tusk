@@ -125,8 +125,8 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 ### 4.1 MusicXML Intermediate Model
 - [x] Create MusicXML 4.0 data types in `crates/formats/musicxml`
 - [x] Create MusicXML element structs (score-partwise structure)
-- [ ] Create MusicXML element structs (part-list, part, measure)
-- [ ] Create MusicXML note/rest/chord types
+- [x] Create MusicXML element structs (part-list, part, measure)
+- [x] Create MusicXML note/rest/chord types
 - [ ] Create MusicXML attributes types (divisions, key, time, clef)
 - [ ] Create MusicXML direction types
 
