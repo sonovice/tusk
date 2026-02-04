@@ -238,7 +238,10 @@ impl MeiSerialize for DateChild {
                 writer.write_text(text)?;
                 Ok(())
             }
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "DateChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

@@ -708,8 +708,10 @@ impl MeiSerialize for NoteChild {
             NoteChild::Accid(accid) => accid.serialize_children(writer),
             NoteChild::Artic(artic) => artic.serialize_children(writer),
             NoteChild::Dot(dot) => dot.serialize_children(writer),
-            // Other child types - no-op
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "NoteChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -808,8 +810,10 @@ impl MeiSerialize for RestChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             RestChild::Dot(dot) => dot.serialize_children(writer),
-            // Other child types - no-op
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "RestChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -890,8 +894,10 @@ impl MeiSerialize for ChordChild {
         match self {
             ChordChild::Note(note) => note.serialize_children(writer),
             ChordChild::Artic(artic) => artic.serialize_children(writer),
-            // Other child types - no-op
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ChordChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }

@@ -230,7 +230,10 @@ impl MeiSerialize for EditionChild {
             EditionChild::Editor(elem) => elem.serialize_mei(writer),
             EditionChild::RespStmt(elem) => elem.serialize_mei(writer),
             EditionChild::Lb(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "EditionChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -372,7 +375,10 @@ impl MeiSerialize for AnnotChild {
             AnnotChild::Identifier(elem) => elem.serialize_mei(writer),
             AnnotChild::Lb(elem) => elem.serialize_mei(writer),
             AnnotChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "AnnotChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -452,7 +458,10 @@ impl MeiSerialize for ExtentChild {
             ExtentChild::Lb(elem) => elem.serialize_mei(writer),
             ExtentChild::Title(elem) => elem.serialize_mei(writer),
             ExtentChild::Address(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ExtentChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -532,7 +541,10 @@ impl MeiSerialize for BiblScopeChild {
             BiblScopeChild::Lb(elem) => elem.serialize_mei(writer),
             BiblScopeChild::Title(elem) => elem.serialize_mei(writer),
             BiblScopeChild::Address(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "BiblScopeChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -592,7 +604,10 @@ impl MeiSerialize for ContentsChild {
         match self {
             ContentsChild::P(elem) => elem.serialize_mei(writer),
             ContentsChild::Head(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // ContentItem and Label need their own serializers
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ContentsChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

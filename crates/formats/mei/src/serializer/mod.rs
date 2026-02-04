@@ -32,6 +32,9 @@ pub enum SerializeError {
 
     #[error("UTF-8 encoding error: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("Serializer not implemented for element: {0}")]
+    NotImplemented(String),
 }
 
 /// Result type for serialization operations.

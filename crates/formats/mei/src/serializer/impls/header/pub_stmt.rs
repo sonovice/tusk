@@ -157,7 +157,10 @@ impl MeiSerialize for PublisherChild {
             PublisherChild::Rend(elem) => elem.serialize_mei(writer),
             PublisherChild::Lb(elem) => elem.serialize_mei(writer),
             PublisherChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PublisherChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
@@ -309,7 +312,10 @@ impl MeiSerialize for PubPlaceChild {
             PubPlaceChild::Rend(elem) => elem.serialize_mei(writer),
             PubPlaceChild::Lb(elem) => elem.serialize_mei(writer),
             PubPlaceChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PubPlaceChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
@@ -464,7 +470,10 @@ impl MeiSerialize for IdentifierChild {
             IdentifierChild::Rend(elem) => elem.serialize_mei(writer),
             IdentifierChild::Lb(elem) => elem.serialize_mei(writer),
             IdentifierChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "IdentifierChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
@@ -543,7 +552,10 @@ impl MeiSerialize for DistributorChild {
             DistributorChild::Rend(elem) => elem.serialize_mei(writer),
             DistributorChild::Lb(elem) => elem.serialize_mei(writer),
             DistributorChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "DistributorChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
@@ -740,8 +752,10 @@ impl MeiSerialize for UseRestrictChild {
             UseRestrictChild::Bloc(elem) => elem.serialize_mei(writer),
             UseRestrictChild::Name(elem) => elem.serialize_mei(writer),
             UseRestrictChild::GeogName(elem) => elem.serialize_mei(writer),
-            // TODO: Implement serializers for remaining child elements
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "UseRestrictChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
@@ -880,8 +894,10 @@ impl MeiSerialize for AccessRestrictChild {
             AccessRestrictChild::Name(elem) => elem.serialize_mei(writer),
             AccessRestrictChild::Date(elem) => elem.serialize_mei(writer),
             AccessRestrictChild::Ref(elem) => elem.serialize_mei(writer),
-            // TODO: Implement serializers for remaining child elements
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "AccessRestrictChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -1019,8 +1035,10 @@ impl MeiSerialize for SysReqChild {
             SysReqChild::PersName(elem) => elem.serialize_mei(writer),
             SysReqChild::Extent(elem) => elem.serialize_mei(writer),
             SysReqChild::Ref(elem) => elem.serialize_mei(writer),
-            // TODO: Implement serializers for remaining child elements
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SysReqChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -1162,8 +1180,10 @@ impl MeiSerialize for PriceChild {
             PriceChild::Extent(elem) => elem.serialize_mei(writer),
             PriceChild::Num(elem) => elem.serialize_mei(writer),
             PriceChild::Rend(elem) => elem.serialize_mei(writer),
-            // TODO: Implement serializers for remaining child elements
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PriceChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

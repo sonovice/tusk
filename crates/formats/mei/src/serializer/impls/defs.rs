@@ -455,8 +455,10 @@ impl MeiSerialize for ScoreDefChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             ScoreDefChild::StaffGrp(sg) => sg.serialize_children(writer),
-            // Other children not yet fully implemented
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ScoreDefChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -524,7 +526,10 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
         match self {
             tusk_model::elements::StaffGrpChild::StaffGrp(sg) => sg.serialize_children(writer),
             tusk_model::elements::StaffGrpChild::StaffDef(sd) => sd.serialize_children(writer),
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "StaffGrpChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }

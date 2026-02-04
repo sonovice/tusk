@@ -589,7 +589,10 @@ impl MeiSerialize for BeamChild {
             BeamChild::Beam(beam) => beam.serialize_mei(writer),
             BeamChild::Tuplet(tuplet) => tuplet.serialize_mei(writer),
             BeamChild::GraceGrp(grace_grp) => grace_grp.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "BeamChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -657,7 +660,10 @@ impl MeiSerialize for TupletChild {
             TupletChild::Beam(beam) => beam.serialize_mei(writer),
             TupletChild::Tuplet(tuplet) => tuplet.serialize_mei(writer),
             TupletChild::GraceGrp(grace_grp) => grace_grp.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TupletChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -725,7 +731,10 @@ impl MeiSerialize for GraceGrpChild {
             GraceGrpChild::Beam(beam) => beam.serialize_mei(writer),
             GraceGrpChild::Tuplet(tuplet) => tuplet.serialize_mei(writer),
             GraceGrpChild::GraceGrp(grace_grp) => grace_grp.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "GraceGrpChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -874,8 +883,10 @@ impl MeiSerialize for tusk_model::elements::MusicChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             tusk_model::elements::MusicChild::Body(body) => body.serialize_children(writer),
-            // Other children not fully implemented yet
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "MusicChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }

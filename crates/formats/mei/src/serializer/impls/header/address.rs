@@ -110,7 +110,10 @@ impl MeiSerialize for AddrLineChild {
             AddrLineChild::Num(elem) => elem.serialize_mei(writer),
             AddrLineChild::Ref(elem) => elem.serialize_mei(writer),
             AddrLineChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "AddrLineChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -217,7 +220,10 @@ impl MeiSerialize for GeogNameChild {
             GeogNameChild::Num(elem) => elem.serialize_mei(writer),
             GeogNameChild::Ref(elem) => elem.serialize_mei(writer),
             GeogNameChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "GeogNameChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -324,7 +330,10 @@ impl MeiSerialize for SettlementChild {
             SettlementChild::Num(elem) => elem.serialize_mei(writer),
             SettlementChild::Ref(elem) => elem.serialize_mei(writer),
             SettlementChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SettlementChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -431,7 +440,10 @@ impl MeiSerialize for CountryChild {
             CountryChild::Num(elem) => elem.serialize_mei(writer),
             CountryChild::Ref(elem) => elem.serialize_mei(writer),
             CountryChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "CountryChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -491,7 +503,10 @@ impl MeiSerialize for PostCodeChild {
                 writer.write_text(text)?;
                 Ok(())
             }
-            _ => Ok(()), // Editorial children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PostCodeChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -595,7 +610,10 @@ impl MeiSerialize for StreetChild {
             StreetChild::Num(elem) => elem.serialize_mei(writer),
             StreetChild::Ref(elem) => elem.serialize_mei(writer),
             StreetChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "StreetChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -702,7 +720,10 @@ impl MeiSerialize for DistrictChild {
             DistrictChild::Num(elem) => elem.serialize_mei(writer),
             DistrictChild::Ref(elem) => elem.serialize_mei(writer),
             DistrictChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "DistrictChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -809,7 +830,10 @@ impl MeiSerialize for BlocChild {
             BlocChild::Num(elem) => elem.serialize_mei(writer),
             BlocChild::Ref(elem) => elem.serialize_mei(writer),
             BlocChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "BlocChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -916,7 +940,10 @@ impl MeiSerialize for GeogFeatChild {
             GeogFeatChild::Num(elem) => elem.serialize_mei(writer),
             GeogFeatChild::Ref(elem) => elem.serialize_mei(writer),
             GeogFeatChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "GeogFeatChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -976,7 +1003,10 @@ impl MeiSerialize for PostBoxChild {
                 writer.write_text(text)?;
                 Ok(())
             }
-            _ => Ok(()), // Editorial children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PostBoxChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -1083,7 +1113,10 @@ impl MeiSerialize for RegionChild {
             RegionChild::Num(elem) => elem.serialize_mei(writer),
             RegionChild::Ref(elem) => elem.serialize_mei(writer),
             RegionChild::Ptr(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "RegionChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

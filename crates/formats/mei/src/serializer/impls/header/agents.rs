@@ -207,7 +207,10 @@ impl MeiSerialize for FunderChild {
             FunderChild::CorpName(elem) => elem.serialize_mei(writer),
             FunderChild::Name(elem) => elem.serialize_mei(writer),
             FunderChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "FunderChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -341,7 +344,10 @@ impl MeiSerialize for RespChild {
             RespChild::PersName(elem) => elem.serialize_mei(writer),
             RespChild::CorpName(elem) => elem.serialize_mei(writer),
             RespChild::Name(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "RespChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -410,7 +416,10 @@ impl MeiSerialize for ContributorChild {
             ContributorChild::CorpName(elem) => elem.serialize_mei(writer),
             ContributorChild::Name(elem) => elem.serialize_mei(writer),
             ContributorChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ContributorChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -478,7 +487,10 @@ impl MeiSerialize for SponsorChild {
             SponsorChild::CorpName(elem) => elem.serialize_mei(writer),
             SponsorChild::Name(elem) => elem.serialize_mei(writer),
             SponsorChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SponsorChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -547,7 +559,10 @@ impl MeiSerialize for PersNameChild {
             PersNameChild::CorpName(elem) => elem.serialize_mei(writer),
             PersNameChild::Name(elem) => elem.serialize_mei(writer),
             PersNameChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "PersNameChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -616,7 +631,10 @@ impl MeiSerialize for CorpNameChild {
             CorpNameChild::CorpName(elem) => elem.serialize_mei(writer),
             CorpNameChild::Name(elem) => elem.serialize_mei(writer),
             CorpNameChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "CorpNameChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -690,7 +708,10 @@ impl MeiSerialize for NameChild {
             NameChild::CorpName(elem) => elem.serialize_mei(writer),
             NameChild::Name(elem) => elem.serialize_mei(writer),
             NameChild::PersName(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "NameChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -770,7 +791,10 @@ impl MeiSerialize for RendChild {
             RendChild::CorpName(elem) => elem.serialize_mei(writer),
             RendChild::Title(elem) => elem.serialize_mei(writer),
             RendChild::Lb(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "RendChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

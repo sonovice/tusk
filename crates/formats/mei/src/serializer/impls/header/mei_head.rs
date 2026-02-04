@@ -283,7 +283,10 @@ impl MeiSerialize for TitleChild {
             TitleChild::Name(elem) => elem.serialize_mei(writer),
             TitleChild::PersName(elem) => elem.serialize_mei(writer),
             TitleChild::Date(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TitleChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -367,7 +370,10 @@ impl MeiSerialize for TitlePartChild {
             TitlePartChild::CorpName(elem) => elem.serialize_mei(writer),
             TitlePartChild::Rend(elem) => elem.serialize_mei(writer),
             TitlePartChild::Title(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TitlePartChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -428,7 +434,10 @@ impl MeiSerialize for HeadChild {
                 writer.write_text(text)?;
                 Ok(())
             }
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "HeadChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -483,7 +492,10 @@ impl MeiSerialize for SourceDescChild {
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             SourceDescChild::Head(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SourceDescChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

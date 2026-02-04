@@ -267,7 +267,10 @@ impl MeiSerialize for StaffChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             StaffChild::Layer(layer) => layer.serialize_children(writer),
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "StaffChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -372,7 +375,10 @@ impl MeiSerialize for LayerChild {
             LayerChild::Chord(chord) => chord.serialize_children(writer),
             LayerChild::Beam(beam) => beam.serialize_children(writer),
             LayerChild::Tuplet(tuplet) => tuplet.serialize_children(writer),
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "LayerChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -517,8 +523,10 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Dynam(dynam) => dynam.serialize_children(writer),
             MeasureChild::Dir(dir) => dir.serialize_children(writer),
             MeasureChild::Tempo(tempo) => tempo.serialize_children(writer),
-            // Other child types - no-op
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "MeasureChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -622,8 +630,10 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.serialize_children(writer),
             SectionChild::Staff(staff) => staff.serialize_children(writer),
             SectionChild::Section(section) => section.serialize_children(writer),
-            // Other child types - no-op
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SectionChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
@@ -748,7 +758,10 @@ impl MeiSerialize for ScoreChild {
         match self {
             ScoreChild::Section(s) => s.serialize_children(writer),
             ScoreChild::ScoreDef(s) => s.serialize_children(writer),
-            _ => Ok(()),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ScoreChild::{}::serialize_children",
+                other.element_name()
+            ))),
         }
     }
 }
