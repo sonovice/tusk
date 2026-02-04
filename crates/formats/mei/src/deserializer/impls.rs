@@ -32,16 +32,17 @@ use tusk_model::att::{
     AttTupletLog, AttTupletVis, AttTyped, AttXy,
 };
 use tusk_model::elements::{
-    Accid, Artic, Availability, Beam, BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef,
-    Contributor, ContributorChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam,
-    Editor, EditorChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
+    Accid, AppInfo, AppInfoChild, Artic, Availability, Beam, BeamChild, Bibl, BiblStruct, Chord,
+    ChordChild, Clef, Contributor, ContributorChild, Creator, CreatorChild, Date, Dir, Distributor,
+    Dot, Dynam, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
+    EncodingDescChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
     GraceGrpChild, Hairpin, Head, HeadChild, Identifier, InstrDef, Label, Layer, LayerChild,
     LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
-    MeiHeadChild, Note, NoteChild, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest,
-    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Source, SourceChild,
-    SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef,
-    StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt,
-    TitleStmtChild, Tuplet, TupletChild, Unpub,
+    MeiHeadChild, Note, NoteChild, ProjectDesc, ProjectDescChild, PubPlace, PubStmt, PubStmtChild,
+    Publisher, RespStmt, Rest, RestChild, SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild,
+    Section, SectionChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor,
+    SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
+    Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet, TupletChild, Unpub,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -2818,7 +2819,14 @@ impl MeiDeserialize for MeiHead {
                             .children
                             .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
                     }
-                    // Other child elements (encodingDesc, workList, etc.) are not
+                    "encodingDesc" => {
+                        let encoding_desc =
+                            parse_encoding_desc_from_event(reader, child_attrs, child_empty)?;
+                        mei_head
+                            .children
+                            .push(MeiHeadChild::EncodingDesc(Box::new(encoding_desc)));
+                    }
+                    // Other child elements (workList, manifestationList, etc.) are not
                     // yet implemented for parsing. Skip them in lenient mode.
                     _ => {
                         if !child_empty {
@@ -3296,6 +3304,241 @@ fn parse_bibl_struct_from_event<R: BufRead>(
     }
 
     Ok(bibl_struct)
+}
+
+/// Parse an `<encodingDesc>` element from within another element.
+fn parse_encoding_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<EncodingDesc> {
+    let mut encoding_desc = EncodingDesc::default();
+
+    // Extract attributes
+    encoding_desc.common.extract_attributes(&mut attrs)?;
+    encoding_desc.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // encodingDesc can contain: head*, appInfo?, editorialDecl?, projectDesc?,
+    // samplingDecl?, domainsDecl*, tagsDecl?, classDecls?
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("encodingDesc")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::Head(Box::new(head)));
+                }
+                "appInfo" => {
+                    let app_info = parse_app_info_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::AppInfo(Box::new(app_info)));
+                }
+                "editorialDecl" => {
+                    let editorial_decl =
+                        parse_editorial_decl_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::EditorialDecl(Box::new(editorial_decl)));
+                }
+                "projectDesc" => {
+                    let project_desc =
+                        parse_project_desc_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::ProjectDesc(Box::new(project_desc)));
+                }
+                "samplingDecl" => {
+                    let sampling_decl =
+                        parse_sampling_decl_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::SamplingDecl(Box::new(sampling_decl)));
+                }
+                // domainsDecl, tagsDecl, classDecls are more complex - skip for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(encoding_desc)
+}
+
+/// Parse an `<appInfo>` element from within another element.
+fn parse_app_info_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<AppInfo> {
+    let mut app_info = AppInfo::default();
+
+    // Extract attributes
+    app_info.common.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // appInfo can contain: head*, application*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("appInfo")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    app_info.children.push(AppInfoChild::Head(Box::new(head)));
+                }
+                // application is a complex element - skip for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(app_info)
+}
+
+/// Parse an `<editorialDecl>` element from within another element.
+fn parse_editorial_decl_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<EditorialDecl> {
+    let mut editorial_decl = EditorialDecl::default();
+
+    // Extract attributes
+    editorial_decl.common.extract_attributes(&mut attrs)?;
+    editorial_decl.bibl.extract_attributes(&mut attrs)?;
+    editorial_decl
+        .data_pointing
+        .extract_attributes(&mut attrs)?;
+    editorial_decl.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // editorialDecl can contain: head*, (correction | interpretation | normalization |
+    // p | segmentation | stdVals)*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("editorialDecl")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::Head(Box::new(head)));
+                }
+                // p, correction, interpretation, normalization, segmentation, stdVals
+                // are more complex - skip for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(editorial_decl)
+}
+
+/// Parse a `<projectDesc>` element from within another element.
+fn parse_project_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ProjectDesc> {
+    let mut project_desc = ProjectDesc::default();
+
+    // Extract attributes
+    project_desc.common.extract_attributes(&mut attrs)?;
+    project_desc.bibl.extract_attributes(&mut attrs)?;
+    project_desc.data_pointing.extract_attributes(&mut attrs)?;
+    project_desc.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // projectDesc can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("projectDesc")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    project_desc
+                        .children
+                        .push(ProjectDescChild::Head(Box::new(head)));
+                }
+                // p elements are more complex - skip for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(project_desc)
+}
+
+/// Parse a `<samplingDecl>` element from within another element.
+fn parse_sampling_decl_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<SamplingDecl> {
+    let mut sampling_decl = SamplingDecl::default();
+
+    // Extract attributes
+    sampling_decl.common.extract_attributes(&mut attrs)?;
+    sampling_decl.bibl.extract_attributes(&mut attrs)?;
+    sampling_decl.data_pointing.extract_attributes(&mut attrs)?;
+    sampling_decl.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // samplingDecl can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("samplingDecl")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    sampling_decl
+                        .children
+                        .push(SamplingDeclChild::Head(Box::new(head)));
+                }
+                // p elements are more complex - skip for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(sampling_decl)
 }
 
 /// Parse an `<unpub>` element from within another element.
@@ -3797,6 +4040,20 @@ impl MeiDeserialize for SourceDesc {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_source_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for EncodingDesc {
+    fn element_name() -> &'static str {
+        "encodingDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_encoding_desc_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -7845,18 +8102,18 @@ mod tests {
         use tusk_model::elements::MeiHead;
 
         // Unknown child elements should be skipped in lenient mode.
-        // Use encodingDesc (not yet implemented) to test this.
+        // Use workList (not yet implemented) to test this.
         let xml = r#"<meiHead xml:id="h1">
-            <encodingDesc>
-                <appInfo>
-                    <application>Test App</application>
-                </appInfo>
-            </encodingDesc>
+            <workList>
+                <work>
+                    <title>Test Work</title>
+                </work>
+            </workList>
         </meiHead>"#;
         let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
 
         assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
-        // encodingDesc is not yet parsed, so the list should be empty
+        // workList is not yet parsed, so the list should be empty
         assert!(mei_head.children.is_empty());
     }
 
@@ -9113,5 +9370,167 @@ mod tests {
             }
             _ => panic!("expected Source child"),
         }
+    }
+
+    // ========== EncodingDesc tests ==========
+
+    #[test]
+    fn encoding_desc_deserializes_empty_element() {
+        use tusk_model::elements::EncodingDesc;
+
+        let xml = r#"<encodingDesc/>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert!(encoding_desc.common.xml_id.is_none());
+        assert!(encoding_desc.children.is_empty());
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_xml_id() {
+        use tusk_model::elements::EncodingDesc;
+
+        let xml = r#"<encodingDesc xml:id="ed1"/>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.common.xml_id, Some("ed1".to_string()));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_bibl_attributes() {
+        use tusk_model::elements::EncodingDesc;
+
+        let xml = r#"<encodingDesc xml:id="ed1" analog="TEI"/>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.common.xml_id, Some("ed1".to_string()));
+        assert_eq!(encoding_desc.bibl.analog, Some("TEI".to_string()));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_with_app_info() {
+        use tusk_model::elements::{EncodingDesc, EncodingDescChild};
+
+        let xml = r#"<encodingDesc xml:id="ed1">
+            <appInfo xml:id="ai1"/>
+        </encodingDesc>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.common.xml_id, Some("ed1".to_string()));
+        assert_eq!(encoding_desc.children.len(), 1);
+        assert!(matches!(
+            encoding_desc.children[0],
+            EncodingDescChild::AppInfo(_)
+        ));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_with_project_desc() {
+        use tusk_model::elements::{EncodingDesc, EncodingDescChild};
+
+        let xml = r#"<encodingDesc xml:id="ed1">
+            <projectDesc xml:id="pd1"/>
+        </encodingDesc>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.children.len(), 1);
+        assert!(matches!(
+            encoding_desc.children[0],
+            EncodingDescChild::ProjectDesc(_)
+        ));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_with_editorial_decl() {
+        use tusk_model::elements::{EncodingDesc, EncodingDescChild};
+
+        let xml = r#"<encodingDesc xml:id="ed1">
+            <editorialDecl xml:id="edl1"/>
+        </encodingDesc>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.children.len(), 1);
+        assert!(matches!(
+            encoding_desc.children[0],
+            EncodingDescChild::EditorialDecl(_)
+        ));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_with_sampling_decl() {
+        use tusk_model::elements::{EncodingDesc, EncodingDescChild};
+
+        let xml = r#"<encodingDesc xml:id="ed1">
+            <samplingDecl xml:id="sd1"/>
+        </encodingDesc>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.children.len(), 1);
+        assert!(matches!(
+            encoding_desc.children[0],
+            EncodingDescChild::SamplingDecl(_)
+        ));
+    }
+
+    #[test]
+    fn encoding_desc_deserializes_multiple_children() {
+        use tusk_model::elements::{EncodingDesc, EncodingDescChild};
+
+        let xml = r#"<encodingDesc xml:id="ed1">
+            <appInfo xml:id="ai1"/>
+            <editorialDecl xml:id="edl1"/>
+            <projectDesc xml:id="pd1"/>
+        </encodingDesc>"#;
+        let encoding_desc = EncodingDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(encoding_desc.children.len(), 3);
+        assert!(matches!(
+            encoding_desc.children[0],
+            EncodingDescChild::AppInfo(_)
+        ));
+        assert!(matches!(
+            encoding_desc.children[1],
+            EncodingDescChild::EditorialDecl(_)
+        ));
+        assert!(matches!(
+            encoding_desc.children[2],
+            EncodingDescChild::ProjectDesc(_)
+        ));
+    }
+
+    #[test]
+    fn mei_head_deserializes_with_encoding_desc() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <encodingDesc xml:id="ed1">
+                <appInfo xml:id="ai1"/>
+            </encodingDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.children.len(), 1);
+        assert!(matches!(
+            mei_head.children[0],
+            MeiHeadChild::EncodingDesc(_)
+        ));
+    }
+
+    #[test]
+    fn mei_head_deserializes_file_desc_and_encoding_desc() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1"/>
+            <encodingDesc xml:id="ed1"/>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.children.len(), 2);
+        assert!(matches!(mei_head.children[0], MeiHeadChild::FileDesc(_)));
+        assert!(matches!(
+            mei_head.children[1],
+            MeiHeadChild::EncodingDesc(_)
+        ));
     }
 }
