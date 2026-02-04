@@ -661,3 +661,17 @@ fn test_roundtrip_spec_brooke_west_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_chant() {
+    let (original, roundtripped) = roundtrip_spec_example("Chant.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Chant: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Chant.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
