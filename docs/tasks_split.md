@@ -29,7 +29,7 @@ Target: `crates/formats/mei/src/deserializer/impls.rs` → split into `impls/` s
 Target: `crates/formats/mei/src/serializer/impls.rs` → split into `impls/` submodules
 
 - [x] Extract note/rest/chord/space serializers → `impls/note.rs`
-- [ ] Extract measure/staff/layer/section/mdiv serializers → `impls/structure.rs`
+- [x] Extract measure/staff/layer/section/mdiv serializers → `impls/structure.rs`
 - [ ] Extract scoreDef/staffDef/layerDef/staffGrp serializers → `impls/defs.rs`
 - [ ] Extract control event serializers → `impls/control.rs`
 - [ ] Extract header serializers → `impls/header.rs`
