@@ -94,12 +94,12 @@ Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements
 
 Target: `crates/core/convert/src/mei_to_musicxml.rs` → split into `mei_to_musicxml/` submodules
 
-- [ ] Extract note/rest/chord conversion → `mei_to_musicxml/note.rs`
-- [ ] Extract scoreDef/staffDef → attributes conversion → `mei_to_musicxml/attributes.rs`
-- [ ] Extract control events → direction conversion → `mei_to_musicxml/direction.rs`
-- [ ] Extract measure/section/mdiv structure conversion → `mei_to_musicxml/structure.rs`
-- [ ] Extract staffGrp → part-list conversion → `mei_to_musicxml/parts.rs`
-- [ ] Extract duration/pitch/ID helpers → `mei_to_musicxml/utils.rs`, verify main file only has entry point
+- [x] Extract note/rest/chord conversion → `mei_to_musicxml/note.rs`
+- [x] Extract scoreDef/staffDef → attributes conversion → `mei_to_musicxml/attributes.rs`
+- [x] Extract control events → direction conversion → `mei_to_musicxml/direction.rs`
+- [x] Extract measure/section/mdiv structure conversion → `mei_to_musicxml/structure.rs`
+- [x] Extract staffGrp → part-list conversion → `mei_to_musicxml/parts.rs`
+- [x] Extract duration/pitch/ID helpers → `mei_to_musicxml/utils.rs`, verify main file only has entry point
 
 
 ---
