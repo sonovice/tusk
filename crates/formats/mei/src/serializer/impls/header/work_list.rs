@@ -148,6 +148,7 @@ impl MeiSerialize for WorkChild {
             WorkChild::Identifier(elem) => elem.serialize_mei(writer),
             WorkChild::Contents(elem) => elem.serialize_mei(writer),
             WorkChild::Key(elem) => elem.serialize_mei(writer),
+            WorkChild::Tempo(elem) => elem.serialize_mei(writer),
             WorkChild::Meter(elem) => elem.serialize_mei(writer),
             WorkChild::Incip(elem) => elem.serialize_mei(writer),
             WorkChild::Creation(elem) => elem.serialize_mei(writer),

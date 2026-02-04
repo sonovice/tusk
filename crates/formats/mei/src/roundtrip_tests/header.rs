@@ -338,3 +338,45 @@ fn serialize_head_with_text() {
     assert!(xml.contains("Section Title"), "should have text: {}", xml);
     assert!(xml.contains("</head>"), "should have closing tag: {}", xml);
 }
+
+#[test]
+fn roundtrip_work_with_tempo_text() {
+    use tusk_model::elements::{Tempo, TempoChild, Work, WorkChild};
+
+    let mut work = Work::default();
+    work.common.xml_id = Some("work1".to_string());
+
+    // Add tempo with text content
+    let mut tempo = Tempo::default();
+    tempo
+        .children
+        .push(TempoChild::Text("undefined".to_string()));
+    work.children.push(WorkChild::Tempo(Box::new(tempo)));
+
+    // Serialize
+    let xml = work.to_mei_string().expect("serialize");
+    assert!(xml.contains("<work"), "should have work: {}", xml);
+    assert!(xml.contains("<tempo>"), "should have tempo: {}", xml);
+    assert!(
+        xml.contains("undefined"),
+        "should have tempo text 'undefined': {}",
+        xml
+    );
+    assert!(xml.contains("</tempo>"), "should have closing tag: {}", xml);
+
+    // Deserialize and verify
+    let parsed = Work::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("work1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        WorkChild::Tempo(tempo) => {
+            assert_eq!(tempo.children.len(), 1);
+            match &tempo.children[0] {
+                TempoChild::Text(text) => assert_eq!(text, "undefined"),
+                other => panic!("Expected Text child, got {:?}", other),
+            }
+        }
+        other => panic!("Expected Tempo child, got {:?}", other),
+    }
+}

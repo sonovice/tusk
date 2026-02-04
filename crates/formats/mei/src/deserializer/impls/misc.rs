@@ -2864,7 +2864,7 @@ mod tests {
 
     #[test]
     fn work_deserializes_with_tempo() {
-        use tusk_model::elements::{Work, WorkChild};
+        use tusk_model::elements::{TempoChild, Work, WorkChild};
 
         let xml = r#"<work>
             <title>Test</title>
@@ -2873,7 +2873,37 @@ mod tests {
         let work = Work::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(work.children.len(), 2);
-        assert!(matches!(work.children[1], WorkChild::Tempo(_)));
+        match &work.children[1] {
+            WorkChild::Tempo(tempo) => {
+                assert_eq!(tempo.children.len(), 1);
+                match &tempo.children[0] {
+                    TempoChild::Text(text) => assert_eq!(text, "Allegro"),
+                    _ => panic!("Expected Text child"),
+                }
+            }
+            _ => panic!("Expected Tempo child"),
+        }
+    }
+
+    #[test]
+    fn work_deserializes_with_tempo_text_undefined() {
+        use tusk_model::elements::{TempoChild, Work, WorkChild};
+
+        // Exact format from Ahle_Jesu_meines_Herzens_Freud.mei
+        let xml = r#"<work><tempo>undefined</tempo></work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 1);
+        match &work.children[0] {
+            WorkChild::Tempo(tempo) => {
+                assert_eq!(tempo.children.len(), 1, "Tempo should have 1 child");
+                match &tempo.children[0] {
+                    TempoChild::Text(text) => assert_eq!(text, "undefined"),
+                    other => panic!("Expected Text child, got {:?}", other),
+                }
+            }
+            other => panic!("Expected Tempo child, got {:?}", other),
+        }
     }
 
     #[test]
