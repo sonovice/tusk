@@ -817,3 +817,17 @@ fn test_roundtrip_spec_moza_veil_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_saltarello() {
+    let (original, roundtripped) = roundtrip_spec_example("Saltarello.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Saltarello: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Saltarello.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
