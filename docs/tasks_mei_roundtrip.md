@@ -28,6 +28,10 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Title element: mixed content not parsed correctly - titlePart and other child elements collapsed into single text node (source: Aguado_Walzer_G-major.mei)
 - [x] [CODEGEN_BUG] Application element: missing @version attribute in generated model - element-local attribute from ODD attList not generated (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] RespStmt element: children (persName, name, corpName, resp) not being parsed - deserializer calls skip_to_end instead of parsing children (source: Aguado_Walzer_G-major.mei)
+- [ ] [DESERIALIZER_BUG] PubStmt: address element not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
+- [ ] [SERIALIZER_BUG] AvailabilityChild: UseRestrict not serialized - skipped in wildcard match arm (source: Aguado_Walzer_G-major.mei)
+- [ ] [SERIALIZER_BUG] PChild: Ref element not serialized - only Text is handled, all other variants skipped (source: Aguado_Walzer_G-major.mei)
+- [ ] [XML_COMPARE] Version element name migration: composer→creator comparison should treat as equivalent (MEI 5.1→6.0-dev migration) (source: Aguado_Walzer_G-major.mei)
 
 ---
 
