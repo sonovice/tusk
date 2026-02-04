@@ -1,6 +1,6 @@
 //! Deserializer implementations for text and prose MEI elements.
 //!
-//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li
+//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li, Seg
 //! and related attribute classes.
 
 use crate::deserializer::{
@@ -14,8 +14,8 @@ use tusk_model::att::{
     AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
 use tusk_model::elements::{
-    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Syl,
-    SylChild, Verse, VerseChild,
+    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Seg,
+    SegChild, Syl, SylChild, Verse, VerseChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -946,6 +946,142 @@ pub(crate) fn parse_li_from_event<R: BufRead>(
     }
 
     Ok(li)
+}
+
+impl MeiDeserialize for Seg {
+    fn element_name() -> &'static str {
+        "seg"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_seg_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<seg>` element from within another element.
+///
+/// Seg (arbitrary segment) can contain mixed content with text and many child elements.
+/// It represents any segmentation of text below the "text component" level.
+pub(crate) fn parse_seg_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Seg> {
+    let mut seg = Seg::default();
+
+    // Extract attributes
+    seg.common.extract_attributes(&mut attrs)?;
+    seg.facsimile.extract_attributes(&mut attrs)?;
+    seg.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("seg")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve all text content including whitespace-only
+                    if !text.is_empty() {
+                        seg.children.push(SegChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            seg.children.push(SegChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            seg.children.push(SegChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children.push(SegChild::Ptr(Box::new(ptr)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            seg.children
+                                .push(SegChild::Identifier(Box::new(identifier)));
+                        }
+                        "seg" => {
+                            // Nested seg element
+                            let nested_seg =
+                                parse_seg_from_event(reader, child_attrs, child_empty)?;
+                            seg.children.push(SegChild::Seg(Box::new(nested_seg)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(seg)
 }
 
 // ============================================================================

@@ -1,14 +1,14 @@
 //! Serializer implementations for agent/contributor and name elements.
 //!
 //! Contains: Creator, Editor, Funder, RespStmt, Resp, Contributor, Sponsor,
-//! PersName, CorpName, Name, Rend, Lb.
+//! PersName, CorpName, Name, Rend, Lb, Seg.
 
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
     Contributor, ContributorChild, CorpName, CorpNameChild, Creator, CreatorChild, Editor,
     EditorChild, Funder, FunderChild, Lb, Name, NameChild, PersName, PersNameChild, Rend,
-    RendChild, Resp, RespChild, RespStmt, RespStmtChild, Sponsor, SponsorChild,
+    RendChild, Resp, RespChild, RespStmt, RespStmtChild, Seg, SegChild, Sponsor, SponsorChild,
 };
 
 // ============================================================================
@@ -925,5 +925,92 @@ impl MeiSerialize for Lb {
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         Ok(())
+    }
+}
+
+// ============================================================================
+// Seg (arbitrary segment)
+// ============================================================================
+
+impl MeiSerialize for Seg {
+    fn element_name(&self) -> &'static str {
+        "seg"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for SegChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            SegChild::Text(_) => "#text",
+            SegChild::Rend(_) => "rend",
+            SegChild::Lb(_) => "lb",
+            SegChild::PersName(_) => "persName",
+            SegChild::CorpName(_) => "corpName",
+            SegChild::Name(_) => "name",
+            SegChild::Title(_) => "title",
+            SegChild::Date(_) => "date",
+            SegChild::Identifier(_) => "identifier",
+            SegChild::Ref(_) => "ref",
+            SegChild::Ptr(_) => "ptr",
+            SegChild::Num(_) => "num",
+            SegChild::Seg(_) => "seg",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, SegChild::Text(_) | SegChild::Lb(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            SegChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            SegChild::Rend(elem) => elem.serialize_mei(writer),
+            SegChild::Lb(elem) => elem.serialize_mei(writer),
+            SegChild::PersName(elem) => elem.serialize_mei(writer),
+            SegChild::CorpName(elem) => elem.serialize_mei(writer),
+            SegChild::Name(elem) => elem.serialize_mei(writer),
+            SegChild::Title(elem) => elem.serialize_mei(writer),
+            SegChild::Date(elem) => elem.serialize_mei(writer),
+            SegChild::Identifier(elem) => elem.serialize_mei(writer),
+            SegChild::Ref(elem) => elem.serialize_mei(writer),
+            SegChild::Ptr(elem) => elem.serialize_mei(writer),
+            SegChild::Num(elem) => elem.serialize_mei(writer),
+            SegChild::Seg(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SegChild::{}",
+                other.element_name()
+            ))),
+        }
     }
 }

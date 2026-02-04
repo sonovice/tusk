@@ -1,7 +1,7 @@
 //! Deserializer implementations for definition MEI elements.
 //!
 //! This module contains implementations for ScoreDef, StaffDef, LayerDef, StaffGrp,
-//! PgHead, and PgFoot.
+//! PgHead, PgFoot, and Seg.
 
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
@@ -14,7 +14,7 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Clef, InstrDef, LabelChild, LayerDef, LayerDefChild, PgFoot, PgFootChild, PgHead, PgHeadChild,
-    ScoreDef, ScoreDefChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+    ScoreDef, ScoreDefChild, Seg, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1262,6 +1262,14 @@ pub(crate) fn parse_pg_head_from_event<R: BufRead>(
                             )?;
                             pg_head.children.push(PgHeadChild::List(Box::new(list)));
                         }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Seg(Box::new(seg)));
+                        }
                         // Skip unknown child elements
                         _ => {
                             if !child_empty {
@@ -1413,6 +1421,14 @@ pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
                                 child_empty,
                             )?;
                             pg_foot.children.push(PgFootChild::List(Box::new(list)));
+                        }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Seg(Box::new(seg)));
                         }
                         // Skip unknown child elements
                         _ => {

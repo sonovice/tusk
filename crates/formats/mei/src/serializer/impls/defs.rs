@@ -9,7 +9,9 @@ use tusk_model::att::{
     AttFormework, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttStaffGrpAnl,
     AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
-use tusk_model::elements::{PgFoot, PgFootChild, PgHead, PgHeadChild, ScoreDef, ScoreDefChild};
+use tusk_model::elements::{
+    PgFoot, PgFootChild, PgHead, PgHeadChild, ScoreDef, ScoreDefChild, Seg, SegChild,
+};
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
 
@@ -923,6 +925,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::Lg(_) => "lg",
             PgHeadChild::P(_) => "p",
             PgHeadChild::List(_) => "list",
+            PgHeadChild::Seg(_) => "seg",
             // Many other child types exist but are not commonly used
             _ => "unknown",
         }
@@ -942,6 +945,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::Ptr(p) => p.collect_all_attributes(),
             PgHeadChild::P(p) => p.collect_all_attributes(),
             PgHeadChild::List(l) => l.collect_all_attributes(),
+            PgHeadChild::Seg(s) => s.collect_all_attributes(),
             // Lg and other elements - not yet implemented
             _ => Vec::new(),
         }
@@ -962,6 +966,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::Ptr(_) => false,
             PgHeadChild::P(p) => !p.children.is_empty(),
             PgHeadChild::List(l) => !l.children.is_empty(),
+            PgHeadChild::Seg(s) => !s.children.is_empty(),
             // Lg and other elements
             _ => false,
         }
@@ -985,6 +990,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::Ptr(_) => Ok(()),
             PgHeadChild::P(p) => p.serialize_children(writer),
             PgHeadChild::List(l) => l.serialize_children(writer),
+            PgHeadChild::Seg(s) => s.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PgHeadChild::{}::serialize_children",
                 other.element_name()
@@ -1037,6 +1043,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::Lg(_) => "lg",
             PgFootChild::P(_) => "p",
             PgFootChild::List(_) => "list",
+            PgFootChild::Seg(_) => "seg",
             // Many other child types exist but are not commonly used
             _ => "unknown",
         }
@@ -1056,6 +1063,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::Ptr(p) => p.collect_all_attributes(),
             PgFootChild::P(p) => p.collect_all_attributes(),
             PgFootChild::List(l) => l.collect_all_attributes(),
+            PgFootChild::Seg(s) => s.collect_all_attributes(),
             // Lg and other elements - not yet implemented
             _ => Vec::new(),
         }
@@ -1076,6 +1084,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::Ptr(_) => false,
             PgFootChild::P(p) => !p.children.is_empty(),
             PgFootChild::List(l) => !l.children.is_empty(),
+            PgFootChild::Seg(s) => !s.children.is_empty(),
             // Lg and other elements
             _ => false,
         }
@@ -1099,6 +1108,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::Ptr(_) => Ok(()),
             PgFootChild::P(p) => p.serialize_children(writer),
             PgFootChild::List(l) => l.serialize_children(writer),
+            PgFootChild::Seg(s) => s.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PgFootChild::{}::serialize_children",
                 other.element_name()
