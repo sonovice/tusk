@@ -689,3 +689,17 @@ fn test_roundtrip_spec_debu_mand_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_dichterliebe01() {
+    let (original, roundtripped) = roundtrip_spec_example("Dichterliebe01.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Dichterliebe01: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Dichterliebe01.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
