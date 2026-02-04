@@ -19,7 +19,7 @@ Target: `crates/formats/mei/src/deserializer/impls.rs` → split into `impls/` s
 - [x] Extract beam/tuplet/graceGrp deserializers → `impls/grouping.rs`
 - [x] Extract meiHead/fileDesc/titleStmt/pubStmt deserializers → `impls/header.rs`
 - [x] Extract app/lem/rdg/choice/corr/sic/add/del deserializers → `impls/editorial.rs`
-- [ ] Extract text/prose/annotation deserializers → `impls/text.rs`
+- [x] Extract text/prose/annotation deserializers → `impls/text.rs`
 - [ ] Extract remaining deserializers → `impls/misc.rs`, verify impls.rs only has re-exports
 
 ---

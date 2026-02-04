@@ -44,6 +44,7 @@ mod grouping;
 mod header;
 mod note;
 mod structure;
+mod text;
 
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
 pub(crate) use header::{
