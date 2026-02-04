@@ -15,6 +15,7 @@
 
 mod control;
 mod defs;
+mod editorial;
 mod header;
 mod note;
 mod structure;

@@ -46,7 +46,7 @@ Target: `crates/formats/mei/src/roundtrip_tests.rs` → split into `roundtrip_te
 - [x] Extract scoreDef/staffDef tests → `roundtrip_tests/defs.rs`
 - [x] Extract control event tests → `roundtrip_tests/control.rs`
 - [x] Extract header roundtrip tests → `roundtrip_tests/header.rs`
-- [ ] Extract editorial element tests → `roundtrip_tests/editorial.rs`
+- [x] Extract editorial element tests → `roundtrip_tests/editorial.rs`
 - [ ] Extract full document roundtrip tests → `roundtrip_tests/document.rs`, verify main file only has mod declarations
 
 ---
