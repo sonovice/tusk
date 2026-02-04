@@ -58,7 +58,7 @@ Target: `crates/core/convert/src/musicxml_to_mei.rs` → split into `musicxml_to
 - [x] Extract note/rest/chord conversion → `musicxml_to_mei/note.rs`
 - [x] Extract key/time/clef/divisions conversion → `musicxml_to_mei/attributes.rs`
 - [x] Extract direction/dynamics/tempo conversion → `musicxml_to_mei/direction.rs`
-- [ ] Extract measure/part/score structure conversion → `musicxml_to_mei/structure.rs`
+- [x] Extract measure/part/score structure conversion → `musicxml_to_mei/structure.rs`
 - [ ] Extract part-list/staffGrp conversion → `musicxml_to_mei/parts.rs`
 - [ ] Extract duration/pitch/ID helpers → `musicxml_to_mei/utils.rs`, verify main file only has entry point
 
