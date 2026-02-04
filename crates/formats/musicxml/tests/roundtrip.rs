@@ -789,3 +789,17 @@ fn test_roundtrip_spec_moza_chlo_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_mozart_trio() {
+    let (original, roundtripped) = roundtrip_spec_example("MozartTrio.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for MozartTrio: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for MozartTrio.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
