@@ -131,7 +131,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Create MusicXML direction types
 
 ### 4.2 MusicXML Parser
-- [ ] Implement MusicXML parser for score-partwise documents
+- [x] Implement MusicXML parser for score-partwise documents
 - [ ] Implement MusicXML parser for score-timewise documents (convert to partwise)
 - [ ] Handle MusicXML divisions and duration calculation
 - [ ] Parse MusicXML note elements with pitch/duration

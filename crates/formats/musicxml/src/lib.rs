@@ -17,13 +17,16 @@
 //! # Module Organization
 //!
 //! - `model` - MusicXML intermediate data model (types matching XSD schema)
+//! - `parser` - MusicXML parsing from XML to the model types
 //! - `versions` - Version-specific parsing and upgrade logic
 
 pub mod model;
+pub mod parser;
 pub mod versions;
 
 // Re-export commonly used types
 pub use model::*;
+pub use parser::{ParseError, parse_score_partwise};
 
 #[cfg(test)]
 mod tests {
