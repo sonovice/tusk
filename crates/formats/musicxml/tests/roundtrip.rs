@@ -803,3 +803,17 @@ fn test_roundtrip_spec_mozart_trio() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_moza_veil_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("MozaVeilSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for MozaVeilSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for MozaVeilSample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
