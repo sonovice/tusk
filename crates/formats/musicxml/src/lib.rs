@@ -13,13 +13,26 @@
 //!
 //! Both `score-partwise` and `score-timewise` formats are supported.
 //! Timewise documents are converted to partwise internally.
+//!
+//! # Module Organization
+//!
+//! - `model` - MusicXML intermediate data model (types matching XSD schema)
+//! - `versions` - Version-specific parsing and upgrade logic
 
+pub mod model;
 pub mod versions;
+
+// Re-export commonly used types
+pub use model::*;
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn crate_compiles() {
-        assert!(true);
+        // Smoke test: ensure types can be instantiated
+        let _ = Step::C;
+        let _ = YesNo::Yes;
     }
 }

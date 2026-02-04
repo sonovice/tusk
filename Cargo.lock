@@ -631,6 +631,7 @@ name = "tusk-musicxml"
 version = "0.1.0"
 dependencies = [
  "quick-xml 0.39.0",
+ "serde",
  "thiserror",
  "tracing",
  "tusk-model",
