@@ -8,10 +8,11 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::att::{
     AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttCalendared,
-    AttClassed, AttCommon, AttDatable, AttEdit, AttFacsimile, AttFiling, AttGraceGrpAnl,
-    AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttLabelled, AttLinking, AttMeiVersion,
-    AttMetadataPointing, AttNInteger, AttNNumberLike, AttPointing, AttResponsibility,
-    AttTargetEval, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
+    AttClassed, AttCommon, AttDatable, AttEdit, AttEvidence, AttFacsimile, AttFiling,
+    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttLabelled, AttLinking,
+    AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing,
+    AttResponsibility, AttTargetEval, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
+    AttTyped, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -376,6 +377,35 @@ impl CollectAttributes for AttXy {
         if let Some(ref v) = self.y {
             attrs.push(("y", v.to_string()));
         }
+        attrs
+    }
+}
+
+impl CollectAttributes for AttEvidence {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "cert", self.cert);
+        push_attr!(attrs, "evidence", self.evidence);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttName {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "codedval", vec self.codedval);
+        push_attr!(attrs, "auth", clone self.auth);
+        push_attr!(attrs, "auth.uri", self.auth_uri);
+        push_attr!(attrs, "enddate", self.enddate);
+        push_attr!(attrs, "isodate", self.isodate);
+        push_attr!(attrs, "notafter", self.notafter);
+        push_attr!(attrs, "notbefore", self.notbefore);
+        push_attr!(attrs, "startdate", self.startdate);
+        if let Some(ref v) = self.nonfiling {
+            attrs.push(("nonfiling", v.to_string()));
+        }
+        push_attr!(attrs, "nymref", self.nymref);
+        push_attr!(attrs, "role", vec self.role);
         attrs
     }
 }

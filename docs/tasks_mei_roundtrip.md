@@ -14,7 +14,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 <!-- Format: - [ ] [CATEGORY] Description (source: filename.mei) -->
 <!-- Fix these BEFORE retrying the fixture that discovered them -->
 
-- [ ] [MISSING_SERIALIZER] TitleStmtChild: missing serializers for Creator, Editor, Funder, RespStmt, Contributor, Sponsor (source: Aguado_Walzer_G-major.mei)
+- [x] [MISSING_SERIALIZER] TitleStmtChild: missing serializers for Creator, Editor, Funder, RespStmt, Contributor, Sponsor (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] TitleChild: missing serializer for TitlePart (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] PubStmtChild: missing serializers for Publisher, Address, PubPlace, RespStmt, Availability, Identifier, Distributor, Unpub (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] FileDescChild: missing serializers for SeriesStmt, EditionStmt, NotesStmt, Extent (source: Aguado_Walzer_G-major.mei)
