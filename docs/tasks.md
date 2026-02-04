@@ -92,7 +92,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 ## Phase 3: MEI Header & Metadata
 
 ### 3.1 File Description
-- [ ] Implement MEI parsing for `<meiHead>` element
+- [x] Implement MEI parsing for `<meiHead>` element
 - [ ] Implement MEI parsing for `<fileDesc>` element
 - [ ] Implement MEI parsing for `<titleStmt>` element
 - [ ] Implement MEI parsing for `<pubStmt>` element

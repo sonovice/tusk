@@ -19,11 +19,11 @@ use tusk_model::att::{
     AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
     AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
     AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNoteAnl,
+    AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes,
+    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
+    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
+    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
     AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
     AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
     AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
@@ -32,9 +32,9 @@ use tusk_model::att::{
 use tusk_model::elements::{
     Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, GraceGrp,
     GraceGrpChild, Hairpin, InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv,
-    MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp,
-    StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
+    MdivChild, Measure, MeasureChild, MeiHead, Note, NoteChild, Rest, RestChild, ScoreDef,
+    ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild,
+    StaffGrp, StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1091,6 +1091,13 @@ impl ExtractAttributes for AttTyped {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "class", vec self.class);
         extract_attr!(attrs, "type", vec self.r#type);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeiVersion {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "meiversion", self.meiversion);
         Ok(())
     }
 }
@@ -2662,6 +2669,56 @@ impl MeiDeserialize for Mdiv {
         }
 
         Ok(mdiv)
+    }
+}
+
+impl MeiDeserialize for MeiHead {
+    fn element_name() -> &'static str {
+        "meiHead"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut mei_head = MeiHead::default();
+
+        // Extract attributes into each attribute class
+        mei_head.basic.extract_attributes(&mut attrs)?;
+        mei_head.bibl.extract_attributes(&mut attrs)?;
+        mei_head.labelled.extract_attributes(&mut attrs)?;
+        mei_head.lang.extract_attributes(&mut attrs)?;
+        mei_head.mei_version.extract_attributes(&mut attrs)?;
+        mei_head.responsibility.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // Read children if not an empty element
+        // meiHead can contain: altId, fileDesc, encodingDesc, workList,
+        // manifestationList, extMeta, revisionDesc
+        // Note: Child elements are not yet implemented for parsing.
+        // In lenient mode, we skip them all.
+        if !is_empty {
+            while let Some((name, _child_attrs, child_empty)) =
+                reader.read_next_child_start("meiHead")?
+            {
+                // Child elements (fileDesc, encodingDesc, workList, etc.) are not
+                // yet implemented for parsing. Skip them in lenient mode.
+                // When child element parsers are added, they can be handled here:
+                // match name.as_str() {
+                //     "fileDesc" => { ... }
+                //     "encodingDesc" => { ... }
+                //     ...
+                // }
+                if !child_empty {
+                    reader.skip_to_end(&name)?;
+                }
+            }
+        }
+
+        Ok(mei_head)
     }
 }
 
@@ -6581,5 +6638,146 @@ mod tests {
             }
             _ => panic!("Expected space child"),
         }
+    }
+
+    // ============================================================================
+    // MeiHead element tests
+    // ============================================================================
+
+    #[test]
+    fn mei_head_deserializes_from_empty_element() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert!(mei_head.basic.xml_id.is_none());
+        assert!(mei_head.children.is_empty());
+    }
+
+    #[test]
+    fn mei_head_deserializes_xml_id() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead xml:id="header1"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("header1".to_string()));
+    }
+
+    #[test]
+    fn mei_head_deserializes_basic_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead xml:id="header1" xml:base="http://example.com/"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("header1".to_string()));
+        assert!(mei_head.basic.xml_base.is_some());
+    }
+
+    #[test]
+    fn mei_head_deserializes_bibl_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead analog="MARC21"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.bibl.analog, Some("MARC21".to_string()));
+    }
+
+    #[test]
+    fn mei_head_deserializes_labelled_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead label="Main Header"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.labelled.label, Some("Main Header".to_string()));
+    }
+
+    #[test]
+    fn mei_head_deserializes_lang_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead xml:lang="en"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.lang.xml_lang, Some("en".to_string()));
+    }
+
+    #[test]
+    fn mei_head_deserializes_mei_version_attribute() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead meiversion="6.0-dev"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        // Check that meiversion attribute was parsed
+        assert!(mei_head.mei_version.meiversion.is_some());
+    }
+
+    #[test]
+    fn mei_head_deserializes_resp_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        // Use a regular string to avoid the raw string literal issue with #
+        let xml = "<meiHead resp=\"#encoder1\"/>";
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!mei_head.responsibility.resp.is_empty());
+    }
+
+    #[test]
+    fn mei_head_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead xml:id="h1" unknownAttr="value"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+    }
+
+    #[test]
+    fn mei_head_deserializes_with_xml_declaration() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<?xml version="1.0"?><meiHead xml:id="h1"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+    }
+
+    #[test]
+    fn mei_head_ignores_unknown_child_elements_leniently() {
+        use tusk_model::elements::MeiHead;
+
+        // Child elements like fileDesc are not yet implemented,
+        // so they should be skipped in lenient mode
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc>
+                <titleStmt>
+                    <title>Test</title>
+                </titleStmt>
+            </fileDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        // Children are not parsed yet, so the list should be empty
+        assert!(mei_head.children.is_empty());
+    }
+
+    #[test]
+    fn mei_head_deserializes_multiple_attributes() {
+        use tusk_model::elements::MeiHead;
+
+        let xml = r#"<meiHead xml:id="h1" xml:lang="de" meiversion="6.0-dev" label="Header"/>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.lang.xml_lang, Some("de".to_string()));
+        assert!(mei_head.mei_version.meiversion.is_some());
+        assert_eq!(mei_head.labelled.label, Some("Header".to_string()));
     }
 }
