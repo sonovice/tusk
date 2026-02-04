@@ -33,7 +33,7 @@ Target: `crates/formats/mei/src/serializer/impls.rs` → split into `impls/` sub
 - [x] Extract scoreDef/staffDef/layerDef/staffGrp serializers → `impls/defs.rs`
 - [x] Extract control event serializers → `impls/control.rs`
 - [x] Extract header serializers → `impls/header.rs`
-- [ ] Extract remaining serializers → `impls/misc.rs`, verify impls.rs only has re-exports
+- [x] Extract remaining serializers → `impls/misc.rs`, verify impls.rs only has re-exports
 
 ---
 

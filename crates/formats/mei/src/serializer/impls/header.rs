@@ -3,7 +3,7 @@
 //! This module contains implementations for MeiHead, FileDesc, TitleStmt, PubStmt,
 //! and their child elements.
 
-use super::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
+use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
     Change, ChangeChild, ChangeDesc, ChangeDescChild, Date, DateChild, EncodingDesc,
