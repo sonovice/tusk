@@ -11,15 +11,16 @@ use tusk_model::att::{
     AttCalendared, AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable,
     AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttFoliationScheme,
     AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
-    AttInternetMedia, AttKeyMode, AttLabelled, AttLinking, AttMeasurement, AttMeiVersion,
-    AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttPerfRes,
-    AttPerfResBasic, AttPitch, AttPointing, AttRanging, AttRecordType, AttRegularMethod,
-    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
-    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttInternetMedia, AttKeyMode, AttLabelled, AttLinking, AttLyricsAnl, AttLyricsGes,
+    AttLyricsLog, AttLyricsVis, AttMeasurement, AttMeiVersion, AttMetadataPointing, AttMeterSigLog,
+    AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing,
+    AttRanging, AttRecordType, AttRegularMethod, AttResponsibility, AttSource, AttTargetEval,
+    AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
+    AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, GraceGrp, GraceGrpChild, Li, LiChild, List, ListChild, Num, Ptr, Ref, Tuplet,
-    TupletChild,
+    Beam, BeamChild, GraceGrp, GraceGrpChild, L, LChild, Lg, LgChild, Li, LiChild, List, ListChild,
+    Num, Ptr, Ref, Tuplet, TupletChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -1337,6 +1338,273 @@ impl MeiSerialize for LiChild {
             // Elements that need serializers - for now skip with warning
             _ => {
                 // TODO: Implement serializers for remaining LiChild variants
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Lyrics attribute classes
+// ============================================================================
+
+impl CollectAttributes for AttLyricsAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // Empty attribute class
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttLyricsGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // Empty attribute class
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttLyricsLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "staff", vec self.staff);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttLyricsVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        attrs
+    }
+}
+
+// ============================================================================
+// Lg (line group) element
+// ============================================================================
+
+impl MeiSerialize for Lg {
+    fn element_name(&self) -> &'static str {
+        "lg"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs.extend(self.lyrics_anl.collect_attributes());
+        attrs.extend(self.lyrics_ges.collect_attributes());
+        attrs.extend(self.lyrics_log.collect_attributes());
+        attrs.extend(self.lyrics_vis.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LgChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LgChild::L(_) => "l",
+            LgChild::Head(_) => "head",
+            LgChild::Lg(_) => "lg",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LgChild::L(elem) => elem.serialize_mei(writer),
+            LgChild::Head(elem) => elem.serialize_mei(writer),
+            LgChild::Lg(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// L (line) element
+// ============================================================================
+
+impl MeiSerialize for L {
+    fn element_name(&self) -> &'static str {
+        "l"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        // Element-local attribute: @rhythm
+        push_attr!(attrs, "rhythm", clone self.rhythm);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LChild::Text(_) => "#text",
+            LChild::Del(_) => "del",
+            LChild::Unclear(_) => "unclear",
+            LChild::Identifier(_) => "identifier",
+            LChild::BiblStruct(_) => "biblStruct",
+            LChild::Expan(_) => "expan",
+            LChild::Width(_) => "width",
+            LChild::Bloc(_) => "bloc",
+            LChild::Relation(_) => "relation",
+            LChild::Symbol(_) => "symbol",
+            LChild::PeriodName(_) => "periodName",
+            LChild::Title(_) => "title",
+            LChild::Num(_) => "num",
+            LChild::Abbr(_) => "abbr",
+            LChild::Ptr(_) => "ptr",
+            LChild::Rend(_) => "rend",
+            LChild::Date(_) => "date",
+            LChild::StyleName(_) => "styleName",
+            LChild::LocusGrp(_) => "locusGrp",
+            LChild::Subst(_) => "subst",
+            LChild::Signatures(_) => "signatures",
+            LChild::District(_) => "district",
+            LChild::Orig(_) => "orig",
+            LChild::Lb(_) => "lb",
+            LChild::Catchwords(_) => "catchwords",
+            LChild::Q(_) => "q",
+            LChild::Repository(_) => "repository",
+            LChild::CorpName(_) => "corpName",
+            LChild::GeogName(_) => "geogName",
+            LChild::Choice(_) => "choice",
+            LChild::Bibl(_) => "bibl",
+            LChild::Fig(_) => "fig",
+            LChild::Stamp(_) => "stamp",
+            LChild::Heraldry(_) => "heraldry",
+            LChild::Country(_) => "country",
+            LChild::Depth(_) => "depth",
+            LChild::Corr(_) => "corr",
+            LChild::Dim(_) => "dim",
+            LChild::Gap(_) => "gap",
+            LChild::Syl(_) => "syl",
+            LChild::GeogFeat(_) => "geogFeat",
+            LChild::Reg(_) => "reg",
+            LChild::PersName(_) => "persName",
+            LChild::Seg(_) => "seg",
+            LChild::Region(_) => "region",
+            LChild::Sic(_) => "sic",
+            LChild::Extent(_) => "extent",
+            LChild::Ref(_) => "ref",
+            LChild::Locus(_) => "locus",
+            LChild::Address(_) => "address",
+            LChild::Pb(_) => "pb",
+            LChild::Name(_) => "name",
+            LChild::Settlement(_) => "settlement",
+            LChild::Add(_) => "add",
+            LChild::Height(_) => "height",
+            LChild::Street(_) => "street",
+            LChild::RelationList(_) => "relationList",
+            LChild::Annot(_) => "annot",
+            LChild::HandShift(_) => "handShift",
+            LChild::PostCode(_) => "postCode",
+            LChild::PostBox(_) => "postBox",
+            LChild::Damage(_) => "damage",
+            LChild::SecFolio(_) => "secFolio",
+            LChild::Stack(_) => "stack",
+            LChild::Restore(_) => "restore",
+            LChild::Supplied(_) => "supplied",
+            LChild::Dimensions(_) => "dimensions",
+            LChild::Term(_) => "term",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, LChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            // Elements with existing serializers
+            LChild::Ref(elem) => elem.serialize_mei(writer),
+            LChild::Date(elem) => elem.serialize_mei(writer),
+            LChild::PersName(elem) => elem.serialize_mei(writer),
+            LChild::CorpName(elem) => elem.serialize_mei(writer),
+            LChild::Name(elem) => elem.serialize_mei(writer),
+            LChild::GeogName(elem) => elem.serialize_mei(writer),
+            LChild::Identifier(elem) => elem.serialize_mei(writer),
+            LChild::Title(elem) => elem.serialize_mei(writer),
+            LChild::Bibl(elem) => elem.serialize_mei(writer),
+            LChild::Rend(elem) => elem.serialize_mei(writer),
+            LChild::Num(elem) => elem.serialize_mei(writer),
+            LChild::Ptr(elem) => elem.serialize_mei(writer),
+            LChild::Lb(elem) => elem.serialize_mei(writer),
+            LChild::Annot(elem) => elem.serialize_mei(writer),
+            LChild::Extent(elem) => elem.serialize_mei(writer),
+            LChild::Address(elem) => elem.serialize_mei(writer),
+            LChild::PostBox(elem) => elem.serialize_mei(writer),
+            LChild::PostCode(elem) => elem.serialize_mei(writer),
+            LChild::Street(elem) => elem.serialize_mei(writer),
+            LChild::District(elem) => elem.serialize_mei(writer),
+            LChild::Region(elem) => elem.serialize_mei(writer),
+            LChild::Country(elem) => elem.serialize_mei(writer),
+            LChild::Settlement(elem) => elem.serialize_mei(writer),
+            LChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            LChild::Bloc(elem) => elem.serialize_mei(writer),
+            // Other elements that need their own serializers - skip for now
+            _ => {
+                // TODO: Implement serializers for remaining LChild variants
                 Ok(())
             }
         }

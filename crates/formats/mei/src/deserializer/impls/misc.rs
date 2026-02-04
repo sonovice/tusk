@@ -21,12 +21,12 @@ use tusk_model::elements::{
     Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
     ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition, EditionStmt,
     EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
-    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, LangUsage,
-    LangUsageChild, Language, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar,
-    PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
-    PerfResListChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild,
-    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
-    Work, WorkChild, WorkList, WorkListChild,
+    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, IncipText,
+    IncipTextChild, Key, LangUsage, LangUsageChild, Language, Lg, Mensuration, Meter, NotesStmt,
+    NotesStmtChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild,
+    PerfResList, PerfResListChild, RelationList, RelationListChild, RevisionDesc,
+    RevisionDescChild, Score, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild,
+    TermList, TermListChild, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -1692,6 +1692,54 @@ fn parse_incip_code_from_event<R: BufRead>(
     Ok(incip_code)
 }
 
+/// Parse an `<incipText>` element from within another element.
+fn parse_incip_text_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<IncipText> {
+    let mut incip_text = IncipText::default();
+
+    // Extract attributes
+    incip_text.common.extract_attributes(&mut attrs)?;
+    incip_text.bibl.extract_attributes(&mut attrs)?;
+    incip_text.lang.extract_attributes(&mut attrs)?;
+    incip_text.pointing.extract_attributes(&mut attrs)?;
+    incip_text.internet_media.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // incipText can contain: p, head, lg
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("incipText")?
+        {
+            match name.as_str() {
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    incip_text.children.push(IncipTextChild::P(Box::new(p)));
+                }
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    incip_text
+                        .children
+                        .push(IncipTextChild::Head(Box::new(head)));
+                }
+                "lg" => {
+                    let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                    incip_text.children.push(IncipTextChild::Lg(Box::new(lg)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(incip_text)
+}
+
 /// Parse an `<incip>` element from within another element.
 fn parse_incip_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -1741,6 +1789,16 @@ fn parse_incip_from_event<R: BufRead>(
                     incip
                         .children
                         .push(IncipChild::IncipCode(Box::new(incip_code)));
+                }
+                "incipText" => {
+                    let incip_text = parse_incip_text_from_event(reader, child_attrs, child_empty)?;
+                    incip
+                        .children
+                        .push(IncipChild::IncipText(Box::new(incip_text)));
+                }
+                "score" => {
+                    let score = Score::from_mei_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Score(Box::new(score)));
                 }
                 _ => {
                     if !child_empty {
