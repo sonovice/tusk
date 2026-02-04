@@ -83,7 +83,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Add beam and tuplet tests
 
 ### 2.6 MEI CMN Serialization
-- [ ] Implement MEI serialization for all CMN elements
+- [x] Implement MEI serialization for all CMN elements
 - [ ] Add round-trip tests (parse → serialize → parse)
 - [ ] Validate output against `mei-all.rng` schema
 
