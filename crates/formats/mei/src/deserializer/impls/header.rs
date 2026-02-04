@@ -17,7 +17,7 @@ use tusk_model::elements::{
     ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, PublisherChild, RespStmt,
     SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild, Source, SourceChild,
     SourceDesc, SourceDescChild, Sponsor, SponsorChild, StdVals, StdValsChild, Title, TitleChild,
-    TitleStmt, TitleStmtChild, Unpub,
+    TitlePart, TitlePartChild, TitleStmt, TitleStmtChild, Unpub,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1586,6 +1586,8 @@ pub(crate) fn parse_distributor_from_event<R: BufRead>(
 }
 
 /// Parse a `<title>` element from within another element.
+///
+/// Title can contain mixed content (text and child elements like titlePart, rend, etc.)
 pub(crate) fn parse_title_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
@@ -1608,18 +1610,192 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
 
     // Remaining attributes are unknown - in lenient mode we ignore them
 
-    // Parse text content if not empty
-    // title can contain text and various child elements
-    // For now, we collect text content as TitleChild::Text
+    // Title can contain mixed content (text + elements like titlePart, rend, corpName, etc.)
+    // Use mixed content reading to handle both text and elements
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("title")? {
-            if !text.trim().is_empty() {
-                title.children.push(TitleChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("title")? {
+            match content {
+                MixedContent::Text(text) => {
+                    title.children.push(TitleChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "titlePart" => {
+                            let title_part =
+                                parse_title_part_from_event(reader, child_attrs, child_empty)?;
+                            title
+                                .children
+                                .push(TitleChild::TitlePart(Box::new(title_part)));
+                        }
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::CorpName(Box::new(corp)));
+                        }
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::PersName(Box::new(pers)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            title
+                                .children
+                                .push(TitleChild::Identifier(Box::new(identifier)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Ptr(Box::new(ptr)));
+                        }
+                        "address" => {
+                            let addr = parse_address_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Address(Box::new(addr)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            title.children.push(TitleChild::Bibl(Box::new(bibl)));
+                        }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            title
+                                .children
+                                .push(TitleChild::BiblStruct(Box::new(bibl_struct)));
+                        }
+                        // Skip unknown elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
     Ok(title)
+}
+
+/// Parse a `<titlePart>` element from within another element.
+///
+/// TitlePart can contain mixed content (text and child elements).
+pub(crate) fn parse_title_part_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TitlePart> {
+    let mut title_part = TitlePart::default();
+
+    // Extract attributes into each attribute class
+    title_part.authorized.extract_attributes(&mut attrs)?;
+    title_part.basic.extract_attributes(&mut attrs)?;
+    title_part.bibl.extract_attributes(&mut attrs)?;
+    title_part.classed.extract_attributes(&mut attrs)?;
+    title_part.facsimile.extract_attributes(&mut attrs)?;
+    title_part.filing.extract_attributes(&mut attrs)?;
+    title_part.labelled.extract_attributes(&mut attrs)?;
+    title_part.lang.extract_attributes(&mut attrs)?;
+    title_part.linking.extract_attributes(&mut attrs)?;
+    title_part.n_integer.extract_attributes(&mut attrs)?;
+    title_part.responsibility.extract_attributes(&mut attrs)?;
+
+    // TitlePart can contain mixed content (text + elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("titlePart")? {
+            match content {
+                MixedContent::Text(text) => {
+                    title_part.children.push(TitlePartChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "title" => {
+                            let nested_title =
+                                parse_title_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Title(Box::new(nested_title)));
+                        }
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::CorpName(Box::new(corp)));
+                        }
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::PersName(Box::new(pers)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Identifier(Box::new(identifier)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            title_part.children.push(TitlePartChild::Ptr(Box::new(ptr)));
+                        }
+                        "address" => {
+                            let addr = parse_address_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Address(Box::new(addr)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::Bibl(Box::new(bibl)));
+                        }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            title_part
+                                .children
+                                .push(TitlePartChild::BiblStruct(Box::new(bibl_struct)));
+                        }
+                        // Skip unknown elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(title_part)
 }
 
 /// Parse a `<head>` element from within another element.
@@ -2060,6 +2236,34 @@ impl MeiDeserialize for TitleStmt {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_title_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Title {
+    fn element_name() -> &'static str {
+        "title"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_title_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for TitlePart {
+    fn element_name() -> &'static str {
+        "titlePart"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_title_part_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -2692,5 +2896,68 @@ mod tests {
             }
             _ => panic!("expected Creator child (migrated from author)"),
         }
+    }
+
+    // ========== Title mixed content tests ==========
+
+    #[test]
+    fn title_deserializes_with_title_part_child() {
+        use tusk_model::elements::{Title, TitleChild, TitlePartChild};
+
+        // Note: @type attribute on titlePart is a local attribute not yet generated in the model
+        // (tracked as CODEGEN_BUG in tasks_mei_roundtrip.md)
+        let xml =
+            r#"<title>Walzer G-Dur<titlePart>an electronic transcription</titlePart></title>"#;
+        let title = Title::from_mei_str(xml).expect("should deserialize");
+
+        // Should have 2 children: text "Walzer G-Dur" and titlePart element
+        assert_eq!(title.children.len(), 2);
+
+        // First child should be text
+        match &title.children[0] {
+            TitleChild::Text(text) => {
+                assert_eq!(text, "Walzer G-Dur");
+            }
+            _ => panic!("expected Text child first"),
+        }
+
+        // Second child should be titlePart
+        match &title.children[1] {
+            TitleChild::TitlePart(tp) => {
+                assert_eq!(tp.children.len(), 1);
+                match &tp.children[0] {
+                    TitlePartChild::Text(text) => {
+                        assert_eq!(text, "an electronic transcription");
+                    }
+                    _ => panic!("expected Text child in titlePart"),
+                }
+            }
+            _ => panic!("expected TitlePart child second"),
+        }
+    }
+
+    #[test]
+    fn title_deserializes_text_only() {
+        use tusk_model::elements::{Title, TitleChild};
+
+        let xml = r#"<title>Simple Title</title>"#;
+        let title = Title::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title.children.len(), 1);
+        match &title.children[0] {
+            TitleChild::Text(text) => {
+                assert_eq!(text, "Simple Title");
+            }
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn title_deserializes_empty_element() {
+        use tusk_model::elements::Title;
+
+        let xml = r#"<title/>"#;
+        let title = Title::from_mei_str(xml).expect("should deserialize");
+        assert!(title.children.is_empty());
     }
 }
