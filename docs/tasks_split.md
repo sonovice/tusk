@@ -42,7 +42,7 @@ Target: `crates/formats/mei/src/serializer/impls.rs` → split into `impls/` sub
 Target: `crates/formats/mei/src/roundtrip_tests.rs` → split into `roundtrip_tests/` submodules
 
 - [x] Extract note/rest/chord roundtrip tests → `roundtrip_tests/note.rs`
-- [ ] Extract structural element tests → `roundtrip_tests/structure.rs`
+- [x] Extract structural element tests → `roundtrip_tests/structure.rs`
 - [ ] Extract scoreDef/staffDef tests → `roundtrip_tests/defs.rs`
 - [ ] Extract control event tests → `roundtrip_tests/control.rs`
 - [ ] Extract header roundtrip tests → `roundtrip_tests/header.rs`
