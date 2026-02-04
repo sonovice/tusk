@@ -19,7 +19,7 @@ use tusk_model::elements::{
     StdVals, StdValsChild, Title, TitleChild, TitleStmt, TitleStmtChild, Unpub,
 };
 
-use super::extract_attr;
+use super::{extract_attr, from_attr_string};
 
 // ============================================================================
 // MeiHead element

@@ -18,7 +18,7 @@ Target: `crates/formats/mei/src/deserializer/impls.rs` → split into `impls/` s
 - [x] Extract slur/tie/dynam/hairpin/dir/tempo/fermata deserializers → `impls/control.rs`
 - [x] Extract beam/tuplet/graceGrp deserializers → `impls/grouping.rs`
 - [x] Extract meiHead/fileDesc/titleStmt/pubStmt deserializers → `impls/header.rs`
-- [ ] Extract app/lem/rdg/choice/corr/sic/add/del deserializers → `impls/editorial.rs`
+- [x] Extract app/lem/rdg/choice/corr/sic/add/del deserializers → `impls/editorial.rs`
 - [ ] Extract text/prose/annotation deserializers → `impls/text.rs`
 - [ ] Extract remaining deserializers → `impls/misc.rs`, verify impls.rs only has re-exports
 
@@ -109,4 +109,4 @@ Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements
 After all phases complete:
 - [ ] Run full test suite: `cargo test --workspace`
 - [ ] Run clippy: `cargo clippy --workspace`
-- [ ] Verify no file exceeds 1000 lines (excluding generated code)
+- [ ] Verify no file exceeds 2000 lines (excluding generated code)

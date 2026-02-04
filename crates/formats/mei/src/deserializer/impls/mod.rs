@@ -39,6 +39,7 @@ use tusk_model::elements::{
 
 mod control;
 mod defs;
+mod editorial;
 mod grouping;
 mod header;
 mod note;
