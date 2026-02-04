@@ -24,7 +24,9 @@
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::error::ConversionResult;
 use tusk_model::att::{AttMeiVersionMeiversion, AttStaffGrpVisSymbol};
-use tusk_model::data::{DataBoolean, DataClefline, DataClefshape, DataWord};
+use tusk_model::data::{
+    DataBoolean, DataClefline, DataClefshape, DataMeasurementunsigned, DataWord,
+};
 use tusk_model::elements::{
     Body, BodyChild, Label, LabelAbbr, LabelAbbrChild, LabelChild, Mdiv, MdivChild, Mei, MeiChild,
     MeiHead, MeiHeadChild, Music, Score, ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild,
@@ -529,6 +531,13 @@ pub fn convert_section(
 }
 
 /// Convert a MusicXML measure (from all parts) to MEI measure.
+///
+/// Converts MusicXML measure attributes to MEI:
+/// - `number` → MEI `@n` (measure number/label)
+/// - `implicit="yes"` → MEI `@metcon="false"` (incomplete/pickup measure)
+/// - `width` → MEI `@width` (measure width for layout)
+/// - `id` → MEI `xml:id` (element ID)
+/// - `non_controlling="yes"` → MEI `@control="false"` (non-controlling barline)
 pub fn convert_measure(
     score: &ScorePartwise,
     measure_idx: usize,
@@ -538,11 +547,12 @@ pub fn convert_measure(
 
     let mut mei_measure = Measure::default();
 
-    // Get measure number from first part and set it using common.n (DataWord)
+    // Get measure from first part to extract common attributes
     if let Some(first_part) = score.parts.first()
         && let Some(musicxml_measure) = first_part.measures.get(measure_idx)
     {
-        mei_measure.common.n = Some(DataWord::from(musicxml_measure.number.clone()));
+        // Convert measure attributes
+        convert_measure_attributes(musicxml_measure, &mut mei_measure, ctx);
         ctx.set_measure(&musicxml_measure.number);
     }
 
@@ -561,6 +571,53 @@ pub fn convert_measure(
     }
 
     Ok(mei_measure)
+}
+
+/// Convert MusicXML measure attributes to MEI measure attributes.
+///
+/// Maps:
+/// - `number` → `@n` (measure number/label)
+/// - `implicit="yes"` → `@metcon="false"` (metrically incomplete)
+/// - `width` → `@width` (measure width)
+/// - `id` → `xml:id` (element ID)
+/// - `non_controlling="yes"` → `@control="false"` (non-controlling barline)
+fn convert_measure_attributes(
+    musicxml_measure: &tusk_musicxml::model::elements::Measure,
+    mei_measure: &mut tusk_model::elements::Measure,
+    ctx: &mut ConversionContext,
+) {
+    use tusk_musicxml::model::data::YesNo;
+
+    // Measure number → @n
+    mei_measure.common.n = Some(DataWord::from(musicxml_measure.number.clone()));
+
+    // implicit="yes" → metcon="false" (metrically non-conformant / pickup measure)
+    // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
+    // In MEI, metcon="false" means the measure content doesn't conform to the prevailing meter
+    if let Some(YesNo::Yes) = musicxml_measure.implicit {
+        mei_measure.measure_log.metcon = Some(DataBoolean::False);
+    }
+
+    // width → @width (in tenths, convert to MEI measurement format)
+    // MusicXML width is in tenths; we'll preserve the value with "vu" unit
+    if let Some(width) = musicxml_measure.width {
+        // Convert to string with virtual units (vu)
+        mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from(format!("{}vu", width)));
+    }
+
+    // id → xml:id (with mapping)
+    if let Some(ref id) = musicxml_measure.id {
+        let mei_id = ctx.generate_id_with_suffix("measure");
+        ctx.map_id(id, mei_id.clone());
+        mei_measure.common.xml_id = Some(mei_id);
+    }
+
+    // non_controlling="yes" → control="false" (barline is not controlling)
+    // In MusicXML, non-controlling measures in multi-rest regions have non_controlling="yes"
+    // In MEI, control="false" means the right bar line doesn't indicate alignment across parts
+    if let Some(YesNo::Yes) = musicxml_measure.non_controlling {
+        mei_measure.measure_log.control = Some(DataBoolean::False);
+    }
 }
 
 /// Convert MusicXML measure content to MEI staff.
@@ -1428,6 +1485,225 @@ mod tests {
         let layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
 
         assert_eq!(layer.n_integer.n, Some(1));
+    }
+
+    // ============================================================================
+    // Measure Attribute Conversion Tests
+    // ============================================================================
+
+    #[test]
+    fn convert_measure_implicit_yes_sets_metcon_false() {
+        use tusk_musicxml::model::data::YesNo;
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Create a pickup measure (implicit="yes")
+        let mut pickup_measure = Measure::new("0");
+        pickup_measure.implicit = Some(YesNo::Yes);
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![pickup_measure],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // implicit="yes" → metcon="false"
+        assert_eq!(mei_measure.measure_log.metcon, Some(DataBoolean::False));
+    }
+
+    #[test]
+    fn convert_measure_implicit_no_does_not_set_metcon() {
+        use tusk_musicxml::model::data::YesNo;
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Regular measure (implicit="no" or absent)
+        let mut regular_measure = Measure::new("1");
+        regular_measure.implicit = Some(YesNo::No);
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![regular_measure],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // implicit="no" → metcon not set (defaults to true)
+        assert!(mei_measure.measure_log.metcon.is_none());
+    }
+
+    #[test]
+    fn convert_measure_width_sets_width_attribute() {
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Measure with explicit width
+        let mut measure_with_width = Measure::new("1");
+        measure_with_width.width = Some(150.5);
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![measure_with_width],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // width → @width with virtual units
+        assert!(mei_measure.measure_vis.width.is_some());
+        let width = mei_measure.measure_vis.width.as_ref().unwrap();
+        assert_eq!(width.0, "150.5vu");
+    }
+
+    #[test]
+    fn convert_measure_id_sets_xml_id_and_maps() {
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Measure with explicit ID
+        let mut measure_with_id = Measure::new("1");
+        measure_with_id.id = Some("measure1".to_string());
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![measure_with_id],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // id → xml:id (generated)
+        assert!(mei_measure.common.xml_id.is_some());
+
+        // ID should be mapped
+        let mei_id = ctx.get_mei_id("measure1");
+        assert!(mei_id.is_some());
+        assert_eq!(mei_measure.common.xml_id.as_deref(), mei_id);
+    }
+
+    #[test]
+    fn convert_measure_non_controlling_yes_sets_control_false() {
+        use tusk_musicxml::model::data::YesNo;
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Non-controlling measure (in multi-rest region)
+        let mut non_controlling_measure = Measure::new("2");
+        non_controlling_measure.non_controlling = Some(YesNo::Yes);
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![non_controlling_measure],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // non_controlling="yes" → control="false"
+        assert_eq!(mei_measure.measure_log.control, Some(DataBoolean::False));
+    }
+
+    #[test]
+    fn convert_measure_no_optional_attributes() {
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Basic measure with only required number
+        let basic_measure = Measure::new("1");
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![basic_measure],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // Only @n should be set, optional attributes should be None
+        assert!(mei_measure.common.n.is_some());
+        assert_eq!(mei_measure.common.n.as_ref().unwrap().0, "1");
+        assert!(mei_measure.measure_log.metcon.is_none());
+        assert!(mei_measure.measure_vis.width.is_none());
+        assert!(mei_measure.common.xml_id.is_none());
+        assert!(mei_measure.measure_log.control.is_none());
+    }
+
+    #[test]
+    fn convert_measure_all_attributes_combined() {
+        use tusk_musicxml::model::data::YesNo;
+        use tusk_musicxml::model::elements::Measure;
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![PartListItem::ScorePart(Box::new(make_score_part(
+                "P1", "Piano",
+            )))],
+        };
+
+        // Measure with all optional attributes
+        let full_measure = Measure {
+            number: "0".to_string(),
+            implicit: Some(YesNo::Yes),
+            non_controlling: Some(YesNo::Yes),
+            width: Some(200.0),
+            id: Some("m0".to_string()),
+            content: vec![],
+        };
+
+        score.parts = vec![Part {
+            id: "P1".to_string(),
+            measures: vec![full_measure],
+        }];
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
+
+        // All attributes should be converted
+        assert_eq!(mei_measure.common.n.as_ref().unwrap().0, "0");
+        assert_eq!(mei_measure.measure_log.metcon, Some(DataBoolean::False));
+        assert_eq!(mei_measure.measure_log.control, Some(DataBoolean::False));
+        assert_eq!(mei_measure.measure_vis.width.as_ref().unwrap().0, "200vu");
+        assert!(mei_measure.common.xml_id.is_some());
+        assert!(ctx.get_mei_id("m0").is_some());
     }
 
     // ============================================================================

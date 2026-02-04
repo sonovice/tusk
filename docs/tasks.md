@@ -145,7 +145,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Create conversion context (state tracking, ID mapping)
 - [x] Convert MusicXML score-partwise to MEI structure
 - [x] Convert MusicXML part-list to MEI staffGrp/staffDef
-- [ ] Convert MusicXML measure to MEI measure
+- [x] Convert MusicXML measure to MEI measure
 - [ ] Convert MusicXML note to MEI note (pitch, duration, accidentals)
 - [ ] Convert MusicXML rest to MEI rest
 - [ ] Convert MusicXML chord to MEI chord
