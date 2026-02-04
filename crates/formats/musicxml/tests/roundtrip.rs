@@ -831,3 +831,17 @@ fn test_roundtrip_spec_saltarello() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_schb_av_ma_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("SchbAvMaSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for SchbAvMaSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for SchbAvMaSample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
