@@ -1317,18 +1317,13 @@ pub enum MeasureContent {
     Backup(Box<super::note::Backup>),
     /// Forward - moves the cursor forward in time.
     Forward(Box<super::note::Forward>),
-    /// Attributes (key, time, clef, etc.) - placeholder for Phase 4.2.
-    Attributes(Box<AttributesPlaceholder>),
+    /// Attributes (key, time, clef, divisions, etc.).
+    Attributes(Box<super::attributes::Attributes>),
     /// Direction (dynamics, tempo, etc.) - placeholder for Phase 4.2.
     Direction(Box<DirectionPlaceholder>),
     /// Barline - placeholder for Phase 4.2.
     Barline(Box<BarlinePlaceholder>),
 }
-
-/// Attributes placeholder - key, time, clef, etc.
-/// Will be expanded in Phase 4.2.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct AttributesPlaceholder;
 
 /// Direction placeholder - dynamics, tempo, etc.
 /// Will be expanded in Phase 4.2.
