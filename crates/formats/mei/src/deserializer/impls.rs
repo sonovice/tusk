@@ -22,13 +22,13 @@ use tusk_model::att::{
     AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
     AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
     AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTyped,
+    AttTargetEval, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef,
     LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
     ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
-    StaffDefChild, StaffGrp, StaffGrpChild,
+    StaffDefChild, StaffGrp, StaffGrpChild, Tie,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1439,6 +1439,66 @@ impl ExtractAttributes for AttSlurAnl {
     }
 }
 
+impl ExtractAttributes for AttTieLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTieVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "bezier", self.bezier);
+        extract_attr!(attrs, "bulge", self.bulge);
+        extract_attr!(attrs, "curvedir", self.curvedir);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "startvo", self.startvo);
+        extract_attr!(attrs, "endvo", self.endvo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "x2", self.x2);
+        extract_attr!(attrs, "y2", self.y2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTieGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTieAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTieAnl has no attributes
+        Ok(())
+    }
+}
+
 // ============================================================================
 // Element implementations
 // ============================================================================
@@ -2627,6 +2687,37 @@ impl MeiDeserialize for Slur {
     }
 }
 
+impl MeiDeserialize for Tie {
+    fn element_name() -> &'static str {
+        "tie"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut tie = Tie::default();
+
+        // Extract attributes into each attribute class
+        tie.common.extract_attributes(&mut attrs)?;
+        tie.facsimile.extract_attributes(&mut attrs)?;
+        tie.tie_log.extract_attributes(&mut attrs)?;
+        tie.tie_vis.extract_attributes(&mut attrs)?;
+        tie.tie_ges.extract_attributes(&mut attrs)?;
+        tie.tie_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Skip to end if not empty (tie can contain curve children but we skip for now)
+        if !is_empty {
+            reader.skip_to_end("tie")?;
+        }
+
+        Ok(tie)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3571,5 +3662,187 @@ mod tests {
         assert!(slur.slur_vis.endho.is_some());
         assert!(slur.slur_vis.startvo.is_some());
         assert!(slur.slur_vis.endvo.is_some());
+    }
+
+    // ============================================================================
+    // Tie deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn tie_deserializes_from_empty_element() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.common.xml_id.is_none());
+        assert!(tie.tie_log.startid.is_none());
+        assert!(tie.tie_log.endid.is_none());
+        assert!(tie.children.is_empty());
+    }
+
+    #[test]
+    fn tie_deserializes_xml_id() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie xml:id="t1"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.common.xml_id, Some("t1".to_string()));
+    }
+
+    #[test]
+    fn tie_deserializes_startid_and_endid() {
+        use tusk_model::elements::Tie;
+
+        let xml = r##"<tie startid="#n1" endid="#n2"/>"##;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_log.startid.is_some());
+        assert!(tie.tie_log.endid.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_tstamp_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie tstamp="1" tstamp2="0m+2"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_log.tstamp.is_some());
+        assert!(tie.tie_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_staff_and_layer() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie staff="1" layer="1"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.tie_log.staff, vec![1]);
+        assert_eq!(tie.tie_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn tie_deserializes_multiple_staff_values() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie staff="1 2"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.tie_log.staff, vec![1, 2]);
+    }
+
+    #[test]
+    fn tie_deserializes_visual_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie curvedir="above" color="red"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_vis.curvedir.is_some());
+        assert!(tie.tie_vis.color.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_bezier_attribute() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie bezier="19 45 -32 118"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_vis.bezier.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_gestural_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie tstamp2.ges="0m+2.5"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_ges.tstamp2_ges.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_full_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r##"<tie xml:id="t1" startid="#n1" endid="#n2" staff="1" layer="1" curvedir="below"/>"##;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.common.xml_id, Some("t1".to_string()));
+        assert!(tie.tie_log.startid.is_some());
+        assert!(tie.tie_log.endid.is_some());
+        assert_eq!(tie.tie_log.staff, vec![1]);
+        assert!(tie.tie_vis.curvedir.is_some());
+    }
+
+    #[test]
+    fn tie_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie xml:id="t1" unknown="value"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(tie.common.xml_id, Some("t1".to_string()));
+    }
+
+    #[test]
+    fn tie_deserializes_evaluate_attribute() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie evaluate="all"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_log.evaluate.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie x="100" y="200" x2="300" y2="250"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.tie_vis.x, Some(100.0));
+        assert_eq!(tie.tie_vis.y, Some(200.0));
+        assert_eq!(tie.tie_vis.x2, Some(300.0));
+        assert_eq!(tie.tie_vis.y2, Some(250.0));
+    }
+
+    #[test]
+    fn tie_deserializes_offset_attributes() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie startho="1.5" endho="-1.5" startvo="2" endvo="-2"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_vis.startho.is_some());
+        assert!(tie.tie_vis.endho.is_some());
+        assert!(tie.tie_vis.startvo.is_some());
+        assert!(tie.tie_vis.endvo.is_some());
+    }
+
+    #[test]
+    fn tie_deserializes_plist_attribute() {
+        use tusk_model::elements::Tie;
+
+        let xml = r##"<tie plist="#n1 #n2"/>"##;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tie.tie_log.plist.len(), 2);
+    }
+
+    #[test]
+    fn tie_deserializes_lform_and_lwidth() {
+        use tusk_model::elements::Tie;
+
+        let xml = r#"<tie lform="dashed" lwidth="medium"/>"#;
+        let tie = Tie::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tie.tie_vis.lform.is_some());
+        assert!(tie.tie_vis.lwidth.is_some());
     }
 }

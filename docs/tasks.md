@@ -68,7 +68,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 2.4 Control Events
 - [x] Implement MEI parsing for `<slur>` element
-- [ ] Implement MEI parsing for `<tie>` element
+- [x] Implement MEI parsing for `<tie>` element
 - [ ] Implement MEI parsing for `<dynam>` element
 - [ ] Implement MEI parsing for `<hairpin>` element
 - [ ] Implement MEI parsing for `<dir>` element
