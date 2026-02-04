@@ -39,6 +39,7 @@ pub(crate) use misc::{
     parse_expression_list_from_event, parse_revision_desc_from_event, parse_work_from_event,
     parse_work_list_from_event,
 };
+pub(crate) use text::{parse_lb_from_event, parse_rend_from_event};
 
 /// Parse a value using serde_json from XML attribute string.
 /// Tries multiple JSON formats to handle different serde derives:

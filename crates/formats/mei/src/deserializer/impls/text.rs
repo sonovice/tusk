@@ -12,7 +12,7 @@ use tusk_model::att::{
     AttHorizontalAlign, AttLyricsAnl, AttLyricsGes, AttLyricsLog, AttLyricsVis, AttPlist,
     AttSource, AttTypography, AttVerseAnl, AttVerseGes, AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
-use tusk_model::elements::{Annot, Fig, FigChild, FigDesc, Lg, LgChild, Rend, Verse};
+use tusk_model::elements::{Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Rend, Verse};
 
 use super::{extract_attr, from_attr_string};
 
@@ -262,35 +262,67 @@ impl MeiDeserialize for Rend {
 
     fn from_mei_event<R: BufRead>(
         reader: &mut MeiReader<R>,
-        mut attrs: AttributeMap,
+        attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
-        let mut rend = Rend::default();
+        parse_rend_from_event(reader, attrs, is_empty)
+    }
+}
 
-        // Extract attributes
-        rend.color.extract_attributes(&mut attrs)?;
-        rend.common.extract_attributes(&mut attrs)?;
-        rend.ext_sym_auth.extract_attributes(&mut attrs)?;
-        rend.horizontal_align.extract_attributes(&mut attrs)?;
-        rend.lang.extract_attributes(&mut attrs)?;
-        rend.text_rendition.extract_attributes(&mut attrs)?;
-        rend.typography.extract_attributes(&mut attrs)?;
-        rend.vertical_align.extract_attributes(&mut attrs)?;
-        rend.whitespace.extract_attributes(&mut attrs)?;
+/// Parse a `<rend>` element from within another element.
+pub(crate) fn parse_rend_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Rend> {
+    let mut rend = Rend::default();
 
-        // Rend has many possible children - for now we just collect text content
-        // and skip other children in lenient mode
-        if !is_empty {
-            if let Some(text) = reader.read_text_until_end("rend")? {
-                if !text.trim().is_empty() {
-                    rend.children
-                        .push(tusk_model::elements::RendChild::Text(text));
-                }
+    // Extract attributes
+    rend.color.extract_attributes(&mut attrs)?;
+    rend.common.extract_attributes(&mut attrs)?;
+    rend.ext_sym_auth.extract_attributes(&mut attrs)?;
+    rend.horizontal_align.extract_attributes(&mut attrs)?;
+    rend.lang.extract_attributes(&mut attrs)?;
+    rend.text_rendition.extract_attributes(&mut attrs)?;
+    rend.typography.extract_attributes(&mut attrs)?;
+    rend.vertical_align.extract_attributes(&mut attrs)?;
+    rend.whitespace.extract_attributes(&mut attrs)?;
+
+    // Rend has many possible children - for now we just collect text content
+    // and skip other children in lenient mode
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("rend")? {
+            if !text.trim().is_empty() {
+                rend.children
+                    .push(tusk_model::elements::RendChild::Text(text));
             }
         }
-
-        Ok(rend)
     }
+
+    Ok(rend)
+}
+
+/// Parse a `<lb>` (line break) element from within another element.
+///
+/// Lb is an empty element with only attributes, no children.
+pub(crate) fn parse_lb_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Lb> {
+    let mut lb = Lb::default();
+
+    // Extract attributes
+    lb.common.extract_attributes(&mut attrs)?;
+    lb.facsimile.extract_attributes(&mut attrs)?;
+    lb.source.extract_attributes(&mut attrs)?;
+
+    // lb is an empty element, but we need to consume the end tag if not self-closing
+    if !is_empty {
+        reader.skip_to_end("lb")?;
+    }
+
+    Ok(lb)
 }
 
 impl MeiDeserialize for Lg {
