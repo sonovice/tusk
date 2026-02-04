@@ -30,11 +30,11 @@ use tusk_model::att::{
     AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, GraceGrp,
-    GraceGrpChild, Hairpin, InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv,
-    MdivChild, Measure, MeasureChild, MeiHead, Note, NoteChild, Rest, RestChild, ScoreDef,
-    ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild,
-    StaffGrp, StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
+    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, FileDesc,
+    GraceGrp, GraceGrpChild, Hairpin, InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild,
+    Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Note, NoteChild, Rest,
+    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild,
+    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -2698,27 +2698,78 @@ impl MeiDeserialize for MeiHead {
         // Read children if not an empty element
         // meiHead can contain: altId, fileDesc, encodingDesc, workList,
         // manifestationList, extMeta, revisionDesc
-        // Note: Child elements are not yet implemented for parsing.
-        // In lenient mode, we skip them all.
         if !is_empty {
-            while let Some((name, _child_attrs, child_empty)) =
+            while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("meiHead")?
             {
-                // Child elements (fileDesc, encodingDesc, workList, etc.) are not
-                // yet implemented for parsing. Skip them in lenient mode.
-                // When child element parsers are added, they can be handled here:
-                // match name.as_str() {
-                //     "fileDesc" => { ... }
-                //     "encodingDesc" => { ... }
-                //     ...
-                // }
-                if !child_empty {
-                    reader.skip_to_end(&name)?;
+                match name.as_str() {
+                    "fileDesc" => {
+                        let file_desc =
+                            parse_file_desc_from_event(reader, child_attrs, child_empty)?;
+                        mei_head
+                            .children
+                            .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
+                    }
+                    // Other child elements (encodingDesc, workList, etc.) are not
+                    // yet implemented for parsing. Skip them in lenient mode.
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
                 }
             }
         }
 
         Ok(mei_head)
+    }
+}
+
+/// Parse a `<fileDesc>` element from within another element.
+fn parse_file_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<FileDesc> {
+    let mut file_desc = FileDesc::default();
+
+    // Extract attributes into each attribute class
+    file_desc.common.extract_attributes(&mut attrs)?;
+    file_desc.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // fileDesc can contain: titleStmt, editionStmt, extent, pubStmt, seriesStmt,
+    // notesStmt, sourceDesc
+    // Note: Child elements are not yet implemented for parsing.
+    // In lenient mode, we skip them all.
+    if !is_empty {
+        while let Some((name, _child_attrs, child_empty)) =
+            reader.read_next_child_start("fileDesc")?
+        {
+            // Child elements (titleStmt, pubStmt, etc.) are not
+            // yet implemented for parsing. Skip them in lenient mode.
+            if !child_empty {
+                reader.skip_to_end(&name)?;
+            }
+        }
+    }
+
+    Ok(file_desc)
+}
+
+impl MeiDeserialize for FileDesc {
+    fn element_name() -> &'static str {
+        "fileDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_file_desc_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -6752,19 +6803,19 @@ mod tests {
     fn mei_head_ignores_unknown_child_elements_leniently() {
         use tusk_model::elements::MeiHead;
 
-        // Child elements like fileDesc are not yet implemented,
-        // so they should be skipped in lenient mode
+        // Unknown child elements should be skipped in lenient mode.
+        // Use encodingDesc (not yet implemented) to test this.
         let xml = r#"<meiHead xml:id="h1">
-            <fileDesc>
-                <titleStmt>
-                    <title>Test</title>
-                </titleStmt>
-            </fileDesc>
+            <encodingDesc>
+                <appInfo>
+                    <application>Test App</application>
+                </appInfo>
+            </encodingDesc>
         </meiHead>"#;
         let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
 
         assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
-        // Children are not parsed yet, so the list should be empty
+        // encodingDesc is not yet parsed, so the list should be empty
         assert!(mei_head.children.is_empty());
     }
 
@@ -6779,5 +6830,122 @@ mod tests {
         assert_eq!(mei_head.lang.xml_lang, Some("de".to_string()));
         assert!(mei_head.mei_version.meiversion.is_some());
         assert_eq!(mei_head.labelled.label, Some("Header".to_string()));
+    }
+
+    // ========== FileDesc tests ==========
+
+    #[test]
+    fn file_desc_deserializes_empty_element() {
+        use tusk_model::elements::FileDesc;
+
+        let xml = r#"<fileDesc/>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert!(file_desc.common.xml_id.is_none());
+        assert!(file_desc.children.is_empty());
+    }
+
+    #[test]
+    fn file_desc_deserializes_xml_id() {
+        use tusk_model::elements::FileDesc;
+
+        let xml = r#"<fileDesc xml:id="fd1"/>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(file_desc.common.xml_id, Some("fd1".to_string()));
+    }
+
+    #[test]
+    fn file_desc_deserializes_bibl_attributes() {
+        use tusk_model::elements::FileDesc;
+
+        let xml = r#"<fileDesc analog="MARC21"/>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(file_desc.bibl.analog, Some("MARC21".to_string()));
+    }
+
+    #[test]
+    fn file_desc_skips_unknown_children_leniently() {
+        use tusk_model::elements::FileDesc;
+
+        // Unknown children should be skipped in lenient mode
+        let xml = r#"<fileDesc xml:id="fd1">
+            <unknownChild>content</unknownChild>
+        </fileDesc>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(file_desc.common.xml_id, Some("fd1".to_string()));
+        assert!(file_desc.children.is_empty());
+    }
+
+    #[test]
+    fn mei_head_deserializes_file_desc_child() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1"/>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_deserializes_file_desc_with_nested_content() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1">
+                <titleStmt>
+                    <title>Test Title</title>
+                </titleStmt>
+            </fileDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+                // Child elements of fileDesc are skipped for now
+                // (titleStmt parsing will be added in separate task)
+                assert!(fd.children.is_empty());
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_deserializes_multiple_file_desc_children() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        // MEI schema allows multiple fileDesc - test we handle this
+        let xml = r#"<meiHead>
+            <fileDesc xml:id="fd1"/>
+            <fileDesc xml:id="fd2"/>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.children.len(), 2);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+        match &mei_head.children[1] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd2".to_string()));
+            }
+            _ => panic!("expected FileDesc child"),
+        }
     }
 }

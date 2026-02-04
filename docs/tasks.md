@@ -93,7 +93,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 3.1 File Description
 - [x] Implement MEI parsing for `<meiHead>` element
-- [ ] Implement MEI parsing for `<fileDesc>` element
+- [x] Implement MEI parsing for `<fileDesc>` element
 - [ ] Implement MEI parsing for `<titleStmt>` element
 - [ ] Implement MEI parsing for `<pubStmt>` element
 - [ ] Implement MEI parsing for `<sourceDesc>` element
