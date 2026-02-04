@@ -4,19 +4,20 @@
 //! and their child elements.
 
 use crate::deserializer::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
 use std::io::BufRead;
 use tusk_model::elements::{
     AppInfo, AppInfoChild, Application, ApplicationChild, Availability, Bibl, BiblStruct,
-    Contributor, ContributorChild, Correction, CorrectionChild, Creator, CreatorChild, Date,
-    Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
-    EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild, Identifier,
-    Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead, MeiHeadChild, Name, NameChild,
-    Normalization, NormalizationChild, P, PChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace,
-    PubStmt, PubStmtChild, Publisher, RespStmt, SamplingDecl, SamplingDeclChild, Segmentation,
-    SegmentationChild, Source, SourceChild, SourceDesc, SourceDescChild, Sponsor, SponsorChild,
-    StdVals, StdValsChild, Title, TitleChild, TitleStmt, TitleStmtChild, Unpub,
+    Contributor, ContributorChild, CorpName, CorpNameChild, Correction, CorrectionChild, Creator,
+    CreatorChild, Date, Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild,
+    EncodingDesc, EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild,
+    Identifier, Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead, MeiHeadChild, Name,
+    NameChild, Normalization, NormalizationChild, P, PChild, PersName, PersNameChild, ProjectDesc,
+    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, PublisherChild, RespStmt,
+    SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild, Source, SourceChild,
+    SourceDesc, SourceDescChild, Sponsor, SponsorChild, StdVals, StdValsChild, Title, TitleChild,
+    TitleStmt, TitleStmtChild, Unpub,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1381,15 +1382,58 @@ pub(crate) fn parse_publisher_from_event<R: BufRead>(
     publisher.facsimile.extract_attributes(&mut attrs)?;
     publisher.lang.extract_attributes(&mut attrs)?;
 
-    // Parse text content if not empty
-    // publisher can contain text and various child elements
-    // For now, we collect text content as PublisherChild::Text
+    // Publisher can contain text and various child elements like corpName, persName, address, etc.
+    // Use mixed content reading to handle both text and elements
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("publisher")? {
-            if !text.trim().is_empty() {
-                publisher
-                    .children
-                    .push(tusk_model::elements::PublisherChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("publisher")? {
+            match content {
+                MixedContent::Text(text) => {
+                    publisher.children.push(PublisherChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            publisher
+                                .children
+                                .push(PublisherChild::CorpName(Box::new(corp)));
+                        }
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            publisher
+                                .children
+                                .push(PublisherChild::PersName(Box::new(pers)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            publisher
+                                .children
+                                .push(PublisherChild::Name(Box::new(name_elem)));
+                        }
+                        "address" => {
+                            let addr = parse_address_from_event(reader, child_attrs, child_empty)?;
+                            publisher
+                                .children
+                                .push(PublisherChild::Address(Box::new(addr)));
+                        }
+                        "identifier" => {
+                            let ident =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            publisher
+                                .children
+                                .push(PublisherChild::Identifier(Box::new(ident)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1835,6 +1879,158 @@ pub(crate) fn parse_contributor_from_event<R: BufRead>(
     Ok(contributor)
 }
 
+/// Parse a `<corpName>` element from within another element.
+pub(crate) fn parse_corp_name_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CorpName> {
+    let mut corp_name = CorpName::default();
+
+    // Extract attributes
+    corp_name.common.extract_attributes(&mut attrs)?;
+    corp_name.bibl.extract_attributes(&mut attrs)?;
+    corp_name.edit.extract_attributes(&mut attrs)?;
+    corp_name.facsimile.extract_attributes(&mut attrs)?;
+    corp_name.lang.extract_attributes(&mut attrs)?;
+    corp_name.name.extract_attributes(&mut attrs)?;
+
+    // CorpName can contain text and various child elements like address, persName, etc.
+    // Use mixed content reading to handle both text and elements
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("corpName")? {
+            match content {
+                MixedContent::Text(text) => {
+                    corp_name.children.push(CorpNameChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "corpName" => {
+                            let nested =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            corp_name
+                                .children
+                                .push(CorpNameChild::CorpName(Box::new(nested)));
+                        }
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            corp_name
+                                .children
+                                .push(CorpNameChild::PersName(Box::new(pers)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            corp_name
+                                .children
+                                .push(CorpNameChild::Name(Box::new(name_elem)));
+                        }
+                        "address" => {
+                            let addr = parse_address_from_event(reader, child_attrs, child_empty)?;
+                            corp_name
+                                .children
+                                .push(CorpNameChild::Address(Box::new(addr)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(corp_name)
+}
+
+/// Parse a `<persName>` element from within another element.
+pub(crate) fn parse_pers_name_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PersName> {
+    let mut pers_name = PersName::default();
+
+    // Extract attributes
+    pers_name.common.extract_attributes(&mut attrs)?;
+    pers_name.bibl.extract_attributes(&mut attrs)?;
+    pers_name.edit.extract_attributes(&mut attrs)?;
+    pers_name.facsimile.extract_attributes(&mut attrs)?;
+    pers_name.lang.extract_attributes(&mut attrs)?;
+    pers_name.name.extract_attributes(&mut attrs)?;
+
+    // PersName can contain text and various child elements
+    // Use mixed content reading to handle both text and elements
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("persName")? {
+            match content {
+                MixedContent::Text(text) => {
+                    pers_name.children.push(PersNameChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            pers_name
+                                .children
+                                .push(PersNameChild::CorpName(Box::new(corp)));
+                        }
+                        "persName" => {
+                            let nested =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            pers_name
+                                .children
+                                .push(PersNameChild::PersName(Box::new(nested)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            pers_name
+                                .children
+                                .push(PersNameChild::Name(Box::new(name_elem)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pers_name)
+}
+
+/// Parse an `<address>` element from within another element.
+pub(crate) fn parse_address_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<tusk_model::elements::Address> {
+    let mut address = tusk_model::elements::Address::default();
+
+    // Extract attributes
+    address.common.extract_attributes(&mut attrs)?;
+    address.facsimile.extract_attributes(&mut attrs)?;
+    address.lang.extract_attributes(&mut attrs)?;
+
+    // Address can contain addrLine, street, postCode, settlement, country, etc.
+    // For now, just skip children in lenient mode
+    if !is_empty {
+        reader.skip_to_end("address")?;
+    }
+
+    Ok(address)
+}
+
 // ============================================================================
 // MeiDeserialize trait implementations
 // ============================================================================
@@ -1892,6 +2088,48 @@ impl MeiDeserialize for SourceDesc {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_source_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Publisher {
+    fn element_name() -> &'static str {
+        "publisher"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_publisher_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for CorpName {
+    fn element_name() -> &'static str {
+        "corpName"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_corp_name_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for PersName {
+    fn element_name() -> &'static str {
+        "persName"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_pers_name_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -2140,6 +2378,58 @@ mod tests {
         let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
         assert_eq!(pub_stmt.common.xml_id, Some("ps1".to_string()));
         assert_eq!(pub_stmt.children.len(), 3);
+    }
+
+    #[test]
+    fn publisher_deserializes_with_corp_name_child() {
+        use tusk_model::elements::{CorpNameChild, Publisher, PublisherChild};
+
+        let xml = r#"<publisher>
+            <corpName role="publisher">Musikwissenschaftliches Seminar, Detmold</corpName>
+        </publisher>"#;
+        let publisher = Publisher::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(publisher.children.len(), 1);
+        match &publisher.children[0] {
+            PublisherChild::CorpName(cn) => {
+                assert_eq!(cn.name.role.len(), 1);
+                assert_eq!(cn.children.len(), 1);
+                match &cn.children[0] {
+                    CorpNameChild::Text(text) => {
+                        assert_eq!(text.trim(), "Musikwissenschaftliches Seminar, Detmold");
+                    }
+                    _ => panic!("expected Text child in corpName"),
+                }
+            }
+            _ => panic!("expected CorpName child"),
+        }
+    }
+
+    #[test]
+    fn publisher_deserializes_with_mixed_content() {
+        use tusk_model::elements::{Publisher, PublisherChild};
+
+        let xml =
+            r#"<publisher>Some text before <corpName>My Corp</corpName> and after</publisher>"#;
+        let publisher = Publisher::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(publisher.children.len(), 3);
+        match &publisher.children[0] {
+            PublisherChild::Text(text) => {
+                // XML whitespace before the corpName tag
+                assert!(text.contains("Some text before"));
+            }
+            _ => panic!("expected Text child first"),
+        }
+        match &publisher.children[1] {
+            PublisherChild::CorpName(_) => {}
+            _ => panic!("expected CorpName child second"),
+        }
+        match &publisher.children[2] {
+            PublisherChild::Text(text) => {
+                // Text after the corpName
+                assert!(text.contains("and after"));
+            }
+            _ => panic!("expected Text child third"),
+        }
     }
 
     // ========== SourceDesc Tests ==========

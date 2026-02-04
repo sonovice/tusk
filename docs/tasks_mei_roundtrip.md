@@ -23,7 +23,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_SERIALIZER] EncodingDescChild: missing serializers for AppInfo, ClassDecls, EditorialDecl, ProjectDesc, SamplingDecl, StdVals (source: Aguado_Walzer_G-major.mei)
 - [x] [MISSING_SERIALIZER] WorkChild: missing serializers for Composer, Key, Meter, Incip, Creation, PerfMedium, Classification (source: Aguado_Walzer_G-major.mei)
 - [x] [MISSING_SERIALIZER] ChangeChild: missing serializers for RespStmt, ChangeDesc (source: Aguado_Walzer_G-major.mei)
-- [ ] [MISSING_SERIALIZER] PublisherChild: missing serializer for CorpName (source: Aguado_Walzer_G-major.mei)
+- [x] [MISSING_SERIALIZER] PublisherChild: missing serializer for CorpName (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] AddressChild/AddrLineChild: missing serializers for GeogName, PostCode, etc (source: Aguado_Walzer_G-major.mei)
 
 ---

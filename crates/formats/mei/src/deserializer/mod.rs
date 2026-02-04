@@ -415,6 +415,81 @@ impl<R: BufRead> MeiReader<R> {
             }
         }
     }
+
+    /// Read the next child item from a mixed content element (text + elements).
+    ///
+    /// Returns either:
+    /// - `Some(MixedContent::Element(name, attrs, is_empty))` for child elements
+    /// - `Some(MixedContent::Text(text))` for text content
+    /// - `None` when the end tag for the parent is encountered
+    ///
+    /// This is used for elements like `<publisher>` that can contain both text
+    /// and child elements like `<corpName>`.
+    pub fn read_next_mixed_content(
+        &mut self,
+        parent_name: &str,
+    ) -> DeserializeResult<Option<MixedContent>> {
+        loop {
+            match self.read_event()? {
+                Event::Start(start) => {
+                    let name = std::str::from_utf8(start.name().as_ref())?.to_string();
+                    let attrs = self.extract_attributes(&start)?;
+                    return Ok(Some(MixedContent::Element(name, attrs, false)));
+                }
+                Event::Empty(start) => {
+                    let name = std::str::from_utf8(start.name().as_ref())?.to_string();
+                    let attrs = self.extract_attributes(&start)?;
+                    return Ok(Some(MixedContent::Element(name, attrs, true)));
+                }
+                Event::End(end) => {
+                    let name_bytes = end.name();
+                    let name = std::str::from_utf8(name_bytes.as_ref())?;
+                    if name == parent_name {
+                        return Ok(None);
+                    }
+                    // Unexpected end tag - in lenient mode we might ignore this
+                    return Err(DeserializeError::ParseError(format!(
+                        "Unexpected end tag: </{}>",
+                        name
+                    )));
+                }
+                Event::Text(t) => {
+                    let text = std::str::from_utf8(&t)?.to_string();
+                    // Only return non-whitespace text
+                    if !text.trim().is_empty() {
+                        return Ok(Some(MixedContent::Text(text)));
+                    }
+                    // Skip whitespace-only text
+                    continue;
+                }
+                Event::CData(t) => {
+                    let text = std::str::from_utf8(&t)?.to_string();
+                    if !text.trim().is_empty() {
+                        return Ok(Some(MixedContent::Text(text)));
+                    }
+                    continue;
+                }
+                Event::Comment(_) | Event::PI(_) | Event::Decl(_) | Event::DocType(_) => {
+                    continue;
+                }
+                Event::Eof => {
+                    return Err(DeserializeError::UnexpectedEof);
+                }
+                Event::GeneralRef(_) => {
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// Content returned from mixed content reading.
+#[derive(Debug)]
+pub enum MixedContent {
+    /// An element with name, attributes, and empty flag
+    Element(String, AttributeMap, bool),
+    /// Text content
+    Text(String),
 }
 
 /// Helper trait to extract attributes from a map into attribute class structs.
