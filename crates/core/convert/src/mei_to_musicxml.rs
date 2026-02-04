@@ -1305,6 +1305,325 @@ fn add_rest_conversion_warnings(
 }
 
 // ============================================================================
+// MEI Chord to MusicXML Conversion
+// ============================================================================
+
+/// Convert an MEI chord to a sequence of MusicXML notes.
+///
+/// In MusicXML, chords are represented as a sequence of `<note>` elements where
+/// all notes after the first have a `<chord/>` child element, indicating they
+/// share timing with the previous note.
+///
+/// # Conversion Details
+///
+/// - Each MEI note child becomes a MusicXML note
+/// - The first MusicXML note does NOT have a chord flag
+/// - Subsequent MusicXML notes have the `<chord/>` element
+/// - Duration, dots, grace, and cue attributes from the chord apply to all notes
+/// - Stem direction from the chord is applied to the first note only
+/// - Individual note pitches and accidentals are preserved
+///
+/// # Lossy Conversion Notes
+///
+/// The following MEI chord attributes are lost in conversion:
+/// - Timing attributes (@tstamp, @tstamp.ges, @tstamp.real) - MusicXML uses position
+/// - Staff/layer positioning (@staff, @layer) - determined by sequence
+/// - Analytical attributes (@chord.anl) - no MusicXML equivalent
+/// - Visual attributes beyond stem direction - partial support
+/// - Editorial child elements (app, choice, etc.) - no MusicXML equivalent
+/// - Artic children (articulations on chord level)
+///
+/// # Arguments
+///
+/// * `mei_chord` - The MEI chord to convert
+/// * `ctx` - The conversion context for state tracking
+///
+/// # Returns
+///
+/// A vector of MusicXML Note elements representing the chord, or an error if
+/// conversion fails. The first note has no chord flag; subsequent notes have it.
+pub fn convert_mei_chord(
+    mei_chord: &tusk_model::elements::Chord,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Vec<tusk_musicxml::model::note::Note>> {
+    use tusk_model::elements::ChordChild;
+    use tusk_musicxml::model::elements::Empty;
+    use tusk_musicxml::model::note::{Dot, Note as MxmlNote, NoteType, Stem};
+
+    // Collect note children from the chord
+    let mei_notes: Vec<&tusk_model::elements::Note> = mei_chord
+        .children
+        .iter()
+        .filter_map(|child| {
+            if let ChordChild::Note(note) = child {
+                Some(note.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Return empty vec if no notes
+    if mei_notes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Determine if this is a grace chord
+    let is_grace = mei_chord.chord_log.grace.is_some();
+
+    // Calculate chord duration from chord attributes
+    let chord_duration = if is_grace {
+        None
+    } else {
+        Some(calculate_mei_chord_duration(mei_chord, ctx))
+    };
+
+    // Get dots from chord level
+    let chord_dot_count = mei_chord
+        .chord_log
+        .dots
+        .as_ref()
+        .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
+        .unwrap_or(0);
+
+    // Get note type from chord duration
+    let chord_note_type = mei_chord
+        .chord_log
+        .dur
+        .as_ref()
+        .map(convert_mei_duration_to_note_type);
+
+    // Check for cue chord
+    let is_cue = matches!(mei_chord.chord_log.cue, Some(DataBoolean::True));
+
+    let mut mxml_notes = Vec::with_capacity(mei_notes.len());
+
+    for (i, mei_note) in mei_notes.iter().enumerate() {
+        // Convert the pitch from the MEI note
+        let pitch = convert_mei_pitch(mei_note, ctx)?;
+
+        // Create the MusicXML note
+        let mut mxml_note = if is_grace {
+            // Grace chord - notes have no duration
+            let grace = convert_mei_grace_chord(mei_chord);
+            MxmlNote::grace_note(pitch, grace)
+        } else {
+            MxmlNote::pitched(pitch, chord_duration.unwrap())
+        };
+
+        // Set chord flag for all notes except the first
+        if i > 0 {
+            mxml_note.chord = Some(Empty);
+        }
+
+        // Set note type from chord level
+        if let Some(ref note_type) = chord_note_type {
+            mxml_note.note_type = Some(NoteType::new(*note_type));
+        }
+
+        // Set dots from chord level
+        for _ in 0..chord_dot_count {
+            mxml_note.dots.push(Dot::default());
+        }
+
+        // Set cue if chord is cue
+        if is_cue {
+            mxml_note.cue = Some(Empty);
+        }
+
+        // Set stem direction on first note only (chord stem applies to all notes visually)
+        if i == 0 && mei_chord.chord_vis.stem_dir.is_some() {
+            let stem_dir = mei_chord.chord_vis.stem_dir.as_ref().unwrap();
+            mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
+        }
+
+        // Handle individual note's written accidental
+        for child in &mei_note.children {
+            if let tusk_model::elements::NoteChild::Accid(accid) = child {
+                mxml_note.accidental = Some(convert_mei_accid_to_mxml(accid, ctx)?);
+            }
+        }
+
+        mxml_notes.push(mxml_note);
+    }
+
+    // Map the chord ID if present
+    if let Some(ref xml_id) = mei_chord.common.xml_id {
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    // Add warnings for lossy attributes
+    add_chord_conversion_warnings(mei_chord, ctx);
+
+    Ok(mxml_notes)
+}
+
+/// Calculate MEI chord duration in MusicXML divisions.
+fn calculate_mei_chord_duration(
+    mei_chord: &tusk_model::elements::Chord,
+    ctx: &ConversionContext,
+) -> f64 {
+    // First check if we have gestural duration in ppq (most accurate)
+    if let Some(dur_ppq) = mei_chord.chord_ges.dur_ppq {
+        return dur_ppq as f64;
+    }
+
+    // Calculate from written duration
+    let divisions = ctx.divisions();
+    let base_duration = if let Some(ref dur) = mei_chord.chord_log.dur {
+        duration_to_quarter_notes(dur)
+    } else {
+        1.0 // Default to quarter note
+    };
+
+    // Apply dots
+    let dot_count = mei_chord
+        .chord_log
+        .dots
+        .as_ref()
+        .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
+        .unwrap_or(0);
+
+    let dotted_duration = apply_dots(base_duration, dot_count);
+
+    // Convert to divisions
+    dotted_duration * divisions
+}
+
+/// Convert MEI chord grace attribute to MusicXML Grace element.
+fn convert_mei_grace_chord(
+    mei_chord: &tusk_model::elements::Chord,
+) -> tusk_musicxml::model::note::Grace {
+    use tusk_model::data::DataGrace;
+    use tusk_musicxml::model::note::Grace;
+
+    let mut grace = Grace::default();
+
+    if let Some(ref grace_type) = mei_chord.chord_log.grace {
+        match grace_type {
+            DataGrace::Acc => {
+                grace.slash = Some(tusk_musicxml::model::data::YesNo::Yes);
+            }
+            DataGrace::Unacc => {
+                grace.slash = Some(tusk_musicxml::model::data::YesNo::No);
+            }
+            DataGrace::Unknown => {}
+        }
+    }
+
+    grace
+}
+
+/// Add warnings for MEI chord attributes that are lost in conversion.
+fn add_chord_conversion_warnings(
+    mei_chord: &tusk_model::elements::Chord,
+    ctx: &mut ConversionContext,
+) {
+    use tusk_model::elements::ChordChild;
+
+    // Warn about timing attributes (100% loss)
+    if mei_chord.chord_log.tstamp.is_some()
+        || mei_chord.chord_log.tstamp_ges.is_some()
+        || mei_chord.chord_log.tstamp_real.is_some()
+    {
+        ctx.add_warning(
+            "chord",
+            "MEI timing attributes (@tstamp, @tstamp.ges, @tstamp.real) are lost in MusicXML conversion",
+        );
+    }
+
+    // Warn about staff/layer positioning
+    if !mei_chord.chord_log.staff.is_empty() || !mei_chord.chord_log.layer.is_empty() {
+        ctx.add_warning(
+            "chord",
+            "MEI @staff/@layer attributes are not directly mapped; position in MusicXML is determined by sequence",
+        );
+    }
+
+    // Warn about facsimile links
+    if !mei_chord.facsimile.facs.is_empty() {
+        ctx.add_warning(
+            "chord",
+            "MEI @facs (facsimile link) has no MusicXML equivalent",
+        );
+    }
+
+    // Warn about analytical attributes
+    if mei_chord.chord_anl != tusk_model::att::AttChordAnl::default() {
+        ctx.add_warning(
+            "chord",
+            "MEI analytical attributes have no MusicXML equivalent",
+        );
+    }
+
+    // Warn about visual attributes beyond stem direction
+    if mei_chord.chord_vis.color.is_some()
+        || mei_chord.chord_vis.cluster.is_some()
+        || mei_chord.chord_vis.stem_mod.is_some()
+    {
+        ctx.add_warning(
+            "chord",
+            "Some MEI visual attributes (color, cluster, stem.mod) have no direct MusicXML equivalent",
+        );
+    }
+
+    // Warn about articulation attributes at chord level
+    if !mei_chord.chord_log.artic.is_empty() {
+        ctx.add_warning(
+            "chord",
+            "MEI @artic on chord is not directly converted; articulations should be on individual notes",
+        );
+    }
+
+    // Warn about editorial children
+    for child in &mei_chord.children {
+        match child {
+            ChordChild::App(_)
+            | ChordChild::Choice(_)
+            | ChordChild::Corr(_)
+            | ChordChild::Sic(_)
+            | ChordChild::Del(_)
+            | ChordChild::Add(_)
+            | ChordChild::Subst(_) => {
+                ctx.add_warning(
+                    "chord",
+                    "MEI editorial markup (app, choice, corr, sic, etc.) is lost in MusicXML conversion",
+                );
+                break; // Only warn once
+            }
+            ChordChild::Artic(_) => {
+                ctx.add_warning(
+                    "chord",
+                    "MEI <artic> child elements are not converted; articulations should be on individual notes in MusicXML",
+                );
+                break;
+            }
+            ChordChild::Verse(_) | ChordChild::Syl(_) | ChordChild::Refrain(_) => {
+                ctx.add_warning(
+                    "chord",
+                    "MEI lyric elements (verse, syl, refrain) on chord are not directly converted",
+                );
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    // Warn about mensural durations
+    if mei_chord
+        .chord_log
+        .dur
+        .as_ref()
+        .is_some_and(|dur| matches!(dur, tusk_model::data::DataDuration::DataDurationMensural(_)))
+    {
+        ctx.add_warning(
+            "chord",
+            "MEI mensural chord duration has no direct MusicXML equivalent",
+        );
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -2522,5 +2841,411 @@ mod tests {
         let mxml_note = result.unwrap();
         // Should default to quarter note = 4 divisions
         assert_eq!(mxml_note.duration, Some(4.0));
+    }
+
+    // ========================================================================
+    // MEI Chord to MusicXML Conversion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_chord_basic() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        // Create an MEI chord with two notes (C4, E4)
+        let mut mei_chord = MeiChord::default();
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_notes = result.unwrap();
+        // Should have two notes
+        assert_eq!(mxml_notes.len(), 2);
+        // First note should NOT have chord flag
+        assert!(mxml_notes[0].chord.is_none());
+        // Second note should have chord flag
+        assert!(mxml_notes[1].chord.is_some());
+    }
+
+    #[test]
+    fn test_convert_mei_chord_pitches_preserved() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::FullNoteContent;
+
+        // Create a C major chord (C4, E4, G4)
+        let mut mei_chord = MeiChord::default();
+
+        for pname in ["c", "e", "g"] {
+            let mut note = MeiNote::default();
+            note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+            note.note_log.oct = Some(DataOctave::from(4u64));
+            mei_chord.children.push(ChordChild::Note(Box::new(note)));
+        }
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Check pitches are preserved
+        let steps: Vec<Step> = mxml_notes
+            .iter()
+            .filter_map(|n| {
+                if let FullNoteContent::Pitch(pitch) = &n.content {
+                    Some(pitch.step)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(steps, vec![Step::C, Step::E, Step::G]);
+    }
+
+    #[test]
+    fn test_convert_mei_chord_duration() {
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+        use tusk_musicxml::model::note::NoteTypeValue;
+
+        // Create a chord with half note duration
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2)); // Half note
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Both notes should have half note duration (2 * 4 = 8 divisions)
+        for note in &mxml_notes {
+            assert_eq!(note.duration, Some(8.0));
+            assert_eq!(
+                note.note_type.as_ref().map(|t| &t.value),
+                Some(&NoteTypeValue::Half)
+            );
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_chord_dots() {
+        use tusk_model::data::{
+            DataAugmentdot, DataDuration, DataDurationCmn, DataOctave, DataPitchname,
+        };
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        // Create a dotted quarter note chord
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_chord.chord_log.dots = Some(DataAugmentdot::from(1u64));
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Both notes should have 1 dot
+        for note in &mxml_notes {
+            assert_eq!(note.dots.len(), 1);
+        }
+
+        // Duration should be dotted quarter = 1.5 * 4 = 6 divisions
+        assert_eq!(mxml_notes[0].duration, Some(6.0));
+    }
+
+    #[test]
+    fn test_convert_mei_chord_grace() {
+        use tusk_model::data::{DataGrace, DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        // Create a grace chord
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_log.grace = Some(DataGrace::Acc);
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Both notes should be grace notes
+        for note in &mxml_notes {
+            assert!(note.is_grace());
+            assert!(note.duration.is_none()); // Grace notes have no duration
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_chord_cue() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        // Create a cue chord
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_log.cue = Some(DataBoolean::True);
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Both notes should be cue notes
+        for note in &mxml_notes {
+            assert!(note.cue.is_some());
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_chord_with_id() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        let mut mei_chord = MeiChord::default();
+        mei_chord.common.xml_id = Some("chord1".to_string());
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let _ = convert_mei_chord(&mei_chord, &mut ctx);
+
+        // Chord ID should be mapped in context
+        assert!(ctx.get_mei_id("chord1").is_some());
+    }
+
+    #[test]
+    fn test_convert_mei_chord_with_stem_direction() {
+        use tusk_model::data::{
+            DataOctave, DataPitchname, DataStemdirection, DataStemdirectionBasic,
+        };
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+        use tusk_musicxml::model::note::StemValue;
+
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
+            DataStemdirectionBasic::Up,
+        ));
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // First note should have stem direction (chord stem applies to first note)
+        assert_eq!(
+            mxml_notes[0].stem.as_ref().map(|s| &s.value),
+            Some(&StemValue::Up)
+        );
+    }
+
+    #[test]
+    fn test_convert_mei_chord_empty_returns_empty() {
+        use tusk_model::elements::Chord as MeiChord;
+
+        // Create an empty chord (no notes)
+        let mei_chord = MeiChord::default();
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_notes = result.unwrap();
+        assert!(mxml_notes.is_empty());
+    }
+
+    #[test]
+    fn test_convert_mei_chord_single_note() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        // Create a chord with just one note (degenerate case)
+        let mut mei_chord = MeiChord::default();
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Should have one note without chord flag
+        assert_eq!(mxml_notes.len(), 1);
+        assert!(mxml_notes[0].chord.is_none());
+    }
+
+    #[test]
+    fn test_convert_mei_chord_with_gestural_duration() {
+        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_ges.dur_ppq = Some(96); // 96 ppq = quarter note at 96 ppq
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Duration should come from gestural attribute
+        assert_eq!(mxml_notes[0].duration, Some(96.0));
+    }
+
+    #[test]
+    fn test_convert_mei_chord_with_accidentals() {
+        use tusk_model::data::{
+            DataAccidentalGestural, DataAccidentalGesturalBasic, DataOctave, DataPitchname,
+        };
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+        use tusk_musicxml::model::note::FullNoteContent;
+
+        // Create a chord with C# and F# (C#4, F#4)
+        let mut mei_chord = MeiChord::default();
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+        note1.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+            DataAccidentalGesturalBasic::S,
+        ));
+
+        let mut note2 = MeiNote::default();
+        note2.note_log.pname = Some(DataPitchname::from("f".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+        note2.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+            DataAccidentalGesturalBasic::S,
+        ));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+        mei_chord.children.push(ChordChild::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let result = convert_mei_chord(&mei_chord, &mut ctx);
+        let mxml_notes = result.unwrap();
+
+        // Both notes should have alter = 1 (sharp)
+        for note in &mxml_notes {
+            if let FullNoteContent::Pitch(pitch) = &note.content {
+                assert_eq!(pitch.alter, Some(1.0));
+            }
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_chord_warnings_for_lossy_attributes() {
+        use tusk_model::data::{DataBeat, DataOctave, DataPitchname};
+        use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
+
+        let mut mei_chord = MeiChord::default();
+        mei_chord.chord_log.tstamp = Some(DataBeat::from(1.0));
+
+        let mut note1 = MeiNote::default();
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+
+        mei_chord.children.push(ChordChild::Note(Box::new(note1)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let _ = convert_mei_chord(&mei_chord, &mut ctx);
+
+        // Should have warnings about timing attributes
+        assert!(ctx.has_warnings());
     }
 }
