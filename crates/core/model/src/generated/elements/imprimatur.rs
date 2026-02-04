@@ -1,6 +1,6 @@
 //!Element: `<imprimatur>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<imprimatur>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -536,7 +536,7 @@ impl ImprimaturChild {
     }
 }
 /**Contains a formal statement authorizing the publication of a work, sometimes required to
-      appear on a title page or its verso.*/
+appear on a title page or its verso.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "imprimatur")]
 pub struct Imprimatur {

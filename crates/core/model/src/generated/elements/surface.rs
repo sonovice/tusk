@@ -1,6 +1,6 @@
 //!Element: `<surface>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<surface>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,8 +35,8 @@ impl SurfaceChild {
     }
 }
 /**Defines a writing surface in terms of a rectangular coordinate space, optionally grouping
-      one or more graphic representations of that space, and rectangular zones of interest within
-      it.*/
+one or more graphic representations of that space, and rectangular zones of interest within
+it.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "surface")]
 pub struct Surface {

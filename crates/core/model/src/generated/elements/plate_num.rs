@@ -1,6 +1,6 @@
 //!Element: `<plateNum>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<plateNum>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl PlateNumChild {
     }
 }
 /**plate number - Designation assigned to a resource by a music publisher, usually printed
-      at the bottom of each page, and sometimes appearing also on the title page.*/
+at the bottom of each page, and sometimes appearing also on the title page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "plateNum")]
 pub struct PlateNum {

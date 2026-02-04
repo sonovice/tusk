@@ -13,7 +13,7 @@ pub struct AttSpaceVis {
     #[serde(rename = "@cutout", skip_serializing_if = "Option::is_none")]
     pub cutout: Option<AttSpaceVisCutout>,
     /**Indicates whether a space is 'compressible',i.e., if it may be removed at the
-          discretion of processing software.*/
+    discretion of processing software.*/
     #[serde(rename = "@compressable", skip_serializing_if = "Option::is_none")]
     pub compressable: Option<crate::generated::data::DataBoolean>,
 }

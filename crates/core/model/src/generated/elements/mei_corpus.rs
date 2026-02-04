@@ -1,6 +1,6 @@
 //!Element: `<meiCorpus>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<meiCorpus>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl MeiCorpusChild {
     }
 }
 /**MEI corpus - A group of related MEI documents, consisting of a header for the group, and
-      one or moremeielements, each with its own complete header.*/
+one or moremeielements, each with its own complete header.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiCorpus")]
 pub struct MeiCorpus {

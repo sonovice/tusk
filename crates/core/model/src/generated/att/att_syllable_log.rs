@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttSyllableLog {
     /**Indicates the point of occurrence of this feature along a time line. Its value must be
-          the ID of awhenelement elsewhere in the document.*/
+    the ID of awhenelement elsewhere in the document.*/
     #[serde(rename = "@when", skip_serializing_if = "Option::is_none")]
     pub when: Option<crate::generated::data::DataUri>,
 }

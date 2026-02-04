@@ -1,6 +1,6 @@
 //!Element: `<octave>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<octave>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl OctaveChild {
     }
 }
 /**An indication that a passage should be performed one or more octaves above or below its
-      written pitch.*/
+written pitch.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "octave")]
 pub struct Octave {

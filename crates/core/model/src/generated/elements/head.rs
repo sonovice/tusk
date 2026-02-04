@@ -1,6 +1,6 @@
 //!Element: `<head>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<head>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl HeadChild {
     }
 }
 /**heading - Contains any heading, for example, the title of a section of text, or the
-      heading of a list.*/
+heading of a list.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "head")]
 pub struct Head {

@@ -1,6 +1,6 @@
 //!Element: `<roleName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<roleName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl RoleNameChild {
     }
 }
 /**role name - Contains a name component which indicates that the referent has a particular
-      role or position in society, such as an official title or rank.*/
+role or position in society, such as an official title or rank.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "roleName")]
 pub struct RoleName {

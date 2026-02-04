@@ -3,12 +3,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttHarmAnlForm {
     /**The notation contains all the notes necessary for the harmonic label,e.g., the
-              notes "D F♯ A" for the harmonic label "D".*/
+    notes "D F♯ A" for the harmonic label "D".*/
     #[serde(rename = "explicit")]
     Explicit,
     /**The harmonic label relies on notes implied, but not actually present, in the
-              notation,e.g., the notes "D F♯ C" for the harmonic label "D7". The note "A" is
-              missing from the notation, but can be implied.*/
+    notation,e.g., the notes "D F♯ C" for the harmonic label "D7". The note "A" is
+    missing from the notation, but can be implied.*/
     #[serde(rename = "implied")]
     Implied,
 }

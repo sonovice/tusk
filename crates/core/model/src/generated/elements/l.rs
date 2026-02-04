@@ -1,6 +1,6 @@
 //!Element: `<l>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<l>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -487,7 +487,7 @@ impl LChild {
     }
 }
 /**line of text - Used to specify a rhythm for the lyric syllables that differs from that of the notes
-          on the staff,e.g., '4,4,4,4' when the rhythm of the notes is '4.,8,4.,8'.*/
+on the staff,e.g., '4,4,4,4' when the rhythm of the notes is '4.,8,4.,8'.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "l")]
 pub struct L {

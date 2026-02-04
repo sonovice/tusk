@@ -1,6 +1,6 @@
 //!Element: `<perfRes>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<perfRes>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -382,7 +382,7 @@ impl PerfResChild {
     }
 }
 /**performance resource - Name of an instrument on which a performer plays, a performer's
-      voice range, or a standard performing ensemble designation.*/
+voice range, or a standard performing ensemble designation.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "perfRes")]
 pub struct PerfRes {

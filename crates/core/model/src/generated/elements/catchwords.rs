@@ -1,6 +1,6 @@
 //!Element: `<catchwords>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<catchwords>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl CatchwordsChild {
     }
 }
 /**Describes the system used to ensure correct ordering of the quires making up an item,
-      typically by means of annotations at the foot of the page.*/
+typically by means of annotations at the foot of the page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "catchwords")]
 pub struct Catchwords {

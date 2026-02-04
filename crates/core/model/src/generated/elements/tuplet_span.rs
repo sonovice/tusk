@@ -1,8 +1,8 @@
 //!Element: `<tupletSpan>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**tuplet span - Alternative element for encoding tuplets, especially useful for tuplets
-      that extend across bar lines.*/
+that extend across bar lines.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tupletSpan")]
 pub struct TupletSpan {

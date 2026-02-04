@@ -1,6 +1,6 @@
 //!Element: `<addName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<addName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl AddNameChild {
     }
 }
 /**additional name - Contains an additional name component, such as a nickname, epithet, or
-      alias, or any other descriptive phrase used within a personal name.*/
+alias, or any other descriptive phrase used within a personal name.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "addName")]
 pub struct AddName {

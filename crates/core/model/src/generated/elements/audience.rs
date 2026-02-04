@@ -1,6 +1,6 @@
 //!Element: `<audience>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<audience>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,8 +389,8 @@ impl AudienceChild {
     }
 }
 /**Defines the class of user for which the work is intended, as defined by age group (e.g.,
-      children, young adults, adults, etc.), educational level (e.g., primary, secondary, etc.), or
-      other categorization.*/
+children, young adults, adults, etc.), educational level (e.g., primary, secondary, etc.), or
+other categorization.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "audience")]
 pub struct Audience {

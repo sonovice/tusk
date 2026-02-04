@@ -1,6 +1,6 @@
 //!Element: `<figDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<figDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -431,7 +431,7 @@ impl FigDescChild {
     }
 }
 /**figure description - Contains a brief prose description of the appearance or content of
-      a graphic figure, for use when documenting an image without displaying it.*/
+a graphic figure, for use when documenting an image without displaying it.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "figDesc")]
 pub struct FigDesc {

@@ -1,6 +1,6 @@
 //!Element: `<th>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<th>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -536,7 +536,7 @@ impl ThChild {
     }
 }
 /**table header - Designates a table cell containing column or row heading information as
-      opposed to one containing data.*/
+opposed to one containing data.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "th")]
 pub struct Th {

@@ -1,6 +1,6 @@
 //!Element: `<biblScope>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<biblScope>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl BiblScopeChild {
     }
 }
 /**scope of citation - Defines the scope of a bibliographic reference, for example as a
-      list of page numbers, or a named subdivision of a larger work.*/
+list of page numbers, or a named subdivision of a larger work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "biblScope")]
 pub struct BiblScope {

@@ -1,6 +1,6 @@
 //!Element: `<normalization>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<normalization>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl NormalizationChild {
     }
 }
 /**Indicates the extent of normalization or regularization of the original source carried out
-      in converting it to electronic form.*/
+in converting it to electronic form.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "normalization")]
 pub struct Normalization {

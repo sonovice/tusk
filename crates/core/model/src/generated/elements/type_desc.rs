@@ -1,6 +1,6 @@
 //!Element: `<typeDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<typeDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -396,7 +396,7 @@ impl TypeDescChild {
     }
 }
 /**type description - Contains a description of the typefaces or other aspects of the
-      printing of a printed source.*/
+printing of a printed source.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "typeDesc")]
 pub struct TypeDesc {

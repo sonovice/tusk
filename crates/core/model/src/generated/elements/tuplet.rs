@@ -1,6 +1,6 @@
 //!Element: `<tuplet>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<tuplet>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -266,7 +266,7 @@ impl TupletChild {
     }
 }
 /**A group of notes with "irregular" (sometimes called "irrational") rhythmic values, for
-      example, three notes in the time normally occupied by two or nine in the time of five.*/
+example, three notes in the time normally occupied by two or nine in the time of five.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tuplet")]
 pub struct Tuplet {

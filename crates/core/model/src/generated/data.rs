@@ -1,10 +1,10 @@
 //! MEI data types (generated from ODD).
 //!
 //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
-use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
+use crate::generated::validation::{Validate, ValidationContext};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 ///Standard course tunings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataCoursetuning {
@@ -513,7 +513,7 @@ pub enum DataGrace {
     Unknown,
 }
 /**Tempo expressed as microseconds per "beat", where "beat" is always defined as a quarter
-      note, *not the numerator of the time signature or the metronomic indication*.*/
+note, *not the numerator of the time signature or the metronomic indication*.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataMidimspb(pub u64);
@@ -660,8 +660,8 @@ pub enum DataHorizontalalignment {
     Justify,
 }
 /**A token indicating direction of the interval but not its precise value, a diatonic
-      interval (with optional direction and quality), or a decimal value in half steps. Decimal
-      values are permitted to accommodate micro-tuning.*/
+interval (with optional direction and quality), or a decimal value in half steps. Decimal
+values are permitted to accommodate micro-tuning.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataIntervalMelodic(pub String);
@@ -692,7 +692,7 @@ pub enum DataMidivaluePan {
     DataPercentLimitedSigned(DataPercentLimitedSigned),
 }
 /**Tempo expressed as "beats" per minute, where "beat" is always defined as a quarter note,
-      *not the numerator of the time signature or the metronomic indication*.*/
+ *not the numerator of the time signature or the metronomic indication*.*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataMidibpm(pub f64);
@@ -755,7 +755,7 @@ impl Validate for DataOrientation {
     }
 }
 /**Measurements used for typographical features. Unlike data.MEASUREMENTTYPOGRAPHYSIGNED, only
-      positive values are allowed.*/
+positive values are allowed.*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataMeasurementtypographyunsigned {
@@ -787,18 +787,11 @@ impl std::str::FromStr for DataPitchname {
 }
 impl Validate for DataPitchname {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATAPITCHNAME_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[a-g]").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATAPITCHNAME_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[a-g]").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATAPITCHNAME_PATTERN.is_match(&value_str) {
-            ctx.add_pattern_mismatch(
-                "DataPitchname",
-                None,
-                "DataPitchname",
-                &value_str,
-                "[a-g]",
-            );
+            ctx.add_pattern_mismatch("DataPitchname", None, "DataPitchname", &value_str, "[a-g]");
         }
     }
 }
@@ -899,27 +892,20 @@ impl std::str::FromStr for DataTuplet {
 }
 impl Validate for DataTuplet {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATATUPLET_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATATUPLET_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATATUPLET_PATTERN.is_match(&value_str) {
-            ctx.add_pattern_mismatch(
-                "DataTuplet",
-                None,
-                "DataTuplet",
-                &value_str,
-                "[i|m|t][1-6]",
-            );
+            ctx.add_pattern_mismatch("DataTuplet", None, "DataTuplet", &value_str, "[i|m|t][1-6]");
         }
     }
 }
 /**Indicates how stems should be drawn when more than one layer is present and stem
-      directions are not indicated on the notes/chords themselves. '1' indicates that there is only
-      a single layer on a staff. '2o' means there are two layers with opposing stems. '2f' indicates
-      two 'free' layers; that is, opposing stems will be drawn unless one of the layers has 'space'.
-      In that case, stem direction in the remaining layer will be determined as if there were only
-      one layer. '3o' and '3f' are analogous to '2o' and '2f' with three layers allowed.*/
+directions are not indicated on the notes/chords themselves. '1' indicates that there is only
+a single layer on a staff. '2o' means there are two layers with opposing stems. '2f' indicates
+two 'free' layers; that is, opposing stems will be drawn unless one of the layers has 'space'.
+In that case, stem direction in the remaining layer will be determined as if there were only
+one layer. '3o' and '3f' are analogous to '2o' and '2f' with three layers allowed.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataLayerscheme {
     ///Single layer.
@@ -984,22 +970,22 @@ pub enum DataTextrenditionlist {
     #[serde(rename = "fslash")]
     Fslash,
     /**Struck through by '-'; may be qualified to indicate multiple parallel lines,e.g.,
-            line-through(2).*/
+    line-through(2).*/
     #[serde(rename = "line-through")]
     LineThrough,
     ///Not rendered, invisible.
     #[serde(rename = "none")]
     None,
     /**Line above the text; may be qualified to indicate multiple parallel lines,e.g.,
-            overline(3).*/
+    overline(3).*/
     #[serde(rename = "overline")]
     Overline,
     /**Use for deleted text fully or partially obscured by other text (such as 'XXXXX') or
-            musical symbols (such as notes, rests, etc.).*/
+    musical symbols (such as notes, rests, etc.).*/
     #[serde(rename = "overstrike")]
     Overstrike,
     /**Struck through by '-'; equivalent to line-through; may be qualified to indicate
-            multiple parallel lines,e.g., strike(3).*/
+    multiple parallel lines,e.g., strike(3).*/
     #[serde(rename = "strike")]
     Strike,
     ///Subscript.
@@ -1009,15 +995,15 @@ pub enum DataTextrenditionlist {
     #[serde(rename = "sup")]
     Sup,
     /**Use for added text or musical symbols that fully or partially obscure text from an
-            earlier writing stage.*/
+    earlier writing stage.*/
     #[serde(rename = "superimpose")]
     Superimpose,
     /**Underlined; may be qualified to indicate multiple parallel lines,e.g.,
-            underline(2).*/
+    underline(2).*/
     #[serde(rename = "underline")]
     Underline,
     /**Crossed-out; equivalent to 'bslash' (\) plus 'fslash' (/); that is, a hand-written
-            'X'; may be qualified to indicate multiple parallel lines,e.g., x-through(2).*/
+    'X'; may be qualified to indicate multiple parallel lines,e.g., x-through(2).*/
     #[serde(rename = "x-through")]
     XThrough,
     ///Left-to-right (BIDI embed).
@@ -1043,11 +1029,11 @@ pub enum DataLinestartendsymbol {
     #[serde(rename = "angleup")]
     Angleup,
     /**90 degree turn right (syntactic sugar for "angledown" for vertical or angled
-            lines).*/
+    lines).*/
     #[serde(rename = "angleright")]
     Angleright,
     /**90 degree turn left (syntactic sugar for "angleup" for vertical or angled
-            lines).*/
+    lines).*/
     #[serde(rename = "angleleft")]
     Angleleft,
     ///Filled, triangular arrowhead (similar to Unicode U+25C0 or SMuFL U+EB78).
@@ -1060,11 +1046,11 @@ pub enum DataLinestartendsymbol {
     #[serde(rename = "arrowwhite")]
     Arrowwhite,
     /**Harpoon-shaped arrowhead left of line (similar to arrowhead of Unicode
-            U+21BD).*/
+    U+21BD).*/
     #[serde(rename = "harpoonleft")]
     Harpoonleft,
     /**Harpoon-shaped arrowhead right of line (similar to arrowhead of Unicode
-            U+21BC).*/
+    U+21BC).*/
     #[serde(rename = "harpoonright")]
     Harpoonright,
     ///Hauptstimme (Unicode U+1D1A6 or SMuFL U+E860).
@@ -1120,8 +1106,7 @@ impl std::str::FromStr for DataMeasurementfontunsigned {
 impl Validate for DataMeasurementfontunsigned {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATAMEASUREMENTFONTUNSIGNED_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("\\d+(\\.\\d+)?(ch|em|ex)?")
-                .expect("Invalid regex pattern in MEI spec")
+            Regex::new("\\d+(\\.\\d+)?(ch|em|ex)?").expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
         if !DATAMEASUREMENTFONTUNSIGNED_PATTERN.is_match(&value_str) {
@@ -1362,22 +1347,26 @@ impl std::str::FromStr for DataModusminor {
 impl Validate for DataModusminor {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (2 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataModusminor", None),
-                attribute: "DataModusminor".to_string(),
-                value: self.0.to_string(),
-                min: "2".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataModusminor", None),
+                    attribute: "DataModusminor".to_string(),
+                    value: self.0.to_string(),
+                    min: "2".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (3 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataModusminor", None),
-                attribute: "DataModusminor".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "3".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataModusminor", None),
+                    attribute: "DataModusminor".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "3".to_string(),
+                },
+            );
         }
     }
 }
@@ -1947,7 +1936,7 @@ pub enum DataNoteheadmodifierList {
     Fences,
 }
 /**Measurements used for typographical features. Unlike data.MEASUREMENTTYPOGRAPHYSIGNED, both
-      positive and negative values are allowed.*/
+positive and negative values are allowed.*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataMeasurementtypographysigned {
@@ -1979,13 +1968,15 @@ impl std::str::FromStr for DataPitchclass {
 impl Validate for DataPitchclass {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) > (11 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataPitchclass", None),
-                attribute: "DataPitchclass".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "11".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataPitchclass", None),
+                    attribute: "DataPitchclass".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "11".to_string(),
+                },
+            );
         }
     }
 }
@@ -2035,9 +2026,8 @@ impl std::str::FromStr for DataTie {
 }
 impl Validate for DataTie {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATATIE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[i|m|t]").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATATIE_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[i|m|t]").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATATIE_PATTERN.is_match(&value_str) {
             ctx.add_pattern_mismatch("DataTie", None, "DataTie", &value_str, "[i|m|t]");
@@ -2075,8 +2065,8 @@ pub enum DataStemdirection {
     DataStemdirectionExtended(DataStemdirectionExtended),
 }
 /**The following list of articulations mostly corresponds to symbols from the Western Musical
-      Symbols portion of the Unicode Standard. The dot and stroke values may be used in cases where
-      interpretation is difficult or undesirable.*/
+Symbols portion of the Unicode Standard. The dot and stroke values may be used in cases where
+interpretation is difficult or undesirable.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataArticulation {
     ///Accent (Unicode 1D17B).
@@ -2113,15 +2103,15 @@ pub enum DataArticulation {
     #[serde(rename = "unstress")]
     Unstress,
     /**Main note followed by short slide to higher, indeterminate pitch (Unicode
-            1D185).*/
+    1D185).*/
     #[serde(rename = "doit")]
     Doit,
     /**Main note preceded by short slide from lower, indeterminate pitch (Unicode
-            1D186).*/
+    1D186).*/
     #[serde(rename = "scoop")]
     Scoop,
     /**Main note preceded by long slide from lower, often indeterminate pitch; also known
-            as "squeeze".*/
+    as "squeeze".*/
     #[serde(rename = "rip")]
     Rip,
     ///Main note preceded by "slide" from higher, indeterminate pitch.
@@ -2137,14 +2127,14 @@ pub enum DataArticulation {
     #[serde(rename = "bend")]
     Bend,
     /**Main note followed by quick upward rise, then descent in pitch (Unicode
-            1D187).*/
+    1D187).*/
     #[serde(rename = "flip")]
     Flip,
     ///(Unicode 1D188).
     #[serde(rename = "smear")]
     Smear,
     /**Alternation between written pitch and next highest overtone (brass instruments) or
-            note minor third higher (woodwinds).*/
+    note minor third higher (woodwinds).*/
     #[serde(rename = "shake")]
     Shake,
     ///Down bow (Unicode 1D1AA).
@@ -2213,7 +2203,7 @@ pub enum DataMetersign {
     Open,
 }
 /**A value in one of the following forms is expected: 1) hexadecimal RRGGBB, 2) hexadecimal
-      RRGGBBAA, 3) CSS RGB, 4) CSS RGBA, 5) HSL, 6) HSLA, or 7) CSS color name.*/
+RRGGBBAA, 3) CSS RGB, 4) CSS RGBA, 5) HSL, 6) HSLA, or 7) CSS color name.*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataColor {
@@ -2231,9 +2221,9 @@ pub enum DataAccidentalPersian {
     Sori,
 }
 /**In a guitar chord diagram, a label indicating which finger, if any, should be used to play
-      an individual string. The index, middle, ring, and little fingers are represented by the
-      values 1-4, while 't' is for the thumb. The values 'x' and 'o' indicate stopped and open
-      strings, respectively.*/
+an individual string. The index, middle, ring, and little fingers are represented by the
+values 1-4, while 't' is for the thumb. The values 'x' and 'o' indicate stopped and open
+strings, respectively.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataFingerFret(pub String);
@@ -2310,22 +2300,26 @@ impl std::str::FromStr for DataConfidence {
 impl Validate for DataConfidence {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (0 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataConfidence", None),
-                attribute: "DataConfidence".to_string(),
-                value: self.0.to_string(),
-                min: "0".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataConfidence", None),
+                    attribute: "DataConfidence".to_string(),
+                    value: self.0.to_string(),
+                    min: "0".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (1 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataConfidence", None),
-                attribute: "DataConfidence".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "1".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataConfidence", None),
+                    attribute: "DataConfidence".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "1".to_string(),
+                },
+            );
         }
     }
 }
@@ -2361,9 +2355,8 @@ impl std::str::FromStr for DataPitchnameGestural {
 }
 impl Validate for DataPitchnameGestural {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATAPITCHNAMEGESTURAL_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[a-g]|none").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATAPITCHNAMEGESTURAL_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[a-g]|none").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATAPITCHNAMEGESTURAL_PATTERN.is_match(&value_str) {
             ctx.add_pattern_mismatch(
@@ -2465,9 +2458,8 @@ impl std::str::FromStr for DataFontsizenumeric {
 }
 impl Validate for DataFontsizenumeric {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATAFONTSIZENUMERIC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("\\.0+(pt|vu)").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATAFONTSIZENUMERIC_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("\\.0+(pt|vu)").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATAFONTSIZENUMERIC_PATTERN.is_match(&value_str) {
             ctx.add_pattern_mismatch(
@@ -2488,7 +2480,7 @@ pub enum DataEventrel {
     DataEventrelExtended(DataEventrelExtended),
 }
 /**Records where bar lines are drawn. The value 'staff' describes the traditional placement
-      of bar lines.*/
+of bar lines.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataBarmethod {
     ///Between staves only.
@@ -2558,7 +2550,7 @@ pub enum DataBoolean {
     False,
 }
 /**In string tablature, the fret number. The value0(zero) indicates the open
-      string.*/
+string.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataFretnumber(pub u64);
@@ -2590,8 +2582,8 @@ pub enum DataMode {
     DataModeExtended(DataModeExtended),
 }
 /**Describes how a graphical object, such as a note head, should be filled. The relative
-      values — top, bottom, left, and right — indicate these locations *after* rotation is
-      applied.*/
+values — top, bottom, left, and right — indicate these locations *after* rotation is
+applied.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataFill {
     ///Unfilled
@@ -2724,13 +2716,15 @@ impl std::str::FromStr for DataAugmentdot {
 impl Validate for DataAugmentdot {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) > (4 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataAugmentdot", None),
-                attribute: "DataAugmentdot".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "4".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataAugmentdot", None),
+                    attribute: "DataAugmentdot".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "4".to_string(),
+                },
+            );
         }
     }
 }
@@ -2759,13 +2753,15 @@ impl std::str::FromStr for DataBeat {
 impl Validate for DataBeat {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (0 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataBeat", None),
-                attribute: "DataBeat".to_string(),
-                value: self.0.to_string(),
-                min: "0".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataBeat", None),
+                    attribute: "DataBeat".to_string(),
+                    value: self.0.to_string(),
+                    min: "0".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
     }
 }
@@ -2805,9 +2801,9 @@ pub enum DataLinewidthterm {
     Wide,
 }
 /**Staff location. The value0indicates the bottom line of the current staff; positive
-      values are used for positions above the bottom line and negative values for the positions
-      below. For example, in treble clef, 1 = F4, 2 = G4, 3 = A4, etc. and -1 = D4, -2 = C4, and so
-      on.*/
+values are used for positions above the bottom line and negative values for the positions
+below. For example, in treble clef, 1 = F4, 2 = G4, 3 = A4, etc. and -1 = D4, -2 = C4, and so
+on.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataStaffloc(pub i64);
@@ -2911,18 +2907,11 @@ impl std::str::FromStr for DataBeam {
 }
 impl Validate for DataBeam {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATABEAM_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATABEAM_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATABEAM_PATTERN.is_match(&value_str) {
-            ctx.add_pattern_mismatch(
-                "DataBeam",
-                None,
-                "DataBeam",
-                &value_str,
-                "[i|m|t][1-6]",
-            );
+            ctx.add_pattern_mismatch("DataBeam", None, "DataBeam", &value_str, "[i|m|t][1-6]");
         }
     }
 }
@@ -2972,27 +2961,31 @@ impl std::str::FromStr for DataTempus {
 impl Validate for DataTempus {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (2 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataTempus", None),
-                attribute: "DataTempus".to_string(),
-                value: self.0.to_string(),
-                min: "2".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataTempus", None),
+                    attribute: "DataTempus".to_string(),
+                    value: self.0.to_string(),
+                    min: "2".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (3 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataTempus", None),
-                attribute: "DataTempus".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "3".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataTempus", None),
+                    attribute: "DataTempus".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "3".to_string(),
+                },
+            );
         }
     }
 }
 /**A positive or negative offset from the value given in the tstamp attribute in terms of
-      musical time,i.e., beats[.fractional beat part].*/
+musical time,i.e., beats[.fractional beat part].*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataTstampoffset(pub f64);
@@ -3040,18 +3033,11 @@ impl std::str::FromStr for DataSlur {
 }
 impl Validate for DataSlur {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATASLUR_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATASLUR_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("[i|m|t][1-6]").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATASLUR_PATTERN.is_match(&value_str) {
-            ctx.add_pattern_mismatch(
-                "DataSlur",
-                None,
-                "DataSlur",
-                &value_str,
-                "[i|m|t][1-6]",
-            );
+            ctx.add_pattern_mismatch("DataSlur", None, "DataSlur", &value_str, "[i|m|t][1-6]");
         }
     }
 }
@@ -3080,8 +3066,7 @@ impl std::str::FromStr for DataMidichannel {
 impl Validate for DataMidichannel {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATAMIDICHANNEL_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("0|([1-9]|1[0-5])o?|16o")
-                .expect("Invalid regex pattern in MEI spec")
+            Regex::new("0|([1-9]|1[0-5])o?|16o").expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
         if !DATAMIDICHANNEL_PATTERN.is_match(&value_str) {
@@ -3122,22 +3107,26 @@ impl std::str::FromStr for DataPagePanels {
 impl Validate for DataPagePanels {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (1 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataPagePanels", None),
-                attribute: "DataPagePanels".to_string(),
-                value: self.0.to_string(),
-                min: "1".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataPagePanels", None),
+                    attribute: "DataPagePanels".to_string(),
+                    value: self.0.to_string(),
+                    min: "1".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (2 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataPagePanels", None),
-                attribute: "DataPagePanels".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "2".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataPagePanels", None),
+                    attribute: "DataPagePanels".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "2".to_string(),
+                },
+            );
         }
     }
 }
@@ -3176,7 +3165,7 @@ pub enum DataStaffitemBasic {
     Tempo,
 }
 /**Clef line attribute values. The value must be in the range between 1 and the number of
-      lines on the staff. The numbering of lines starts with the lowest line of the staff.*/
+lines on the staff. The numbering of lines starts with the lowest line of the staff.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataClefline(pub u64);
@@ -3371,7 +3360,7 @@ pub enum DataNotationtype {
     TabLuteGerman,
 }
 /**For musical material designated to appear on an adjacent layer or staff, the location of the layer
-      relative to the current one;i.e., the layer above or the layer below.*/
+relative to the current one;i.e., the layer above or the layer below.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataNeighboringlayer {
     ///The layer immediately above.
@@ -3422,13 +3411,15 @@ impl std::str::FromStr for DataOctave {
 impl Validate for DataOctave {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) > (9 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataOctave", None),
-                attribute: "DataOctave".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "9".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataOctave", None),
+                    attribute: "DataOctave".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "9".to_string(),
+                },
+            );
         }
     }
 }
@@ -3459,22 +3450,26 @@ impl std::str::FromStr for DataProlatio {
 impl Validate for DataProlatio {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (2 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataProlatio", None),
-                attribute: "DataProlatio".to_string(),
-                value: self.0.to_string(),
-                min: "2".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataProlatio", None),
+                    attribute: "DataProlatio".to_string(),
+                    value: self.0.to_string(),
+                    min: "2".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (3 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataProlatio", None),
-                attribute: "DataProlatio".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "3".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataProlatio", None),
+                    attribute: "DataProlatio".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "3".to_string(),
+                },
+            );
         }
     }
 }
@@ -3521,22 +3516,26 @@ impl std::str::FromStr for DataSlash {
 impl Validate for DataSlash {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (1 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataSlash", None),
-                attribute: "DataSlash".to_string(),
-                value: self.0.to_string(),
-                min: "1".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataSlash", None),
+                    attribute: "DataSlash".to_string(),
+                    value: self.0.to_string(),
+                    min: "1".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (6 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataSlash", None),
-                attribute: "DataSlash".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "6".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataSlash", None),
+                    attribute: "DataSlash".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "6".to_string(),
+                },
+            );
         }
     }
 }
@@ -3645,29 +3644,33 @@ impl std::str::FromStr for DataModusmaior {
 impl Validate for DataModusmaior {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (2 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataModusmaior", None),
-                attribute: "DataModusmaior".to_string(),
-                value: self.0.to_string(),
-                min: "2".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataModusmaior", None),
+                    attribute: "DataModusmaior".to_string(),
+                    value: self.0.to_string(),
+                    min: "2".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (3 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataModusmaior", None),
-                attribute: "DataModusmaior".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "3".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataModusmaior", None),
+                    attribute: "DataModusmaior".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "3".to_string(),
+                },
+            );
         }
     }
 }
 ///Page scale factor; a percentage of the values in page.height and page.width.
 pub type DataPgscale = DataPercent;
 /**Indication of melodic function,i.e., anticipation, lower neighbor, escape tone,
-      etc.*/
+etc.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataMelodicfunction {
     ///Accented lower neighbor.
@@ -3851,7 +3854,7 @@ pub enum DataAccidentalWrittenExtended {
     N3qs,
 }
 /**ISO 24-hour time format: HH:MM:SS.ss,i.e.,
-      [0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.?[0-9]*)?.*/
+[0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.?[0-9]*)?.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataIsotime(pub String);
@@ -3916,8 +3919,7 @@ impl std::str::FromStr for DataWord {
 impl Validate for DataWord {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATAWORD_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("(\\p{L}|\\p{N}|\\p{P}|\\p{S})*")
-                .expect("Invalid regex pattern in MEI spec")
+            Regex::new("(\\p{L}|\\p{N}|\\p{P}|\\p{S})*").expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
         if !DATAWORD_PATTERN.is_match(&value_str) {
@@ -3950,14 +3952,14 @@ pub enum DataModsrelationship {
     #[serde(rename = "constituent")]
     Constituent,
     /**Version of the resource’s intellectual content not changed enough to be a different
-            work.*/
+    work.*/
     #[serde(rename = "otherVersion")]
     OtherVersion,
     ///Version of the resource in a different physical format.
     #[serde(rename = "otherFormat")]
     OtherFormat,
     /**Published bibliographic description, review, abstract, or index of the resource's
-            content.*/
+    content.*/
     #[serde(rename = "isReferencedBy")]
     IsReferencedBy,
     ///Cited or referred to in the resource.
@@ -4484,7 +4486,7 @@ impl Validate for DataPercentLimited {
     }
 }
 /**Captures any notehead "modifiers"; that is, symbols added to the notehead, such as
-      slashes, lines, text, and enclosures, etc.*/
+slashes, lines, text, and enclosures, etc.*/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataNoteheadmodifier {
@@ -4516,7 +4518,7 @@ pub enum DataEventrelExtended {
     BelowRight,
 }
 /**Renderings of bar lines. Some values correspond to the Western Musical Symbols portion of
-      the Unicode Standard.*/
+the Unicode Standard.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataBarrendition {
     ///Dashed line (SMuFL E036 and Unicode 1D104).
@@ -4597,8 +4599,7 @@ impl std::str::FromStr for DataScaledegree {
 impl Validate for DataScaledegree {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATASCALEDEGREE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("(\\^|v)?[1-7](\\+|\\-)?")
-                .expect("Invalid regex pattern in MEI spec")
+            Regex::new("(\\^|v)?[1-7](\\+|\\-)?").expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
         if !DATASCALEDEGREE_PATTERN.is_match(&value_str) {
@@ -4613,7 +4614,7 @@ impl Validate for DataScaledegree {
     }
 }
 /**Clef shape attribute values (Read, p.53-56). Some values correspond to the Unicode
-      Standard.*/
+Standard.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataClefshape {
     ///G clef (Unicode 1D11E).
@@ -4758,22 +4759,26 @@ impl std::str::FromStr for DataDegrees {
 impl Validate for DataDegrees {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (-360.0 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataDegrees", None),
-                attribute: "DataDegrees".to_string(),
-                value: self.0.to_string(),
-                min: "-360.0".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataDegrees", None),
+                    attribute: "DataDegrees".to_string(),
+                    value: self.0.to_string(),
+                    min: "-360.0".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (360.0 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataDegrees", None),
-                attribute: "DataDegrees".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "360.0".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataDegrees", None),
+                    attribute: "DataDegrees".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "360.0".to_string(),
+                },
+            );
         }
     }
 }
@@ -4804,22 +4809,26 @@ impl std::str::FromStr for DataFontsizescale {
 impl Validate for DataFontsizescale {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         if (self.0 as f64) < (1 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataFontsizescale", None),
-                attribute: "DataFontsizescale".to_string(),
-                value: self.0.to_string(),
-                min: "1".to_string(),
-                max: "∞".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataFontsizescale", None),
+                    attribute: "DataFontsizescale".to_string(),
+                    value: self.0.to_string(),
+                    min: "1".to_string(),
+                    max: "∞".to_string(),
+                },
+            );
         }
         if (self.0 as f64) > (9 as f64) {
-            ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
-                location: ctx.location("DataFontsizescale", None),
-                attribute: "DataFontsizescale".to_string(),
-                value: self.0.to_string(),
-                min: "-∞".to_string(),
-                max: "9".to_string(),
-            });
+            ctx.add_error(
+                crate::generated::validation::ValidationError::RangeViolation {
+                    location: ctx.location("DataFontsizescale", None),
+                    attribute: "DataFontsizescale".to_string(),
+                    value: self.0.to_string(),
+                    min: "-∞".to_string(),
+                    max: "9".to_string(),
+                },
+            );
         }
     }
 }
@@ -4848,8 +4857,7 @@ impl std::str::FromStr for DataKeyfifths {
 impl Validate for DataKeyfifths {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATAKEYFIFTHS_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("mixed|0|([1-9]|1[0-2])[f|s]")
-                .expect("Invalid regex pattern in MEI spec")
+            Regex::new("mixed|0|([1-9]|1[0-2])[f|s]").expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
         if !DATAKEYFIFTHS_PATTERN.is_match(&value_str) {
@@ -5052,9 +5060,8 @@ impl std::str::FromStr for DataOctaveDis {
 }
 impl Validate for DataOctaveDis {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
-        static DATAOCTAVEDIS_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new("8|15|22").expect("Invalid regex pattern in MEI spec")
-        });
+        static DATAOCTAVEDIS_PATTERN: Lazy<Regex> =
+            Lazy::new(|| Regex::new("8|15|22").expect("Invalid regex pattern in MEI spec"));
         let value_str = self.0.to_string();
         if !DATAOCTAVEDIS_PATTERN.is_match(&value_str) {
             ctx.add_pattern_mismatch(
@@ -5106,18 +5113,18 @@ pub enum DataNonstaffplace {
     #[serde(rename = "intra")]
     Intra,
     /**Above a line of text, more exact than "intra(linear)". Do not confuse with
-            superscript rendition.*/
+    superscript rendition.*/
     #[serde(rename = "super")]
     Super,
     /**Below a line of text, more exact than "intra(linear)". Do not confuse with subscript
-            rendition.*/
+    rendition.*/
     #[serde(rename = "sub")]
     Sub,
     ///In a predefined space;i.e., that left by an earlier scribe.
     #[serde(rename = "inspace")]
     Inspace,
     /**Obscures original text;e.g., via overstrike, addition of new writing surface
-            material, etc.*/
+    material, etc.*/
     #[serde(rename = "superimposed")]
     Superimposed,
 }
@@ -5133,19 +5140,19 @@ pub enum DataStaffitem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataPedalstyle {
     /**Continuous line with start and end positions rendered by vertical bars and bounces
-            shown by upward-pointing "blips".*/
+    shown by upward-pointing "blips".*/
     #[serde(rename = "line")]
     Line,
     /**Pedal down and half pedal rendered with "Ped." followed by a line with
-            end position rendered by vertical bars and bounces shown by upward-pointing "blips".*/
+    end position rendered by vertical bars and bounces shown by upward-pointing "blips".*/
     #[serde(rename = "pedline")]
     Pedline,
     /**Pedal down and half pedal rendered with "Ped.", pedal up rendered by "*", pedal
-            "bounce" rendered with "* Ped.".*/
+    "bounce" rendered with "* Ped.".*/
     #[serde(rename = "pedstar")]
     Pedstar,
     /**Pedal up and down indications same as with "pedstar", but bounce is rendered with
-            "Ped." only.*/
+    "Ped." only.*/
     #[serde(rename = "altpedstar")]
     Altpedstar,
 }
@@ -5158,7 +5165,7 @@ pub enum DataHeadshape {
     DataNmtoken(DataNmtoken),
 }
 /**Values for certainty attribute. Certainty may be expressed by one of the predefined symbolic valueshigh,medium, orlow. The valueunknownshould be used in cases where the encoder
-      does not wish to assert an opinion about the matter.*/
+does not wish to assert an opinion about the matter.*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataCertainty {
     ///High certainty.
@@ -5175,7 +5182,7 @@ pub enum DataCertainty {
     Unknown,
 }
 /**"Convenience" datatype that permits combining enumerated values with a user-supplied
-      name.*/
+name.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataNcname(pub String);
@@ -5222,7 +5229,7 @@ pub enum DataCompassdirectionBasic {
     W,
 }
 /**Either an integer value, a decimal value, or a token. Fractional values are limited to
-      .25, .5, .75, while the token value is restricted to 'full'.*/
+.25, .5, .75, while the token value is restricted to 'full'.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataBendAmount(pub String);
@@ -5246,7 +5253,7 @@ impl Validate for DataBendAmount {
     fn validate_with_context(&self, _ctx: &mut ValidationContext) {}
 }
 /**"Convenience" datatype that permits combining enumerated values with user-supplied
-      values.*/
+values.*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DataNmtoken(pub String);
@@ -5322,9 +5329,7 @@ impl std::str::FromStr for DataOrnamCmn {
 impl Validate for DataOrnamCmn {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
         static DATAORNAMCMN_PATTERN: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(
-                    "[A|a|b|I|i|K|k|M|m|N|n|S|s|T|t|O]|(A|a|S|s|K|k)?(T|t|M|m)(I|i|S|s)?",
-                )
+            Regex::new("[A|a|b|I|i|K|k|M|m|N|n|S|s|T|t|O]|(A|a|S|s|K|k)?(T|t|M|m)(I|i|S|s)?")
                 .expect("Invalid regex pattern in MEI spec")
         });
         let value_str = self.0.to_string();
@@ -5349,14 +5354,14 @@ pub enum DataFrbrrelationship {
     #[serde(rename = "isAbridgementOf")]
     IsAbridgementOf,
     /**Target is an adaptation, paraphrase, free translation, variation (music),
-            harmonization (music), or fantasy (music) of the current entity.*/
+    harmonization (music), or fantasy (music) of the current entity.*/
     #[serde(rename = "hasAdaptation")]
     HasAdaptation,
     ///Reciprocal relationship of hasAdaptation.
     #[serde(rename = "isAdaptationOf")]
     IsAdaptationOf,
     /**Target is an alternate format or simultaneously released edition of the current
-            entity.*/
+    entity.*/
     #[serde(rename = "hasAlternate")]
     HasAlternate,
     ///Reciprocal relationship of hasAlternate.
@@ -5369,21 +5374,21 @@ pub enum DataFrbrrelationship {
     #[serde(rename = "isArrangementOf")]
     IsArrangementOf,
     /**Target is a cadenza, libretto, choreography, ending for unfinished work, incidental
-            music, or musical setting of a text of the current entity.*/
+    music, or musical setting of a text of the current entity.*/
     #[serde(rename = "hasComplement")]
     HasComplement,
     ///Reciprocal relationship of hasComplement.
     #[serde(rename = "isComplementOf")]
     IsComplementOf,
     /**Target is a physical embodiment of the current abstract entity; describes the
-            expression-to-manifestation relationship.*/
+    expression-to-manifestation relationship.*/
     #[serde(rename = "hasEmbodiment")]
     HasEmbodiment,
     ///Reciprocal relationship of hasEmbodiment.
     #[serde(rename = "isEmbodimentOf")]
     IsEmbodimentOf,
     /**Target is an exemplar of the class of things represented by the current entity;
-            describes the manifestation-to-item relationship.*/
+    describes the manifestation-to-item relationship.*/
     #[serde(rename = "hasExemplar")]
     HasExemplar,
     ///Reciprocal relationship of hasExamplar.
@@ -5396,38 +5401,38 @@ pub enum DataFrbrrelationship {
     #[serde(rename = "isImitationOf")]
     IsImitationOf,
     /**Target is a chapter, section, part, etc.; volume of a multivolume manifestation;
-            volume/issue of serial; intellectual part of a multi-part work; illustration for a text;
-            sound aspect of a film; soundtrack for a film on separate medium; soundtrack for a film
-            embedded in film; monograph in a series; physical component of a particular copy; the
-            binding of a book of the current entity.*/
+    volume/issue of serial; intellectual part of a multi-part work; illustration for a text;
+    sound aspect of a film; soundtrack for a film on separate medium; soundtrack for a film
+    embedded in film; monograph in a series; physical component of a particular copy; the
+    binding of a book of the current entity.*/
     #[serde(rename = "hasPart")]
     HasPart,
     ///Reciprocal relationship of hasPart.
     #[serde(rename = "isPartOf")]
     IsPartOf,
     /**Target is a realization of the current entity; describes the work-to-expression
-            relationship.*/
+    relationship.*/
     #[serde(rename = "hasRealization")]
     HasRealization,
     ///Reciprocal relationship of hasRealization.
     #[serde(rename = "isRealizationOf")]
     IsRealizationOf,
     /**Target has been reconfigured: bound with, split into, extracted from the current
-            entity.*/
+    entity.*/
     #[serde(rename = "hasReconfiguration")]
     HasReconfiguration,
     ///Reciprocal relationship of hasReconfiguration.
     #[serde(rename = "isReconfigurationOf")]
     IsReconfigurationOf,
     /**Target is a reproduction, microreproduction, macroreproduction, reprint,
-            photo-offset reprint, or facsimile of the current entity.*/
+    photo-offset reprint, or facsimile of the current entity.*/
     #[serde(rename = "hasReproduction")]
     HasReproduction,
     ///Reciprocal relationship of hasReproduction.
     #[serde(rename = "isReproductionOf")]
     IsReproductionOf,
     /**Target is a revised edition, enlarged edition, or new state (graphic) of the current
-            entity.*/
+    entity.*/
     #[serde(rename = "hasRevision")]
     HasRevision,
     ///Reciprocal relationship of hasRevision.
@@ -5446,21 +5451,21 @@ pub enum DataFrbrrelationship {
     #[serde(rename = "isSummarizationOf")]
     IsSummarizationOf,
     /**Target is an index, concordance, teacher’s guide, gloss, supplement, or appendix of
-            the current entity.*/
+    the current entity.*/
     #[serde(rename = "hasSupplement")]
     HasSupplement,
     ///Reciprocal relationship of hasSupplement.
     #[serde(rename = "isSupplementOf")]
     IsSupplementOf,
     /**Target is a dramatization, novelization, versification, or screenplay of the current
-            entity.*/
+    entity.*/
     #[serde(rename = "hasTransformation")]
     HasTransformation,
     ///Reciprocal relationship of hasTransformation.
     #[serde(rename = "isTransformationOf")]
     IsTransformationOf,
     /**Target is a literal translation or transcription (music) of the current
-            entity.*/
+    entity.*/
     #[serde(rename = "hasTranslation")]
     HasTranslation,
     ///Reciprocal relationship of hasTranslation.

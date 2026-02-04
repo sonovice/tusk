@@ -1,6 +1,6 @@
 //!Element: `<appInfo>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<appInfo>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl AppInfoChild {
     }
 }
 /**application information - Groups information about applications which have acted upon
-      the MEI file.*/
+the MEI file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "appInfo")]
 pub struct AppInfo {

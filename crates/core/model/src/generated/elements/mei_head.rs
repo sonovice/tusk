@@ -1,6 +1,6 @@
 //!Element: `<meiHead>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<meiHead>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -63,7 +63,7 @@ impl MeiHeadChild {
     }
 }
 /**MEI header - Header is independent;i.e., not attached to either a music or a corpus
-              document.*/
+document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiHead")]
 pub struct MeiHead {

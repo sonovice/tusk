@@ -1,6 +1,6 @@
 //!Element: `<editor>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<editor>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -39,7 +39,7 @@ impl EditorChild {
     }
 }
 /**The name of the individual(s), institution(s) or organization(s) acting in an editorial
-      capacity.*/
+capacity.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "editor")]
 pub struct Editor {

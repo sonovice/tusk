@@ -1,6 +1,6 @@
 //!Element: `<edition>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<edition>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -396,10 +396,10 @@ impl EditionChild {
     }
 }
 /**edition designation - A word or text phrase that indicates a difference in either
-      content or form between the item being described and a related item previously issued by the
-      same publisher/distributor (e.g., 2nd edition, version 2.0, etc.), or simultaneously issued by
-      either the same publisher/distributor or another publisher/distributor (e.g., large print
-      edition, British edition, etc.).*/
+content or form between the item being described and a related item previously issued by the
+same publisher/distributor (e.g., 2nd edition, version 2.0, etc.), or simultaneously issued by
+either the same publisher/distributor or another publisher/distributor (e.g., large print
+edition, British edition, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "edition")]
 pub struct Edition {

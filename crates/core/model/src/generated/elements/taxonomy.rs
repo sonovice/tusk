@@ -1,6 +1,6 @@
 //!Element: `<taxonomy>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<taxonomy>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -56,7 +56,7 @@ impl TaxonomyChild {
     }
 }
 /**Defines a typology either implicitly, by means of a bibliographic citation, or explicitly
-      by a structured taxonomy.*/
+by a structured taxonomy.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "taxonomy")]
 pub struct Taxonomy {

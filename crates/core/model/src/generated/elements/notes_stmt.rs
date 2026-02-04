@@ -1,6 +1,6 @@
 //!Element: `<notesStmt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<notesStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl NotesStmtChild {
     }
 }
 /**notes statement - Collects any notes providing information about a text additional to
-      that recorded in other parts of the bibliographic description.*/
+that recorded in other parts of the bibliographic description.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "notesStmt")]
 pub struct NotesStmt {

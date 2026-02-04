@@ -1,6 +1,6 @@
 //!Element: `<oStaff>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<oStaff>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -322,7 +322,7 @@ impl OStaffChild {
     }
 }
 /**ossia staff - A staff that holds an alternative passage which may be played instead of
-      the original material.*/
+the original material.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "oStaff")]
 pub struct OStaff {

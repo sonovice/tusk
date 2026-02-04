@@ -1,8 +1,8 @@
 //!Element: `<trill>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Rapid alternation of a note with another (usually at the interval of a second
-      above).*/
+above).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "trill")]
 pub struct Trill {

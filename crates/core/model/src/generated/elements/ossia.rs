@@ -1,6 +1,6 @@
 //!Element: `<ossia>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<ossia>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +42,7 @@ impl OssiaChild {
     }
 }
 /**Captures original notation and a differently notated version*present in
-      the source being transcribed*.*/
+the source being transcribed*.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ossia")]
 pub struct Ossia {

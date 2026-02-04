@@ -1,6 +1,6 @@
 //!Element: `<work>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<work>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -196,8 +196,8 @@ impl WorkChild {
     }
 }
 /**Provides a detailed description of a work — a distinct intellectual or artistic creation —
-      specifically its history, language use, and high-level musical attributes (e.g., key, tempo,
-      meter, medium of performance, and intended duration).*/
+specifically its history, language use, and high-level musical attributes (e.g., key, tempo,
+meter, medium of performance, and intended duration).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "work")]
 pub struct Work {

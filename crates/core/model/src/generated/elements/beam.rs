@@ -1,6 +1,6 @@
 //!Element: `<beam>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<beam>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -266,7 +266,7 @@ impl BeamChild {
     }
 }
 /**A container for a series of explicitly beamed events that begins and ends entirely within
-      a measure.*/
+a measure.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "beam")]
 pub struct Beam {

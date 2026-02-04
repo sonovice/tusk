@@ -1,6 +1,6 @@
 //!Element: `<editionStmt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<editionStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -70,7 +70,7 @@ impl EditionStmtChild {
     }
 }
 /**edition statement - Container for meta-data pertaining to a particular edition of the
-      material being described.*/
+material being described.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "editionStmt")]
 pub struct EditionStmt {

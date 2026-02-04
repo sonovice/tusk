@@ -1,6 +1,6 @@
 //!Element: `<fig>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fig>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +42,7 @@ impl FigChild {
     }
 }
 /**figure - Groups elements representing or containing graphic information such as an
-      illustration or figure.*/
+illustration or figure.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fig")]
 pub struct Fig {

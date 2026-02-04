@@ -1,6 +1,6 @@
 //!Element: `<pubStmt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<pubStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -84,8 +84,8 @@ impl PubStmtChild {
     }
 }
 /**publication statement - Container for information regarding the publication or
-      distribution of a bibliographic item, including the publisher’s name and address, the date of
-      publication, and other relevant details.*/
+distribution of a bibliographic item, including the publisher’s name and address, the date of
+publication, and other relevant details.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "pubStmt")]
 pub struct PubStmt {

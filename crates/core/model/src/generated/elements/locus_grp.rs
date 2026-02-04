@@ -1,6 +1,6 @@
 //!Element: `<locusGrp>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<locusGrp>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -21,7 +21,7 @@ impl LocusGrpChild {
     }
 }
 /**locus group - Groups locations which together form a distinct but discontinuous item
-      within a manuscript or manuscript part, according to a specific foliation.*/
+within a manuscript or manuscript part, according to a specific foliation.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "locusGrp")]
 pub struct LocusGrp {

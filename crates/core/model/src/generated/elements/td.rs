@@ -1,6 +1,6 @@
 //!Element: `<td>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<td>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -536,7 +536,7 @@ impl TdChild {
     }
 }
 /**table data - Designates a table cell that contains data as opposed to a cell that
-      contains column or row heading information.*/
+contains column or row heading information.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "td")]
 pub struct Td {

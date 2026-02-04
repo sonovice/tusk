@@ -73,7 +73,7 @@ pub enum AttNeumeAnlType {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttNeumeAnl {
     /**Designation which characterizes the element in some sense, using any convenient
-          classification scheme or typology that employs single-token labels.*/
+    classification scheme or typology that employs single-token labels.*/
     #[serde(rename = "@type", default, skip_serializing_if = "Vec::is_empty")]
     pub r#type: Vec<AttNeumeAnlType>,
 }

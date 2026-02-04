@@ -1,6 +1,6 @@
 //!Element: `<pb>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<pb>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,7 +35,7 @@ impl PbChild {
     }
 }
 /**page beginning - An empty formatting element that forces text to begin on a new
-      page.*/
+page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "pb")]
 pub struct Pb {

@@ -1,6 +1,6 @@
 //!Element: `<tr>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<tr>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl TrChild {
     }
 }
 /**table row - A formatting element that contains one or more cells (intersection of a row
-      and a column) in atable.*/
+and a column) in atable.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tr")]
 pub struct Tr {

@@ -1,6 +1,6 @@
 //!Element: `<chanPr>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///channel pressure - MIDI channel pressure/after touch.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "chanPr")]

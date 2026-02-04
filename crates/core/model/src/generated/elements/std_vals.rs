@@ -1,6 +1,6 @@
 //!Element: `<stdVals>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<stdVals>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl StdValsChild {
     }
 }
 /**standard values - Specifies the format used when standardized date or number values are
-      supplied.*/
+supplied.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "stdVals")]
 pub struct StdVals {

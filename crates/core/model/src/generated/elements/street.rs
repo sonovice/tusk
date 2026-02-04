@@ -1,6 +1,6 @@
 //!Element: `<street>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<street>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl StreetChild {
     }
 }
 /**full street address including any name or number identifying a building as well as the
-      name of the street or route on which it is located.*/
+name of the street or route on which it is located.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "street")]
 pub struct Street {

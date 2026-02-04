@@ -1,8 +1,8 @@
 //!Element: `<breath>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**breath mark - An indication of a point at which the performer on an instrument requiring
-      breath (including the voice) may breathe.*/
+breath (including the voice) may breathe.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "breath")]
 pub struct Breath {

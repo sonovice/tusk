@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Part 1</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>24</divisions>
+        <key>
+          <fifths>0</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <harmony default-y="40">
+         <root>
+            <root-step>A</root-step>
+         </root>
+         <kind parentheses-degrees="yes" text="7">dominant</kind>
+         <degree>
+            <degree-value>5</degree-value>
+            <degree-alter>-1</degree-alter>
+            <degree-type text="">alter</degree-type>
+         </degree>
+         <degree>
+            <degree-value>3</degree-value>
+            <degree-alter>0</degree-alter>
+            <degree-type text="omit ">subtract</degree-type>
+         </degree>
+      </harmony>
+    </measure>
+  </part>
+</score-partwise>

@@ -1,6 +1,6 @@
 //!Element: `<perfMedium>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<perfMedium>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +42,7 @@ impl PerfMediumChild {
     }
 }
 /**performance medium - Indicates the number and character of the performing forces used in
-      a musical composition.*/
+a musical composition.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "perfMedium")]
 pub struct PerfMedium {

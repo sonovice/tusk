@@ -198,20 +198,13 @@ fn create_encoding_desc(
 
 /// Convert MusicXML score content to MEI music element.
 fn convert_music(score: &ScorePartwise, ctx: &mut ConversionContext) -> ConversionResult<Music> {
-    let music = Music::default();
+    use tusk_model::elements::MusicChild;
 
-    // Create body containing mdiv
-    // Note: The generated Music type doesn't have Body as a direct child in MusicChild enum.
-    // This is a known limitation of the generated code - the MEI spec allows body as a child
-    // of music, but the code generator only included genDesc, performance, facsimile.
-    // For now, we create the body structure separately.
-    // The actual MEI document assembly with body will need to be handled at serialization.
-    let _body = convert_body(score, ctx)?;
+    let mut music = Music::default();
 
-    // Since Music doesn't have Body as a child variant in the generated code,
-    // we return an empty Music. The full document structure including body
-    // will need special handling during serialization to produce valid MEI.
-    // This is acceptable for Phase 4.3 - full integration will come later.
+    // Create body containing mdiv with score content
+    let body = convert_body(score, ctx)?;
+    music.children.push(MusicChild::Body(Box::new(body)));
 
     Ok(music)
 }

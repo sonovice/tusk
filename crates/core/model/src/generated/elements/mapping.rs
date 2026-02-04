@@ -1,6 +1,6 @@
 //!Element: `<mapping>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<mapping>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -25,7 +25,7 @@ impl MappingChild {
     }
 }
 /**One or more characters which are related to the parent symbol in some respect, as
-      specified by the type attribute.*/
+specified by the type attribute.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mapping")]
 pub struct Mapping {

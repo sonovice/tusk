@@ -1,6 +1,6 @@
 //!Element: `<byline>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<byline>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -410,7 +410,7 @@ impl BylineChild {
     }
 }
 /**Contains the primary statement of responsibility given for a work on its title
-      page.*/
+page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "byline")]
 pub struct Byline {

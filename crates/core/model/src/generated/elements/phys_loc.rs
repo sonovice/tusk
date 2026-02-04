@@ -1,6 +1,6 @@
 //!Element: `<physLoc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<physLoc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,8 +42,8 @@ impl PhysLocChild {
     }
 }
 /**physical location - Groups information about the current physical location of a
-      bibliographic item, such as the repository in which it is located and its shelf mark(s), and
-      its previous locations.*/
+bibliographic item, such as the repository in which it is located and its shelf mark(s), and
+its previous locations.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "physLoc")]
 pub struct PhysLoc {

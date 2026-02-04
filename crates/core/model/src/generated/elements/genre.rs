@@ -1,6 +1,6 @@
 //!Element: `<genre>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genre>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl GenreChild {
     }
 }
 /**Term or terms that designate a category characterizing a particular style, form, or
-      content.*/
+content.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genre")]
 pub struct Genre {

@@ -1,6 +1,6 @@
 //!Element: `<recipient>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<recipient>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl RecipientChild {
     }
 }
 /**The name of the individual(s), institution(s) or organization(s) receiving
-      correspondence.*/
+correspondence.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "recipient")]
 pub struct Recipient {

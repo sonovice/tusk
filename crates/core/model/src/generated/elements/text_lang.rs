@@ -1,6 +1,6 @@
 //!Element: `<textLang>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<textLang>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl TextLangChild {
     }
 }
 /**text language - (other languages) one or more codes identifying any other languages used in the
-          bibliographic work.*/
+bibliographic work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "textLang")]
 pub struct TextLang {

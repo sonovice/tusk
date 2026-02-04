@@ -1,6 +1,6 @@
 //!Element: `<district>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<district>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl DistrictChild {
     }
 }
 /**Contains the name of any kind of subdivision of a settlement, such as a parish, ward, or
-      other administrative or geographic unit.*/
+other administrative or geographic unit.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "district")]
 pub struct District {

@@ -1,6 +1,6 @@
 //!Element: `<creation>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<creation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -382,8 +382,8 @@ impl CreationChild {
     }
 }
 /**Non-bibliographic details of the creation of an intellectual entity, in narrative form,
-      such as the date, place, and circumstances of its composition. More detailed information may
-      be captured within the history element.*/
+such as the date, place, and circumstances of its composition. More detailed information may
+be captured within the history element.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "creation")]
 pub struct Creation {

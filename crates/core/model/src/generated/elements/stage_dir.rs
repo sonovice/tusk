@@ -1,6 +1,6 @@
 //!Element: `<stageDir>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<stageDir>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl StageDirChild {
     }
 }
 /**stage direction - Contains any kind of stage direction within a dramatic text or
-      fragment.*/
+fragment.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "stageDir")]
 pub struct StageDir {

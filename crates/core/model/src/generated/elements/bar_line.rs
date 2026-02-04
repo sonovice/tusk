@@ -1,8 +1,8 @@
 //!Element: `<barLine>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Vertical line drawn through one or more staves that divides musical notation into metrical
-      units.*/
+units.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "barLine")]
 pub struct BarLine {

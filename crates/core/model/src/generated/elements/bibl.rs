@@ -1,6 +1,6 @@
 //!Element: `<bibl>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<bibl>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -536,7 +536,7 @@ impl BiblChild {
     }
 }
 /**bibliographic reference - Provides a loosely-structured bibliographic citation in which
-      the sub-components may or may not be explicitly marked.*/
+the sub-components may or may not be explicitly marked.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "bibl")]
 pub struct Bibl {

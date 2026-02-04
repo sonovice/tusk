@@ -1,6 +1,6 @@
 //!Element: `<measure>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<measure>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -462,7 +462,7 @@ impl MeasureChild {
     }
 }
 /**Unit of musical time consisting of a fixed number of note values of a given type, as
-      determined by the prevailing meter, and delimited in musical notation by bar lines.*/
+determined by the prevailing meter, and delimited in musical notation by bar lines.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "measure")]
 pub struct Measure {

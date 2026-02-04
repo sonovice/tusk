@@ -1,6 +1,6 @@
 //!Element: `<samplingDecl>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<samplingDecl>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl SamplingDeclChild {
     }
 }
 /**sampling declaration - Contains a prose description of the rationale and methods used in
-      sampling texts in the creation of a corpus or collection.*/
+sampling texts in the creation of a corpus or collection.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "samplingDecl")]
 pub struct SamplingDecl {

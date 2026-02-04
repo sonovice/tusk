@@ -1,8 +1,8 @@
 //!Element: `<curve>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**A curved line that cannot be represented by a more specific element, such as a
-      slur.*/
+slur.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "curve")]
 pub struct Curve {

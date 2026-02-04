@@ -1,6 +1,6 @@
 //!Element: `<multiRpt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///multiple repeat - Multiple repeated measures.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "multiRpt")]

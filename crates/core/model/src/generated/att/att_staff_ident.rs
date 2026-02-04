@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttStaffIdent {
     /**Signifies the staff on which a notated event occurs or to which a control event
-          applies. Mandatory when applicable.*/
+    applies. Mandatory when applicable.*/
     #[serde(rename = "@staff", default, skip_serializing_if = "Vec::is_empty")]
     pub staff: Vec<u64>,
 }

@@ -1,6 +1,6 @@
 //!Element: `<inscription>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<inscription>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl InscriptionChild {
     }
 }
 /**An inscription added to an item, such as a bookplate, a note designating the item as a
-      gift, and/or the author’s signature.*/
+gift, and/or the author’s signature.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "inscription")]
 pub struct Inscription {

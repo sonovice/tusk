@@ -29,19 +29,18 @@ tusk/
 │   │   ├── cli/                      # CLI tool (clap, indicatif)
 │   │   └── wasm/                     # WASM bindings (wasm-bindgen)
 │   ├── core/
-│   │   ├── model/                    # Internal MEI-based model (version-agnostic)
-│   │   │   └── src/
-│   │   │       ├── lib.rs
-│   │   │       └── generated/        # Generated from MEI ODD specs
-│   │   │           ├── mod.rs
-│   │   │           ├── att/          # Attribute classes (att.duration.log → AttDurationLog)
-│   │   │           ├── elements/     # Elements (note → Note)
-│   │   │           └── data.rs       # Data types (data.DURATION → DataDuration)
-│   │   └── convert/                  # Conversion layer (MusicXML ↔ MEI)
+│   │   └── model/                    # Internal MEI-based model (version-agnostic)
+│   │       └── src/
+│   │           ├── lib.rs
+│   │           └── generated/        # Generated from MEI ODD specs
+│   │               ├── mod.rs
+│   │               ├── att/          # Attribute classes (att.duration.log → AttDurationLog)
+│   │               ├── elements/     # Elements (note → Note)
+│   │               └── data.rs       # Data types (data.DURATION → DataDuration)
 │   └── formats/
-│       ├── mei/                      # MEI parsing/serialization
+│       ├── mei/                      # MEI import/export (direct 1:1 mapping)
 │       │   └── src/versions/         # Version-specific (5.1, 5.0, 4.0.1, 3.0.0)
-│       └── musicxml/                 # MusicXML parsing/serialization
+│       └── musicxml/                 # MusicXML import/export (includes conversion)
 │           └── src/versions/         # Version-specific (4.0, 3.1, 3.0, 2.0)
 ├── tools/
 │   └── mei-codegen/                  # ODD → Rust code generator
@@ -173,8 +172,32 @@ tusk/
 
 This domain separation is critical for accurate conversion. For example, `accid` (written accidental on the page) differs from `accid.ges` (sounding accidental after key signature application). The internal model preserves this distinction.
 
-### 2. Separate MusicXML Intermediate Model
-Parse MusicXML into its own types first, then convert. Cleaner debugging and enables MusicXML-specific validation.
+### 2. Format Crates Own Their Conversion
+
+Each format crate exposes `import()` and `export()` at the public API level:
+
+```rust
+// MEI: trivial 1:1 mapping (no conversion needed)
+let doc = mei::import(reader)?;    // deserialize XML → internal model
+mei::export(&doc, writer)?;        // serialize internal model → XML
+
+// MusicXML: includes conversion logic internally
+let doc = musicxml::import(reader)?;  // parse XML → MusicXML types → convert to internal model
+musicxml::export(&doc, writer)?;      // convert internal model → MusicXML types → serialize XML
+```
+
+**Why no separate convert crate?**
+- MEI needs no conversion (internal model IS MEI)
+- MusicXML conversion is MusicXML-specific, belongs in that crate
+- Keeps related code together, simpler dependency graph
+
+**Internal structure of musicxml crate:**
+- `model/` - MusicXML intermediate types (maps to XSD schema)
+- `parser/` - XML → MusicXML types
+- `serializer/` - MusicXML types → XML
+- `import/` - MusicXML → internal model conversion (submodules: note, attributes, direction, structure, parts, utils)
+- `export/` - internal model → MusicXML conversion (submodules: note, attributes, direction, structure, parts, utils)
+- `context.rs` - conversion state (divisions, pending ties/slurs, ID mappings)
 
 ### 3. Chunked Processing by `<mdiv>` (Critical for Large Files)
 MEI files can exceed 100 MB for long operas. Process by musical division:
@@ -218,7 +241,7 @@ for mdiv in reader.mdivs() {   // lazy iteration
 - MusicXML → MEI: each input file becomes one `<mdiv>` (batch import can merge into multi-`<mdiv>` MEI)
 
 ### 4. Conversion Context
-State object tracks divisions, pending ties/slurs, ID mappings during conversion.
+State object (in musicxml crate) tracks divisions, pending ties/slurs, ID mappings during import/export.
 
 ### 5. Version Abstraction
 - Internal model always represents latest version (MEI 5.1)
@@ -233,7 +256,6 @@ State object tracks divisions, pending ties/slurs, ID mappings during conversion
 [workspace]
 members = [
     "crates/core/model",
-    "crates/core/convert",
     "crates/formats/mei",
     "crates/formats/musicxml",
     "crates/bindings/cli",
@@ -251,7 +273,6 @@ repository = "https://github.com/..."
 [workspace.dependencies]
 # Internal crates
 model = { path = "crates/core/model" }
-convert = { path = "crates/core/convert" }
 mei = { path = "crates/formats/mei" }
 musicxml = { path = "crates/formats/musicxml" }
 
@@ -373,14 +394,19 @@ Use `cargo add <crate>` to install latest versions.
 
 1. `Cargo.toml` - Workspace configuration
 2. `crates/core/model/` - MEI-mirroring internal model
-3. `crates/core/convert/` - Conversion logic
-4. `crates/formats/mei/src/parser/` - MEI XML parser
-5. `crates/formats/mei/src/serializer/` - MEI XML serializer
-6. `crates/formats/musicxml/src/model/` - MusicXML intermediate types
-7. `crates/formats/musicxml/src/parser/` - MusicXML parser
-8. `crates/bindings/cli/` - CLI tool
-9. `crates/bindings/wasm/` - WASM bindings
-10. `docs/requirements.md` - Full requirements documentation
+3. `crates/formats/mei/src/lib.rs` - MEI `import()`/`export()` public API
+4. `crates/formats/mei/src/parser/` - MEI XML parser (internal)
+5. `crates/formats/mei/src/serializer/` - MEI XML serializer (internal)
+6. `crates/formats/musicxml/src/lib.rs` - MusicXML `import()`/`export()` public API
+7. `crates/formats/musicxml/src/model/` - MusicXML intermediate types
+8. `crates/formats/musicxml/src/parser/` - MusicXML parser (internal)
+9. `crates/formats/musicxml/src/serializer/` - MusicXML serializer (internal)
+10. `crates/formats/musicxml/src/import/` - MusicXML → internal model conversion (submodules)
+11. `crates/formats/musicxml/src/export/` - internal model → MusicXML conversion (submodules)
+12. `crates/formats/musicxml/src/context.rs` - conversion state tracking
+13. `crates/bindings/cli/` - CLI tool
+14. `crates/bindings/wasm/` - WASM bindings
+15. `docs/requirements.md` - Full requirements documentation
 
 ---
 

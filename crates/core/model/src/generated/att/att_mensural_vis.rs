@@ -10,11 +10,11 @@ pub enum AttMensuralVisMensurForm {
     Vertical,
 }
 /**Used by staffDef and scoreDef to provide default values for attributes in the visual
-      domain related to mensuration.*/
+domain related to mensuration.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttMensuralVis {
     /**Records the color of the mensuration sign. Do not confuse this with the musical term
-          'color' as used in pre-CMN notation.*/
+    'color' as used in pre-CMN notation.*/
     #[serde(rename = "@mensur.color", skip_serializing_if = "Option::is_none")]
     pub mensur_color: Option<crate::generated::data::DataColor>,
     ///Determines if a dot is to be added to the base symbol.
@@ -36,7 +36,7 @@ pub struct AttMensuralVis {
     #[serde(rename = "@mensur.size", skip_serializing_if = "Option::is_none")]
     pub mensur_size: Option<crate::generated::data::DataFontsize>,
     /**Indicates the number lines added to the mensuration sign. For example, one slash is
-          added for what we now call 'alla breve'.*/
+    added for what we now call 'alla breve'.*/
     #[serde(rename = "@mensur.slash", skip_serializing_if = "Option::is_none")]
     pub mensur_slash: Option<u64>,
 }

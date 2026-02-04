@@ -1,6 +1,6 @@
 //!Element: `<playingSpeed>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<playingSpeed>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl PlayingSpeedChild {
     }
 }
 /**Playing speed for a sound recording is the speed at which the carrier must be operated to
-      produce the sound intended (e.g., 33 1/3 rpm, 19 cm/s, etc.).*/
+produce the sound intended (e.g., 33 1/3 rpm, 19 cm/s, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "playingSpeed")]
 pub struct PlayingSpeed {

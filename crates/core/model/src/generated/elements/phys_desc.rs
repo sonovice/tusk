@@ -1,6 +1,6 @@
 //!Element: `<physDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<physDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -294,8 +294,8 @@ impl PhysDescChild {
     }
 }
 /**physical description - Container for information about the appearance, construction, or
-      handling of physical materials, such as their dimension, quantity, color, style, and technique
-      of creation.*/
+handling of physical materials, such as their dimension, quantity, color, style, and technique
+of creation.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "physDesc")]
 pub struct PhysDesc {

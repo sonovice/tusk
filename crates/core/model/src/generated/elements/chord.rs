@@ -1,6 +1,6 @@
 //!Element: `<chord>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<chord>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -154,7 +154,7 @@ impl ChordChild {
     }
 }
 /**A simultaneous sounding of two or more notes in the same layer *with the same
-      duration*.*/
+duration*.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "chord")]
 pub struct Chord {

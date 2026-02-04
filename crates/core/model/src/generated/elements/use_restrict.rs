@@ -1,6 +1,6 @@
 //!Element: `<useRestrict>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<useRestrict>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl UseRestrictChild {
     }
 }
 /**usage restrictions - Container for information about the conditions that affect use of a
-      bibliographic item after access has been granted.*/
+bibliographic item after access has been granted.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "useRestrict")]
 pub struct UseRestrict {

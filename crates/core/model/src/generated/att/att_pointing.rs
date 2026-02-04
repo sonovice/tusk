@@ -40,18 +40,18 @@ pub struct AttPointing {
     #[serde(rename = "@xlink:actuate", skip_serializing_if = "Option::is_none")]
     pub xlink_actuate: Option<AttPointingXlinkActuate>,
     /**Characterization of the relationship between resources. The value of the role
-          attribute must be a URI.*/
+    attribute must be a URI.*/
     #[serde(rename = "@xlink:role", skip_serializing_if = "Option::is_none")]
     pub xlink_role: Option<crate::generated::data::DataUri>,
     ///Defines how a remote resource is rendered.
     #[serde(rename = "@xlink:show", skip_serializing_if = "Option::is_none")]
     pub xlink_show: Option<AttPointingXlinkShow>,
     /**Identifies passive participants in a relationship; that is, the entities pointed
-          "to".*/
+    "to".*/
     #[serde(rename = "@target", default, skip_serializing_if = "Vec::is_empty")]
     pub target: Vec<crate::generated::data::DataUri>,
     /**Characterization of target resource(s) using any convenient classification scheme or
-          typology.*/
+    typology.*/
     #[serde(rename = "@targettype", skip_serializing_if = "Option::is_none")]
     pub targettype: Option<String>,
 }

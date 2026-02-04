@@ -1,8 +1,8 @@
 //!Element: `<clef>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Indication of the exact location of a particular note on the staff and, therefore, the
-      other notes as well.*/
+other notes as well.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "clef")]
 pub struct Clef {

@@ -1,6 +1,6 @@
 //!Element: `<annot>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<annot>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -543,7 +543,7 @@ impl AnnotChild {
     }
 }
 /**annotation - Provides a statement explaining the text or indicating the basis for an
-      assertion.*/
+assertion.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "annot")]
 pub struct Annot {

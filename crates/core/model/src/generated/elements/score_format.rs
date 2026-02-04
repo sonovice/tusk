@@ -1,6 +1,6 @@
 //!Element: `<scoreFormat>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<scoreFormat>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl ScoreFormatChild {
     }
 }
 /**Describes the type of score used to represent a musical composition (e.g., short score,
-      full score, condensed score, close score, etc.).*/
+full score, condensed score, close score, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "scoreFormat")]
 pub struct ScoreFormat {

@@ -1,6 +1,6 @@
 //!Element: `<mNum>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<mNum>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -39,8 +39,8 @@ impl MNumChild {
     }
 }
 /**measure number - Designation, name, or label for a measure, often but not always
-      consisting of digits. Use this element when thenattribute onmeasuredoes not adequately capture the appearance or placement of the measure
-      number/label.*/
+consisting of digits. Use this element when thenattribute onmeasuredoes not adequately capture the appearance or placement of the measure
+number/label.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mNum")]
 pub struct MNum {

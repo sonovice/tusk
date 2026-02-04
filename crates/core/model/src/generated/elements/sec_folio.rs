@@ -1,6 +1,6 @@
 //!Element: `<secFolio>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<secFolio>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl SecFolioChild {
     }
 }
 /**second folio - Marks the word or words taken from a fixed point in a codex (typically
-      the beginning of the second leaf) in order to provide a unique identifier for the item.*/
+the beginning of the second leaf) in order to provide a unique identifier for the item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "secFolio")]
 pub struct SecFolio {

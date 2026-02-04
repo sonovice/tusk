@@ -1,6 +1,6 @@
 //!Element: `<accid>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///accidental - Records a temporary alteration to the pitch of a note.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "accid")]

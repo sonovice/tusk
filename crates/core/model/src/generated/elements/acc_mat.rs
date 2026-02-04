@@ -1,6 +1,6 @@
 //!Element: `<accMat>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<accMat>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl AccMatChild {
     }
 }
 /**Holds a description of any additional material bound with an item, such as
-      non-contemporaneous documents or fragments.*/
+non-contemporaneous documents or fragments.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "accMat")]
 pub struct AccMat {

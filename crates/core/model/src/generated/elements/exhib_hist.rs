@@ -1,6 +1,6 @@
 //!Element: `<exhibHist>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<exhibHist>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -396,7 +396,7 @@ impl ExhibHistChild {
     }
 }
 /**exhibition history - A record of public exhibitions, including dates, venues,
-      etc.*/
+etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "exhibHist")]
 pub struct ExhibHist {

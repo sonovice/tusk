@@ -1,6 +1,6 @@
 //!Element: `<desc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<desc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl DescChild {
     }
 }
 /**description - Container for text that briefly describes the feature to which it is
-      attached, including its intended usage, purpose, or application as appropriate.*/
+attached, including its intended usage, purpose, or application as appropriate.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "desc")]
 pub struct Desc {

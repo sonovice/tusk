@@ -1,6 +1,6 @@
 //!Element: `<heraldry>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<heraldry>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl HeraldryChild {
     }
 }
 /**Contains a heraldic formula or phrase, typically found as part of a blazon, coat of arms,
-      etc.*/
+etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "heraldry")]
 pub struct Heraldry {

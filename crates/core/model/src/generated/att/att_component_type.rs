@@ -6,7 +6,7 @@ pub enum AttComponentTypeComptype {
     #[serde(rename = "constituent")]
     Constituent,
     /**A physical, but not logical component of the entity, usually included as part of
-              the binding process.*/
+    the binding process.*/
     #[serde(rename = "boundwith")]
     Boundwith,
     ///A logical component of the entity physically held elsewhere.

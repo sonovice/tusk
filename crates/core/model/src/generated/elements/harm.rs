@@ -1,6 +1,6 @@
 //!Element: `<harm>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<harm>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -501,7 +501,7 @@ impl HarmChild {
     }
 }
 /**harmony - An indication of harmony,e.g., chord names, tablature grids, harmonic
-      analysis, figured bass.*/
+analysis, figured bass.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "harm")]
 pub struct Harm {

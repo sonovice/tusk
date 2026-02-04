@@ -1,6 +1,6 @@
 //!Element: `<grpSym>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<grpSym>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl GrpSymChild {
     }
 }
 /**group symbol - A brace or bracket used to group two or more staves of a score or
-      part.*/
+part.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "grpSym")]
 pub struct GrpSym {

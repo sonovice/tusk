@@ -73,29 +73,29 @@ pub enum AttNcAnlType {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttNcAnl {
     /**Captures scale degree information usingHumdrum **deg syntax-- an optional indicator
-          of melodic approach (^ = ascending approach, v = descending approach), a scale degree
-          value (1 = tonic ... 7 = leading tone), and an optional indication of chromatic
-          alteration,1,v7,^1, orv5+, for example.
-          The amount of chromatic alternation is not indicated.*/
+    of melodic approach (^ = ascending approach, v = descending approach), a scale degree
+    value (1 = tonic ... 7 = leading tone), and an optional indication of chromatic
+    alteration,1,v7,^1, orv5+, for example.
+    The amount of chromatic alternation is not indicated.*/
     #[serde(rename = "@deg", skip_serializing_if = "Option::is_none")]
     pub deg: Option<crate::generated::data::DataScaledegree>,
     /**Encodes the melodic interval from the previous pitch. The value may be a general
-          directional indication (u, d, s, etc.), an indication of diatonic interval direction,
-          quality, and size, or a precise numeric value in half steps.*/
+    directional indication (u, d, s, etc.), an indication of diatonic interval direction,
+    quality, and size, or a precise numeric value in half steps.*/
     #[serde(rename = "@intm", skip_serializing_if = "Option::is_none")]
     pub intm: Option<crate::generated::data::DataIntervalMelodic>,
     ///Describes melodic function usingHumdrum **embel syntax.
     #[serde(rename = "@mfunc", skip_serializing_if = "Option::is_none")]
     pub mfunc: Option<crate::generated::data::DataMelodicfunction>,
     /**Designation which characterizes the element in some sense, using any convenient
-          classification scheme or typology that employs single-token labels.*/
+    classification scheme or typology that employs single-token labels.*/
     #[serde(rename = "@type", default, skip_serializing_if = "Vec::is_empty")]
     pub r#type: Vec<AttNcAnlType>,
     ///Holds pitch class information.
     #[serde(rename = "@pclass", skip_serializing_if = "Option::is_none")]
     pub pclass: Option<crate::generated::data::DataPitchclass>,
     /**Contains sol-fa designation,e.g., do, re, mi, etc., in either a fixed or movable Do
-          system.*/
+    system.*/
     #[serde(rename = "@psolfa", skip_serializing_if = "Option::is_none")]
     pub psolfa: Option<String>,
 }

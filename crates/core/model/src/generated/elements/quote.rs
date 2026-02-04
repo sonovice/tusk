@@ -1,6 +1,6 @@
 //!Element: `<quote>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<quote>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -550,8 +550,8 @@ impl QuoteChild {
     }
 }
 /**quoted material - Contains a paragraph-like block of text attributed to an external
-      source, normally set off from the surrounding text by spacing or other typographic
-      distinction.*/
+source, normally set off from the surrounding text by spacing or other typographic
+distinction.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "quote")]
 pub struct Quote {

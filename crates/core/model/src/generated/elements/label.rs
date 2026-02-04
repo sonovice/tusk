@@ -1,6 +1,6 @@
 //!Element: `<label>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<label>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl LabelChild {
     }
 }
 /**A container for document text that identifies the feature to which it is attached. For a
-      "tool tip" or other generated label, use thelabelattribute.*/
+"tool tip" or other generated label, use thelabelattribute.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "label")]
 pub struct Label {

@@ -1,6 +1,6 @@
 //!Element: `<geogFeat>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<geogFeat>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl GeogFeatChild {
     }
 }
 /**geographical feature name - Contains a common noun identifying a geographical
-      feature.*/
+feature.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "geogFeat")]
 pub struct GeogFeat {

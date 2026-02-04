@@ -1,6 +1,6 @@
 //!Element: `<specRepro>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<specRepro>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl SpecReproChild {
     }
 }
 /**special reproduction characteristic - The equalization system, noise reduction system,
-      etc. used in making the recording (e.g., NAB, DBX, Dolby, etc.).*/
+etc. used in making the recording (e.g., NAB, DBX, Dolby, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "specRepro")]
 pub struct SpecRepro {

@@ -1,6 +1,6 @@
 //!Element: `<contributor>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<contributor>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,8 +375,8 @@ impl ContributorChild {
     }
 }
 /**Names of individuals, institutions, or organizations responsible for contributions to the
-      intellectual content of a work, where the specialized elements for authors, editors, etc. do
-      not suffice or do not apply.*/
+intellectual content of a work, where the specialized elements for authors, editors, etc. do
+not suffice or do not apply.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "contributor")]
 pub struct Contributor {

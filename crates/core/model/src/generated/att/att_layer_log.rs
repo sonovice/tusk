@@ -19,7 +19,7 @@ pub struct AttLayerLog {
     #[serde(rename = "@cue", skip_serializing_if = "Option::is_none")]
     pub cue: Option<crate::generated::data::DataBoolean>,
     /**Indicates the relationship between the content of a staff or layer and the prevailing
-          meter.*/
+    meter.*/
     #[serde(rename = "@metcon", skip_serializing_if = "Option::is_none")]
     pub metcon: Option<AttLayerLogMetcon>,
     ///Provides a mechanism for linking the layer to a layerDef element.

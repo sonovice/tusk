@@ -1,6 +1,6 @@
 //!Element: `<unclear>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<unclear>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1243,7 +1243,7 @@ impl UnclearChild {
     }
 }
 /**Contains material that cannot be transcribed with certainty because it is illegible or
-      inaudible in the source.*/
+inaudible in the source.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "unclear")]
 pub struct Unclear {

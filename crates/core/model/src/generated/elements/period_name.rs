@@ -1,6 +1,6 @@
 //!Element: `<periodName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<periodName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl PeriodNameChild {
     }
 }
 /**period name - A label that describes a period of time, such as 'Baroque' or '3rd Style
-      period'.*/
+period'.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "periodName")]
 pub struct PeriodName {

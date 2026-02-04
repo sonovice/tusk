@@ -1,6 +1,6 @@
 //!Element: `<mei>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<mei>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl MeiChild {
     }
 }
 /**Contains a single MEI-conformant document, consisting of an MEI header and a musical text,
-      either in isolation or as part of an meiCorpus element.*/
+either in isolation or as part of an meiCorpus element.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mei")]
 pub struct Mei {

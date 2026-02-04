@@ -1,6 +1,6 @@
 //!Element: `<speaker>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<speaker>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl SpeakerChild {
     }
 }
 /**Contains a specialized form of heading or label, giving the name of one or more speakers
-      in a dramatic text or fragment.*/
+in a dramatic text or fragment.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "speaker")]
 pub struct Speaker {

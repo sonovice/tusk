@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Part 1</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <key>
+           <key-step>F</key-step>
+           <key-alter>1</key-alter>
+           <key-step>G</key-step>
+           <key-alter>1</key-alter>
+           <key-octave number="1">4</key-octave>
+           <key-octave number="2">4</key-octave>
+        </key>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>

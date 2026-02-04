@@ -1,6 +1,6 @@
 //!Element: `<biblStruct>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<biblStruct>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -56,7 +56,7 @@ impl BiblStructChild {
     }
 }
 /**structured bibliographic citation - Contains a bibliographic citation in which
-      bibliographic sub-elements must appear in a specified order.*/
+bibliographic sub-elements must appear in a specified order.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "biblStruct")]
 pub struct BiblStruct {

@@ -1,8 +1,8 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**Logical domain attributes for a score in the mensural repertoire. The values set in these
-      attributes act as score-wide defaults for attributes that are not set in descendant
-      elements.*/
+attributes act as score-wide defaults for attributes that are not set in descendant
+elements.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttScoreDefLogMensural {
     ///Describes the maxima-long relationship.

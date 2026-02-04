@@ -1,6 +1,6 @@
 //!Element: `<settlement>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<settlement>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl SettlementChild {
     }
 }
 /**Contains the name of a settlement such as a city, town, or village identified as a single
-      geopolitical or administrative unit.*/
+geopolitical or administrative unit.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "settlement")]
 pub struct Settlement {

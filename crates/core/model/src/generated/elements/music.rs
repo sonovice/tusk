@@ -1,6 +1,6 @@
 //!Element: `<music>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<music>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -63,7 +63,7 @@ impl MusicChild {
     }
 }
 /**Contains a single musical text of any kind, whether unitary or composite, for example, an
-      etude, opera, song cycle, symphony, or anthology of piano solos.*/
+etude, opera, song cycle, symphony, or anthology of piano solos.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "music")]
 pub struct Music {

@@ -12,7 +12,7 @@ pub enum AttGrpSymLogSymbol {
     #[serde(rename = "bracketsq")]
     Bracketsq,
     /**Line symbol,i.e., |, (wide) line without top and bottom curved/horizontal
-              segments.*/
+    segments.*/
     #[serde(rename = "line")]
     Line,
     ///Grouping symbol missing.
@@ -26,11 +26,11 @@ pub struct AttGrpSymLog {
     #[serde(rename = "@symbol", skip_serializing_if = "Option::is_none")]
     pub symbol: Option<AttGrpSymLogSymbol>,
     /**Holds a reference to the first element in a sequence of events to which the feature
-          applies.*/
+    applies.*/
     #[serde(rename = "@startid", skip_serializing_if = "Option::is_none")]
     pub startid: Option<crate::generated::data::DataUri>,
     /**Indicates the final element in a sequence of events to which the feature
-          applies.*/
+    applies.*/
     #[serde(rename = "@endid", skip_serializing_if = "Option::is_none")]
     pub endid: Option<crate::generated::data::DataUri>,
     ///Indicates the nesting level of staff grouping symbols.

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttNeumeGes {
     /**Encodes the onset time in terms of musical time,i.e., beats[.fractional beat part],
-          as expressed in the written time signature.*/
+    as expressed in the written time signature.*/
     #[serde(rename = "@tstamp.ges", skip_serializing_if = "Option::is_none")]
     pub tstamp_ges: Option<crate::generated::data::DataBeat>,
     ///Records the onset time in terms of ISO time.

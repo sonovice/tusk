@@ -1,6 +1,6 @@
 //!Element: `<div>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<div>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -126,7 +126,7 @@ impl DivChild {
     }
 }
 /**division - A foreword or preface addressed to the reader in which the author or publisher
-              explains the content, purpose, or origin of the text.*/
+explains the content, purpose, or origin of the text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "div")]
 pub struct Div {

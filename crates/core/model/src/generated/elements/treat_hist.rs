@@ -1,6 +1,6 @@
 //!Element: `<treatHist>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<treatHist>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -396,7 +396,7 @@ impl TreatHistChild {
     }
 }
 /**treatment history - A record of the treatment the item has undergone (e.g.,
-      de-acidification, restoration, etc.).*/
+de-acidification, restoration, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "treatHist")]
 pub struct TreatHist {

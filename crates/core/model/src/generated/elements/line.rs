@@ -1,6 +1,6 @@
 //!Element: `<line>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<line>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl LineChild {
     }
 }
 /**A visual line that cannot be represented by a more specific;i.e., semantic,
-      element.*/
+element.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "line")]
 pub struct Line {

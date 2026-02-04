@@ -1,8 +1,8 @@
 //!Element: `<space>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**A placeholder used to fill an incomplete measure, layer, etc. most often so that the
-      combined duration of the events equals the number of beats in the measure.*/
+combined duration of the events equals the number of beats in the measure.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "space")]
 pub struct Space {

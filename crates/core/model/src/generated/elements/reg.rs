@@ -1,6 +1,6 @@
 //!Element: `<reg>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<reg>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1243,7 +1243,7 @@ impl RegChild {
     }
 }
 /**regularization - Contains material which has been regularized or normalized in some
-      sense.*/
+sense.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "reg")]
 pub struct Reg {

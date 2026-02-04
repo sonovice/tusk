@@ -1,8 +1,8 @@
 //!Element: `<divLine>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Represents a division (divisio) in neume notation. Divisions indicate short, medium, or long pauses
-    similar to breath marks in modern notation.*/
+similar to breath marks in modern notation.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "divLine")]
 pub struct DivLine {

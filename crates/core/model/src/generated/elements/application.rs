@@ -1,6 +1,6 @@
 //!Element: `<application>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<application>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +42,7 @@ impl ApplicationChild {
     }
 }
 /**Supplies a version number for an application, independent of its identifier or display
-          name.*/
+name.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "application")]
 pub struct Application {

@@ -1,6 +1,6 @@
 //!Element: `<monogr>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<monogr>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -105,7 +105,7 @@ impl MonogrChild {
     }
 }
 /**monograph level - Contains bibliographic elements describing an item, for example, a
-      published book or journal, score, recording, or an unpublished manuscript.*/
+published book or journal, score, recording, or an unpublished manuscript.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "monogr")]
 pub struct Monogr {

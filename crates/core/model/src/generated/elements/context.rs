@@ -1,6 +1,6 @@
 //!Element: `<context>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<context>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,9 +389,9 @@ impl ContextChild {
     }
 }
 /**The historical, social, intellectual, artistic, or other context within which the work was
-      originally conceived (e.g., the 17th century restoration of the monarchy in England, the
-      aesthetic movement of the late 19th century, etc.) or the historical, social, intellectual,
-      artistic, or other context within which the expression was realized.*/
+originally conceived (e.g., the 17th century restoration of the monarchy in England, the
+aesthetic movement of the late 19th century, etc.) or the historical, social, intellectual,
+artistic, or other context within which the expression was realized.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "context")]
 pub struct Context {

@@ -1,6 +1,6 @@
 //!Element: `<condition>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<condition>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,8 +389,8 @@ impl ConditionChild {
     }
 }
 /**The physical condition of an item, particularly any variances between the physical make-up
-      of the item and that of other copies of the same item (e.g., missing pages or plates,
-      brittleness, faded images, etc.).*/
+of the item and that of other copies of the same item (e.g., missing pages or plates,
+brittleness, faded images, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "condition")]
 pub struct Condition {

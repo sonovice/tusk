@@ -1,6 +1,6 @@
 //!Element: `<fileChar>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fileChar>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,8 +389,8 @@ impl FileCharChild {
     }
 }
 /**file characteristics - Standards or schemes used to encode the file (e.g., ASCII, SGML,
-      etc.), physical characteristics of the file (e.g., recording density, parity, blocking, etc.),
-      and other characteristics that have a bearing on how the file can be processed.*/
+etc.), physical characteristics of the file (e.g., recording density, parity, blocking, etc.),
+and other characteristics that have a bearing on how the file can be processed.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fileChar")]
 pub struct FileChar {

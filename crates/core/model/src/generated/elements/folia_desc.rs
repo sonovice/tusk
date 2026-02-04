@@ -1,6 +1,6 @@
 //!Element: `<foliaDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<foliaDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -63,7 +63,7 @@ impl FoliaDescChild {
     }
 }
 /**Describes the order of folia and bifolia making up the text block of a manuscript or
-      print.*/
+print.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "foliaDesc")]
 pub struct FoliaDesc {

@@ -1,6 +1,6 @@
 //!Element: `<pgDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<pgDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -116,7 +116,7 @@ impl PgDescChild {
     }
 }
 /**page description - Contains a brief prose description of the appearance or description
-      of the content of a physical page.*/
+of the content of a physical page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "pgDesc")]
 pub struct PgDesc {

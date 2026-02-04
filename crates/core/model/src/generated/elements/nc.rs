@@ -1,6 +1,6 @@
 //!Element: `<nc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<nc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -168,7 +168,7 @@ impl NcChild {
     }
 }
 /**Sign representing a single pitched event, although the exact pitch may not be
-      known.*/
+known.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "nc")]
 pub struct Nc {

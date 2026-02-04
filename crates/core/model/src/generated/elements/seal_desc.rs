@@ -1,6 +1,6 @@
 //!Element: `<sealDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<sealDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -410,7 +410,7 @@ impl SealDescChild {
     }
 }
 /**seal description - Describes the seals or similar external attachments applied to an
-      item.*/
+item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "sealDesc")]
 pub struct SealDesc {

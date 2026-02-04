@@ -1,6 +1,6 @@
 //!Element: `<nameLink>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<nameLink>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl NameLinkChild {
     }
 }
 /**name link - Contains a connecting phrase or link used within a name but not regarded as
-      part of it, such as "van der" or "of", "from", etc.*/
+part of it, such as "van der" or "of", "from", etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "nameLink")]
 pub struct NameLink {

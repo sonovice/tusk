@@ -1,6 +1,6 @@
 //!Element: `<corpName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<corpName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl CorpNameChild {
     }
 }
 /**corporate name - Identifies an organization or group of people that acts as a single
-      entity.*/
+entity.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "corpName")]
 pub struct CorpName {

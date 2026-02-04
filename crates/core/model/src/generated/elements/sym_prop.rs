@@ -1,6 +1,6 @@
 //!Element: `<symProp>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<symProp>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl SymPropChild {
     }
 }
 /**symbol property - Provides a name and value for some property of the parent
-      symbol.*/
+symbol.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "symProp")]
 pub struct SymProp {

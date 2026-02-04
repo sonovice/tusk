@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Part 1</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>24</divisions>
+        <key>
+          <fifths>0</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <note default-x="87">
+         <pitch>
+            <step>G</step>
+            <octave>3</octave>
+         </pitch>
+         <duration>1</duration>
+         <voice>1</voice>
+         <type>eighth</type>
+         <stem>up</stem>
+      </note>
+    </measure>
+  </part>
+</score-partwise>

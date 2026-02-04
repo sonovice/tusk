@@ -1,6 +1,6 @@
 //!Element: `<manifestationList>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<manifestationList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl ManifestationListChild {
     }
 }
 /**A container for the descriptions of physical embodiments of an expression of a
-      work.*/
+work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "manifestationList")]
 pub struct ManifestationList {

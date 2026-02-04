@@ -1,6 +1,6 @@
 //!Element: `<verse>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<verse>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -98,7 +98,7 @@ impl VerseChild {
     }
 }
 /**Division of a poem or song lyrics, sometimes having a fixed length, meter or rhyme scheme;
-      a stanza.*/
+a stanza.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "verse")]
 pub struct Verse {

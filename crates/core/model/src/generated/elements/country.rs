@@ -1,6 +1,6 @@
 //!Element: `<country>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<country>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,8 +480,8 @@ impl CountryChild {
     }
 }
 /**Contains the name of a geopolitical unit, such as a nation, country, colony, or
-      commonwealth, larger than or administratively superior to a region and smaller than a
-      bloc.*/
+commonwealth, larger than or administratively superior to a region and smaller than a
+bloc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "country")]
 pub struct Country {

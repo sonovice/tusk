@@ -1,6 +1,6 @@
 //!Element: `<encodingDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<encodingDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -70,8 +70,8 @@ impl EncodingDescChild {
     }
 }
 /**encoding description - Documents the relationship between an electronic file and the
-      source or sources from which it was derived as well as applications used in the
-      encoding/editing process.*/
+source or sources from which it was derived as well as applications used in the
+encoding/editing process.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "encodingDesc")]
 pub struct EncodingDesc {

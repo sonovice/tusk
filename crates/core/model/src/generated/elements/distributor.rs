@@ -1,6 +1,6 @@
 //!Element: `<distributor>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<distributor>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl DistributorChild {
     }
 }
 /**Person or agency, other than a publisher, from which access (including electronic access)
-      to a bibliographic entity may be obtained.*/
+to a bibliographic entity may be obtained.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "distributor")]
 pub struct Distributor {

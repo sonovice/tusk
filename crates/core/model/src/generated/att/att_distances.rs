@@ -10,7 +10,7 @@ pub struct AttDistances {
     #[serde(rename = "@dynam.dist", skip_serializing_if = "Option::is_none")]
     pub dynam_dist: Option<crate::generated::data::DataMeasurementsigned>,
     /**Records the default distance from the staff of harmonic indications, such as guitar
-          chord grids or functional labels.*/
+    chord grids or functional labels.*/
     #[serde(rename = "@harm.dist", skip_serializing_if = "Option::is_none")]
     pub harm_dist: Option<crate::generated::data::DataMeasurementsigned>,
     ///Records the default distance from the staff for rehearsal marks.

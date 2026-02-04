@@ -1,7 +1,7 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**Used by scoreDef and staffDef to provide default description of piano pedal
-      rendition.*/
+rendition.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttPianoPedals {
     ///Determines whether piano pedal marks should be rendered as lines or as terms.

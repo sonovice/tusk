@@ -1,6 +1,6 @@
 //!Element: `<persName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<persName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -522,7 +522,7 @@ impl PersNameChild {
     }
 }
 /**personal name - Designation for an individual, including any or all of that individual's
-      forenames, surnames, honorific titles, and added names.*/
+forenames, surnames, honorific titles, and added names.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "persName")]
 pub struct PersName {

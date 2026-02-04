@@ -352,7 +352,7 @@ pub enum MacroAvailabilityPartContent {
     Identifier(Box<crate::generated::elements::Identifier>),
 }
 /**Groups elements that may appear as part of a description of the availability of and access
-      to a bibliographic item.*/
+to a bibliographic item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MacroAvailabilityPart {
     /// Pattern entity content.
@@ -377,7 +377,7 @@ pub enum MacroBibldescPartContent {
     PhysLoc(Box<crate::generated::elements::PhysLoc>),
 }
 /**Groups manifestation- and item-specific elements that may appear as part of a
-      bibliographic description.*/
+bibliographic description.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MacroBibldescPart {
     /// Pattern entity content.

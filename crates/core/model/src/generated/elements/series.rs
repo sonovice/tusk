@@ -1,6 +1,6 @@
 //!Element: `<series>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<series>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -102,7 +102,7 @@ impl SeriesChild {
     }
 }
 /**Contains information about the serial publication in which a bibliographic item has
-      appeared.*/
+appeared.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "series")]
 pub struct Series {

@@ -1,6 +1,6 @@
 //!Element: `<respStmt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<respStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -56,8 +56,8 @@ impl RespStmtChild {
     }
 }
 /**responsibility statement - Names one or more individuals,
-      groups, or in rare cases, mechanical processes, responsible for creation, realization,
-      production, funding, or distribution of the intellectual or artistic content.*/
+groups, or in rare cases, mechanical processes, responsible for creation, realization,
+production, funding, or distribution of the intellectual or artistic content.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "respStmt")]
 pub struct RespStmt {

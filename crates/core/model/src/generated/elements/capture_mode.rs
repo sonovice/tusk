@@ -1,6 +1,6 @@
 //!Element: `<captureMode>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<captureMode>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl CaptureModeChild {
     }
 }
 /**capture mode - The means used to record notation, sound, or images in the production of
-      a source/manifestation (e.g., analogue, acoustic, electric, digital, optical etc.).*/
+a source/manifestation (e.g., analogue, acoustic, electric, digital, optical etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "captureMode")]
 pub struct CaptureMode {

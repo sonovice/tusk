@@ -1,6 +1,6 @@
 //!Element: `<otherChar>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<otherChar>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl OtherCharChild {
     }
 }
 /**other distinguishing characteristic - Any characteristic that serves to differentiate a
-      work or expression from another.*/
+work or expression from another.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "otherChar")]
 pub struct OtherChar {

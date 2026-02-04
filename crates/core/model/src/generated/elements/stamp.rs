@@ -1,6 +1,6 @@
 //!Element: `<stamp>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<stamp>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl StampChild {
     }
 }
 /**Contains a word or phrase describing an official mark indicating ownership, genuineness,
-      validity, etc.*/
+validity, etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "stamp")]
 pub struct Stamp {

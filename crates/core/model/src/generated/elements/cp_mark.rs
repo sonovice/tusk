@@ -1,6 +1,6 @@
 //!Element: `<cpMark>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<cpMark>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl CpMarkChild {
     }
 }
 /**copy/colla parte mark - A verbal or graphical indication to copy musical material
-      written elsewhere.*/
+written elsewhere.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "cpMark")]
 pub struct CpMark {

@@ -1,6 +1,6 @@
 //!Element: `<syllable>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<syllable>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -392,7 +392,7 @@ impl SyllableChild {
     }
 }
 /**Neume notation can be thought of as "neumed text". Therefore, the syllable element
-      provides high-level organization in this repertoire.*/
+provides high-level organization in this repertoire.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "syllable")]
 pub struct Syllable {

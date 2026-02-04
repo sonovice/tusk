@@ -1,6 +1,6 @@
 //!Element: `<postCode>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<postCode>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -116,7 +116,7 @@ impl PostCodeChild {
     }
 }
 /**postal code - Contains a numerical or alphanumeric code used as part of a postal address
-      to simplify sorting or delivery of mail.*/
+to simplify sorting or delivery of mail.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "postCode")]
 pub struct PostCode {

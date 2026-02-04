@@ -1,6 +1,6 @@
 //!Element: `<famName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<famName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -487,7 +487,7 @@ impl FamNameChild {
     }
 }
 /**family name - Contains a family (inherited) name, as opposed to a given, baptismal, or
-      nick name.*/
+nick name.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "famName")]
 pub struct FamName {

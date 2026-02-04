@@ -1,6 +1,6 @@
 //!Element: `<decoNote>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<decoNote>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -403,7 +403,7 @@ impl DecoNoteChild {
     }
 }
 /**decoration note - Contains a description of one or more decorative features of an
-      item.*/
+item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "decoNote")]
 pub struct DecoNote {

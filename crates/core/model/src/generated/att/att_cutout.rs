@@ -7,7 +7,7 @@ pub enum AttCutoutCutout {
     Cutout,
 }
 /**Attributes that indicate how to render the staff lines of the measure containing an
-      element belonging to this attribute class.*/
+element belonging to this attribute class.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttCutout {
     ///"Cut-out" style.

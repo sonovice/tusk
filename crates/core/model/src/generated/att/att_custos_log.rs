@@ -13,7 +13,7 @@ pub struct AttCustosLog {
     #[serde(rename = "@oct", skip_serializing_if = "Option::is_none")]
     pub oct: Option<crate::generated::data::DataOctave>,
     /**Encodes the target note when its pitch differs from the pitch at which the custos
-          appears.*/
+    appears.*/
     #[serde(rename = "@target", skip_serializing_if = "Option::is_none")]
     pub target: Option<crate::generated::data::DataUri>,
 }

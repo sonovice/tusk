@@ -1,6 +1,6 @@
 //!Element: `<acquisition>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<acquisition>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -396,7 +396,7 @@ impl AcquisitionChild {
     }
 }
 /**Records information concerning the process by which an item was acquired by the holding
-      institution.*/
+institution.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "acquisition")]
 pub struct Acquisition {

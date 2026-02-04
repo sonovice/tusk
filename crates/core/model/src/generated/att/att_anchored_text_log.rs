@@ -10,7 +10,7 @@ pub enum AttAnchoredTextLogFunc {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttAnchoredTextLog {
     /**Holds a reference to the first element in a sequence of events to which the feature
-          applies.*/
+    applies.*/
     #[serde(rename = "@startid", skip_serializing_if = "Option::is_none")]
     pub startid: Option<crate::generated::data::DataUri>,
     ///Indicates the function of the text.

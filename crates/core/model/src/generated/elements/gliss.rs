@@ -1,6 +1,6 @@
 //!Element: `<gliss>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<gliss>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl GlissChild {
     }
 }
 /**glissando - A continuous or sliding movement from one pitch to another, usually
-      indicated by a straight or wavy line.*/
+indicated by a straight or wavy line.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "gliss")]
 pub struct Gliss {

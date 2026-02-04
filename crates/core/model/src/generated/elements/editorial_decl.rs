@@ -1,6 +1,6 @@
 //!Element: `<editorialDecl>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<editorialDecl>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -63,7 +63,7 @@ impl EditorialDeclChild {
     }
 }
 /**editorial declaration - Used to provide details of editorial principles and practices
-      applied during the encoding of musical text.*/
+applied during the encoding of musical text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "editorialDecl")]
 pub struct EditorialDecl {

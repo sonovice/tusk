@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Part 1</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+       <attributes>
+          <divisions>32</divisions>
+       </attributes>
+       <note>
+          <pitch>
+             <step>A</step>
+             <octave>4</octave>
+          </pitch>
+          <duration>128</duration>
+          <voice>1</voice>
+          <type>whole</type>
+       </note>
+    </measure>
+  </part>
+</score-partwise>

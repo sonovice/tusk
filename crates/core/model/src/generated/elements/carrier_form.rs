@@ -1,6 +1,6 @@
 //!Element: `<carrierForm>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<carrierForm>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,10 +389,10 @@ impl CarrierFormChild {
     }
 }
 /**carrier form - The specific class of material to which the physical carrier of the
-      source/manifestation belongs (e.g., sound cassette, videodisc, microfilm cartridge,
-      transparency, etc.). The carrier for a manifestation comprising multiple physical components
-      may include more than one form (e.g., a filmstrip with an accompanying booklet, a separate
-      sound disc carrying the sound track for a film, etc.).*/
+source/manifestation belongs (e.g., sound cassette, videodisc, microfilm cartridge,
+transparency, etc.). The carrier for a manifestation comprising multiple physical components
+may include more than one form (e.g., a filmstrip with an accompanying booklet, a separate
+sound disc carrying the sound track for a film, etc.).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "carrierForm")]
 pub struct CarrierForm {

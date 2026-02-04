@@ -1,6 +1,6 @@
 //!Element: `<fTrem>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fTrem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,7 +35,7 @@ impl FTremChild {
     }
 }
 /**fingered tremolo - A rapid alternation between a pair of notes (or chords or perhaps
-      between a note and a chord) that are (usually) farther apart than a major second.*/
+between a note and a chord) that are (usually) farther apart than a major second.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fTrem")]
 pub struct FTrem {

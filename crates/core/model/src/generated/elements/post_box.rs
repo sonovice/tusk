@@ -1,6 +1,6 @@
 //!Element: `<postBox>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<postBox>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -116,7 +116,7 @@ impl PostBoxChild {
     }
 }
 /**postal box or post office box - Contains a number or other identifier for some postal
-      delivery point other than a street address.*/
+delivery point other than a street address.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "postBox")]
 pub struct PostBox {

@@ -1,6 +1,6 @@
 //!Element: `<seriesStmt>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<seriesStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -98,7 +98,7 @@ impl SeriesStmtChild {
     }
 }
 /**series statement - Groups information about the series, if any, to which a publication
-      belongs.*/
+belongs.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "seriesStmt")]
 pub struct SeriesStmt {

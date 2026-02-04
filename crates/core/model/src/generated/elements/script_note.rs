@@ -1,6 +1,6 @@
 //!Element: `<scriptNote>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<scriptNote>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl ScriptNoteChild {
     }
 }
 /**script note - Describes a particular script distinguished within the description of an
-      autographic item.*/
+autographic item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "scriptNote")]
 pub struct ScriptNote {

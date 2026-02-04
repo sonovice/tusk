@@ -1,8 +1,8 @@
 //!Element: `<mensur>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**mensuration - Collects information about the metrical relationship between a note value
-      and the next smaller value; that is, either triple or duple.*/
+and the next smaller value; that is, either triple or duple.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mensur")]
 pub struct Mensur {

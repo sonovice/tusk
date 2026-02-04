@@ -1,6 +1,6 @@
 //!Element: `<foliation>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<foliation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl FoliationChild {
     }
 }
 /**Describes the numbering system or systems used to count the leaves or pages in a
-      codex.*/
+codex.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "foliation")]
 pub struct Foliation {

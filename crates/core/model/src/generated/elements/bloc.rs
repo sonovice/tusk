@@ -1,6 +1,6 @@
 //!Element: `<bloc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<bloc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl BlocChild {
     }
 }
 /**Contains the name of a geopolitical unit consisting of two or more nation states or
-      countries.*/
+countries.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "bloc")]
 pub struct Bloc {

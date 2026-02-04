@@ -1,6 +1,6 @@
 //!Element: `<colophon>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<colophon>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl ColophonChild {
     }
 }
 /**Contains a statement providing information regarding the date, place, agency, or reason
-      for production of the item.*/
+for production of the item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "colophon")]
 pub struct Colophon {

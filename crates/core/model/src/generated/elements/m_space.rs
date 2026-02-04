@@ -1,6 +1,6 @@
 //!Element: `<mSpace>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///measure space - A measure containing only empty space in any meter.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mSpace")]

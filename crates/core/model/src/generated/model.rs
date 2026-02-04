@@ -8,7 +8,7 @@ pub trait ModelWorkIdent {}
 ///Groups elements that may appear as part of editorial and transcription elements.
 pub trait ModelEditTransPart {}
 /**Groups elements which may appear as part of the paragraph content model. A paragraph may
-      contain inline elements and all other block-level elements except itself.*/
+contain inline elements and all other block-level elements except itself.*/
 pub trait ModelParacontentPart {}
 ///Groups notated events that may appear at the layer level in the neume repertoire.
 pub trait ModelLayerPartNeumes {}
@@ -49,7 +49,7 @@ pub trait ModelPersNamePart {}
 ///Collects FRBR item-like elements.
 pub trait ModelItemLike {}
 /**Groups notated events that may appear at the layer level in the mensural
-      repertoire.*/
+repertoire.*/
 pub trait ModelLayerPartMensural {}
 ///Groups elements that may be used to provide a structured description of an event.
 pub trait ModelEventPart {}
@@ -62,7 +62,7 @@ pub trait ModelQLike {}
 ///Groups elements which group MIDI-like elements.
 pub trait ModelMidiLike {}
 /**Groups elements that contain the text of a caption or other text displayed along with a
-      figure.*/
+figure.*/
 pub trait ModelCaptionLike {}
 ///Groups elements that contain a critical apparatus entry.
 pub trait ModelAppLike {}
@@ -71,10 +71,10 @@ pub trait ModelTuningPart {}
 ///Groups editorial intervention elements.
 pub trait ModelEditorialLike {}
 /**Groups elements that provide a brief prose description of the appearance or content of a
-      graphic figure.*/
+graphic figure.*/
 pub trait ModelFigDescLike {}
 /**Groups elements which describe a measurement forming part of the physical dimensions of an
-      object.*/
+object.*/
 pub trait ModelDimLike {}
 ///Groups elements that may appear as part of a textual variant.
 pub trait ModelRdgPartText {}
@@ -117,12 +117,12 @@ pub trait ModelLayerPart {}
 ///Groups control events that appear in CMN.
 pub trait ModelControlEventLikeCmn {}
 /**Groups elements that capture performance instructions regarding the use of the fingers of
-      the hand (or a subset of them).*/
+the hand (or a subset of them).*/
 pub trait ModelFingeringLike {}
 ///Groups elements which provide a description of their parent entity.
 pub trait ModelDescLike {}
 /**Groups elements that may appear as part of editorial and transcription elements in
-      prose.*/
+prose.*/
 pub trait ModelEditTransPartText {}
 ///Groups elements that may appear as part of a bibliographic imprint.
 pub trait ModelImprintPart {}
@@ -131,7 +131,7 @@ pub trait ModelManifestationLike {}
 ///Groups elements that represent a score.
 pub trait ModelScoreLike {}
 /**Groups elements that are used to indicate intellectual or other significant
-      responsibility, for example within a bibliographic citation.*/
+responsibility, for example within a bibliographic citation.*/
 pub trait ModelRespLike {}
 ///Groups elements that contain a lyric verse.
 pub trait ModelVerseLike {}
@@ -140,10 +140,10 @@ pub trait ModelStageDirLike {}
 ///Groups elements used as part of a physical address.
 pub trait ModelAddressPart {}
 /**Groups harmonic elements that function as control events; that is, those events that
-      modify or otherwise depend on the existence of notated events.*/
+modify or otherwise depend on the existence of notated events.*/
 pub trait ModelControlEventLikeHarmony {}
 /**Groups elements that are components of a staff in the mensural and neume
-      repertoires.*/
+repertoires.*/
 pub trait ModelStaffPartMensuralAndNeumes {}
 ///Groups elements that may appear as part of a bibliographic description.
 pub trait ModelBiblPart {}
@@ -154,7 +154,7 @@ pub trait ModelKeyAccidLike {}
 ///Groups elements that permit declaration of layer properties.
 pub trait ModelLayerDefLike {}
 /**Groups elements that indicate the location of an inline graphic, illustration, or
-      figure.*/
+figure.*/
 pub trait ModelGraphicLike {}
 ///Groups elements used to represent generic structural divisions of music notation.
 pub trait ModelMdivLike {}
@@ -163,7 +163,7 @@ pub trait ModelEventLikeNeumes {}
 ///Groups elements used for editorial transcription of pre-existing source materials.
 pub trait ModelTranscriptionLike {}
 /**Groups elements used to provide a heading at the start of a text division or other markup
-      component.*/
+component.*/
 pub trait ModelHeadLike {}
 ///Groups elements that modify neume-like features.
 pub trait ModelNeumeModifierLike {}
@@ -174,7 +174,7 @@ pub trait ModelAddressLike {}
 ///Collects bifoliumlike elements.
 pub trait ModelBifoliumLike {}
 /**Groups elements that may appear as part of the publication statement for a bibliographic
-      item.*/
+item.*/
 pub trait ModelPubStmtPart {}
 ///Groups elements that may appear as part of the content of a chord element.
 pub trait ModelChordPart {}
@@ -203,10 +203,10 @@ pub trait ModelEventLike {}
 ///Groups elements that represent alternative endings.
 pub trait ModelEndingLike {}
 /**Groups notated events at the layer level that are shared by the mensural and neume
-      repertoires.*/
+repertoires.*/
 pub trait ModelLayerPartMensuralAndNeumes {}
 /**Groups elements that may appear as part of editorial and transcription elements in music
-      notation.*/
+notation.*/
 pub trait ModelEditTransPartMusic {}
 ///Groups CMN measure-like elements.
 pub trait ModelMeasureLike {}
@@ -219,7 +219,7 @@ pub trait ModelStaffLike {}
 ///Groups elements used for purposes of location and reference.
 pub trait ModelLocrefLike {}
 /**Groups elements, such as dynamics, ties, phrase marks, pedal marks, etc., which depend
-      upon other events, such as notes or rests, for their existence.*/
+upon other events, such as notes or rests, for their existence.*/
 pub trait ModelControlEventLike {}
 ///Groups elements which form part of a geographic name.
 pub trait ModelGeogNamePart {}
@@ -238,10 +238,10 @@ pub trait ModelMeterSigLike {}
 ///Groups elements that serve as stylistic labels.
 pub trait ModelNameLikeLabel {}
 /**Groups elements that may appear as part of a description of the editorial process applied
-      to the encoding of notation.*/
+to the encoding of notation.*/
 pub trait ModelEditorialDeclPart {}
 /**Groups elements that may appear as part of the physical description of a bibliographic
-      item.*/
+item.*/
 pub trait ModelPhysDescPart {}
 ///Groups elements which contain names of individuals or corporate bodies.
 pub trait ModelNameLikeAgent {}
@@ -250,12 +250,12 @@ pub trait ModelFoliumLike {}
 ///Groups place name elements.
 pub trait ModelNameLikePlace {}
 /**Groups elements that delineate particular responsibilities as opposed to the respStmt
-      element that provides for generic statements of responsibility.*/
+element that provides for generic statements of responsibility.*/
 pub trait ModelRespLikePart {}
 ///Groups elements that denote the name of a bibliographic item.
 pub trait ModelTitleLike {}
 /**Groups elements that may appear as part of a section in the mensural and neume
-      repertoires.*/
+repertoires.*/
 pub trait ModelSectionPartMensuralAndNeumes {}
 ///Groups annotation-like elements.
 pub trait ModelAnnotLike {}
@@ -276,7 +276,7 @@ pub trait ModelDivLike {}
 ///Groups elements that contain a lyric syllable.
 pub trait ModelSylLike {}
 /**Groups textual elements that occur at the level of individual words or phrases. This class
-      is equivalent to the model.textPhraseLike class without the pb element.*/
+is equivalent to the model.textPhraseLike class without the pb element.*/
 pub trait ModelTextPhraseLikeLimited {}
 ///Groups elements that may occur within a neume.
 pub trait ModelNeumePart {}
@@ -289,7 +289,7 @@ pub trait ModelSyllablePart {}
 ///Collects FRBR expression-like elements.
 pub trait ModelExpressionLike {}
 /**Groups elements representing or containing graphic information such as an illustration or
-      figure.*/
+figure.*/
 pub trait ModelFigureLike {}
 ///Groups elements that permit declaration of staff properties.
 pub trait ModelStaffDefLike {}
@@ -298,7 +298,7 @@ pub trait ModelLLike {}
 ///Groups elements that function like line beginnings.
 pub trait ModelLbLike {}
 /**Groups elements that may appear as part of auxiliary material preceding or following the
-      text proper.*/
+text proper.*/
 pub trait ModelFrontAndBackPart {}
 ///Groups notated events that may appear at the layer level in CMN.
 pub trait ModelLayerPartCmn {}
@@ -309,7 +309,7 @@ pub trait ModelSectionPartCmn {}
 ///Groups milestone-style elements found in text.
 pub trait ModelMilestoneLikeText {}
 /**Groups elements for editorial interventions that may be useful both in transcribing and in
-      authoring processes.*/
+authoring processes.*/
 pub trait ModelEditLike {}
 ///Groups elements that represent a segment of music notation.
 pub trait ModelSectionLike {}

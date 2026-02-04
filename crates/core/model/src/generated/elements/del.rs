@@ -1,6 +1,6 @@
 //!Element: `<del>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<del>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1243,7 +1243,7 @@ impl DelChild {
     }
 }
 /**deletion - Contains information deleted, marked as deleted, or otherwise indicated as
-      superfluous or spurious in the copy text by an author, scribe, annotator, or corrector.*/
+superfluous or spurious in the copy text by an author, scribe, annotator, or corrector.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "del")]
 pub struct Del {

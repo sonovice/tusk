@@ -1,6 +1,6 @@
 //!Element: `<geogName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<geogName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl GeogNameChild {
     }
 }
 /**geographic name - The proper noun designation for a place, natural feature, or political
-      jurisdiction.*/
+jurisdiction.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "geogName")]
 pub struct GeogName {

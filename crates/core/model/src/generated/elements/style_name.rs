@@ -1,6 +1,6 @@
 //!Element: `<styleName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<styleName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl StyleNameChild {
     }
 }
 /**style name - A label for a characteristic style of writing or performance, such as
-      'bebop' or 'rock-n-roll'.*/
+'bebop' or 'rock-n-roll'.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "styleName")]
 pub struct StyleName {

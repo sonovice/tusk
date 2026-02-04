@@ -1,6 +1,6 @@
 //!Element: `<analytic>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<analytic>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -77,7 +77,7 @@ impl AnalyticChild {
     }
 }
 /**analytic level - Contains bibliographic elements describing an item (e.g., an article or
-      poem) published within a monograph or journal and not as an independent publication.*/
+poem) published within a monograph or journal and not as an independent publication.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "analytic")]
 pub struct Analytic {

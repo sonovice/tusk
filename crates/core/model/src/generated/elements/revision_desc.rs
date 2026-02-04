@@ -1,6 +1,6 @@
 //!Element: `<revisionDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<revisionDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl RevisionDescChild {
     }
 }
 /**revision description - Container for information about alterations that have been made
-      to an MEI file.*/
+to an MEI file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "revisionDesc")]
 pub struct RevisionDesc {

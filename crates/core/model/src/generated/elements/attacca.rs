@@ -1,6 +1,6 @@
 //!Element: `<attacca>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<attacca>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -494,7 +494,7 @@ impl AttaccaChild {
     }
 }
 /**An instruction to begin the next section or movement of a composition without
-      pause.*/
+pause.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "attacca")]
 pub struct Attacca {

@@ -1,6 +1,6 @@
 //!Element: `<repeatMark>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<repeatMark>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -494,7 +494,7 @@ impl RepeatMarkChild {
     }
 }
 /**repetition mark - An instruction expressed as a combination of text and symbols – segno and coda – typically above,
-      below, or between staves, but not on the staff.*/
+below, or between staves, but not on the staff.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "repeatMark")]
 pub struct RepeatMark {

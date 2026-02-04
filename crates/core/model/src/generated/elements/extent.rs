@@ -1,6 +1,6 @@
 //!Element: `<extent>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<extent>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,7 +375,7 @@ impl ExtentChild {
     }
 }
 /**Used to express size in terms other than physical dimensions, such as number of pages,
-      records, bytes, physical components, etc.*/
+records, bytes, physical components, etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "extent")]
 pub struct Extent {

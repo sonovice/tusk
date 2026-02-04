@@ -1,6 +1,6 @@
 //!Element: `<genDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl GenDescChild {
     }
 }
 /**genetic description - When set to "true" the child elements are known to be in chronological order. When set
-          to "false" or when not provided, the order of child elements is unknown.*/
+to "false" or when not provided, the order of child elements is unknown.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genDesc")]
 pub struct GenDesc {

@@ -1,9 +1,9 @@
 //!Element: `<fermata>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**An indication placed over a note or rest to indicate that it should be held longer than
-      its written value. May also occur over a bar line to indicate the end of a phrase or section.
-      Sometimes called a 'hold' or 'pause'.*/
+its written value. May also occur over a bar line to indicate the end of a phrase or section.
+Sometimes called a 'hold' or 'pause'.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fermata")]
 pub struct Fermata {

@@ -1,6 +1,6 @@
 //!Element: `<interpretation>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<interpretation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl InterpretationChild {
     }
 }
 /**Describes the scope of any analytic or interpretive information added to the transcription
-      of the music.*/
+of the music.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "interpretation")]
 pub struct Interpretation {

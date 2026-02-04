@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Part 1</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>24</divisions>
+        <key>
+          <fifths>0</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <figured-bass>
+         <figure>
+            <prefix>flat</prefix>
+            <figure-number>7</figure-number>
+         </figure>
+      </figured-bass>
+    </measure>
+  </part>
+</score-partwise>

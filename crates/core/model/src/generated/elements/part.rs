@@ -1,6 +1,6 @@
 //!Element: `<part>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<part>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -210,7 +210,7 @@ impl PartChild {
     }
 }
 /**An alternative visual rendition of the score from the point of view of a particular
-      performer (or group of performers).*/
+performer (or group of performers).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "part")]
 pub struct Part {

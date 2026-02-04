@@ -1,6 +1,6 @@
 //!Element: `<anchoredText>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<anchoredText>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -473,7 +473,7 @@ impl AnchoredTextChild {
     }
 }
 /**Container for text that is fixed to a particular page location, regardless of changes made
-      to the layout of the measures around it.*/
+to the layout of the measures around it.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "anchoredText")]
 pub struct AnchoredText {

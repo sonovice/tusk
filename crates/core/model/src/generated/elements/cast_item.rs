@@ -1,6 +1,6 @@
 //!Element: `<castItem>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<castItem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -46,7 +46,7 @@ impl CastItemChild {
     }
 }
 /**Contains a single entry within a cast list, describing either a single role or a list of
-      non-speaking roles.*/
+non-speaking roles.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "castItem")]
 pub struct CastItem {

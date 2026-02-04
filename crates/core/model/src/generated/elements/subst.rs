@@ -1,6 +1,6 @@
 //!Element: `<subst>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<subst>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -98,7 +98,7 @@ impl SubstChild {
     }
 }
 /**substitution - Groups transcriptional elements when the combination is to be regarded as
-      a single intervention in the text.*/
+a single intervention in the text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "subst")]
 pub struct Subst {

@@ -7,8 +7,8 @@ pub struct AttStaffDefLog {
     #[serde(rename = "@clef.shape", skip_serializing_if = "Option::is_none")]
     pub clef_shape: Option<crate::generated::data::DataClefshape>,
     /**Contains a default value for the position of the clef. The value must be in the range
-          between 1 and the number of lines on the staff. The numbering of lines starts with the
-          lowest line of the staff.*/
+    between 1 and the number of lines on the staff. The numbering of lines starts with the
+    lowest line of the staff.*/
     #[serde(rename = "@clef.line", skip_serializing_if = "Option::is_none")]
     pub clef_line: Option<crate::generated::data::DataClefline>,
     ///Records the amount of octave displacement to be applied to the clef.
@@ -18,59 +18,59 @@ pub struct AttStaffDefLog {
     #[serde(rename = "@clef.dis.place", skip_serializing_if = "Option::is_none")]
     pub clef_dis_place: Option<crate::generated::data::DataStaffrelBasic>,
     /**Contains a default duration in those situations when the first note, rest, chord, etc.
-          in a measure does not have a duration specified.*/
+    in a measure does not have a duration specified.*/
     #[serde(rename = "@dur.default", skip_serializing_if = "Option::is_none")]
     pub dur_default: Option<crate::generated::data::DataDuration>,
     /**Along with numbase.default, describes the default duration as a ratio. num.default is
-          the first value in the ratio.*/
+    the first value in the ratio.*/
     #[serde(rename = "@num.default", skip_serializing_if = "Option::is_none")]
     pub num_default: Option<u64>,
     /**Along with num.default, describes the default duration as a ratio. numbase.default is
-          the second value in the ratio.*/
+    the second value in the ratio.*/
     #[serde(rename = "@numbase.default", skip_serializing_if = "Option::is_none")]
     pub numbase_default: Option<u64>,
     ///Written key signature.
     #[serde(rename = "@keysig", default, skip_serializing_if = "Vec::is_empty")]
     pub keysig: Vec<crate::generated::data::DataKeyfifths>,
     /**Captures the number of beats in a measure, that is, the top number of the meter
-          signature. It must contain a decimal number or an expression that evaluates to a
-          decimal number, such as 2+3 or 3*2.*/
+    signature. It must contain a decimal number or an expression that evaluates to a
+    decimal number, such as 2+3 or 3*2.*/
     #[serde(rename = "@meter.count", skip_serializing_if = "Option::is_none")]
     pub meter_count: Option<String>,
     /**Contains the number indicating the beat unit, that is, the bottom number of the meter
-          signature.*/
+    signature.*/
     #[serde(rename = "@meter.unit", skip_serializing_if = "Option::is_none")]
     pub meter_unit: Option<f64>,
     /**Indicates the use of a meter symbol instead of a numeric meter signature, that is, 'C'
-          for common time or 'C' with a slash for cut time.*/
+    for common time or 'C' with a slash for cut time.*/
     #[serde(rename = "@meter.sym", skip_serializing_if = "Option::is_none")]
     pub meter_sym: Option<crate::generated::data::DataMetersign>,
     /**Contains classification of the notation contained or described by the element bearing
-          this attribute.*/
+    this attribute.*/
     #[serde(rename = "@notationtype", skip_serializing_if = "Option::is_none")]
     pub notationtype: Option<crate::generated::data::DataNotationtype>,
     /**Provides any sub-classification of the notation contained or described by the element,
-          additional to that given by its notationtype attribute.*/
+    additional to that given by its notationtype attribute.*/
     #[serde(rename = "@notationsubtype", skip_serializing_if = "Option::is_none")]
     pub notationsubtype: Option<String>,
     /**Contains a default octave specification for use when the first note, rest, chord, etc.
-          in a measure does not have an octave value specified.*/
+    in a measure does not have an octave value specified.*/
     #[serde(rename = "@oct.default", skip_serializing_if = "Option::is_none")]
     pub oct_default: Option<crate::generated::data::DataOctave>,
     /**Records the amount of diatonic pitch shift,e.g., C to C♯ = 0, C to D♭ = 1, necessary
-          to calculate the sounded pitch from the written one.*/
+    to calculate the sounded pitch from the written one.*/
     #[serde(rename = "@trans.diat", skip_serializing_if = "Option::is_none")]
     pub trans_diat: Option<i64>,
     /**Records the amount of pitch shift in semitones,e.g., C to C♯ = 1, C to D♭ = 1,
-          necessary to calculate the sounded pitch from the written one.*/
+    necessary to calculate the sounded pitch from the written one.*/
     #[serde(rename = "@trans.semi", skip_serializing_if = "Option::is_none")]
     pub trans_semi: Option<i64>,
     /**Provides an example of how automated beaming (including secondary beams) is to be
-          performed.*/
+    performed.*/
     #[serde(rename = "@beam.group", skip_serializing_if = "Option::is_none")]
     pub beam_group: Option<String>,
     /**Indicates whether automatically-drawn beams should include rests shorter than a
-          quarter note duration.*/
+    quarter note duration.*/
     #[serde(rename = "@beam.rests", skip_serializing_if = "Option::is_none")]
     pub beam_rests: Option<crate::generated::data::DataBoolean>,
     ///Describes the maxima-long relationship.

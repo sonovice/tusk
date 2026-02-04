@@ -1,6 +1,6 @@
 //!Element: `<explicit>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<explicit>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl ExplicitChild {
     }
 }
 /**Contains the explicit of a manuscript item; that is, the closing words of the text proper,
-      exclusive of any rubric or colophon which might follow it.*/
+exclusive of any rubric or colophon which might follow it.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "explicit")]
 pub struct Explicit {

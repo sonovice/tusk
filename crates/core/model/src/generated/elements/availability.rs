@@ -1,6 +1,6 @@
 //!Element: `<availability>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<availability>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -81,7 +81,7 @@ impl AvailabilityChild {
     }
 }
 /**Groups elements that describe the availability of and access to a bibliographic item,
-      including an MEI-encoded document.*/
+including an MEI-encoded document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "availability")]
 pub struct Availability {

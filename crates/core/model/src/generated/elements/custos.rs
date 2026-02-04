@@ -1,6 +1,6 @@
 //!Element: `<custos>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<custos>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -21,7 +21,7 @@ impl CustosChild {
     }
 }
 /**Symbol placed at the end of a line of music to indicate the first note of the next line.
-      Sometimes called a "direct".*/
+Sometimes called a "direct".*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "custos")]
 pub struct Custos {

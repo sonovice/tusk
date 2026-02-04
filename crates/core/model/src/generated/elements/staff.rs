@@ -1,6 +1,6 @@
 //!Element: `<staff>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<staff>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -322,9 +322,9 @@ impl StaffChild {
     }
 }
 /**A group of equidistant horizontal lines on which notes are placed in order to represent
-      pitch or a grouping element for individual 'strands' of notes, rests, etc. that may or may not
-      actually be rendered on staff lines; that is, both diastematic and non-diastematic
-      signs.*/
+pitch or a grouping element for individual 'strands' of notes, rests, etc. that may or may not
+actually be rendered on staff lines; that is, both diastematic and non-diastematic
+signs.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "staff")]
 pub struct Staff {

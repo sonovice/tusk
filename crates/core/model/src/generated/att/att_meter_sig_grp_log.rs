@@ -9,7 +9,7 @@ pub enum AttMeterSigGrpLogFunc {
     #[serde(rename = "interchanging")]
     Interchanging,
     /**Meter signatures with different unit values are used to express a complex metrical
-              pattern that is not expressible using traditional means, such as 2/4+1/8.*/
+    pattern that is not expressible using traditional means, such as 2/4+1/8.*/
     #[serde(rename = "mixed")]
     Mixed,
     ///Meter signatures in a relationship not covered by the values alternating, interchanging or mixed.

@@ -1,6 +1,6 @@
 //!Element: `<fb>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fb>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -119,7 +119,7 @@ impl FbChild {
     }
 }
 /**figured bass - Symbols added to a bass line that indicate harmony. Used to improvise a
-      chordal accompaniment. Sometimes called Generalbass, thoroughbass, or basso continuo.*/
+chordal accompaniment. Sometimes called Generalbass, thoroughbass, or basso continuo.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fb")]
 pub struct Fb {

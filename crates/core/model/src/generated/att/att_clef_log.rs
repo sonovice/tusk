@@ -7,8 +7,8 @@ pub struct AttClefLog {
     #[serde(rename = "@shape", skip_serializing_if = "Option::is_none")]
     pub shape: Option<crate::generated::data::DataClefshape>,
     /**Indicates the line upon which a feature stands. The value must be in the range between
-          1 and the number of lines on the staff. The numbering of lines starts with the lowest line
-          of the staff.*/
+    1 and the number of lines on the staff. The numbering of lines starts with the lowest line
+    of the staff.*/
     #[serde(rename = "@line", skip_serializing_if = "Option::is_none")]
     pub line: Option<crate::generated::data::DataClefline>,
     ///Captures written octave information.
@@ -21,7 +21,7 @@ pub struct AttClefLog {
     #[serde(rename = "@dis.place", skip_serializing_if = "Option::is_none")]
     pub dis_place: Option<crate::generated::data::DataStaffrelBasic>,
     /**Records the function of the clef. A "cautionary" clef does not change the following
-          pitches.*/
+    pitches.*/
     #[serde(rename = "@cautionary", skip_serializing_if = "Option::is_none")]
     pub cautionary: Option<crate::generated::data::DataBoolean>,
 }

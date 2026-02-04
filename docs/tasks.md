@@ -189,7 +189,7 @@ Prerequisite: Complete tasks_split.md Phase 4 & 5 first (splits conversion files
 - [x] Add tests against `specs/musicxml/examples/`
 
 ### 4.5 Round-Trip Testing
-- [ ] Create round-trip test: MusicXML → MEI → MusicXML
+- [ ] Create round-trip test: MusicXML → MEI (both internal as well as written to .mei file and imported back) → MusicXML
 - [ ] Verify no data loss in round-trip for basic scores
 - [ ] Test round-trip with real-world MusicXML files
 - [ ] Document any conversion discrepancies

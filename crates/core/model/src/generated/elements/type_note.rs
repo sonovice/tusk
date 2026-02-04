@@ -1,6 +1,6 @@
 //!Element: `<typeNote>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<typeNote>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl TypeNoteChild {
     }
 }
 /**type note - Describes a particular font or other significant typographic feature of a
-      printed resource.*/
+printed resource.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "typeNote")]
 pub struct TypeNote {

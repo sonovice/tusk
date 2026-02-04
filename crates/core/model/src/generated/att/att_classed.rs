@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttClassed {
     /**Contains one or more URIs which denote classification terms that apply to the entity
-          bearing this attribute.*/
+    bearing this attribute.*/
     #[serde(rename = "@class", default, skip_serializing_if = "Vec::is_empty")]
     pub class: Vec<crate::generated::data::DataUri>,
 }

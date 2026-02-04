@@ -10,8 +10,8 @@ pub struct AttMidiInstrument {
     #[serde(rename = "@midi.instrname", skip_serializing_if = "Option::is_none")]
     pub midi_instrname: Option<crate::generated::data::DataMidinames>,
     /**Sets the instrument’s position in a stereo field. MIDI values of 0 and 1 both pan
-          left, 127 or 128 pans right, and 63 or 64 pans to the center. Positve percentage values
-          pan to the right, negative ones to the left. 0% is centered.*/
+    left, 127 or 128 pans right, and 63 or 64 pans to the center. Positve percentage values
+    pan to the right, negative ones to the left. 0% is centered.*/
     #[serde(rename = "@midi.pan", skip_serializing_if = "Option::is_none")]
     pub midi_pan: Option<crate::generated::data::DataMidivaluePan>,
     ///Records a non-General MIDI patch/instrument name.

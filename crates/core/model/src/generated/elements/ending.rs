@@ -1,6 +1,6 @@
 //!Element: `<ending>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<ending>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -231,7 +231,7 @@ impl EndingChild {
     }
 }
 /**Alternative ending for a repeated passage of music;i.e., prima volta, seconda volta,
-      etc.*/
+etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ending")]
 pub struct Ending {

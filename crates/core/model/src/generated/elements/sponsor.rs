@@ -1,6 +1,6 @@
 //!Element: `<sponsor>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<sponsor>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,8 +375,8 @@ impl SponsorChild {
     }
 }
 /**Names of sponsoring individuals, organizations or institutions. Sponsors give their
-      intellectual authority to a project; they are to be distinguished from funders, who provide
-      the funding but do not necessarily take intellectual responsibility.*/
+intellectual authority to a project; they are to be distinguished from funders, who provide
+the funding but do not necessarily take intellectual responsibility.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "sponsor")]
 pub struct Sponsor {

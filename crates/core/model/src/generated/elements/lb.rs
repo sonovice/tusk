@@ -1,8 +1,8 @@
 //!Element: `<lb>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**line beginning - An empty formatting element that forces text to begin on a new
-      line.*/
+line.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "lb")]
 pub struct Lb {

@@ -1,8 +1,8 @@
 //!Element: `<expansion>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Indicates how a section may be programmatically expanded into its 'through-composed'
-      form.*/
+form.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "expansion")]
 pub struct Expansion {

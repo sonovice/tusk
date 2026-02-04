@@ -1,6 +1,6 @@
 //!Element: `<ambNote>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Highest or lowest pitch in a score, staff, or layer.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ambNote")]

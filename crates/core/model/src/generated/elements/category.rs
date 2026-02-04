@@ -1,6 +1,6 @@
 //!Element: `<category>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<category>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -49,7 +49,7 @@ impl CategoryChild {
     }
 }
 /**Contains an individual descriptive category in a user-defined taxonomy, possibly nested
-      within a superordinate category.*/
+within a superordinate category.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "category")]
 pub struct Category {

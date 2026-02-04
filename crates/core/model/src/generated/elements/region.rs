@@ -1,6 +1,6 @@
 //!Element: `<region>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<region>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl RegionChild {
     }
 }
 /**Contains the name of an administrative unit such as a state, province, or county, larger
-      than a settlement, but smaller than a country.*/
+than a settlement, but smaller than a country.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "region")]
 pub struct Region {

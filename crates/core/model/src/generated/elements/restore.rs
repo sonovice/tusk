@@ -1,6 +1,6 @@
 //!Element: `<restore>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<restore>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1243,7 +1243,7 @@ impl RestoreChild {
     }
 }
 /**description - Provides a description of the means of restoration,stetorstrike-down,
-          for example.*/
+for example.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "restore")]
 pub struct Restore {

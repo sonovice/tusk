@@ -1,6 +1,6 @@
 //!Element: `<genName>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl GenNameChild {
     }
 }
 /**generational name component - Contains a name component used to distinguish otherwise
-      similar names on the basis of the relative ages or generations of the persons named.*/
+similar names on the basis of the relative ages or generations of the persons named.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genName")]
 pub struct GenName {

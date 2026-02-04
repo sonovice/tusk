@@ -1,6 +1,6 @@
 //!Element: `<back>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<back>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -70,7 +70,7 @@ impl BackChild {
     }
 }
 /**back matter - Contains any appendixes, advertisements, indexes, etc. following the main
-      body of a musical text.*/
+body of a musical text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "back")]
 pub struct Back {

@@ -1,6 +1,6 @@
 //!Element: `<history>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<history>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -119,7 +119,7 @@ impl HistoryChild {
     }
 }
 /**Provides a container for information about the history of a resource other than the
-      circumstances of its creation.*/
+circumstances of its creation.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "history")]
 pub struct History {

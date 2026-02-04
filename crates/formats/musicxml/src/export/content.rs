@@ -75,11 +75,7 @@ pub fn convert_score_content(
                         .map(|ppq| ppq as f64)
                         .unwrap_or_else(|| {
                             let ctx_divs = ctx.divisions();
-                            if ctx_divs > 0.0 {
-                                ctx_divs
-                            } else {
-                                1.0
-                            }
+                            if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
                         });
                     attrs.divisions = Some(divs);
                     // Also set the context divisions for note duration calculations
@@ -116,9 +112,7 @@ fn collect_measures_from_score(mei_score: &MeiScore) -> Vec<&tusk_model::element
 /// Collect staffDefs from the scoreDef in an MEI score.
 ///
 /// Returns a vector of staffDef references, ordered by staff number.
-fn collect_staff_defs_from_score(
-    mei_score: &MeiScore,
-) -> Vec<&tusk_model::elements::StaffDef> {
+fn collect_staff_defs_from_score(mei_score: &MeiScore) -> Vec<&tusk_model::elements::StaffDef> {
     let mut staff_defs = Vec::new();
 
     // Find scoreDef in score children
@@ -220,7 +214,9 @@ fn convert_staff_content(
                     LayerChild::Chord(chord) => {
                         let mxml_notes = convert_mei_chord(chord, ctx)?;
                         for note in mxml_notes {
-                            mxml_measure.content.push(MeasureContent::Note(Box::new(note)));
+                            mxml_measure
+                                .content
+                                .push(MeasureContent::Note(Box::new(note)));
                         }
                     }
                     LayerChild::Beam(beam) => {
@@ -269,7 +265,9 @@ fn convert_beam_content(
             BeamChild::Chord(chord) => {
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
                 for note in mxml_notes {
-                    mxml_measure.content.push(MeasureContent::Note(Box::new(note)));
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(note)));
                 }
             }
             BeamChild::Beam(nested_beam) => {
@@ -373,12 +371,8 @@ mod tests {
         let mut staff2 = Staff::default();
         staff2.n_integer.n = Some(2);
 
-        measure
-            .children
-            .push(MeasureChild::Staff(Box::new(staff1)));
-        measure
-            .children
-            .push(MeasureChild::Staff(Box::new(staff2)));
+        measure.children.push(MeasureChild::Staff(Box::new(staff1)));
+        measure.children.push(MeasureChild::Staff(Box::new(staff2)));
 
         assert!(find_staff_in_measure(&measure, 1).is_some());
         assert!(find_staff_in_measure(&measure, 2).is_some());

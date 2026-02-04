@@ -1,6 +1,6 @@
 //!Element: `<funder>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<funder>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -375,8 +375,8 @@ impl FunderChild {
     }
 }
 /**Names of individuals, institutions, or organizations responsible for funding. Funders
-      provide financial support for a project; they are distinct from sponsors, who provide
-      intellectual support and authority.*/
+provide financial support for a project; they are distinct from sponsors, who provide
+intellectual support and authority.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "funder")]
 pub struct Funder {

@@ -1,6 +1,6 @@
 //!Element: `<addDesc>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<addDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl AddDescChild {
     }
 }
 /**addition description - Provides a description of significant additions found within an
-      item, such as marginalia or other annotations.*/
+item, such as marginalia or other annotations.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "addDesc")]
 pub struct AddDesc {

@@ -1,6 +1,6 @@
 //!Element: `<creator>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<creator>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -39,7 +39,7 @@ impl CreatorChild {
     }
 }
 /**Names of individuals, institutions, or organizations responsible for the creation of the
-      intellectual content of a work, e.g., authors, composers, etc. (context based also lyricists and librettist).*/
+intellectual content of a work, e.g., authors, composers, etc. (context based also lyricists and librettist).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "creator")]
 pub struct Creator {

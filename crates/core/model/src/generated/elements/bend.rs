@@ -1,8 +1,8 @@
 //!Element: `<bend>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**A variation in pitch (often micro-tonal) upwards or downwards during the course of a
-      note.*/
+note.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "bend")]
 pub struct Bend {

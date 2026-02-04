@@ -1,9 +1,9 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**Output coordinate attributes. Some elements may need 2 coordinate pairs to record their
-      rendered *output* coordinates. The attributes indicate where to place the rendered output.
-      Recording the coordinates of a feature in a facsimile requires the use of the facs
-      attribute.*/
+rendered *output* coordinates. The attributes indicate where to place the rendered output.
+Recording the coordinates of a feature in a facsimile requires the use of the facs
+attribute.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttXy2 {
     ///Encodes the optional 2nd x coordinate.

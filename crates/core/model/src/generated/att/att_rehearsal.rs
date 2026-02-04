@@ -13,7 +13,7 @@ pub enum AttRehearsalRehEnclose {
     None,
 }
 /**Attributes used by scoreDef and staffDef to provide default information about rehearsal
-      numbers/letters.*/
+numbers/letters.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttRehearsal {
     ///Describes the enclosing shape for rehearsal marks.

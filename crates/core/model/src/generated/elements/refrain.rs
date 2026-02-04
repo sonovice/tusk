@@ -1,6 +1,6 @@
 //!Element: `<refrain>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<refrain>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -84,7 +84,7 @@ impl RefrainChild {
     }
 }
 /**Recurring lyrics, especially at the end of each verse or stanza of a poem or song lyrics;
-      a chorus.*/
+a chorus.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "refrain")]
 pub struct Refrain {

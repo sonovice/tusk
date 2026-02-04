@@ -1,8 +1,8 @@
 //!Element: `<hairpin>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 /**Indicates continuous dynamics expressed on the score as wedge-shaped graphics,e.g., <
-      and >.*/
+and >.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "hairpin")]
 pub struct Hairpin {

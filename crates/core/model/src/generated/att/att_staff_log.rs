@@ -16,7 +16,7 @@ pub enum AttStaffLogMetcon {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttStaffLog {
     /**Indicates the relationship between the content of a staff or layer and the prevailing
-          meter.*/
+    meter.*/
     #[serde(rename = "@metcon", skip_serializing_if = "Option::is_none")]
     pub metcon: Option<AttStaffLogMetcon>,
     ///Provides a mechanism for linking the staff to a staffDef element.

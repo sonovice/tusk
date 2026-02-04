@@ -10,17 +10,18 @@ Fight entropy. Leave the codebase better than you found it.
 
 # WORKFLOW
 
-1. Read @docs/tasks_split.md and find the FIRST unchecked task (marked with '- [ ]').
-2. Read AHEAD in the task list to see upcoming tasks in the same phase. This informs how to structure the split (e.g., what stays in the parent file, shared imports, mod.rs structure).
-3. Complete ONLY that single task:
-   - Create the (submodule) file
+1. Read @docs/tasks_split.md and find the FIRST section with unchecked tasks.
+   - Sections are numbered (e.g., 6.1, 6.2) or full phases (e.g., Phase 5).
+   - A section starts at a '### X.Y' or '## Phase N' header and ends at the next header or '---'.
+2. Complete ALL unchecked tasks in that section:
+   - Create the submodule files
    - Move the relevant code from the parent file
-   - Move tests for moved code to the new submodule
-   - Add mod declaration and re-exports in parent
-   - Run the specified test command to verify
-4. Run \`cargo fmt\` and \`cargo clippy\`.
-5. Mark the task as done in @docs/tasks_split.md by changing '- [ ]' to '- [x]'.
-6. Commit changes with a message describing what was split.
+   - Move tests for moved code to the new submodules
+   - Add mod declarations and re-exports in parent
+   - Run tests after each split to catch breakage early
+3. Run \`cargo fmt\` and \`cargo clippy\`.
+4. Mark ALL completed tasks in the section as done by changing '- [ ]' to '- [x]'.
+5. Commit changes with a message describing the section that was split.
 
 # RULES
 
@@ -31,7 +32,7 @@ Fight entropy. Leave the codebase better than you found it.
 - Move tests for moved code to the new submodule (tests should live with their code).
 - Never add Claude to attribution or as a contributor.
 - This is a rather new codebase so backwards compatibility is never needed.
-- ONLY WORK ON THE IDENTIFIED TASK. DO NOT SWITCH/CREATE BRANCHES.
+- ONLY WORK ON THE IDENTIFIED SECTION. DO NOT SWITCH/CREATE BRANCHES.
 
 If all tasks in @docs/tasks_split.md are completed, output <promise>COMPLETE</promise>."
 
@@ -50,9 +51,9 @@ for ((i=1; i<=$1; i++)); do
   tmpfile=$(mktemp)
   trap "rm -f $tmpfile" EXIT
 
-  echo "========================="
-  echo " Split iteration $i/$1"
-  echo "========================="
+  echo "==========================="
+  echo " Section iteration $i/$1"
+  echo "==========================="
 
   claude \
     --verbose \
@@ -68,7 +69,7 @@ for ((i=1; i<=$1; i++)); do
   result=$(jq -r "$final_result" "$tmpfile")
 
   if [[ "$result" == *"<promise>COMPLETE</promise>"* ]]; then
-    echo "Split complete after $i iterations."
+    echo "All sections complete after $i iterations."
     exit 0
   fi
 done

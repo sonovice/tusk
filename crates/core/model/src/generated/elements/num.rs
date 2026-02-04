@@ -1,6 +1,6 @@
 //!Element: `<num>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<num>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -480,7 +480,7 @@ impl NumChild {
     }
 }
 /**number - Numeric value capturing a measurement or count. Can only be interpreted in combination
-          with the unit attribute.*/
+with the unit attribute.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "num")]
 pub struct Num {

@@ -1,6 +1,6 @@
 //!Element: `<ref>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<ref>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -382,7 +382,7 @@ impl RefChild {
     }
 }
 /**reference - Defines a traversible reference to another location. May contain text and
-      sub-elements that describe the destination.*/
+sub-elements that describe the destination.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ref")]
 pub struct Ref {

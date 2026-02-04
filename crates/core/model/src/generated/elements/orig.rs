@@ -1,6 +1,6 @@
 //!Element: `<orig>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<orig>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -1243,7 +1243,7 @@ impl OrigChild {
     }
 }
 /**original - Contains material which is marked as following the original, rather than
-      being normalized or corrected.*/
+being normalized or corrected.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "orig")]
 pub struct Orig {

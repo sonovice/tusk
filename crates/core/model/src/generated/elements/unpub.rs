@@ -1,6 +1,6 @@
 //!Element: `<unpub>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<unpub>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -18,7 +18,7 @@ impl UnpubChild {
     }
 }
 /**unpublished - Used to explicitly indicate that a bibliographic resource is
-      unpublished.*/
+unpublished.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "unpub")]
 pub struct Unpub {

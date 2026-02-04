@@ -1,6 +1,6 @@
 //!Element: `<binding>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<binding>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -49,7 +49,7 @@ impl BindingChild {
     }
 }
 /**binding - Contains a description of one binding,i.e., type of covering, boards, etc.
-      applied to an item.*/
+applied to an item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "binding")]
 pub struct Binding {

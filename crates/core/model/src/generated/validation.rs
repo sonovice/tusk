@@ -51,7 +51,11 @@ impl fmt::Display for Location {
 #[derive(Debug, Clone)]
 pub enum ValidationError {
     /// A Schematron constraint was violated.
-    ConstraintViolation { location: Location, constraint: String, message: String },
+    ConstraintViolation {
+        location: Location,
+        constraint: String,
+        message: String,
+    },
     /// An attribute value does not match its pattern.
     PatternMismatch {
         location: Location,
@@ -68,36 +72,74 @@ pub enum ValidationError {
         max: String,
     },
     /// A required attribute is missing.
-    MissingRequired { location: Location, attribute: String },
+    MissingRequired {
+        location: Location,
+        attribute: String,
+    },
     /// A reference does not resolve to any element.
-    UnresolvedReference { location: Location, attribute: String, reference: String },
+    UnresolvedReference {
+        location: Location,
+        attribute: String,
+        reference: String,
+    },
 }
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValidationError::ConstraintViolation { location, constraint, message } => {
+            ValidationError::ConstraintViolation {
+                location,
+                constraint,
+                message,
+            } => {
                 write!(
-                    f, "[{}] Constraint '{}' violated: {}", location, constraint, message
+                    f,
+                    "[{}] Constraint '{}' violated: {}",
+                    location, constraint, message
                 )
             }
-            ValidationError::PatternMismatch { location, attribute, value, pattern } => {
+            ValidationError::PatternMismatch {
+                location,
+                attribute,
+                value,
+                pattern,
+            } => {
                 write!(
-                    f, "[{}] Attribute @{}: value '{}' does not match pattern /{}/",
+                    f,
+                    "[{}] Attribute @{}: value '{}' does not match pattern /{}/",
                     location, attribute, value, pattern
                 )
             }
-            ValidationError::RangeViolation { location, attribute, value, min, max } => {
+            ValidationError::RangeViolation {
+                location,
+                attribute,
+                value,
+                min,
+                max,
+            } => {
                 write!(
-                    f, "[{}] Attribute @{}: value {} out of range [{}, {}]", location,
-                    attribute, value, min, max
+                    f,
+                    "[{}] Attribute @{}: value {} out of range [{}, {}]",
+                    location, attribute, value, min, max
                 )
             }
-            ValidationError::MissingRequired { location, attribute } => {
-                write!(f, "[{}] Required attribute @{} is missing", location, attribute)
-            }
-            ValidationError::UnresolvedReference { location, attribute, reference } => {
+            ValidationError::MissingRequired {
+                location,
+                attribute,
+            } => {
                 write!(
-                    f, "[{}] Reference @{}='{}' does not resolve to any element",
+                    f,
+                    "[{}] Required attribute @{} is missing",
+                    location, attribute
+                )
+            }
+            ValidationError::UnresolvedReference {
+                location,
+                attribute,
+                reference,
+            } => {
+                write!(
+                    f,
+                    "[{}] Reference @{}='{}' does not resolve to any element",
                     location, attribute, reference
                 )
             }
@@ -151,12 +193,11 @@ impl ValidationContext {
         constraint: &str,
         message: &str,
     ) {
-        self.errors
-            .push(ValidationError::ConstraintViolation {
-                location: self.location(element, xml_id),
-                constraint: constraint.to_string(),
-                message: message.to_string(),
-            });
+        self.errors.push(ValidationError::ConstraintViolation {
+            location: self.location(element, xml_id),
+            constraint: constraint.to_string(),
+            message: message.to_string(),
+        });
     }
     /// Add a pattern mismatch error.
     pub fn add_pattern_mismatch(
@@ -167,17 +208,20 @@ impl ValidationContext {
         value: &str,
         pattern: &str,
     ) {
-        self.errors
-            .push(ValidationError::PatternMismatch {
-                location: self.location(element, xml_id),
-                attribute: attribute.to_string(),
-                value: value.to_string(),
-                pattern: pattern.to_string(),
-            });
+        self.errors.push(ValidationError::PatternMismatch {
+            location: self.location(element, xml_id),
+            attribute: attribute.to_string(),
+            value: value.to_string(),
+            pattern: pattern.to_string(),
+        });
     }
     /// Finish validation and return the result.
     pub fn finish(self) -> ValidationResult {
-        if self.errors.is_empty() { Ok(()) } else { Err(self.errors) }
+        if self.errors.is_empty() {
+            Ok(())
+        } else {
+            Err(self.errors)
+        }
     }
     /// Check if any errors have been recorded.
     pub fn has_errors(&self) -> bool {

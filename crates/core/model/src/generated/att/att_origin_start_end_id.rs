@@ -1,7 +1,7 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**Attributes recording the identifiers of the first and last elements of a sequence of
-      distant elements.*/
+distant elements.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttOriginStartEndId {
     ///indicates the first element in a sequence of events.

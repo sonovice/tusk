@@ -1,6 +1,6 @@
 //!Element: `<workList>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<workList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl WorkListChild {
     }
 }
 /**work list - Grouping mechanism for information describing non-bibliographic aspects of a
-      text.*/
+text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "workList")]
 pub struct WorkList {

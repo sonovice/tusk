@@ -296,19 +296,16 @@ pub fn extract_title_from_file_desc(file_desc: &tusk_model::elements::FileDesc) 
 }
 
 /// Find the Body element in Music.
-///
-/// Note: Due to code generation limitations, Body might not be directly
-/// accessible as a child of Music. This function handles that case.
 pub fn find_body_in_music(
-    _music: &tusk_model::elements::Music,
+    music: &tusk_model::elements::Music,
 ) -> Option<&tusk_model::elements::Body> {
-    // The generated Music type doesn't include Body as a direct child variant.
-    // In actual MEI documents, body is a child of music, but the code generator
-    // only included certain children. For now, return None and handle this
-    // limitation - the full document structure will need special handling.
-    //
-    // TODO: Update code generator to include body as a Music child, or use
-    // a separate parsing path for the complete document structure.
+    use tusk_model::elements::MusicChild;
+
+    for child in &music.children {
+        if let MusicChild::Body(body) = child {
+            return Some(body);
+        }
+    }
     None
 }
 

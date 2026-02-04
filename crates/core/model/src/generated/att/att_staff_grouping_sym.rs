@@ -12,7 +12,7 @@ pub enum AttStaffGroupingSymSymbol {
     #[serde(rename = "bracketsq")]
     Bracketsq,
     /**Line symbol,i.e., |, (wide) line without top and bottom curved/horizontal
-              segments.*/
+    segments.*/
     #[serde(rename = "line")]
     Line,
     ///Grouping symbol missing.

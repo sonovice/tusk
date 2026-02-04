@@ -1,6 +1,6 @@
 //!Element: `<address>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<address>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -84,7 +84,7 @@ impl AddressChild {
     }
 }
 /**Contains a postal address, for example of a publisher, an organization, or an
-      individual.*/
+individual.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "address")]
 pub struct Address {

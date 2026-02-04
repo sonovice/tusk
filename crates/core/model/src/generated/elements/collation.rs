@@ -1,6 +1,6 @@
 //!Element: `<collation>`
+use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<collation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -389,7 +389,7 @@ impl CollationChild {
     }
 }
 /**Records a description of how the leaves or bifolia of an item are physically
-      arranged.*/
+arranged.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "collation")]
 pub struct Collation {
