@@ -311,3 +311,42 @@ fn test_invalid_numeric_parse() {
     let result: Result<DataTstampoffset, _> = "not_a_number".parse();
     assert!(result.is_err());
 }
+
+// ============================================================================
+// Float Display Formatting Tests
+// ============================================================================
+
+#[test]
+fn test_data_beat_display_formatting() {
+    // Whole numbers should display without decimal point
+    let beat1 = DataBeat::from(1.0);
+    assert_eq!(beat1.to_string(), "1");
+
+    let beat4 = DataBeat::from(4.0);
+    assert_eq!(beat4.to_string(), "4");
+
+    let beat100 = DataBeat::from(100.0);
+    assert_eq!(beat100.to_string(), "100");
+
+    // Fractional numbers should display with decimal point
+    let beat_half = DataBeat::from(1.5);
+    assert_eq!(beat_half.to_string(), "1.5");
+
+    let beat_quarter = DataBeat::from(2.25);
+    assert_eq!(beat_quarter.to_string(), "2.25");
+
+    let beat_third = DataBeat::from(1.333);
+    assert_eq!(beat_third.to_string(), "1.333");
+
+    // Zero should display as "0"
+    let beat_zero = DataBeat::from(0.0);
+    assert_eq!(beat_zero.to_string(), "0");
+
+    // Negative whole numbers
+    let beat_neg = DataBeat::from(-2.0);
+    assert_eq!(beat_neg.to_string(), "-2");
+
+    // Negative fractional numbers
+    let beat_neg_frac = DataBeat::from(-1.5);
+    assert_eq!(beat_neg_frac.to_string(), "-1.5");
+}

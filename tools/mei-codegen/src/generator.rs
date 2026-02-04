@@ -213,6 +213,31 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
                 rust_type,
             );
 
+            // For f64 types, we need a special Display impl that formats whole numbers
+            // without the decimal point (e.g., "1" instead of "1.0")
+            let display_impl = if rust_type == "f64" {
+                quote! {
+                    impl std::fmt::Display for #name {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            // Format whole numbers without decimal point
+                            if self.0.fract() == 0.0 && self.0.is_finite() {
+                                write!(f, "{}", self.0 as i64)
+                            } else {
+                                write!(f, "{}", self.0)
+                            }
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    impl std::fmt::Display for #name {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            write!(f, "{}", self.0)
+                        }
+                    }
+                }
+            };
+
             Some(quote! {
                 #[doc = #full_doc]
                 #derives
@@ -225,11 +250,7 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
                     }
                 }
 
-                impl std::fmt::Display for #name {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        write!(f, "{}", self.0)
-                    }
-                }
+                #display_impl
 
                 impl std::str::FromStr for #name {
                     type Err = <#rust_type_tokens as std::str::FromStr>::Err;

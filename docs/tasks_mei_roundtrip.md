@@ -62,7 +62,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Measure: uses parse_staff_from_raw which doesn't parse staff children - all layer content lost (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Measure: dir and tempo control events not parsed - missing handlers in match (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Section: sb (system break) element not parsed - skipped instead of deserialized, causing element ordering issues (source: Aguado_Walzer_G-major.mei)
-- [ ] [SERIALIZATION_BUG] DataBeat float formatting: whole numbers formatted as '1.0' instead of '1' - Display impl should omit decimal for integers (source: Aguado_Walzer_G-major.mei)
+- [x] [SERIALIZATION_BUG] DataBeat float formatting: whole numbers formatted as '1.0' instead of '1' - Display impl should omit decimal for integers (source: Aguado_Walzer_G-major.mei)
 
 ---
 

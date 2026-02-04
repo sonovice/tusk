@@ -6,6 +6,9 @@
 pub mod att;
 pub mod data;
 pub mod elements;
+
+#[cfg(test)]
+mod data_tests;
 pub mod model;
 pub mod pattern_entities;
 pub mod validation;
