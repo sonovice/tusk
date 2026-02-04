@@ -3936,7 +3936,10 @@ fn parse_project_desc_from_event<R: BufRead>(
                         .children
                         .push(ProjectDescChild::Head(Box::new(head)));
                 }
-                // p elements are more complex - skip for now
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    project_desc.children.push(ProjectDescChild::P(Box::new(p)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -4546,6 +4549,20 @@ impl MeiDeserialize for EditorialDecl {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_editorial_decl_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for ProjectDesc {
+    fn element_name() -> &'static str {
+        "projectDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_project_desc_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -10525,6 +10542,204 @@ mod tests {
                 assert_eq!(sv.common.xml_id, Some("sv1".to_string()));
             }
             _ => panic!("expected StdVals"),
+        }
+    }
+
+    // ========== ProjectDesc tests ==========
+
+    #[test]
+    fn project_desc_deserializes_empty_element() {
+        use tusk_model::elements::ProjectDesc;
+
+        let xml = r#"<projectDesc/>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert!(project_desc.common.xml_id.is_none());
+        assert!(project_desc.children.is_empty());
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_xml_id() {
+        use tusk_model::elements::ProjectDesc;
+
+        let xml = r#"<projectDesc xml:id="pd1"/>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.common.xml_id, Some("pd1".to_string()));
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_head_child() {
+        use tusk_model::elements::{ProjectDesc, ProjectDescChild};
+
+        let xml = r#"<projectDesc xml:id="pd1">
+            <head>Project Description</head>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 1);
+        assert!(matches!(
+            project_desc.children[0],
+            ProjectDescChild::Head(_)
+        ));
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_p_child() {
+        use tusk_model::elements::{PChild, ProjectDesc, ProjectDescChild};
+
+        let xml = r#"<projectDesc xml:id="pd1">
+            <p>This project aims to create a digital edition of Bach's Well-Tempered Clavier.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 1);
+        match &project_desc.children[0] {
+            ProjectDescChild::P(p) => {
+                assert_eq!(p.children.len(), 1);
+                match &p.children[0] {
+                    PChild::Text(text) => {
+                        assert!(text.contains("digital edition"));
+                    }
+                    _ => panic!("expected Text child"),
+                }
+            }
+            _ => panic!("expected P child"),
+        }
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_multiple_p_children() {
+        use tusk_model::elements::{ProjectDesc, ProjectDescChild};
+
+        let xml = r#"<projectDesc xml:id="pd1">
+            <p>First paragraph describing the project purpose.</p>
+            <p>Second paragraph with additional details.</p>
+            <p>Third paragraph about funding and contributors.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 3);
+        assert!(matches!(project_desc.children[0], ProjectDescChild::P(_)));
+        assert!(matches!(project_desc.children[1], ProjectDescChild::P(_)));
+        assert!(matches!(project_desc.children[2], ProjectDescChild::P(_)));
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_head_and_p_children() {
+        use tusk_model::elements::{ProjectDesc, ProjectDescChild};
+
+        let xml = r#"<projectDesc xml:id="pd1">
+            <head>About This Project</head>
+            <p>This encoding was created as part of the Digital Mozart Edition project.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 2);
+        assert!(matches!(
+            project_desc.children[0],
+            ProjectDescChild::Head(_)
+        ));
+        assert!(matches!(project_desc.children[1], ProjectDescChild::P(_)));
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_bibl_attribute() {
+        use tusk_model::elements::ProjectDesc;
+
+        let xml = r#"<projectDesc xml:id="pd1" analog="http://example.com/project">
+            <p>Project description.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            project_desc.bibl.analog,
+            Some("http://example.com/project".to_string())
+        );
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_data_pointing_attribute() {
+        use tusk_model::data::DataUri;
+        use tusk_model::elements::ProjectDesc;
+
+        let xml = r#"<projectDesc xml:id="pd1" data="http://example.com/data">
+            <p>Project description.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.data_pointing.data.len(), 1);
+        assert_eq!(
+            project_desc.data_pointing.data[0],
+            DataUri("http://example.com/data".to_string())
+        );
+    }
+
+    #[test]
+    fn project_desc_deserializes_with_lang_attribute() {
+        use tusk_model::elements::ProjectDesc;
+
+        let xml = r#"<projectDesc xml:id="pd1" xml:lang="en">
+            <p>Project description in English.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.lang.xml_lang, Some("en".to_string()));
+    }
+
+    #[test]
+    fn project_desc_deserializes_real_world_example() {
+        use tusk_model::elements::{ProjectDesc, ProjectDescChild};
+
+        // Based on MEI documentation examples
+        let xml = r#"<projectDesc>
+            <head>Digital Edition Project</head>
+            <p>The aim of the project was to produce a machine-readable
+               version of the complete works of Ludwig van Beethoven.</p>
+            <p>Funding for this project was provided by the National
+               Endowment for the Humanities.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 3);
+        assert!(matches!(
+            project_desc.children[0],
+            ProjectDescChild::Head(_)
+        ));
+        assert!(matches!(project_desc.children[1], ProjectDescChild::P(_)));
+        assert!(matches!(project_desc.children[2], ProjectDescChild::P(_)));
+    }
+
+    #[test]
+    fn project_desc_child_elements_preserve_attributes() {
+        use tusk_model::elements::{ProjectDesc, ProjectDescChild};
+
+        let xml = r#"<projectDesc>
+            <head xml:id="h1">Project Title</head>
+            <p xml:id="p1">First paragraph.</p>
+            <p xml:id="p2">Second paragraph.</p>
+        </projectDesc>"#;
+        let project_desc = ProjectDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(project_desc.children.len(), 3);
+
+        match &project_desc.children[0] {
+            ProjectDescChild::Head(h) => {
+                assert_eq!(h.common.xml_id, Some("h1".to_string()));
+            }
+            _ => panic!("expected Head"),
+        }
+        match &project_desc.children[1] {
+            ProjectDescChild::P(p) => {
+                assert_eq!(p.common.xml_id, Some("p1".to_string()));
+            }
+            _ => panic!("expected P"),
+        }
+        match &project_desc.children[2] {
+            ProjectDescChild::P(p) => {
+                assert_eq!(p.common.xml_id, Some("p2".to_string()));
+            }
+            _ => panic!("expected P"),
         }
     }
 }
