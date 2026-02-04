@@ -13,8 +13,9 @@ use tusk_model::att::{
     AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Body, BodyChild, Chord, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Note,
-    Rest, Score, ScoreChild, ScoreDef, Section, SectionChild, Space, Staff, StaffChild, Tuplet,
+    Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, Mdiv, MdivChild,
+    Measure, MeasureChild, Note, Rest, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur,
+    Space, Staff, StaffChild, Tempo, Tie, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -263,42 +264,6 @@ impl MeiDeserialize for Staff {
     }
 }
 
-/// Helper to parse Staff from raw child element data
-pub(crate) fn parse_staff_from_raw(mut attrs: AttributeMap) -> Staff {
-    let mut staff = Staff::default();
-    // AttBasic
-    if let Some(v) = attrs.remove("xml:id") {
-        staff.basic.xml_id = Some(v);
-    }
-    if let Some(v) = attrs
-        .remove("xml:base")
-        .and_then(|v| from_attr_string(&v).ok())
-    {
-        staff.basic.xml_base = Some(v);
-    }
-    // AttLabelled
-    if let Some(v) = attrs.remove("label") {
-        staff.labelled.label = Some(v);
-    }
-    // AttNInteger
-    if let Some(n) = attrs
-        .remove("n")
-        .and_then(|v| from_attr_string::<u64>(&v).ok())
-    {
-        staff.n_integer.n = Some(n);
-    }
-    // AttFacsimile
-    let _ = staff.facsimile.extract_attributes(&mut attrs);
-    // AttMetadataPointing
-    let _ = staff.metadata_pointing.extract_attributes(&mut attrs);
-    // Staff-specific
-    let _ = staff.staff_log.extract_attributes(&mut attrs);
-    let _ = staff.staff_vis.extract_attributes(&mut attrs);
-    let _ = staff.staff_ges.extract_attributes(&mut attrs);
-    let _ = staff.staff_anl.extract_attributes(&mut attrs);
-    staff
-}
-
 impl MeiDeserialize for Layer {
     fn element_name() -> &'static str {
         "layer"
@@ -414,19 +379,51 @@ impl MeiDeserialize for Measure {
         // Remaining attributes are unknown - in lenient mode we ignore them
         // In strict mode, we could warn or error
 
-        // Read children if not an empty element
+        // Read children if not an empty element - use recursive parsing for proper child handling
         if !is_empty {
-            let children_raw = reader.read_children_raw("measure")?;
-            for (name, child_attrs, _child_empty, _content) in children_raw {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("measure")?
+            {
                 match name.as_str() {
                     "staff" => {
-                        let staff = parse_staff_from_raw(child_attrs);
+                        let staff = Staff::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Staff(Box::new(staff)));
                     }
-                    // Other child types can be added here as needed
-                    // For now, unknown children are skipped (lenient mode)
+                    "dir" => {
+                        let dir = Dir::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                    }
+                    "tempo" => {
+                        let tempo = Tempo::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Tempo(Box::new(tempo)));
+                    }
+                    "dynam" => {
+                        let dynam = Dynam::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Dynam(Box::new(dynam)));
+                    }
+                    "slur" => {
+                        let slur = Slur::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Slur(Box::new(slur)));
+                    }
+                    "tie" => {
+                        let tie = Tie::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Tie(Box::new(tie)));
+                    }
+                    "hairpin" => {
+                        let hairpin = Hairpin::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::Hairpin(Box::new(hairpin)));
+                    }
+                    "fermata" => {
+                        let fermata = Fermata::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::Fermata(Box::new(fermata)));
+                    }
+                    // Other child types - skip in lenient mode for now
                     _ => {
-                        // Unknown child element - skip in lenient mode
+                        reader.skip_to_end(&name)?;
                     }
                 }
             }

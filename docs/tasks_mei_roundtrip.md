@@ -59,8 +59,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] IdentifierChild::unknown - serializer not implemented for unknown variant (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Bibl element: text content not parsed - uses read_next_child_start instead of read_next_mixed_content, losing text like "OCLC_DDC" (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] ScoreDef: pgHead and pgFoot children not parsed - missing handlers in match, elements skipped (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] Measure: uses parse_staff_from_raw which doesn't parse staff children - all layer content lost (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] Measure: dir and tempo control events not parsed - missing handlers in match (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Measure: uses parse_staff_from_raw which doesn't parse staff children - all layer content lost (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Measure: dir and tempo control events not parsed - missing handlers in match (source: Aguado_Walzer_G-major.mei)
 
 ---
 

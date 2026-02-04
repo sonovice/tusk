@@ -1984,17 +1984,13 @@ fn hierarchy_staff_contains_multiple_layers() {
 
 #[test]
 fn hierarchy_measure_contains_staff() {
-    // Note: Currently, Measure's deserializer uses read_children_raw + parse_staff_from_raw
-    // which only parses staff attributes, not staff's children (layers).
-    // This test documents the current behavior - staff children are preserved in serialization
-    // but not fully parsed in deserialization (layers within staff not parsed).
+    // Measure properly parses staff children recursively, including their layer children
     use tusk_model::data::DataWord;
     use tusk_model::elements::{Measure, MeasureChild, Staff};
 
     let mut staff = Staff::default();
     staff.basic.xml_id = Some("staff1".to_string());
     staff.n_integer.n = Some(1);
-    // Note: even if we added layer children here, they wouldn't be parsed back
 
     let mut measure = Measure::default();
     measure.common.xml_id = Some("m1".to_string());
@@ -2012,7 +2008,6 @@ fn hierarchy_measure_contains_staff() {
         MeasureChild::Staff(s) => {
             assert_eq!(s.basic.xml_id, Some("staff1".to_string()));
             assert_eq!(s.n_integer.n, Some(1));
-            // Staff children (layers) are not parsed from within Measure - known limitation
         }
         other => panic!("Expected Staff, got {:?}", other),
     }
@@ -2021,7 +2016,7 @@ fn hierarchy_measure_contains_staff() {
 #[test]
 fn hierarchy_measure_contains_multiple_staves() {
     // Test that measure can contain multiple staff elements
-    // Note: Staff children (layers) are not parsed - known limitation
+    // Test that measure can contain multiple staff elements
     use tusk_model::data::DataWord;
     use tusk_model::elements::{Measure, MeasureChild, Staff};
 
@@ -2065,9 +2060,107 @@ fn hierarchy_measure_contains_multiple_staves() {
 }
 
 #[test]
+fn hierarchy_measure_staff_with_layers() {
+    // Test that measure parses staff with layer children recursively
+    use tusk_model::data::{DataOctave, DataPitchname, DataWord};
+    use tusk_model::elements::{Layer, LayerChild, Measure, MeasureChild, Note, Staff, StaffChild};
+
+    let mut note = Note::default();
+    note.common.xml_id = Some("note1".to_string());
+    note.note_log.pname = Some(DataPitchname("c".to_string()));
+    note.note_log.oct = Some(DataOctave(4));
+
+    let mut layer = Layer::default();
+    layer.basic.xml_id = Some("layer1".to_string());
+    layer.n_integer.n = Some(1);
+    layer.children.push(LayerChild::Note(Box::new(note)));
+
+    let mut staff = Staff::default();
+    staff.basic.xml_id = Some("staff1".to_string());
+    staff.n_integer.n = Some(1);
+    staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+    let mut measure = Measure::default();
+    measure.common.xml_id = Some("m1".to_string());
+    measure.common.n = Some(DataWord("1".to_string()));
+    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+
+    let xml = measure.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    // Verify measure has staff
+    assert_eq!(parsed.children.len(), 1);
+    let staff = match &parsed.children[0] {
+        MeasureChild::Staff(s) => s,
+        other => panic!("Expected Staff, got {:?}", other),
+    };
+    assert_eq!(staff.basic.xml_id, Some("staff1".to_string()));
+
+    // Verify staff has layer
+    assert_eq!(staff.children.len(), 1);
+    let layer = match &staff.children[0] {
+        StaffChild::Layer(l) => l,
+        other => panic!("Expected Layer, got {:?}", other),
+    };
+    assert_eq!(layer.basic.xml_id, Some("layer1".to_string()));
+
+    // Verify layer has note
+    assert_eq!(layer.children.len(), 1);
+    let note = match &layer.children[0] {
+        LayerChild::Note(n) => n,
+        other => panic!("Expected Note, got {:?}", other),
+    };
+    assert_eq!(note.common.xml_id, Some("note1".to_string()));
+    assert_eq!(note.note_log.pname, Some(DataPitchname("c".to_string())));
+    assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+}
+
+#[test]
+fn hierarchy_measure_dir_tempo() {
+    // Test that measure parses dir and tempo control events
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::{Dir, Measure, MeasureChild, Staff, Tempo};
+
+    let mut staff = Staff::default();
+    staff.n_integer.n = Some(1);
+
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some("dir1".to_string());
+
+    let mut tempo = Tempo::default();
+    tempo.common.xml_id = Some("tempo1".to_string());
+
+    let mut measure = Measure::default();
+    measure.common.xml_id = Some("m1".to_string());
+    measure.common.n = Some(DataWord("1".to_string()));
+    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+    measure.children.push(MeasureChild::Dir(Box::new(dir)));
+    measure.children.push(MeasureChild::Tempo(Box::new(tempo)));
+
+    let xml = measure.to_mei_string().expect("serialize");
+    let parsed = Measure::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 3);
+
+    match &parsed.children[0] {
+        MeasureChild::Staff(s) => assert_eq!(s.n_integer.n, Some(1)),
+        other => panic!("Expected Staff, got {:?}", other),
+    }
+
+    match &parsed.children[1] {
+        MeasureChild::Dir(d) => assert_eq!(d.common.xml_id, Some("dir1".to_string())),
+        other => panic!("Expected Dir, got {:?}", other),
+    }
+
+    match &parsed.children[2] {
+        MeasureChild::Tempo(t) => assert_eq!(t.common.xml_id, Some("tempo1".to_string())),
+        other => panic!("Expected Tempo, got {:?}", other),
+    }
+}
+
+#[test]
 fn hierarchy_section_contains_measure() {
     // Test section → measure hierarchy
-    // Note: Measure's staff children are not parsed with full hierarchy
     use tusk_model::data::DataWord;
     use tusk_model::elements::{Measure, MeasureChild, Section, SectionChild, Staff};
 
