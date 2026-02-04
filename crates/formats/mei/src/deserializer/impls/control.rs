@@ -4,7 +4,7 @@
 //! Dir, Tempo, and Fermata elements.
 
 use crate::deserializer::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
 use std::io::BufRead;
 use tusk_model::att::{
@@ -655,6 +655,8 @@ impl MeiDeserialize for Dir {
         mut attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
+        use tusk_model::elements::DirChild;
+
         let mut dir = Dir::default();
 
         // Extract attributes into each attribute class
@@ -668,14 +670,92 @@ impl MeiDeserialize for Dir {
 
         // Remaining attributes are unknown - in lenient mode we ignore them
 
-        // Parse text content if not empty
+        // Parse mixed content (text and child elements)
         if !is_empty {
-            // dir can contain text and various child elements
-            // For now, we collect text content as DirChild::Text
-            if let Some(text) = reader.read_text_until_end("dir")? {
-                if !text.trim().is_empty() {
-                    dir.children
-                        .push(tusk_model::elements::DirChild::Text(text));
+            while let Some(content) = reader.read_next_mixed_content("dir")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            dir.children.push(DirChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "rend" => {
+                                let rend =
+                                    super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                dir.children.push(DirChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb =
+                                    super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                dir.children.push(DirChild::Lb(Box::new(lb)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::Ref(Box::new(ref_elem)));
+                            }
+                            "persName" => {
+                                let pers_name = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::PersName(Box::new(pers_name)));
+                            }
+                            "corpName" => {
+                                let corp_name = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::CorpName(Box::new(corp_name)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::Name(Box::new(name_elem)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::Date(Box::new(date)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children.push(DirChild::Title(Box::new(title)));
+                            }
+                            "identifier" => {
+                                let identifier = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dir.children
+                                    .push(DirChild::Identifier(Box::new(identifier)));
+                            }
+                            // Skip unknown child elements
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1828,6 +1908,68 @@ mod tests {
 
         assert!(dir.dir_vis.lform.is_some());
         assert!(dir.dir_vis.lwidth.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_rend_children() {
+        use tusk_model::elements::{Dir, DirChild};
+
+        let xml = r#"<dir xml:id="d1"><rend fontweight="bold">forte</rend></dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.common.xml_id, Some("d1".to_string()));
+        assert_eq!(dir.children.len(), 1);
+        match &dir.children[0] {
+            DirChild::Rend(rend) => {
+                assert_eq!(rend.children.len(), 1);
+            }
+            _ => panic!("Expected Rend child"),
+        }
+    }
+
+    #[test]
+    fn dir_deserializes_mixed_content_with_rend() {
+        use tusk_model::elements::{Dir, DirChild};
+
+        let xml = r#"<dir xml:id="d2">play <rend fontstyle="italic">quietly</rend> here</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.common.xml_id, Some("d2".to_string()));
+        assert_eq!(dir.children.len(), 3);
+        match &dir.children[0] {
+            DirChild::Text(text) => assert!(text.starts_with("play")),
+            _ => panic!("Expected Text child first"),
+        }
+        match &dir.children[1] {
+            DirChild::Rend(_) => {}
+            _ => panic!("Expected Rend child second"),
+        }
+        match &dir.children[2] {
+            DirChild::Text(text) => assert!(text.ends_with("here")),
+            _ => panic!("Expected Text child third"),
+        }
+    }
+
+    #[test]
+    fn dir_deserializes_lb_children() {
+        use tusk_model::elements::{Dir, DirChild};
+
+        let xml = r#"<dir>line one<lb/>line two</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.children.len(), 3);
+        match &dir.children[0] {
+            DirChild::Text(text) => assert_eq!(text, "line one"),
+            _ => panic!("Expected Text child first"),
+        }
+        match &dir.children[1] {
+            DirChild::Lb(_) => {}
+            _ => panic!("Expected Lb child second"),
+        }
+        match &dir.children[2] {
+            DirChild::Text(text) => assert_eq!(text, "line two"),
+            _ => panic!("Expected Text child third"),
+        }
     }
 
     // ============================================================================
