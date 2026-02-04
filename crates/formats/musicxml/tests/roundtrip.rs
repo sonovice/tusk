@@ -973,3 +973,18 @@ fn test_roundtrip_tutorial_apres_un_reve() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_tutorial_chopin_prelude() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("tutorial_chopin_prelude.musicxml")
+            .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_chopin_prelude: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for tutorial_chopin_prelude.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
