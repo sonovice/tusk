@@ -45,7 +45,7 @@ use tusk_model::elements::{
     Segmentation, SegmentationChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space,
     Sponsor, SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
     StdVals, StdValsChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet,
-    TupletChild, Unpub,
+    TupletChild, Unpub, Work, WorkChild, WorkList, WorkListChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -2856,7 +2856,14 @@ impl MeiDeserialize for MeiHead {
                             .children
                             .push(MeiHeadChild::EncodingDesc(Box::new(encoding_desc)));
                     }
-                    // Other child elements (workList, manifestationList, etc.) are not
+                    "workList" => {
+                        let work_list =
+                            parse_work_list_from_event(reader, child_attrs, child_empty)?;
+                        mei_head
+                            .children
+                            .push(MeiHeadChild::WorkList(Box::new(work_list)));
+                    }
+                    // Other child elements (manifestationList, revisionDesc, etc.) are not
                     // yet implemented for parsing. Skip them in lenient mode.
                     _ => {
                         if !child_empty {
@@ -5540,6 +5547,136 @@ impl MeiDeserialize for GraceGrp {
 
         Ok(grace_grp)
     }
+}
+
+// ============================================================================
+// WorkList element implementation
+// ============================================================================
+
+impl MeiDeserialize for WorkList {
+    fn element_name() -> &'static str {
+        "workList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_work_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<workList>` element from within another element.
+fn parse_work_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<WorkList> {
+    let mut work_list = WorkList::default();
+
+    // Extract attributes
+    work_list.common.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // workList can contain: head*, work+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("workList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    work_list.children.push(WorkListChild::Head(Box::new(head)));
+                }
+                "work" => {
+                    let work = parse_work_from_event(reader, child_attrs, child_empty)?;
+                    work_list.children.push(WorkListChild::Work(Box::new(work)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(work_list)
+}
+
+impl MeiDeserialize for Work {
+    fn element_name() -> &'static str {
+        "work"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_work_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<work>` element from within another element.
+fn parse_work_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Work> {
+    let mut work = Work::default();
+
+    // Extract attributes
+    work.common.extract_attributes(&mut attrs)?;
+    work.authorized.extract_attributes(&mut attrs)?;
+    work.bibl.extract_attributes(&mut attrs)?;
+    work.data_pointing.extract_attributes(&mut attrs)?;
+    work.pointing.extract_attributes(&mut attrs)?;
+    work.target_eval.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // work can contain: head*, componentList?, key*, tempo*, extMeta?, audience*,
+    // incip*, otherChar*, perfMedium*, dedication*, identifier*, respStmt*,
+    // meter*, langUsage*, contents*, biblList*, mensuration*, history*,
+    // creation*, perfDuration*, context*, notesStmt*, classification*,
+    // expressionList?, title*, relationList*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("work")? {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Head(Box::new(head)));
+                }
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Title(Box::new(title)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::Identifier(Box::new(identifier)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::RespStmt(Box::new(resp_stmt)));
+                }
+                // Other child elements can be added here as needed. For now,
+                // unknown children are skipped in lenient mode.
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(work)
 }
 
 #[cfg(test)]
@@ -8611,18 +8748,18 @@ mod tests {
         use tusk_model::elements::MeiHead;
 
         // Unknown child elements should be skipped in lenient mode.
-        // Use workList (not yet implemented) to test this.
+        // Use revisionDesc (not yet implemented) to test this.
         let xml = r#"<meiHead xml:id="h1">
-            <workList>
-                <work>
-                    <title>Test Work</title>
-                </work>
-            </workList>
+            <revisionDesc>
+                <change>
+                    <desc>First revision</desc>
+                </change>
+            </revisionDesc>
         </meiHead>"#;
         let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
 
         assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
-        // workList is not yet parsed, so the list should be empty
+        // revisionDesc is not yet parsed, so the list should be empty
         assert!(mei_head.children.is_empty());
     }
 
@@ -10740,6 +10877,133 @@ mod tests {
                 assert_eq!(p.common.xml_id, Some("p2".to_string()));
             }
             _ => panic!("expected P"),
+        }
+    }
+
+    // ========================================================================
+    // WorkList tests
+    // ========================================================================
+
+    #[test]
+    fn work_list_deserializes_basic() {
+        use tusk_model::elements::{WorkList, WorkListChild};
+
+        let xml = r#"<workList>
+            <work/>
+        </workList>"#;
+        let work_list = WorkList::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work_list.children.len(), 1);
+        assert!(matches!(work_list.children[0], WorkListChild::Work(_)));
+    }
+
+    #[test]
+    fn work_list_deserializes_with_xml_id() {
+        use tusk_model::elements::WorkList;
+
+        let xml = r#"<workList xml:id="wl1">
+            <work/>
+        </workList>"#;
+        let work_list = WorkList::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work_list.common.xml_id, Some("wl1".to_string()));
+    }
+
+    #[test]
+    fn work_list_deserializes_with_head_and_work() {
+        use tusk_model::elements::{WorkList, WorkListChild};
+
+        let xml = r#"<workList>
+            <head>List of Works</head>
+            <work xml:id="w1"/>
+            <work xml:id="w2"/>
+        </workList>"#;
+        let work_list = WorkList::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work_list.children.len(), 3);
+        assert!(matches!(work_list.children[0], WorkListChild::Head(_)));
+        assert!(matches!(work_list.children[1], WorkListChild::Work(_)));
+        assert!(matches!(work_list.children[2], WorkListChild::Work(_)));
+
+        // Verify work xml:ids
+        match &work_list.children[1] {
+            WorkListChild::Work(w) => {
+                assert_eq!(w.common.xml_id, Some("w1".to_string()));
+            }
+            _ => panic!("expected Work"),
+        }
+        match &work_list.children[2] {
+            WorkListChild::Work(w) => {
+                assert_eq!(w.common.xml_id, Some("w2".to_string()));
+            }
+            _ => panic!("expected Work"),
+        }
+    }
+
+    #[test]
+    fn work_list_deserializes_work_with_title() {
+        use tusk_model::elements::{WorkList, WorkListChild};
+
+        let xml = r#"<workList>
+            <work xml:id="w1">
+                <title>Symphony No. 5</title>
+            </work>
+        </workList>"#;
+        let work_list = WorkList::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work_list.children.len(), 1);
+        match &work_list.children[0] {
+            WorkListChild::Work(w) => {
+                assert_eq!(w.common.xml_id, Some("w1".to_string()));
+                assert_eq!(w.children.len(), 1);
+            }
+            _ => panic!("expected Work"),
+        }
+    }
+
+    #[test]
+    fn work_list_deserializes_empty_element() {
+        use tusk_model::elements::WorkList;
+
+        // Empty workList (not valid per schema but we're lenient)
+        let xml = r#"<workList/>"#;
+        let work_list = WorkList::from_mei_str(xml).expect("should deserialize");
+
+        assert!(work_list.children.is_empty());
+    }
+
+    #[test]
+    fn work_list_in_mei_head() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead>
+            <fileDesc>
+                <titleStmt>
+                    <title>Test</title>
+                </titleStmt>
+            </fileDesc>
+            <workList>
+                <work xml:id="w1">
+                    <title>Test Work</title>
+                </work>
+            </workList>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        // Should have fileDesc and workList
+        assert_eq!(mei_head.children.len(), 2);
+
+        // First child should be fileDesc
+        assert!(matches!(mei_head.children[0], MeiHeadChild::FileDesc(_)));
+
+        // Second child should be workList
+        assert!(matches!(mei_head.children[1], MeiHeadChild::WorkList(_)));
+
+        match &mei_head.children[1] {
+            MeiHeadChild::WorkList(wl) => {
+                assert_eq!(wl.children.len(), 1);
+            }
+            _ => panic!("expected WorkList"),
         }
     }
 }
