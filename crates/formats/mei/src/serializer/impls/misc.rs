@@ -7,14 +7,14 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::att::{
-    AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttCalendared,
-    AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable, AttEdit,
-    AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
-    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttLabelled, AttLinking, AttMeiVersion,
-    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing, AttRecordType,
-    AttRegularMethod, AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl,
-    AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign,
-    AttWhitespace, AttXy,
+    AttAccidental, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis,
+    AttCalendared, AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable,
+    AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
+    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttKeyMode, AttLabelled, AttLinking,
+    AttMeiVersion, AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName,
+    AttPitch, AttPointing, AttRecordType, AttRegularMethod, AttResponsibility, AttSource,
+    AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
+    AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -875,5 +875,45 @@ impl MeiSerialize for tusk_model::elements::MusicChild {
             // Other children not fully implemented yet
             _ => Ok(()),
         }
+    }
+}
+
+// ============================================================================
+// Key/Meter/Pitch attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttAccidental {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "accid", self.accid);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttPitch {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "pname", self.pname);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttKeyMode {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "mode", self.mode);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMeterSigLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "count", clone self.count);
+        push_attr!(attrs, "sym", self.sym);
+        if let Some(ref v) = self.unit {
+            attrs.push(("unit", v.to_string()));
+        }
+        attrs
     }
 }
