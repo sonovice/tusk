@@ -99,6 +99,22 @@ pub fn convert_staff_grp(
                             .iter()
                             .rposition(|(num, _)| num == &group_number)
                         {
+                            // Move any groups pushed AFTER this one (higher indices) into this group
+                            // This handles cases like:
+                            //   <part-group 2 start>
+                            //   <part>P14</part>
+                            //   <part-group 1 start>
+                            //   <part>P15</part>
+                            //   <part-group 2 stop>  -- group 1 should be nested inside group 2
+                            while group_stack.len() > idx + 1 {
+                                let (_, inner_grp) = group_stack.pop().unwrap();
+                                if let Some((_, outer_grp)) = group_stack.get_mut(idx) {
+                                    outer_grp
+                                        .children
+                                        .push(StaffGrpChild::StaffGrp(Box::new(inner_grp)));
+                                }
+                            }
+
                             let (_, completed_grp) = group_stack.remove(idx);
 
                             // Add completed group to parent (or root)
