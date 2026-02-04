@@ -1,10 +1,10 @@
 //! Deserializer implementations for text and prose MEI elements.
 //!
-//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse
+//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li
 //! and related attribute classes.
 
 use crate::deserializer::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
 use std::io::BufRead;
 use tusk_model::att::{
@@ -12,7 +12,9 @@ use tusk_model::att::{
     AttHorizontalAlign, AttLyricsAnl, AttLyricsGes, AttLyricsLog, AttLyricsVis, AttPlist,
     AttSource, AttTypography, AttVerseAnl, AttVerseGes, AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
-use tusk_model::elements::{Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Rend, Verse};
+use tusk_model::elements::{
+    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Verse,
+};
 
 use super::{extract_attr, from_attr_string};
 
@@ -493,6 +495,238 @@ impl MeiDeserialize for Verse {
     }
 }
 
+impl MeiDeserialize for List {
+    fn element_name() -> &'static str {
+        "list"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<list>` element from within another element.
+///
+/// List can contain: head*, li*, label*
+pub(crate) fn parse_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<List> {
+    let mut list = List::default();
+
+    // Extract attributes
+    list.basic.extract_attributes(&mut attrs)?;
+    list.classed.extract_attributes(&mut attrs)?;
+    list.facsimile.extract_attributes(&mut attrs)?;
+    list.labelled.extract_attributes(&mut attrs)?;
+    list.lang.extract_attributes(&mut attrs)?;
+    list.linking.extract_attributes(&mut attrs)?;
+    list.n_number_like.extract_attributes(&mut attrs)?;
+    list.responsibility.extract_attributes(&mut attrs)?;
+    list.xy.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "form", string list.form);
+    extract_attr!(attrs, "type", string list.r#type);
+
+    // Read children if not an empty element
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("list")? {
+            match name.as_str() {
+                "head" => {
+                    let head =
+                        super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+                    list.children.push(ListChild::Head(Box::new(head)));
+                }
+                "li" => {
+                    let li = parse_li_from_event(reader, child_attrs, child_empty)?;
+                    list.children.push(ListChild::Li(Box::new(li)));
+                }
+                "label" => {
+                    let label = super::parse_label_from_event(reader, child_attrs, child_empty)?;
+                    list.children.push(ListChild::Label(Box::new(label)));
+                }
+                _ => {
+                    // Skip unknown children in lenient mode
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(list)
+}
+
+impl MeiDeserialize for Li {
+    fn element_name() -> &'static str {
+        "li"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_li_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<li>` (list item) element from within another element.
+///
+/// Li can contain mixed content with text and many child elements.
+pub(crate) fn parse_li_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Li> {
+    let mut li = Li::default();
+
+    // Extract attributes
+    li.common.extract_attributes(&mut attrs)?;
+    li.facsimile.extract_attributes(&mut attrs)?;
+    li.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("li")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve all text content
+                    if !text.trim().is_empty() {
+                        li.children.push(LiChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Ptr(Box::new(ptr)));
+                        }
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            li.children.push(LiChild::Rend(Box::new(rend)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::CorpName(Box::new(corp_name)));
+                        }
+                        "geogName" => {
+                            let geog_name = super::header::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::GeogName(Box::new(geog_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Date(Box::new(date)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Title(Box::new(title)));
+                        }
+                        "annot" => {
+                            let annot = super::header::parse_annot_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Annot(Box::new(annot)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            li.children.push(LiChild::Lb(Box::new(lb)));
+                        }
+                        "bibl" => {
+                            let bibl = super::header::parse_bibl_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Bibl(Box::new(bibl)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::Identifier(Box::new(identifier)));
+                        }
+                        "p" => {
+                            let p = super::header::parse_p_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            li.children.push(LiChild::P(Box::new(p)));
+                        }
+                        "list" => {
+                            let nested_list =
+                                parse_list_from_event(reader, child_attrs, child_empty)?;
+                            li.children.push(LiChild::List(Box::new(nested_list)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(li)
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -687,5 +921,104 @@ mod tests {
         let verse = Verse::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(verse.common.xml_id, Some("v1".to_string()));
+    }
+
+    #[test]
+    fn list_deserializes_empty() {
+        let xml = r#"<list/>"#;
+        let list = List::from_mei_str(xml).expect("should deserialize");
+
+        assert!(list.basic.xml_id.is_none());
+        assert!(list.children.is_empty());
+    }
+
+    #[test]
+    fn list_deserializes_with_xml_id() {
+        let xml = r#"<list xml:id="lst1"/>"#;
+        let list = List::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(list.basic.xml_id, Some("lst1".to_string()));
+    }
+
+    #[test]
+    fn list_deserializes_with_form_and_type() {
+        let xml = r#"<list form="simple" type="bulleted"/>"#;
+        let list = List::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(list.form, Some("simple".to_string()));
+        assert_eq!(list.r#type, Some("bulleted".to_string()));
+    }
+
+    #[test]
+    fn list_deserializes_with_li_children() {
+        let xml = r#"<list>
+            <li>First item</li>
+            <li>Second item</li>
+        </list>"#;
+        let list = List::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(list.children.len(), 2);
+        match &list.children[0] {
+            ListChild::Li(li) => {
+                assert_eq!(li.children.len(), 1);
+                match &li.children[0] {
+                    LiChild::Text(text) => assert_eq!(text, "First item"),
+                    _ => panic!("expected Text child"),
+                }
+            }
+            _ => panic!("expected Li child"),
+        }
+    }
+
+    #[test]
+    fn list_deserializes_with_head() {
+        let xml = r#"<list>
+            <head>My List</head>
+            <li>Item</li>
+        </list>"#;
+        let list = List::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(list.children.len(), 2);
+        assert!(matches!(list.children[0], ListChild::Head(_)));
+        assert!(matches!(list.children[1], ListChild::Li(_)));
+    }
+
+    #[test]
+    fn li_deserializes_empty() {
+        let xml = r#"<li/>"#;
+        let li = Li::from_mei_str(xml).expect("should deserialize");
+
+        assert!(li.common.xml_id.is_none());
+        assert!(li.children.is_empty());
+    }
+
+    #[test]
+    fn li_deserializes_with_text() {
+        let xml = r#"<li>List item text</li>"#;
+        let li = Li::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(li.children.len(), 1);
+        match &li.children[0] {
+            LiChild::Text(text) => assert_eq!(text, "List item text"),
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn li_deserializes_with_nested_list() {
+        let xml = r#"<li>
+            <list>
+                <li>Nested item</li>
+            </list>
+        </li>"#;
+        let li = Li::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(li.children.len(), 1);
+        match &li.children[0] {
+            LiChild::List(nested) => {
+                assert_eq!(nested.children.len(), 1);
+            }
+            _ => panic!("expected List child"),
+        }
     }
 }

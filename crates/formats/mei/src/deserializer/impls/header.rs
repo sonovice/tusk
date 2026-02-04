@@ -1144,6 +1144,11 @@ pub(crate) fn parse_p_from_event<R: BufRead>(
                                 parse_identifier_from_event(reader, child_attrs, child_empty)?;
                             p.children.push(PChild::Identifier(Box::new(identifier)));
                         }
+                        "list" => {
+                            let list =
+                                super::parse_list_from_event(reader, child_attrs, child_empty)?;
+                            p.children.push(PChild::List(Box::new(list)));
+                        }
                         // Other child elements not yet implemented - skip
                         _ => {
                             if !child_empty {

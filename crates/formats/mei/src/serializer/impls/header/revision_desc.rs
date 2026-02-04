@@ -401,6 +401,8 @@ impl MeiSerialize for PChild {
             PChild::Settlement(elem) => elem.serialize_mei(writer),
             PChild::Street(elem) => elem.serialize_mei(writer),
             PChild::Bloc(elem) => elem.serialize_mei(writer),
+            PChild::List(elem) => elem.serialize_mei(writer),
+            PChild::Bibl(elem) => elem.serialize_mei(writer),
             // Elements that need serializers - for now use default element serialization
             _ => {
                 // TODO: Implement serializers for remaining PChild variants

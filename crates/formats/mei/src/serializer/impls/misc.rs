@@ -18,7 +18,8 @@ use tusk_model::att::{
     AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, GraceGrp, GraceGrpChild, Num, Ptr, Ref, Tuplet, TupletChild,
+    Beam, BeamChild, GraceGrp, GraceGrpChild, Li, LiChild, List, ListChild, Num, Ptr, Ref, Tuplet,
+    TupletChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -1078,5 +1079,237 @@ impl MeiSerialize for Ptr {
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         Ok(())
+    }
+}
+
+// ============================================================================
+// List element implementation
+// ============================================================================
+
+impl MeiSerialize for List {
+    fn element_name(&self) -> &'static str {
+        "list"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.classed.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.n_number_like.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        push_attr!(attrs, "form", clone self.form);
+        push_attr!(attrs, "type", clone self.r#type);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ListChild::Head(_) => "head",
+            ListChild::Li(_) => "li",
+            ListChild::Label(_) => "label",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new() // Handled by recursive serialization
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ListChild::Head(elem) => elem.serialize_mei(writer),
+            ListChild::Li(elem) => elem.serialize_mei(writer),
+            ListChild::Label(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Li (list item) element implementation
+// ============================================================================
+
+impl MeiSerialize for Li {
+    fn element_name(&self) -> &'static str {
+        "li"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LiChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LiChild::Text(_) => "#text",
+            LiChild::District(_) => "district",
+            LiChild::Country(_) => "country",
+            LiChild::Signatures(_) => "signatures",
+            LiChild::PostBox(_) => "postBox",
+            LiChild::Abbr(_) => "abbr",
+            LiChild::Ptr(_) => "ptr",
+            LiChild::RelationList(_) => "relationList",
+            LiChild::BiblStruct(_) => "biblStruct",
+            LiChild::Width(_) => "width",
+            LiChild::Symbol(_) => "symbol",
+            LiChild::Add(_) => "add",
+            LiChild::GeogFeat(_) => "geogFeat",
+            LiChild::Num(_) => "num",
+            LiChild::Rend(_) => "rend",
+            LiChild::Restore(_) => "restore",
+            LiChild::Street(_) => "street",
+            LiChild::List(_) => "list",
+            LiChild::Region(_) => "region",
+            LiChild::BiblList(_) => "biblList",
+            LiChild::SecFolio(_) => "secFolio",
+            LiChild::Orig(_) => "orig",
+            LiChild::Repository(_) => "repository",
+            LiChild::Settlement(_) => "settlement",
+            LiChild::Damage(_) => "damage",
+            LiChild::Seg(_) => "seg",
+            LiChild::Heraldry(_) => "heraldry",
+            LiChild::Stamp(_) => "stamp",
+            LiChild::Lb(_) => "lb",
+            LiChild::PersName(_) => "persName",
+            LiChild::Name(_) => "name",
+            LiChild::Supplied(_) => "supplied",
+            LiChild::CorpName(_) => "corpName",
+            LiChild::LocusGrp(_) => "locusGrp",
+            LiChild::Choice(_) => "choice",
+            LiChild::PeriodName(_) => "periodName",
+            LiChild::Table(_) => "table",
+            LiChild::GeogName(_) => "geogName",
+            LiChild::Lg(_) => "lg",
+            LiChild::StyleName(_) => "styleName",
+            LiChild::Quote(_) => "quote",
+            LiChild::Gap(_) => "gap",
+            LiChild::Date(_) => "date",
+            LiChild::Corr(_) => "corr",
+            LiChild::Bibl(_) => "bibl",
+            LiChild::Pb(_) => "pb",
+            LiChild::Catchwords(_) => "catchwords",
+            LiChild::Relation(_) => "relation",
+            LiChild::Reg(_) => "reg",
+            LiChild::Sic(_) => "sic",
+            LiChild::Fig(_) => "fig",
+            LiChild::Bloc(_) => "bloc",
+            LiChild::Title(_) => "title",
+            LiChild::Del(_) => "del",
+            LiChild::Depth(_) => "depth",
+            LiChild::Subst(_) => "subst",
+            LiChild::Unclear(_) => "unclear",
+            LiChild::P(_) => "p",
+            LiChild::EventList(_) => "eventList",
+            LiChild::Term(_) => "term",
+            LiChild::Extent(_) => "extent",
+            LiChild::CastList(_) => "castList",
+            LiChild::Annot(_) => "annot",
+            LiChild::Height(_) => "height",
+            LiChild::Q(_) => "q",
+            LiChild::Dim(_) => "dim",
+            LiChild::Address(_) => "address",
+            LiChild::Dimensions(_) => "dimensions",
+            LiChild::Identifier(_) => "identifier",
+            LiChild::PostCode(_) => "postCode",
+            LiChild::HandShift(_) => "handShift",
+            LiChild::Stack(_) => "stack",
+            LiChild::Locus(_) => "locus",
+            LiChild::Ref(_) => "ref",
+            LiChild::Expan(_) => "expan",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new() // Handled by recursive serialization
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LiChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            // Elements with existing serializers
+            LiChild::Ref(elem) => elem.serialize_mei(writer),
+            LiChild::Date(elem) => elem.serialize_mei(writer),
+            LiChild::Address(elem) => elem.serialize_mei(writer),
+            LiChild::PersName(elem) => elem.serialize_mei(writer),
+            LiChild::CorpName(elem) => elem.serialize_mei(writer),
+            LiChild::Name(elem) => elem.serialize_mei(writer),
+            LiChild::Identifier(elem) => elem.serialize_mei(writer),
+            LiChild::Lb(elem) => elem.serialize_mei(writer),
+            LiChild::Rend(elem) => elem.serialize_mei(writer),
+            LiChild::Title(elem) => elem.serialize_mei(writer),
+            LiChild::Num(elem) => elem.serialize_mei(writer),
+            LiChild::Ptr(elem) => elem.serialize_mei(writer),
+            LiChild::Annot(elem) => elem.serialize_mei(writer),
+            LiChild::Extent(elem) => elem.serialize_mei(writer),
+            LiChild::Region(elem) => elem.serialize_mei(writer),
+            LiChild::PostBox(elem) => elem.serialize_mei(writer),
+            LiChild::PostCode(elem) => elem.serialize_mei(writer),
+            LiChild::District(elem) => elem.serialize_mei(writer),
+            LiChild::GeogName(elem) => elem.serialize_mei(writer),
+            LiChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            LiChild::Country(elem) => elem.serialize_mei(writer),
+            LiChild::Settlement(elem) => elem.serialize_mei(writer),
+            LiChild::Street(elem) => elem.serialize_mei(writer),
+            LiChild::Bloc(elem) => elem.serialize_mei(writer),
+            LiChild::P(elem) => elem.serialize_mei(writer),
+            LiChild::Bibl(elem) => elem.serialize_mei(writer),
+            LiChild::List(elem) => elem.serialize_mei(writer),
+            // Elements that need serializers - for now skip with warning
+            _ => {
+                // TODO: Implement serializers for remaining LiChild variants
+                Ok(())
+            }
+        }
     }
 }
