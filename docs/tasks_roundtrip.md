@@ -85,7 +85,7 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chord_symbols.musicxml`
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_hello_world.musicxml`
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_percussion.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_tablature.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_tablature.musicxml`
 
 ### Fragment Examples (275 files, grouped by 5)
 
