@@ -845,3 +845,36 @@ fn test_roundtrip_spec_schb_av_ma_sample() {
         );
     }
 }
+
+// ============================================================================
+// Spec Doc Example Tests (from tests/fixtures/musicxml/spec_examples/)
+// ============================================================================
+
+/// Load a spec_examples fixture file and perform roundtrip test.
+fn roundtrip_spec_examples_fixture(
+    fixture_name: &str,
+) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let fixture_path = format!(
+        "{}/../../../tests/fixtures/musicxml/spec_examples/{}",
+        manifest_dir, fixture_name
+    );
+    let xml = fs::read_to_string(&fixture_path)
+        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))?;
+    roundtrip(&xml)
+}
+
+#[test]
+fn test_roundtrip_assess_and_player_elements() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("assess_and_player_elements.musicxml")
+            .unwrap_or_else(|e| panic!("Roundtrip failed for assess_and_player_elements: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for assess_and_player_elements.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
