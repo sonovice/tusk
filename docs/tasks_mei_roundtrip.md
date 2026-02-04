@@ -20,7 +20,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 
 ### Setup (Infrastructure)
 - [x] Create roundtrip test harness in `crates/formats/mei/tests/roundtrip.rs`
-- [ ] Add test helper: parse MEI → serialize back to MEI
+- [x] Add test helper: parse MEI → serialize back to MEI
 - [ ] Add comparison logic to detect differences between input and output
 
 ### Complete Examples (75 files)
