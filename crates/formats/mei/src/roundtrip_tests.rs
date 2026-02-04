@@ -6446,3 +6446,697 @@ fn layerdef_parse_with_multiple_children() {
     assert!(matches!(&parsed.children[2], LayerDefChild::InstrDef(_)));
     assert!(matches!(&parsed.children[3], LayerDefChild::MeterSig(_)));
 }
+
+// ============================================================================
+// Control Event Tests - Slur
+// ============================================================================
+
+#[test]
+fn slur_parse_empty() {
+    use tusk_model::elements::Slur;
+
+    let xml = r#"<slur/>"#;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.slur_log.startid.is_none());
+    assert!(parsed.slur_log.endid.is_none());
+}
+
+#[test]
+fn slur_parse_with_id() {
+    use tusk_model::elements::Slur;
+
+    let xml = r#"<slur xml:id="slur-1"/>"#;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("slur-1".to_string()));
+}
+
+#[test]
+fn slur_parse_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Slur;
+
+    let xml = r##"<slur xml:id="slur-1" startid="#note1" endid="#note2"/>"##;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("slur-1".to_string()));
+    assert_eq!(parsed.slur_log.startid, Some(DataUri("#note1".to_string())));
+    assert_eq!(parsed.slur_log.endid, Some(DataUri("#note2".to_string())));
+}
+
+#[test]
+fn slur_parse_with_staff_layer() {
+    use tusk_model::elements::Slur;
+
+    let xml = r#"<slur staff="1" layer="1"/>"#;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.slur_log.staff, vec![1]);
+    assert_eq!(parsed.slur_log.layer, vec![1]);
+}
+
+#[test]
+fn slur_parse_with_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Slur;
+
+    let xml = r#"<slur tstamp="1" tstamp2="0m+4"/>"#;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.slur_log.tstamp, Some(DataBeat(1.0)));
+    assert_eq!(
+        parsed.slur_log.tstamp2,
+        Some(DataMeasurebeat("0m+4".to_string()))
+    );
+}
+
+#[test]
+fn slur_parse_complete() {
+    use tusk_model::elements::Slur;
+
+    let xml = r##"<slur xml:id="slur1" startid="#n1" endid="#n4" staff="1" layer="1"/>"##;
+    let parsed = Slur::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("slur1".to_string()));
+    assert!(parsed.slur_log.startid.is_some());
+    assert!(parsed.slur_log.endid.is_some());
+    assert_eq!(parsed.slur_log.staff, vec![1]);
+    assert_eq!(parsed.slur_log.layer, vec![1]);
+}
+
+// ============================================================================
+// Control Event Tests - Tie
+// ============================================================================
+
+#[test]
+fn tie_parse_empty() {
+    use tusk_model::elements::Tie;
+
+    let xml = r#"<tie/>"#;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.tie_log.startid.is_none());
+    assert!(parsed.tie_log.endid.is_none());
+}
+
+#[test]
+fn tie_parse_with_id() {
+    use tusk_model::elements::Tie;
+
+    let xml = r#"<tie xml:id="tie-1"/>"#;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tie-1".to_string()));
+}
+
+#[test]
+fn tie_parse_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Tie;
+
+    let xml = r##"<tie xml:id="tie-1" startid="#note1" endid="#note2"/>"##;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tie-1".to_string()));
+    assert_eq!(parsed.tie_log.startid, Some(DataUri("#note1".to_string())));
+    assert_eq!(parsed.tie_log.endid, Some(DataUri("#note2".to_string())));
+}
+
+#[test]
+fn tie_parse_with_staff_layer() {
+    use tusk_model::elements::Tie;
+
+    let xml = r#"<tie staff="1" layer="1"/>"#;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tie_log.staff, vec![1]);
+    assert_eq!(parsed.tie_log.layer, vec![1]);
+}
+
+#[test]
+fn tie_parse_with_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Tie;
+
+    let xml = r#"<tie tstamp="2.5" tstamp2="1m+1"/>"#;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tie_log.tstamp, Some(DataBeat(2.5)));
+    assert_eq!(
+        parsed.tie_log.tstamp2,
+        Some(DataMeasurebeat("1m+1".to_string()))
+    );
+}
+
+#[test]
+fn tie_parse_complete() {
+    use tusk_model::elements::Tie;
+
+    let xml = r##"<tie xml:id="tie1" startid="#n1" endid="#n2" staff="1"/>"##;
+    let parsed = Tie::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tie1".to_string()));
+    assert!(parsed.tie_log.startid.is_some());
+    assert!(parsed.tie_log.endid.is_some());
+    assert_eq!(parsed.tie_log.staff, vec![1]);
+}
+
+// ============================================================================
+// Control Event Tests - Dynam
+// ============================================================================
+
+#[test]
+fn dynam_parse_empty() {
+    use tusk_model::elements::Dynam;
+
+    let xml = r#"<dynam/>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn dynam_parse_with_id() {
+    use tusk_model::elements::Dynam;
+
+    let xml = r#"<dynam xml:id="dyn-1"/>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("dyn-1".to_string()));
+}
+
+#[test]
+fn dynam_parse_with_text() {
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    let xml = r#"<dynam xml:id="dyn-1">ff</dynam>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("dyn-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DynamChild::Text(t) => assert_eq!(t, "ff"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn dynam_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Dynam;
+
+    let xml = r#"<dynam staff="1" tstamp="1"/>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.dynam_log.staff, vec![1]);
+    assert_eq!(parsed.dynam_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn dynam_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Dynam;
+
+    let xml = r##"<dynam startid="#note1"/>"##;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.dynam_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn dynam_parse_complete() {
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    let xml = r#"<dynam xml:id="d1" staff="1" tstamp="1">p</dynam>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("d1".to_string()));
+    assert_eq!(parsed.dynam_log.staff, vec![1]);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DynamChild::Text(t) => assert_eq!(t, "p"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn dynam_parse_with_tstamp2() {
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    // Test a dynamic with crescendo text and tstamp2
+    let xml = r#"<dynam xml:id="d1" staff="1" tstamp="1" tstamp2="0m+4">cresc.</dynam>"#;
+    let parsed = Dynam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("d1".to_string()));
+    assert!(parsed.dynam_log.tstamp.is_some());
+    assert!(parsed.dynam_log.tstamp2.is_some());
+    match &parsed.children[0] {
+        DynamChild::Text(t) => assert_eq!(t, "cresc."),
+        _ => panic!("Expected text child"),
+    }
+}
+
+// ============================================================================
+// Control Event Tests - Hairpin
+// ============================================================================
+
+#[test]
+fn hairpin_parse_empty() {
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.hairpin_log.form.is_none());
+}
+
+#[test]
+fn hairpin_parse_with_id() {
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin xml:id="hp-1"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("hp-1".to_string()));
+}
+
+#[test]
+fn hairpin_parse_crescendo() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin xml:id="hp-1" form="cres"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("hp-1".to_string()));
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+}
+
+#[test]
+fn hairpin_parse_diminuendo() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin xml:id="hp-1" form="dim"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("hp-1".to_string()));
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+}
+
+#[test]
+fn hairpin_parse_with_niente() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin form="dim" niente="true"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+    assert_eq!(parsed.hairpin_log.niente, Some(DataBoolean::True));
+}
+
+#[test]
+fn hairpin_parse_with_staff_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin staff="1" tstamp="1" tstamp2="0m+3"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.hairpin_log.staff, vec![1]);
+    assert_eq!(parsed.hairpin_log.tstamp, Some(DataBeat(1.0)));
+    assert_eq!(
+        parsed.hairpin_log.tstamp2,
+        Some(DataMeasurebeat("0m+3".to_string()))
+    );
+}
+
+#[test]
+fn hairpin_parse_complete() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::elements::Hairpin;
+
+    let xml = r#"<hairpin xml:id="hp1" form="cres" staff="1" tstamp="1" tstamp2="0m+4"/>"#;
+    let parsed = Hairpin::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("hp1".to_string()));
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+    assert_eq!(parsed.hairpin_log.staff, vec![1]);
+    assert!(parsed.hairpin_log.tstamp.is_some());
+    assert!(parsed.hairpin_log.tstamp2.is_some());
+}
+
+// ============================================================================
+// Control Event Tests - Dir
+// ============================================================================
+
+#[test]
+fn dir_parse_empty() {
+    use tusk_model::elements::Dir;
+
+    let xml = r#"<dir/>"#;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn dir_parse_with_id() {
+    use tusk_model::elements::Dir;
+
+    let xml = r#"<dir xml:id="dir-1"/>"#;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("dir-1".to_string()));
+}
+
+#[test]
+fn dir_parse_with_text() {
+    use tusk_model::elements::{Dir, DirChild};
+
+    let xml = r#"<dir xml:id="dir-1">legato</dir>"#;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("dir-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DirChild::Text(t) => assert_eq!(t, "legato"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn dir_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Dir;
+
+    let xml = r#"<dir staff="1" tstamp="1"/>"#;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.dir_log.staff, vec![1]);
+    assert_eq!(parsed.dir_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn dir_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Dir;
+
+    let xml = r##"<dir startid="#note1"/>"##;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.dir_log.startid, Some(DataUri("#note1".to_string())));
+}
+
+#[test]
+fn dir_parse_complete() {
+    use tusk_model::elements::{Dir, DirChild};
+
+    let xml = r#"<dir xml:id="d1" staff="1" tstamp="1">dolce</dir>"#;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("d1".to_string()));
+    assert_eq!(parsed.dir_log.staff, vec![1]);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DirChild::Text(t) => assert_eq!(t, "dolce"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn dir_parse_with_endid() {
+    use tusk_model::elements::{Dir, DirChild};
+
+    // Test a directive with extended duration
+    let xml = r##"<dir xml:id="d1" staff="1" tstamp="1" endid="#n4">sempre legato</dir>"##;
+    let parsed = Dir::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("d1".to_string()));
+    assert!(parsed.dir_log.tstamp.is_some());
+    assert!(parsed.dir_log.endid.is_some());
+    match &parsed.children[0] {
+        DirChild::Text(t) => assert_eq!(t, "sempre legato"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+// ============================================================================
+// Control Event Tests - Tempo
+// ============================================================================
+
+#[test]
+fn tempo_parse_empty() {
+    use tusk_model::elements::Tempo;
+
+    let xml = r#"<tempo/>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn tempo_parse_with_id() {
+    use tusk_model::elements::Tempo;
+
+    let xml = r#"<tempo xml:id="tempo-1"/>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tempo-1".to_string()));
+}
+
+#[test]
+fn tempo_parse_with_text() {
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    let xml = r#"<tempo xml:id="tempo-1">Allegro</tempo>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tempo-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TempoChild::Text(t) => assert_eq!(t, "Allegro"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn tempo_parse_with_mm() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataTempovalue};
+    use tusk_model::elements::Tempo;
+
+    let xml = r#"<tempo xml:id="tempo-1" mm="120" mm.unit="4"/>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tempo-1".to_string()));
+    assert_eq!(parsed.tempo_log.mm, Some(DataTempovalue(120.0)));
+    assert_eq!(
+        parsed.tempo_log.mm_unit,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn tempo_parse_with_func() {
+    use tusk_model::att::AttTempoLogFunc;
+    use tusk_model::elements::Tempo;
+
+    let xml = r#"<tempo func="instantaneous"/>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tempo_log.func, Some(AttTempoLogFunc::Instantaneous));
+}
+
+#[test]
+fn tempo_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Tempo;
+
+    let xml = r#"<tempo staff="1" tstamp="1"/>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tempo_log.staff, vec![1]);
+    assert_eq!(parsed.tempo_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn tempo_parse_complete() {
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    let xml = r#"<tempo xml:id="t1" staff="1" tstamp="1" mm="120" mm.unit="4">Allegro</tempo>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("t1".to_string()));
+    assert_eq!(parsed.tempo_log.staff, vec![1]);
+    assert!(parsed.tempo_log.mm.is_some());
+    assert!(parsed.tempo_log.mm_unit.is_some());
+    match &parsed.children[0] {
+        TempoChild::Text(t) => assert_eq!(t, "Allegro"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn tempo_parse_continuous_func() {
+    use tusk_model::att::AttTempoLogFunc;
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    // Test a tempo marking with continuous function (like rit. or accel.)
+    let xml =
+        r#"<tempo xml:id="t1" staff="1" tstamp="1" tstamp2="0m+4" func="continuous">rit.</tempo>"#;
+    let parsed = Tempo::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tempo_log.func, Some(AttTempoLogFunc::Continuous));
+    assert!(parsed.tempo_log.tstamp2.is_some());
+    match &parsed.children[0] {
+        TempoChild::Text(t) => assert_eq!(t, "rit."),
+        _ => panic!("Expected text child"),
+    }
+}
+
+// ============================================================================
+// Control Event Tests - Fermata
+// ============================================================================
+
+#[test]
+fn fermata_parse_empty() {
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.fermata_vis.form.is_none());
+    assert!(parsed.fermata_vis.shape.is_none());
+}
+
+#[test]
+fn fermata_parse_with_id() {
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata xml:id="ferm-1"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("ferm-1".to_string()));
+}
+
+#[test]
+fn fermata_parse_with_form_norm() {
+    use tusk_model::att::AttFermataVisForm;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata xml:id="ferm-1" form="norm"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("ferm-1".to_string()));
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Norm));
+}
+
+#[test]
+fn fermata_parse_with_form_inv() {
+    use tusk_model::att::AttFermataVisForm;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata form="inv"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Inv));
+}
+
+#[test]
+fn fermata_parse_with_shape_curved() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata shape="curved"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Curved));
+}
+
+#[test]
+fn fermata_parse_with_shape_square() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata shape="square"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Square));
+}
+
+#[test]
+fn fermata_parse_with_shape_angular() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata shape="angular"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Angular));
+}
+
+#[test]
+fn fermata_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata staff="1" tstamp="4"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.fermata_log.staff, vec![1]);
+    assert_eq!(parsed.fermata_log.tstamp, Some(DataBeat(4.0)));
+}
+
+#[test]
+fn fermata_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Fermata;
+
+    let xml = r##"<fermata startid="#note1"/>"##;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.fermata_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn fermata_parse_complete() {
+    use tusk_model::att::{AttFermataVisForm, AttFermataVisShape};
+    use tusk_model::elements::Fermata;
+
+    let xml = r#"<fermata xml:id="f1" staff="1" tstamp="4" form="norm" shape="curved"/>"#;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("f1".to_string()));
+    assert_eq!(parsed.fermata_log.staff, vec![1]);
+    assert!(parsed.fermata_log.tstamp.is_some());
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Norm));
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Curved));
+}
+
+#[test]
+fn fermata_parse_inverted() {
+    use tusk_model::att::AttFermataVisForm;
+    use tusk_model::elements::Fermata;
+
+    let xml = r##"<fermata xml:id="f1" startid="#n1" form="inv"/>"##;
+    let parsed = Fermata::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.fermata_log.startid.is_some());
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Inv));
+}
