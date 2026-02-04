@@ -8,17 +8,18 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::elements::{
-    Annot, AnnotChild, AppInfo, AppInfoChild, Application, ApplicationChild, Availability, Bibl,
-    BiblStruct, Contributor, ContributorChild, CorpName, CorpNameChild, Correction,
-    CorrectionChild, Creator, CreatorChild, Date, Distributor, Editor, EditorChild, EditorialDecl,
-    EditorialDeclChild, EncodingDesc, EncodingDescChild, FileDesc, FileDescChild, Funder,
-    FunderChild, Head, HeadChild, Identifier, Interpretation, InterpretationChild, Locus, LocusGrp,
-    MeiHead, MeiHeadChild, Name, NameChild, Normalization, NormalizationChild, P, PChild, PersName,
-    PersNameChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher,
-    PublisherChild, Resp, RespChild, RespStmt, RespStmtChild, SamplingDecl, SamplingDeclChild,
-    Segmentation, SegmentationChild, Source, SourceChild, SourceDesc, SourceDescChild, Sponsor,
-    SponsorChild, StdVals, StdValsChild, Title, TitleChild, TitlePart, TitlePartChild, TitleStmt,
-    TitleStmtChild, Unpub,
+    AddrLine, AddrLineChild, Annot, AnnotChild, AppInfo, AppInfoChild, Application,
+    ApplicationChild, Availability, Bibl, BiblStruct, Contributor, ContributorChild, CorpName,
+    CorpNameChild, Correction, CorrectionChild, Creator, CreatorChild, Date, Distributor, Editor,
+    EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, FileDesc,
+    FileDescChild, Funder, FunderChild, GeogName, GeogNameChild, Head, HeadChild, Identifier,
+    Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead, MeiHeadChild, Name, NameChild,
+    Normalization, NormalizationChild, P, PChild, PersName, PersNameChild, ProjectDesc,
+    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, PublisherChild, Resp,
+    RespChild, RespStmt, RespStmtChild, SamplingDecl, SamplingDeclChild, Segmentation,
+    SegmentationChild, Source, SourceChild, SourceDesc, SourceDescChild, Sponsor, SponsorChild,
+    StdVals, StdValsChild, Title, TitleChild, TitlePart, TitlePartChild, TitleStmt, TitleStmtChild,
+    Unpub,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -2430,9 +2431,7 @@ pub(crate) fn parse_addr_line_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
-) -> DeserializeResult<tusk_model::elements::AddrLine> {
-    use tusk_model::elements::{AddrLine, AddrLineChild};
-
+) -> DeserializeResult<AddrLine> {
     let mut addr_line = AddrLine::default();
 
     // Extract attributes
@@ -2440,17 +2439,159 @@ pub(crate) fn parse_addr_line_from_event<R: BufRead>(
     addr_line.facsimile.extract_attributes(&mut attrs)?;
     addr_line.lang.extract_attributes(&mut attrs)?;
 
-    // addrLine is a mixed content element - can have text and child elements
-    // For now, just handle text content as the most common case
+    // addrLine is a mixed content element - can have text and child elements like geogName
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("addrLine")? {
-            if !text.is_empty() {
-                addr_line.children.push(AddrLineChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("addrLine")? {
+            match content {
+                MixedContent::Text(text) => {
+                    addr_line.children.push(AddrLineChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "geogName" => {
+                            let geog_name =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::GeogName(Box::new(geog_name)));
+                        }
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::CorpName(Box::new(corp_name)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::PersName(Box::new(pers_name)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::Name(Box::new(name_elem)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::Address(Box::new(address)));
+                        }
+                        "street" => {
+                            let street = parse_street_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::Street(Box::new(street)));
+                        }
+                        "postCode" => {
+                            let post_code =
+                                parse_post_code_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::PostCode(Box::new(post_code)));
+                        }
+                        "postBox" => {
+                            let post_box =
+                                parse_post_box_from_event(reader, child_attrs, child_empty)?;
+                            addr_line
+                                .children
+                                .push(AddrLineChild::PostBox(Box::new(post_box)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
     Ok(addr_line)
+}
+
+/// Parse a `<geogName>` element from within another element.
+pub(crate) fn parse_geog_name_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<GeogName> {
+    let mut geog_name = GeogName::default();
+
+    // Extract attributes
+    geog_name.common.extract_attributes(&mut attrs)?;
+    geog_name.bibl.extract_attributes(&mut attrs)?;
+    geog_name.edit.extract_attributes(&mut attrs)?;
+    geog_name.facsimile.extract_attributes(&mut attrs)?;
+    geog_name.lang.extract_attributes(&mut attrs)?;
+    geog_name.name.extract_attributes(&mut attrs)?;
+
+    // geogName is a mixed content element - can have text and child elements
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("geogName")? {
+            match content {
+                MixedContent::Text(text) => {
+                    geog_name.children.push(GeogNameChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "geogName" => {
+                            // Nested geogName
+                            let nested =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            geog_name
+                                .children
+                                .push(GeogNameChild::GeogName(Box::new(nested)));
+                        }
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            geog_name
+                                .children
+                                .push(GeogNameChild::CorpName(Box::new(corp_name)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            geog_name
+                                .children
+                                .push(GeogNameChild::PersName(Box::new(pers_name)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            geog_name
+                                .children
+                                .push(GeogNameChild::Name(Box::new(name_elem)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            geog_name
+                                .children
+                                .push(GeogNameChild::Address(Box::new(address)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(geog_name)
 }
 
 /// Parse a `<street>` element from within another element.
