@@ -1091,3 +1091,192 @@ impl MeiSerialize for TermChild {
         }
     }
 }
+
+// ============================================================================
+// LangUsage
+// ============================================================================
+
+impl MeiSerialize for tusk_model::elements::LangUsage {
+    fn element_name(&self) -> &'static str {
+        "langUsage"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::LangUsageChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            tusk_model::elements::LangUsageChild::Head(_) => "head",
+            tusk_model::elements::LangUsageChild::Language(_) => "language",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            tusk_model::elements::LangUsageChild::Head(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LangUsageChild::Language(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Language
+// ============================================================================
+
+impl MeiSerialize for tusk_model::elements::Language {
+    fn element_name(&self) -> &'static str {
+        "language"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::LanguageChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            tusk_model::elements::LanguageChild::Text(_) => "#text",
+            tusk_model::elements::LanguageChild::Settlement(_) => "settlement",
+            tusk_model::elements::LanguageChild::Signatures(_) => "signatures",
+            tusk_model::elements::LanguageChild::Seg(_) => "seg",
+            tusk_model::elements::LanguageChild::CorpName(_) => "corpName",
+            tusk_model::elements::LanguageChild::Lb(_) => "lb",
+            tusk_model::elements::LanguageChild::Rend(_) => "rend",
+            tusk_model::elements::LanguageChild::SecFolio(_) => "secFolio",
+            tusk_model::elements::LanguageChild::StyleName(_) => "styleName",
+            tusk_model::elements::LanguageChild::Symbol(_) => "symbol",
+            tusk_model::elements::LanguageChild::Dim(_) => "dim",
+            tusk_model::elements::LanguageChild::Width(_) => "width",
+            tusk_model::elements::LanguageChild::Expan(_) => "expan",
+            tusk_model::elements::LanguageChild::Extent(_) => "extent",
+            tusk_model::elements::LanguageChild::Bibl(_) => "bibl",
+            tusk_model::elements::LanguageChild::PersName(_) => "persName",
+            tusk_model::elements::LanguageChild::Height(_) => "height",
+            tusk_model::elements::LanguageChild::Heraldry(_) => "heraldry",
+            tusk_model::elements::LanguageChild::PostCode(_) => "postCode",
+            tusk_model::elements::LanguageChild::Stack(_) => "stack",
+            tusk_model::elements::LanguageChild::Depth(_) => "depth",
+            tusk_model::elements::LanguageChild::GeogFeat(_) => "geogFeat",
+            tusk_model::elements::LanguageChild::Name(_) => "name",
+            tusk_model::elements::LanguageChild::Address(_) => "address",
+            tusk_model::elements::LanguageChild::Q(_) => "q",
+            tusk_model::elements::LanguageChild::Ref(_) => "ref",
+            tusk_model::elements::LanguageChild::Term(_) => "term",
+            tusk_model::elements::LanguageChild::Relation(_) => "relation",
+            tusk_model::elements::LanguageChild::PeriodName(_) => "periodName",
+            tusk_model::elements::LanguageChild::RelationList(_) => "relationList",
+            tusk_model::elements::LanguageChild::Date(_) => "date",
+            tusk_model::elements::LanguageChild::Fig(_) => "fig",
+            tusk_model::elements::LanguageChild::PostBox(_) => "postBox",
+            tusk_model::elements::LanguageChild::Identifier(_) => "identifier",
+            tusk_model::elements::LanguageChild::Ptr(_) => "ptr",
+            tusk_model::elements::LanguageChild::Region(_) => "region",
+            tusk_model::elements::LanguageChild::Title(_) => "title",
+            tusk_model::elements::LanguageChild::Bloc(_) => "bloc",
+            tusk_model::elements::LanguageChild::District(_) => "district",
+            tusk_model::elements::LanguageChild::BiblStruct(_) => "biblStruct",
+            tusk_model::elements::LanguageChild::Catchwords(_) => "catchwords",
+            tusk_model::elements::LanguageChild::Num(_) => "num",
+            tusk_model::elements::LanguageChild::Country(_) => "country",
+            tusk_model::elements::LanguageChild::Dimensions(_) => "dimensions",
+            tusk_model::elements::LanguageChild::Repository(_) => "repository",
+            tusk_model::elements::LanguageChild::Abbr(_) => "abbr",
+            tusk_model::elements::LanguageChild::Stamp(_) => "stamp",
+            tusk_model::elements::LanguageChild::GeogName(_) => "geogName",
+            tusk_model::elements::LanguageChild::LocusGrp(_) => "locusGrp",
+            tusk_model::elements::LanguageChild::Locus(_) => "locus",
+            tusk_model::elements::LanguageChild::Street(_) => "street",
+            tusk_model::elements::LanguageChild::Annot(_) => "annot",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, tusk_model::elements::LanguageChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            tusk_model::elements::LanguageChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            tusk_model::elements::LanguageChild::Rend(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Ref(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::PersName(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::CorpName(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Name(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Date(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Identifier(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Title(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Bibl(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Lb(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Num(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Term(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::GeogName(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Extent(elem) => elem.serialize_mei(writer),
+            tusk_model::elements::LanguageChild::Annot(elem) => elem.serialize_mei(writer),
+            // Many other child types exist but are rarely used in practice.
+            // Return error for unimplemented children to catch missing implementations.
+            _ => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "LanguageChild::{}",
+                self.element_name()
+            ))),
+        }
+    }
+}

@@ -155,6 +155,7 @@ impl MeiSerialize for WorkChild {
             WorkChild::PerfMedium(elem) => elem.serialize_mei(writer),
             WorkChild::Classification(elem) => elem.serialize_mei(writer),
             WorkChild::Creator(elem) => elem.serialize_mei(writer),
+            WorkChild::LangUsage(elem) => elem.serialize_mei(writer),
             // The following children need dedicated serializers - for now write empty element
             _ => {
                 let name = self.element_name();

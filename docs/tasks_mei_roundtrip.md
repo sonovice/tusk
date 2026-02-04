@@ -67,7 +67,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Work element: tempo child not properly serialized - WorkChild::Tempo missing from serialize_mei match arms, falling to empty element default (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 - [x] [DESERIALIZER_BUG] Incip element: incipText child not parsed - skipped instead of deserialized (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 - [x] [DESERIALIZER_BUG] Incip element: score child not parsed - skipped instead of deserialized (source: Ahle_Jesu_meines_Herzens_Freud.mei)
-- [ ] [DESERIALIZER_BUG] Work element: langUsage child not parsed - skipped instead of deserialized (source: Ahle_Jesu_meines_Herzens_Freud.mei)
+- [x] [DESERIALIZER_BUG] Work element: langUsage child not parsed - skipped instead of deserialized (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 - [ ] [DESERIALIZER_BUG] Note element: verse child not parsed - skipped instead of deserialized, losing lyrics (source: Ahle_Jesu_meines_Herzens_Freud.mei)
 
 ---
