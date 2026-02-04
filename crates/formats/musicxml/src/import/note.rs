@@ -7,10 +7,14 @@ use crate::import::utils::{
     convert_note_type_to_duration, convert_note_type_to_duration_cmn, convert_pitch_name,
     convert_stem_direction,
 };
-use crate::model::note::FullNoteContent;
+use crate::context::PendingSlur;
+use crate::model::note::{FullNoteContent, Note as MusicXmlNote};
+use crate::model::notations::{Articulations, TiedType};
+use crate::model::StartStop;
+use crate::model::StartStopContinue;
 use tusk_model::att::AttAccidLogFunc;
-use tusk_model::data::{DataAugmentdot, DataBoolean, DataOctave};
-use tusk_model::elements::{Accid, Chord, ChordChild, NoteChild};
+use tusk_model::data::{DataArticulation, DataAugmentdot, DataBoolean, DataOctave, DataTie};
+use tusk_model::elements::{Accid, Chord, ChordChild, Note as MeiNote, NoteChild};
 
 /// Convert a MusicXML note to MEI note.
 ///
@@ -105,6 +109,16 @@ pub fn convert_note(
     if note.is_cue() {
         mei_note.note_log.cue = Some(DataBoolean::True);
     }
+
+    // Convert ties (using @tie attribute)
+    convert_ties(note, &mut mei_note);
+
+    // Convert articulations
+    convert_articulations(note, &mut mei_note);
+
+    // Process slurs (track pending, resolve completed)
+    let note_id = mei_note.common.xml_id.clone().unwrap_or_default();
+    process_slurs(note, &note_id, ctx);
 
     Ok(mei_note)
 }
@@ -398,6 +412,160 @@ pub fn convert_chord(
     }
 
     Ok(mei_chord)
+}
+
+// ============================================================================
+// Tie Conversion
+// ============================================================================
+
+/// Convert MusicXML tie information to MEI @tie attribute.
+///
+/// MusicXML has both `<tie>` (sound/playback) and `<tied>` (notation/visual) elements.
+/// We check both to determine the tie state. MEI uses the @tie attribute with values:
+/// - "i" = initial (tie starts)
+/// - "m" = medial (tie continues)
+/// - "t" = terminal (tie ends)
+fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
+    // Check both <tie> (sound) and <tied> (notation) elements
+    let has_start = note.ties.iter().any(|t| t.tie_type == StartStop::Start)
+        || note
+            .notations
+            .as_ref()
+            .map(|n| {
+                n.tied
+                    .iter()
+                    .any(|t| matches!(t.tied_type, TiedType::Start))
+            })
+            .unwrap_or(false);
+
+    let has_stop = note.ties.iter().any(|t| t.tie_type == StartStop::Stop)
+        || note
+            .notations
+            .as_ref()
+            .map(|n| {
+                n.tied
+                    .iter()
+                    .any(|t| matches!(t.tied_type, TiedType::Stop))
+            })
+            .unwrap_or(false);
+
+    // Set @tie attribute based on state
+    if has_start && has_stop {
+        mei_note.note_anl.tie.push(DataTie::from("m".to_string())); // medial
+    } else if has_start {
+        mei_note.note_anl.tie.push(DataTie::from("i".to_string())); // initial
+    } else if has_stop {
+        mei_note.note_anl.tie.push(DataTie::from("t".to_string())); // terminal
+    }
+}
+
+// ============================================================================
+// Articulation Conversion
+// ============================================================================
+
+/// Convert MusicXML articulations to MEI @artic attribute.
+///
+/// Maps MusicXML articulation elements (accent, staccato, tenuto, etc.)
+/// to MEI DataArticulation values.
+fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote) {
+    if let Some(ref notations) = note.notations {
+        if let Some(ref artics) = notations.articulations {
+            mei_note.note_anl.artic = articulations_to_mei(artics);
+        }
+    }
+}
+
+// ============================================================================
+// Slur Processing
+// ============================================================================
+
+/// Process slurs from note notations.
+///
+/// This tracks pending slurs when a start is found, and resolves them
+/// when a stop is found by adding to the context's completed slurs list.
+fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    if let Some(ref notations) = note.notations {
+        let staff = note.staff.unwrap_or(1);
+
+        for slur in &notations.slurs {
+            let number = slur.number.unwrap_or(1);
+
+            match slur.slur_type {
+                StartStopContinue::Start => {
+                    ctx.add_pending_slur(PendingSlur {
+                        start_id: note_id.to_string(),
+                        staff,
+                        number,
+                    });
+                }
+                StartStopContinue::Stop => {
+                    // Try to resolve a matching pending slur
+                    if let Some(pending) = ctx.resolve_slur(staff, number) {
+                        ctx.add_completed_slur(
+                            pending.start_id,
+                            note_id.to_string(),
+                            pending.staff,
+                        );
+                    }
+                }
+                StartStopContinue::Continue => {
+                    // Continue slurs don't need any action
+                }
+            }
+        }
+    }
+}
+
+/// Convert a MusicXML Articulations struct to MEI DataArticulation values.
+fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
+    let mut result = Vec::new();
+
+    if artics.accent.is_some() {
+        result.push(DataArticulation::Acc);
+    }
+    if artics.strong_accent.is_some() {
+        result.push(DataArticulation::Marc);
+    }
+    if artics.staccato.is_some() {
+        result.push(DataArticulation::Stacc);
+    }
+    if artics.tenuto.is_some() {
+        result.push(DataArticulation::Ten);
+    }
+    if artics.detached_legato.is_some() {
+        // Detached-legato is tenuto + staccato combined
+        result.push(DataArticulation::Ten);
+        result.push(DataArticulation::Stacc);
+    }
+    if artics.staccatissimo.is_some() {
+        result.push(DataArticulation::Stacciss);
+    }
+    if artics.spiccato.is_some() {
+        result.push(DataArticulation::Spicc);
+    }
+    if artics.scoop.is_some() {
+        result.push(DataArticulation::Scoop);
+    }
+    if artics.plop.is_some() {
+        result.push(DataArticulation::Plop);
+    }
+    if artics.doit.is_some() {
+        result.push(DataArticulation::Doit);
+    }
+    if artics.falloff.is_some() {
+        result.push(DataArticulation::Fall);
+    }
+    if artics.stress.is_some() {
+        result.push(DataArticulation::Stress);
+    }
+    if artics.unstress.is_some() {
+        result.push(DataArticulation::Unstress);
+    }
+    if artics.soft_accent.is_some() {
+        result.push(DataArticulation::AccSoft);
+    }
+
+    result
 }
 
 #[cfg(test)]

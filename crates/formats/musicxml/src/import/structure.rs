@@ -17,9 +17,10 @@ use crate::import::{
 };
 use crate::model::elements::ScorePartwise;
 use tusk_model::data::{DataBoolean, DataMeasurementunsigned, DataWord};
+use tusk_model::data::DataUri;
 use tusk_model::elements::{
-    Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild, Section,
-    SectionChild, StaffChild,
+    Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score,
+    ScoreChild, Section, SectionChild, Slur, StaffChild,
 };
 
 /// Convert MusicXML content to MEI body.
@@ -132,6 +133,9 @@ pub fn convert_measure(
         }
     }
 
+    // Emit completed slurs as MEI control events
+    emit_slurs(&mut mei_measure, ctx);
+
     Ok(mei_measure)
 }
 
@@ -176,6 +180,28 @@ fn convert_measure_directions(
     }
 
     Ok(())
+}
+
+/// Emit completed slurs as MEI `<slur>` control events.
+///
+/// Drains all completed slurs from the context and adds them to the measure.
+fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut ConversionContext) {
+    for completed in ctx.drain_completed_slurs() {
+        let mut slur = Slur::default();
+
+        // Generate ID for the slur
+        let slur_id = ctx.generate_id_with_suffix("slur");
+        slur.common.xml_id = Some(slur_id);
+
+        // Set startid and endid (with # prefix for URI references)
+        slur.slur_log.startid = Some(DataUri::from(format!("#{}", completed.start_id)));
+        slur.slur_log.endid = Some(DataUri::from(format!("#{}", completed.end_id)));
+
+        // Set staff
+        slur.slur_log.staff.push(completed.staff as u64);
+
+        mei_measure.children.push(MeasureChild::Slur(Box::new(slur)));
+    }
 }
 
 /// Convert MusicXML measure attributes to MEI measure attributes.
@@ -370,7 +396,137 @@ pub fn convert_layer(
         }
     }
 
+    // Restructure layer children to wrap beamed notes/chords in <beam> elements
+    layer.children = restructure_with_beams(layer.children, &notes);
+
     Ok(layer)
+}
+
+// ============================================================================
+// Beam Restructuring
+// ============================================================================
+
+/// Represents a beam group found in the notes.
+struct BeamRange {
+    /// Starting index in the event sequence (notes/chords/rests, excluding chord members).
+    start: usize,
+    /// Ending index (inclusive).
+    end: usize,
+}
+
+/// Detect beam groups from MusicXML notes.
+///
+/// Scans notes for beam begin/end markers at level 1 (primary beams).
+/// Returns ranges of indices that should be grouped into beams.
+fn detect_beam_groups(notes: &[&crate::model::note::Note]) -> Vec<BeamRange> {
+    use crate::model::note::BeamValue;
+
+    let mut groups = Vec::new();
+    let mut beam_start: Option<usize> = None;
+    let mut event_index = 0;
+
+    for note in notes {
+        // Skip chord notes (they share beams with the root)
+        if note.is_chord() {
+            continue;
+        }
+
+        // Check for beam markers at level 1
+        let has_begin = note
+            .beams
+            .iter()
+            .any(|b| b.number.unwrap_or(1) == 1 && b.value == BeamValue::Begin);
+        let has_end = note
+            .beams
+            .iter()
+            .any(|b| b.number.unwrap_or(1) == 1 && b.value == BeamValue::End);
+
+        if has_begin && beam_start.is_none() {
+            beam_start = Some(event_index);
+        }
+
+        if has_end {
+            if let Some(start) = beam_start {
+                groups.push(BeamRange {
+                    start,
+                    end: event_index,
+                });
+            }
+            beam_start = None;
+        }
+
+        event_index += 1;
+    }
+
+    groups
+}
+
+/// Restructure layer children to wrap beamed elements in Beam containers.
+///
+/// This transforms a flat list of LayerChild elements into a tree where
+/// beamed notes/chords are wrapped in Beam elements.
+fn restructure_with_beams(
+    children: Vec<LayerChild>,
+    notes: &[&crate::model::note::Note],
+) -> Vec<LayerChild> {
+    // Detect beam groups
+    let groups = detect_beam_groups(notes);
+
+    // If no beams, return as-is
+    if groups.is_empty() {
+        return children;
+    }
+
+    let mut result = Vec::new();
+    let mut i = 0;
+    let mut group_idx = 0;
+
+    while i < children.len() {
+        // Check if this index starts a beam group
+        if group_idx < groups.len() && groups[group_idx].start == i {
+            let group = &groups[group_idx];
+
+            // Create beam container
+            let mut beam = Beam::default();
+
+            // Add all children in this range to the beam
+            for j in group.start..=group.end {
+                if j < children.len() {
+                    let beam_child = layer_child_to_beam_child(&children[j]);
+                    if let Some(bc) = beam_child {
+                        beam.children.push(bc);
+                    }
+                }
+            }
+
+            // Only add beam if it has children
+            if !beam.children.is_empty() {
+                result.push(LayerChild::Beam(Box::new(beam)));
+            }
+
+            i = group.end + 1;
+            group_idx += 1;
+        } else {
+            // Not in a beam group, add directly
+            result.push(children[i].clone());
+            i += 1;
+        }
+    }
+
+    result
+}
+
+/// Convert a LayerChild to a BeamChild.
+///
+/// Returns None if the child type cannot be contained in a beam.
+fn layer_child_to_beam_child(child: &LayerChild) -> Option<BeamChild> {
+    match child {
+        LayerChild::Note(n) => Some(BeamChild::Note(n.clone())),
+        LayerChild::Chord(c) => Some(BeamChild::Chord(c.clone())),
+        LayerChild::Rest(r) => Some(BeamChild::Rest(r.clone())),
+        // Other types like MRest, Space, etc. typically aren't beamed
+        _ => None,
+    }
 }
 
 #[cfg(test)]

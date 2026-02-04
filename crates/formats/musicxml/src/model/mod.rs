@@ -19,6 +19,7 @@ pub mod data;
 pub mod direction;
 pub mod duration;
 pub mod elements;
+pub mod notations;
 pub mod note;
 
 // Re-export commonly used types
@@ -27,4 +28,5 @@ pub use data::*;
 pub use direction::*;
 pub use duration::*;
 pub use elements::*;
+pub use notations::*;
 pub use note::*;

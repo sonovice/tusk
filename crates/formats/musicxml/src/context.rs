@@ -69,6 +69,20 @@ pub struct PendingSlur {
     pub number: u8,
 }
 
+/// A completed slur with both start and end IDs.
+///
+/// Used to collect slurs that have been fully resolved (both start and stop found)
+/// so they can be emitted as MEI `<slur>` control events.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompletedSlur {
+    /// The xml:id of the note where the slur starts.
+    pub start_id: String,
+    /// The xml:id of the note where the slur ends.
+    pub end_id: String,
+    /// The staff number (1-based).
+    pub staff: u32,
+}
+
 /// Warnings generated during conversion for lossy MEI → MusicXML conversion.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConversionWarning {
@@ -125,6 +139,9 @@ pub struct ConversionContext {
     /// Pending slurs waiting for their end notes.
     pending_slurs: Vec<PendingSlur>,
 
+    /// Completed slurs ready to be emitted as MEI control events.
+    completed_slurs: Vec<CompletedSlur>,
+
     /// Warnings generated during lossy conversion.
     warnings: Vec<ConversionWarning>,
 
@@ -161,6 +178,7 @@ impl ConversionContext {
             id_prefix: "tusk".to_string(),
             pending_ties: Vec::new(),
             pending_slurs: Vec::new(),
+            completed_slurs: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
             key_fifths: 0,
@@ -326,6 +344,20 @@ impl ConversionContext {
     /// Clear all pending slurs (e.g., at end of conversion).
     pub fn clear_pending_slurs(&mut self) {
         self.pending_slurs.clear();
+    }
+
+    /// Add a completed slur (both start and end IDs resolved).
+    pub fn add_completed_slur(&mut self, start_id: String, end_id: String, staff: u32) {
+        self.completed_slurs.push(CompletedSlur {
+            start_id,
+            end_id,
+            staff,
+        });
+    }
+
+    /// Drain all completed slurs, returning them for emission as MEI control events.
+    pub fn drain_completed_slurs(&mut self) -> Vec<CompletedSlur> {
+        std::mem::take(&mut self.completed_slurs)
     }
 
     // ========================================================================

@@ -12,8 +12,8 @@ use tusk_model::att::{
     AttStaffVis,
 };
 use tusk_model::elements::{
-    Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Section, SectionChild, Staff,
-    StaffChild,
+    Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Score, ScoreChild,
+    Section, SectionChild, Staff, StaffChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -340,6 +340,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Rest(rest) => rest.collect_all_attributes(),
             LayerChild::Chord(chord) => chord.collect_all_attributes(),
             LayerChild::Space(space) => space.collect_all_attributes(),
+            LayerChild::Beam(beam) => beam.collect_all_attributes(),
+            LayerChild::Tuplet(tuplet) => tuplet.collect_all_attributes(),
             LayerChild::Accid(accid) => accid.collect_all_attributes(),
             LayerChild::Artic(artic) => artic.collect_all_attributes(),
             LayerChild::Dot(dot) => dot.collect_all_attributes(),
@@ -353,6 +355,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Note(note) => note.has_children(),
             LayerChild::Rest(rest) => rest.has_children(),
             LayerChild::Chord(chord) => chord.has_children(),
+            LayerChild::Beam(beam) => beam.has_children(),
+            LayerChild::Tuplet(tuplet) => tuplet.has_children(),
             LayerChild::Accid(_) => false,
             LayerChild::Artic(_) => false,
             LayerChild::Dot(_) => false,
@@ -366,6 +370,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Note(note) => note.serialize_children(writer),
             LayerChild::Rest(rest) => rest.serialize_children(writer),
             LayerChild::Chord(chord) => chord.serialize_children(writer),
+            LayerChild::Beam(beam) => beam.serialize_children(writer),
+            LayerChild::Tuplet(tuplet) => tuplet.serialize_children(writer),
             _ => Ok(()),
         }
     }
@@ -480,6 +486,12 @@ impl MeiSerialize for MeasureChild {
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         match self {
             MeasureChild::Staff(staff) => staff.collect_all_attributes(),
+            MeasureChild::Dynam(dynam) => dynam.collect_all_attributes(),
+            MeasureChild::Dir(dir) => dir.collect_all_attributes(),
+            MeasureChild::Hairpin(hairpin) => hairpin.collect_all_attributes(),
+            MeasureChild::Tempo(tempo) => tempo.collect_all_attributes(),
+            MeasureChild::Slur(slur) => slur.collect_all_attributes(),
+            MeasureChild::Tie(tie) => tie.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -488,6 +500,12 @@ impl MeiSerialize for MeasureChild {
     fn has_children(&self) -> bool {
         match self {
             MeasureChild::Staff(staff) => staff.has_children(),
+            MeasureChild::Dynam(dynam) => dynam.has_children(),
+            MeasureChild::Dir(dir) => dir.has_children(),
+            MeasureChild::Hairpin(_) => false, // Hairpin has no children
+            MeasureChild::Tempo(tempo) => tempo.has_children(),
+            MeasureChild::Slur(_) => false, // Slur has no children (just attributes)
+            MeasureChild::Tie(_) => false, // Tie has no children
             // Other child types - assume no children for now
             _ => false,
         }
@@ -496,6 +514,9 @@ impl MeiSerialize for MeasureChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             MeasureChild::Staff(staff) => staff.serialize_children(writer),
+            MeasureChild::Dynam(dynam) => dynam.serialize_children(writer),
+            MeasureChild::Dir(dir) => dir.serialize_children(writer),
+            MeasureChild::Tempo(tempo) => tempo.serialize_children(writer),
             // Other child types - no-op
             _ => Ok(()),
         }
@@ -608,6 +629,131 @@ impl MeiSerialize for SectionChild {
 }
 
 // ============================================================================
+// Body element implementation
+// ============================================================================
+
+impl MeiSerialize for Body {
+    fn element_name(&self) -> &'static str {
+        "body"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for BodyChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            BodyChild::Div(_) => "div",
+            BodyChild::Mdiv(_) => "mdiv",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            BodyChild::Div(_) => Vec::new(), // Div not fully implemented yet
+            BodyChild::Mdiv(mdiv) => mdiv.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            BodyChild::Div(_) => true,
+            BodyChild::Mdiv(mdiv) => mdiv.has_children(),
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            BodyChild::Div(_) => Ok(()), // Div not fully implemented yet
+            BodyChild::Mdiv(mdiv) => mdiv.serialize_children(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Score element implementation
+// ============================================================================
+
+impl MeiSerialize for Score {
+    fn element_name(&self) -> &'static str {
+        "score"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        // score_anl, score_ges, score_log, score_vis have no serializers yet - add empty
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ScoreChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ScoreChild::Section(_) => "section",
+            ScoreChild::ScoreDef(_) => "scoreDef",
+            ScoreChild::StaffDef(_) => "staffDef",
+            ScoreChild::Ending(_) => "ending",
+            ScoreChild::Pb(_) => "pb",
+            ScoreChild::Sb(_) => "sb",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            ScoreChild::Section(s) => s.collect_all_attributes(),
+            ScoreChild::ScoreDef(s) => s.collect_all_attributes(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            ScoreChild::Section(s) => s.has_children(),
+            ScoreChild::ScoreDef(s) => s.has_children(),
+            _ => true,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ScoreChild::Section(s) => s.serialize_children(writer),
+            ScoreChild::ScoreDef(s) => s.serialize_children(writer),
+            _ => Ok(()),
+        }
+    }
+}
+
+// ============================================================================
 // Mdiv element implementation
 // ============================================================================
 
@@ -652,17 +798,15 @@ impl MeiSerialize for MdivChild {
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.collect_all_attributes(),
-            // Score and Parts not yet fully implemented - return empty
-            MdivChild::Score(_) => Vec::new(),
-            MdivChild::Parts(_) => Vec::new(),
+            MdivChild::Score(score) => score.collect_all_attributes(),
+            MdivChild::Parts(_) => Vec::new(), // Parts not yet fully implemented
         }
     }
 
     fn has_children(&self) -> bool {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.has_children(),
-            // Score and Parts - assume they have children
-            MdivChild::Score(_) => true,
+            MdivChild::Score(score) => score.has_children(),
             MdivChild::Parts(_) => true,
         }
     }
@@ -670,9 +814,8 @@ impl MeiSerialize for MdivChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.serialize_children(writer),
-            // Score and Parts not yet fully implemented - no-op
-            MdivChild::Score(_) => Ok(()),
-            MdivChild::Parts(_) => Ok(()),
+            MdivChild::Score(score) => score.serialize_children(writer),
+            MdivChild::Parts(_) => Ok(()), // Parts not yet fully implemented
         }
     }
 }

@@ -781,6 +781,10 @@ pub struct Note {
     #[serde(rename = "beam", default, skip_serializing_if = "Vec::is_empty")]
     pub beams: Vec<Beam>,
 
+    /// Notations (slurs, ties, articulations, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notations: Option<super::notations::Notations>,
+
     // --- Attributes ---
     /// Default X position.
     #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
@@ -861,6 +865,7 @@ impl Note {
             notehead: None,
             staff: None,
             beams: Vec::new(),
+            notations: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -899,6 +904,7 @@ impl Note {
             notehead: None,
             staff: None,
             beams: Vec::new(),
+            notations: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -937,6 +943,7 @@ impl Note {
             notehead: None,
             staff: None,
             beams: Vec::new(),
+            notations: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -975,6 +982,7 @@ impl Note {
             notehead: None,
             staff: None,
             beams: Vec::new(),
+            notations: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -1013,6 +1021,7 @@ impl Note {
             notehead: None,
             staff: None,
             beams: Vec::new(),
+            notations: None,
             default_x: None,
             default_y: None,
             relative_x: None,

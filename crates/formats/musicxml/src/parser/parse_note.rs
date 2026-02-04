@@ -7,6 +7,7 @@ use std::io::BufRead;
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::elements::Empty;
+use crate::model::notations::*;
 use crate::model::note::*;
 
 pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Note> {
@@ -34,6 +35,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut stem: Option<Stem> = None;
     let mut staff: Option<u32> = None;
     let mut beams: Vec<Beam> = Vec::new();
+    let mut notations: Option<Notations> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -73,6 +75,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                     )
                 }
                 b"beam" => beams.push(parse_beam(reader, &e)?),
+                b"notations" => notations = Some(parse_notations(reader)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -122,6 +125,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         notehead: None,
         staff,
         beams,
+        notations,
         default_x,
         default_y,
         relative_x: None,
@@ -564,5 +568,208 @@ fn parse_yes_no_opt(s: &str) -> Option<YesNo> {
         "yes" => Some(YesNo::Yes),
         "no" => Some(YesNo::No),
         _ => None,
+    }
+}
+
+// ============================================================================
+// Notations Parsing
+// ============================================================================
+
+fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
+    let mut buf = Vec::new();
+    let mut notations = Notations::default();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"slur" => {
+                    notations.slurs.push(parse_slur(&e)?);
+                    skip_to_end(reader, b"slur")?;
+                }
+                b"tied" => {
+                    notations.tied.push(parse_tied(&e)?);
+                    skip_to_end(reader, b"tied")?;
+                }
+                b"articulations" => {
+                    notations.articulations = Some(parse_articulations(reader)?);
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) => match e.name().as_ref() {
+                b"slur" => notations.slurs.push(parse_slur(&e)?),
+                b"tied" => notations.tied.push(parse_tied(&e)?),
+                _ => {}
+            },
+            Event::End(e) if e.name().as_ref() == b"notations" => break,
+            Event::Eof => return Err(ParseError::MissingElement("notations end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(notations)
+}
+
+fn parse_slur(e: &BytesStart) -> Result<Slur> {
+    let slur_type = match get_attr_required(e, "type")?.as_str() {
+        "start" => StartStopContinue::Start,
+        "stop" => StartStopContinue::Stop,
+        "continue" => StartStopContinue::Continue,
+        s => {
+            return Err(ParseError::InvalidAttribute("type".to_string(), s.to_string()));
+        }
+    };
+
+    let number = get_attr(e, "number")?.and_then(|s| s.parse().ok());
+    let placement = get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+        "above" => Some(AboveBelow::Above),
+        "below" => Some(AboveBelow::Below),
+        _ => None,
+    });
+    let orientation = get_attr(e, "orientation")?.and_then(|s| match s.as_str() {
+        "over" => Some(OverUnder::Over),
+        "under" => Some(OverUnder::Under),
+        _ => None,
+    });
+
+    Ok(Slur {
+        slur_type,
+        number,
+        placement,
+        orientation,
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        bezier_x: get_attr(e, "bezier-x")?.and_then(|s| s.parse().ok()),
+        bezier_y: get_attr(e, "bezier-y")?.and_then(|s| s.parse().ok()),
+        bezier_x2: get_attr(e, "bezier-x2")?.and_then(|s| s.parse().ok()),
+        bezier_y2: get_attr(e, "bezier-y2")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_tied(e: &BytesStart) -> Result<Tied> {
+    let tied_type = match get_attr_required(e, "type")?.as_str() {
+        "start" => TiedType::Start,
+        "stop" => TiedType::Stop,
+        "continue" => TiedType::Continue,
+        "let-ring" => TiedType::LetRing,
+        s => {
+            return Err(ParseError::InvalidAttribute("type".to_string(), s.to_string()));
+        }
+    };
+
+    let number = get_attr(e, "number")?.and_then(|s| s.parse().ok());
+    let orientation = get_attr(e, "orientation")?.and_then(|s| match s.as_str() {
+        "over" => Some(OverUnder::Over),
+        "under" => Some(OverUnder::Under),
+        _ => None,
+    });
+
+    Ok(Tied {
+        tied_type,
+        number,
+        orientation,
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        bezier_x: get_attr(e, "bezier-x")?.and_then(|s| s.parse().ok()),
+        bezier_y: get_attr(e, "bezier-y")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_articulations<R: BufRead>(reader: &mut Reader<R>) -> Result<Articulations> {
+    let mut buf = Vec::new();
+    let mut artics = Articulations::default();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => {
+                parse_articulation_element(&e, &mut artics);
+                skip_element(reader, &e)?;
+            }
+            Event::Empty(e) => {
+                parse_articulation_element(&e, &mut artics);
+            }
+            Event::End(e) if e.name().as_ref() == b"articulations" => break,
+            Event::Eof => return Err(ParseError::MissingElement("articulations end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(artics)
+}
+
+fn parse_articulation_element(e: &BytesStart, artics: &mut Articulations) {
+    let placement = get_attr(e, "placement")
+        .ok()
+        .flatten()
+        .and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        });
+    let default_x = get_attr(e, "default-x")
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse().ok());
+    let default_y = get_attr(e, "default-y")
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse().ok());
+    let color = get_attr(e, "color").ok().flatten();
+
+    let empty = EmptyPlacement {
+        placement,
+        default_x,
+        default_y,
+        color,
+    };
+
+    match e.name().as_ref() {
+        b"accent" => artics.accent = Some(empty),
+        b"strong-accent" => {
+            let accent_type = get_attr(e, "type")
+                .ok()
+                .flatten()
+                .and_then(|s| match s.as_str() {
+                    "up" => Some(UpDown::Up),
+                    "down" => Some(UpDown::Down),
+                    _ => None,
+                });
+            artics.strong_accent = Some(StrongAccent {
+                accent_type,
+                placement,
+                default_x,
+                default_y,
+            });
+        }
+        b"staccato" => artics.staccato = Some(empty),
+        b"tenuto" => artics.tenuto = Some(empty),
+        b"detached-legato" => artics.detached_legato = Some(empty),
+        b"staccatissimo" => artics.staccatissimo = Some(empty),
+        b"spiccato" => artics.spiccato = Some(empty),
+        b"scoop" => artics.scoop = Some(empty),
+        b"plop" => artics.plop = Some(empty),
+        b"doit" => artics.doit = Some(empty),
+        b"falloff" => artics.falloff = Some(empty),
+        b"stress" => artics.stress = Some(empty),
+        b"unstress" => artics.unstress = Some(empty),
+        b"soft-accent" => artics.soft_accent = Some(empty),
+        b"breath-mark" => {
+            artics.breath_mark = Some(BreathMark {
+                value: None,
+                placement,
+            });
+        }
+        b"caesura" => {
+            artics.caesura = Some(Caesura {
+                value: None,
+                placement,
+            });
+        }
+        _ => {}
     }
 }
