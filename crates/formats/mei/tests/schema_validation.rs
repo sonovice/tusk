@@ -952,3 +952,101 @@ fn validate_existing_fixture_scale() {
     let mei_content = std::fs::read_to_string(&fixture_path).expect("read fixture");
     validate_mei_with_xmllint(&mei_content).expect("scale.mei fixture should be valid");
 }
+
+#[test]
+fn validate_header_with_revision_desc() {
+    use tusk_model::data::DataIsodate;
+    use tusk_model::elements::{
+        Change, ChangeChild, ChangeDesc, ChangeDescChild, FileDesc, FileDescChild, MeiHead,
+        MeiHeadChild, P, PChild, PubStmt, RevisionDesc, RevisionDescChild, Title, TitleChild,
+        TitleStmt, TitleStmtChild,
+    };
+
+    if !xmllint_available() {
+        eprintln!("Skipping test: xmllint not available");
+        return;
+    }
+
+    // Build a complete meiHead with fileDesc and revisionDesc
+    let mut mei_head = MeiHead::default();
+
+    // Add fileDesc with titleStmt and pubStmt
+    let mut file_desc = FileDesc::default();
+    let mut title_stmt = TitleStmt::default();
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Header Validation Test".to_string()));
+    title_stmt
+        .children
+        .push(TitleStmtChild::Title(Box::new(title)));
+    file_desc
+        .children
+        .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
+    let pub_stmt = PubStmt::default();
+    file_desc
+        .children
+        .push(FileDescChild::PubStmt(Box::new(pub_stmt)));
+    mei_head
+        .children
+        .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
+
+    // Add revisionDesc with a change element
+    let mut revision_desc = RevisionDesc::default();
+    let mut change = Change::default();
+    change.common.xml_id = Some("change1".to_string());
+    change.datable.isodate = Some(DataIsodate("2025-01-15".to_string()));
+
+    let mut change_desc = ChangeDesc::default();
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Initial test encoding".to_string()));
+    change_desc.children.push(ChangeDescChild::P(Box::new(p)));
+    change
+        .children
+        .push(ChangeChild::ChangeDesc(Box::new(change_desc)));
+
+    revision_desc
+        .children
+        .push(RevisionDescChild::Change(Box::new(change)));
+    mei_head
+        .children
+        .push(MeiHeadChild::RevisionDesc(Box::new(revision_desc)));
+
+    // Serialize the header
+    let header_xml = mei_head.to_mei_string().expect("serialize header");
+
+    // Wrap in full MEI document with minimal music content
+    let mei_doc = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.1">
+  {}
+  <music>
+    <body>
+      <mdiv>
+        <score>
+          <scoreDef>
+            <staffGrp>
+              <staffDef n="1" lines="5" clef.shape="G" clef.line="2"/>
+            </staffGrp>
+          </scoreDef>
+          <section>
+            <measure n="1">
+              <staff n="1">
+                <layer n="1">
+                  <note pname="c" oct="4" dur="4"/>
+                </layer>
+              </staff>
+            </measure>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>"#,
+        header_xml
+    );
+
+    validate_mei_with_xmllint(&mei_doc)
+        .expect("MEI document with serialized header should be valid");
+}

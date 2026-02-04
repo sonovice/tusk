@@ -111,12 +111,12 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 3.4 Revision Description
 - [x] Implement MEI parsing for `<revisionDesc>` element
-- [ ] Implement MEI parsing for `<change>` element
+- [x] Implement MEI parsing for `<change>` element
 
 ### 3.5 Header Serialization
-- [ ] Implement MEI serialization for all header elements
-- [ ] Add header round-trip tests
-- [ ] Validate header output against schema
+- [x] Implement MEI serialization for all header elements
+- [x] Add header round-trip tests
+- [x] Validate header output against schema
 
 ---
 
