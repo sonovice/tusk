@@ -1,6 +1,6 @@
 //!Element: `<reh>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<reh>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -39,7 +39,7 @@ impl RehChild {
     }
 }
 /**rehearsal mark - In an orchestral score and its corresponding parts, a mark indicating a
-convenient point from which to resume rehearsal after a break.*/
+      convenient point from which to resume rehearsal after a break.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "reh")]
 pub struct Reh {

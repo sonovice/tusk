@@ -1,26 +1,26 @@
 //!Element: `<expressionList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<expressionList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExpressionListChild {
-    #[serde(rename = "expression")]
-    Expression(Box<crate::generated::elements::Expression>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "expression")]
+    Expression(Box<crate::generated::elements::Expression>),
 }
 impl ExpressionListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ExpressionListChild::Expression(elem) => {
-                ctx.enter("expression", index);
+            ExpressionListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionListChild::Head(elem) => {
-                ctx.enter("head", index);
+            ExpressionListChild::Expression(elem) => {
+                ctx.enter("expression", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,98 +1,83 @@
 //!Element: `<note>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<note>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NoteChild {
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "plica")]
-    Plica(Box<crate::generated::elements::Plica>),
-    #[serde(rename = "stem")]
-    Stem(Box<crate::generated::elements::Stem>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "refrain")]
-    Refrain(Box<crate::generated::elements::Refrain>),
-    #[serde(rename = "artic")]
-    Artic(Box<crate::generated::elements::Artic>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "verse")]
-    Verse(Box<crate::generated::elements::Verse>),
-    #[serde(rename = "dot")]
-    Dot(Box<crate::generated::elements::Dot>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
     #[serde(rename = "syl")]
     Syl(Box<crate::generated::elements::Syl>),
     #[serde(rename = "choice")]
     Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "verse")]
+    Verse(Box<crate::generated::elements::Verse>),
+    #[serde(rename = "artic")]
+    Artic(Box<crate::generated::elements::Artic>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
     #[serde(rename = "subst")]
     Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "accid")]
-    Accid(Box<crate::generated::elements::Accid>),
     #[serde(rename = "orig")]
     Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "dot")]
+    Dot(Box<crate::generated::elements::Dot>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "accid")]
+    Accid(Box<crate::generated::elements::Accid>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "plica")]
+    Plica(Box<crate::generated::elements::Plica>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "stem")]
+    Stem(Box<crate::generated::elements::Stem>),
+    #[serde(rename = "refrain")]
+    Refrain(Box<crate::generated::elements::Refrain>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
 }
 impl NoteChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            NoteChild::Syl(elem) => {
+                ctx.enter("syl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             NoteChild::Reg(elem) => {
                 ctx.enter("reg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Plica(elem) => {
-                ctx.enter("plica", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Stem(elem) => {
-                ctx.enter("stem", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Refrain(elem) => {
-                ctx.enter("refrain", index);
+            NoteChild::Verse(elem) => {
+                ctx.enter("verse", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -106,18 +91,18 @@ impl NoteChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
+            NoteChild::Subst(elem) => {
+                ctx.enter("subst", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::Add(elem) => {
-                ctx.enter("add", index);
+            NoteChild::Orig(elem) => {
+                ctx.enter("orig", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::Verse(elem) => {
-                ctx.enter("verse", index);
+            NoteChild::Damage(elem) => {
+                ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -126,38 +111,8 @@ impl NoteChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::App(elem) => {
-                ctx.enter("app", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Syl(elem) => {
-                ctx.enter("syl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NoteChild::Sic(elem) => {
-                ctx.enter("sic", index);
+            NoteChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -166,8 +121,53 @@ impl NoteChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NoteChild::Orig(elem) => {
-                ctx.enter("orig", index);
+            NoteChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Plica(elem) => {
+                ctx.enter("plica", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::App(elem) => {
+                ctx.enter("app", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Stem(elem) => {
+                ctx.enter("stem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Refrain(elem) => {
+                ctx.enter("refrain", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NoteChild::Restore(elem) => {
+                ctx.enter("restore", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

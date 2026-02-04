@@ -1,8 +1,8 @@
 //!Element: `<handShift>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**Identifies the old hand. The value must contain the ID of a hand element given
-elsewhere in the document.*/
+          elsewhere in the document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "handShift")]
 pub struct HandShift {

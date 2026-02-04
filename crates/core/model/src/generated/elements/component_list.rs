@@ -1,20 +1,20 @@
 //!Element: `<componentList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<componentList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ComponentListChild {
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "manifestation")]
-    Manifestation(Box<crate::generated::elements::Manifestation>),
-    #[serde(rename = "work")]
-    Work(Box<crate::generated::elements::Work>),
-    #[serde(rename = "expression")]
-    Expression(Box<crate::generated::elements::Expression>),
     #[serde(rename = "item")]
     Item(Box<crate::generated::elements::Item>),
+    #[serde(rename = "work")]
+    Work(Box<crate::generated::elements::Work>),
+    #[serde(rename = "manifestation")]
+    Manifestation(Box<crate::generated::elements::Manifestation>),
+    #[serde(rename = "expression")]
+    Expression(Box<crate::generated::elements::Expression>),
 }
 impl ComponentListChild {
     /// Validate this child element.
@@ -25,8 +25,8 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Manifestation(elem) => {
-                ctx.enter("manifestation", index);
+            ComponentListChild::Item(elem) => {
+                ctx.enter("item", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,13 +35,13 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Expression(elem) => {
-                ctx.enter("expression", index);
+            ComponentListChild::Manifestation(elem) => {
+                ctx.enter("manifestation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Item(elem) => {
-                ctx.enter("item", index);
+            ComponentListChild::Expression(elem) => {
+                ctx.enter("expression", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

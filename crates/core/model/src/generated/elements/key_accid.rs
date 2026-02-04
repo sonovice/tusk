@@ -1,6 +1,6 @@
 //!Element: `<keyAccid>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///key accidental - All enharmonic (written) values allowed.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "keyAccid")]

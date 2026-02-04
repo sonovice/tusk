@@ -1,6 +1,6 @@
 //!Element: `<halfmRpt>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///half-measure repeat - A half-measure repeat in any meter.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "halfmRpt")]

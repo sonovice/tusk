@@ -1,36 +1,31 @@
 //!Element: `<meiHead>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<meiHead>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiHeadChild {
-    #[serde(rename = "manifestationList")]
-    ManifestationList(Box<crate::generated::elements::ManifestationList>),
-    #[serde(rename = "revisionDesc")]
-    RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
-    #[serde(rename = "altId")]
-    AltId(Box<crate::generated::elements::AltId>),
-    #[serde(rename = "fileDesc")]
-    FileDesc(Box<crate::generated::elements::FileDesc>),
-    #[serde(rename = "encodingDesc")]
-    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
     #[serde(rename = "extMeta")]
     ExtMeta(Box<crate::generated::elements::ExtMeta>),
+    #[serde(rename = "altId")]
+    AltId(Box<crate::generated::elements::AltId>),
+    #[serde(rename = "encodingDesc")]
+    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
+    #[serde(rename = "manifestationList")]
+    ManifestationList(Box<crate::generated::elements::ManifestationList>),
     #[serde(rename = "workList")]
     WorkList(Box<crate::generated::elements::WorkList>),
+    #[serde(rename = "revisionDesc")]
+    RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
+    #[serde(rename = "fileDesc")]
+    FileDesc(Box<crate::generated::elements::FileDesc>),
 }
 impl MeiHeadChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiHeadChild::ManifestationList(elem) => {
-                ctx.enter("manifestationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MeiHeadChild::RevisionDesc(elem) => {
-                ctx.enter("revisionDesc", index);
+            MeiHeadChild::ExtMeta(elem) => {
+                ctx.enter("extMeta", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,18 +34,13 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::FileDesc(elem) => {
-                ctx.enter("fileDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MeiHeadChild::EncodingDesc(elem) => {
                 ctx.enter("encodingDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::ExtMeta(elem) => {
-                ctx.enter("extMeta", index);
+            MeiHeadChild::ManifestationList(elem) => {
+                ctx.enter("manifestationList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -59,11 +49,21 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MeiHeadChild::RevisionDesc(elem) => {
+                ctx.enter("revisionDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MeiHeadChild::FileDesc(elem) => {
+                ctx.enter("fileDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**MEI header - Header is independent;i.e., not attached to either a music or a corpus
-document.*/
+              document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiHead")]
 pub struct MeiHead {

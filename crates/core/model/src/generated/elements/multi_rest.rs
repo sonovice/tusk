@@ -1,8 +1,8 @@
 //!Element: `<multiRest>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**multimeasure rest - Multiple full measure rests compressed into a single bar,
-frequently found in performer parts.*/
+      frequently found in performer parts.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "multiRest")]
 pub struct MultiRest {

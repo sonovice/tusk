@@ -1,16 +1,16 @@
 //!Element: `<termList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<termList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TermListChild {
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
 }
 impl TermListChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl TermListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TermListChild::Term(elem) => {
-                ctx.enter("term", index);
+            TermListChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TermListChild::Label(elem) => {
-                ctx.enter("label", index);
+            TermListChild::Term(elem) => {
+                ctx.enter("term", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

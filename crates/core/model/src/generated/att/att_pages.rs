@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttPages {
     /**Specifies the height of the page; may be expressed in real-world units or staff
-    steps.*/
+          steps.*/
     #[serde(rename = "@page.height", skip_serializing_if = "Option::is_none")]
     pub page_height: Option<crate::generated::data::DataMeasurementunsigned>,
     /**Describes the width of the page; may be expressed in real-world units or staff
-    steps.*/
+          steps.*/
     #[serde(rename = "@page.width", skip_serializing_if = "Option::is_none")]
     pub page_width: Option<crate::generated::data::DataMeasurementunsigned>,
     ///Indicates the amount of whitespace at the top of a page.

@@ -1,6 +1,6 @@
 //!Element: `<taxonomy>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<taxonomy>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -9,14 +9,14 @@ pub enum TaxonomyChild {
     Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "bibl")]
     Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "category")]
-    Category(Box<crate::generated::elements::Category>),
     #[serde(rename = "taxonomy")]
     Taxonomy(Box<crate::generated::elements::Taxonomy>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "category")]
+    Category(Box<crate::generated::elements::Category>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
 }
 impl TaxonomyChild {
     /// Validate this child element.
@@ -32,13 +32,13 @@ impl TaxonomyChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TaxonomyChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            TaxonomyChild::Taxonomy(elem) => {
+                ctx.enter("taxonomy", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TaxonomyChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
+            TaxonomyChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -47,8 +47,8 @@ impl TaxonomyChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TaxonomyChild::Taxonomy(elem) => {
-                ctx.enter("taxonomy", index);
+            TaxonomyChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -56,7 +56,7 @@ impl TaxonomyChild {
     }
 }
 /**Defines a typology either implicitly, by means of a bibliographic citation, or explicitly
-by a structured taxonomy.*/
+      by a structured taxonomy.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "taxonomy")]
 pub struct Taxonomy {

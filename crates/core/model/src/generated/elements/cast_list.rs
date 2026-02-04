@@ -1,23 +1,23 @@
 //!Element: `<castList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<castList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CastListChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "castGrp")]
-    CastGrp(Box<crate::generated::elements::CastGrp>),
     #[serde(rename = "castItem")]
     CastItem(Box<crate::generated::elements::CastItem>),
+    #[serde(rename = "castGrp")]
+    CastGrp(Box<crate::generated::elements::CastGrp>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl CastListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CastListChild::Head(elem) => {
-                ctx.enter("head", index);
+            CastListChild::CastItem(elem) => {
+                ctx.enter("castItem", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -26,8 +26,8 @@ impl CastListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CastListChild::CastItem(elem) => {
-                ctx.enter("castItem", index);
+            CastListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

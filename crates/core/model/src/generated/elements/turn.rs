@@ -1,8 +1,8 @@
 //!Element: `<turn>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**An ornament consisting of four notes — the upper neighbor of the written note, the written
-note, the lower neighbor, and the written note.*/
+      note, the lower neighbor, and the written note.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "turn")]
 pub struct Turn {

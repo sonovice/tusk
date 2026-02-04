@@ -1,26 +1,26 @@
 //!Element: `<body>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<body>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BodyChild {
-    #[serde(rename = "mdiv")]
-    Mdiv(Box<crate::generated::elements::Mdiv>),
     #[serde(rename = "div")]
     Div(Box<crate::generated::elements::Div>),
+    #[serde(rename = "mdiv")]
+    Mdiv(Box<crate::generated::elements::Mdiv>),
 }
 impl BodyChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BodyChild::Mdiv(elem) => {
-                ctx.enter("mdiv", index);
+            BodyChild::Div(elem) => {
+                ctx.enter("div", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BodyChild::Div(elem) => {
-                ctx.enter("div", index);
+            BodyChild::Mdiv(elem) => {
+                ctx.enter("mdiv", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

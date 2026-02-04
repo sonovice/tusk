@@ -1,26 +1,21 @@
 //!Element: `<mdiv>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<mdiv>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MdivChild {
-    #[serde(rename = "mdiv")]
-    Mdiv(Box<crate::generated::elements::Mdiv>),
     #[serde(rename = "score")]
     Score(Box<crate::generated::elements::Score>),
     #[serde(rename = "parts")]
     Parts(Box<crate::generated::elements::Parts>),
+    #[serde(rename = "mdiv")]
+    Mdiv(Box<crate::generated::elements::Mdiv>),
 }
 impl MdivChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MdivChild::Mdiv(elem) => {
-                ctx.enter("mdiv", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MdivChild::Score(elem) => {
                 ctx.enter("score", index);
                 elem.validate_with_context(ctx);
@@ -28,6 +23,11 @@ impl MdivChild {
             }
             MdivChild::Parts(elem) => {
                 ctx.enter("parts", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MdivChild::Mdiv(elem) => {
+                ctx.enter("mdiv", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

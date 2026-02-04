@@ -1,6 +1,6 @@
 //!Element: `<when>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<when>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -21,10 +21,10 @@ impl WhenChild {
     }
 }
 /**Identifies the reference point for determining the time of the current when element,
-which is obtained by adding the interval to the time of the reference point. The value
-should be the ID of another when element within the same parent element. If the since
-attribute is omitted and the absolute attribute is not specified, then the reference point
-is understood to be the immediately preceding when element.*/
+          which is obtained by adding the interval to the time of the reference point. The value
+          should be the ID of another when element within the same parent element. If the since
+          attribute is omitted and the absolute attribute is not specified, then the reference point
+          is understood to be the immediately preceding when element.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "when")]
 pub struct When {

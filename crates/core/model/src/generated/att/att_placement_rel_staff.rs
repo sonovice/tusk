@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttPlacementRelStaff {
     /**Captures the placement of the item with respect to the staff with which it is
-    associated.*/
+          associated.*/
     #[serde(rename = "@place", skip_serializing_if = "Option::is_none")]
     pub place: Option<crate::generated::data::DataStaffrel>,
 }

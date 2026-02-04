@@ -1,26 +1,26 @@
 //!Element: `<sourceDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<sourceDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceDescChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "source")]
     Source(Box<crate::generated::elements::Source>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl SourceDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SourceDescChild::Head(elem) => {
-                ctx.enter("head", index);
+            SourceDescChild::Source(elem) => {
+                ctx.enter("source", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SourceDescChild::Source(elem) => {
-                ctx.enter("source", index);
+            SourceDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl SourceDescChild {
     }
 }
 /**source description - A container for the descriptions of the source(s) used in the
-creation of the electronic file.*/
+      creation of the electronic file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "sourceDesc")]
 pub struct SourceDesc {

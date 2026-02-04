@@ -1,26 +1,26 @@
 //!Element: `<bTrem>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<bTrem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BTremChild {
-    #[serde(rename = "note")]
-    Note(Box<crate::generated::elements::Note>),
     #[serde(rename = "chord")]
     Chord(Box<crate::generated::elements::Chord>),
+    #[serde(rename = "note")]
+    Note(Box<crate::generated::elements::Note>),
 }
 impl BTremChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BTremChild::Note(elem) => {
-                ctx.enter("note", index);
+            BTremChild::Chord(elem) => {
+                ctx.enter("chord", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BTremChild::Chord(elem) => {
-                ctx.enter("chord", index);
+            BTremChild::Note(elem) => {
+                ctx.enter("note", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

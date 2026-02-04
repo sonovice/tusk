@@ -1,22 +1,22 @@
 //!Element: `<layerDef>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<layerDef>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LayerDefChild {
     #[serde(rename = "meterSigGrp")]
     MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "labelAbbr")]
-    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
-    #[serde(rename = "instrDef")]
-    InstrDef(Box<crate::generated::elements::InstrDef>),
     #[serde(rename = "meterSig")]
     MeterSig(Box<crate::generated::elements::MeterSig>),
     #[serde(rename = "ambitus")]
     Ambitus(Box<crate::generated::elements::Ambitus>),
+    #[serde(rename = "labelAbbr")]
+    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "instrDef")]
+    InstrDef(Box<crate::generated::elements::InstrDef>),
 }
 impl LayerDefChild {
     /// Validate this child element.
@@ -27,8 +27,13 @@ impl LayerDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LayerDefChild::Label(elem) => {
-                ctx.enter("label", index);
+            LayerDefChild::MeterSig(elem) => {
+                ctx.enter("meterSig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LayerDefChild::Ambitus(elem) => {
+                ctx.enter("ambitus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -37,18 +42,13 @@ impl LayerDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            LayerDefChild::Label(elem) => {
+                ctx.enter("label", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             LayerDefChild::InstrDef(elem) => {
                 ctx.enter("instrDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LayerDefChild::MeterSig(elem) => {
-                ctx.enter("meterSig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LayerDefChild::Ambitus(elem) => {
-                ctx.enter("ambitus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,26 +1,26 @@
 //!Element: `<segmentation>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<segmentation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SegmentationChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl SegmentationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SegmentationChild::Head(elem) => {
-                ctx.enter("head", index);
+            SegmentationChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SegmentationChild::P(elem) => {
-                ctx.enter("p", index);
+            SegmentationChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl SegmentationChild {
     }
 }
 /**Describes the principles according to which the musical text has been segmented, for
-example into movements, sections, etc.*/
+      example into movements, sections, etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "segmentation")]
 pub struct Segmentation {

@@ -13,7 +13,7 @@ pub enum AttTupletVisNumFormat {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttTupletVis {
     /**Used to indicate visual appearance. Do not confuse this with the musical term 'color'
-    as used in pre-CMN notation.*/
+          as used in pre-CMN notation.*/
     #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
     pub color: Option<crate::generated::data::DataColor>,
     ///States where the number will be placed in relation to the notational feature.
@@ -23,7 +23,7 @@ pub struct AttTupletVis {
     #[serde(rename = "@num.visible", skip_serializing_if = "Option::is_none")]
     pub num_visible: Option<crate::generated::data::DataBoolean>,
     /**Used to state where a tuplet bracket will be placed in relation to the note
-    heads.*/
+          heads.*/
     #[serde(rename = "@bracket.place", skip_serializing_if = "Option::is_none")]
     pub bracket_place: Option<crate::generated::data::DataStaffrelBasic>,
     ///States whether a bracket should be rendered with a tuplet.

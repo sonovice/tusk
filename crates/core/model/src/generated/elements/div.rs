@@ -1,59 +1,49 @@
 //!Element: `<div>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<div>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DivChild {
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
-    #[serde(rename = "castList")]
-    CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "div")]
     Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "sp")]
-    Sp(Box<crate::generated::elements::Sp>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
     #[serde(rename = "biblList")]
     BiblList(Box<crate::generated::elements::BiblList>),
     #[serde(rename = "eventList")]
     EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
     #[serde(rename = "quote")]
     Quote(Box<crate::generated::elements::Quote>),
+    #[serde(rename = "castList")]
+    CastList(Box<crate::generated::elements::CastList>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "sp")]
+    Sp(Box<crate::generated::elements::Sp>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
 }
 impl DivChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            DivChild::Table(elem) => {
-                ctx.enter("table", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::Fig(elem) => {
-                ctx.enter("fig", index);
+            DivChild::Lg(elem) => {
+                ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -62,13 +52,23 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
+            DivChild::Table(elem) => {
+                ctx.enter("table", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Sp(elem) => {
-                ctx.enter("sp", index);
+            DivChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::Cb(elem) => {
+                ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::List(elem) => {
+                ctx.enter("list", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -82,13 +82,23 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            DivChild::Quote(elem) => {
+                ctx.enter("quote", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::CastList(elem) => {
+                ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             DivChild::Pb(elem) => {
                 ctx.enter("pb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::List(elem) => {
-                ctx.enter("list", index);
+            DivChild::Sp(elem) => {
+                ctx.enter("sp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -97,13 +107,8 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::Quote(elem) => {
-                ctx.enter("quote", index);
+            DivChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -117,16 +122,11 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Lg(elem) => {
-                ctx.enter("lg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
         }
     }
 }
 /**division - A foreword or preface addressed to the reader in which the author or publisher
-explains the content, purpose, or origin of the text.*/
+              explains the content, purpose, or origin of the text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "div")]
 pub struct Div {

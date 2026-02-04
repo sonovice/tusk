@@ -1629,14 +1629,13 @@ impl MeiDeserialize for tusk_model::elements::Music {
         music.metadata_pointing.extract_attributes(&mut attrs)?;
 
         // Parse children if not empty
-        // music can contain: genDesc?, performance?, facsimile?, body?
-        // Note: The current model doesn't include Body in MusicChild, so we skip it
+        // MusicChild can contain: body, group, front, back, facsimile, genDesc, performance
+        // TODO: Implement MeiDeserialize for these child elements
         if !is_empty {
             while let Some((name, _child_attrs, child_empty)) =
                 reader.read_next_child_start("music")?
             {
-                // For now, skip all children as the model doesn't include the main content
-                // elements like body. In a full implementation, we'd parse them.
+                // Skip children until their MeiDeserialize impls are added
                 if !child_empty {
                     reader.skip_to_end(&name)?;
                 }

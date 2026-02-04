@@ -1,7 +1,7 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**Used by staffDef and scoreDef to provide default values for attributes in the visual
-domain related to clefs.*/
+      domain related to clefs.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttCleffingVis {
     ///Describes the color of the clef.

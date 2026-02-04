@@ -1,26 +1,26 @@
 //!Element: `<app>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<app>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AppChild {
-    #[serde(rename = "rdg")]
-    Rdg(Box<crate::generated::elements::Rdg>),
     #[serde(rename = "lem")]
     Lem(Box<crate::generated::elements::Lem>),
+    #[serde(rename = "rdg")]
+    Rdg(Box<crate::generated::elements::Rdg>),
 }
 impl AppChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            AppChild::Rdg(elem) => {
-                ctx.enter("rdg", index);
+            AppChild::Lem(elem) => {
+                ctx.enter("lem", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AppChild::Lem(elem) => {
-                ctx.enter("lem", index);
+            AppChild::Rdg(elem) => {
+                ctx.enter("rdg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

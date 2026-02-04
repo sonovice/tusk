@@ -1,6 +1,6 @@
 //!Element: `<symName>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<symName>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -18,7 +18,7 @@ impl SymNameChild {
     }
 }
 /**symbol name - Contains the name of a symbol, expressed following Unicode
-conventions.*/
+      conventions.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "symName")]
 pub struct SymName {

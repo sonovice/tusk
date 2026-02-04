@@ -1,26 +1,26 @@
 //!Element: `<classification>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<classification>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ClassificationChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "termList")]
     TermList(Box<crate::generated::elements::TermList>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl ClassificationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ClassificationChild::Head(elem) => {
-                ctx.enter("head", index);
+            ClassificationChild::TermList(elem) => {
+                ctx.enter("termList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ClassificationChild::TermList(elem) => {
-                ctx.enter("termList", index);
+            ClassificationChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

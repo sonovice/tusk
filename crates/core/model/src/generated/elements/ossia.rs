@@ -1,14 +1,14 @@
 //!Element: `<ossia>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<ossia>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OssiaChild {
-    #[serde(rename = "oLayer")]
-    OLayer(Box<crate::generated::elements::OLayer>),
     #[serde(rename = "layer")]
     Layer(Box<crate::generated::elements::Layer>),
+    #[serde(rename = "oLayer")]
+    OLayer(Box<crate::generated::elements::OLayer>),
     #[serde(rename = "oStaff")]
     OStaff(Box<crate::generated::elements::OStaff>),
     #[serde(rename = "staff")]
@@ -18,13 +18,13 @@ impl OssiaChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            OssiaChild::OLayer(elem) => {
-                ctx.enter("oLayer", index);
+            OssiaChild::Layer(elem) => {
+                ctx.enter("layer", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            OssiaChild::Layer(elem) => {
-                ctx.enter("layer", index);
+            OssiaChild::OLayer(elem) => {
+                ctx.enter("oLayer", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,7 +42,7 @@ impl OssiaChild {
     }
 }
 /**Captures original notation and a differently notated version*present in
-the source being transcribed*.*/
+      the source being transcribed*.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ossia")]
 pub struct Ossia {

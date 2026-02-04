@@ -428,10 +428,9 @@ fn generate_att_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
         write_tokens_to_file(&tokens, &file_path)?;
 
         let mod_name = format_ident!("{}", file_name);
-        let type_name = mei_ident_to_type(&ac.ident);
         mod_items.push(quote! {
             mod #mod_name;
-            pub use #mod_name::#type_name;
+            pub use #mod_name::*;
         });
     }
 
@@ -1072,6 +1071,11 @@ fn collect_content_refs(
                     // Resolve model class to elements
                     for elem_name in defs.resolve_model_to_elements(name) {
                         refs.insert(elem_name);
+                    }
+                } else if name.starts_with("macro.") {
+                    // Resolve pattern entity referenced via rng:ref
+                    if let Some(pe) = defs.pattern_entities.get(name) {
+                        collect_content_refs(&pe.content, defs, refs, has_text);
                     }
                 } else if defs.elements.contains_key(name) {
                     refs.insert(name.clone());

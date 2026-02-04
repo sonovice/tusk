@@ -1,43 +1,33 @@
 //!Element: `<front>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<front>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FrontChild {
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
     #[serde(rename = "relation")]
     Relation(Box<crate::generated::elements::Relation>),
     #[serde(rename = "titlePage")]
     TitlePage(Box<crate::generated::elements::TitlePage>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "pb")]
     Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
 }
 impl FrontChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FrontChild::Div(elem) => {
-                ctx.enter("div", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            FrontChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            FrontChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
+            FrontChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -51,18 +41,28 @@ impl FrontChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FrontChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             FrontChild::Pb(elem) => {
                 ctx.enter("pb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FrontChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
+            FrontChild::Div(elem) => {
+                ctx.enter("div", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FrontChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FrontChild::Cb(elem) => {
+                ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FrontChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

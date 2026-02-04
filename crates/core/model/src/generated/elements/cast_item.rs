@@ -1,6 +1,6 @@
 //!Element: `<castItem>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<castItem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,32 +8,27 @@ pub enum CastItemChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "roleDesc")]
-    RoleDesc(Box<crate::generated::elements::RoleDesc>),
     #[serde(rename = "role")]
     Role(Box<crate::generated::elements::Role>),
-    #[serde(rename = "perfRes")]
-    PerfRes(Box<crate::generated::elements::PerfRes>),
+    #[serde(rename = "roleDesc")]
+    RoleDesc(Box<crate::generated::elements::RoleDesc>),
     #[serde(rename = "actor")]
     Actor(Box<crate::generated::elements::Actor>),
+    #[serde(rename = "perfRes")]
+    PerfRes(Box<crate::generated::elements::PerfRes>),
 }
 impl CastItemChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             CastItemChild::Text(_) => {}
-            CastItemChild::RoleDesc(elem) => {
-                ctx.enter("roleDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             CastItemChild::Role(elem) => {
                 ctx.enter("role", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CastItemChild::PerfRes(elem) => {
-                ctx.enter("perfRes", index);
+            CastItemChild::RoleDesc(elem) => {
+                ctx.enter("roleDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,11 +37,16 @@ impl CastItemChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            CastItemChild::PerfRes(elem) => {
+                ctx.enter("perfRes", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**Contains a single entry within a cast list, describing either a single role or a list of
-non-speaking roles.*/
+      non-speaking roles.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "castItem")]
 pub struct CastItem {

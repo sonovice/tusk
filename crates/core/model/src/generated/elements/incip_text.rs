@@ -1,26 +1,21 @@
 //!Element: `<incipText>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<incipText>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IncipTextChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "lg")]
     Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl IncipTextChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            IncipTextChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             IncipTextChild::Head(elem) => {
                 ctx.enter("head", index);
                 elem.validate_with_context(ctx);
@@ -28,6 +23,11 @@ impl IncipTextChild {
             }
             IncipTextChild::Lg(elem) => {
                 ctx.enter("lg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            IncipTextChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

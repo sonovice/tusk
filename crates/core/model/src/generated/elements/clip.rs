@@ -1,26 +1,26 @@
 //!Element: `<clip>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<clip>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ClipChild {
-    #[serde(rename = "avFile")]
-    AvFile(Box<crate::generated::elements::AvFile>),
     #[serde(rename = "when")]
     When(Box<crate::generated::elements::When>),
+    #[serde(rename = "avFile")]
+    AvFile(Box<crate::generated::elements::AvFile>),
 }
 impl ClipChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ClipChild::AvFile(elem) => {
-                ctx.enter("avFile", index);
+            ClipChild::When(elem) => {
+                ctx.enter("when", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ClipChild::When(elem) => {
-                ctx.enter("when", index);
+            ClipChild::AvFile(elem) => {
+                ctx.enter("avFile", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl ClipChild {
     }
 }
 /**Defines a time segment of interest within a recording or within a digital audio or video
-file.*/
+      file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "clip")]
 pub struct Clip {

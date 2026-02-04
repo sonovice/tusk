@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttSpGes {
     /**Encodes the ending point of an event,i.e., a count of measures plus a beat location
-    in the ending measure.*/
+          in the ending measure.*/
     #[serde(rename = "@tstamp2.ges", skip_serializing_if = "Option::is_none")]
     pub tstamp2_ges: Option<crate::generated::data::DataMeasurebeat>,
     ///Records the ending point of an event in terms of ISO time.

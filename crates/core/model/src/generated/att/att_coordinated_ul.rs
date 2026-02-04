@@ -1,7 +1,7 @@
 //! Attribute class: `#ac.ident`
 use serde::{Deserialize, Serialize};
 /**This attribute class records the upper left position of a feature within a two-dimensional coordinate
-system.*/
+      system.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttCoordinatedUl {
     ///Indicates the upper-left corner x coordinate.

@@ -1,6 +1,6 @@
 //!Element: `<mRpt>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///measure repeat - An indication that the previous measure should be repeated.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mRpt")]

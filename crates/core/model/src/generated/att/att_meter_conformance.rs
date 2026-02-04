@@ -13,11 +13,11 @@ pub enum AttMeterConformanceMetcon {
     O,
 }
 /**Attributes that provide information about a structure’s conformance to the prevailing
-meter.*/
+      meter.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttMeterConformance {
     /**Indicates the relationship between the content of a staff or layer and the prevailing
-    meter.*/
+          meter.*/
     #[serde(rename = "@metcon", skip_serializing_if = "Option::is_none")]
     pub metcon: Option<AttMeterConformanceMetcon>,
 }

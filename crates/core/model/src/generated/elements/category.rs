@@ -1,25 +1,30 @@
 //!Element: `<category>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<category>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CategoryChild {
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "catRel")]
     CatRel(Box<crate::generated::elements::CatRel>),
-    #[serde(rename = "category")]
-    Category(Box<crate::generated::elements::Category>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "altId")]
     AltId(Box<crate::generated::elements::AltId>),
+    #[serde(rename = "category")]
+    Category(Box<crate::generated::elements::Category>),
 }
 impl CategoryChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            CategoryChild::Label(elem) => {
+                ctx.enter("label", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             CategoryChild::Desc(elem) => {
                 ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
@@ -30,18 +35,13 @@ impl CategoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CategoryChild::Category(elem) => {
-                ctx.enter("category", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            CategoryChild::Label(elem) => {
-                ctx.enter("label", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             CategoryChild::AltId(elem) => {
                 ctx.enter("altId", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            CategoryChild::Category(elem) => {
+                ctx.enter("category", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,7 +49,7 @@ impl CategoryChild {
     }
 }
 /**Contains an individual descriptive category in a user-defined taxonomy, possibly nested
-within a superordinate category.*/
+      within a superordinate category.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "category")]
 pub struct Category {

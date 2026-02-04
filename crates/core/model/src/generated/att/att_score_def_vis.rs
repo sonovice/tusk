@@ -49,15 +49,15 @@ pub enum AttScoreDefVisMensurForm {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttScoreDefVis {
     /**States the length of bar lines in virtual units. The value must be greater than 0 and
-    is typically equal to 2 times (the number of staff lines - 1);e.g., a value of8for a
-    5-line staff.*/
+          is typically equal to 2 times (the number of staff lines - 1);e.g., a value of8for a
+          5-line staff.*/
     #[serde(rename = "@bar.len", skip_serializing_if = "Option::is_none")]
     pub bar_len: Option<f64>,
     ///Records the method of barring.
     #[serde(rename = "@bar.method", skip_serializing_if = "Option::is_none")]
     pub bar_method: Option<crate::generated::data::DataBarmethod>,
     /**Denotes the staff location of bar lines, if the length is non-standard; that is, not
-    equal to 2 times (the number of staff lines - 1).*/
+          equal to 2 times (the number of staff lines - 1).*/
     #[serde(rename = "@bar.place", skip_serializing_if = "Option::is_none")]
     pub bar_place: Option<crate::generated::data::DataStaffloc>,
     ///Describes the color of the clef.
@@ -73,7 +73,7 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@dynam.dist", skip_serializing_if = "Option::is_none")]
     pub dynam_dist: Option<crate::generated::data::DataMeasurementsigned>,
     /**Records the default distance from the staff of harmonic indications, such as guitar
-    chord grids or functional labels.*/
+          chord grids or functional labels.*/
     #[serde(rename = "@harm.dist", skip_serializing_if = "Option::is_none")]
     pub harm_dist: Option<crate::generated::data::DataMeasurementsigned>,
     ///Records the default distance from the staff for rehearsal marks.
@@ -86,10 +86,7 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@ending.rend", skip_serializing_if = "Option::is_none")]
     pub ending_rend: Option<AttScoreDefVisEndingRend>,
     ///Determines where cautionary accidentals should be displayed at a key change.
-    #[serde(
-        rename = "@keysig.cancelaccid",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "@keysig.cancelaccid", skip_serializing_if = "Option::is_none")]
     pub keysig_cancelaccid: Option<crate::generated::data::DataCancelaccid>,
     ///Determines whether the key signature is to be displayed.
     #[serde(rename = "@keysig.visible", skip_serializing_if = "Option::is_none")]
@@ -119,14 +116,14 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@meter.form", skip_serializing_if = "Option::is_none")]
     pub meter_form: Option<crate::generated::data::DataMeterform>,
     /**Determines whether the old meter signature should be displayed when the meter
-    signature changes.*/
+          signature changes.*/
     #[serde(rename = "@meter.showchange", skip_serializing_if = "Option::is_none")]
     pub meter_showchange: Option<crate::generated::data::DataBoolean>,
     ///Determines whether the meter signature is to be displayed.
     #[serde(rename = "@meter.visible", skip_serializing_if = "Option::is_none")]
     pub meter_visible: Option<crate::generated::data::DataBoolean>,
     /**Indicates whether programmatically calculated counts of multiple measures of rest
-    (mRest) and whole measure repeats (mRpt) in parts should be rendered.*/
+          (mRest) and whole measure repeats (mRpt) in parts should be rendered.*/
     #[serde(rename = "@multi.number", skip_serializing_if = "Option::is_none")]
     pub multi_number: Option<crate::generated::data::DataBoolean>,
     ///Sets the default music font name.
@@ -136,20 +133,20 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@music.size", skip_serializing_if = "Option::is_none")]
     pub music_size: Option<crate::generated::data::DataFontsize>,
     /**Determines the placement of notes on a 1-line staff. A value oftrueplaces all
-    notes on the line, while a value offalseplaces stems-up notes above the line and
-    stems-down notes below the line.*/
+          notes on the line, while a value offalseplaces stems-up notes above the line and
+          stems-down notes below the line.*/
     #[serde(rename = "@ontheline", skip_serializing_if = "Option::is_none")]
     pub ontheline: Option<crate::generated::data::DataBoolean>,
     /**Indicates whether staves without notes, rests, etc. should be displayed. When the
-    value is 'true', empty staves are not displayed.*/
+          value is 'true', empty staves are not displayed.*/
     #[serde(rename = "@optimize", skip_serializing_if = "Option::is_none")]
     pub optimize: Option<crate::generated::data::DataBoolean>,
     /**Specifies the height of the page; may be expressed in real-world units or staff
-    steps.*/
+          steps.*/
     #[serde(rename = "@page.height", skip_serializing_if = "Option::is_none")]
     pub page_height: Option<crate::generated::data::DataMeasurementunsigned>,
     /**Describes the width of the page; may be expressed in real-world units or staff
-    steps.*/
+          steps.*/
     #[serde(rename = "@page.width", skip_serializing_if = "Option::is_none")]
     pub page_width: Option<crate::generated::data::DataMeasurementunsigned>,
     ///Indicates the amount of whitespace at the top of a page.
@@ -177,66 +174,62 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@spacing.packfact", skip_serializing_if = "Option::is_none")]
     pub spacing_packfact: Option<f64>,
     /**Specifies the minimum amount of space between adjacent staves in the same system;
-    measured from the bottom line of the staff above to the top line of the staff
-    below.*/
+          measured from the bottom line of the staff above to the top line of the staff
+          below.*/
     #[serde(rename = "@spacing.staff", skip_serializing_if = "Option::is_none")]
     pub spacing_staff: Option<crate::generated::data::DataMeasurementsigned>,
     /**Describes the space between adjacent systems; a pair of space-separated values
-    (minimum and maximum, respectively) provides a range between which a rendering
-    system-supplied value may fall, while a single value indicates a fixed amount of space;
-    that is, the minimum and maximum values are equal.*/
+          (minimum and maximum, respectively) provides a range between which a rendering
+          system-supplied value may fall, while a single value indicates a fixed amount of space;
+          that is, the minimum and maximum values are equal.*/
     #[serde(rename = "@spacing.system", skip_serializing_if = "Option::is_none")]
     pub spacing_system: Option<crate::generated::data::DataMeasurementsigned>,
     /**Describes vertical order of items printed above a staff, from closest to farthest away
-    from the staff.*/
+          from the staff.*/
     #[serde(rename = "@aboveorder", default, skip_serializing_if = "Vec::is_empty")]
     pub aboveorder: Vec<crate::generated::data::DataStaffitem>,
     /**Describes vertical order of items printed below a staff, from closest to farthest away
-    from the staff.*/
+          from the staff.*/
     #[serde(rename = "@beloworder", default, skip_serializing_if = "Vec::is_empty")]
     pub beloworder: Vec<crate::generated::data::DataStaffitem>,
     ///Describes vertical order of items printed between staves, from top to bottom.
-    #[serde(
-        rename = "@betweenorder",
-        default,
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(rename = "@betweenorder", default, skip_serializing_if = "Vec::is_empty")]
     pub betweenorder: Vec<crate::generated::data::DataStaffitem>,
     /**Indicates whether the system starts with a continuous line connecting all staves,
-    including single-staff systems. Do not confuse this with the heavy vertical line used as a grouping
-    symbol.*/
+          including single-staff systems. Do not confuse this with the heavy vertical line used as a grouping
+          symbol.*/
     #[serde(rename = "@system.leftline", skip_serializing_if = "Option::is_none")]
     pub system_leftline: Option<crate::generated::data::DataBoolean>,
     /**Describes the amount of whitespace at the left system margin relative to
-    page.leftmar.*/
+          page.leftmar.*/
     #[serde(rename = "@system.leftmar", skip_serializing_if = "Option::is_none")]
     pub system_leftmar: Option<crate::generated::data::DataMeasurementunsigned>,
     /**Describes the amount of whitespace at the right system margin relative to
-    page.rightmar.*/
+          page.rightmar.*/
     #[serde(rename = "@system.rightmar", skip_serializing_if = "Option::is_none")]
     pub system_rightmar: Option<crate::generated::data::DataMeasurementunsigned>,
     /**Describes the distance from page’s top edge to the first system; used for first page
-    only.*/
+          only.*/
     #[serde(rename = "@system.topmar", skip_serializing_if = "Option::is_none")]
     pub system_topmar: Option<crate::generated::data::DataMeasurementunsigned>,
     /**Provides a default value for the font family name of text (other than lyrics) when
-    this information is not provided on the individual elements.*/
+          this information is not provided on the individual elements.*/
     #[serde(rename = "@text.fam", skip_serializing_if = "Option::is_none")]
     pub text_fam: Option<crate::generated::data::DataFontfamily>,
     /**Provides a default value for the font name of text (other than lyrics) when this
-    information is not provided on the individual elements.*/
+          information is not provided on the individual elements.*/
     #[serde(rename = "@text.name", skip_serializing_if = "Option::is_none")]
     pub text_name: Option<crate::generated::data::DataFontname>,
     /**Provides a default value for the font size of text (other than lyrics) when this
-    information is not provided on the individual elements.*/
+          information is not provided on the individual elements.*/
     #[serde(rename = "@text.size", skip_serializing_if = "Option::is_none")]
     pub text_size: Option<crate::generated::data::DataFontsize>,
     /**Provides a default value for the font style of text (other than lyrics) when this
-    information is not provided on the individual elements.*/
+          information is not provided on the individual elements.*/
     #[serde(rename = "@text.style", skip_serializing_if = "Option::is_none")]
     pub text_style: Option<crate::generated::data::DataFontstyle>,
     /**Provides a default value for the font weight for text (other than lyrics) when this
-    information is not provided on the individual elements.*/
+          information is not provided on the individual elements.*/
     #[serde(rename = "@text.weight", skip_serializing_if = "Option::is_none")]
     pub text_weight: Option<crate::generated::data::DataFontweight>,
     ///Color of beams, including those associated with tuplets.
@@ -270,7 +263,7 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@tie.lwidth", skip_serializing_if = "Option::is_none")]
     pub tie_lwidth: Option<crate::generated::data::DataLinewidth>,
     /**Records the color of the mensuration sign. Do not confuse this with the musical term
-    'color' as used in pre-CMN notation.*/
+          'color' as used in pre-CMN notation.*/
     #[serde(rename = "@mensur.color", skip_serializing_if = "Option::is_none")]
     pub mensur_color: Option<crate::generated::data::DataColor>,
     ///Determines if a dot is to be added to the base symbol.
@@ -292,12 +285,12 @@ pub struct AttScoreDefVis {
     #[serde(rename = "@mensur.size", skip_serializing_if = "Option::is_none")]
     pub mensur_size: Option<crate::generated::data::DataFontsize>,
     /**Indicates the number lines added to the mensuration sign. For example, one slash is
-    added for what we now call 'alla breve'.*/
+          added for what we now call 'alla breve'.*/
     #[serde(rename = "@mensur.slash", skip_serializing_if = "Option::is_none")]
     pub mensur_slash: Option<u64>,
     /**Defines the height of a "virtual unit" (vu) in terms of real-world units. A single vu
-    is half the distance between adjacent staff lines where the interline space is measured
-    from the middle of a staff line.*/
+          is half the distance between adjacent staff lines where the interline space is measured
+          from the middle of a staff line.*/
     #[serde(rename = "@vu.height", skip_serializing_if = "Option::is_none")]
     pub vu_height: Option<String>,
 }

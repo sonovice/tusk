@@ -1,6 +1,6 @@
 //!Element: `<list>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<list>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,7 +35,7 @@ impl ListChild {
     }
 }
 /**Each list item is part of an argument consisting of two or more propositions and a
-final conclusion derived from them.*/
+              final conclusion derived from them.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "list")]
 pub struct List {

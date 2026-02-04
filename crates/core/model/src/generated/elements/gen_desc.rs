@@ -1,26 +1,26 @@
 //!Element: `<genDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GenDescChild {
-    #[serde(rename = "genState")]
-    GenState(Box<crate::generated::elements::GenState>),
     #[serde(rename = "genDesc")]
     GenDesc(Box<crate::generated::elements::GenDesc>),
+    #[serde(rename = "genState")]
+    GenState(Box<crate::generated::elements::GenState>),
 }
 impl GenDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            GenDescChild::GenState(elem) => {
-                ctx.enter("genState", index);
+            GenDescChild::GenDesc(elem) => {
+                ctx.enter("genDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            GenDescChild::GenDesc(elem) => {
-                ctx.enter("genDesc", index);
+            GenDescChild::GenState(elem) => {
+                ctx.enter("genState", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl GenDescChild {
     }
 }
 /**genetic description - When set to "true" the child elements are known to be in chronological order. When set
-to "false" or when not provided, the order of child elements is unknown.*/
+          to "false" or when not provided, the order of child elements is unknown.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genDesc")]
 pub struct GenDesc {

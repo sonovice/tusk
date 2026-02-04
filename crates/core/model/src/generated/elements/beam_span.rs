@@ -1,8 +1,8 @@
 //!Element: `<beamSpan>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**beam span - Alternative element for explicitly encoding beams, particularly those which
-extend across bar lines.*/
+      extend across bar lines.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "beamSpan")]
 pub struct BeamSpan {

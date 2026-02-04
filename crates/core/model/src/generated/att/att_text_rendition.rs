@@ -7,7 +7,7 @@ pub struct AttTextRendition {
     #[serde(rename = "@altrend", default, skip_serializing_if = "Vec::is_empty")]
     pub altrend: Vec<String>,
     /**Captures the appearance of the element’s contents using MEI-defined
-    descriptors.*/
+          descriptors.*/
     #[serde(rename = "@rend", default, skip_serializing_if = "Vec::is_empty")]
     pub rend: Vec<crate::generated::data::DataTextrendition>,
 }

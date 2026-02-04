@@ -1,14 +1,14 @@
 //!Element: `<castGrp>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<castGrp>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CastGrpChild {
-    #[serde(rename = "castItem")]
-    CastItem(Box<crate::generated::elements::CastItem>),
     #[serde(rename = "roleDesc")]
     RoleDesc(Box<crate::generated::elements::RoleDesc>),
+    #[serde(rename = "castItem")]
+    CastItem(Box<crate::generated::elements::CastItem>),
     #[serde(rename = "castGrp")]
     CastGrp(Box<crate::generated::elements::CastGrp>),
 }
@@ -16,13 +16,13 @@ impl CastGrpChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CastGrpChild::CastItem(elem) => {
-                ctx.enter("castItem", index);
+            CastGrpChild::RoleDesc(elem) => {
+                ctx.enter("roleDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CastGrpChild::RoleDesc(elem) => {
-                ctx.enter("roleDesc", index);
+            CastGrpChild::CastItem(elem) => {
+                ctx.enter("castItem", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

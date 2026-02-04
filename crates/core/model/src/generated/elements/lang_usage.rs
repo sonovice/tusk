@@ -1,26 +1,26 @@
 //!Element: `<langUsage>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<langUsage>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LangUsageChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "language")]
     Language(Box<crate::generated::elements::Language>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl LangUsageChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            LangUsageChild::Head(elem) => {
-                ctx.enter("head", index);
+            LangUsageChild::Language(elem) => {
+                ctx.enter("language", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LangUsageChild::Language(elem) => {
-                ctx.enter("language", index);
+            LangUsageChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl LangUsageChild {
     }
 }
 /**language usage - Groups elements describing the languages, sub-languages, dialects,
-etc., represented within the encoded resource.*/
+      etc., represented within the encoded resource.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "langUsage")]
 pub struct LangUsage {

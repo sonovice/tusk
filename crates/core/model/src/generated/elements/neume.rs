@@ -1,87 +1,57 @@
 //!Element: `<neume>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<neume>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NeumeChild {
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "hispanTick")]
-    HispanTick(Box<crate::generated::elements::HispanTick>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "ncGrp")]
-    NcGrp(Box<crate::generated::elements::NcGrp>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
-    #[serde(rename = "episema")]
-    Episema(Box<crate::generated::elements::Episema>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "nc")]
-    Nc(Box<crate::generated::elements::Nc>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
     #[serde(rename = "signifLet")]
     SignifLet(Box<crate::generated::elements::SignifLet>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "nc")]
+    Nc(Box<crate::generated::elements::Nc>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "episema")]
+    Episema(Box<crate::generated::elements::Episema>),
+    #[serde(rename = "hispanTick")]
+    HispanTick(Box<crate::generated::elements::HispanTick>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "ncGrp")]
+    NcGrp(Box<crate::generated::elements::NcGrp>),
 }
 impl NeumeChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            NeumeChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::HispanTick(elem) => {
-                ctx.enter("hispanTick", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::NcGrp(elem) => {
-                ctx.enter("ncGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
+            NeumeChild::Add(elem) => {
+                ctx.enter("add", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -90,48 +60,8 @@ impl NeumeChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NeumeChild::Episema(elem) => {
-                ctx.enter("episema", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Nc(elem) => {
-                ctx.enter("nc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NeumeChild::Restore(elem) => {
-                ctx.enter("restore", index);
+            NeumeChild::SignifLet(elem) => {
+                ctx.enter("signifLet", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -140,13 +70,83 @@ impl NeumeChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NeumeChild::SignifLet(elem) => {
-                ctx.enter("signifLet", index);
+            NeumeChild::Damage(elem) => {
+                ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             NeumeChild::Unclear(elem) => {
                 ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Nc(elem) => {
+                ctx.enter("nc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Episema(elem) => {
+                ctx.enter("episema", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::HispanTick(elem) => {
+                ctx.enter("hispanTick", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NeumeChild::NcGrp(elem) => {
+                ctx.enter("ncGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,16 +1,16 @@
 //!Element: `<namespace>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<namespace>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NamespaceChild {
     #[serde(rename = "tagUsage")]
     TagUsage(Box<crate::generated::elements::TagUsage>),
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "attUsage")]
     AttUsage(Box<crate::generated::elements::AttUsage>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
 }
 impl NamespaceChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl NamespaceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            NamespaceChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            NamespaceChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,14 +1,14 @@
 //!Element: `<fTrem>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fTrem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FTremChild {
-    #[serde(rename = "note")]
-    Note(Box<crate::generated::elements::Note>),
     #[serde(rename = "chord")]
     Chord(Box<crate::generated::elements::Chord>),
+    #[serde(rename = "note")]
+    Note(Box<crate::generated::elements::Note>),
     #[serde(rename = "clef")]
     Clef(Box<crate::generated::elements::Clef>),
 }
@@ -16,13 +16,13 @@ impl FTremChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FTremChild::Note(elem) => {
-                ctx.enter("note", index);
+            FTremChild::Chord(elem) => {
+                ctx.enter("chord", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FTremChild::Chord(elem) => {
-                ctx.enter("chord", index);
+            FTremChild::Note(elem) => {
+                ctx.enter("note", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,7 +35,7 @@ impl FTremChild {
     }
 }
 /**fingered tremolo - A rapid alternation between a pair of notes (or chords or perhaps
-between a note and a chord) that are (usually) farther apart than a major second.*/
+      between a note and a chord) that are (usually) farther apart than a major second.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fTrem")]
 pub struct FTrem {

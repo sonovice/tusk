@@ -1,8 +1,8 @@
 //!Element: `<relation>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**Describes the relationship between the entities identified by the plist and target
-attributes.*/
+          attributes.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "relation")]
 pub struct Relation {

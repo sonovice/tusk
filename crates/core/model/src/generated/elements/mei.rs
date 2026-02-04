@@ -1,26 +1,26 @@
 //!Element: `<mei>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<mei>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiChild {
-    #[serde(rename = "meiHead")]
-    MeiHead(Box<crate::generated::elements::MeiHead>),
     #[serde(rename = "music")]
     Music(Box<crate::generated::elements::Music>),
+    #[serde(rename = "meiHead")]
+    MeiHead(Box<crate::generated::elements::MeiHead>),
 }
 impl MeiChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiChild::MeiHead(elem) => {
-                ctx.enter("meiHead", index);
+            MeiChild::Music(elem) => {
+                ctx.enter("music", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiChild::Music(elem) => {
-                ctx.enter("music", index);
+            MeiChild::MeiHead(elem) => {
+                ctx.enter("meiHead", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl MeiChild {
     }
 }
 /**Contains a single MEI-conformant document, consisting of an MEI header and a musical text,
-either in isolation or as part of an meiCorpus element.*/
+      either in isolation or as part of an meiCorpus element.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mei")]
 pub struct Mei {

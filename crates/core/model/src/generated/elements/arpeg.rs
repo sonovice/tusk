@@ -1,8 +1,8 @@
 //!Element: `<arpeg>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**arpeggiation - Indicates that the notes of a chord are to be performed successively
-rather than simultaneously, usually from lowest to highest. Sometimes called a "roll".*/
+      rather than simultaneously, usually from lowest to highest. Sometimes called a "roll".*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "arpeg")]
 pub struct Arpeg {

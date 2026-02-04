@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttVisualOffset2Vo {
     /**Records a vertical adjustment of a feature’s programmatically-determined start
-    point.*/
+          point.*/
     #[serde(rename = "@startvo", skip_serializing_if = "Option::is_none")]
     pub startvo: Option<crate::generated::data::DataMeasurementsigned>,
     /**Records a vertical adjustment of a feature’s programmatically-determined end
-    point.*/
+          point.*/
     #[serde(rename = "@endvo", skip_serializing_if = "Option::is_none")]
     pub endvo: Option<crate::generated::data::DataMeasurementsigned>,
 }

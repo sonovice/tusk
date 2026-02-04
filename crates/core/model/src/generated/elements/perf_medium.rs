@@ -1,16 +1,16 @@
 //!Element: `<perfMedium>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<perfMedium>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PerfMediumChild {
+    #[serde(rename = "perfResList")]
+    PerfResList(Box<crate::generated::elements::PerfResList>),
     #[serde(rename = "annot")]
     Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "perfResList")]
-    PerfResList(Box<crate::generated::elements::PerfResList>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
 }
@@ -18,6 +18,11 @@ impl PerfMediumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            PerfMediumChild::PerfResList(elem) => {
+                ctx.enter("perfResList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             PerfMediumChild::Annot(elem) => {
                 ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
@@ -25,11 +30,6 @@ impl PerfMediumChild {
             }
             PerfMediumChild::CastList(elem) => {
                 ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PerfMediumChild::PerfResList(elem) => {
-                ctx.enter("perfResList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,7 +42,7 @@ impl PerfMediumChild {
     }
 }
 /**performance medium - Indicates the number and character of the performing forces used in
-a musical composition.*/
+      a musical composition.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "perfMedium")]
 pub struct PerfMedium {

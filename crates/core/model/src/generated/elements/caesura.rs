@@ -1,8 +1,8 @@
 //!Element: `<caesura>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**Break, pause, or interruption in the normal tempo of a composition. Typically indicated by
-"railroad tracks",i.e., two diagonal slashes.*/
+      "railroad tracks",i.e., two diagonal slashes.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "caesura")]
 pub struct Caesura {

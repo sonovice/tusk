@@ -1,8 +1,8 @@
 //!Element: `<gap>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**Indicates a point where material has been omitted in a transcription, whether as part of
-sampling practice or for editorial reasons described in the MEI header.*/
+      sampling practice or for editorial reasons described in the MEI header.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "gap")]
 pub struct Gap {

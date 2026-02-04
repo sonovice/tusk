@@ -1,45 +1,35 @@
 //!Element: `<symbolDef>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<symbolDef>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SymbolDefChild {
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "line")]
-    Line(Box<crate::generated::elements::Line>),
-    #[serde(rename = "graphic")]
-    Graphic(Box<crate::generated::elements::Graphic>),
+    #[serde(rename = "curve")]
+    Curve(Box<crate::generated::elements::Curve>),
     #[serde(rename = "symName")]
     SymName(Box<crate::generated::elements::SymName>),
     #[serde(rename = "symProp")]
     SymProp(Box<crate::generated::elements::SymProp>),
-    #[serde(rename = "curve")]
-    Curve(Box<crate::generated::elements::Curve>),
-    #[serde(rename = "anchoredText")]
-    AnchoredText(Box<crate::generated::elements::AnchoredText>),
+    #[serde(rename = "line")]
+    Line(Box<crate::generated::elements::Line>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "mapping")]
     Mapping(Box<crate::generated::elements::Mapping>),
+    #[serde(rename = "graphic")]
+    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "symbol")]
     Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "anchoredText")]
+    AnchoredText(Box<crate::generated::elements::AnchoredText>),
 }
 impl SymbolDefChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SymbolDefChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SymbolDefChild::Line(elem) => {
-                ctx.enter("line", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SymbolDefChild::Graphic(elem) => {
-                ctx.enter("graphic", index);
+            SymbolDefChild::Curve(elem) => {
+                ctx.enter("curve", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -53,13 +43,13 @@ impl SymbolDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SymbolDefChild::Curve(elem) => {
-                ctx.enter("curve", index);
+            SymbolDefChild::Line(elem) => {
+                ctx.enter("line", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SymbolDefChild::AnchoredText(elem) => {
-                ctx.enter("anchoredText", index);
+            SymbolDefChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +58,18 @@ impl SymbolDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SymbolDefChild::Graphic(elem) => {
+                ctx.enter("graphic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SymbolDefChild::Symbol(elem) => {
                 ctx.enter("symbol", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SymbolDefChild::AnchoredText(elem) => {
+                ctx.enter("anchoredText", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,26 +1,26 @@
 //!Element: `<folium>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<folium>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FoliumChild {
-    #[serde(rename = "patch")]
-    Patch(Box<crate::generated::elements::Patch>),
     #[serde(rename = "cutout")]
     Cutout(Box<crate::generated::elements::Cutout>),
+    #[serde(rename = "patch")]
+    Patch(Box<crate::generated::elements::Patch>),
 }
 impl FoliumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FoliumChild::Patch(elem) => {
-                ctx.enter("patch", index);
+            FoliumChild::Cutout(elem) => {
+                ctx.enter("cutout", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliumChild::Cutout(elem) => {
-                ctx.enter("cutout", index);
+            FoliumChild::Patch(elem) => {
+                ctx.enter("patch", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

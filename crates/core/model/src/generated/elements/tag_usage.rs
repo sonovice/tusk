@@ -1,26 +1,26 @@
 //!Element: `<tagUsage>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<tagUsage>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TagUsageChild {
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "attUsage")]
     AttUsage(Box<crate::generated::elements::AttUsage>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
 }
 impl TagUsageChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TagUsageChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            TagUsageChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TagUsageChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            TagUsageChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

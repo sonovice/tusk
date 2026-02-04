@@ -1,8 +1,8 @@
 //!Element: `<mordent>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**An ornament indicating rapid alternation of the main note with a secondary note, usually a
-step below, but sometimes a step above.*/
+      step below, but sometimes a step above.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mordent")]
 pub struct Mordent {

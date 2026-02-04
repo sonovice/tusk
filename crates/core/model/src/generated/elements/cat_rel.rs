@@ -1,26 +1,26 @@
 //!Element: `<catRel>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<catRel>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CatRelChild {
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
 }
 impl CatRelChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CatRelChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            CatRelChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CatRelChild::Label(elem) => {
-                ctx.enter("label", index);
+            CatRelChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl CatRelChild {
     }
 }
 /**category relationship - Non-preferred category; often a synonym or near-synonym for the preferred category
-label.*/
+              label.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "catRel")]
 pub struct CatRel {

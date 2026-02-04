@@ -694,8 +694,8 @@ impl MeiSerialize for tusk_model::elements::Music {
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // Music children are not fully implemented in the model yet
-        // Skip serialization of children for now
+        // MusicChild can contain: body, group, front, back, facsimile, genDesc, performance
+        // TODO: Implement MeiSerialize for MusicChild variants
         Ok(())
     }
 }
