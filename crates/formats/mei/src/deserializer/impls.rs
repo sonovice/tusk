@@ -11,30 +11,34 @@ use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl, AttChordAnl,
-    AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDirAnl, AttDirGes, AttDirLog, AttDirVis,
-    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
-    AttDynamLog, AttDynamVis, AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog,
-    AttFermataVis, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl,
-    AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
+    AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl,
+    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttDirAnl,
+    AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
+    AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEvidence,
+    AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttFiling,
+    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes,
+    AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
     AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
     AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNoteAnl,
-    AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes,
-    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
-    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
-    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
-    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
-    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
-    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
+    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike,
+    AttName, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
+    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
+    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
+    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
+    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
 };
 use tusk_model::elements::{
-    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, FileDesc,
-    GraceGrp, GraceGrpChild, Hairpin, InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild,
-    Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Note, NoteChild, Rest,
-    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild,
-    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
+    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Contributor, ContributorChild, Creator,
+    CreatorChild, Dir, Dot, Dynam, Editor, EditorChild, Fermata, FileDesc, FileDescChild, Funder,
+    FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, InstrDef, Label, Layer,
+    LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
+    MeiHeadChild, Note, NoteChild, RespStmt, Rest, RestChild, ScoreDef, ScoreDefChild, Section,
+    SectionChild, Slur, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild,
+    StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet,
+    TupletChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -70,7 +74,7 @@ macro_rules! extract_attr {
             $field = Some(value);
         }
     };
-    // For Vec fields
+    // For Vec fields that need serde parsing
     ($attrs:expr, $name:expr, vec $field:expr) => {
         if let Some(value) = $attrs.remove($name) {
             let mut items = Vec::new();
@@ -80,6 +84,15 @@ macro_rules! extract_attr {
                 }
             }
             $field = items;
+        }
+    };
+    // For Vec<String> fields (no serde parsing needed)
+    ($attrs:expr, $name:expr, vec_string $field:expr) => {
+        if let Some(value) = $attrs.remove($name) {
+            let items: Vec<String> = value.split_whitespace().map(|s| s.to_string()).collect();
+            if !items.is_empty() {
+                $field = items;
+            }
         }
     };
 }
@@ -119,6 +132,68 @@ impl ExtractAttributes for AttFacsimile {
 impl ExtractAttributes for AttBibl {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "analog", string self.analog);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAuthorized {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "codedval", vec_string self.codedval);
+        extract_attr!(attrs, "auth", string self.auth);
+        extract_attr!(attrs, "auth.uri", self.auth_uri);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttClassed {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "class", vec self.class);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttEvidence {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "cert", self.cert);
+        extract_attr!(attrs, "evidence", self.evidence);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttFiling {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "nonfiling", self.nonfiling);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttNNumberLike {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "n", self.n);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttName {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "codedval", vec_string self.codedval);
+        extract_attr!(attrs, "auth", string self.auth);
+        extract_attr!(attrs, "auth.uri", self.auth_uri);
+        extract_attr!(attrs, "enddate", self.enddate);
+        extract_attr!(attrs, "isodate", self.isodate);
+        extract_attr!(attrs, "startdate", self.startdate);
+        extract_attr!(attrs, "notafter", self.notafter);
+        extract_attr!(attrs, "notbefore", self.notbefore);
+        extract_attr!(attrs, "nymref", self.nymref);
+        extract_attr!(attrs, "role", vec self.role);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttXy {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
         Ok(())
     }
 }
@@ -2742,21 +2817,361 @@ fn parse_file_desc_from_event<R: BufRead>(
     // Read children if not an empty element
     // fileDesc can contain: titleStmt, editionStmt, extent, pubStmt, seriesStmt,
     // notesStmt, sourceDesc
-    // Note: Child elements are not yet implemented for parsing.
-    // In lenient mode, we skip them all.
     if !is_empty {
-        while let Some((name, _child_attrs, child_empty)) =
+        while let Some((name, child_attrs, child_empty)) =
             reader.read_next_child_start("fileDesc")?
         {
-            // Child elements (titleStmt, pubStmt, etc.) are not
-            // yet implemented for parsing. Skip them in lenient mode.
-            if !child_empty {
-                reader.skip_to_end(&name)?;
+            match name.as_str() {
+                "titleStmt" => {
+                    let title_stmt = parse_title_stmt_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
+                }
+                // Other child elements (pubStmt, sourceDesc, etc.) are not
+                // yet implemented for parsing. Skip them in lenient mode.
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
             }
         }
     }
 
     Ok(file_desc)
+}
+
+/// Parse a `<titleStmt>` element from within another element.
+fn parse_title_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TitleStmt> {
+    let mut title_stmt = TitleStmt::default();
+
+    // Extract attributes into each attribute class
+    title_stmt.common.extract_attributes(&mut attrs)?;
+    title_stmt.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // titleStmt can contain: head*, title+, respStmt*, and model.respLikePart
+    // (editor, funder, sponsor, contributor, creator)
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("titleStmt")?
+        {
+            match name.as_str() {
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Title(Box::new(title)));
+                }
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Head(Box::new(head)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::RespStmt(Box::new(resp_stmt)));
+                }
+                "editor" => {
+                    let editor = parse_editor_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Editor(Box::new(editor)));
+                }
+                "creator" => {
+                    let creator = parse_creator_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Creator(Box::new(creator)));
+                }
+                "funder" => {
+                    let funder = parse_funder_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Funder(Box::new(funder)));
+                }
+                "sponsor" => {
+                    let sponsor = parse_sponsor_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Sponsor(Box::new(sponsor)));
+                }
+                "contributor" => {
+                    let contributor =
+                        parse_contributor_from_event(reader, child_attrs, child_empty)?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Contributor(Box::new(contributor)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(title_stmt)
+}
+
+/// Parse a `<title>` element from within another element.
+fn parse_title_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Title> {
+    let mut title = Title::default();
+
+    // Extract attributes into each attribute class
+    title.authorized.extract_attributes(&mut attrs)?;
+    title.basic.extract_attributes(&mut attrs)?;
+    title.bibl.extract_attributes(&mut attrs)?;
+    title.classed.extract_attributes(&mut attrs)?;
+    title.facsimile.extract_attributes(&mut attrs)?;
+    title.filing.extract_attributes(&mut attrs)?;
+    title.labelled.extract_attributes(&mut attrs)?;
+    title.lang.extract_attributes(&mut attrs)?;
+    title.linking.extract_attributes(&mut attrs)?;
+    title.n_number_like.extract_attributes(&mut attrs)?;
+    title.responsibility.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // title can contain text and various child elements
+    // For now, we collect text content as TitleChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("title")? {
+            if !text.trim().is_empty() {
+                title.children.push(TitleChild::Text(text));
+            }
+        }
+    }
+
+    Ok(title)
+}
+
+/// Parse a `<head>` element from within another element.
+fn parse_head_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Head> {
+    let mut head = Head::default();
+
+    // Extract attributes into each attribute class
+    head.common.extract_attributes(&mut attrs)?;
+    head.facsimile.extract_attributes(&mut attrs)?;
+    head.lang.extract_attributes(&mut attrs)?;
+    head.xy.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // head can contain text and various child elements
+    // For now, we collect text content as HeadChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("head")? {
+            if !text.trim().is_empty() {
+                head.children.push(HeadChild::Text(text));
+            }
+        }
+    }
+
+    Ok(head)
+}
+
+/// Parse a `<respStmt>` element from within another element.
+fn parse_resp_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<RespStmt> {
+    let mut resp_stmt = RespStmt::default();
+
+    // Extract attributes into each attribute class
+    resp_stmt.common.extract_attributes(&mut attrs)?;
+    resp_stmt.bibl.extract_attributes(&mut attrs)?;
+    resp_stmt.facsimile.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // respStmt can contain various child elements
+    // For now, we skip children in lenient mode
+    if !is_empty {
+        reader.skip_to_end("respStmt")?;
+    }
+
+    Ok(resp_stmt)
+}
+
+/// Parse an `<editor>` element from within another element.
+fn parse_editor_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Editor> {
+    let mut editor = Editor::default();
+
+    // Extract attributes into each attribute class
+    editor.common.extract_attributes(&mut attrs)?;
+    editor.bibl.extract_attributes(&mut attrs)?;
+    editor.evidence.extract_attributes(&mut attrs)?;
+    editor.facsimile.extract_attributes(&mut attrs)?;
+    editor.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // editor can contain text and various child elements
+    // For now, we collect text content as EditorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("editor")? {
+            if !text.trim().is_empty() {
+                editor.children.push(EditorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(editor)
+}
+
+/// Parse a `<creator>` element from within another element.
+fn parse_creator_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Creator> {
+    let mut creator = Creator::default();
+
+    // Extract attributes into each attribute class
+    creator.common.extract_attributes(&mut attrs)?;
+    creator.bibl.extract_attributes(&mut attrs)?;
+    creator.evidence.extract_attributes(&mut attrs)?;
+    creator.facsimile.extract_attributes(&mut attrs)?;
+    creator.lang.extract_attributes(&mut attrs)?;
+    creator.name.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // creator can contain text and various child elements
+    // For now, we collect text content as CreatorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("creator")? {
+            if !text.trim().is_empty() {
+                creator.children.push(CreatorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(creator)
+}
+
+/// Parse a `<funder>` element from within another element.
+fn parse_funder_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Funder> {
+    let mut funder = Funder::default();
+
+    // Extract attributes into each attribute class
+    funder.common.extract_attributes(&mut attrs)?;
+    funder.bibl.extract_attributes(&mut attrs)?;
+    funder.evidence.extract_attributes(&mut attrs)?;
+    funder.facsimile.extract_attributes(&mut attrs)?;
+    funder.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // funder can contain text and various child elements
+    // For now, we collect text content as FunderChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("funder")? {
+            if !text.trim().is_empty() {
+                funder.children.push(FunderChild::Text(text));
+            }
+        }
+    }
+
+    Ok(funder)
+}
+
+/// Parse a `<sponsor>` element from within another element.
+fn parse_sponsor_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Sponsor> {
+    let mut sponsor = Sponsor::default();
+
+    // Extract attributes into each attribute class
+    sponsor.common.extract_attributes(&mut attrs)?;
+    sponsor.bibl.extract_attributes(&mut attrs)?;
+    sponsor.evidence.extract_attributes(&mut attrs)?;
+    sponsor.facsimile.extract_attributes(&mut attrs)?;
+    sponsor.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // sponsor can contain text and various child elements
+    // For now, we collect text content as SponsorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("sponsor")? {
+            if !text.trim().is_empty() {
+                sponsor.children.push(SponsorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(sponsor)
+}
+
+/// Parse a `<contributor>` element from within another element.
+fn parse_contributor_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Contributor> {
+    let mut contributor = Contributor::default();
+
+    // Extract attributes into each attribute class
+    contributor.common.extract_attributes(&mut attrs)?;
+    contributor.bibl.extract_attributes(&mut attrs)?;
+    contributor.evidence.extract_attributes(&mut attrs)?;
+    contributor.facsimile.extract_attributes(&mut attrs)?;
+    contributor.lang.extract_attributes(&mut attrs)?;
+    contributor.name.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // contributor can contain text and various child elements
+    // For now, we collect text content as ContributorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("contributor")? {
+            if !text.trim().is_empty() {
+                contributor.children.push(ContributorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(contributor)
 }
 
 impl MeiDeserialize for FileDesc {
@@ -2770,6 +3185,20 @@ impl MeiDeserialize for FileDesc {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_file_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for TitleStmt {
+    fn element_name() -> &'static str {
+        "titleStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_title_stmt_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -6900,7 +7329,7 @@ mod tests {
 
     #[test]
     fn mei_head_deserializes_file_desc_with_nested_content() {
-        use tusk_model::elements::{MeiHead, MeiHeadChild};
+        use tusk_model::elements::{FileDescChild, MeiHead, MeiHeadChild, TitleStmtChild};
 
         let xml = r#"<meiHead xml:id="h1">
             <fileDesc xml:id="fd1">
@@ -6915,9 +7344,15 @@ mod tests {
         match &mei_head.children[0] {
             MeiHeadChild::FileDesc(fd) => {
                 assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
-                // Child elements of fileDesc are skipped for now
-                // (titleStmt parsing will be added in separate task)
-                assert!(fd.children.is_empty());
+                // titleStmt is now parsed
+                assert_eq!(fd.children.len(), 1);
+                match &fd.children[0] {
+                    FileDescChild::TitleStmt(ts) => {
+                        assert_eq!(ts.children.len(), 1);
+                        assert!(matches!(&ts.children[0], TitleStmtChild::Title(_)));
+                    }
+                    _ => panic!("expected TitleStmt child"),
+                }
             }
             _ => panic!("expected FileDesc child"),
         }
@@ -6944,6 +7379,362 @@ mod tests {
         match &mei_head.children[1] {
             MeiHeadChild::FileDesc(fd) => {
                 assert_eq!(fd.common.xml_id, Some("fd2".to_string()));
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    // ========== TitleStmt tests ==========
+
+    #[test]
+    fn title_stmt_deserializes_empty_element() {
+        use tusk_model::elements::TitleStmt;
+
+        let xml = r#"<titleStmt/>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert!(title_stmt.common.xml_id.is_none());
+        assert!(title_stmt.children.is_empty());
+    }
+
+    #[test]
+    fn title_stmt_deserializes_xml_id() {
+        use tusk_model::elements::TitleStmt;
+
+        let xml = r#"<titleStmt xml:id="ts1"/>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.common.xml_id, Some("ts1".to_string()));
+    }
+
+    #[test]
+    fn title_stmt_deserializes_bibl_attributes() {
+        use tusk_model::elements::TitleStmt;
+
+        let xml = r#"<titleStmt analog="MARC21"/>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.bibl.analog, Some("MARC21".to_string()));
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_title_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 1);
+        match &title_stmt.children[0] {
+            TitleStmtChild::Title(t) => {
+                assert_eq!(t.children.len(), 1);
+            }
+            _ => panic!("expected Title child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_title_text_content() {
+        use tusk_model::elements::{TitleChild, TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>My Composition</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 1);
+        match &title_stmt.children[0] {
+            TitleStmtChild::Title(t) => {
+                assert_eq!(t.children.len(), 1);
+                match &t.children[0] {
+                    TitleChild::Text(text) => assert_eq!(text.trim(), "My Composition"),
+                    _ => panic!("expected text child in title"),
+                }
+            }
+            _ => panic!("expected Title child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_title_with_xml_id() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title xml:id="t1">Test Title</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 1);
+        match &title_stmt.children[0] {
+            TitleStmtChild::Title(t) => {
+                assert_eq!(t.basic.xml_id, Some("t1".to_string()));
+            }
+            _ => panic!("expected Title child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_multiple_titles() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title xml:id="t1">Main Title</title>
+            <title xml:id="t2" type="subtitle">Subtitle</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[0] {
+            TitleStmtChild::Title(t) => {
+                assert_eq!(t.basic.xml_id, Some("t1".to_string()));
+            }
+            _ => panic!("expected Title child"),
+        }
+        match &title_stmt.children[1] {
+            TitleStmtChild::Title(t) => {
+                assert_eq!(t.basic.xml_id, Some("t2".to_string()));
+            }
+            _ => panic!("expected Title child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_resp_stmt_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <respStmt xml:id="rs1"/>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::RespStmt(rs) => {
+                assert_eq!(rs.common.xml_id, Some("rs1".to_string()));
+            }
+            _ => panic!("expected RespStmt child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_editor_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <editor xml:id="ed1">John Doe</editor>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::Editor(e) => {
+                assert_eq!(e.common.xml_id, Some("ed1".to_string()));
+            }
+            _ => panic!("expected Editor child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_creator_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <creator xml:id="cr1">Johann Sebastian Bach</creator>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::Creator(c) => {
+                assert_eq!(c.common.xml_id, Some("cr1".to_string()));
+            }
+            _ => panic!("expected Creator child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_funder_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <funder xml:id="f1">NEH</funder>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::Funder(f) => {
+                assert_eq!(f.common.xml_id, Some("f1".to_string()));
+            }
+            _ => panic!("expected Funder child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_sponsor_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <sponsor xml:id="sp1">University</sponsor>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::Sponsor(s) => {
+                assert_eq!(s.common.xml_id, Some("sp1".to_string()));
+            }
+            _ => panic!("expected Sponsor child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_contributor_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <title>Test Title</title>
+            <contributor xml:id="ct1">Assistant</contributor>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[1] {
+            TitleStmtChild::Contributor(c) => {
+                assert_eq!(c.common.xml_id, Some("ct1".to_string()));
+            }
+            _ => panic!("expected Contributor child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_with_head_child() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <head xml:id="hd1">Section Header</head>
+            <title>Test Title</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 2);
+        match &title_stmt.children[0] {
+            TitleStmtChild::Head(h) => {
+                assert_eq!(h.common.xml_id, Some("hd1".to_string()));
+            }
+            _ => panic!("expected Head child"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_skips_unknown_children_leniently() {
+        use tusk_model::elements::TitleStmt;
+
+        // Unknown children should be skipped in lenient mode
+        let xml = r#"<titleStmt xml:id="ts1">
+            <unknownElement>content</unknownElement>
+            <title>Test Title</title>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(title_stmt.common.xml_id, Some("ts1".to_string()));
+        // Only the title should be parsed, unknown element skipped
+        assert_eq!(title_stmt.children.len(), 1);
+    }
+
+    #[test]
+    fn title_stmt_preserves_child_order() {
+        use tusk_model::elements::{TitleStmt, TitleStmtChild};
+
+        let xml = r#"<titleStmt>
+            <head xml:id="hd1">Header</head>
+            <title xml:id="t1">Main Title</title>
+            <title xml:id="t2">Secondary Title</title>
+            <creator xml:id="cr1">Composer</creator>
+            <editor xml:id="ed1">Editor</editor>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(title_stmt.children.len(), 5);
+        assert!(matches!(&title_stmt.children[0], TitleStmtChild::Head(_)));
+        assert!(matches!(&title_stmt.children[1], TitleStmtChild::Title(_)));
+        assert!(matches!(&title_stmt.children[2], TitleStmtChild::Title(_)));
+        assert!(matches!(
+            &title_stmt.children[3],
+            TitleStmtChild::Creator(_)
+        ));
+        assert!(matches!(&title_stmt.children[4], TitleStmtChild::Editor(_)));
+    }
+
+    #[test]
+    fn file_desc_deserializes_title_stmt_child() {
+        use tusk_model::elements::{FileDesc, FileDescChild, TitleStmtChild};
+
+        let xml = r#"<fileDesc xml:id="fd1">
+            <titleStmt>
+                <title>My Composition</title>
+            </titleStmt>
+        </fileDesc>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(file_desc.common.xml_id, Some("fd1".to_string()));
+        assert_eq!(file_desc.children.len(), 1);
+        match &file_desc.children[0] {
+            FileDescChild::TitleStmt(ts) => {
+                assert_eq!(ts.children.len(), 1);
+                assert!(matches!(&ts.children[0], TitleStmtChild::Title(_)));
+            }
+            _ => panic!("expected TitleStmt child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_file_desc_title_stmt_integration() {
+        use tusk_model::elements::{
+            FileDescChild, MeiHead, MeiHeadChild, TitleChild, TitleStmtChild,
+        };
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1">
+                <titleStmt xml:id="ts1">
+                    <title>Symphony No. 5</title>
+                    <creator>Ludwig van Beethoven</creator>
+                </titleStmt>
+            </fileDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+                assert_eq!(fd.children.len(), 1);
+                match &fd.children[0] {
+                    FileDescChild::TitleStmt(ts) => {
+                        assert_eq!(ts.common.xml_id, Some("ts1".to_string()));
+                        assert_eq!(ts.children.len(), 2);
+                        match &ts.children[0] {
+                            TitleStmtChild::Title(t) => match &t.children[0] {
+                                TitleChild::Text(text) => assert_eq!(text.trim(), "Symphony No. 5"),
+                                _ => panic!("expected text in title"),
+                            },
+                            _ => panic!("expected Title child"),
+                        }
+                        match &ts.children[1] {
+                            TitleStmtChild::Creator(_) => {}
+                            _ => panic!("expected Creator child"),
+                        }
+                    }
+                    _ => panic!("expected TitleStmt child"),
+                }
             }
             _ => panic!("expected FileDesc child"),
         }
