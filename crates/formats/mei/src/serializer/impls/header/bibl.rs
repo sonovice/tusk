@@ -7,8 +7,8 @@ use std::io::Write;
 use tusk_model::elements::{
     Annot, AnnotChild, Bibl, BiblChild, BiblScope, BiblScopeChild, BiblStruct, BiblStructChild,
     Contents, ContentsChild, Edition, EditionChild, EditionStmt, EditionStmtChild, Extent,
-    ExtentChild, Locus, LocusChild, LocusGrp, LocusGrpChild, NotesStmt, NotesStmtChild, SeriesStmt,
-    SeriesStmtChild,
+    ExtentChild, Imprint, ImprintChild, Locus, LocusChild, LocusGrp, LocusGrpChild, NotesStmt,
+    NotesStmtChild, SeriesStmt, SeriesStmtChild,
 };
 
 // ============================================================================
@@ -779,6 +779,7 @@ impl MeiSerialize for BiblChild {
             BiblChild::Name(elem) => elem.serialize_mei(writer),
             BiblChild::Extent(elem) => elem.serialize_mei(writer),
             BiblChild::Sponsor(elem) => elem.serialize_mei(writer),
+            BiblChild::Imprint(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "BiblChild::{}",
                 other.element_name()
@@ -982,6 +983,165 @@ impl MeiSerialize for LocusGrpChild {
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             LocusGrpChild::Locus(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Imprint
+// ============================================================================
+
+impl MeiSerialize for Imprint {
+    fn element_name(&self) -> &'static str {
+        "imprint"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ImprintChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ImprintChild::Text(_) => "#text",
+            ImprintChild::SecFolio(_) => "secFolio",
+            ImprintChild::Term(_) => "term",
+            ImprintChild::Depth(_) => "depth",
+            ImprintChild::PostBox(_) => "postBox",
+            ImprintChild::Settlement(_) => "settlement",
+            ImprintChild::Width(_) => "width",
+            ImprintChild::Title(_) => "title",
+            ImprintChild::RespStmt(_) => "respStmt",
+            ImprintChild::Signatures(_) => "signatures",
+            ImprintChild::Restore(_) => "restore",
+            ImprintChild::Address(_) => "address",
+            ImprintChild::CorpName(_) => "corpName",
+            ImprintChild::Identifier(_) => "identifier",
+            ImprintChild::Add(_) => "add",
+            ImprintChild::StyleName(_) => "styleName",
+            ImprintChild::BiblStruct(_) => "biblStruct",
+            ImprintChild::Availability(_) => "availability",
+            ImprintChild::Damage(_) => "damage",
+            ImprintChild::Del(_) => "del",
+            ImprintChild::PersName(_) => "persName",
+            ImprintChild::Distributor(_) => "distributor",
+            ImprintChild::Region(_) => "region",
+            ImprintChild::Stamp(_) => "stamp",
+            ImprintChild::LocusGrp(_) => "locusGrp",
+            ImprintChild::Lb(_) => "lb",
+            ImprintChild::Ptr(_) => "ptr",
+            ImprintChild::Repository(_) => "repository",
+            ImprintChild::Stack(_) => "stack",
+            ImprintChild::PostCode(_) => "postCode",
+            ImprintChild::District(_) => "district",
+            ImprintChild::Dimensions(_) => "dimensions",
+            ImprintChild::Gap(_) => "gap",
+            ImprintChild::Height(_) => "height",
+            ImprintChild::Unclear(_) => "unclear",
+            ImprintChild::Ref(_) => "ref",
+            ImprintChild::GeogFeat(_) => "geogFeat",
+            ImprintChild::Annot(_) => "annot",
+            ImprintChild::GeogName(_) => "geogName",
+            ImprintChild::Date(_) => "date",
+            ImprintChild::Heraldry(_) => "heraldry",
+            ImprintChild::Unpub(_) => "unpub",
+            ImprintChild::HandShift(_) => "handShift",
+            ImprintChild::Country(_) => "country",
+            ImprintChild::Locus(_) => "locus",
+            ImprintChild::Abbr(_) => "abbr",
+            ImprintChild::Pb(_) => "pb",
+            ImprintChild::Dim(_) => "dim",
+            ImprintChild::Expan(_) => "expan",
+            ImprintChild::Seg(_) => "seg",
+            ImprintChild::PubPlace(_) => "pubPlace",
+            ImprintChild::PeriodName(_) => "periodName",
+            ImprintChild::Publisher(_) => "publisher",
+            ImprintChild::Q(_) => "q",
+            ImprintChild::Symbol(_) => "symbol",
+            ImprintChild::Bloc(_) => "bloc",
+            ImprintChild::Relation(_) => "relation",
+            ImprintChild::Street(_) => "street",
+            ImprintChild::Supplied(_) => "supplied",
+            ImprintChild::RelationList(_) => "relationList",
+            ImprintChild::Name(_) => "name",
+            ImprintChild::Bibl(_) => "bibl",
+            ImprintChild::Reg(_) => "reg",
+            ImprintChild::Fig(_) => "fig",
+            ImprintChild::Num(_) => "num",
+            ImprintChild::Catchwords(_) => "catchwords",
+            ImprintChild::Extent(_) => "extent",
+            ImprintChild::Orig(_) => "orig",
+            ImprintChild::Rend(_) => "rend",
+            ImprintChild::Corr(_) => "corr",
+            ImprintChild::Sic(_) => "sic",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, ImprintChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ImprintChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            ImprintChild::Publisher(elem) => elem.serialize_mei(writer),
+            ImprintChild::PubPlace(elem) => elem.serialize_mei(writer),
+            ImprintChild::Date(elem) => elem.serialize_mei(writer),
+            ImprintChild::Distributor(elem) => elem.serialize_mei(writer),
+            ImprintChild::RespStmt(elem) => elem.serialize_mei(writer),
+            ImprintChild::Identifier(elem) => elem.serialize_mei(writer),
+            ImprintChild::Title(elem) => elem.serialize_mei(writer),
+            ImprintChild::Availability(elem) => elem.serialize_mei(writer),
+            ImprintChild::Extent(elem) => elem.serialize_mei(writer),
+            ImprintChild::Address(elem) => elem.serialize_mei(writer),
+            ImprintChild::Bibl(elem) => elem.serialize_mei(writer),
+            ImprintChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            ImprintChild::PersName(elem) => elem.serialize_mei(writer),
+            ImprintChild::CorpName(elem) => elem.serialize_mei(writer),
+            ImprintChild::Name(elem) => elem.serialize_mei(writer),
+            ImprintChild::GeogName(elem) => elem.serialize_mei(writer),
+            ImprintChild::Annot(elem) => elem.serialize_mei(writer),
+            ImprintChild::Lb(elem) => elem.serialize_mei(writer),
+            ImprintChild::Ptr(elem) => elem.serialize_mei(writer),
+            ImprintChild::Ref(elem) => elem.serialize_mei(writer),
+            ImprintChild::Rend(elem) => elem.serialize_mei(writer),
+            ImprintChild::Num(elem) => elem.serialize_mei(writer),
+            ImprintChild::Unpub(elem) => elem.serialize_mei(writer),
+            ImprintChild::PostCode(elem) => elem.serialize_mei(writer),
+            ImprintChild::Country(elem) => elem.serialize_mei(writer),
+            ImprintChild::Locus(elem) => elem.serialize_mei(writer),
+            ImprintChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ImprintChild::{}",
+                other.element_name()
+            ))),
         }
     }
 }

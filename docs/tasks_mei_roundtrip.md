@@ -49,7 +49,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Music: body element not parsed - music children not being deserialized (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Funder element: children not parsed - uses read_text_until_end instead of mixed content, losing corpName child elements (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Identifier element: children not parsed - uses read_text_until_end instead of mixed content, losing ref child elements (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] Bibl element: imprint child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Bibl element: imprint child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] Label element: text content not parsed - uses skip_to_end which loses all content (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] Incip element: incipCode child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] PerfMedium element: perfResList child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)

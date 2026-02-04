@@ -14,7 +14,7 @@ use tusk_model::elements::{
     ContributorChild, CorpName, CorpNameChild, Correction, CorrectionChild, Creator, CreatorChild,
     Date, Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
     EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, GeogName, GeogNameChild, Head,
-    HeadChild, Identifier, Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead,
+    HeadChild, Identifier, Imprint, Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead,
     MeiHeadChild, Name, NameChild, Normalization, NormalizationChild, P, PChild, PersName,
     PersNameChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher,
     PublisherChild, Ref, RefChild, Resp, RespChild, RespStmt, RespStmtChild, SamplingDecl,
@@ -604,6 +604,11 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                     bibl.children
                         .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
                 }
+                "imprint" => {
+                    let imprint = parse_imprint_from_event(reader, child_attrs, child_empty)?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Imprint(Box::new(imprint)));
+                }
                 // Unknown children are skipped in lenient mode
                 _ => {
                     if !child_empty {
@@ -615,6 +620,171 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
     }
 
     Ok(bibl)
+}
+
+/// Parse an `<imprint>` element from within another element.
+///
+/// Imprint can contain mixed content (text and child elements like publisher, pubPlace, date, etc.)
+pub(crate) fn parse_imprint_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Imprint> {
+    use tusk_model::elements::ImprintChild;
+
+    let mut imprint = Imprint::default();
+
+    // Extract attributes
+    imprint.common.extract_attributes(&mut attrs)?;
+    imprint.bibl.extract_attributes(&mut attrs)?;
+    imprint.facsimile.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("imprint")? {
+            match content {
+                MixedContent::Text(text) => {
+                    imprint.children.push(ImprintChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "publisher" => {
+                            let publisher =
+                                parse_publisher_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Publisher(Box::new(publisher)));
+                        }
+                        "pubPlace" => {
+                            let pub_place =
+                                parse_pub_place_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::PubPlace(Box::new(pub_place)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Date(Box::new(date)));
+                        }
+                        "distributor" => {
+                            let distributor =
+                                parse_distributor_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Distributor(Box::new(distributor)));
+                        }
+                        "respStmt" => {
+                            let resp_stmt =
+                                parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::RespStmt(Box::new(resp_stmt)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Identifier(Box::new(identifier)));
+                        }
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Title(Box::new(title)));
+                        }
+                        "availability" => {
+                            let availability =
+                                parse_availability_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Availability(Box::new(availability)));
+                        }
+                        "extent" => {
+                            let extent =
+                                super::parse_extent_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Extent(Box::new(extent)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Address(Box::new(address)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Bibl(Box::new(bibl)));
+                        }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::BiblStruct(Box::new(bibl_struct)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::Name(Box::new(name_elem)));
+                        }
+                        "geogName" => {
+                            let geog_name =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            imprint
+                                .children
+                                .push(ImprintChild::GeogName(Box::new(geog_name)));
+                        }
+                        "annot" => {
+                            let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Annot(Box::new(annot)));
+                        }
+                        "lb" => {
+                            let lb = super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Lb(Box::new(lb)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Ptr(Box::new(ptr)));
+                        }
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Ref(Box::new(ref_elem)));
+                        }
+                        "rend" => {
+                            let rend =
+                                super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            imprint.children.push(ImprintChild::Rend(Box::new(rend)));
+                        }
+                        // Skip unknown children in lenient mode
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(imprint)
 }
 
 /// Parse a `<locus>` element from within another element.
