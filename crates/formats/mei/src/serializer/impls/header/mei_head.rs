@@ -5,8 +5,9 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    FileDesc, FileDescChild, Head, HeadChild, MeiHead, MeiHeadChild, SourceDesc, SourceDescChild,
-    Title, TitleChild, TitlePart, TitlePartChild, TitleStmt, TitleStmtChild,
+    FileDesc, FileDescChild, Head, HeadChild, MeiHead, MeiHeadChild, Source, SourceChild,
+    SourceDesc, SourceDescChild, Title, TitleChild, TitlePart, TitlePartChild, TitleStmt,
+    TitleStmtChild,
 };
 
 // ============================================================================
@@ -492,10 +493,75 @@ impl MeiSerialize for SourceDescChild {
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             SourceDescChild::Head(elem) => elem.serialize_mei(writer),
-            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
-                "SourceDescChild::{}",
-                other.element_name()
-            ))),
+            SourceDescChild::Source(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Source
+// ============================================================================
+
+impl MeiSerialize for Source {
+    fn element_name(&self) -> &'static str {
+        "source"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.component_type.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.record_type.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for SourceChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            SourceChild::Head(_) => "head",
+            SourceChild::Bibl(_) => "bibl",
+            SourceChild::BiblStruct(_) => "biblStruct",
+            SourceChild::Locus(_) => "locus",
+            SourceChild::LocusGrp(_) => "locusGrp",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            SourceChild::Head(elem) => elem.serialize_mei(writer),
+            SourceChild::Bibl(elem) => elem.serialize_mei(writer),
+            SourceChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            SourceChild::Locus(elem) => elem.serialize_mei(writer),
+            SourceChild::LocusGrp(elem) => elem.serialize_mei(writer),
         }
     }
 }

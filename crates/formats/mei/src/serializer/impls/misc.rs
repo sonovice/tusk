@@ -9,12 +9,13 @@ use std::io::Write;
 use tusk_model::att::{
     AttAccidental, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis,
     AttCalendared, AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable,
-    AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
-    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttInternetMedia, AttKeyMode, AttLabelled,
-    AttLinking, AttMeasurement, AttMeiVersion, AttMetadataPointing, AttMeterSigLog, AttNInteger,
-    AttNNumberLike, AttName, AttPitch, AttPointing, AttRanging, AttRecordType, AttRegularMethod,
-    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
-    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttFoliationScheme,
+    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
+    AttInternetMedia, AttKeyMode, AttLabelled, AttLinking, AttMeasurement, AttMeiVersion,
+    AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttPitch,
+    AttPointing, AttRanging, AttRecordType, AttRegularMethod, AttResponsibility, AttSource,
+    AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
+    AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
     Beam, BeamChild, GraceGrp, GraceGrpChild, Num, Ptr, Ref, Tuplet, TupletChild,
@@ -518,6 +519,14 @@ impl CollectAttributes for AttRegularMethod {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "method", self.method);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttFoliationScheme {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "scheme", self.scheme);
         attrs
     }
 }

@@ -5,8 +5,9 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    Annot, AnnotChild, BiblScope, BiblScopeChild, Contents, ContentsChild, Edition, EditionChild,
-    EditionStmt, EditionStmtChild, Extent, ExtentChild, NotesStmt, NotesStmtChild, SeriesStmt,
+    Annot, AnnotChild, Bibl, BiblChild, BiblScope, BiblScopeChild, BiblStruct, BiblStructChild,
+    Contents, ContentsChild, Edition, EditionChild, EditionStmt, EditionStmtChild, Extent,
+    ExtentChild, Locus, LocusChild, LocusGrp, LocusGrpChild, NotesStmt, NotesStmtChild, SeriesStmt,
     SeriesStmtChild,
 };
 
@@ -608,6 +609,379 @@ impl MeiSerialize for ContentsChild {
                 "ContentsChild::{}",
                 other.element_name()
             ))),
+        }
+    }
+}
+
+// ============================================================================
+// Bibl
+// ============================================================================
+
+impl MeiSerialize for Bibl {
+    fn element_name(&self) -> &'static str {
+        "bibl"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for BiblChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            BiblChild::Text(_) => "#text",
+            BiblChild::Editor(_) => "editor",
+            BiblChild::Bibl(_) => "bibl",
+            BiblChild::BiblStruct(_) => "biblStruct",
+            BiblChild::Distributor(_) => "distributor",
+            BiblChild::Height(_) => "height",
+            BiblChild::Stamp(_) => "stamp",
+            BiblChild::Identifier(_) => "identifier",
+            BiblChild::Repository(_) => "repository",
+            BiblChild::RelationList(_) => "relationList",
+            BiblChild::SecFolio(_) => "secFolio",
+            BiblChild::Heraldry(_) => "heraldry",
+            BiblChild::BiblScope(_) => "biblScope",
+            BiblChild::Publisher(_) => "publisher",
+            BiblChild::Ref(_) => "ref",
+            BiblChild::Title(_) => "title",
+            BiblChild::LocusGrp(_) => "locusGrp",
+            BiblChild::PubPlace(_) => "pubPlace",
+            BiblChild::Bloc(_) => "bloc",
+            BiblChild::Street(_) => "street",
+            BiblChild::Address(_) => "address",
+            BiblChild::Fig(_) => "fig",
+            BiblChild::PersName(_) => "persName",
+            BiblChild::PhysLoc(_) => "physLoc",
+            BiblChild::Q(_) => "q",
+            BiblChild::Relation(_) => "relation",
+            BiblChild::CorpName(_) => "corpName",
+            BiblChild::PerfDuration(_) => "perfDuration",
+            BiblChild::PostBox(_) => "postBox",
+            BiblChild::Abbr(_) => "abbr",
+            BiblChild::Term(_) => "term",
+            BiblChild::Pb(_) => "pb",
+            BiblChild::Annot(_) => "annot",
+            BiblChild::Lb(_) => "lb",
+            BiblChild::StyleName(_) => "styleName",
+            BiblChild::Stack(_) => "stack",
+            BiblChild::Country(_) => "country",
+            BiblChild::Ptr(_) => "ptr",
+            BiblChild::GeogFeat(_) => "geogFeat",
+            BiblChild::TextLang(_) => "textLang",
+            BiblChild::RespStmt(_) => "respStmt",
+            BiblChild::Dim(_) => "dim",
+            BiblChild::District(_) => "district",
+            BiblChild::Date(_) => "date",
+            BiblChild::Num(_) => "num",
+            BiblChild::Contributor(_) => "contributor",
+            BiblChild::Availability(_) => "availability",
+            BiblChild::Settlement(_) => "settlement",
+            BiblChild::Creation(_) => "creation",
+            BiblChild::Series(_) => "series",
+            BiblChild::Edition(_) => "edition",
+            BiblChild::Dimensions(_) => "dimensions",
+            BiblChild::Creator(_) => "creator",
+            BiblChild::Expan(_) => "expan",
+            BiblChild::Width(_) => "width",
+            BiblChild::Seg(_) => "seg",
+            BiblChild::Funder(_) => "funder",
+            BiblChild::Rend(_) => "rend",
+            BiblChild::Imprint(_) => "imprint",
+            BiblChild::Region(_) => "region",
+            BiblChild::Symbol(_) => "symbol",
+            BiblChild::Genre(_) => "genre",
+            BiblChild::RelatedItem(_) => "relatedItem",
+            BiblChild::GeogName(_) => "geogName",
+            BiblChild::Locus(_) => "locus",
+            BiblChild::Signatures(_) => "signatures",
+            BiblChild::Catchwords(_) => "catchwords",
+            BiblChild::Depth(_) => "depth",
+            BiblChild::PostCode(_) => "postCode",
+            BiblChild::Unpub(_) => "unpub",
+            BiblChild::Name(_) => "name",
+            BiblChild::PeriodName(_) => "periodName",
+            BiblChild::Extent(_) => "extent",
+            BiblChild::Recipient(_) => "recipient",
+            BiblChild::Sponsor(_) => "sponsor",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, BiblChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            BiblChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            BiblChild::Editor(elem) => elem.serialize_mei(writer),
+            BiblChild::Bibl(elem) => elem.serialize_mei(writer),
+            BiblChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            BiblChild::Distributor(elem) => elem.serialize_mei(writer),
+            BiblChild::Identifier(elem) => elem.serialize_mei(writer),
+            BiblChild::BiblScope(elem) => elem.serialize_mei(writer),
+            BiblChild::Publisher(elem) => elem.serialize_mei(writer),
+            BiblChild::Ref(elem) => elem.serialize_mei(writer),
+            BiblChild::Title(elem) => elem.serialize_mei(writer),
+            BiblChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            BiblChild::PubPlace(elem) => elem.serialize_mei(writer),
+            BiblChild::Address(elem) => elem.serialize_mei(writer),
+            BiblChild::PersName(elem) => elem.serialize_mei(writer),
+            BiblChild::CorpName(elem) => elem.serialize_mei(writer),
+            BiblChild::Annot(elem) => elem.serialize_mei(writer),
+            BiblChild::Lb(elem) => elem.serialize_mei(writer),
+            BiblChild::Country(elem) => elem.serialize_mei(writer),
+            BiblChild::Ptr(elem) => elem.serialize_mei(writer),
+            BiblChild::RespStmt(elem) => elem.serialize_mei(writer),
+            BiblChild::Date(elem) => elem.serialize_mei(writer),
+            BiblChild::Num(elem) => elem.serialize_mei(writer),
+            BiblChild::Contributor(elem) => elem.serialize_mei(writer),
+            BiblChild::Availability(elem) => elem.serialize_mei(writer),
+            BiblChild::Settlement(elem) => elem.serialize_mei(writer),
+            BiblChild::Creation(elem) => elem.serialize_mei(writer),
+            BiblChild::Edition(elem) => elem.serialize_mei(writer),
+            BiblChild::Creator(elem) => elem.serialize_mei(writer),
+            BiblChild::Funder(elem) => elem.serialize_mei(writer),
+            BiblChild::Rend(elem) => elem.serialize_mei(writer),
+            BiblChild::GeogName(elem) => elem.serialize_mei(writer),
+            BiblChild::Locus(elem) => elem.serialize_mei(writer),
+            BiblChild::PostCode(elem) => elem.serialize_mei(writer),
+            BiblChild::Unpub(elem) => elem.serialize_mei(writer),
+            BiblChild::Name(elem) => elem.serialize_mei(writer),
+            BiblChild::Extent(elem) => elem.serialize_mei(writer),
+            BiblChild::Sponsor(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "BiblChild::{}",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// BiblStruct
+// ============================================================================
+
+impl MeiSerialize for BiblStruct {
+    fn element_name(&self) -> &'static str {
+        "biblStruct"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.record_type.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for BiblStructChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            BiblStructChild::RelatedItem(_) => "relatedItem",
+            BiblStructChild::Analytic(_) => "analytic",
+            BiblStructChild::Monogr(_) => "monogr",
+            BiblStructChild::Annot(_) => "annot",
+            BiblStructChild::Series(_) => "series",
+            BiblStructChild::Identifier(_) => "identifier",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            BiblStructChild::Annot(elem) => elem.serialize_mei(writer),
+            BiblStructChild::Identifier(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "BiblStructChild::{}",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// Locus
+// ============================================================================
+
+impl MeiSerialize for Locus {
+    fn element_name(&self) -> &'static str {
+        "locus"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.foliation_scheme.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        if let Some(ref from) = self.from {
+            attrs.push(("from", from.to_string()));
+        }
+        if let Some(ref to) = self.to {
+            attrs.push(("to", to.to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LocusChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LocusChild::Text(_) => "#text",
+            LocusChild::Rend(_) => "rend",
+            LocusChild::Locus(_) => "locus",
+            LocusChild::Symbol(_) => "symbol",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, LocusChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LocusChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            LocusChild::Rend(elem) => elem.serialize_mei(writer),
+            LocusChild::Locus(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "LocusChild::{}",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// LocusGrp
+// ============================================================================
+
+impl MeiSerialize for LocusGrp {
+    fn element_name(&self) -> &'static str {
+        "locusGrp"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.foliation_scheme.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LocusGrpChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LocusGrpChild::Locus(_) => "locus",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LocusGrpChild::Locus(elem) => elem.serialize_mei(writer),
         }
     }
 }
