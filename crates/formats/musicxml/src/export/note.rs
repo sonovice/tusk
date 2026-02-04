@@ -572,6 +572,70 @@ fn add_rest_conversion_warnings(
 }
 
 // ============================================================================
+// MEI Measure Rest → MusicXML Measure Rest Conversion
+// ============================================================================
+
+/// Convert an MEI mRest (measure rest) to a MusicXML note containing a measure rest.
+///
+/// This converts an MEI `<mRest>` element to MusicXML. In MusicXML, measure rests
+/// are represented as `<note>` elements containing a `<rest measure="yes"/>` child.
+///
+/// # Arguments
+///
+/// * `mei_mrest` - The MEI mRest element to convert
+/// * `ctx` - The conversion context for state tracking
+///
+/// # Returns
+///
+/// A MusicXML Note element containing a measure rest, or an error if conversion fails.
+pub fn convert_mei_mrest(
+    mei_mrest: &tusk_model::elements::MRest,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<crate::model::note::Note> {
+    use crate::model::note::{Note as MxmlNote, Rest as MxmlRest};
+
+    // Calculate duration from MEI mRest attributes
+    let duration = calculate_mei_mrest_duration(mei_mrest, ctx);
+
+    // Create a MusicXML measure rest
+    let mxml_rest = MxmlRest::measure_rest();
+
+    // Create the MusicXML note containing the rest
+    let mut mxml_note = MxmlNote::rest(mxml_rest, duration);
+
+    // Set ID from xml:id
+    if let Some(ref xml_id) = mei_mrest.common.xml_id {
+        mxml_note.id = Some(xml_id.clone());
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    // Measure rests typically don't have a note type in MusicXML
+
+    Ok(mxml_note)
+}
+
+/// Calculate MEI mRest duration in MusicXML divisions.
+fn calculate_mei_mrest_duration(
+    mei_mrest: &tusk_model::elements::MRest,
+    ctx: &ConversionContext,
+) -> f64 {
+    // First check if we have gestural duration in ppq (most accurate)
+    if let Some(dur_ppq) = mei_mrest.m_rest_ges.dur_ppq {
+        return dur_ppq as f64;
+    }
+
+    // Default: return the divisions value (as mRests typically span a full measure)
+    // The actual duration depends on the time signature, which should be encoded in dur.ppq
+    let divisions = ctx.divisions();
+    if divisions > 0.0 {
+        // Default to 4 beats (whole measure in 4/4)
+        divisions * 4.0
+    } else {
+        4.0
+    }
+}
+
+// ============================================================================
 // MEI Chord to MusicXML Conversion
 // ============================================================================
 

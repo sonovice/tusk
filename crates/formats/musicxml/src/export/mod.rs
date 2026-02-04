@@ -22,6 +22,7 @@
 //! ```
 
 mod attributes;
+mod content;
 mod direction;
 mod note;
 mod parts;
@@ -130,9 +131,26 @@ pub fn convert_mei_with_context(
             score.part_list = PartList::default();
         }
 
-        // Create parts (will be populated in later tasks)
-        // For now, create empty parts matching the part-list
-        score.parts = create_empty_parts(&score.part_list);
+        // Extract part IDs from part-list
+        let part_ids: Vec<String> = score
+            .part_list
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let PartListItem::ScorePart(sp) = item {
+                    Some(sp.id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Convert measure content from MEI to MusicXML parts
+        if !part_ids.is_empty() {
+            score.parts = content::convert_score_content(mei_score, &part_ids, ctx)?;
+        } else {
+            score.parts = create_empty_parts(&score.part_list);
+        }
     }
 
     // If no parts were created, ensure part_list has at least one part

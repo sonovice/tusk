@@ -259,9 +259,11 @@ pub fn convert_staff_def_from_score_part(
 
     // Apply initial attributes from the first measure (key, time, clef)
     if let Some(attrs) = initial_attrs {
-        // Process divisions to set context state
+        // Process divisions to set context state and store in staffDef
         if let Some(divs) = attrs.divisions {
             ctx.set_divisions(divs);
+            // Store divisions as ppq (pulses per quarter note) in staffDef
+            staff_def.staff_def_ges.ppq = Some(divs as u64);
         }
 
         // Apply key signature
@@ -302,9 +304,9 @@ pub fn convert_staff_def_from_score_part(
         }
     }
 
-    // Generate an ID for the staffDef
-    let staff_def_id = ctx.generate_id_with_suffix("staffdef");
-    staff_def.basic.xml_id = Some(staff_def_id);
+    // Use the original MusicXML part ID as the staffDef xml:id
+    // This preserves the ID through the roundtrip conversion
+    staff_def.basic.xml_id = Some(score_part.id.clone());
 
     // Convert part-name → label (if not empty)
     if !score_part.part_name.value.is_empty() {
