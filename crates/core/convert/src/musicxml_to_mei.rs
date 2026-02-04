@@ -31,9 +31,9 @@ use tusk_model::data::{
     DataStemdirection, DataStemdirectionBasic, DataWord,
 };
 use tusk_model::elements::{
-    Accid, Body, BodyChild, Label, LabelAbbr, LabelAbbrChild, LabelChild, LayerChild, Mdiv,
-    MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, NoteChild, Score, ScoreChild, ScoreDef,
-    Section, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+    Accid, Body, BodyChild, Chord, ChordChild, Label, LabelAbbr, LabelAbbrChild, LabelChild,
+    LayerChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, NoteChild, Score,
+    ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
 };
 use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 use tusk_musicxml::model::note::{AccidentalValue, FullNoteContent, NoteTypeValue, StemValue};
@@ -660,11 +660,38 @@ pub fn convert_layer(
     ctx.set_layer(layer_number);
     ctx.reset_beat_position();
 
+    // Collect all notes from the measure content for chord detection
+    let notes: Vec<&tusk_musicxml::model::note::Note> = measure
+        .content
+        .iter()
+        .filter_map(|c| match c {
+            MeasureContent::Note(note) => Some(note.as_ref()),
+            _ => None,
+        })
+        .collect();
+
+    // Track which notes we've processed (for chord grouping)
+    let mut processed_note_indices: std::collections::HashSet<usize> =
+        std::collections::HashSet::new();
+
     // Process measure content
+    let mut note_index = 0;
     for content in &measure.content {
         match content {
             MeasureContent::Note(note) => {
-                // Skip chord notes for now (they'll be handled in chord conversion)
+                // Find the index of this note in our notes vec
+                let current_note_index = notes
+                    .iter()
+                    .position(|n| std::ptr::eq(*n, note.as_ref()))
+                    .unwrap_or(note_index);
+                note_index += 1;
+
+                // Skip if already processed as part of a chord
+                if processed_note_indices.contains(&current_note_index) {
+                    continue;
+                }
+
+                // Skip chord notes (they are processed with their root note)
                 if note.is_chord() {
                     continue;
                 }
@@ -685,12 +712,35 @@ pub fn convert_layer(
                     if let Some(duration) = note.duration {
                         ctx.advance_beat_position(duration);
                     }
+                    processed_note_indices.insert(current_note_index);
                     continue;
                 }
 
-                // Convert the note
-                let mei_note = convert_note(note, ctx)?;
-                layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                // Check if this note is followed by chord notes
+                let mut chord_notes: Vec<tusk_musicxml::model::note::Note> =
+                    vec![note.as_ref().clone()];
+                processed_note_indices.insert(current_note_index);
+
+                // Look ahead for chord notes
+                for (i, following_note) in notes.iter().enumerate().skip(current_note_index + 1) {
+                    if following_note.is_chord() && !following_note.is_rest() {
+                        chord_notes.push((*following_note).clone());
+                        processed_note_indices.insert(i);
+                    } else {
+                        // First non-chord note ends the chord group
+                        break;
+                    }
+                }
+
+                if chord_notes.len() > 1 {
+                    // Convert as chord
+                    let mei_chord = convert_chord(&chord_notes, ctx)?;
+                    layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
+                } else {
+                    // Convert as single note
+                    let mei_note = convert_note(note, ctx)?;
+                    layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                }
 
                 // Advance beat position if not a grace note
                 if !note.is_grace()
@@ -1141,6 +1191,78 @@ fn is_measure_rest(note: &tusk_musicxml::model::note::Note) -> bool {
         FullNoteContent::Rest(rest) => rest.measure == Some(YesNo::Yes),
         _ => false,
     }
+}
+
+/// Convert a group of MusicXML notes forming a chord to MEI chord.
+///
+/// In MusicXML, a chord is represented as a sequence of notes where all notes
+/// after the first have the `<chord/>` element, indicating they share timing
+/// with the previous note. All notes in a chord must have the same duration.
+///
+/// # Arguments
+///
+/// * `notes` - A slice of MusicXML notes forming the chord. The first note
+///   should NOT have the chord flag; subsequent notes should have it.
+/// * `ctx` - The conversion context for tracking state
+///
+/// # Returns
+///
+/// An MEI Chord element containing all the notes, or an error if conversion fails.
+pub fn convert_chord(
+    notes: &[tusk_musicxml::model::note::Note],
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Chord> {
+    let mut mei_chord = Chord::default();
+
+    // Generate and set xml:id
+    let chord_id = ctx.generate_id_with_suffix("chord");
+    mei_chord.common.xml_id = Some(chord_id);
+
+    // Get duration info from the first note (all notes in a chord share duration)
+    if let Some(first_note) = notes.first() {
+        // Convert duration
+        if let Some(ref note_type) = first_note.note_type {
+            mei_chord.chord_log.dur = Some(convert_note_type_to_duration(note_type.value));
+        } else if let Some(duration) = first_note.duration {
+            // Try to infer note type from duration value
+            if let Some((inferred_type, _dots)) = ctx.duration_context().infer_note_type(duration) {
+                mei_chord.chord_log.dur = Some(convert_note_type_to_duration(inferred_type));
+            }
+        }
+
+        // Convert dots
+        let dot_count = first_note.dots.len() as u64;
+        if dot_count > 0 {
+            mei_chord.chord_log.dots = Some(DataAugmentdot::from(dot_count));
+        }
+
+        // Store gestural duration in ppq (divisions)
+        if let Some(duration) = first_note.duration {
+            mei_chord.chord_ges.dur_ppq = Some(duration as u64);
+        }
+
+        // Handle grace chord
+        if first_note.is_grace()
+            && let Some(ref grace) = first_note.grace
+        {
+            mei_chord.chord_log.grace = Some(convert_grace(grace));
+        }
+
+        // Handle cue chord
+        if first_note.is_cue() {
+            mei_chord.chord_log.cue = Some(DataBoolean::True);
+        }
+    }
+
+    // Convert each note in the chord and add as children
+    for note in notes {
+        let mei_note = convert_note(note, ctx)?;
+        mei_chord
+            .children
+            .push(ChordChild::Note(Box::new(mei_note)));
+    }
+
+    Ok(mei_chord)
 }
 
 #[cfg(test)]
@@ -3075,6 +3197,328 @@ mod tests {
 
         // Beat position should have advanced by the rest duration
         assert_eq!(ctx.beat_position(), 4.0);
+    }
+
+    // ============================================================================
+    // Chord Conversion Tests
+    // ============================================================================
+
+    #[test]
+    fn convert_chord_creates_mei_chord() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        // Create a C major chord (C4, E4, G4)
+        let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0); // First note - no chord flag
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty); // Chord flag
+        let mut note3 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        note3.chord = Some(Empty); // Chord flag
+
+        let notes = vec![note1, note2, note3];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Chord should have xml:id
+        assert!(mei_chord.common.xml_id.is_some());
+    }
+
+    #[test]
+    fn convert_chord_contains_all_notes() {
+        use tusk_model::elements::ChordChild;
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        // Create a C major chord (C4, E4, G4)
+        let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        let mut note3 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        note3.chord = Some(Empty);
+
+        let notes = vec![note1, note2, note3];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Should have 3 note children
+        let note_count = mei_chord
+            .children
+            .iter()
+            .filter(|c| matches!(c, ChordChild::Note(_)))
+            .count();
+        assert_eq!(note_count, 3);
+    }
+
+    #[test]
+    fn convert_chord_sets_duration() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+
+        let notes = vec![note1, note2];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Chord should have duration set
+        assert_eq!(
+            mei_chord.chord_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn convert_chord_sets_dots() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut note1 = Note::pitched(Pitch::new(Step::D, 4), 6.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        note1.dots.push(Dot::default());
+        let mut note2 = Note::pitched(Pitch::new(Step::F, 4), 6.0);
+        note2.chord = Some(Empty);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        note2.dots.push(Dot::default());
+
+        let notes = vec![note1, note2];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_chord.chord_log.dots.as_ref().unwrap().0, 1);
+    }
+
+    #[test]
+    fn convert_chord_stores_gestural_duration() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note1 = Note::pitched(Pitch::new(Step::A, 3), 96.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::C, 4), 96.0);
+        note2.chord = Some(Empty);
+
+        let notes = vec![note1, note2];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_chord.chord_ges.dur_ppq, Some(96));
+    }
+
+    #[test]
+    fn convert_chord_generates_xml_id() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        note2.chord = Some(Empty);
+
+        let notes = vec![note1, note2];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        let id = mei_chord.common.xml_id.as_ref().unwrap();
+        assert!(id.contains("chord"));
+    }
+
+    #[test]
+    fn convert_chord_note_pitches_preserved() {
+        use tusk_model::elements::ChordChild;
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        let mut note3 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        note3.chord = Some(Empty);
+
+        let notes = vec![note1, note2, note3];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Extract pitch names from note children
+        let pitches: Vec<&str> = mei_chord
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                ChordChild::Note(n) => n.note_log.pname.as_ref().map(|p| p.0.as_str()),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(pitches, vec!["c", "e", "g"]);
+    }
+
+    #[test]
+    fn convert_chord_with_accidentals() {
+        use tusk_model::elements::ChordChild;
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        // C# E G# chord
+        let note1 = Note::pitched(Pitch::with_alter(Step::C, 1.0, 4), 4.0);
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        let mut note3 = Note::pitched(Pitch::with_alter(Step::G, 1.0, 4), 4.0);
+        note3.chord = Some(Empty);
+
+        let notes = vec![note1, note2, note3];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Should have 3 notes, first and last with gestural accidentals
+        let notes: Vec<_> = mei_chord
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                ChordChild::Note(n) => Some(n.as_ref()),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(notes.len(), 3);
+        // First note (C#) should have sharp accidental
+        assert!(notes[0].note_ges.accid_ges.is_some());
+        // Second note (E) has no alteration
+        assert!(notes[1].note_ges.accid_ges.is_none());
+        // Third note (G#) should have sharp accidental
+        assert!(notes[2].note_ges.accid_ges.is_some());
+    }
+
+    #[test]
+    fn convert_chord_grace_notes() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+
+        let note1 = Note::grace_note(Pitch::new(Step::C, 4), Grace::default());
+        let mut note2 = Note::grace_note(Pitch::new(Step::E, 4), Grace::default());
+        note2.chord = Some(Empty);
+
+        let notes = vec![note1, note2];
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
+
+        // Grace chord should have grace attribute
+        assert_eq!(mei_chord.chord_log.grace, Some(DataGrace::Acc));
+    }
+
+    #[test]
+    fn convert_layer_with_chord() {
+        use tusk_model::elements::LayerChild;
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Add a chord (C4, E4)
+        let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note1)));
+
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Should have one chord child (not two separate notes)
+        assert_eq!(layer.children.len(), 1);
+        assert!(matches!(layer.children[0], LayerChild::Chord(_)));
+    }
+
+    #[test]
+    fn convert_layer_with_chord_advances_beat_position() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Add a chord (C4, E4) with duration 4
+        let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note1)));
+
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.chord = Some(Empty);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Beat position should have advanced by the chord duration (once, not twice)
+        assert_eq!(ctx.beat_position(), 4.0);
+    }
+
+    #[test]
+    fn convert_layer_mixed_notes_and_chords() {
+        use tusk_model::elements::LayerChild;
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Empty, Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Single note
+        let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note1)));
+
+        // Chord (E4, G4)
+        let mut note2 = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note2)));
+
+        let mut note3 = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        note3.chord = Some(Empty);
+        note3.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note3)));
+
+        // Another single note
+        let mut note4 = Note::pitched(Pitch::new(Step::A, 4), 4.0);
+        note4.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note4)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Should have: Note, Chord, Note
+        assert_eq!(layer.children.len(), 3);
+        assert!(matches!(layer.children[0], LayerChild::Note(_)));
+        assert!(matches!(layer.children[1], LayerChild::Chord(_)));
+        assert!(matches!(layer.children[2], LayerChild::Note(_)));
     }
 
     // ============================================================================
