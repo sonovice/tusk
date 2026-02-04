@@ -1410,7 +1410,7 @@ pub use att_instr_def_vis::AttInstrDefVis;
 mod att_amb_note_anl;
 pub use att_amb_note_anl::AttAmbNoteAnl;
 mod att_accid_log;
-pub use att_accid_log::AttAccidLog;
+pub use att_accid_log::{AttAccidLog, AttAccidLogFunc};
 mod att_harp_pedal_vis;
 pub use att_harp_pedal_vis::AttHarpPedalVis;
 mod att_verse_ges;

@@ -23,16 +23,20 @@
 
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::error::ConversionResult;
-use tusk_model::att::{AttMeiVersionMeiversion, AttStaffGrpVisSymbol};
+use tusk_model::att::{AttAccidLogFunc, AttMeiVersionMeiversion, AttStaffGrpVisSymbol};
 use tusk_model::data::{
-    DataBoolean, DataClefline, DataClefshape, DataMeasurementunsigned, DataWord,
+    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
+    DataAccidentalWrittenBasic, DataAugmentdot, DataBoolean, DataClefline, DataClefshape,
+    DataDuration, DataDurationCmn, DataGrace, DataMeasurementunsigned, DataOctave, DataPitchname,
+    DataStemdirection, DataStemdirectionBasic, DataWord,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Label, LabelAbbr, LabelAbbrChild, LabelChild, Mdiv, MdivChild, Mei, MeiChild,
-    MeiHead, MeiHeadChild, Music, Score, ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild,
-    StaffGrp, StaffGrpChild,
+    Accid, Body, BodyChild, Label, LabelAbbr, LabelAbbrChild, LabelChild, LayerChild, Mdiv,
+    MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, NoteChild, Score, ScoreChild, ScoreDef,
+    Section, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
 };
 use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
+use tusk_musicxml::model::note::{AccidentalValue, FullNoteContent, NoteTypeValue, StemValue};
 
 /// Convert a MusicXML score-partwise document to MEI.
 ///
@@ -642,11 +646,12 @@ pub fn convert_staff(
 
 /// Convert MusicXML measure content to MEI layer.
 pub fn convert_layer(
-    _measure: &tusk_musicxml::model::elements::Measure,
+    measure: &tusk_musicxml::model::elements::Measure,
     layer_number: u32,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Layer> {
     use tusk_model::elements::Layer;
+    use tusk_musicxml::model::elements::MeasureContent;
 
     let mut layer = Layer::default();
     // Set layer number using n_integer.n (u64)
@@ -655,12 +660,329 @@ pub fn convert_layer(
     ctx.set_layer(layer_number);
     ctx.reset_beat_position();
 
-    // Note: Actual note/rest/chord conversion will be in subsequent tasks:
-    // - "Convert MusicXML note to MEI note"
-    // - "Convert MusicXML rest to MEI rest"
-    // etc.
+    // Process measure content
+    for content in &measure.content {
+        match content {
+            MeasureContent::Note(note) => {
+                // Skip chord notes for now (they'll be handled in chord conversion)
+                // and skip rests (handled in a separate task)
+                if note.is_chord() {
+                    continue;
+                }
+                if note.is_rest() {
+                    // Rest conversion will be in a subsequent task
+                    continue;
+                }
+
+                // Convert the note
+                let mei_note = convert_note(note, ctx)?;
+                layer.children.push(LayerChild::Note(Box::new(mei_note)));
+
+                // Advance beat position if not a grace note
+                if !note.is_grace()
+                    && let Some(duration) = note.duration
+                {
+                    ctx.advance_beat_position(duration);
+                }
+            }
+            MeasureContent::Attributes(attrs) => {
+                // Update divisions from attributes
+                if let Some(divs) = attrs.divisions {
+                    ctx.set_divisions(divs);
+                }
+                // Key signature and time signature will be handled in later tasks
+            }
+            MeasureContent::Backup(backup) => {
+                // Move beat position backward
+                ctx.advance_beat_position(-backup.duration);
+            }
+            MeasureContent::Forward(forward) => {
+                // Move beat position forward
+                ctx.advance_beat_position(forward.duration);
+            }
+            // Other content types will be handled in subsequent tasks
+            _ => {}
+        }
+    }
 
     Ok(layer)
+}
+
+/// Convert a MusicXML note to MEI note.
+///
+/// This function handles the conversion of a pitched MusicXML note to MEI,
+/// including:
+/// - Pitch (step, octave, alter)
+/// - Duration (note type and dots)
+/// - Accidentals (written accidentals)
+/// - Grace notes
+/// - Stem direction
+///
+/// # Arguments
+///
+/// * `note` - The MusicXML note to convert
+/// * `ctx` - The conversion context for tracking state
+///
+/// # Returns
+///
+/// An MEI Note element, or an error if conversion fails.
+pub fn convert_note(
+    note: &tusk_musicxml::model::note::Note,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<tusk_model::elements::Note> {
+    use tusk_model::elements::Note as MeiNote;
+
+    let mut mei_note = MeiNote::default();
+
+    // Generate and set xml:id
+    let note_id = ctx.generate_id_with_suffix("note");
+    mei_note.common.xml_id = Some(note_id.clone());
+
+    // Map original ID if present
+    if let Some(ref orig_id) = note.id {
+        ctx.map_id(orig_id, note_id);
+    }
+
+    // Convert pitch (for pitched notes)
+    if let FullNoteContent::Pitch(ref pitch) = note.content {
+        // Convert pitch name (step)
+        mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
+
+        // Convert octave
+        mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
+
+        // Store gestural accidental (@accid.ges) for sounding pitch
+        // This represents the actual sounding pitch after key signature and accidentals
+        if let Some(alter) = pitch.alter {
+            mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
+        }
+    }
+
+    // Convert duration
+    convert_note_duration(note, &mut mei_note, ctx);
+
+    // Convert grace note
+    if note.is_grace()
+        && let Some(ref grace) = note.grace
+    {
+        mei_note.note_log.grace = Some(convert_grace(grace));
+    }
+
+    // Convert written accidental (if present)
+    if let Some(ref accidental) = note.accidental {
+        let accid = convert_accidental(accidental, ctx)?;
+        mei_note.children.push(NoteChild::Accid(Box::new(accid)));
+    }
+
+    // Convert stem direction (if present)
+    if let Some(ref stem) = note.stem {
+        mei_note.note_vis.stem_dir = Some(convert_stem_direction(stem.value));
+    }
+
+    // Convert cue note
+    if note.is_cue() {
+        mei_note.note_log.cue = Some(DataBoolean::True);
+    }
+
+    Ok(mei_note)
+}
+
+/// Convert MusicXML Step to MEI DataPitchname.
+fn convert_pitch_name(step: tusk_musicxml::model::data::Step) -> DataPitchname {
+    use tusk_musicxml::model::data::Step;
+
+    let name = match step {
+        Step::A => "a",
+        Step::B => "b",
+        Step::C => "c",
+        Step::D => "d",
+        Step::E => "e",
+        Step::F => "f",
+        Step::G => "g",
+    };
+    DataPitchname::from(name.to_string())
+}
+
+/// Convert MusicXML alter value to MEI gestural accidental.
+fn convert_alter_to_gestural_accid(alter: f64) -> DataAccidentalGestural {
+    // Map common alterations to gestural accidentals
+    match alter as i32 {
+        -2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ff),
+        -1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::F),
+        0 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N),
+        1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::S),
+        2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ss), // Double sharp
+        _ => {
+            // For microtones or other alterations, use natural as fallback
+            DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N)
+        }
+    }
+}
+
+/// Convert note duration information from MusicXML to MEI.
+fn convert_note_duration(
+    note: &tusk_musicxml::model::note::Note,
+    mei_note: &mut tusk_model::elements::Note,
+    ctx: &ConversionContext,
+) {
+    // Convert note type to MEI duration
+    if let Some(ref note_type) = note.note_type {
+        mei_note.note_log.dur = Some(convert_note_type_to_duration(note_type.value));
+    } else if let Some(duration) = note.duration {
+        // Try to infer note type from duration value
+        if let Some((inferred_type, _dots)) = ctx.duration_context().infer_note_type(duration) {
+            mei_note.note_log.dur = Some(convert_note_type_to_duration(inferred_type));
+        }
+    }
+
+    // Convert dots
+    let dot_count = note.dots.len() as u64;
+    if dot_count > 0 {
+        mei_note.note_log.dots = Some(DataAugmentdot::from(dot_count));
+    }
+
+    // Store gestural duration in ppq (divisions) for MIDI/playback
+    if let Some(duration) = note.duration {
+        mei_note.note_ges.dur_ppq = Some(duration as u64);
+    }
+}
+
+/// Convert MusicXML NoteTypeValue to MEI DataDuration.
+fn convert_note_type_to_duration(note_type: NoteTypeValue) -> DataDuration {
+    let dur = match note_type {
+        NoteTypeValue::Maxima => DataDurationCmn::Long, // MEI doesn't have maxima, use long
+        NoteTypeValue::Long => DataDurationCmn::Long,
+        NoteTypeValue::Breve => DataDurationCmn::Breve,
+        NoteTypeValue::Whole => DataDurationCmn::N1,
+        NoteTypeValue::Half => DataDurationCmn::N2,
+        NoteTypeValue::Quarter => DataDurationCmn::N4,
+        NoteTypeValue::Eighth => DataDurationCmn::N8,
+        NoteTypeValue::N16th => DataDurationCmn::N16,
+        NoteTypeValue::N32nd => DataDurationCmn::N32,
+        NoteTypeValue::N64th => DataDurationCmn::N64,
+        NoteTypeValue::N128th => DataDurationCmn::N128,
+        NoteTypeValue::N256th => DataDurationCmn::N256,
+        NoteTypeValue::N512th => DataDurationCmn::N512,
+        NoteTypeValue::N1024th => DataDurationCmn::N1024,
+    };
+    DataDuration::DataDurationCmn(dur)
+}
+
+/// Convert MusicXML grace note to MEI grace attribute.
+fn convert_grace(grace: &tusk_musicxml::model::note::Grace) -> DataGrace {
+    use tusk_musicxml::model::data::YesNo;
+
+    // MusicXML grace/@slash="yes" → MEI @grace="unacc" (unaccented/slashed)
+    // MusicXML grace/@slash="no" or absent → MEI @grace="acc" (accented/no slash)
+    match grace.slash {
+        Some(YesNo::Yes) => DataGrace::Unacc,
+        _ => DataGrace::Acc,
+    }
+}
+
+/// Convert MusicXML accidental to MEI accid element.
+fn convert_accidental(
+    accidental: &tusk_musicxml::model::note::Accidental,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Accid> {
+    use tusk_musicxml::model::data::YesNo;
+
+    let mut accid = Accid::default();
+
+    // Generate ID
+    let accid_id = ctx.generate_id_with_suffix("accid");
+    accid.common.xml_id = Some(accid_id);
+
+    // Convert accidental value
+    accid.accid_log.accid = Some(convert_accidental_value(accidental.value));
+
+    // Convert cautionary flag
+    if let Some(YesNo::Yes) = accidental.cautionary {
+        accid.accid_log.func = Some(AttAccidLogFunc::Caution);
+    }
+
+    // Convert editorial flag
+    if let Some(YesNo::Yes) = accidental.editorial {
+        accid.accid_log.func = Some(AttAccidLogFunc::Edit);
+    }
+
+    // Convert parentheses/bracket enclosure
+    if let Some(YesNo::Yes) = accidental.parentheses {
+        accid.accid_vis.enclose = Some(tusk_model::data::DataEnclosure::Paren);
+    } else if let Some(YesNo::Yes) = accidental.bracket {
+        accid.accid_vis.enclose = Some(tusk_model::data::DataEnclosure::Brack);
+    }
+
+    Ok(accid)
+}
+
+/// Convert MusicXML AccidentalValue to MEI DataAccidentalWritten.
+fn convert_accidental_value(value: AccidentalValue) -> DataAccidentalWritten {
+    let basic = match value {
+        AccidentalValue::Sharp => DataAccidentalWrittenBasic::S,
+        AccidentalValue::Natural => DataAccidentalWrittenBasic::N,
+        AccidentalValue::Flat => DataAccidentalWrittenBasic::F,
+        AccidentalValue::DoubleSharp | AccidentalValue::SharpSharp => DataAccidentalWrittenBasic::X,
+        AccidentalValue::FlatFlat => DataAccidentalWrittenBasic::Ff,
+        AccidentalValue::NaturalSharp => DataAccidentalWrittenBasic::Ns,
+        AccidentalValue::NaturalFlat => DataAccidentalWrittenBasic::Nf,
+        AccidentalValue::TripleSharp => DataAccidentalWrittenBasic::Ts,
+        AccidentalValue::TripleFlat => DataAccidentalWrittenBasic::Tf,
+        // For extended accidentals (quarter tones, etc.), use the closest basic equivalent
+        AccidentalValue::QuarterFlat => DataAccidentalWrittenBasic::F,
+        AccidentalValue::QuarterSharp => DataAccidentalWrittenBasic::S,
+        AccidentalValue::ThreeQuartersFlat => DataAccidentalWrittenBasic::Ff,
+        AccidentalValue::ThreeQuartersSharp => DataAccidentalWrittenBasic::Ss,
+        // Arrow variants map to basic equivalents
+        AccidentalValue::SharpDown | AccidentalValue::SharpUp => DataAccidentalWrittenBasic::S,
+        AccidentalValue::NaturalDown | AccidentalValue::NaturalUp => DataAccidentalWrittenBasic::N,
+        AccidentalValue::FlatDown | AccidentalValue::FlatUp => DataAccidentalWrittenBasic::F,
+        AccidentalValue::DoubleSharpDown | AccidentalValue::DoubleSharpUp => {
+            DataAccidentalWrittenBasic::X
+        }
+        AccidentalValue::FlatFlatDown | AccidentalValue::FlatFlatUp => {
+            DataAccidentalWrittenBasic::Ff
+        }
+        AccidentalValue::ArrowDown | AccidentalValue::ArrowUp => DataAccidentalWrittenBasic::N,
+        // Slash variants
+        AccidentalValue::SlashQuarterSharp | AccidentalValue::SlashSharp => {
+            DataAccidentalWrittenBasic::S
+        }
+        AccidentalValue::SlashFlat | AccidentalValue::DoubleSlashFlat => {
+            DataAccidentalWrittenBasic::F
+        }
+        // Numbered sharps/flats (Stein-Zimmermann notation)
+        AccidentalValue::Sharp1
+        | AccidentalValue::Sharp2
+        | AccidentalValue::Sharp3
+        | AccidentalValue::Sharp5 => DataAccidentalWrittenBasic::S,
+        AccidentalValue::Flat1
+        | AccidentalValue::Flat2
+        | AccidentalValue::Flat3
+        | AccidentalValue::Flat4 => DataAccidentalWrittenBasic::F,
+        // Persian accidentals
+        AccidentalValue::Sori => DataAccidentalWrittenBasic::S, // Quarter-tone sharp
+        AccidentalValue::Koron => DataAccidentalWrittenBasic::F, // Quarter-tone flat
+        // Other
+        AccidentalValue::Other => DataAccidentalWrittenBasic::N,
+    };
+    DataAccidentalWritten::DataAccidentalWrittenBasic(basic)
+}
+
+/// Convert MusicXML StemValue to MEI DataStemdirection.
+fn convert_stem_direction(stem: StemValue) -> DataStemdirection {
+    match stem {
+        StemValue::Up => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up),
+        StemValue::Down => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Down),
+        StemValue::Double => {
+            // MEI doesn't have double, default to up
+            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
+        }
+        StemValue::None => {
+            // No stem, but still need a direction value
+            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1731,6 +2053,586 @@ mod tests {
         // After conversion, context should track last processed position
         assert_eq!(ctx.position().part_id.as_deref(), Some("P1"));
         assert_eq!(ctx.position().measure_number.as_deref(), Some("5"));
+    }
+
+    // ============================================================================
+    // Note Conversion Tests
+    // ============================================================================
+
+    #[test]
+    fn convert_note_sets_pitch_name() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "c");
+    }
+
+    #[test]
+    fn convert_note_sets_octave() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::new(Step::G, 5), 4.0);
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.oct.as_ref().unwrap().0, 5);
+    }
+
+    #[test]
+    fn convert_note_with_sharp_alter() {
+        use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::with_alter(Step::F, 1.0, 4), 4.0);
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "f");
+        assert_eq!(
+            mei_note.note_ges.accid_ges,
+            Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+                DataAccidentalGesturalBasic::S
+            ))
+        );
+    }
+
+    #[test]
+    fn convert_note_with_flat_alter() {
+        use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::with_alter(Step::B, -1.0, 4), 4.0);
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "b");
+        assert_eq!(
+            mei_note.note_ges.accid_ges,
+            Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+                DataAccidentalGesturalBasic::F
+            ))
+        );
+    }
+
+    #[test]
+    fn convert_note_with_duration() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(
+            mei_note.note_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn convert_note_with_dots() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Dot, Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::D, 4), 6.0);
+        note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        note.dots.push(Dot::default()); // One dot
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(
+            mei_note.note_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+        assert_eq!(mei_note.note_log.dots.as_ref().unwrap().0, 1);
+    }
+
+    #[test]
+    fn convert_note_infers_duration_from_divisions() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        // No note_type, but duration is set
+        let note = Note::pitched(Pitch::new(Step::A, 4), 4.0);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0); // 4 divisions = quarter note
+
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        // Should infer quarter note from duration=4 with divisions=4
+        assert_eq!(
+            mei_note.note_log.dur,
+            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+        );
+    }
+
+    #[test]
+    fn convert_note_stores_gestural_duration() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::new(Step::C, 4), 96.0);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        // Should store duration in ppq
+        assert_eq!(mei_note.note_ges.dur_ppq, Some(96));
+    }
+
+    #[test]
+    fn convert_grace_note_unaccented() {
+        use tusk_musicxml::model::data::{Step, YesNo};
+        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+
+        let mut grace = Grace::default();
+        grace.slash = Some(YesNo::Yes); // Slashed grace note
+
+        let note = Note::grace_note(Pitch::new(Step::D, 5), grace);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.grace, Some(DataGrace::Unacc));
+    }
+
+    #[test]
+    fn convert_grace_note_accented() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Grace, Note, Pitch};
+
+        // No slash = accented grace note
+        let note = Note::grace_note(Pitch::new(Step::E, 4), Grace::default());
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.grace, Some(DataGrace::Acc));
+    }
+
+    #[test]
+    fn convert_note_with_written_accidental_sharp() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::with_alter(Step::F, 1.0, 4), 4.0);
+        note.accidental = Some(Accidental::new(AccidentalValue::Sharp));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        // Should have an accid child
+        let accid_child = mei_note
+            .children
+            .iter()
+            .find(|c| matches!(c, NoteChild::Accid(_)));
+        assert!(accid_child.is_some());
+
+        if let Some(NoteChild::Accid(accid)) = accid_child {
+            assert_eq!(
+                accid.accid_log.accid,
+                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+                    DataAccidentalWrittenBasic::S
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn convert_note_with_written_accidental_flat() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::with_alter(Step::B, -1.0, 4), 4.0);
+        note.accidental = Some(Accidental::new(AccidentalValue::Flat));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        let accid_child = mei_note
+            .children
+            .iter()
+            .find(|c| matches!(c, NoteChild::Accid(_)));
+        assert!(accid_child.is_some());
+
+        if let Some(NoteChild::Accid(accid)) = accid_child {
+            assert_eq!(
+                accid.accid_log.accid,
+                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+                    DataAccidentalWrittenBasic::F
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn convert_note_with_cautionary_accidental() {
+        use tusk_musicxml::model::data::{Step, YesNo};
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        let mut accidental = Accidental::new(AccidentalValue::Natural);
+        accidental.cautionary = Some(YesNo::Yes);
+        note.accidental = Some(accidental);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
+            assert_eq!(accid.accid_log.func, Some(AttAccidLogFunc::Caution));
+        } else {
+            panic!("Expected accid child");
+        }
+    }
+
+    #[test]
+    fn convert_note_with_editorial_accidental() {
+        use tusk_musicxml::model::data::{Step, YesNo};
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::G, 4), 4.0);
+        let mut accidental = Accidental::new(AccidentalValue::Sharp);
+        accidental.editorial = Some(YesNo::Yes);
+        note.accidental = Some(accidental);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
+            assert_eq!(accid.accid_log.func, Some(AttAccidLogFunc::Edit));
+        } else {
+            panic!("Expected accid child");
+        }
+    }
+
+    #[test]
+    fn convert_note_with_parentheses_accidental() {
+        use tusk_musicxml::model::data::{Step, YesNo};
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::A, 4), 4.0);
+        let mut accidental = Accidental::new(AccidentalValue::Natural);
+        accidental.parentheses = Some(YesNo::Yes);
+        note.accidental = Some(accidental);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
+            assert_eq!(
+                accid.accid_vis.enclose,
+                Some(tusk_model::data::DataEnclosure::Paren)
+            );
+        } else {
+            panic!("Expected accid child");
+        }
+    }
+
+    #[test]
+    fn convert_note_with_stem_up() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch, Stem, StemValue};
+
+        let mut note = Note::pitched(Pitch::new(Step::E, 4), 4.0);
+        note.stem = Some(Stem::new(StemValue::Up));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(
+            mei_note.note_vis.stem_dir,
+            Some(DataStemdirection::DataStemdirectionBasic(
+                DataStemdirectionBasic::Up
+            ))
+        );
+    }
+
+    #[test]
+    fn convert_note_with_stem_down() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch, Stem, StemValue};
+
+        let mut note = Note::pitched(Pitch::new(Step::A, 5), 4.0);
+        note.stem = Some(Stem::new(StemValue::Down));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(
+            mei_note.note_vis.stem_dir,
+            Some(DataStemdirection::DataStemdirectionBasic(
+                DataStemdirectionBasic::Down
+            ))
+        );
+    }
+
+    #[test]
+    fn convert_cue_note() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::Empty;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::C, 5), 4.0);
+        note.cue = Some(Empty);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert_eq!(mei_note.note_log.cue, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn convert_note_generates_xml_id() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let note = Note::pitched(Pitch::new(Step::D, 4), 4.0);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        assert!(mei_note.common.xml_id.is_some());
+        assert!(mei_note.common.xml_id.as_ref().unwrap().contains("note"));
+    }
+
+    #[test]
+    fn convert_note_maps_original_id() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::new(Step::F, 4), 4.0);
+        note.id = Some("original-note-id".to_string());
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        // Should map the original ID to the MEI ID
+        let mei_id = ctx.get_mei_id("original-note-id");
+        assert!(mei_id.is_some());
+        assert_eq!(mei_id, mei_note.common.xml_id.as_deref());
+    }
+
+    #[test]
+    fn convert_note_all_pitch_names() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, Pitch};
+
+        let steps = [
+            (Step::A, "a"),
+            (Step::B, "b"),
+            (Step::C, "c"),
+            (Step::D, "d"),
+            (Step::E, "e"),
+            (Step::F, "f"),
+            (Step::G, "g"),
+        ];
+
+        for (step, expected) in steps {
+            let note = Note::pitched(Pitch::new(step, 4), 4.0);
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+            assert_eq!(
+                mei_note.note_log.pname.as_ref().unwrap().0,
+                expected,
+                "Failed for step {:?}",
+                step
+            );
+        }
+    }
+
+    #[test]
+    fn convert_note_various_durations() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let durations = [
+            (NoteTypeValue::Whole, DataDurationCmn::N1),
+            (NoteTypeValue::Half, DataDurationCmn::N2),
+            (NoteTypeValue::Quarter, DataDurationCmn::N4),
+            (NoteTypeValue::Eighth, DataDurationCmn::N8),
+            (NoteTypeValue::N16th, DataDurationCmn::N16),
+            (NoteTypeValue::N32nd, DataDurationCmn::N32),
+            (NoteTypeValue::N64th, DataDurationCmn::N64),
+        ];
+
+        for (mxml_dur, mei_dur) in durations {
+            let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+            note.note_type = Some(NoteType::new(mxml_dur));
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+            assert_eq!(
+                mei_note.note_log.dur,
+                Some(DataDuration::DataDurationCmn(mei_dur)),
+                "Failed for duration {:?}",
+                mxml_dur
+            );
+        }
+    }
+
+    #[test]
+    fn convert_note_double_sharp_accidental() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::with_alter(Step::F, 2.0, 4), 4.0);
+        note.accidental = Some(Accidental::new(AccidentalValue::DoubleSharp));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
+            assert_eq!(
+                accid.accid_log.accid,
+                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+                    DataAccidentalWrittenBasic::X
+                ))
+            );
+        } else {
+            panic!("Expected accid child");
+        }
+    }
+
+    #[test]
+    fn convert_note_double_flat_accidental() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::note::{Accidental, AccidentalValue, Note, Pitch};
+
+        let mut note = Note::pitched(Pitch::with_alter(Step::B, -2.0, 4), 4.0);
+        note.accidental = Some(Accidental::new(AccidentalValue::FlatFlat));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
+
+        if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
+            assert_eq!(
+                accid.accid_log.accid,
+                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+                    DataAccidentalWrittenBasic::Ff
+                ))
+            );
+        } else {
+            panic!("Expected accid child");
+        }
+    }
+
+    // ============================================================================
+    // Layer with Notes Tests
+    // ============================================================================
+
+    #[test]
+    fn convert_layer_with_notes_creates_note_children() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Add a note
+        let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Layer should have one note child
+        assert_eq!(layer.children.len(), 1);
+        assert!(matches!(&layer.children[0], LayerChild::Note(_)));
+    }
+
+    #[test]
+    fn convert_layer_advances_beat_position() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Add two quarter notes
+        let mut note1 = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note1.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note1)));
+
+        let mut note2 = Note::pitched(Pitch::new(Step::D, 4), 4.0);
+        note2.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note2)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Beat position should be 8 (two quarter notes with divisions=4)
+        assert_eq!(ctx.beat_position(), 8.0);
+    }
+
+    #[test]
+    fn convert_layer_handles_backup() {
+        use tusk_musicxml::model::data::Step;
+        use tusk_musicxml::model::elements::{Measure, MeasureContent};
+        use tusk_musicxml::model::note::{Backup, Note, NoteType, NoteTypeValue, Pitch};
+
+        let mut measure = Measure::new("1");
+
+        // Add a quarter note, then backup
+        let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
+        note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
+        measure.content.push(MeasureContent::Note(Box::new(note)));
+
+        measure
+            .content
+            .push(MeasureContent::Backup(Box::new(Backup::new(4.0))));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0);
+
+        let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Beat position should be 0 after backup
+        assert_eq!(ctx.beat_position(), 0.0);
+    }
+
+    #[test]
+    fn convert_layer_updates_divisions_from_attributes() {
+        use tusk_musicxml::model::attributes::Attributes;
+        use tusk_musicxml::model::elements::{Measure, MeasureContent};
+
+        let mut measure = Measure::new("1");
+
+        // Add attributes with new divisions
+        let mut attrs = Attributes::default();
+        attrs.divisions = Some(96.0);
+        measure
+            .content
+            .push(MeasureContent::Attributes(Box::new(attrs)));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        ctx.set_divisions(4.0); // Initial divisions
+
+        let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+        // Divisions should be updated
+        assert_eq!(ctx.divisions(), 96.0);
     }
 
     // ============================================================================
