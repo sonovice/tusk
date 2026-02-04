@@ -27,13 +27,17 @@ use tusk_model::att::{AttAccidLogFunc, AttMeiVersionMeiversion, AttStaffGrpVisSy
 use tusk_model::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
     DataAccidentalWrittenBasic, DataAugmentdot, DataBoolean, DataClefline, DataClefshape,
-    DataDuration, DataDurationCmn, DataGrace, DataMeasurementunsigned, DataOctave, DataPitchname,
-    DataStemdirection, DataStemdirectionBasic, DataWord,
+    DataDuration, DataDurationCmn, DataGrace, DataKeyfifths, DataMeasurementunsigned,
+    DataMetersign, DataOctave, DataOctaveDis, DataPitchname, DataStaffrelBasic, DataStemdirection,
+    DataStemdirectionBasic, DataWord,
 };
 use tusk_model::elements::{
     Accid, Body, BodyChild, Chord, ChordChild, Label, LabelAbbr, LabelAbbrChild, LabelChild,
     LayerChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, NoteChild, Score,
     ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+};
+use tusk_musicxml::model::attributes::{
+    Clef, ClefSign, Key, KeyContent, Mode, Time, TimeContent, TimeSymbol,
 };
 use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 use tusk_musicxml::model::note::{AccidentalValue, FullNoteContent, NoteTypeValue, StemValue};
@@ -282,7 +286,14 @@ pub fn convert_staff_grp(
     for item in &score.part_list.items {
         match item {
             PartListItem::ScorePart(score_part) => {
-                let staff_def = convert_staff_def_from_score_part(score_part, staff_number, ctx)?;
+                // Extract initial attributes from the first measure of this part
+                let initial_attrs = extract_first_measure_attributes(score, &score_part.id);
+                let staff_def = convert_staff_def_from_score_part(
+                    score_part,
+                    staff_number,
+                    initial_attrs,
+                    ctx,
+                )?;
 
                 // Add to innermost open group, or root if none
                 if let Some((_, grp)) = group_stack.last_mut() {
@@ -421,6 +432,31 @@ fn convert_group_barline(barline: tusk_musicxml::model::elements::GroupBarline) 
     }
 }
 
+/// Extract the first Attributes element from a MusicXML part's first measure.
+///
+/// This is used to initialize the staffDef with correct key/time/clef from the score.
+fn extract_first_measure_attributes<'a>(
+    score: &'a ScorePartwise,
+    part_id: &str,
+) -> Option<&'a tusk_musicxml::model::attributes::Attributes> {
+    use tusk_musicxml::model::elements::MeasureContent;
+
+    // Find the part by ID
+    let part = score.parts.iter().find(|p| p.id == part_id)?;
+
+    // Get first measure
+    let first_measure = part.measures.first()?;
+
+    // Find first Attributes element
+    for content in &first_measure.content {
+        if let MeasureContent::Attributes(attrs) = content {
+            return Some(attrs.as_ref());
+        }
+    }
+
+    None
+}
+
 /// Convert a MusicXML ScorePart to MEI staffDef with full metadata.
 ///
 /// Maps:
@@ -428,9 +464,11 @@ fn convert_group_barline(barline: tusk_musicxml::model::elements::GroupBarline) 
 /// - part-abbreviation → `<labelAbbr>` child
 /// - Staff number → `@n`
 /// - Default clef and lines
+/// - Initial key/time/clef from first measure attributes
 fn convert_staff_def_from_score_part(
     score_part: &ScorePart,
     staff_number: u32,
+    initial_attrs: Option<&tusk_musicxml::model::attributes::Attributes>,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<StaffDef> {
     let mut staff_def = StaffDef::default();
@@ -442,9 +480,54 @@ fn convert_staff_def_from_score_part(
     staff_def.staff_def_log.lines = Some(5);
 
     // Default clef (G clef on line 2 = treble clef)
-    // These will be overridden when we process attributes in the first measure
+    // These may be overridden below if initial attributes specify a different clef
     staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
     staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
+
+    // Apply initial attributes from the first measure (key, time, clef)
+    if let Some(attrs) = initial_attrs {
+        // Process divisions to set context state
+        if let Some(divs) = attrs.divisions {
+            ctx.set_divisions(divs);
+        }
+
+        // Apply key signature
+        if let Some(key) = attrs.keys.first() {
+            convert_key_to_context(key, ctx);
+            if let KeyContent::Traditional(trad) = &key.content {
+                let keysig = convert_key_fifths(trad.fifths);
+                staff_def.staff_def_log.keysig = vec![keysig];
+            }
+        }
+
+        // Apply time signature
+        if let Some(time) = attrs.times.first() {
+            let (count, unit, sym) = convert_time_signature(time);
+            staff_def.staff_def_log.meter_count = count;
+            staff_def.staff_def_log.meter_unit = unit;
+            staff_def.staff_def_log.meter_sym = sym;
+        }
+
+        // Apply clef (overrides default)
+        // Look for clef matching this staff number, or first clef if no staff number specified
+        let clef = attrs
+            .clefs
+            .iter()
+            .find(|c| c.number.is_none_or(|n| n == staff_number))
+            .or_else(|| attrs.clefs.first());
+
+        if let Some(clef) = clef {
+            let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
+            if let Some(s) = shape {
+                staff_def.staff_def_log.clef_shape = Some(s);
+            }
+            if let Some(l) = line {
+                staff_def.staff_def_log.clef_line = Some(l);
+            }
+            staff_def.staff_def_log.clef_dis = dis;
+            staff_def.staff_def_log.clef_dis_place = dis_place;
+        }
+    }
 
     // Generate an ID for the staffDef
     let staff_def_id = ctx.generate_id_with_suffix("staffdef");
@@ -750,11 +833,11 @@ pub fn convert_layer(
                 }
             }
             MeasureContent::Attributes(attrs) => {
-                // Update divisions from attributes
-                if let Some(divs) = attrs.divisions {
-                    ctx.set_divisions(divs);
-                }
-                // Key signature and time signature will be handled in later tasks
+                // Process attributes: divisions, key signature, time signature, clef
+                // Note: For now, we only update the context state.
+                // The initial staffDef is updated separately in convert_score_def.
+                // Mid-measure changes would need staffDef change elements (future work).
+                process_attributes(attrs, ctx, None);
             }
             MeasureContent::Backup(backup) => {
                 // Move beat position backward
@@ -1265,6 +1348,202 @@ pub fn convert_chord(
     Ok(mei_chord)
 }
 
+// ============================================================================
+// Attributes Conversion (Key, Time, Clef)
+// ============================================================================
+
+/// Convert MusicXML key fifths to MEI keysig data type.
+///
+/// MusicXML uses `<fifths>` with integer values (-7 to 7).
+/// MEI uses `@keysig` with format: "0" for no accidentals, "Ns" for N sharps, "Nf" for N flats.
+///
+/// # Examples
+/// - 0 → "0" (C major / A minor)
+/// - 2 → "2s" (D major / B minor)
+/// - -3 → "3f" (Eb major / C minor)
+pub fn convert_key_fifths(fifths: i8) -> DataKeyfifths {
+    if fifths == 0 {
+        DataKeyfifths("0".to_string())
+    } else if fifths > 0 {
+        DataKeyfifths(format!("{}s", fifths))
+    } else {
+        DataKeyfifths(format!("{}f", -fifths))
+    }
+}
+
+/// Convert MusicXML key signature to update the conversion context.
+///
+/// This updates the context's key signature state for accidental tracking.
+/// The key signature affects how accidentals are determined for subsequent notes.
+pub fn convert_key_to_context(key: &Key, ctx: &mut ConversionContext) {
+    if let KeyContent::Traditional(trad) = &key.content {
+        let mode_str = trad.mode.as_ref().map(|m| match m {
+            Mode::Major => "major".to_string(),
+            Mode::Minor => "minor".to_string(),
+            Mode::Dorian => "dorian".to_string(),
+            Mode::Phrygian => "phrygian".to_string(),
+            Mode::Lydian => "lydian".to_string(),
+            Mode::Mixolydian => "mixolydian".to_string(),
+            Mode::Aeolian => "aeolian".to_string(),
+            Mode::Ionian => "ionian".to_string(),
+            Mode::Locrian => "locrian".to_string(),
+            Mode::None => "none".to_string(),
+            Mode::Other(s) => s.clone(),
+        });
+        ctx.set_key_signature(trad.fifths, mode_str);
+    }
+}
+
+/// Convert MusicXML time signature to MEI meter attributes.
+///
+/// Returns (meter_count, meter_unit, meter_sym):
+/// - meter_count: The top number (beats per measure), may contain expressions like "3+2"
+/// - meter_unit: The bottom number (beat unit) as f64
+/// - meter_sym: Optional meter symbol (common time, cut time)
+///
+/// # Examples
+/// - Time::new("4", "4") → (Some("4"), Some(4.0), None)
+/// - Time::common() → (Some("4"), Some(4.0), Some(DataMetersign::Common))
+/// - Time::cut() → (Some("2"), Some(2.0), Some(DataMetersign::Cut))
+pub fn convert_time_signature(time: &Time) -> (Option<String>, Option<f64>, Option<DataMetersign>) {
+    let meter_sym = time.symbol.as_ref().and_then(|s| match s {
+        TimeSymbol::Common => Some(DataMetersign::Common),
+        TimeSymbol::Cut => Some(DataMetersign::Cut),
+        // Other symbols don't have direct MEI equivalents - map to None
+        _ => None,
+    });
+
+    match &time.content {
+        TimeContent::Standard(std) => {
+            if let Some(sig) = std.signatures.first() {
+                let count = Some(sig.beats.clone());
+                let unit = sig.beat_type.parse::<f64>().ok();
+                (count, unit, meter_sym)
+            } else {
+                (None, None, meter_sym)
+            }
+        }
+        TimeContent::SenzaMisura(_) => {
+            // Senza misura: no meter
+            (None, None, Some(DataMetersign::Open))
+        }
+    }
+}
+
+/// Convert MusicXML clef to MEI clef attributes.
+///
+/// Returns (clef_shape, clef_line, clef_dis, clef_dis_place):
+/// - clef_shape: The clef symbol (G, F, C, perc, TAB)
+/// - clef_line: The staff line (1-based from bottom)
+/// - clef_dis: Octave displacement amount (8, 15, 22) if transposing clef
+/// - clef_dis_place: Direction of displacement (above, below)
+///
+/// # Examples
+/// - Clef::treble() → (G, 2, None, None)
+/// - Clef::bass() → (F, 4, None, None)
+/// - Clef::treble_8vb() → (G, 2, Some(8), Some(below))
+pub fn convert_clef_attributes(
+    clef: &Clef,
+) -> (
+    Option<DataClefshape>,
+    Option<DataClefline>,
+    Option<DataOctaveDis>,
+    Option<DataStaffrelBasic>,
+) {
+    let shape = Some(match clef.sign {
+        ClefSign::G => DataClefshape::G,
+        ClefSign::F => DataClefshape::F,
+        ClefSign::C => DataClefshape::C,
+        ClefSign::Percussion => DataClefshape::Perc,
+        ClefSign::Tab => DataClefshape::Tab,
+        ClefSign::Jianpu => DataClefshape::G, // No direct equivalent, default to G
+        ClefSign::None => return (None, None, None, None),
+    });
+
+    let line = clef.line.map(|l| DataClefline(l as u64));
+
+    // Handle octave displacement
+    let (dis, dis_place) = match clef.clef_octave_change {
+        Some(change) if change != 0 => {
+            let amount = change.unsigned_abs() as u64;
+            // MEI uses 8, 15, 22 for 1, 2, 3 octaves
+            let dis_value = amount * 7 + 1; // 1→8, 2→15, 3→22
+            let dis = Some(DataOctaveDis(dis_value));
+            let place = if change > 0 {
+                Some(DataStaffrelBasic::Above)
+            } else {
+                Some(DataStaffrelBasic::Below)
+            };
+            (dis, place)
+        }
+        _ => (None, None),
+    };
+
+    (shape, line, dis, dis_place)
+}
+
+/// Process MusicXML attributes element and update context and optional staffDef.
+///
+/// This function handles:
+/// - divisions: Updates the duration context
+/// - keys: Updates context key signature and optionally staffDef keysig
+/// - times: Optionally updates staffDef meter attributes
+/// - clefs: Optionally updates staffDef clef attributes
+///
+/// # Arguments
+/// * `attrs` - The MusicXML attributes to process
+/// * `ctx` - The conversion context to update
+/// * `staff_def` - Optional StaffDef to update with the attributes
+pub fn process_attributes(
+    attrs: &tusk_musicxml::model::attributes::Attributes,
+    ctx: &mut ConversionContext,
+    mut staff_def: Option<&mut StaffDef>,
+) {
+    // Update divisions
+    if let Some(divs) = attrs.divisions {
+        ctx.set_divisions(divs);
+    }
+
+    // Process key signatures
+    for key in &attrs.keys {
+        // Update context state
+        convert_key_to_context(key, ctx);
+
+        // Update staffDef if provided
+        if let Some(sd) = staff_def.as_deref_mut()
+            && let KeyContent::Traditional(trad) = &key.content
+        {
+            let keysig = convert_key_fifths(trad.fifths);
+            sd.staff_def_log.keysig = vec![keysig];
+        }
+    }
+
+    // Process time signatures
+    for time in &attrs.times {
+        if let Some(sd) = staff_def.as_deref_mut() {
+            let (count, unit, sym) = convert_time_signature(time);
+            sd.staff_def_log.meter_count = count;
+            sd.staff_def_log.meter_unit = unit;
+            sd.staff_def_log.meter_sym = sym;
+        }
+    }
+
+    // Process clefs
+    for clef in &attrs.clefs {
+        if let Some(sd) = staff_def.as_deref_mut() {
+            let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
+            if shape.is_some() {
+                sd.staff_def_log.clef_shape = shape;
+            }
+            if line.is_some() {
+                sd.staff_def_log.clef_line = line;
+            }
+            sd.staff_def_log.clef_dis = dis;
+            sd.staff_def_log.clef_dis_place = dis_place;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1514,8 +1793,8 @@ mod tests {
     fn convert_staff_def_from_score_part_includes_label() {
         let score_part = make_score_part("P1", "Violin I");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def =
-            convert_staff_def_from_score_part(&score_part, 1, &mut ctx).expect("should succeed");
+        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
+            .expect("should succeed");
 
         // Should have a label child with the part name
         let label = staff_def.children.iter().find_map(|c| {
@@ -1548,8 +1827,8 @@ mod tests {
         });
 
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def =
-            convert_staff_def_from_score_part(&score_part, 1, &mut ctx).expect("should succeed");
+        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
+            .expect("should succeed");
 
         // Should have a labelAbbr child
         let label_abbr = staff_def.children.iter().find_map(|c| {
@@ -3542,5 +3821,393 @@ mod tests {
             }
         }
         None
+    }
+
+    // ============================================================================
+    // Attributes Conversion Tests
+    // ============================================================================
+
+    mod attributes_conversion {
+        use super::*;
+        use tusk_model::data::{DataClefline, DataClefshape, DataKeyfifths, DataMetersign};
+        use tusk_musicxml::model::attributes::{
+            Attributes, Clef, ClefSign, Key, KeyContent, Mode, Time, TimeContent, TimeSymbol,
+            TraditionalKey,
+        };
+        use tusk_musicxml::model::elements::MeasureContent;
+
+        // ====================================================================
+        // Key Signature Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_key_fifths_c_major() {
+            // C major = 0 fifths
+            let keysig = convert_key_fifths(0);
+            assert_eq!(keysig.0, "0");
+        }
+
+        #[test]
+        fn convert_key_fifths_g_major() {
+            // G major = 1 sharp
+            let keysig = convert_key_fifths(1);
+            assert_eq!(keysig.0, "1s");
+        }
+
+        #[test]
+        fn convert_key_fifths_d_major() {
+            // D major = 2 sharps
+            let keysig = convert_key_fifths(2);
+            assert_eq!(keysig.0, "2s");
+        }
+
+        #[test]
+        fn convert_key_fifths_f_major() {
+            // F major = 1 flat
+            let keysig = convert_key_fifths(-1);
+            assert_eq!(keysig.0, "1f");
+        }
+
+        #[test]
+        fn convert_key_fifths_bb_major() {
+            // Bb major = 2 flats
+            let keysig = convert_key_fifths(-2);
+            assert_eq!(keysig.0, "2f");
+        }
+
+        #[test]
+        fn convert_key_fifths_all_sharps() {
+            // Test all sharp keys up to 7
+            for i in 1..=7 {
+                let keysig = convert_key_fifths(i);
+                assert_eq!(keysig.0, format!("{}s", i));
+            }
+        }
+
+        #[test]
+        fn convert_key_fifths_all_flats() {
+            // Test all flat keys up to 7
+            for i in 1..=7 {
+                let keysig = convert_key_fifths(-i);
+                assert_eq!(keysig.0, format!("{}f", i));
+            }
+        }
+
+        #[test]
+        fn convert_key_sets_context_state() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let key = Key::traditional(2, Some(Mode::Major));
+            convert_key_to_context(&key, &mut ctx);
+
+            assert_eq!(ctx.key_fifths(), 2);
+            assert_eq!(ctx.key_mode(), Some("major"));
+        }
+
+        #[test]
+        fn convert_key_minor_mode() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let key = Key::traditional(-3, Some(Mode::Minor));
+            convert_key_to_context(&key, &mut ctx);
+
+            assert_eq!(ctx.key_fifths(), -3);
+            assert_eq!(ctx.key_mode(), Some("minor"));
+        }
+
+        // ====================================================================
+        // Time Signature Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_time_4_4() {
+            let time = Time::new("4", "4");
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("4".to_string()));
+            assert_eq!(unit, Some(4.0));
+            assert!(sym.is_none()); // No symbol for standard 4/4
+        }
+
+        #[test]
+        fn convert_time_3_4() {
+            let time = Time::new("3", "4");
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("3".to_string()));
+            assert_eq!(unit, Some(4.0));
+        }
+
+        #[test]
+        fn convert_time_6_8() {
+            let time = Time::new("6", "8");
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("6".to_string()));
+            assert_eq!(unit, Some(8.0));
+        }
+
+        #[test]
+        fn convert_time_common() {
+            let time = Time::common();
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("4".to_string()));
+            assert_eq!(unit, Some(4.0));
+            assert_eq!(sym, Some(DataMetersign::Common));
+        }
+
+        #[test]
+        fn convert_time_cut() {
+            let time = Time::cut();
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("2".to_string()));
+            assert_eq!(unit, Some(2.0));
+            assert_eq!(sym, Some(DataMetersign::Cut));
+        }
+
+        #[test]
+        fn convert_time_compound_meter() {
+            // Compound time signature like 3+2/8
+            let time = Time::compound("3+2", "8");
+            let (count, unit, sym) = convert_time_signature(&time);
+
+            assert_eq!(count, Some("3+2".to_string()));
+            assert_eq!(unit, Some(8.0));
+        }
+
+        // ====================================================================
+        // Clef Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_clef_treble() {
+            let clef = Clef::treble();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::G));
+            assert_eq!(line, Some(DataClefline(2)));
+            assert!(dis.is_none());
+            assert!(dis_place.is_none());
+        }
+
+        #[test]
+        fn convert_clef_bass() {
+            let clef = Clef::bass();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::F));
+            assert_eq!(line, Some(DataClefline(4)));
+        }
+
+        #[test]
+        fn convert_clef_alto() {
+            let clef = Clef::alto();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::C));
+            assert_eq!(line, Some(DataClefline(3)));
+        }
+
+        #[test]
+        fn convert_clef_tenor() {
+            let clef = Clef::tenor();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::C));
+            assert_eq!(line, Some(DataClefline(4)));
+        }
+
+        #[test]
+        fn convert_clef_treble_8va() {
+            let clef = Clef::treble_8va();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::G));
+            assert_eq!(line, Some(DataClefline(2)));
+            assert_eq!(dis, Some(tusk_model::data::DataOctaveDis(8)));
+            assert_eq!(dis_place, Some(tusk_model::data::DataStaffrelBasic::Above));
+        }
+
+        #[test]
+        fn convert_clef_treble_8vb() {
+            let clef = Clef::treble_8vb();
+            let (shape, line, dis, dis_place) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::G));
+            assert_eq!(line, Some(DataClefline(2)));
+            assert_eq!(dis, Some(tusk_model::data::DataOctaveDis(8)));
+            assert_eq!(dis_place, Some(tusk_model::data::DataStaffrelBasic::Below));
+        }
+
+        #[test]
+        fn convert_clef_percussion() {
+            let clef = Clef::percussion();
+            let (shape, line, _, _) = convert_clef_attributes(&clef);
+
+            assert_eq!(shape, Some(DataClefshape::Perc));
+            // Percussion clef typically doesn't have a line
+        }
+
+        // ====================================================================
+        // ====================================================================
+        // StaffDef with Initial Attributes Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_staff_def_with_initial_key_signature() {
+            let score_part = make_score_part("P1", "Piano");
+
+            // Create attributes with D major key signature (2 sharps)
+            let attrs = Attributes {
+                divisions: Some(4.0),
+                keys: vec![Key::traditional(2, Some(Mode::Major))],
+                ..Default::default()
+            };
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let staff_def =
+                convert_staff_def_from_score_part(&score_part, 1, Some(&attrs), &mut ctx)
+                    .expect("should succeed");
+
+            // staffDef should have keysig="2s" (2 sharps)
+            assert_eq!(staff_def.staff_def_log.keysig.len(), 1);
+            assert_eq!(staff_def.staff_def_log.keysig[0].0, "2s");
+        }
+
+        #[test]
+        fn convert_staff_def_with_initial_time_signature() {
+            let score_part = make_score_part("P1", "Piano");
+
+            // Create attributes with 3/4 time signature
+            let attrs = Attributes {
+                divisions: Some(4.0),
+                times: vec![Time::new("3", "4")],
+                ..Default::default()
+            };
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let staff_def =
+                convert_staff_def_from_score_part(&score_part, 1, Some(&attrs), &mut ctx)
+                    .expect("should succeed");
+
+            assert_eq!(staff_def.staff_def_log.meter_count, Some("3".to_string()));
+            assert_eq!(staff_def.staff_def_log.meter_unit, Some(4.0));
+        }
+
+        #[test]
+        fn convert_staff_def_with_initial_clef() {
+            let score_part = make_score_part("P1", "Cello");
+
+            // Create attributes with bass clef
+            let attrs = Attributes {
+                divisions: Some(4.0),
+                clefs: vec![Clef::bass()],
+                ..Default::default()
+            };
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let staff_def =
+                convert_staff_def_from_score_part(&score_part, 1, Some(&attrs), &mut ctx)
+                    .expect("should succeed");
+
+            assert_eq!(staff_def.staff_def_log.clef_shape, Some(DataClefshape::F));
+            assert_eq!(staff_def.staff_def_log.clef_line, Some(DataClefline(4)));
+        }
+
+        #[test]
+        fn convert_staff_def_with_full_attributes() {
+            let score_part = make_score_part("P1", "Violin");
+
+            // Create attributes with G major (1 sharp), common time, treble clef
+            let attrs = Attributes {
+                divisions: Some(4.0),
+                keys: vec![Key::traditional(1, Some(Mode::Major))],
+                times: vec![Time::common()],
+                clefs: vec![Clef::treble()],
+                ..Default::default()
+            };
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let staff_def =
+                convert_staff_def_from_score_part(&score_part, 1, Some(&attrs), &mut ctx)
+                    .expect("should succeed");
+
+            // Key signature
+            assert_eq!(staff_def.staff_def_log.keysig.len(), 1);
+            assert_eq!(staff_def.staff_def_log.keysig[0].0, "1s");
+
+            // Time signature (common time)
+            assert_eq!(staff_def.staff_def_log.meter_count, Some("4".to_string()));
+            assert_eq!(staff_def.staff_def_log.meter_unit, Some(4.0));
+            assert_eq!(
+                staff_def.staff_def_log.meter_sym,
+                Some(DataMetersign::Common)
+            );
+
+            // Clef
+            assert_eq!(staff_def.staff_def_log.clef_shape, Some(DataClefshape::G));
+            assert_eq!(staff_def.staff_def_log.clef_line, Some(DataClefline(2)));
+        }
+
+        // ====================================================================
+        // Attributes in Layer Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_layer_updates_context_with_key_signature() {
+            let mut measure = tusk_musicxml::model::elements::Measure::new("1");
+
+            // Add attributes with key signature
+            let attrs = Attributes {
+                divisions: Some(4.0),
+                keys: vec![Key::traditional(2, Some(Mode::Major))],
+                ..Default::default()
+            };
+            measure
+                .content
+                .push(MeasureContent::Attributes(Box::new(attrs)));
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+            // Key signature should be updated in context
+            assert_eq!(ctx.key_fifths(), 2);
+            assert_eq!(ctx.key_mode(), Some("major"));
+        }
+
+        #[test]
+        fn convert_layer_handles_multiple_attributes() {
+            let mut measure = tusk_musicxml::model::elements::Measure::new("1");
+
+            // Add initial attributes
+            let attrs1 = Attributes {
+                divisions: Some(4.0),
+                keys: vec![Key::traditional(0, Some(Mode::Major))],
+                ..Default::default()
+            };
+            measure
+                .content
+                .push(MeasureContent::Attributes(Box::new(attrs1)));
+
+            // Add mid-measure key change (rare but valid)
+            let attrs2 = Attributes {
+                keys: vec![Key::traditional(3, Some(Mode::Minor))],
+                ..Default::default()
+            };
+            measure
+                .content
+                .push(MeasureContent::Attributes(Box::new(attrs2)));
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let _layer = convert_layer(&measure, 1, &mut ctx).expect("conversion should succeed");
+
+            // Context should have the latest key signature
+            assert_eq!(ctx.key_fifths(), 3);
+            assert_eq!(ctx.key_mode(), Some("minor"));
+        }
     }
 }
