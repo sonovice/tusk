@@ -12,43 +12,44 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttAccidental, AttArticAnl, AttArticGes,
     AttArticLog, AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog,
-    AttBeamVis, AttBibl, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon,
-    AttComponentType, AttDataPointing, AttDatable, AttDirAnl, AttDirGes, AttDirLog, AttDirVis,
-    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
-    AttDynamLog, AttDynamVis, AttEdit, AttEvidence, AttFacsimile, AttFermataAnl, AttFermataGes,
-    AttFermataLog, AttFermataVis, AttFiling, AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes,
-    AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis,
-    AttInternetMedia, AttKeyMode, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
-    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
-    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing,
-    AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog,
-    AttNoteVis, AttPitch, AttPointing, AttQuantity, AttRecordType, AttResponsibility, AttRestAnl,
-    AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
-    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
-    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
-    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
-    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
-    AttWhitespace, AttXy,
+    AttBeamVis, AttBibl, AttCalendared, AttChordAnl, AttChordGes, AttChordLog, AttChordVis,
+    AttClassed, AttCommon, AttComponentType, AttDataPointing, AttDatable, AttDirAnl, AttDirGes,
+    AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality,
+    AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEdit, AttEvidence, AttFacsimile,
+    AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttFiling, AttFoliationScheme,
+    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes,
+    AttHairpinLog, AttHairpinVis, AttInternetMedia, AttKeyMode, AttLabelled, AttLang, AttLayerAnl,
+    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog,
+    AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
+    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMensurLog, AttMensurVis,
+    AttMetadataPointing, AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttNoteAnl,
+    AttNoteGes, AttNoteLog, AttNoteVis, AttPitch, AttPointing, AttQuantity, AttRecordType,
+    AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl,
+    AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog,
+    AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes,
+    AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog,
+    AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
+    AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis,
+    AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog,
+    AttTupletVis, AttTyped, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
     Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Audience, Availability,
-    Beam, BeamChild, Bibl, BiblList, BiblListChild, BiblStruct, Chord, ChordChild, Classification,
-    ClassificationChild, Clef, ComponentList, ComponentListChild, Contents, ContentsChild, Context,
-    Contributor, ContributorChild, Correction, CorrectionChild, Creation, CreationChild, Creator,
-    CreatorChild, Date, Dedication, Dir, Distributor, Dot, Dynam, Editor, EditorChild,
-    EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, Expression,
-    ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta, Extent, Fermata, FileDesc,
-    FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, History,
-    HistoryChild, Identifier, Incip, IncipChild, InstrDef, Interpretation, InterpretationChild,
-    Key, Label, LangUsage, LangUsageChild, Language, Layer, LayerChild, LayerDef, LayerDefChild,
-    Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Mensuration,
-    Meter, Name, NameChild, Normalization, NormalizationChild, Note, NoteChild, NotesStmt,
-    NotesStmtChild, OtherChar, P, PChild, PerfDuration, PerfMedium, PerfMediumChild, ProjectDesc,
-    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RelationList,
-    RelationListChild, RespStmt, Rest, RestChild, SamplingDecl, SamplingDeclChild, ScoreDef,
+    Beam, BeamChild, Bibl, BiblList, BiblListChild, BiblStruct, Change, ChangeChild, ChangeDesc,
+    ChangeDescChild, Chord, ChordChild, Classification, ClassificationChild, Clef, ComponentList,
+    ComponentListChild, Contents, ContentsChild, Context, Contributor, ContributorChild,
+    Correction, CorrectionChild, Creation, CreationChild, Creator, CreatorChild, Date, Dedication,
+    Dir, Distributor, Dot, Dynam, Editor, EditorChild, EditorialDecl, EditorialDeclChild,
+    EncodingDesc, EncodingDescChild, Expression, ExpressionChild, ExpressionList,
+    ExpressionListChild, ExtMeta, Extent, Fermata, FileDesc, FileDescChild, Funder, FunderChild,
+    GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, History, HistoryChild, Identifier, Incip,
+    IncipChild, InstrDef, Interpretation, InterpretationChild, Key, Label, LangUsage,
+    LangUsageChild, Language, Layer, LayerChild, LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv,
+    MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Mensuration, Meter, Name, NameChild,
+    Normalization, NormalizationChild, Note, NoteChild, NotesStmt, NotesStmtChild, OtherChar, P,
+    PChild, PerfDuration, PerfMedium, PerfMediumChild, ProjectDesc, ProjectDescChild, Ptr,
+    PubPlace, PubStmt, PubStmtChild, Publisher, RelationList, RelationListChild, RespStmt, Rest,
+    RestChild, RevisionDesc, RevisionDescChild, SamplingDecl, SamplingDeclChild, ScoreDef,
     ScoreDefChild, ScoreFormat, Section, SectionChild, Segmentation, SegmentationChild, Slur,
     Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff,
     StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, StdVals, StdValsChild, Tempo,
@@ -174,6 +175,13 @@ impl ExtractAttributes for AttAuthorized {
         extract_attr!(attrs, "codedval", vec_string self.codedval);
         extract_attr!(attrs, "auth", string self.auth);
         extract_attr!(attrs, "auth.uri", self.auth_uri);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttCalendared {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "calendar", string self.calendar);
         Ok(())
     }
 }
@@ -2960,7 +2968,14 @@ impl MeiDeserialize for MeiHead {
                             .children
                             .push(MeiHeadChild::WorkList(Box::new(work_list)));
                     }
-                    // Other child elements (manifestationList, revisionDesc, etc.) are not
+                    "revisionDesc" => {
+                        let revision_desc =
+                            parse_revision_desc_from_event(reader, child_attrs, child_empty)?;
+                        mei_head
+                            .children
+                            .push(MeiHeadChild::RevisionDesc(Box::new(revision_desc)));
+                    }
+                    // Other child elements (manifestationList, etc.) are not
                     // yet implemented for parsing. Skip them in lenient mode.
                     _ => {
                         if !child_empty {
@@ -4196,6 +4211,9 @@ fn parse_date_from_event<R: BufRead>(
     // Extract attributes
     date.common.extract_attributes(&mut attrs)?;
     date.bibl.extract_attributes(&mut attrs)?;
+    date.calendared.extract_attributes(&mut attrs)?;
+    date.datable.extract_attributes(&mut attrs)?;
+    date.edit.extract_attributes(&mut attrs)?;
     date.facsimile.extract_attributes(&mut attrs)?;
     date.lang.extract_attributes(&mut attrs)?;
 
@@ -6975,6 +6993,192 @@ fn parse_work_from_event<R: BufRead>(
     }
 
     Ok(work)
+}
+
+// ============================================================================
+// RevisionDesc element implementation
+// ============================================================================
+
+impl MeiDeserialize for RevisionDesc {
+    fn element_name() -> &'static str {
+        "revisionDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_revision_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<revisionDesc>` element from within another element.
+fn parse_revision_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<RevisionDesc> {
+    let mut revision_desc = RevisionDesc::default();
+
+    // Extract attributes
+    revision_desc.common.extract_attributes(&mut attrs)?;
+    revision_desc.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // revisionDesc can contain: head*, change+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("revisionDesc")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    revision_desc
+                        .children
+                        .push(RevisionDescChild::Head(Box::new(head)));
+                }
+                "change" => {
+                    let change = parse_change_from_event(reader, child_attrs, child_empty)?;
+                    revision_desc
+                        .children
+                        .push(RevisionDescChild::Change(Box::new(change)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(revision_desc)
+}
+
+// ============================================================================
+// Change element implementation
+// ============================================================================
+
+impl MeiDeserialize for Change {
+    fn element_name() -> &'static str {
+        "change"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_change_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<change>` element from within another element.
+fn parse_change_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Change> {
+    let mut change = Change::default();
+
+    // Extract attributes
+    change.common.extract_attributes(&mut attrs)?;
+    change.bibl.extract_attributes(&mut attrs)?;
+    change.datable.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // change can contain: date*, changeDesc*, respStmt*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("change")? {
+            match name.as_str() {
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    change.children.push(ChangeChild::Date(Box::new(date)));
+                }
+                "changeDesc" => {
+                    let change_desc =
+                        parse_change_desc_from_event(reader, child_attrs, child_empty)?;
+                    change
+                        .children
+                        .push(ChangeChild::ChangeDesc(Box::new(change_desc)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    change
+                        .children
+                        .push(ChangeChild::RespStmt(Box::new(resp_stmt)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(change)
+}
+
+// ============================================================================
+// ChangeDesc element implementation
+// ============================================================================
+
+impl MeiDeserialize for ChangeDesc {
+    fn element_name() -> &'static str {
+        "changeDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_change_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<changeDesc>` element from within another element.
+fn parse_change_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ChangeDesc> {
+    let mut change_desc = ChangeDesc::default();
+
+    // Extract attributes
+    change_desc.common.extract_attributes(&mut attrs)?;
+    change_desc.bibl.extract_attributes(&mut attrs)?;
+    change_desc.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // changeDesc can contain: p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("changeDesc")?
+        {
+            match name.as_str() {
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    change_desc.children.push(ChangeDescChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(change_desc)
 }
 
 #[cfg(test)]
@@ -10046,18 +10250,20 @@ mod tests {
         use tusk_model::elements::MeiHead;
 
         // Unknown child elements should be skipped in lenient mode.
-        // Use revisionDesc (not yet implemented) to test this.
+        // Use manifestationList (not yet implemented) to test this.
         let xml = r#"<meiHead xml:id="h1">
-            <revisionDesc>
-                <change>
-                    <desc>First revision</desc>
-                </change>
-            </revisionDesc>
+            <manifestationList>
+                <manifestation>
+                    <titleStmt>
+                        <title>Test</title>
+                    </titleStmt>
+                </manifestation>
+            </manifestationList>
         </meiHead>"#;
         let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize in lenient mode");
 
         assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
-        // revisionDesc is not yet parsed, so the list should be empty
+        // manifestationList is not yet parsed, so the list should be empty
         assert!(mei_head.children.is_empty());
     }
 
@@ -12867,5 +13073,363 @@ mod tests {
                 .iter()
                 .any(|c| matches!(c, WorkChild::ExtMeta(_)))
         );
+    }
+
+    // ========== RevisionDesc tests ==========
+
+    #[test]
+    fn revision_desc_deserializes_empty_element() {
+        use tusk_model::elements::RevisionDesc;
+
+        let xml = r#"<revisionDesc/>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert!(revision_desc.common.xml_id.is_none());
+        assert!(revision_desc.children.is_empty());
+    }
+
+    #[test]
+    fn revision_desc_deserializes_xml_id() {
+        use tusk_model::elements::RevisionDesc;
+
+        let xml = r#"<revisionDesc xml:id="rd1"/>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.common.xml_id, Some("rd1".to_string()));
+    }
+
+    #[test]
+    fn revision_desc_deserializes_bibl_attributes() {
+        use tusk_model::elements::RevisionDesc;
+
+        let xml = r#"<revisionDesc analog="MARC21"/>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.bibl.analog, Some("MARC21".to_string()));
+    }
+
+    #[test]
+    fn revision_desc_deserializes_with_single_change() {
+        use tusk_model::elements::{RevisionDesc, RevisionDescChild};
+
+        let xml = r#"<revisionDesc>
+            <change xml:id="ch1"/>
+        </revisionDesc>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.children.len(), 1);
+        match &revision_desc.children[0] {
+            RevisionDescChild::Change(ch) => {
+                assert_eq!(ch.common.xml_id, Some("ch1".to_string()));
+            }
+            _ => panic!("expected Change child"),
+        }
+    }
+
+    #[test]
+    fn revision_desc_deserializes_with_multiple_changes() {
+        use tusk_model::elements::{RevisionDesc, RevisionDescChild};
+
+        let xml = r#"<revisionDesc>
+            <change xml:id="ch1" n="1"/>
+            <change xml:id="ch2" n="2"/>
+            <change xml:id="ch3" n="3"/>
+        </revisionDesc>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.children.len(), 3);
+        for (i, child) in revision_desc.children.iter().enumerate() {
+            match child {
+                RevisionDescChild::Change(ch) => {
+                    assert_eq!(ch.common.xml_id, Some(format!("ch{}", i + 1)));
+                }
+                _ => panic!("expected Change child at index {}", i),
+            }
+        }
+    }
+
+    #[test]
+    fn revision_desc_deserializes_with_head() {
+        use tusk_model::elements::{RevisionDesc, RevisionDescChild};
+
+        let xml = r#"<revisionDesc>
+            <head>Revision History</head>
+            <change xml:id="ch1"/>
+        </revisionDesc>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.children.len(), 2);
+        assert!(matches!(
+            &revision_desc.children[0],
+            RevisionDescChild::Head(_)
+        ));
+        assert!(matches!(
+            &revision_desc.children[1],
+            RevisionDescChild::Change(_)
+        ));
+    }
+
+    #[test]
+    fn change_deserializes_empty_element() {
+        use tusk_model::elements::Change;
+
+        let xml = r#"<change/>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert!(change.common.xml_id.is_none());
+        assert!(change.children.is_empty());
+    }
+
+    #[test]
+    fn change_deserializes_xml_id() {
+        use tusk_model::elements::Change;
+
+        let xml = r#"<change xml:id="ch1"/>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change.common.xml_id, Some("ch1".to_string()));
+    }
+
+    #[test]
+    fn change_deserializes_isodate_attribute() {
+        use tusk_model::data::DataIsodate;
+        use tusk_model::elements::Change;
+
+        let xml = r#"<change isodate="2011-10-21"/>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            change.datable.isodate,
+            Some(DataIsodate("2011-10-21".to_string()))
+        );
+    }
+
+    #[test]
+    fn change_deserializes_n_attribute() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::Change;
+
+        let xml = r#"<change n="3"/>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change.common.n, Some(DataWord("3".to_string())));
+    }
+
+    #[test]
+    fn change_deserializes_with_date_child() {
+        use tusk_model::data::DataIsodate;
+        use tusk_model::elements::{Change, ChangeChild};
+
+        let xml = r#"<change>
+            <date isodate="2011-12-01"/>
+        </change>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change.children.len(), 1);
+        match &change.children[0] {
+            ChangeChild::Date(date) => {
+                assert_eq!(
+                    date.datable.isodate,
+                    Some(DataIsodate("2011-12-01".to_string()))
+                );
+            }
+            _ => panic!("expected Date child"),
+        }
+    }
+
+    #[test]
+    fn change_deserializes_with_resp_stmt_child() {
+        use tusk_model::elements::{Change, ChangeChild};
+
+        let xml = r#"<change>
+            <respStmt xml:id="rs1"/>
+        </change>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change.children.len(), 1);
+        match &change.children[0] {
+            ChangeChild::RespStmt(rs) => {
+                assert_eq!(rs.common.xml_id, Some("rs1".to_string()));
+            }
+            _ => panic!("expected RespStmt child"),
+        }
+    }
+
+    #[test]
+    fn change_deserializes_with_change_desc_child() {
+        use tusk_model::elements::{Change, ChangeChild};
+
+        let xml = r#"<change>
+            <changeDesc xml:id="cd1"/>
+        </change>"#;
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change.children.len(), 1);
+        match &change.children[0] {
+            ChangeChild::ChangeDesc(cd) => {
+                assert_eq!(cd.common.xml_id, Some("cd1".to_string()));
+            }
+            _ => panic!("expected ChangeDesc child"),
+        }
+    }
+
+    #[test]
+    fn change_desc_deserializes_empty_element() {
+        use tusk_model::elements::ChangeDesc;
+
+        let xml = r#"<changeDesc/>"#;
+        let change_desc = ChangeDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert!(change_desc.common.xml_id.is_none());
+        assert!(change_desc.children.is_empty());
+    }
+
+    #[test]
+    fn change_desc_deserializes_xml_id() {
+        use tusk_model::elements::ChangeDesc;
+
+        let xml = r#"<changeDesc xml:id="cd1"/>"#;
+        let change_desc = ChangeDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change_desc.common.xml_id, Some("cd1".to_string()));
+    }
+
+    #[test]
+    fn change_desc_deserializes_with_p_child() {
+        use tusk_model::elements::{ChangeDesc, ChangeDescChild};
+
+        let xml = r#"<changeDesc>
+            <p>Cleaned up MEI file automatically using Header.xsl.</p>
+        </changeDesc>"#;
+        let change_desc = ChangeDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(change_desc.children.len(), 1);
+        assert!(matches!(&change_desc.children[0], ChangeDescChild::P(_)));
+    }
+
+    #[test]
+    fn revision_desc_deserializes_full_example() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::{ChangeChild, RevisionDesc, RevisionDescChild};
+
+        // Based on header-sample076.txt from MEI spec examples
+        let xml = r#"<revisionDesc>
+            <change n="4">
+                <respStmt>
+                    <persName>KR</persName>
+                </respStmt>
+                <changeDesc>
+                    <p>Cleaned up MEI file automatically using Header.xsl.</p>
+                </changeDesc>
+                <date isodate="2011-12-01"/>
+            </change>
+            <change n="3">
+                <respStmt>
+                    <persName>KR</persName>
+                </respStmt>
+                <changeDesc>
+                    <p>Cleaned up MEI file automatically using ppq.xsl.</p>
+                </changeDesc>
+                <date isodate="2011-10-21"/>
+            </change>
+        </revisionDesc>"#;
+        let revision_desc = RevisionDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(revision_desc.children.len(), 2);
+
+        // First change
+        match &revision_desc.children[0] {
+            RevisionDescChild::Change(ch) => {
+                assert_eq!(ch.common.n, Some(DataWord("4".to_string())));
+                assert_eq!(ch.children.len(), 3);
+                assert!(
+                    ch.children
+                        .iter()
+                        .any(|c| matches!(c, ChangeChild::RespStmt(_)))
+                );
+                assert!(
+                    ch.children
+                        .iter()
+                        .any(|c| matches!(c, ChangeChild::ChangeDesc(_)))
+                );
+                assert!(
+                    ch.children
+                        .iter()
+                        .any(|c| matches!(c, ChangeChild::Date(_)))
+                );
+            }
+            _ => panic!("expected Change child"),
+        }
+
+        // Second change
+        match &revision_desc.children[1] {
+            RevisionDescChild::Change(ch) => {
+                assert_eq!(ch.common.n, Some(DataWord("3".to_string())));
+            }
+            _ => panic!("expected Change child"),
+        }
+    }
+
+    #[test]
+    fn change_deserializes_with_isodate_and_resp_on_element() {
+        use tusk_model::data::{DataIsodate, DataWord};
+        use tusk_model::elements::Change;
+
+        // Based on header-sample077.txt - shorter form with attributes on change itself
+        let xml = "<change isodate=\"2011-10-21\" n=\"3\" resp=\"#KR #MH\"/>";
+        let change = Change::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            change.datable.isodate,
+            Some(DataIsodate("2011-10-21".to_string()))
+        );
+        assert_eq!(change.common.n, Some(DataWord("3".to_string())));
+        // resp is on common attribute class
+    }
+
+    #[test]
+    fn mei_head_deserializes_with_revision_desc() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <revisionDesc xml:id="rd1">
+                <change n="1">
+                    <changeDesc>
+                        <p>Initial encoding.</p>
+                    </changeDesc>
+                </change>
+            </revisionDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.basic.xml_id, Some("h1".to_string()));
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::RevisionDesc(rd) => {
+                assert_eq!(rd.common.xml_id, Some("rd1".to_string()));
+                assert_eq!(rd.children.len(), 1);
+            }
+            _ => panic!("expected RevisionDesc child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_deserializes_with_file_desc_and_revision_desc() {
+        use tusk_model::elements::{MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead>
+            <fileDesc xml:id="fd1"/>
+            <revisionDesc xml:id="rd1">
+                <change/>
+            </revisionDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.children.len(), 2);
+        assert!(matches!(&mei_head.children[0], MeiHeadChild::FileDesc(_)));
+        assert!(matches!(
+            &mei_head.children[1],
+            MeiHeadChild::RevisionDesc(_)
+        ));
     }
 }

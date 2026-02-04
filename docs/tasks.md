@@ -110,7 +110,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Implement MEI parsing for `<expressionList>` element
 
 ### 3.4 Revision Description
-- [ ] Implement MEI parsing for `<revisionDesc>` element
+- [x] Implement MEI parsing for `<revisionDesc>` element
 - [ ] Implement MEI parsing for `<change>` element
 
 ### 3.5 Header Serialization
