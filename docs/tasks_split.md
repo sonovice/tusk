@@ -77,9 +77,9 @@ Target: `crates/formats/musicxml/src/model/direction.rs` → split into `directi
 ### 6.2 Data Types (2,048 lines)
 Target: `crates/formats/musicxml/src/model/data.rs` → split into `data/` submodules
 
-- [ ] Extract pitch/duration data types → `data/pitch.rs`
-- [ ] Extract notation data types → `data/notation.rs`
-- [ ] Extract formatting data types → `data/formatting.rs`
+- [x] Extract pitch/duration data types → `data/pitch.rs`
+- [x] Extract notation data types → `data/notation.rs`
+- [x] Extract formatting data types → `data/formatting.rs`
 
 ### 6.3 Element Types (1,748 lines)
 Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements/` submodules
