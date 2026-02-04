@@ -23,13 +23,14 @@
 
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::error::ConversionResult;
-use tusk_model::att::AttMeiVersionMeiversion;
-use tusk_model::data::{DataClefline, DataClefshape, DataWord};
+use tusk_model::att::{AttMeiVersionMeiversion, AttStaffGrpVisSymbol};
+use tusk_model::data::{DataBoolean, DataClefline, DataClefshape, DataWord};
 use tusk_model::elements::{
-    Body, BodyChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, Score,
-    ScoreChild, ScoreDef, Section, StaffDef, StaffGrp, StaffGrpChild,
+    Body, BodyChild, Label, LabelAbbr, LabelAbbrChild, LabelChild, Mdiv, MdivChild, Mei, MeiChild,
+    MeiHead, MeiHeadChild, Music, Score, ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild,
+    StaffGrp, StaffGrpChild,
 };
-use tusk_musicxml::model::elements::{PartListItem, ScorePartwise};
+use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 
 /// Convert a MusicXML score-partwise document to MEI.
 ///
@@ -252,38 +253,231 @@ pub fn convert_score_def(
 }
 
 /// Convert MusicXML part-list to MEI staffGrp.
+///
+/// MusicXML part-list can contain:
+/// - `<score-part>` elements defining individual parts → converted to `<staffDef>`
+/// - `<part-group type="start/stop">` elements grouping parts → converted to nested `<staffGrp>`
+///
+/// The conversion handles nested groups by tracking open groups on a stack. When a group
+/// starts, we create a new `<staffGrp>` and push it; subsequent parts/groups go into this
+/// group until we see the matching stop marker.
 pub fn convert_staff_grp(
     score: &ScorePartwise,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<StaffGrp> {
-    let mut staff_grp = StaffGrp::default();
+    let mut root_grp = StaffGrp::default();
 
-    // Each score-part in part-list becomes a staffDef
+    // Track open groups: (group_number, StaffGrp)
+    // We build groups as we encounter them and nest them properly
+    let mut group_stack: Vec<(String, StaffGrp)> = vec![];
+
     let mut staff_number = 1u32;
 
     for item in &score.part_list.items {
         match item {
             PartListItem::ScorePart(score_part) => {
-                let staff_def = convert_staff_def(&score_part.id, staff_number, ctx)?;
-                staff_grp
-                    .children
-                    .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                let staff_def = convert_staff_def_from_score_part(score_part, staff_number, ctx)?;
+
+                // Add to innermost open group, or root if none
+                if let Some((_, grp)) = group_stack.last_mut() {
+                    grp.children
+                        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                } else {
+                    root_grp
+                        .children
+                        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                }
 
                 // Map part ID to staff number
                 ctx.map_id(&score_part.id, format!("staff-{}", staff_number));
                 staff_number += 1;
             }
-            PartListItem::PartGroup(_) => {
-                // Part groups create nested staffGrp - handle in future task
-                // For now, skip part groups
+            PartListItem::PartGroup(part_group) => {
+                let group_number = part_group.number.clone().unwrap_or_else(|| "1".to_string());
+
+                match part_group.group_type {
+                    tusk_musicxml::model::data::StartStop::Start => {
+                        // Start a new group
+                        let new_grp = convert_staff_grp_from_part_group(part_group, ctx)?;
+                        group_stack.push((group_number, new_grp));
+                    }
+                    tusk_musicxml::model::data::StartStop::Stop => {
+                        // Find and close the matching group
+                        if let Some(idx) = group_stack
+                            .iter()
+                            .rposition(|(num, _)| num == &group_number)
+                        {
+                            let (_, completed_grp) = group_stack.remove(idx);
+
+                            // Add completed group to parent (or root)
+                            if let Some((_, parent_grp)) = group_stack.last_mut() {
+                                parent_grp
+                                    .children
+                                    .push(StaffGrpChild::StaffGrp(Box::new(completed_grp)));
+                            } else {
+                                root_grp
+                                    .children
+                                    .push(StaffGrpChild::StaffGrp(Box::new(completed_grp)));
+                            }
+                        }
+                        // If no matching start, ignore the stop marker
+                    }
+                }
             }
         }
+    }
+
+    // Handle any unclosed groups (malformed input) - add them to root
+    while let Some((_, unclosed_grp)) = group_stack.pop() {
+        root_grp
+            .children
+            .push(StaffGrpChild::StaffGrp(Box::new(unclosed_grp)));
+    }
+
+    Ok(root_grp)
+}
+
+/// Convert MusicXML part-group (start) to MEI staffGrp attributes.
+///
+/// Maps:
+/// - `group-symbol` (brace, bracket, line, square, none) → `@symbol`
+/// - `group-barline` (yes/no/Mensurstrich) → `@bar.thru`
+/// - `group-name` → `<label>` child
+/// - `group-abbreviation` → `<labelAbbr>` child
+fn convert_staff_grp_from_part_group(
+    part_group: &PartGroup,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<StaffGrp> {
+    let mut staff_grp = StaffGrp::default();
+
+    // Generate ID for the staffGrp
+    let grp_id = ctx.generate_id_with_suffix("staffgrp");
+    staff_grp.common.xml_id = Some(grp_id);
+
+    // Convert group symbol
+    if let Some(ref symbol_value) = part_group.group_symbol {
+        staff_grp.staff_grp_vis.symbol = Some(convert_group_symbol(symbol_value.value));
+    }
+
+    // Convert group barline → bar.thru
+    if let Some(ref barline_value) = part_group.group_barline {
+        staff_grp.staff_grp_vis.bar_thru = Some(convert_group_barline(barline_value.value));
+    }
+
+    // Convert group name → label
+    if let Some(ref group_name) = part_group.group_name {
+        let mut label = Label::default();
+        label.children.push(LabelChild::Text(group_name.clone()));
+        staff_grp
+            .children
+            .push(StaffGrpChild::Label(Box::new(label)));
+    }
+
+    // Convert group abbreviation → labelAbbr
+    if let Some(ref group_abbr) = part_group.group_abbreviation {
+        let mut label_abbr = LabelAbbr::default();
+        label_abbr
+            .children
+            .push(LabelAbbrChild::Text(group_abbr.clone()));
+        staff_grp
+            .children
+            .push(StaffGrpChild::LabelAbbr(Box::new(label_abbr)));
     }
 
     Ok(staff_grp)
 }
 
-/// Convert a MusicXML part to MEI staffDef.
+/// Convert MusicXML GroupSymbol to MEI AttStaffGrpVisSymbol.
+fn convert_group_symbol(
+    symbol: tusk_musicxml::model::elements::GroupSymbol,
+) -> AttStaffGrpVisSymbol {
+    use tusk_musicxml::model::elements::GroupSymbol;
+
+    match symbol {
+        GroupSymbol::Brace => AttStaffGrpVisSymbol::Brace,
+        GroupSymbol::Bracket => AttStaffGrpVisSymbol::Bracket,
+        GroupSymbol::Square => AttStaffGrpVisSymbol::Bracketsq,
+        GroupSymbol::Line => AttStaffGrpVisSymbol::Line,
+        GroupSymbol::None => AttStaffGrpVisSymbol::None,
+    }
+}
+
+/// Convert MusicXML GroupBarline to MEI DataBoolean for bar.thru attribute.
+fn convert_group_barline(barline: tusk_musicxml::model::elements::GroupBarline) -> DataBoolean {
+    use tusk_musicxml::model::elements::GroupBarline;
+
+    match barline {
+        GroupBarline::Yes => DataBoolean::True,
+        GroupBarline::No => DataBoolean::False,
+        // Mensurstrich is a special case where barlines go between staves but not through them
+        // In MEI, this maps to bar.thru=false (barlines don't go through staves)
+        GroupBarline::Mensurstrich => DataBoolean::False,
+    }
+}
+
+/// Convert a MusicXML ScorePart to MEI staffDef with full metadata.
+///
+/// Maps:
+/// - part-name → `<label>` child
+/// - part-abbreviation → `<labelAbbr>` child
+/// - Staff number → `@n`
+/// - Default clef and lines
+fn convert_staff_def_from_score_part(
+    score_part: &ScorePart,
+    staff_number: u32,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<StaffDef> {
+    let mut staff_def = StaffDef::default();
+
+    // Set staff number
+    staff_def.n_integer.n = Some(staff_number as u64);
+
+    // Set default staff lines (5 for CMN)
+    staff_def.staff_def_log.lines = Some(5);
+
+    // Default clef (G clef on line 2 = treble clef)
+    // These will be overridden when we process attributes in the first measure
+    staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
+    staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
+
+    // Generate an ID for the staffDef
+    let staff_def_id = ctx.generate_id_with_suffix("staffdef");
+    staff_def.basic.xml_id = Some(staff_def_id);
+
+    // Convert part-name → label (if not empty)
+    if !score_part.part_name.value.is_empty() {
+        let mut label = Label::default();
+        label
+            .children
+            .push(LabelChild::Text(score_part.part_name.value.clone()));
+        staff_def
+            .children
+            .push(StaffDefChild::Label(Box::new(label)));
+    }
+
+    // Convert part-abbreviation → labelAbbr
+    if let Some(ref abbr) = score_part.part_abbreviation
+        && !abbr.value.is_empty()
+    {
+        let mut label_abbr = LabelAbbr::default();
+        label_abbr
+            .children
+            .push(LabelAbbrChild::Text(abbr.value.clone()));
+        staff_def
+            .children
+            .push(StaffDefChild::LabelAbbr(Box::new(label_abbr)));
+    }
+
+    Ok(staff_def)
+}
+
+/// Convert a MusicXML part to MEI staffDef (minimal version without part metadata).
+///
+/// This is a simpler version for cases where only a part ID and staff number are available.
+/// For full conversion including part name and abbreviation, use `convert_staff_def_from_score_part`.
+#[deprecated(
+    note = "Use convert_staff_def_from_score_part for full part-list conversion with labels"
+)]
 pub fn convert_staff_def(
     _part_id: &str,
     staff_number: u32,
@@ -629,6 +823,7 @@ mod tests {
     #[test]
     fn convert_staff_def_sets_staff_number() {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        #[allow(deprecated)]
         let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
 
         assert_eq!(staff_def.n_integer.n, Some(1));
@@ -637,6 +832,7 @@ mod tests {
     #[test]
     fn convert_staff_def_sets_default_lines() {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        #[allow(deprecated)]
         let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
 
         assert_eq!(staff_def.staff_def_log.lines, Some(5));
@@ -645,6 +841,7 @@ mod tests {
     #[test]
     fn convert_staff_def_sets_default_clef() {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        #[allow(deprecated)]
         let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
 
         assert_eq!(staff_def.staff_def_log.clef_shape, Some(DataClefshape::G));
@@ -652,6 +849,412 @@ mod tests {
             staff_def.staff_def_log.clef_line,
             Some(DataClefline::from(2u64))
         );
+    }
+
+    #[test]
+    fn convert_staff_def_from_score_part_includes_label() {
+        let score_part = make_score_part("P1", "Violin I");
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, &mut ctx).expect("should succeed");
+
+        // Should have a label child with the part name
+        let label = staff_def.children.iter().find_map(|c| {
+            if let StaffDefChild::Label(l) = c {
+                Some(l)
+            } else {
+                None
+            }
+        });
+        assert!(label.is_some(), "staffDef should have label child");
+
+        // Check label text
+        let label = label.unwrap();
+        let text = label.children.iter().find_map(|c| {
+            if let LabelChild::Text(t) = c {
+                Some(t.as_str())
+            } else {
+                None
+            }
+        });
+        assert_eq!(text, Some("Violin I"));
+    }
+
+    #[test]
+    fn convert_staff_def_from_score_part_includes_label_abbr() {
+        let mut score_part = make_score_part("P1", "Violin I");
+        score_part.part_abbreviation = Some(PartName {
+            value: "Vln. I".to_string(),
+            ..Default::default()
+        });
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, &mut ctx).expect("should succeed");
+
+        // Should have a labelAbbr child
+        let label_abbr = staff_def.children.iter().find_map(|c| {
+            if let StaffDefChild::LabelAbbr(l) = c {
+                Some(l)
+            } else {
+                None
+            }
+        });
+        assert!(label_abbr.is_some(), "staffDef should have labelAbbr child");
+
+        // Check labelAbbr text
+        let label_abbr = label_abbr.unwrap();
+        let text = label_abbr.children.iter().find_map(|c| {
+            if let LabelAbbrChild::Text(t) = c {
+                Some(t.as_str())
+            } else {
+                None
+            }
+        });
+        assert_eq!(text, Some("Vln. I"));
+    }
+
+    #[test]
+    fn convert_part_group_creates_nested_staff_grp() {
+        use tusk_musicxml::model::data::StartStop;
+        use tusk_musicxml::model::elements::{
+            GroupBarline, GroupBarlineValue, GroupSymbol, GroupSymbolValue, PartGroup,
+        };
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![
+                // Start of string group
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Start,
+                    number: Some("1".to_string()),
+                    group_name: Some("Strings".to_string()),
+                    group_name_display: None,
+                    group_abbreviation: Some("Str.".to_string()),
+                    group_abbreviation_display: None,
+                    group_symbol: Some(GroupSymbolValue {
+                        value: GroupSymbol::Bracket,
+                        default_x: None,
+                        relative_x: None,
+                        color: None,
+                    }),
+                    group_barline: Some(GroupBarlineValue {
+                        value: GroupBarline::Yes,
+                        color: None,
+                    }),
+                    group_time: None,
+                })),
+                PartListItem::ScorePart(Box::new(make_score_part("P1", "Violin I"))),
+                PartListItem::ScorePart(Box::new(make_score_part("P2", "Violin II"))),
+                // End of string group
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Stop,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: None,
+                    group_time: None,
+                })),
+            ],
+        };
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_grp = convert_staff_grp(&score, &mut ctx).expect("conversion should succeed");
+
+        // Root should have one child: a nested staffGrp for the string group
+        assert_eq!(staff_grp.children.len(), 1);
+        assert!(matches!(&staff_grp.children[0], StaffGrpChild::StaffGrp(_)));
+
+        // Get the nested staffGrp
+        if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
+            // Should have symbol=bracket
+            assert_eq!(
+                nested_grp.staff_grp_vis.symbol,
+                Some(AttStaffGrpVisSymbol::Bracket)
+            );
+
+            // Should have bar.thru=true (from group-barline="yes")
+            assert_eq!(nested_grp.staff_grp_vis.bar_thru, Some(DataBoolean::True));
+
+            // Should have label "Strings"
+            let has_label = nested_grp.children.iter().any(|c| {
+                if let StaffGrpChild::Label(l) = c {
+                    l.children.iter().any(|lc| {
+                        if let LabelChild::Text(t) = lc {
+                            t == "Strings"
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            });
+            assert!(has_label, "Nested staffGrp should have 'Strings' label");
+
+            // Should have labelAbbr "Str."
+            let has_abbr = nested_grp.children.iter().any(|c| {
+                if let StaffGrpChild::LabelAbbr(l) = c {
+                    l.children.iter().any(|lc| {
+                        if let LabelAbbrChild::Text(t) = lc {
+                            t == "Str."
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            });
+            assert!(has_abbr, "Nested staffGrp should have 'Str.' labelAbbr");
+
+            // Should contain 2 staffDef children (for Violin I and II)
+            let staff_def_count = nested_grp
+                .children
+                .iter()
+                .filter(|c| matches!(c, StaffGrpChild::StaffDef(_)))
+                .count();
+            assert_eq!(staff_def_count, 2);
+        } else {
+            panic!("Expected nested StaffGrp");
+        }
+    }
+
+    #[test]
+    fn convert_part_group_brace_symbol() {
+        use tusk_musicxml::model::data::StartStop;
+        use tusk_musicxml::model::elements::{GroupSymbol, GroupSymbolValue, PartGroup};
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Start,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: Some(GroupSymbolValue {
+                        value: GroupSymbol::Brace,
+                        default_x: None,
+                        relative_x: None,
+                        color: None,
+                    }),
+                    group_barline: None,
+                    group_time: None,
+                })),
+                PartListItem::ScorePart(Box::new(make_score_part("P1", "Piano RH"))),
+                PartListItem::ScorePart(Box::new(make_score_part("P2", "Piano LH"))),
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Stop,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: None,
+                    group_time: None,
+                })),
+            ],
+        };
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_grp = convert_staff_grp(&score, &mut ctx).expect("conversion should succeed");
+
+        // Get the nested staffGrp and verify brace symbol
+        if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
+            assert_eq!(
+                nested_grp.staff_grp_vis.symbol,
+                Some(AttStaffGrpVisSymbol::Brace)
+            );
+        } else {
+            panic!("Expected nested StaffGrp");
+        }
+    }
+
+    #[test]
+    fn convert_part_group_mensurstrich_barline() {
+        use tusk_musicxml::model::data::StartStop;
+        use tusk_musicxml::model::elements::{GroupBarline, GroupBarlineValue, PartGroup};
+
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Start,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: Some(GroupBarlineValue {
+                        value: GroupBarline::Mensurstrich,
+                        color: None,
+                    }),
+                    group_time: None,
+                })),
+                PartListItem::ScorePart(Box::new(make_score_part("P1", "Soprano"))),
+                PartListItem::ScorePart(Box::new(make_score_part("P2", "Alto"))),
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Stop,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: None,
+                    group_time: None,
+                })),
+            ],
+        };
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_grp = convert_staff_grp(&score, &mut ctx).expect("conversion should succeed");
+
+        // Get the nested staffGrp and verify Mensurstrich → bar.thru=false
+        if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
+            assert_eq!(nested_grp.staff_grp_vis.bar_thru, Some(DataBoolean::False));
+        } else {
+            panic!("Expected nested StaffGrp");
+        }
+    }
+
+    #[test]
+    fn convert_nested_part_groups() {
+        use tusk_musicxml::model::data::StartStop;
+        use tusk_musicxml::model::elements::{GroupSymbol, GroupSymbolValue, PartGroup};
+
+        // Orchestra layout: Woodwinds containing Flutes nested in orchestral bracket
+        let mut score = ScorePartwise::default();
+        score.part_list = PartList {
+            items: vec![
+                // Outer group: Orchestra bracket
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Start,
+                    number: Some("1".to_string()),
+                    group_name: Some("Orchestra".to_string()),
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: Some(GroupSymbolValue {
+                        value: GroupSymbol::Bracket,
+                        default_x: None,
+                        relative_x: None,
+                        color: None,
+                    }),
+                    group_barline: None,
+                    group_time: None,
+                })),
+                // Inner group: Piano brace
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Start,
+                    number: Some("2".to_string()),
+                    group_name: Some("Piano".to_string()),
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: Some(GroupSymbolValue {
+                        value: GroupSymbol::Brace,
+                        default_x: None,
+                        relative_x: None,
+                        color: None,
+                    }),
+                    group_barline: None,
+                    group_time: None,
+                })),
+                PartListItem::ScorePart(Box::new(make_score_part("P1", "Piano RH"))),
+                PartListItem::ScorePart(Box::new(make_score_part("P2", "Piano LH"))),
+                // Close inner group
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Stop,
+                    number: Some("2".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: None,
+                    group_time: None,
+                })),
+                // More parts in outer group
+                PartListItem::ScorePart(Box::new(make_score_part("P3", "Violin"))),
+                // Close outer group
+                PartListItem::PartGroup(Box::new(PartGroup {
+                    group_type: StartStop::Stop,
+                    number: Some("1".to_string()),
+                    group_name: None,
+                    group_name_display: None,
+                    group_abbreviation: None,
+                    group_abbreviation_display: None,
+                    group_symbol: None,
+                    group_barline: None,
+                    group_time: None,
+                })),
+            ],
+        };
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+        let staff_grp = convert_staff_grp(&score, &mut ctx).expect("conversion should succeed");
+
+        // Root should have one child: the Orchestra staffGrp
+        assert_eq!(staff_grp.children.len(), 1);
+
+        if let StaffGrpChild::StaffGrp(outer_grp) = &staff_grp.children[0] {
+            assert_eq!(
+                outer_grp.staff_grp_vis.symbol,
+                Some(AttStaffGrpVisSymbol::Bracket)
+            );
+
+            // Outer group should have: Piano staffGrp + Violin staffDef
+            let inner_staff_grp_count = outer_grp
+                .children
+                .iter()
+                .filter(|c| matches!(c, StaffGrpChild::StaffGrp(_)))
+                .count();
+            let staff_def_count = outer_grp
+                .children
+                .iter()
+                .filter(|c| matches!(c, StaffGrpChild::StaffDef(_)))
+                .count();
+
+            assert_eq!(
+                inner_staff_grp_count, 1,
+                "Should have 1 nested staffGrp (Piano)"
+            );
+            assert_eq!(staff_def_count, 1, "Should have 1 staffDef (Violin)");
+
+            // Find the Piano group and verify it has brace symbol
+            let piano_grp = outer_grp.children.iter().find_map(|c| {
+                if let StaffGrpChild::StaffGrp(g) = c {
+                    Some(g)
+                } else {
+                    None
+                }
+            });
+            assert!(piano_grp.is_some());
+            let piano_grp = piano_grp.unwrap();
+            assert_eq!(
+                piano_grp.staff_grp_vis.symbol,
+                Some(AttStaffGrpVisSymbol::Brace)
+            );
+
+            // Piano group should have 2 staffDefs
+            let piano_staff_count = piano_grp
+                .children
+                .iter()
+                .filter(|c| matches!(c, StaffGrpChild::StaffDef(_)))
+                .count();
+            assert_eq!(piano_staff_count, 2);
+        } else {
+            panic!("Expected outer StaffGrp");
+        }
     }
 
     // ============================================================================
