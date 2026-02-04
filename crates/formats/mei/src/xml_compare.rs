@@ -6,6 +6,7 @@
 //! - Namespace prefix variations
 //! - XML declaration differences
 //! - Empty vs self-closing element syntax
+//! - meiversion attribute on root `<mei>` element (export uses codegen version)
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -185,7 +186,9 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
                     std::str::from_utf8(&e).map_err(|e| CompareError::ParseError(e.to_string()))?;
                 // Normalize whitespace in text content
                 let text = text.trim().to_string();
-                if !text.is_empty() && let Some(parent) = stack.last_mut() {
+                if !text.is_empty()
+                    && let Some(parent) = stack.last_mut()
+                {
                     parent.children.push(CanonicalNode::Text(text));
                 }
             }
@@ -195,7 +198,9 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
                     .map_err(|e| CompareError::ParseError(e.to_string()))?
                     .trim()
                     .to_string();
-                if !text.is_empty() && let Some(parent) = stack.last_mut() {
+                if !text.is_empty()
+                    && let Some(parent) = stack.last_mut()
+                {
                     parent.children.push(CanonicalNode::Text(text));
                 }
             }
@@ -229,6 +234,9 @@ fn compare_elements(
         format!("{}/{}", path, elem1.name)
     };
 
+    // Check if this is the root <mei> element
+    let is_root_mei = path.is_empty() && elem1.name == "mei";
+
     // Compare element names
     if elem1.name != elem2.name {
         diffs.push(Difference {
@@ -241,22 +249,37 @@ fn compare_elements(
         return; // No point comparing children if names differ
     }
 
-    // Compare attributes
-    compare_attributes(&elem1.attributes, &elem2.attributes, &current_path, diffs);
+    // Compare attributes (skip meiversion on root <mei> element)
+    compare_attributes(
+        &elem1.attributes,
+        &elem2.attributes,
+        &current_path,
+        diffs,
+        is_root_mei,
+    );
 
     // Compare children
     compare_children(&elem1.children, &elem2.children, &current_path, diffs);
 }
 
 /// Compare two attribute maps.
+///
+/// If `skip_meiversion` is true, the `meiversion` attribute is ignored.
+/// This is needed because MEI export always uses the version from codegen
+/// (currently 6.0-dev from ODD spec), not the original file's version.
 fn compare_attributes(
     attrs1: &HashMap<String, String>,
     attrs2: &HashMap<String, String>,
     path: &str,
     diffs: &mut Vec<Difference>,
+    skip_meiversion: bool,
 ) {
     // Find attributes in first but not second
     for (key, value1) in attrs1 {
+        // Skip meiversion on root <mei> element - export uses codegen version
+        if skip_meiversion && key == "meiversion" {
+            continue;
+        }
         match attrs2.get(key) {
             Some(value2) => {
                 if value1 != value2 {
@@ -283,6 +306,10 @@ fn compare_attributes(
 
     // Find attributes in second but not first
     for key in attrs2.keys() {
+        // Skip meiversion on root <mei> element - export uses codegen version
+        if skip_meiversion && key == "meiversion" {
+            continue;
+        }
         if !attrs1.contains_key(key) {
             diffs.push(Difference {
                 path: path.to_string(),
@@ -561,6 +588,44 @@ mod tests {
         if let Err(CompareError::Differences(diffs)) = result {
             assert_eq!(diffs.len(), 1);
             assert!(diffs[0].path.contains("a/b/c"));
+        }
+    }
+
+    #[test]
+    fn test_meiversion_ignored_on_root_mei() {
+        // meiversion attribute on root <mei> element should be ignored
+        // because export uses codegen version (6.0-dev), not original version (5.1)
+        let xml1 = r#"<mei meiversion="5.1"><music/></mei>"#;
+        let xml2 = r#"<mei meiversion="6.0-dev"><music/></mei>"#;
+        assert!(compare_xml(xml1, xml2).is_ok());
+    }
+
+    #[test]
+    fn test_meiversion_missing_in_output_ok() {
+        // Original has meiversion, output doesn't - should be ok
+        let xml1 = r#"<mei meiversion="5.1"><music/></mei>"#;
+        let xml2 = r#"<mei><music/></mei>"#;
+        assert!(compare_xml(xml1, xml2).is_ok());
+    }
+
+    #[test]
+    fn test_meiversion_added_in_output_ok() {
+        // Original doesn't have meiversion, output does - should be ok
+        let xml1 = r#"<mei><music/></mei>"#;
+        let xml2 = r#"<mei meiversion="6.0-dev"><music/></mei>"#;
+        assert!(compare_xml(xml1, xml2).is_ok());
+    }
+
+    #[test]
+    fn test_meiversion_not_ignored_on_nested_element() {
+        // meiversion on non-root elements should still be compared
+        // (hypothetical - meiversion only appears on root, but let's be safe)
+        let xml1 = r#"<root><mei meiversion="5.1"/></root>"#;
+        let xml2 = r#"<root><mei meiversion="6.0-dev"/></root>"#;
+        let result = compare_xml(xml1, xml2);
+        assert!(result.is_err());
+        if let Err(CompareError::Differences(diffs)) = result {
+            assert!(diffs.iter().any(|d| d.description.contains("meiversion")));
         }
     }
 }
