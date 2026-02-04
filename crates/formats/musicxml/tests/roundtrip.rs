@@ -1003,3 +1003,17 @@ fn test_roundtrip_tutorial_chord_symbols() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_tutorial_hello_world() {
+    let (original, roundtripped) = roundtrip_spec_examples_fixture("tutorial_hello_world.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_hello_world: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for tutorial_hello_world.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}

@@ -83,7 +83,7 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_apres_un_reve.musicxml`
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chopin_prelude.musicxml`
 - [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chord_symbols.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_hello_world.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_hello_world.musicxml`
 - [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_percussion.musicxml`
 - [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_tablature.musicxml`
 
