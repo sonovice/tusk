@@ -345,6 +345,14 @@ impl<R: BufRead> MeiReader<R> {
         Ok(())
     }
 
+    /// Read text content until the end tag for the given element.
+    ///
+    /// This skips to the end tag while collecting any text content encountered.
+    /// Returns the collected text if any, or None if the element had no text.
+    pub fn read_text_until_end(&mut self, element_name: &str) -> DeserializeResult<Option<String>> {
+        self.skip_to_end_and_collect(element_name)
+    }
+
     /// Read and parse a child element of type T.
     ///
     /// This method reads the next element event and deserializes it into the requested type.

@@ -12,23 +12,24 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
-    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttFacsimile, AttLabelled,
-    AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes,
-    AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis,
-    AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger,
-    AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl,
-    AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
-    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
-    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
-    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
-    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
+    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
+    AttDynamLog, AttDynamVis, AttFacsimile, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
+    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
+    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
+    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
+    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef,
-    LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
-    ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
-    StaffDefChild, StaffGrp, StaffGrpChild, Tie,
+    Accid, Artic, Chord, ChordChild, Clef, Dot, Dynam, InstrDef, Label, Layer, LayerChild,
+    LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest,
+    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild,
+    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tie,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1499,6 +1500,83 @@ impl ExtractAttributes for AttTieAnl {
     }
 }
 
+impl ExtractAttributes for AttLang {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "xml:lang", string self.xml_lang);
+        extract_attr!(attrs, "translit", string self.translit);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDynamLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDynamVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "lendsym", self.lendsym);
+        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
+        extract_attr!(attrs, "lstartsym", self.lstartsym);
+        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        extract_attr!(attrs, "extender", self.extender);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDynamGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "val", self.val);
+        extract_attr!(attrs, "val2", self.val2);
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDynamAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttDynamAnl has no attributes
+        Ok(())
+    }
+}
+
 // ============================================================================
 // Element implementations
 // ============================================================================
@@ -2718,6 +2796,46 @@ impl MeiDeserialize for Tie {
     }
 }
 
+impl MeiDeserialize for Dynam {
+    fn element_name() -> &'static str {
+        "dynam"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut dynam = Dynam::default();
+
+        // Extract attributes into each attribute class
+        dynam.common.extract_attributes(&mut attrs)?;
+        dynam.facsimile.extract_attributes(&mut attrs)?;
+        dynam.lang.extract_attributes(&mut attrs)?;
+        dynam.dynam_log.extract_attributes(&mut attrs)?;
+        dynam.dynam_vis.extract_attributes(&mut attrs)?;
+        dynam.dynam_ges.extract_attributes(&mut attrs)?;
+        dynam.dynam_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Parse text content if not empty
+        if !is_empty {
+            // dynam can contain text and various child elements
+            // For now, we collect text content as DynamChild::Text
+            if let Some(text) = reader.read_text_until_end("dynam")? {
+                if !text.trim().is_empty() {
+                    dynam
+                        .children
+                        .push(tusk_model::elements::DynamChild::Text(text));
+                }
+            }
+        }
+
+        Ok(dynam)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3844,5 +3962,213 @@ mod tests {
 
         assert!(tie.tie_vis.lform.is_some());
         assert!(tie.tie_vis.lwidth.is_some());
+    }
+
+    // ============================================================================
+    // Dynam deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn dynam_deserializes_from_empty_element() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam/>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.common.xml_id.is_none());
+        assert!(dynam.dynam_log.startid.is_none());
+        assert!(dynam.children.is_empty());
+    }
+
+    #[test]
+    fn dynam_deserializes_with_text_content() {
+        use tusk_model::elements::{Dynam, DynamChild};
+
+        let xml = r#"<dynam>f</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.children.len(), 1);
+        match &dynam.children[0] {
+            DynamChild::Text(text) => assert_eq!(text, "f"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn dynam_deserializes_longer_text_content() {
+        use tusk_model::elements::{Dynam, DynamChild};
+
+        let xml = r#"<dynam>cresc. poco a poco</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.children.len(), 1);
+        match &dynam.children[0] {
+            DynamChild::Text(text) => assert_eq!(text, "cresc. poco a poco"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn dynam_deserializes_xml_id() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam xml:id="d1">p</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.common.xml_id, Some("d1".to_string()));
+    }
+
+    #[test]
+    fn dynam_deserializes_startid() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r##"<dynam startid="#n1">f</dynam>"##;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.dynam_log.startid.is_some());
+    }
+
+    #[test]
+    fn dynam_deserializes_staff_and_layer() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam staff="1" layer="1">p</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.dynam_log.staff, vec![1]);
+        assert_eq!(dynam.dynam_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn dynam_deserializes_tstamp_attributes() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam tstamp="2" tstamp2="1m+1">cresc.</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.dynam_log.tstamp.is_some());
+        assert!(dynam.dynam_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn dynam_deserializes_place_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam place="above" staff="1" tstamp="1">p</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.dynam_vis.place.is_some());
+    }
+
+    #[test]
+    fn dynam_deserializes_extender_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam extender="true" tstamp="1" tstamp2="2m+1">dim.</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.dynam_vis.extender.is_some());
+    }
+
+    #[test]
+    fn dynam_deserializes_val_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam val="84" staff="1" tstamp="1">f</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dynam.dynam_ges.val.is_some());
+    }
+
+    #[test]
+    fn dynam_deserializes_plist_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r##"<dynam plist="#n1 #n2 #n3 #n4" startid="#n1">cresc.</dynam>"##;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.dynam_log.plist.len(), 4);
+    }
+
+    #[test]
+    fn dynam_deserializes_full_attributes() {
+        use tusk_model::elements::{Dynam, DynamChild};
+
+        let xml = r##"<dynam xml:id="d1" staff="2" place="above" startid="#n1" endid="#n4" plist="#n1 #n2 #n3 #n4">cresc. poco a poco</dynam>"##;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.common.xml_id, Some("d1".to_string()));
+        assert_eq!(dynam.dynam_log.staff, vec![2]);
+        assert!(dynam.dynam_vis.place.is_some());
+        assert!(dynam.dynam_log.startid.is_some());
+        assert!(dynam.dynam_log.endid.is_some());
+        assert_eq!(dynam.dynam_log.plist.len(), 4);
+
+        assert_eq!(dynam.children.len(), 1);
+        match &dynam.children[0] {
+            DynamChild::Text(text) => assert_eq!(text, "cresc. poco a poco"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn dynam_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam xml:id="d1" unknown="value">p</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(dynam.common.xml_id, Some("d1".to_string()));
+    }
+
+    #[test]
+    fn dynam_deserializes_multiple_staff_values() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam place="between" staff="1 2" tstamp="1">f</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.dynam_log.staff, vec![1, 2]);
+    }
+
+    #[test]
+    fn dynam_deserializes_vgrp_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam place="below" staff="1" tstamp="2" vgrp="40">sf</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.dynam_vis.vgrp, Some(40));
+    }
+
+    #[test]
+    fn dynam_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam x="100" y="200">mf</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.dynam_vis.x, Some(100.0));
+        assert_eq!(dynam.dynam_vis.y, Some(200.0));
+    }
+
+    #[test]
+    fn dynam_deserializes_duration_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam staff="2" tstamp="3" dur="1">cresc. poco a poco</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!dynam.dynam_log.dur.is_empty());
+    }
+
+    #[test]
+    fn dynam_deserializes_lang_attribute() {
+        use tusk_model::elements::Dynam;
+
+        let xml = r#"<dynam xml:lang="it">forte</dynam>"#;
+        let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dynam.lang.xml_lang, Some("it".to_string()));
     }
 }
