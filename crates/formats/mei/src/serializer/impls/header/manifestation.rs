@@ -4,7 +4,9 @@
 
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
-use tusk_model::elements::{Manifestation, ManifestationChild, ManifestationList, ManifestationListChild};
+use tusk_model::elements::{
+    Manifestation, ManifestationChild, ManifestationList, ManifestationListChild,
+};
 
 // ============================================================================
 // ManifestationList

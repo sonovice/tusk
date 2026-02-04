@@ -36,6 +36,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [XML_COMPARE] Version element name migration: composer→creator comparison should treat as equivalent (MEI 5.1→6.0-dev migration) (source: Aguado_Walzer_G-major.mei)
 - [x] [MISSING_SERIALIZER] PriceChild: missing serializers for Symbol, Bibl, BiblStruct, Height, Dimensions, PeriodName (source: pub_stmt.rs build errors)
 - [x] [MISSING_SERIALIZER] AccessRestrictChild/UseRestrictChild/SysReqChild: many missing child serializers (Abbr, Add, Bloc, CastList, Choice, Corr, etc.) (source: pub_stmt.rs build errors)
+- [ ] [SERIALIZER_BUG] Many Child serializers use `_ => Ok(())` catch-all which silently drops elements - need proper implementations for: Symbol, Bibl, BiblStruct, Height, Width, Depth, Dim, Dimensions, Abbr, Expan, Q, Fig, Seg, Stack, Relation, RelationList, Repository, Locus, LocusGrp, Term, StyleName, PeriodName, Catchwords, Signatures, SecFolio, Stamp, Heraldry (source: Aguado_Walzer_G-major.mei roundtrip test)
 
 ---
 
