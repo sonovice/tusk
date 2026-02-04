@@ -913,3 +913,23 @@ fn test_roundtrip_instrument_change_element() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_movement_number_and_movement_title_elements() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("movement_number_and_movement_title_elements.musicxml")
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Roundtrip failed for movement_number_and_movement_title_elements: {}",
+                    e
+                )
+            });
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for movement_number_and_movement_title_elements.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}

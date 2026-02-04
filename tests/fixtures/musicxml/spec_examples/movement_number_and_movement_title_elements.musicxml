@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<score-partwise>
+<!--
+  MusicXML spec example demonstrating work/movement elements.
+  Based on spec documentation showing movement-number and movement-title usage.
+
+  Note: During MusicXML → MEI → MusicXML roundtrip:
+  - work-title is preserved as the primary title
+  - movement-title is used as fallback if work-title is absent
+  - work-number and movement-number are not preserved (lossy conversion)
+-->
+<score-partwise version="4.0">
    <work>
       <work-number>D. 911</work-number>
       <work-title>Winterreise</work-title>
@@ -10,4 +19,35 @@
       <creator type="composer">Franz Schubert</creator>
       <creator type="poet">Wilhelm Müller</creator>
    </identification>
+   <part-list>
+      <score-part id="P1">
+         <part-name>Voice</part-name>
+      </score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes>
+            <divisions>1</divisions>
+            <key>
+               <fifths>0</fifths>
+            </key>
+            <time>
+               <beats>4</beats>
+               <beat-type>4</beat-type>
+            </time>
+            <clef>
+               <sign>G</sign>
+               <line>2</line>
+            </clef>
+         </attributes>
+         <note>
+            <pitch>
+               <step>G</step>
+               <octave>4</octave>
+            </pitch>
+            <duration>4</duration>
+            <type>whole</type>
+         </note>
+      </measure>
+   </part>
 </score-partwise>
