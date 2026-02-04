@@ -898,3 +898,18 @@ fn test_roundtrip_concert_score_and_for_part_elements() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_instrument_change_element() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("instrument_change_element.musicxml")
+            .unwrap_or_else(|e| panic!("Roundtrip failed for instrument_change_element: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for instrument_change_element.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
