@@ -1904,7 +1904,7 @@ impl MeiDeserialize for tusk_model::elements::Music {
         mut attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
-        use tusk_model::elements::Music;
+        use tusk_model::elements::{Body, Music, MusicChild};
 
         let mut music = Music::default();
 
@@ -1916,14 +1916,21 @@ impl MeiDeserialize for tusk_model::elements::Music {
 
         // Parse children if not empty
         // MusicChild can contain: body, group, front, back, facsimile, genDesc, performance
-        // TODO: Implement MeiDeserialize for these child elements
         if !is_empty {
-            while let Some((name, _child_attrs, child_empty)) =
+            while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("music")?
             {
-                // Skip children until their MeiDeserialize impls are added
-                if !child_empty {
-                    reader.skip_to_end(&name)?;
+                match name.as_str() {
+                    "body" => {
+                        let body = Body::from_mei_event(reader, child_attrs, child_empty)?;
+                        music.children.push(MusicChild::Body(Box::new(body)));
+                    }
+                    // TODO: Add group, front, back, facsimile, genDesc, performance when needed
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
                 }
             }
         }

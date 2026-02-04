@@ -46,7 +46,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] EncodingDesc: classDecls child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Work: composer element (deprecated) not parsed correctly - child ordering shows composer vs key mismatch (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] P element: list child not parsed - mixed content parser missing list element handling (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] Music: body element not parsed - music children not being deserialized (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Music: body element not parsed - music children not being deserialized (source: Aguado_Walzer_G-major.mei)
 
 ---
 

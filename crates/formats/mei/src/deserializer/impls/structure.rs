@@ -13,8 +13,8 @@ use tusk_model::att::{
     AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Chord, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Note, Rest, Section,
-    SectionChild, Space, Staff, StaffChild, Tuplet,
+    Beam, Body, BodyChild, Chord, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Note,
+    Rest, Score, ScoreChild, Section, SectionChild, Space, Staff, StaffChild, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -537,10 +537,11 @@ impl MeiDeserialize for Mdiv {
                         let nested_mdiv = Mdiv::from_mei_event(reader, child_attrs, child_empty)?;
                         mdiv.children.push(MdivChild::Mdiv(Box::new(nested_mdiv)));
                     }
-                    // Note: score and parts are more complex elements that would need
-                    // their own MeiDeserialize implementations. For now, we skip them
-                    // in lenient mode and only parse nested mdiv elements.
-                    // Other child types can be added here as needed
+                    "score" => {
+                        let score = Score::from_mei_event(reader, child_attrs, child_empty)?;
+                        mdiv.children.push(MdivChild::Score(Box::new(score)));
+                    }
+                    // TODO: Add parts support when needed
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
@@ -551,6 +552,100 @@ impl MeiDeserialize for Mdiv {
         }
 
         Ok(mdiv)
+    }
+}
+
+// ============================================================================
+// Body element implementation
+// ============================================================================
+
+impl MeiDeserialize for Body {
+    fn element_name() -> &'static str {
+        "body"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut body = Body::default();
+
+        // Extract attributes
+        // Body has: AttCommon, AttMetadataPointing
+        body.common.extract_attributes(&mut attrs)?;
+        body.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Read children if not empty
+        // BodyChild can contain: Div, Mdiv
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("body")?
+            {
+                match name.as_str() {
+                    "mdiv" => {
+                        let mdiv = Mdiv::from_mei_event(reader, child_attrs, child_empty)?;
+                        body.children.push(BodyChild::Mdiv(Box::new(mdiv)));
+                    }
+                    // TODO: Add Div support when needed
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(body)
+    }
+}
+
+// ============================================================================
+// Score element implementation
+// ============================================================================
+
+impl MeiDeserialize for Score {
+    fn element_name() -> &'static str {
+        "score"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut score = Score::default();
+
+        // Extract attributes
+        // Score has: AttCommon, AttMetadataPointing, AttScoreAnl, AttScoreGes, AttScoreLog, AttScoreVis
+        score.common.extract_attributes(&mut attrs)?;
+        score.metadata_pointing.extract_attributes(&mut attrs)?;
+        // AttScoreAnl, AttScoreGes, AttScoreLog, AttScoreVis have no attributes
+
+        // Read children if not empty
+        // ScoreChild can contain many elements, but the most common are:
+        // scoreDef, section, staffDef, ending, pb, sb, etc.
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("score")?
+            {
+                match name.as_str() {
+                    "section" => {
+                        let section = Section::from_mei_event(reader, child_attrs, child_empty)?;
+                        score.children.push(ScoreChild::Section(Box::new(section)));
+                    }
+                    // TODO: Add scoreDef, staffDef, ending, pb, sb, etc. when needed
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(score)
     }
 }
 
