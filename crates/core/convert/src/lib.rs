@@ -58,6 +58,8 @@
 
 pub mod context;
 pub mod error;
+pub mod musicxml_to_mei;
 
 pub use context::{ConversionContext, ConversionDirection, PendingSlur, PendingTie};
 pub use error::{ConversionError, ConversionResult};
+pub use musicxml_to_mei::convert_score;

@@ -280,7 +280,7 @@ pub use att_line_rend_base::AttLineRendBase;
 mod att_hairpin_log;
 pub use att_hairpin_log::{AttHairpinLog, AttHairpinLogEvaluate, AttHairpinLogForm};
 mod att_mei_version;
-pub use att_mei_version::AttMeiVersion;
+pub use att_mei_version::{AttMeiVersion, AttMeiVersionMeiversion};
 mod att_course_log;
 pub use att_course_log::AttCourseLog;
 mod att_m_rpt_anl;
