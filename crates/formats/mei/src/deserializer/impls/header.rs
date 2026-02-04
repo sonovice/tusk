@@ -2840,13 +2840,81 @@ pub(crate) fn parse_funder_from_event<R: BufRead>(
 
     // Remaining attributes are unknown - in lenient mode we ignore them
 
-    // Parse text content if not empty
-    // funder can contain text and various child elements
-    // For now, we collect text content as FunderChild::Text
+    // Funder is a mixed content element - can have text and child elements like corpName, persName, name, etc.
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("funder")? {
-            if !text.trim().is_empty() {
-                funder.children.push(FunderChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("funder")? {
+            match content {
+                MixedContent::Text(text) => {
+                    funder.children.push(FunderChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            funder
+                                .children
+                                .push(FunderChild::CorpName(Box::new(corp_name)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            funder
+                                .children
+                                .push(FunderChild::PersName(Box::new(pers_name)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            funder.children.push(FunderChild::Name(Box::new(name_elem)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            funder
+                                .children
+                                .push(FunderChild::Address(Box::new(address)));
+                        }
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            funder.children.push(FunderChild::Ref(Box::new(ref_elem)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            funder
+                                .children
+                                .push(FunderChild::Identifier(Box::new(identifier)));
+                        }
+                        "date" => {
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            funder.children.push(FunderChild::Date(Box::new(date)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            funder.children.push(FunderChild::Ptr(Box::new(ptr)));
+                        }
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            funder.children.push(FunderChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            funder.children.push(FunderChild::Lb(Box::new(lb)));
+                        }
+                        _ => {
+                            // Skip unknown children
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -4337,5 +4405,165 @@ mod tests {
         let xml = r#"<title/>"#;
         let title = Title::from_mei_str(xml).expect("should deserialize");
         assert!(title.children.is_empty());
+    }
+
+    // ========== Funder tests (via TitleStmt wrapper) ==========
+
+    #[test]
+    fn funder_deserializes_with_corp_name_child() {
+        use tusk_model::elements::{CorpNameChild, FunderChild};
+
+        let xml = r#"<titleStmt>
+          <title>Test</title>
+          <funder>
+            <corpName role="funder" codedval="2007744-0" auth.uri="http://d-nb.info/gnd/" auth="GND">German Research Foundation</corpName>
+          </funder>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        // Find the funder child
+        let funder = title_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let TitleStmtChild::Funder(f) = c {
+                    Some(f)
+                } else {
+                    None
+                }
+            })
+            .expect("should have funder child");
+
+        // Should have one child: corpName
+        assert_eq!(funder.children.len(), 1);
+        match &funder.children[0] {
+            FunderChild::CorpName(cn) => {
+                assert_eq!(cn.name.role.len(), 1);
+                // Check the text content
+                assert_eq!(cn.children.len(), 1);
+                match &cn.children[0] {
+                    CorpNameChild::Text(text) => {
+                        assert_eq!(text, "German Research Foundation");
+                    }
+                    _ => panic!("expected Text child in corpName"),
+                }
+            }
+            _ => panic!("expected CorpName child, got {:?}", funder.children[0]),
+        }
+    }
+
+    #[test]
+    fn funder_deserializes_corp_name_with_nested_address() {
+        use tusk_model::elements::{CorpNameChild, FunderChild};
+
+        let xml = r#"<titleStmt>
+          <title>Test</title>
+          <funder>
+            <corpName role="funder">German Research Foundation
+              <address>
+                <addrLine>Kennedyallee 40</addrLine>
+              </address>
+            </corpName>
+          </funder>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        // Find the funder child
+        let funder = title_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let TitleStmtChild::Funder(f) = c {
+                    Some(f)
+                } else {
+                    None
+                }
+            })
+            .expect("should have funder child");
+
+        assert_eq!(funder.children.len(), 1);
+        match &funder.children[0] {
+            FunderChild::CorpName(cn) => {
+                // Should have text and address children
+                assert!(
+                    cn.children.len() >= 2,
+                    "expected at least 2 children (text + address)"
+                );
+
+                // Check for text content
+                let has_text = cn
+                    .children
+                    .iter()
+                    .any(|c| matches!(c, CorpNameChild::Text(_)));
+                assert!(has_text, "should have text content");
+
+                // Check for address child
+                let has_address = cn.children.iter().any(|c| {
+                    if let CorpNameChild::Address(addr) = c {
+                        !addr.children.is_empty()
+                    } else {
+                        false
+                    }
+                });
+                assert!(has_address, "should have address child with addrLine");
+            }
+            _ => panic!("expected CorpName child"),
+        }
+    }
+
+    #[test]
+    fn funder_deserializes_text_only() {
+        use tusk_model::elements::FunderChild;
+
+        let xml = r#"<titleStmt>
+          <title>Test</title>
+          <funder>Anonymous Donor</funder>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        // Find the funder child
+        let funder = title_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let TitleStmtChild::Funder(f) = c {
+                    Some(f)
+                } else {
+                    None
+                }
+            })
+            .expect("should have funder child");
+
+        assert_eq!(funder.children.len(), 1);
+        match &funder.children[0] {
+            FunderChild::Text(text) => {
+                assert_eq!(text, "Anonymous Donor");
+            }
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn funder_deserializes_empty_element() {
+        let xml = r#"<titleStmt>
+          <title>Test</title>
+          <funder/>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+
+        // Find the funder child
+        let funder = title_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let TitleStmtChild::Funder(f) = c {
+                    Some(f)
+                } else {
+                    None
+                }
+            })
+            .expect("should have funder child");
+
+        assert!(funder.children.is_empty());
     }
 }
