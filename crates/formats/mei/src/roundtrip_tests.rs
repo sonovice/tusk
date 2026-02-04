@@ -7464,3 +7464,944 @@ fn gracegrp_parse_complete() {
         }
     }
 }
+
+// ============================================================================
+// Grouping Element Tests - Beam
+// ============================================================================
+
+#[test]
+fn beam_parse_empty() {
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.beam_log.staff.is_empty());
+    assert!(parsed.beam_log.layer.is_empty());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn beam_parse_with_id() {
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam xml:id="beam-1"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("beam-1".to_string()));
+}
+
+#[test]
+fn beam_parse_with_notes() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <note xml:id="n2" pname="d" oct="4" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("b1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+    for child in &parsed.children {
+        match child {
+            BeamChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}
+
+#[test]
+fn beam_parse_with_staff_layer() {
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam staff="1" layer="1"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_log.staff, vec![1]);
+    assert_eq!(parsed.beam_log.layer, vec![1]);
+}
+
+#[test]
+fn beam_parse_with_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam tstamp="2.5"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_log.tstamp, Some(DataBeat(2.5)));
+}
+
+#[test]
+fn beam_parse_with_cross_staff() {
+    use tusk_model::data::DataNeighboringlayer;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam beam.with="above"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_log.beam_with, Some(DataNeighboringlayer::Above));
+}
+
+#[test]
+fn beam_parse_with_cross_staff_below() {
+    use tusk_model::data::DataNeighboringlayer;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam beam.with="below"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_log.beam_with, Some(DataNeighboringlayer::Below));
+}
+
+#[test]
+fn beam_parse_with_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam color="red"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.beam_vis.color,
+        Some(DataColor::DataColornames(DataColornames::Red))
+    );
+}
+
+#[test]
+fn beam_parse_with_form_acc() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::elements::Beam;
+
+    // Accelerando (feathered beam opening)
+    let xml = r#"<beam form="acc"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Acc));
+}
+
+#[test]
+fn beam_parse_with_form_rit() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::elements::Beam;
+
+    // Ritardando (feathered beam closing)
+    let xml = r#"<beam form="rit"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Rit));
+}
+
+#[test]
+fn beam_parse_with_form_norm() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam form="norm"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Norm));
+}
+
+#[test]
+fn beam_parse_with_form_mixed() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam form="mixed"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Mixed));
+}
+
+#[test]
+fn beam_parse_with_place_above() {
+    use tusk_model::data::DataBeamplace;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam place="above"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.place, Some(DataBeamplace::Above));
+}
+
+#[test]
+fn beam_parse_with_place_below() {
+    use tusk_model::data::DataBeamplace;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam place="below"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.place, Some(DataBeamplace::Below));
+}
+
+#[test]
+fn beam_parse_with_place_mixed() {
+    use tusk_model::data::DataBeamplace;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam place="mixed"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.place, Some(DataBeamplace::Mixed));
+}
+
+#[test]
+fn beam_parse_with_slash() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Beam;
+
+    // Grace note beams often have slashes
+    let xml = r#"<beam slash="true"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.slash, Some(DataBoolean::True));
+}
+
+#[test]
+fn beam_parse_with_slope() {
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam slope="0.5"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.slope, Some(0.5));
+}
+
+#[test]
+fn beam_parse_with_cue() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam cue="true"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.cue, Some(DataBoolean::True));
+}
+
+#[test]
+fn beam_parse_with_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Beam;
+
+    let xml = r#"<beam visible="false"/>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.beam_vis.visible, Some(DataBoolean::False));
+}
+
+#[test]
+fn beam_parse_nested_beam() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    // Nested beams for 32nd notes within 16th note beam
+    let xml = r#"<beam xml:id="b1">
+        <note xml:id="n1" dur="16"/>
+        <beam xml:id="b2">
+            <note xml:id="n2" dur="32"/>
+            <note xml:id="n3" dur="32"/>
+        </beam>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("b1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+    match &parsed.children[1] {
+        BeamChild::Beam(inner) => {
+            assert_eq!(inner.common.xml_id, Some("b2".to_string()));
+            assert_eq!(inner.children.len(), 2);
+        }
+        _ => panic!("Expected nested Beam"),
+    }
+}
+
+#[test]
+fn beam_parse_with_chord() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1">
+        <chord xml:id="c1" dur="8">
+            <note pname="c" oct="4"/>
+            <note pname="e" oct="4"/>
+        </chord>
+        <note xml:id="n1" pname="d" oct="4" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 2);
+    match &parsed.children[0] {
+        BeamChild::Chord(chord) => {
+            assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+        }
+        _ => panic!("Expected Chord child"),
+    }
+}
+
+#[test]
+fn beam_parse_with_rest() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <rest xml:id="r1" dur="8"/>
+        <note xml:id="n2" pname="d" oct="4" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 3);
+    match &parsed.children[1] {
+        BeamChild::Rest(rest) => {
+            assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        }
+        _ => panic!("Expected Rest child"),
+    }
+}
+
+#[test]
+fn beam_parse_with_space() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <space xml:id="sp1" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 2);
+    match &parsed.children[1] {
+        BeamChild::Space(_) => {}
+        _ => panic!("Expected Space child"),
+    }
+}
+
+#[test]
+fn beam_parse_with_tuplet() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    // Beamed tuplet (common in CMN)
+    let xml = r#"<beam xml:id="b1">
+        <tuplet num="3" numbase="2">
+            <note pname="c" oct="4" dur="8"/>
+            <note pname="d" oct="4" dur="8"/>
+            <note pname="e" oct="4" dur="8"/>
+        </tuplet>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BeamChild::Tuplet(tuplet) => {
+            assert_eq!(tuplet.children.len(), 3);
+        }
+        _ => panic!("Expected Tuplet child"),
+    }
+}
+
+#[test]
+fn beam_parse_with_gracegrp() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1">
+        <graceGrp grace="acc">
+            <note pname="a" oct="4" dur="16"/>
+        </graceGrp>
+        <note pname="b" oct="4" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 2);
+    match &parsed.children[0] {
+        BeamChild::GraceGrp(_) => {}
+        _ => panic!("Expected GraceGrp child"),
+    }
+}
+
+#[test]
+fn beam_parse_complete() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::data::{DataBeamplace, DataBoolean, DataNeighboringlayer};
+    use tusk_model::elements::{Beam, BeamChild};
+
+    let xml = r#"<beam xml:id="b1" staff="1" layer="1" form="norm" place="above" slash="false" beam.with="below">
+        <note xml:id="n1" pname="c" oct="5" dur="8"/>
+        <note xml:id="n2" pname="d" oct="5" dur="8"/>
+        <note xml:id="n3" pname="e" oct="5" dur="8"/>
+        <note xml:id="n4" pname="f" oct="5" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("b1".to_string()));
+    assert_eq!(parsed.beam_log.staff, vec![1]);
+    assert_eq!(parsed.beam_log.layer, vec![1]);
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Norm));
+    assert_eq!(parsed.beam_vis.place, Some(DataBeamplace::Above));
+    assert_eq!(parsed.beam_vis.slash, Some(DataBoolean::False));
+    assert_eq!(parsed.beam_log.beam_with, Some(DataNeighboringlayer::Below));
+    assert_eq!(parsed.children.len(), 4);
+    for child in &parsed.children {
+        match child {
+            BeamChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}
+
+// ============================================================================
+// Grouping Element Tests - Tuplet
+// ============================================================================
+
+#[test]
+fn tuplet_parse_empty() {
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.tuplet_log.num.is_none());
+    assert!(parsed.tuplet_log.numbase.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn tuplet_parse_with_id() {
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet xml:id="tuplet-1"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("tuplet-1".to_string()));
+}
+
+#[test]
+fn tuplet_parse_triplet() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    // Standard triplet: 3 in the space of 2
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <note xml:id="n2" pname="d" oct="4" dur="8"/>
+        <note xml:id="n3" pname="e" oct="4" dur="8"/>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("t1".to_string()));
+    assert_eq!(parsed.tuplet_log.num, Some(3));
+    assert_eq!(parsed.tuplet_log.numbase, Some(2));
+    assert_eq!(parsed.children.len(), 3);
+    for child in &parsed.children {
+        match child {
+            TupletChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}
+
+#[test]
+fn tuplet_parse_quintuplet() {
+    use tusk_model::elements::Tuplet;
+
+    // Quintuplet: 5 in the space of 4
+    let xml = r#"<tuplet num="5" numbase="4"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.num, Some(5));
+    assert_eq!(parsed.tuplet_log.numbase, Some(4));
+}
+
+#[test]
+fn tuplet_parse_septuplet() {
+    use tusk_model::elements::Tuplet;
+
+    // Septuplet: 7 in the space of 4
+    let xml = r#"<tuplet num="7" numbase="4"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.num, Some(7));
+    assert_eq!(parsed.tuplet_log.numbase, Some(4));
+}
+
+#[test]
+fn tuplet_parse_duplet() {
+    use tusk_model::elements::Tuplet;
+
+    // Duplet: 2 in the space of 3 (compound meter)
+    let xml = r#"<tuplet num="2" numbase="3"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.num, Some(2));
+    assert_eq!(parsed.tuplet_log.numbase, Some(3));
+}
+
+#[test]
+fn tuplet_parse_with_staff_layer() {
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet staff="2" layer="1"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.staff, vec![2]);
+    assert_eq!(parsed.tuplet_log.layer, vec![1]);
+}
+
+#[test]
+fn tuplet_parse_with_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet tstamp="3"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.tstamp, Some(DataBeat(3.0)));
+}
+
+#[test]
+fn tuplet_parse_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r##"<tuplet startid="#n1" endid="#n3"/>"##;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_log.startid, Some(DataUri("#n1".to_string())));
+    assert_eq!(parsed.tuplet_log.endid, Some(DataUri("#n3".to_string())));
+}
+
+#[test]
+fn tuplet_parse_with_dur() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet dur="4"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_log.dur,
+        vec![DataDuration::DataDurationCmn(DataDurationCmn::N4)]
+    );
+}
+
+#[test]
+fn tuplet_parse_with_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet color="blue"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_vis.color,
+        Some(DataColor::DataColornames(DataColornames::Blue))
+    );
+}
+
+#[test]
+fn tuplet_parse_with_num_place_above() {
+    use tusk_model::data::DataStaffrelBasic;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.place="above"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.num_place, Some(DataStaffrelBasic::Above));
+}
+
+#[test]
+fn tuplet_parse_with_num_place_below() {
+    use tusk_model::data::DataStaffrelBasic;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.place="below"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.num_place, Some(DataStaffrelBasic::Below));
+}
+
+#[test]
+fn tuplet_parse_with_num_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.visible="true"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.num_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn tuplet_parse_with_num_visible_false() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.visible="false"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.num_visible, Some(DataBoolean::False));
+}
+
+#[test]
+fn tuplet_parse_with_bracket_place_above() {
+    use tusk_model::data::DataStaffrelBasic;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet bracket.place="above"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_vis.bracket_place,
+        Some(DataStaffrelBasic::Above)
+    );
+}
+
+#[test]
+fn tuplet_parse_with_bracket_place_below() {
+    use tusk_model::data::DataStaffrelBasic;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet bracket.place="below"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_vis.bracket_place,
+        Some(DataStaffrelBasic::Below)
+    );
+}
+
+#[test]
+fn tuplet_parse_with_bracket_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet bracket.visible="true"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.bracket_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn tuplet_parse_with_bracket_visible_false() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet bracket.visible="false"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.tuplet_vis.bracket_visible, Some(DataBoolean::False));
+}
+
+#[test]
+fn tuplet_parse_with_num_format_count() {
+    use tusk_model::att::AttTupletVisNumFormat;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.format="count"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_vis.num_format,
+        Some(AttTupletVisNumFormat::Count)
+    );
+}
+
+#[test]
+fn tuplet_parse_with_num_format_ratio() {
+    use tusk_model::att::AttTupletVisNumFormat;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet num.format="ratio"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_vis.num_format,
+        Some(AttTupletVisNumFormat::Ratio)
+    );
+}
+
+#[test]
+fn tuplet_parse_with_chord() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <chord xml:id="c1" dur="8">
+            <note pname="c" oct="4"/>
+            <note pname="e" oct="4"/>
+        </chord>
+        <chord xml:id="c2" dur="8">
+            <note pname="d" oct="4"/>
+            <note pname="f" oct="4"/>
+        </chord>
+        <chord xml:id="c3" dur="8">
+            <note pname="e" oct="4"/>
+            <note pname="g" oct="4"/>
+        </chord>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 3);
+    for child in &parsed.children {
+        match child {
+            TupletChild::Chord(_) => {}
+            _ => panic!("Expected Chord children"),
+        }
+    }
+}
+
+#[test]
+fn tuplet_parse_with_rest() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <rest xml:id="r1" dur="8"/>
+        <note xml:id="n2" pname="e" oct="4" dur="8"/>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 3);
+    match &parsed.children[1] {
+        TupletChild::Rest(rest) => {
+            assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        }
+        _ => panic!("Expected Rest child"),
+    }
+}
+
+#[test]
+fn tuplet_parse_with_beam() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    // Beamed tuplet is very common
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <beam>
+            <note xml:id="n1" pname="c" oct="4" dur="8"/>
+            <note xml:id="n2" pname="d" oct="4" dur="8"/>
+            <note xml:id="n3" pname="e" oct="4" dur="8"/>
+        </beam>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TupletChild::Beam(beam) => {
+            assert_eq!(beam.children.len(), 3);
+        }
+        _ => panic!("Expected Beam child"),
+    }
+}
+
+#[test]
+fn tuplet_parse_nested_tuplet() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    // Nested tuplets (e.g., triplet within triplet)
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <note xml:id="n1" pname="c" oct="4" dur="8"/>
+        <tuplet xml:id="t2" num="3" numbase="2">
+            <note xml:id="n2" pname="d" oct="4" dur="16"/>
+            <note xml:id="n3" pname="e" oct="4" dur="16"/>
+            <note xml:id="n4" pname="f" oct="4" dur="16"/>
+        </tuplet>
+        <note xml:id="n5" pname="g" oct="4" dur="8"/>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("t1".to_string()));
+    assert_eq!(parsed.children.len(), 3);
+    match &parsed.children[1] {
+        TupletChild::Tuplet(inner) => {
+            assert_eq!(inner.common.xml_id, Some("t2".to_string()));
+            assert_eq!(inner.children.len(), 3);
+        }
+        _ => panic!("Expected nested Tuplet"),
+    }
+}
+
+#[test]
+fn tuplet_parse_with_gracegrp() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <graceGrp grace="acc">
+            <note pname="b" oct="3" dur="16"/>
+        </graceGrp>
+        <note pname="c" oct="4" dur="8"/>
+        <note pname="d" oct="4" dur="8"/>
+        <note pname="e" oct="4" dur="8"/>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 4);
+    match &parsed.children[0] {
+        TupletChild::GraceGrp(_) => {}
+        _ => panic!("Expected GraceGrp child"),
+    }
+}
+
+#[test]
+fn tuplet_parse_with_cross_staff() {
+    use tusk_model::data::DataNeighboringlayer;
+    use tusk_model::elements::Tuplet;
+
+    let xml = r#"<tuplet beam.with="above"/>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.tuplet_log.beam_with,
+        Some(DataNeighboringlayer::Above)
+    );
+}
+
+#[test]
+fn tuplet_parse_complete() {
+    use tusk_model::att::AttTupletVisNumFormat;
+    use tusk_model::data::{DataBoolean, DataStaffrelBasic};
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2" staff="1" layer="1"
+                         num.place="above" num.visible="true" num.format="count"
+                         bracket.place="above" bracket.visible="true">
+        <note xml:id="n1" pname="c" oct="5" dur="8"/>
+        <note xml:id="n2" pname="d" oct="5" dur="8"/>
+        <note xml:id="n3" pname="e" oct="5" dur="8"/>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("t1".to_string()));
+    assert_eq!(parsed.tuplet_log.num, Some(3));
+    assert_eq!(parsed.tuplet_log.numbase, Some(2));
+    assert_eq!(parsed.tuplet_log.staff, vec![1]);
+    assert_eq!(parsed.tuplet_log.layer, vec![1]);
+    assert_eq!(parsed.tuplet_vis.num_place, Some(DataStaffrelBasic::Above));
+    assert_eq!(parsed.tuplet_vis.num_visible, Some(DataBoolean::True));
+    assert_eq!(
+        parsed.tuplet_vis.num_format,
+        Some(AttTupletVisNumFormat::Count)
+    );
+    assert_eq!(
+        parsed.tuplet_vis.bracket_place,
+        Some(DataStaffrelBasic::Above)
+    );
+    assert_eq!(parsed.tuplet_vis.bracket_visible, Some(DataBoolean::True));
+    assert_eq!(parsed.children.len(), 3);
+    for child in &parsed.children {
+        match child {
+            TupletChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}
+
+// ============================================================================
+// Grouping Element Tests - GraceGrp additional tests
+// (Most GraceGrp tests are above; these add coverage for missing cases)
+// ============================================================================
+
+#[test]
+fn gracegrp_parse_attach_unknown_value() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::elements::GraceGrp;
+
+    // Tests the "unknown" attach value (previous tests cover pre/post)
+    let xml = r#"<graceGrp attach="unknown"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.grace_grp_log.attach,
+        Some(AttGraceGrpLogAttach::Unknown)
+    );
+}
+
+// ============================================================================
+// Combined Grouping Element Tests (Complex Nesting)
+// ============================================================================
+
+#[test]
+fn grouping_beam_containing_gracegrp_and_tuplet() {
+    use tusk_model::elements::{Beam, BeamChild};
+
+    // Complex nested structure: beam with grace notes and a tuplet
+    let xml = r#"<beam xml:id="b1">
+        <graceGrp grace="acc">
+            <note pname="a" oct="4" dur="32"/>
+        </graceGrp>
+        <note xml:id="n1" pname="b" oct="4" dur="8"/>
+        <tuplet num="3" numbase="2">
+            <note pname="c" oct="5" dur="16"/>
+            <note pname="d" oct="5" dur="16"/>
+            <note pname="e" oct="5" dur="16"/>
+        </tuplet>
+        <note xml:id="n2" pname="f" oct="5" dur="8"/>
+    </beam>"#;
+    let parsed = Beam::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 4);
+    match &parsed.children[0] {
+        BeamChild::GraceGrp(_) => {}
+        _ => panic!("Expected GraceGrp"),
+    }
+    match &parsed.children[2] {
+        BeamChild::Tuplet(t) => {
+            assert_eq!(t.children.len(), 3);
+        }
+        _ => panic!("Expected Tuplet"),
+    }
+}
+
+#[test]
+fn grouping_tuplet_containing_beamed_groups() {
+    use tusk_model::elements::{Tuplet, TupletChild};
+
+    // Tuplet with multiple beamed groups inside
+    let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+        <beam xml:id="b1">
+            <note pname="c" oct="4" dur="16"/>
+            <note pname="d" oct="4" dur="16"/>
+        </beam>
+        <beam xml:id="b2">
+            <note pname="e" oct="4" dur="16"/>
+            <note pname="f" oct="4" dur="16"/>
+        </beam>
+        <beam xml:id="b3">
+            <note pname="g" oct="4" dur="16"/>
+            <note pname="a" oct="4" dur="16"/>
+        </beam>
+    </tuplet>"#;
+    let parsed = Tuplet::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 3);
+    for child in &parsed.children {
+        match child {
+            TupletChild::Beam(b) => {
+                assert_eq!(b.children.len(), 2);
+            }
+            _ => panic!("Expected Beam children"),
+        }
+    }
+}
+
+#[test]
+fn grouping_gracegrp_containing_beamed_notes() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    // Grace notes often beamed together
+    let xml = r#"<graceGrp xml:id="gg1" grace="acc" attach="pre">
+        <beam>
+            <note xml:id="n1" pname="f" oct="5" dur="32"/>
+            <note xml:id="n2" pname="e" oct="5" dur="32"/>
+            <note xml:id="n3" pname="d" oct="5" dur="32"/>
+            <note xml:id="n4" pname="c" oct="5" dur="32"/>
+        </beam>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Beam(beam) => {
+            assert_eq!(beam.children.len(), 4);
+        }
+        _ => panic!("Expected Beam child"),
+    }
+}

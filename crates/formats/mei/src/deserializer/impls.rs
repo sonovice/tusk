@@ -3451,6 +3451,10 @@ impl MeiDeserialize for Beam {
                         let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
                         beam.children.push(BeamChild::Tuplet(Box::new(tuplet)));
                     }
+                    "graceGrp" => {
+                        let grace_grp = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::GraceGrp(Box::new(grace_grp)));
+                    }
                     // Other child types (clef, etc.) can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -3521,6 +3525,12 @@ impl MeiDeserialize for Tuplet {
                         tuplet
                             .children
                             .push(TupletChild::Tuplet(Box::new(nested_tuplet)));
+                    }
+                    "graceGrp" => {
+                        let grace_grp = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet
+                            .children
+                            .push(TupletChild::GraceGrp(Box::new(grace_grp)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
