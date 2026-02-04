@@ -13,20 +13,20 @@ use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
-    AttDynamLog, AttDynamVis, AttFacsimile, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
-    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
-    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
-    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
-    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTyped,
+    AttDynamLog, AttDynamVis, AttFacsimile, AttHairpinAnl, AttHairpinGes, AttHairpinLog,
+    AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes,
+    AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl,
+    AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
+    AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
+    AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl,
+    AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog,
+    AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes,
+    AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog,
+    AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
+    AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dot, Dynam, InstrDef, Label, Layer, LayerChild,
+    Accid, Artic, Chord, ChordChild, Clef, Dot, Dynam, Hairpin, InstrDef, Label, Layer, LayerChild,
     LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest,
     RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild,
     StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tie,
@@ -1500,6 +1500,80 @@ impl ExtractAttributes for AttTieAnl {
     }
 }
 
+impl ExtractAttributes for AttHairpinLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        extract_attr!(attrs, "form", self.form);
+        extract_attr!(attrs, "niente", self.niente);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttHairpinVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "startvo", self.startvo);
+        extract_attr!(attrs, "endvo", self.endvo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "x2", self.x2);
+        extract_attr!(attrs, "y2", self.y2);
+        extract_attr!(attrs, "opening", self.opening);
+        extract_attr!(attrs, "closed", self.closed);
+        extract_attr!(attrs, "opening.vertical", self.opening_vertical);
+        extract_attr!(attrs, "angle.optimize", self.angle_optimize);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttHairpinGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "val", self.val);
+        extract_attr!(attrs, "val2", self.val2);
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttHairpinAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttHairpinAnl has no attributes
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttLang {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "xml:lang", string self.xml_lang);
@@ -2833,6 +2907,37 @@ impl MeiDeserialize for Dynam {
         }
 
         Ok(dynam)
+    }
+}
+
+impl MeiDeserialize for Hairpin {
+    fn element_name() -> &'static str {
+        "hairpin"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut hairpin = Hairpin::default();
+
+        // Extract attributes into each attribute class
+        hairpin.common.extract_attributes(&mut attrs)?;
+        hairpin.facsimile.extract_attributes(&mut attrs)?;
+        hairpin.hairpin_log.extract_attributes(&mut attrs)?;
+        hairpin.hairpin_vis.extract_attributes(&mut attrs)?;
+        hairpin.hairpin_ges.extract_attributes(&mut attrs)?;
+        hairpin.hairpin_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Hairpin is an empty element per MEI spec, but skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("hairpin")?;
+        }
+
+        Ok(hairpin)
     }
 }
 
@@ -4170,5 +4275,291 @@ mod tests {
         let dynam = Dynam::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(dynam.lang.xml_lang, Some("it".to_string()));
+    }
+
+    // ============================================================================
+    // Hairpin deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn hairpin_deserializes_from_empty_element() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.common.xml_id.is_none());
+        assert!(hairpin.hairpin_log.startid.is_none());
+        assert!(hairpin.hairpin_log.endid.is_none());
+        assert!(hairpin.hairpin_log.form.is_none());
+    }
+
+    #[test]
+    fn hairpin_deserializes_xml_id() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin xml:id="h1"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.common.xml_id, Some("h1".to_string()));
+    }
+
+    #[test]
+    fn hairpin_deserializes_form_cres() {
+        use tusk_model::att::AttHairpinLogForm;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin form="cres"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+    }
+
+    #[test]
+    fn hairpin_deserializes_form_dim() {
+        use tusk_model::att::AttHairpinLogForm;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin form="dim"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+    }
+
+    #[test]
+    fn hairpin_deserializes_niente_attribute() {
+        use tusk_model::data::DataBoolean;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin niente="true"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.niente, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn hairpin_deserializes_startid_endid() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r##"<hairpin startid="#n1" endid="#n2"/>"##;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_log.startid.is_some());
+        assert!(hairpin.hairpin_log.endid.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_staff_and_layer() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin staff="1" layer="1"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.staff, vec![1]);
+        assert_eq!(hairpin.hairpin_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn hairpin_deserializes_multiple_staff_values() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin staff="1 2"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.staff, vec![1, 2]);
+    }
+
+    #[test]
+    fn hairpin_deserializes_tstamp_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin tstamp="1" tstamp2="0m+4"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_log.tstamp.is_some());
+        assert!(hairpin.hairpin_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_visual_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin place="above" color="red"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_vis.place.is_some());
+        assert!(hairpin.hairpin_vis.color.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_opening_attribute() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin opening="1.5"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_vis.opening.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_closed_attribute() {
+        use tusk_model::data::DataBoolean;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin closed="true"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_vis.closed, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn hairpin_deserializes_opening_vertical_attribute() {
+        use tusk_model::data::DataBoolean;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin opening.vertical="true"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            hairpin.hairpin_vis.opening_vertical,
+            Some(DataBoolean::True)
+        );
+    }
+
+    #[test]
+    fn hairpin_deserializes_angle_optimize_attribute() {
+        use tusk_model::data::DataBoolean;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin angle.optimize="true"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_vis.angle_optimize, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn hairpin_deserializes_line_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin lform="solid" lwidth="medium"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_vis.lform.is_some());
+        assert!(hairpin.hairpin_vis.lwidth.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin x="100" y="200" x2="300" y2="250"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_vis.x, Some(100.0));
+        assert_eq!(hairpin.hairpin_vis.y, Some(200.0));
+        assert_eq!(hairpin.hairpin_vis.x2, Some(300.0));
+        assert_eq!(hairpin.hairpin_vis.y2, Some(250.0));
+    }
+
+    #[test]
+    fn hairpin_deserializes_offset_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin startho="1.5" endho="-1.5" startvo="2" endvo="-2"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_vis.startho.is_some());
+        assert!(hairpin.hairpin_vis.endho.is_some());
+        assert!(hairpin.hairpin_vis.startvo.is_some());
+        assert!(hairpin.hairpin_vis.endvo.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_gestural_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin dur.ges="4" dur.ppq="480"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_ges.dur_ges.is_some());
+        assert_eq!(hairpin.hairpin_ges.dur_ppq, Some(480));
+    }
+
+    #[test]
+    fn hairpin_deserializes_midi_val_attributes() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin val="64" val2="100"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_ges.val.is_some());
+        assert!(hairpin.hairpin_ges.val2.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_full_attributes() {
+        use tusk_model::att::AttHairpinLogForm;
+        use tusk_model::elements::Hairpin;
+
+        let xml = r##"<hairpin xml:id="h1" form="cres" startid="#n1" endid="#n2" staff="1" layer="1" place="below" opening="2"/>"##;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.common.xml_id, Some("h1".to_string()));
+        assert_eq!(hairpin.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+        assert!(hairpin.hairpin_log.startid.is_some());
+        assert!(hairpin.hairpin_log.endid.is_some());
+        assert_eq!(hairpin.hairpin_log.staff, vec![1]);
+        assert!(hairpin.hairpin_vis.place.is_some());
+        assert!(hairpin.hairpin_vis.opening.is_some());
+    }
+
+    #[test]
+    fn hairpin_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin xml:id="h1" unknown="value"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(hairpin.common.xml_id, Some("h1".to_string()));
+    }
+
+    #[test]
+    fn hairpin_deserializes_evaluate_attribute() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin evaluate="all"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hairpin.hairpin_log.evaluate.is_some());
+    }
+
+    #[test]
+    fn hairpin_deserializes_vgrp_attribute() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin vgrp="1"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_vis.vgrp, Some(1));
+    }
+
+    #[test]
+    fn hairpin_deserializes_dur_attribute() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r#"<hairpin dur="4"/>"#;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!hairpin.hairpin_log.dur.is_empty());
+    }
+
+    #[test]
+    fn hairpin_deserializes_plist_attribute() {
+        use tusk_model::elements::Hairpin;
+
+        let xml = r##"<hairpin plist="#n1 #n2 #n3"/>"##;
+        let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(hairpin.hairpin_log.plist.len(), 3);
     }
 }

@@ -278,7 +278,7 @@ pub use att_tie_present::AttTiePresent;
 mod att_line_rend_base;
 pub use att_line_rend_base::AttLineRendBase;
 mod att_hairpin_log;
-pub use att_hairpin_log::AttHairpinLog;
+pub use att_hairpin_log::{AttHairpinLog, AttHairpinLogEvaluate, AttHairpinLogForm};
 mod att_mei_version;
 pub use att_mei_version::AttMeiVersion;
 mod att_course_log;
