@@ -18,15 +18,16 @@ use tusk_model::att::{
     AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger,
     AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl,
     AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
-    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSpaceAnl,
-    AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes,
-    AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog,
-    AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTyped,
+    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
+    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
+    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Clef, Dot, InstrDef, Label, Layer, LayerChild, LayerDef,
     LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild,
-    ScoreDef, ScoreDefChild, Section, SectionChild, Space, Staff, StaffChild, StaffDef,
+    ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
     StaffDefChild, StaffGrp, StaffGrpChild,
 };
 
@@ -1371,6 +1372,73 @@ impl ExtractAttributes for AttLayerDefAnl {
     }
 }
 
+impl ExtractAttributes for AttSlurLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSlurVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "bezier", self.bezier);
+        extract_attr!(attrs, "bulge", self.bulge);
+        extract_attr!(attrs, "curvedir", self.curvedir);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "startvo", self.startvo);
+        extract_attr!(attrs, "endvo", self.endvo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "x2", self.x2);
+        extract_attr!(attrs, "y2", self.y2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSlurGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSlurAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "join", vec self.join);
+        Ok(())
+    }
+}
+
 // ============================================================================
 // Element implementations
 // ============================================================================
@@ -2524,6 +2592,41 @@ fn parse_meter_sig_from_raw(mut attrs: AttributeMap) -> tusk_model::elements::Me
     meter_sig
 }
 
+// ============================================================================
+// Control event implementations
+// ============================================================================
+
+impl MeiDeserialize for Slur {
+    fn element_name() -> &'static str {
+        "slur"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut slur = Slur::default();
+
+        // Extract attributes into each attribute class
+        slur.common.extract_attributes(&mut attrs)?;
+        slur.facsimile.extract_attributes(&mut attrs)?;
+        slur.slur_log.extract_attributes(&mut attrs)?;
+        slur.slur_vis.extract_attributes(&mut attrs)?;
+        slur.slur_ges.extract_attributes(&mut attrs)?;
+        slur.slur_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Skip to end if not empty (slur can contain curve children but we skip for now)
+        if !is_empty {
+            reader.skip_to_end("slur")?;
+        }
+
+        Ok(slur)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3316,5 +3419,157 @@ mod tests {
             }
             other => panic!("Expected Mdiv, got {:?}", other),
         }
+    }
+
+    // ============================================================================
+    // Slur element tests
+    // ============================================================================
+
+    #[test]
+    fn slur_deserializes_from_empty_element() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.common.xml_id.is_none());
+        assert!(slur.slur_log.startid.is_none());
+        assert!(slur.slur_log.endid.is_none());
+        assert!(slur.children.is_empty());
+    }
+
+    #[test]
+    fn slur_deserializes_xml_id() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur xml:id="s1"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(slur.common.xml_id, Some("s1".to_string()));
+    }
+
+    #[test]
+    fn slur_deserializes_startid_endid() {
+        use tusk_model::elements::Slur;
+
+        let xml = r##"<slur startid="#n1" endid="#n2"/>"##;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_log.startid.is_some());
+        assert!(slur.slur_log.endid.is_some());
+    }
+
+    #[test]
+    fn slur_deserializes_staff_layer() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur staff="1" layer="1"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(slur.slur_log.staff, vec![1]);
+        assert_eq!(slur.slur_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn slur_deserializes_tstamp_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur tstamp="1" tstamp2="0m+2"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_log.tstamp.is_some());
+        assert!(slur.slur_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn slur_deserializes_visual_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur curvedir="above" lform="solid"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_vis.curvedir.is_some());
+        assert!(slur.slur_vis.lform.is_some());
+    }
+
+    #[test]
+    fn slur_deserializes_gestural_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur dur.ges="4" dur.ppq="480"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_ges.dur_ges.is_some());
+        assert_eq!(slur.slur_ges.dur_ppq, Some(480));
+    }
+
+    #[test]
+    fn slur_deserializes_analytical_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r##"<slur join="#s2"/>"##;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!slur.slur_anl.join.is_empty());
+    }
+
+    #[test]
+    fn slur_deserializes_full_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r##"<slur xml:id="s1" startid="#n1" endid="#n2" staff="1" layer="1" curvedir="below"/>"##;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(slur.common.xml_id, Some("s1".to_string()));
+        assert!(slur.slur_log.startid.is_some());
+        assert!(slur.slur_log.endid.is_some());
+        assert_eq!(slur.slur_log.staff, vec![1]);
+        assert!(slur.slur_vis.curvedir.is_some());
+    }
+
+    #[test]
+    fn slur_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur xml:id="s1" unknown="value"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(slur.common.xml_id, Some("s1".to_string()));
+    }
+
+    #[test]
+    fn slur_deserializes_evaluate_attribute() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur evaluate="all"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_log.evaluate.is_some());
+    }
+
+    #[test]
+    fn slur_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur x="100" y="200" x2="300" y2="250"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(slur.slur_vis.x, Some(100.0));
+        assert_eq!(slur.slur_vis.y, Some(200.0));
+        assert_eq!(slur.slur_vis.x2, Some(300.0));
+        assert_eq!(slur.slur_vis.y2, Some(250.0));
+    }
+
+    #[test]
+    fn slur_deserializes_offset_attributes() {
+        use tusk_model::elements::Slur;
+
+        let xml = r#"<slur startho="1.5" endho="-1.5" startvo="2" endvo="-2"/>"#;
+        let slur = Slur::from_mei_str(xml).expect("should deserialize");
+
+        assert!(slur.slur_vis.startho.is_some());
+        assert!(slur.slur_vis.endho.is_some());
+        assert!(slur.slur_vis.startvo.is_some());
+        assert!(slur.slur_vis.endvo.is_some());
     }
 }
