@@ -202,3 +202,15 @@ fn test_roundtrip_aguado_walzer_g_major() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_ahle_jesu_meines_herzens_freud() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Ahle_Jesu_meines_Herzens_Freud.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Ahle_Jesu_meines_Herzens_Freud.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
