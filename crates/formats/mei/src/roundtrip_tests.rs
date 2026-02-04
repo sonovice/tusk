@@ -8405,3 +8405,1751 @@ fn grouping_gracegrp_containing_beamed_notes() {
         _ => panic!("Expected Beam child"),
     }
 }
+
+// ============================================================================
+// Full Round-Trip Tests (parse → serialize → parse)
+// These tests verify that MEI elements can be serialized to XML and
+// deserialized back without data loss for all CMN elements.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Chord Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_chord_empty() {
+    use tusk_model::elements::Chord;
+
+    let original = Chord::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.chord_log.dur.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_chord_with_xml_id() {
+    use tusk_model::elements::Chord;
+
+    let mut original = Chord::default();
+    original.common.xml_id = Some("chord-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("xml:id=\"chord-1\""));
+
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("chord-1".to_string()));
+}
+
+#[test]
+fn roundtrip_chord_with_duration() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::Chord;
+
+    let mut original = Chord::default();
+    original.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.chord_log.dur,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn roundtrip_chord_with_dots() {
+    use tusk_model::data::{DataAugmentdot, DataDuration, DataDurationCmn};
+    use tusk_model::elements::Chord;
+
+    let mut original = Chord::default();
+    original.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.chord_log.dots = Some(DataAugmentdot(1));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.chord_log.dots, Some(DataAugmentdot(1)));
+}
+
+#[test]
+fn roundtrip_chord_with_stem_direction() {
+    use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
+    use tusk_model::elements::Chord;
+
+    let mut original = Chord::default();
+    original.chord_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
+        DataStemdirectionBasic::Up,
+    ));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.chord_vis.stem_dir,
+        Some(DataStemdirection::DataStemdirectionBasic(
+            DataStemdirectionBasic::Up
+        ))
+    );
+}
+
+#[test]
+fn roundtrip_chord_with_note_children() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Chord, ChordChild, Note};
+
+    let mut original = Chord::default();
+    original.common.xml_id = Some("c1".to_string());
+    original.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2));
+
+    // Add two notes forming a fifth
+    let mut note1 = Note::default();
+    note1.common.xml_id = Some("n1".to_string());
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut note2 = Note::default();
+    note2.common.xml_id = Some("n2".to_string());
+    note2.note_log.pname = Some(DataPitchname::from("g".to_string()));
+    note2.note_log.oct = Some(DataOctave(4));
+
+    original.children.push(ChordChild::Note(Box::new(note1)));
+    original.children.push(ChordChild::Note(Box::new(note2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("c1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+
+    match &parsed.children[0] {
+        ChordChild::Note(n) => {
+            assert_eq!(n.common.xml_id, Some("n1".to_string()));
+            assert_eq!(n.note_log.pname, Some(DataPitchname::from("c".to_string())));
+            assert_eq!(n.note_log.oct, Some(DataOctave(4)));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+
+    match &parsed.children[1] {
+        ChordChild::Note(n) => {
+            assert_eq!(n.common.xml_id, Some("n2".to_string()));
+            assert_eq!(n.note_log.pname, Some(DataPitchname::from("g".to_string())));
+        }
+        other => panic!("Expected Note, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_chord_complete() {
+    use tusk_model::data::{
+        DataAugmentdot, DataDuration, DataDurationCmn, DataOctave, DataPitchname,
+        DataStemdirection, DataStemdirectionBasic,
+    };
+    use tusk_model::elements::{Chord, ChordChild, Note};
+
+    let mut original = Chord::default();
+    original.common.xml_id = Some("c-complete".to_string());
+    original.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.chord_log.dots = Some(DataAugmentdot(1));
+    original.chord_log.staff = vec![1];
+    original.chord_log.layer = vec![1];
+    original.chord_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
+        DataStemdirectionBasic::Down,
+    ));
+
+    // Add a triad
+    let pitches = [("c", 4), ("e", 4), ("g", 4)];
+    for (i, (pname, oct)) in pitches.iter().enumerate() {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("n{}", i + 1));
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(*oct));
+        original.children.push(ChordChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Chord::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.chord_log.dur, original.chord_log.dur);
+    assert_eq!(parsed.chord_log.dots, original.chord_log.dots);
+    assert_eq!(parsed.chord_log.staff, original.chord_log.staff);
+    assert_eq!(parsed.chord_log.layer, original.chord_log.layer);
+    assert_eq!(parsed.chord_vis.stem_dir, original.chord_vis.stem_dir);
+    assert_eq!(parsed.children.len(), 3);
+}
+
+// ----------------------------------------------------------------------------
+// Slur Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_slur_empty() {
+    use tusk_model::elements::Slur;
+
+    let original = Slur::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.slur_log.startid.is_none());
+    assert!(parsed.slur_log.endid.is_none());
+}
+
+#[test]
+fn roundtrip_slur_with_xml_id() {
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.common.xml_id = Some("slur-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("slur-1".to_string()));
+}
+
+#[test]
+fn roundtrip_slur_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.common.xml_id = Some("s1".to_string());
+    original.slur_log.startid = Some(DataUri("#n1".to_string()));
+    original.slur_log.endid = Some(DataUri("#n4".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.slur_log.startid, Some(DataUri("#n1".to_string())));
+    assert_eq!(parsed.slur_log.endid, Some(DataUri("#n4".to_string())));
+}
+
+#[test]
+fn roundtrip_slur_with_staff_layer() {
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.slur_log.staff = vec![1];
+    original.slur_log.layer = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.slur_log.staff, vec![1]);
+    assert_eq!(parsed.slur_log.layer, vec![1]);
+}
+
+#[test]
+fn roundtrip_slur_with_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.slur_log.tstamp = Some(DataBeat(1.0));
+    original.slur_log.tstamp2 = Some(DataMeasurebeat("0m+4".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.slur_log.tstamp, Some(DataBeat(1.0)));
+    assert_eq!(
+        parsed.slur_log.tstamp2,
+        Some(DataMeasurebeat("0m+4".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_slur_with_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.slur_vis.color = Some(DataColor::DataColornames(DataColornames::Blue));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.slur_vis.color,
+        Some(DataColor::DataColornames(DataColornames::Blue))
+    );
+}
+
+#[test]
+fn roundtrip_slur_complete() {
+    use tusk_model::data::{DataBeat, DataColor, DataColornames, DataMeasurebeat, DataUri};
+    use tusk_model::elements::Slur;
+
+    let mut original = Slur::default();
+    original.common.xml_id = Some("slur-complete".to_string());
+    original.slur_log.startid = Some(DataUri("#n1".to_string()));
+    original.slur_log.endid = Some(DataUri("#n8".to_string()));
+    original.slur_log.staff = vec![1];
+    original.slur_log.layer = vec![1];
+    original.slur_log.tstamp = Some(DataBeat(1.0));
+    original.slur_log.tstamp2 = Some(DataMeasurebeat("1m+1".to_string()));
+    original.slur_vis.color = Some(DataColor::DataColornames(DataColornames::Red));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Slur::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.slur_log.startid, original.slur_log.startid);
+    assert_eq!(parsed.slur_log.endid, original.slur_log.endid);
+    assert_eq!(parsed.slur_log.staff, original.slur_log.staff);
+    assert_eq!(parsed.slur_log.layer, original.slur_log.layer);
+    assert_eq!(parsed.slur_log.tstamp, original.slur_log.tstamp);
+    assert_eq!(parsed.slur_log.tstamp2, original.slur_log.tstamp2);
+    assert_eq!(parsed.slur_vis.color, original.slur_vis.color);
+}
+
+// ----------------------------------------------------------------------------
+// Tie Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_tie_empty() {
+    use tusk_model::elements::Tie;
+
+    let original = Tie::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.tie_log.startid.is_none());
+    assert!(parsed.tie_log.endid.is_none());
+}
+
+#[test]
+fn roundtrip_tie_with_xml_id() {
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.common.xml_id = Some("tie-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("tie-1".to_string()));
+}
+
+#[test]
+fn roundtrip_tie_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.tie_log.startid = Some(DataUri("#n1".to_string()));
+    original.tie_log.endid = Some(DataUri("#n2".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tie_log.startid, Some(DataUri("#n1".to_string())));
+    assert_eq!(parsed.tie_log.endid, Some(DataUri("#n2".to_string())));
+}
+
+#[test]
+fn roundtrip_tie_with_staff() {
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.tie_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tie_log.staff, vec![1]);
+}
+
+#[test]
+fn roundtrip_tie_with_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.tie_log.tstamp = Some(DataBeat(2.5));
+    original.tie_log.tstamp2 = Some(DataMeasurebeat("1m+1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tie_log.tstamp, Some(DataBeat(2.5)));
+    assert_eq!(
+        parsed.tie_log.tstamp2,
+        Some(DataMeasurebeat("1m+1".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_tie_with_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.tie_vis.color = Some(DataColor::DataColornames(DataColornames::Blue));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.tie_vis.color,
+        Some(DataColor::DataColornames(DataColornames::Blue))
+    );
+}
+
+#[test]
+fn roundtrip_tie_complete() {
+    use tusk_model::data::{DataBeat, DataColor, DataColornames, DataMeasurebeat, DataUri};
+    use tusk_model::elements::Tie;
+
+    let mut original = Tie::default();
+    original.common.xml_id = Some("tie-complete".to_string());
+    original.tie_log.startid = Some(DataUri("#n1".to_string()));
+    original.tie_log.endid = Some(DataUri("#n2".to_string()));
+    original.tie_log.staff = vec![1];
+    original.tie_log.layer = vec![1];
+    original.tie_log.tstamp = Some(DataBeat(4.0));
+    original.tie_log.tstamp2 = Some(DataMeasurebeat("1m+1".to_string()));
+    original.tie_vis.color = Some(DataColor::DataColornames(DataColornames::Red));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tie::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.tie_log.startid, original.tie_log.startid);
+    assert_eq!(parsed.tie_log.endid, original.tie_log.endid);
+    assert_eq!(parsed.tie_log.staff, original.tie_log.staff);
+    assert_eq!(parsed.tie_log.layer, original.tie_log.layer);
+    assert_eq!(parsed.tie_log.tstamp, original.tie_log.tstamp);
+    assert_eq!(parsed.tie_log.tstamp2, original.tie_log.tstamp2);
+    assert_eq!(parsed.tie_vis.color, original.tie_vis.color);
+}
+
+// ----------------------------------------------------------------------------
+// Dynam Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_dynam_empty() {
+    use tusk_model::elements::Dynam;
+
+    let original = Dynam::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_dynam_with_xml_id() {
+    use tusk_model::elements::Dynam;
+
+    let mut original = Dynam::default();
+    original.common.xml_id = Some("dyn-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("dyn-1".to_string()));
+}
+
+#[test]
+fn roundtrip_dynam_with_text() {
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    let mut original = Dynam::default();
+    original.common.xml_id = Some("d1".to_string());
+    original.children.push(DynamChild::Text("ff".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DynamChild::Text(t) => assert_eq!(t, "ff"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn roundtrip_dynam_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Dynam;
+
+    let mut original = Dynam::default();
+    original.dynam_log.staff = vec![1];
+    original.dynam_log.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.dynam_log.staff, vec![1]);
+    assert_eq!(parsed.dynam_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn roundtrip_dynam_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Dynam;
+
+    let mut original = Dynam::default();
+    original.dynam_log.startid = Some(DataUri("#note1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.dynam_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_dynam_with_tstamp2() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    let mut original = Dynam::default();
+    original.dynam_log.tstamp = Some(DataBeat(1.0));
+    original.dynam_log.tstamp2 = Some(DataMeasurebeat("0m+4".to_string()));
+    original
+        .children
+        .push(DynamChild::Text("cresc.".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.dynam_log.tstamp, Some(DataBeat(1.0)));
+    assert_eq!(
+        parsed.dynam_log.tstamp2,
+        Some(DataMeasurebeat("0m+4".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_dynam_complete() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat, DataUri};
+    use tusk_model::elements::{Dynam, DynamChild};
+
+    let mut original = Dynam::default();
+    original.common.xml_id = Some("dyn-complete".to_string());
+    original.dynam_log.staff = vec![1, 2];
+    original.dynam_log.layer = vec![1];
+    original.dynam_log.tstamp = Some(DataBeat(1.0));
+    original.dynam_log.tstamp2 = Some(DataMeasurebeat("2m+1".to_string()));
+    original.dynam_log.startid = Some(DataUri("#n1".to_string()));
+    original.children.push(DynamChild::Text("sfz".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dynam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.dynam_log.staff, original.dynam_log.staff);
+    assert_eq!(parsed.dynam_log.layer, original.dynam_log.layer);
+    assert_eq!(parsed.dynam_log.tstamp, original.dynam_log.tstamp);
+    assert_eq!(parsed.dynam_log.tstamp2, original.dynam_log.tstamp2);
+    assert_eq!(parsed.dynam_log.startid, original.dynam_log.startid);
+    assert_eq!(parsed.children.len(), 1);
+}
+
+// ----------------------------------------------------------------------------
+// Hairpin Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_hairpin_empty() {
+    use tusk_model::elements::Hairpin;
+
+    let original = Hairpin::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.hairpin_log.form.is_none());
+}
+
+#[test]
+fn roundtrip_hairpin_with_xml_id() {
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.common.xml_id = Some("hp-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("hp-1".to_string()));
+}
+
+#[test]
+fn roundtrip_hairpin_crescendo() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.hairpin_log.form = Some(AttHairpinLogForm::Cres);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+}
+
+#[test]
+fn roundtrip_hairpin_diminuendo() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.hairpin_log.form = Some(AttHairpinLogForm::Dim);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+}
+
+#[test]
+fn roundtrip_hairpin_with_niente() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.hairpin_log.form = Some(AttHairpinLogForm::Dim);
+    original.hairpin_log.niente = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+    assert_eq!(parsed.hairpin_log.niente, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_hairpin_with_staff_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.hairpin_log.staff = vec![1];
+    original.hairpin_log.tstamp = Some(DataBeat(1.0));
+    original.hairpin_log.tstamp2 = Some(DataMeasurebeat("0m+3".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.hairpin_log.staff, vec![1]);
+    assert_eq!(parsed.hairpin_log.tstamp, Some(DataBeat(1.0)));
+    assert_eq!(
+        parsed.hairpin_log.tstamp2,
+        Some(DataMeasurebeat("0m+3".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_hairpin_complete() {
+    use tusk_model::att::AttHairpinLogForm;
+    use tusk_model::data::{DataBeat, DataBoolean, DataMeasurebeat, DataUri};
+    use tusk_model::elements::Hairpin;
+
+    let mut original = Hairpin::default();
+    original.common.xml_id = Some("hp-complete".to_string());
+    original.hairpin_log.form = Some(AttHairpinLogForm::Cres);
+    original.hairpin_log.niente = Some(DataBoolean::False);
+    original.hairpin_log.staff = vec![1];
+    original.hairpin_log.layer = vec![1];
+    original.hairpin_log.tstamp = Some(DataBeat(1.0));
+    original.hairpin_log.tstamp2 = Some(DataMeasurebeat("0m+4".to_string()));
+    original.hairpin_log.startid = Some(DataUri("#n1".to_string()));
+    original.hairpin_log.endid = Some(DataUri("#n4".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hairpin::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.hairpin_log.form, original.hairpin_log.form);
+    assert_eq!(parsed.hairpin_log.niente, original.hairpin_log.niente);
+    assert_eq!(parsed.hairpin_log.staff, original.hairpin_log.staff);
+    assert_eq!(parsed.hairpin_log.layer, original.hairpin_log.layer);
+    assert_eq!(parsed.hairpin_log.tstamp, original.hairpin_log.tstamp);
+    assert_eq!(parsed.hairpin_log.tstamp2, original.hairpin_log.tstamp2);
+    assert_eq!(parsed.hairpin_log.startid, original.hairpin_log.startid);
+    assert_eq!(parsed.hairpin_log.endid, original.hairpin_log.endid);
+}
+
+// ----------------------------------------------------------------------------
+// Dir Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_dir_empty() {
+    use tusk_model::elements::Dir;
+
+    let original = Dir::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_dir_with_xml_id() {
+    use tusk_model::elements::Dir;
+
+    let mut original = Dir::default();
+    original.common.xml_id = Some("dir-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("dir-1".to_string()));
+}
+
+#[test]
+fn roundtrip_dir_with_text() {
+    use tusk_model::elements::{Dir, DirChild};
+
+    let mut original = Dir::default();
+    original.children.push(DirChild::Text("legato".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DirChild::Text(t) => assert_eq!(t, "legato"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn roundtrip_dir_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Dir;
+
+    let mut original = Dir::default();
+    original.dir_log.staff = vec![1];
+    original.dir_log.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.dir_log.staff, vec![1]);
+    assert_eq!(parsed.dir_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn roundtrip_dir_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Dir;
+
+    let mut original = Dir::default();
+    original.dir_log.startid = Some(DataUri("#note1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.dir_log.startid, Some(DataUri("#note1".to_string())));
+}
+
+#[test]
+fn roundtrip_dir_with_endid() {
+    use tusk_model::data::{DataBeat, DataUri};
+    use tusk_model::elements::{Dir, DirChild};
+
+    let mut original = Dir::default();
+    original.dir_log.tstamp = Some(DataBeat(1.0));
+    original.dir_log.endid = Some(DataUri("#n4".to_string()));
+    original
+        .children
+        .push(DirChild::Text("sempre legato".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.dir_log.endid, Some(DataUri("#n4".to_string())));
+}
+
+#[test]
+fn roundtrip_dir_complete() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat, DataUri};
+    use tusk_model::elements::{Dir, DirChild};
+
+    let mut original = Dir::default();
+    original.common.xml_id = Some("dir-complete".to_string());
+    original.dir_log.staff = vec![1];
+    original.dir_log.layer = vec![1];
+    original.dir_log.tstamp = Some(DataBeat(1.0));
+    original.dir_log.tstamp2 = Some(DataMeasurebeat("2m+1".to_string()));
+    original.dir_log.startid = Some(DataUri("#n1".to_string()));
+    original.dir_log.endid = Some(DataUri("#n8".to_string()));
+    original
+        .children
+        .push(DirChild::Text("dolce espressivo".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Dir::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.dir_log.staff, original.dir_log.staff);
+    assert_eq!(parsed.dir_log.layer, original.dir_log.layer);
+    assert_eq!(parsed.dir_log.tstamp, original.dir_log.tstamp);
+    assert_eq!(parsed.dir_log.tstamp2, original.dir_log.tstamp2);
+    assert_eq!(parsed.dir_log.startid, original.dir_log.startid);
+    assert_eq!(parsed.dir_log.endid, original.dir_log.endid);
+    assert_eq!(parsed.children.len(), 1);
+}
+
+// ----------------------------------------------------------------------------
+// Tempo Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_tempo_empty() {
+    use tusk_model::elements::Tempo;
+
+    let original = Tempo::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_tempo_with_xml_id() {
+    use tusk_model::elements::Tempo;
+
+    let mut original = Tempo::default();
+    original.common.xml_id = Some("tempo-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("tempo-1".to_string()));
+}
+
+#[test]
+fn roundtrip_tempo_with_text() {
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    let mut original = Tempo::default();
+    original
+        .children
+        .push(TempoChild::Text("Allegro".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TempoChild::Text(t) => assert_eq!(t, "Allegro"),
+        _ => panic!("Expected text child"),
+    }
+}
+
+#[test]
+fn roundtrip_tempo_with_mm() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataTempovalue};
+    use tusk_model::elements::Tempo;
+
+    let mut original = Tempo::default();
+    original.tempo_log.mm = Some(DataTempovalue(120.0));
+    original.tempo_log.mm_unit = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tempo_log.mm, Some(DataTempovalue(120.0)));
+    assert_eq!(
+        parsed.tempo_log.mm_unit,
+        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+    );
+}
+
+#[test]
+fn roundtrip_tempo_with_func() {
+    use tusk_model::att::AttTempoLogFunc;
+    use tusk_model::elements::Tempo;
+
+    let mut original = Tempo::default();
+    original.tempo_log.func = Some(AttTempoLogFunc::Instantaneous);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tempo_log.func, Some(AttTempoLogFunc::Instantaneous));
+}
+
+#[test]
+fn roundtrip_tempo_continuous_func() {
+    use tusk_model::att::AttTempoLogFunc;
+    use tusk_model::data::{DataBeat, DataMeasurebeat};
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    let mut original = Tempo::default();
+    original.tempo_log.func = Some(AttTempoLogFunc::Continuous);
+    original.tempo_log.tstamp = Some(DataBeat(1.0));
+    original.tempo_log.tstamp2 = Some(DataMeasurebeat("0m+4".to_string()));
+    original.children.push(TempoChild::Text("rit.".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tempo_log.func, Some(AttTempoLogFunc::Continuous));
+    assert_eq!(
+        parsed.tempo_log.tstamp2,
+        Some(DataMeasurebeat("0m+4".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_tempo_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Tempo;
+
+    let mut original = Tempo::default();
+    original.tempo_log.staff = vec![1];
+    original.tempo_log.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tempo_log.staff, vec![1]);
+    assert_eq!(parsed.tempo_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn roundtrip_tempo_complete() {
+    use tusk_model::att::AttTempoLogFunc;
+    use tusk_model::data::{DataBeat, DataDuration, DataDurationCmn, DataTempovalue, DataUri};
+    use tusk_model::elements::{Tempo, TempoChild};
+
+    let mut original = Tempo::default();
+    original.common.xml_id = Some("tempo-complete".to_string());
+    original.tempo_log.staff = vec![1];
+    original.tempo_log.layer = vec![1];
+    original.tempo_log.tstamp = Some(DataBeat(1.0));
+    original.tempo_log.mm = Some(DataTempovalue(120.0));
+    original.tempo_log.mm_unit = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.tempo_log.func = Some(AttTempoLogFunc::Instantaneous);
+    original.tempo_log.startid = Some(DataUri("#n1".to_string()));
+    original
+        .children
+        .push(TempoChild::Text("Allegro moderato".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tempo::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.tempo_log.staff, original.tempo_log.staff);
+    assert_eq!(parsed.tempo_log.layer, original.tempo_log.layer);
+    assert_eq!(parsed.tempo_log.tstamp, original.tempo_log.tstamp);
+    assert_eq!(parsed.tempo_log.mm, original.tempo_log.mm);
+    assert_eq!(parsed.tempo_log.mm_unit, original.tempo_log.mm_unit);
+    assert_eq!(parsed.tempo_log.func, original.tempo_log.func);
+    assert_eq!(parsed.tempo_log.startid, original.tempo_log.startid);
+    assert_eq!(parsed.children.len(), 1);
+}
+
+// ----------------------------------------------------------------------------
+// Fermata Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_fermata_empty() {
+    use tusk_model::elements::Fermata;
+
+    let original = Fermata::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.fermata_vis.form.is_none());
+    assert!(parsed.fermata_vis.shape.is_none());
+}
+
+#[test]
+fn roundtrip_fermata_with_xml_id() {
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.common.xml_id = Some("ferm-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("ferm-1".to_string()));
+}
+
+#[test]
+fn roundtrip_fermata_with_form_norm() {
+    use tusk_model::att::AttFermataVisForm;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_vis.form = Some(AttFermataVisForm::Norm);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Norm));
+}
+
+#[test]
+fn roundtrip_fermata_with_form_inv() {
+    use tusk_model::att::AttFermataVisForm;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_vis.form = Some(AttFermataVisForm::Inv);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Inv));
+}
+
+#[test]
+fn roundtrip_fermata_with_shape_curved() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_vis.shape = Some(AttFermataVisShape::Curved);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Curved));
+}
+
+#[test]
+fn roundtrip_fermata_with_shape_square() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_vis.shape = Some(AttFermataVisShape::Square);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Square));
+}
+
+#[test]
+fn roundtrip_fermata_with_shape_angular() {
+    use tusk_model::att::AttFermataVisShape;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_vis.shape = Some(AttFermataVisShape::Angular);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_vis.shape, Some(AttFermataVisShape::Angular));
+}
+
+#[test]
+fn roundtrip_fermata_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_log.staff = vec![1];
+    original.fermata_log.tstamp = Some(DataBeat(4.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.fermata_log.staff, vec![1]);
+    assert_eq!(parsed.fermata_log.tstamp, Some(DataBeat(4.0)));
+}
+
+#[test]
+fn roundtrip_fermata_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.fermata_log.startid = Some(DataUri("#note1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.fermata_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_fermata_complete() {
+    use tusk_model::att::{AttFermataVisForm, AttFermataVisShape};
+    use tusk_model::data::{DataBeat, DataUri};
+    use tusk_model::elements::Fermata;
+
+    let mut original = Fermata::default();
+    original.common.xml_id = Some("ferm-complete".to_string());
+    original.fermata_log.staff = vec![1];
+    original.fermata_log.layer = vec![1];
+    original.fermata_log.tstamp = Some(DataBeat(4.0));
+    original.fermata_log.startid = Some(DataUri("#n4".to_string()));
+    original.fermata_vis.form = Some(AttFermataVisForm::Norm);
+    original.fermata_vis.shape = Some(AttFermataVisShape::Curved);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fermata::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.fermata_log.staff, original.fermata_log.staff);
+    assert_eq!(parsed.fermata_log.layer, original.fermata_log.layer);
+    assert_eq!(parsed.fermata_log.tstamp, original.fermata_log.tstamp);
+    assert_eq!(parsed.fermata_log.startid, original.fermata_log.startid);
+    assert_eq!(parsed.fermata_vis.form, original.fermata_vis.form);
+    assert_eq!(parsed.fermata_vis.shape, original.fermata_vis.shape);
+}
+
+// ----------------------------------------------------------------------------
+// Beam Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_beam_empty() {
+    use tusk_model::elements::Beam;
+
+    let original = Beam::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_beam_with_xml_id() {
+    use tusk_model::elements::Beam;
+
+    let mut original = Beam::default();
+    original.common.xml_id = Some("beam-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("beam-1".to_string()));
+}
+
+#[test]
+fn roundtrip_beam_with_form() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::elements::Beam;
+
+    let mut original = Beam::default();
+    original.beam_vis.form = Some(AttBeamVisForm::Acc);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.beam_vis.form, Some(AttBeamVisForm::Acc));
+}
+
+#[test]
+fn roundtrip_beam_with_note_children() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Beam, BeamChild, Note};
+
+    let mut original = Beam::default();
+    original.common.xml_id = Some("b1".to_string());
+
+    // Add beamed eighth notes
+    let pitches = [("c", 5), ("d", 5), ("e", 5), ("f", 5)];
+    for (i, (pname, oct)) in pitches.iter().enumerate() {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("n{}", i + 1));
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(*oct));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+        original.children.push(BeamChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("b1".to_string()));
+    assert_eq!(parsed.children.len(), 4);
+
+    for (i, child) in parsed.children.iter().enumerate() {
+        match child {
+            BeamChild::Note(n) => {
+                assert_eq!(n.common.xml_id, Some(format!("n{}", i + 1)));
+                assert_eq!(
+                    n.note_log.dur,
+                    Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+                );
+            }
+            other => panic!("Expected Note, got {:?}", other),
+        }
+    }
+}
+
+#[test]
+fn roundtrip_beam_with_mixed_children() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Beam, BeamChild, Chord, ChordChild, Note, Rest};
+
+    let mut original = Beam::default();
+    original.common.xml_id = Some("b-mixed".to_string());
+
+    // Note
+    let mut note = Note::default();
+    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note.note_log.oct = Some(DataOctave(5));
+    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    original.children.push(BeamChild::Note(Box::new(note)));
+
+    // Rest (use DataDurationCmn for CMN rests)
+    let mut rest = Rest::default();
+    rest.rest_log.dur = Some(tusk_model::data::DataDurationrests::DataDurationCmn(
+        DataDurationCmn::N8,
+    ));
+    original.children.push(BeamChild::Rest(Box::new(rest)));
+
+    // Chord
+    let mut chord = Chord::default();
+    chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    let mut chord_note = Note::default();
+    chord_note.note_log.pname = Some(DataPitchname::from("e".to_string()));
+    chord_note.note_log.oct = Some(DataOctave(5));
+    chord.children.push(ChordChild::Note(Box::new(chord_note)));
+    original.children.push(BeamChild::Chord(Box::new(chord)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 3);
+    assert!(matches!(parsed.children[0], BeamChild::Note(_)));
+    assert!(matches!(parsed.children[1], BeamChild::Rest(_)));
+    assert!(matches!(parsed.children[2], BeamChild::Chord(_)));
+}
+
+#[test]
+fn roundtrip_beam_nested() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Beam, BeamChild, Note};
+
+    let mut outer = Beam::default();
+    outer.common.xml_id = Some("b-outer".to_string());
+
+    // Inner beam
+    let mut inner = Beam::default();
+    inner.common.xml_id = Some("b-inner".to_string());
+
+    let mut note = Note::default();
+    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note.note_log.oct = Some(DataOctave(5));
+    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+    inner.children.push(BeamChild::Note(Box::new(note)));
+
+    let mut note2 = Note::default();
+    note2.note_log.pname = Some(DataPitchname::from("d".to_string()));
+    note2.note_log.oct = Some(DataOctave(5));
+    note2.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+    inner.children.push(BeamChild::Note(Box::new(note2)));
+
+    outer.children.push(BeamChild::Beam(Box::new(inner)));
+
+    let xml = outer.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("b-outer".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        BeamChild::Beam(inner) => {
+            assert_eq!(inner.common.xml_id, Some("b-inner".to_string()));
+            assert_eq!(inner.children.len(), 2);
+        }
+        other => panic!("Expected Beam, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_beam_complete() {
+    use tusk_model::att::AttBeamVisForm;
+    use tusk_model::data::{DataColor, DataColornames, DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Beam, BeamChild, Note};
+
+    let mut original = Beam::default();
+    original.common.xml_id = Some("beam-complete".to_string());
+    original.beam_vis.form = Some(AttBeamVisForm::Mixed);
+    original.beam_vis.color = Some(DataColor::DataColornames(DataColornames::Black));
+
+    // Add notes
+    for i in 0..4 {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("n{}", i + 1));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+        original.children.push(BeamChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.beam_vis.form, original.beam_vis.form);
+    assert_eq!(parsed.beam_vis.color, original.beam_vis.color);
+    assert_eq!(parsed.children.len(), 4);
+}
+
+// ----------------------------------------------------------------------------
+// Tuplet Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_tuplet_empty() {
+    use tusk_model::elements::Tuplet;
+
+    let original = Tuplet::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.tuplet_log.num.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_tuplet_with_xml_id() {
+    use tusk_model::elements::Tuplet;
+
+    let mut original = Tuplet::default();
+    original.common.xml_id = Some("tuplet-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("tuplet-1".to_string()));
+}
+
+#[test]
+fn roundtrip_tuplet_with_num() {
+    use tusk_model::elements::Tuplet;
+
+    let mut original = Tuplet::default();
+    original.tuplet_log.num = Some(3);
+    original.tuplet_log.numbase = Some(2);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tuplet_log.num, Some(3));
+    assert_eq!(parsed.tuplet_log.numbase, Some(2));
+}
+
+#[test]
+fn roundtrip_tuplet_with_dur() {
+    use tusk_model::data::{DataDuration, DataDurationCmn};
+    use tusk_model::elements::Tuplet;
+
+    let mut original = Tuplet::default();
+    original
+        .tuplet_log
+        .dur
+        .push(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.tuplet_log.dur,
+        vec![DataDuration::DataDurationCmn(DataDurationCmn::N4)]
+    );
+}
+
+#[test]
+fn roundtrip_tuplet_with_bracket_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let mut original = Tuplet::default();
+    original.tuplet_vis.bracket_visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tuplet_vis.bracket_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_tuplet_with_num_visible() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Tuplet;
+
+    let mut original = Tuplet::default();
+    original.tuplet_vis.num_visible = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.tuplet_vis.num_visible, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_tuplet_triplet_with_notes() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Note, Tuplet, TupletChild};
+
+    let mut original = Tuplet::default();
+    original.common.xml_id = Some("t1".to_string());
+    original.tuplet_log.num = Some(3);
+    original.tuplet_log.numbase = Some(2);
+
+    // Add three eighth notes for a triplet
+    let pitches = ["c", "d", "e"];
+    for (i, pname) in pitches.iter().enumerate() {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("n{}", i + 1));
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(4));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+        original.children.push(TupletChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("t1".to_string()));
+    assert_eq!(parsed.tuplet_log.num, Some(3));
+    assert_eq!(parsed.tuplet_log.numbase, Some(2));
+    assert_eq!(parsed.children.len(), 3);
+}
+
+#[test]
+fn roundtrip_tuplet_with_beam_child() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{Beam, BeamChild, Note, Tuplet, TupletChild};
+
+    let mut original = Tuplet::default();
+    original.common.xml_id = Some("t-beam".to_string());
+    original.tuplet_log.num = Some(3);
+    original.tuplet_log.numbase = Some(2);
+
+    // Beamed triplet
+    let mut beam = Beam::default();
+    beam.common.xml_id = Some("b1".to_string());
+
+    for pname in ["c", "d", "e"] {
+        let mut note = Note::default();
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(4));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+        beam.children.push(BeamChild::Note(Box::new(note)));
+    }
+
+    original.children.push(TupletChild::Beam(Box::new(beam)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TupletChild::Beam(b) => {
+            assert_eq!(b.common.xml_id, Some("b1".to_string()));
+            assert_eq!(b.children.len(), 3);
+        }
+        other => panic!("Expected Beam, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_tuplet_complete() {
+    use tusk_model::data::{DataBoolean, DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Note, Tuplet, TupletChild};
+
+    let mut original = Tuplet::default();
+    original.common.xml_id = Some("tuplet-complete".to_string());
+    original.tuplet_log.num = Some(5);
+    original.tuplet_log.numbase = Some(4);
+    original
+        .tuplet_log
+        .dur
+        .push(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.tuplet_log.staff = vec![1];
+    original.tuplet_log.layer = vec![1];
+    original.tuplet_vis.bracket_visible = Some(DataBoolean::True);
+    original.tuplet_vis.num_visible = Some(DataBoolean::True);
+
+    // Add notes
+    for i in 0..5 {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("n{}", i + 1));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+        original.children.push(TupletChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Tuplet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.tuplet_log.num, original.tuplet_log.num);
+    assert_eq!(parsed.tuplet_log.numbase, original.tuplet_log.numbase);
+    assert_eq!(parsed.tuplet_log.dur, original.tuplet_log.dur);
+    assert_eq!(parsed.tuplet_log.staff, original.tuplet_log.staff);
+    assert_eq!(parsed.tuplet_log.layer, original.tuplet_log.layer);
+    assert_eq!(
+        parsed.tuplet_vis.bracket_visible,
+        original.tuplet_vis.bracket_visible
+    );
+    assert_eq!(
+        parsed.tuplet_vis.num_visible,
+        original.tuplet_vis.num_visible
+    );
+    assert_eq!(parsed.children.len(), 5);
+}
+
+// ----------------------------------------------------------------------------
+// GraceGrp Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_gracegrp_empty() {
+    use tusk_model::elements::GraceGrp;
+
+    let original = GraceGrp::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.grace_grp_log.grace.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_gracegrp_with_xml_id() {
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.common.xml_id = Some("gg1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("gg1".to_string()));
+}
+
+#[test]
+fn roundtrip_gracegrp_with_grace_unknown() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.grace_grp_log.grace = Some(DataGrace::Unknown);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Unknown));
+}
+
+#[test]
+fn roundtrip_gracegrp_with_grace_unacc() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.grace_grp_log.grace = Some(DataGrace::Unacc);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Unacc));
+}
+
+#[test]
+fn roundtrip_gracegrp_with_grace_acc() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.grace_grp_log.grace = Some(DataGrace::Acc);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Acc));
+}
+
+#[test]
+fn roundtrip_gracegrp_with_attach_pre() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.grace_grp_log.attach = Some(AttGraceGrpLogAttach::Pre);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.grace_grp_log.attach, Some(AttGraceGrpLogAttach::Pre));
+}
+
+#[test]
+fn roundtrip_gracegrp_with_attach_post() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::elements::GraceGrp;
+
+    let mut original = GraceGrp::default();
+    original.grace_grp_log.attach = Some(AttGraceGrpLogAttach::Post);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.grace_grp_log.attach,
+        Some(AttGraceGrpLogAttach::Post)
+    );
+}
+
+#[test]
+fn roundtrip_gracegrp_with_note_children() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
+    use tusk_model::elements::{GraceGrp, GraceGrpChild, Note};
+
+    let mut original = GraceGrp::default();
+    original.common.xml_id = Some("gg1".to_string());
+    original.grace_grp_log.grace = Some(DataGrace::Unacc);
+
+    // Grace notes
+    let pitches = [("d", 5), ("c", 5)];
+    for (i, (pname, oct)) in pitches.iter().enumerate() {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("gn{}", i + 1));
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(*oct));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+        original.children.push(GraceGrpChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("gg1".to_string()));
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Unacc));
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_gracegrp_with_beam_child() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
+    use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Note};
+
+    let mut original = GraceGrp::default();
+    original.common.xml_id = Some("gg-beam".to_string());
+    original.grace_grp_log.grace = Some(DataGrace::Acc);
+    original.grace_grp_log.attach = Some(AttGraceGrpLogAttach::Pre);
+
+    // Beamed grace notes
+    let mut beam = Beam::default();
+    for pname in ["f", "e", "d", "c"] {
+        let mut note = Note::default();
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(5));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N32));
+        beam.children.push(BeamChild::Note(Box::new(note)));
+    }
+
+    original.children.push(GraceGrpChild::Beam(Box::new(beam)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Acc));
+    assert_eq!(parsed.grace_grp_log.attach, Some(AttGraceGrpLogAttach::Pre));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        GraceGrpChild::Beam(b) => {
+            assert_eq!(b.children.len(), 4);
+        }
+        other => panic!("Expected Beam, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_gracegrp_with_chord_child() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
+    use tusk_model::elements::{Chord, ChordChild, GraceGrp, GraceGrpChild, Note};
+
+    let mut original = GraceGrp::default();
+    original.common.xml_id = Some("gg-chord".to_string());
+    original.grace_grp_log.grace = Some(DataGrace::Unacc);
+
+    // Grace chord
+    let mut chord = Chord::default();
+    chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+
+    for (pname, oct) in [("c", 5), ("e", 5)] {
+        let mut note = Note::default();
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(oct));
+        chord.children.push(ChordChild::Note(Box::new(note)));
+    }
+
+    original
+        .children
+        .push(GraceGrpChild::Chord(Box::new(chord)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Chord(c) => {
+            assert_eq!(c.children.len(), 2);
+        }
+        other => panic!("Expected Chord, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_gracegrp_complete() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
+    use tusk_model::elements::{GraceGrp, GraceGrpChild, Note};
+
+    let mut original = GraceGrp::default();
+    original.common.xml_id = Some("gracegrp-complete".to_string());
+    original.grace_grp_log.grace = Some(DataGrace::Acc);
+    original.grace_grp_log.attach = Some(AttGraceGrpLogAttach::Pre);
+
+    // Add grace notes
+    for (i, pname) in ["e", "d", "c"].iter().enumerate() {
+        let mut note = Note::default();
+        note.common.xml_id = Some(format!("gn{}", i + 1));
+        note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+        note.note_log.oct = Some(DataOctave(5));
+        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N16));
+        original.children.push(GraceGrpChild::Note(Box::new(note)));
+    }
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = GraceGrp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.grace_grp_log.grace, original.grace_grp_log.grace);
+    assert_eq!(parsed.grace_grp_log.attach, original.grace_grp_log.attach);
+    assert_eq!(parsed.children.len(), 3);
+}
