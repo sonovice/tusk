@@ -25,7 +25,8 @@ use tusk_model::elements::{
     LangUsageChild, Language, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar,
     PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
     PerfResListChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild,
-    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList, WorkListChild,
+    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
+    Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -881,6 +882,174 @@ pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
     Ok(series_stmt)
 }
 
+/// Parse a `<term>` element from within another element.
+///
+/// Term is a mixed-content element that can contain text and child elements.
+/// For simplicity, we primarily support text content with the `@class` attribute,
+/// which is the common usage pattern in classification contexts.
+fn parse_term_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Term> {
+    let mut term = Term::default();
+
+    // Extract attributes
+    // Term has: att.common, att.bibl, att.dataPointing, att.lang
+    term.common.extract_attributes(&mut attrs)?;
+    term.bibl.extract_attributes(&mut attrs)?;
+    term.data_pointing.extract_attributes(&mut attrs)?;
+    term.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("term")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve text content
+                    if !text.trim().is_empty() {
+                        term.children.push(TermChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            term.children.push(TermChild::Ref(Box::new(ref_elem)));
+                        }
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            term.children.push(TermChild::Rend(Box::new(rend)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            term.children.push(TermChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            term.children.push(TermChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            term.children.push(TermChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            term.children.push(TermChild::Date(Box::new(date)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            term.children
+                                .push(TermChild::Identifier(Box::new(identifier)));
+                        }
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            term.children.push(TermChild::Title(Box::new(title)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            term.children.push(TermChild::Bibl(Box::new(bibl)));
+                        }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            term.children
+                                .push(TermChild::BiblStruct(Box::new(bibl_struct)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            term.children.push(TermChild::Lb(Box::new(lb)));
+                        }
+                        // Nested term
+                        "term" => {
+                            let nested_term =
+                                parse_term_from_event(reader, child_attrs, child_empty)?;
+                            term.children.push(TermChild::Term(Box::new(nested_term)));
+                        }
+                        // Skip other child elements for now
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(term)
+}
+
+/// Parse a `<termList>` element from within another element.
+fn parse_term_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TermList> {
+    let mut term_list = TermList::default();
+
+    // Extract attributes
+    // TermList has: att.common, att.bibl, att.pointing
+    term_list.common.extract_attributes(&mut attrs)?;
+    term_list.bibl.extract_attributes(&mut attrs)?;
+    term_list.pointing.extract_attributes(&mut attrs)?;
+
+    // Parse children if not empty
+    // termList can contain: head*, label*, term*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("termList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    term_list.children.push(TermListChild::Head(Box::new(head)));
+                }
+                "label" => {
+                    let label = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    term_list
+                        .children
+                        .push(TermListChild::Label(Box::new(label)));
+                }
+                "term" => {
+                    let term = parse_term_from_event(reader, child_attrs, child_empty)?;
+                    term_list.children.push(TermListChild::Term(Box::new(term)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(term_list)
+}
+
 /// Parse a `<classification>` element from within another element.
 fn parse_classification_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -909,6 +1078,12 @@ fn parse_classification_from_event<R: BufRead>(
                         .children
                         .push(ClassificationChild::Head(Box::new(head)));
                 }
+                "termList" => {
+                    let term_list = parse_term_list_from_event(reader, child_attrs, child_empty)?;
+                    classification
+                        .children
+                        .push(ClassificationChild::TermList(Box::new(term_list)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -919,6 +1094,48 @@ fn parse_classification_from_event<R: BufRead>(
     }
 
     Ok(classification)
+}
+
+impl MeiDeserialize for Term {
+    fn element_name() -> &'static str {
+        "term"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_term_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for TermList {
+    fn element_name() -> &'static str {
+        "termList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_term_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Classification {
+    fn element_name() -> &'static str {
+        "classification"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_classification_from_event(reader, attrs, is_empty)
+    }
 }
 
 /// Parse an `<expression>` element from within another element.
@@ -2492,6 +2709,67 @@ mod tests {
 
         assert_eq!(work.children.len(), 2);
         assert!(matches!(work.children[1], WorkChild::Classification(_)));
+    }
+
+    #[test]
+    fn classification_deserializes_with_term_list() {
+        use tusk_model::elements::{Classification, ClassificationChild, TermChild, TermListChild};
+
+        let xml = r##"<classification>
+            <termList>
+                <term class="#_4021100-9">Gitarrenmusik</term>
+                <term class="#_4129951-6">Instrumentalmusik</term>
+                <term class="#_4302724-6">Zupfmusik</term>
+            </termList>
+        </classification>"##;
+        let classification =
+            Classification::from_mei_str(xml).expect("should deserialize classification");
+
+        assert_eq!(classification.children.len(), 1);
+        if let ClassificationChild::TermList(term_list) = &classification.children[0] {
+            assert_eq!(term_list.children.len(), 3);
+            // Check first term
+            if let TermListChild::Term(term) = &term_list.children[0] {
+                assert_eq!(term.common.class.len(), 1);
+                assert_eq!(term.common.class[0].to_string(), "#_4021100-9");
+                // Check text content
+                assert_eq!(term.children.len(), 1);
+                if let TermChild::Text(text) = &term.children[0] {
+                    assert_eq!(text, "Gitarrenmusik");
+                } else {
+                    panic!("Expected Text child");
+                }
+            } else {
+                panic!("Expected Term child");
+            }
+        } else {
+            panic!("Expected TermList child");
+        }
+    }
+
+    #[test]
+    fn classification_with_term_list_roundtrips() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Classification;
+
+        let xml = r##"<classification>
+            <termList>
+                <term class="#_4021100-9">Gitarrenmusik</term>
+                <term class="#_4129951-6">Instrumentalmusik</term>
+            </termList>
+        </classification>"##;
+        let classification =
+            Classification::from_mei_str(xml).expect("should deserialize classification");
+
+        // Serialize back
+        let output_str = classification.to_mei_string().expect("should serialize");
+
+        // Verify output contains expected content
+        assert!(output_str.contains("<termList>"));
+        assert!(output_str.contains("<term"));
+        assert!(output_str.contains("Gitarrenmusik"));
+        assert!(output_str.contains("Instrumentalmusik"));
+        assert!(output_str.contains(r##"class="#_4021100-9""##));
     }
 
     #[test]

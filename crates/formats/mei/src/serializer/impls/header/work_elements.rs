@@ -7,7 +7,8 @@ use std::io::Write;
 use tusk_model::elements::{
     AltId, AltIdChild, Classification, ClassificationChild, Creation, CreationChild, ExtMeta,
     ExtMetaChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, KeyChild, Meter, MeterChild,
-    PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild,
+    PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild, Term,
+    TermChild, TermList, TermListChild,
 };
 
 // ============================================================================
@@ -833,12 +834,198 @@ impl MeiSerialize for ClassificationChild {
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             ClassificationChild::Head(elem) => elem.serialize_mei(writer),
-            // TermList needs dedicated serializer - for now write empty element
-            ClassificationChild::TermList(_) => {
-                let start = writer.start_element("termList")?;
-                writer.write_empty(start)?;
+            ClassificationChild::TermList(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// TermList
+// ============================================================================
+
+impl MeiSerialize for TermList {
+    fn element_name(&self) -> &'static str {
+        "termList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TermListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TermListChild::Head(_) => "head",
+            TermListChild::Label(_) => "label",
+            TermListChild::Term(_) => "term",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TermListChild::Head(elem) => elem.serialize_mei(writer),
+            TermListChild::Label(elem) => elem.serialize_mei(writer),
+            TermListChild::Term(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Term
+// ============================================================================
+
+impl MeiSerialize for Term {
+    fn element_name(&self) -> &'static str {
+        "term"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TermChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TermChild::Text(_) => "#text",
+            TermChild::Bibl(_) => "bibl",
+            TermChild::Address(_) => "address",
+            TermChild::Heraldry(_) => "heraldry",
+            TermChild::Dimensions(_) => "dimensions",
+            TermChild::Locus(_) => "locus",
+            TermChild::Fig(_) => "fig",
+            TermChild::Stack(_) => "stack",
+            TermChild::StyleName(_) => "styleName",
+            TermChild::Settlement(_) => "settlement",
+            TermChild::Stamp(_) => "stamp",
+            TermChild::Ref(_) => "ref",
+            TermChild::District(_) => "district",
+            TermChild::CorpName(_) => "corpName",
+            TermChild::PeriodName(_) => "periodName",
+            TermChild::Rend(_) => "rend",
+            TermChild::Symbol(_) => "symbol",
+            TermChild::Extent(_) => "extent",
+            TermChild::Q(_) => "q",
+            TermChild::Seg(_) => "seg",
+            TermChild::Abbr(_) => "abbr",
+            TermChild::Num(_) => "num",
+            TermChild::Ptr(_) => "ptr",
+            TermChild::RelationList(_) => "relationList",
+            TermChild::Signatures(_) => "signatures",
+            TermChild::Depth(_) => "depth",
+            TermChild::Street(_) => "street",
+            TermChild::Identifier(_) => "identifier",
+            TermChild::Annot(_) => "annot",
+            TermChild::LocusGrp(_) => "locusGrp",
+            TermChild::Term(_) => "term",
+            TermChild::Width(_) => "width",
+            TermChild::GeogName(_) => "geogName",
+            TermChild::PersName(_) => "persName",
+            TermChild::Country(_) => "country",
+            TermChild::SecFolio(_) => "secFolio",
+            TermChild::Catchwords(_) => "catchwords",
+            TermChild::Height(_) => "height",
+            TermChild::Expan(_) => "expan",
+            TermChild::Lb(_) => "lb",
+            TermChild::PostCode(_) => "postCode",
+            TermChild::Name(_) => "name",
+            TermChild::Relation(_) => "relation",
+            TermChild::Date(_) => "date",
+            TermChild::Repository(_) => "repository",
+            TermChild::Title(_) => "title",
+            TermChild::Dim(_) => "dim",
+            TermChild::BiblStruct(_) => "biblStruct",
+            TermChild::Bloc(_) => "bloc",
+            TermChild::GeogFeat(_) => "geogFeat",
+            TermChild::PostBox(_) => "postBox",
+            TermChild::Region(_) => "region",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TermChild::Text(text) => {
+                writer.write_text(text)?;
                 Ok(())
             }
+            TermChild::Rend(elem) => elem.serialize_mei(writer),
+            TermChild::Ref(elem) => elem.serialize_mei(writer),
+            TermChild::PersName(elem) => elem.serialize_mei(writer),
+            TermChild::CorpName(elem) => elem.serialize_mei(writer),
+            TermChild::Name(elem) => elem.serialize_mei(writer),
+            TermChild::Date(elem) => elem.serialize_mei(writer),
+            TermChild::Identifier(elem) => elem.serialize_mei(writer),
+            TermChild::Title(elem) => elem.serialize_mei(writer),
+            TermChild::Bibl(elem) => elem.serialize_mei(writer),
+            TermChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            TermChild::Lb(elem) => elem.serialize_mei(writer),
+            TermChild::Num(elem) => elem.serialize_mei(writer),
+            TermChild::Term(elem) => elem.serialize_mei(writer),
+            TermChild::GeogName(elem) => elem.serialize_mei(writer),
+            TermChild::Extent(elem) => elem.serialize_mei(writer),
+            TermChild::Annot(elem) => elem.serialize_mei(writer),
+            // Many other child types exist but are rarely used in practice.
+            // Return error for unimplemented children to catch missing implementations.
+            _ => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TermChild::{}",
+                self.element_name()
+            ))),
         }
     }
 }
