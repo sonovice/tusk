@@ -6,17 +6,19 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    Address, AddressChild, Annot, AnnotChild, Availability, AvailabilityChild, BiblScope,
-    BiblScopeChild, Change, ChangeChild, ChangeDesc, ChangeDescChild, Contents, ContentsChild,
-    Contributor, ContributorChild, CorpName, CorpNameChild, Creator, CreatorChild, Date, DateChild,
-    Distributor, DistributorChild, Edition, EditionChild, EditionStmt, EditionStmtChild, Editor,
-    EditorChild, EncodingDesc, EncodingDescChild, Extent, ExtentChild, FileDesc, FileDescChild,
-    Funder, FunderChild, Head, HeadChild, Identifier, IdentifierChild, Lb, MeiHead, MeiHeadChild,
-    Name, NameChild, NotesStmt, NotesStmtChild, P, PChild, PersName, PersNameChild, PubPlace,
-    PubPlaceChild, PubStmt, PubStmtChild, Publisher, PublisherChild, Rend, RendChild, Resp,
-    RespChild, RespStmt, RespStmtChild, RevisionDesc, RevisionDescChild, SeriesStmt,
-    SeriesStmtChild, SourceDesc, SourceDescChild, Sponsor, SponsorChild, Title, TitleChild,
-    TitlePart, TitlePartChild, TitleStmt, TitleStmtChild, Unpub, UnpubChild,
+    Address, AddressChild, AltId, AltIdChild, Annot, AnnotChild, Availability, AvailabilityChild,
+    BiblScope, BiblScopeChild, Change, ChangeChild, ChangeDesc, ChangeDescChild, Contents,
+    ContentsChild, Contributor, ContributorChild, CorpName, CorpNameChild, Creator, CreatorChild,
+    Date, DateChild, Distributor, DistributorChild, Edition, EditionChild, EditionStmt,
+    EditionStmtChild, Editor, EditorChild, EncodingDesc, EncodingDescChild, ExtMeta, ExtMetaChild,
+    Extent, ExtentChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild, Identifier,
+    IdentifierChild, Lb, Manifestation, ManifestationChild, ManifestationList,
+    ManifestationListChild, MeiHead, MeiHeadChild, Name, NameChild, NotesStmt, NotesStmtChild, P,
+    PChild, PersName, PersNameChild, PubPlace, PubPlaceChild, PubStmt, PubStmtChild, Publisher,
+    PublisherChild, Rend, RendChild, Resp, RespChild, RespStmt, RespStmtChild, RevisionDesc,
+    RevisionDescChild, SeriesStmt, SeriesStmtChild, SourceDesc, SourceDescChild, Sponsor,
+    SponsorChild, Title, TitleChild, TitlePart, TitlePartChild, TitleStmt, TitleStmtChild, Unpub,
+    UnpubChild, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -81,7 +83,10 @@ impl MeiSerialize for MeiHeadChild {
             MeiHeadChild::FileDesc(elem) => elem.serialize_mei(writer),
             MeiHeadChild::EncodingDesc(elem) => elem.serialize_mei(writer),
             MeiHeadChild::RevisionDesc(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            MeiHeadChild::WorkList(elem) => elem.serialize_mei(writer),
+            MeiHeadChild::ManifestationList(elem) => elem.serialize_mei(writer),
+            MeiHeadChild::AltId(elem) => elem.serialize_mei(writer),
+            MeiHeadChild::ExtMeta(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -2664,6 +2669,428 @@ impl MeiSerialize for ContentsChild {
             ContentsChild::P(elem) => elem.serialize_mei(writer),
             ContentsChild::Head(elem) => elem.serialize_mei(writer),
             _ => Ok(()), // ContentItem and Label need their own serializers
+        }
+    }
+}
+
+// ============================================================================
+// WorkList element implementations
+// ============================================================================
+
+impl MeiSerialize for WorkList {
+    fn element_name(&self) -> &'static str {
+        "workList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for WorkListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            WorkListChild::Head(_) => "head",
+            WorkListChild::Work(_) => "work",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            WorkListChild::Head(elem) => elem.serialize_mei(writer),
+            WorkListChild::Work(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+impl MeiSerialize for Work {
+    fn element_name(&self) -> &'static str {
+        "work"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for WorkChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            WorkChild::Incip(_) => "incip",
+            WorkChild::Meter(_) => "meter",
+            WorkChild::Creation(_) => "creation",
+            WorkChild::History(_) => "history",
+            WorkChild::Mensuration(_) => "mensuration",
+            WorkChild::PerfDuration(_) => "perfDuration",
+            WorkChild::Context(_) => "context",
+            WorkChild::NotesStmt(_) => "notesStmt",
+            WorkChild::ExtMeta(_) => "extMeta",
+            WorkChild::Dedication(_) => "dedication",
+            WorkChild::BiblList(_) => "biblList",
+            WorkChild::Title(_) => "title",
+            WorkChild::Classification(_) => "classification",
+            WorkChild::Head(_) => "head",
+            WorkChild::Tempo(_) => "tempo",
+            WorkChild::OtherChar(_) => "otherChar",
+            WorkChild::RespStmt(_) => "respStmt",
+            WorkChild::PerfMedium(_) => "perfMedium",
+            WorkChild::Audience(_) => "audience",
+            WorkChild::Key(_) => "key",
+            WorkChild::Contents(_) => "contents",
+            WorkChild::ExpressionList(_) => "expressionList",
+            WorkChild::RelationList(_) => "relationList",
+            WorkChild::ComponentList(_) => "componentList",
+            WorkChild::LangUsage(_) => "langUsage",
+            WorkChild::Identifier(_) => "identifier",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            WorkChild::Title(elem) => elem.serialize_mei(writer),
+            WorkChild::Head(elem) => elem.serialize_mei(writer),
+            WorkChild::RespStmt(elem) => elem.serialize_mei(writer),
+            WorkChild::NotesStmt(elem) => elem.serialize_mei(writer),
+            WorkChild::ExtMeta(elem) => elem.serialize_mei(writer),
+            WorkChild::Identifier(elem) => elem.serialize_mei(writer),
+            WorkChild::Contents(elem) => elem.serialize_mei(writer),
+            // The following children need dedicated serializers - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// ManifestationList element implementations
+// ============================================================================
+
+impl MeiSerialize for ManifestationList {
+    fn element_name(&self) -> &'static str {
+        "manifestationList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ManifestationListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ManifestationListChild::Head(_) => "head",
+            ManifestationListChild::Manifestation(_) => "manifestation",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ManifestationListChild::Head(elem) => elem.serialize_mei(writer),
+            ManifestationListChild::Manifestation(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+impl MeiSerialize for Manifestation {
+    fn element_name(&self) -> &'static str {
+        "manifestation"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.component_type.collect_attributes());
+        attrs.extend(self.data_pointing.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.record_type.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ManifestationChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ManifestationChild::Contents(_) => "contents",
+            ManifestationChild::Availability(_) => "availability",
+            ManifestationChild::BiblList(_) => "biblList",
+            ManifestationChild::Classification(_) => "classification",
+            ManifestationChild::RelationList(_) => "relationList",
+            ManifestationChild::SeriesStmt(_) => "seriesStmt",
+            ManifestationChild::PubStmt(_) => "pubStmt",
+            ManifestationChild::NotesStmt(_) => "notesStmt",
+            ManifestationChild::LocusGrp(_) => "locusGrp",
+            ManifestationChild::LangUsage(_) => "langUsage",
+            ManifestationChild::ExtMeta(_) => "extMeta",
+            ManifestationChild::Identifier(_) => "identifier",
+            ManifestationChild::TitleStmt(_) => "titleStmt",
+            ManifestationChild::Creation(_) => "creation",
+            ManifestationChild::PhysLoc(_) => "physLoc",
+            ManifestationChild::ComponentList(_) => "componentList",
+            ManifestationChild::ItemList(_) => "itemList",
+            ManifestationChild::EditionStmt(_) => "editionStmt",
+            ManifestationChild::Dedication(_) => "dedication",
+            ManifestationChild::History(_) => "history",
+            ManifestationChild::Head(_) => "head",
+            ManifestationChild::Locus(_) => "locus",
+            ManifestationChild::PhysDesc(_) => "physDesc",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ManifestationChild::Contents(elem) => elem.serialize_mei(writer),
+            ManifestationChild::Availability(elem) => elem.serialize_mei(writer),
+            ManifestationChild::SeriesStmt(elem) => elem.serialize_mei(writer),
+            ManifestationChild::PubStmt(elem) => elem.serialize_mei(writer),
+            ManifestationChild::NotesStmt(elem) => elem.serialize_mei(writer),
+            ManifestationChild::ExtMeta(elem) => elem.serialize_mei(writer),
+            ManifestationChild::Identifier(elem) => elem.serialize_mei(writer),
+            ManifestationChild::TitleStmt(elem) => elem.serialize_mei(writer),
+            ManifestationChild::EditionStmt(elem) => elem.serialize_mei(writer),
+            ManifestationChild::Head(elem) => elem.serialize_mei(writer),
+            // The following children need dedicated serializers - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// AltId element implementations
+// ============================================================================
+
+impl MeiSerialize for AltId {
+    fn element_name(&self) -> &'static str {
+        "altId"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for AltIdChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            AltIdChild::Text(_) => "#text",
+            AltIdChild::Stack(_) => "stack",
+            AltIdChild::Lb(_) => "lb",
+            AltIdChild::Rend(_) => "rend",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, AltIdChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            AltIdChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            AltIdChild::Lb(elem) => elem.serialize_mei(writer),
+            AltIdChild::Rend(elem) => elem.serialize_mei(writer),
+            // Stack needs its own serializer - for now write empty element
+            AltIdChild::Stack(_) => {
+                let start = writer.start_element("stack")?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// ExtMeta element implementations
+// ============================================================================
+
+impl MeiSerialize for ExtMeta {
+    fn element_name(&self) -> &'static str {
+        "extMeta"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.whitespace.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ExtMetaChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ExtMetaChild::Text(_) => "#text",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ExtMetaChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
         }
     }
 }

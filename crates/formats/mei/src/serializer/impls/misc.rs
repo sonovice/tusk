@@ -8,12 +8,12 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::att::{
     AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttCalendared,
-    AttClassed, AttColor, AttCommon, AttDataPointing, AttDatable, AttEdit, AttEvidence,
-    AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog,
-    AttGraceGrpVis, AttHorizontalAlign, AttLabelled, AttLinking, AttMeiVersion,
-    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing, AttResponsibility,
-    AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog,
-    AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable, AttEdit,
+    AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
+    AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttLabelled, AttLinking, AttMeiVersion,
+    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing, AttRecordType,
+    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
+    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -491,6 +491,22 @@ impl CollectAttributes for AttWhitespace {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "xml:space", self.xml_space);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttComponentType {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "comptype", self.comptype);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRecordType {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "recordtype", self.recordtype);
         attrs
     }
 }
