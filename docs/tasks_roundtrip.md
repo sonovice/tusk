@@ -68,7 +68,7 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `specs/musicxml/examples/Echigo-Jishi.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/FaurReveSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/MahlFaGe4Sample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/MozaChloSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/MozaChloSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/MozartTrio.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/MozaVeilSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/Saltarello.musicxml`

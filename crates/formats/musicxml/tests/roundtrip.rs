@@ -14,6 +14,37 @@ use tusk_musicxml::model::note::FullNoteContent;
 use tusk_musicxml::parser::parse_score_partwise;
 use tusk_musicxml::{export, import};
 
+/// Read a file and convert from UTF-16 to UTF-8 if needed.
+/// Handles both UTF-16 BE and LE with BOM detection.
+fn read_xml_file(path: &str) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|e| format!("Failed to read file {}: {}", path, e))?;
+
+    // Check for UTF-16 BOM (Byte Order Mark)
+    if bytes.len() >= 2 {
+        // UTF-16 BE BOM: FE FF
+        if bytes[0] == 0xFE && bytes[1] == 0xFF {
+            let u16_chars: Vec<u16> = bytes[2..]
+                .chunks_exact(2)
+                .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
+                .collect();
+            return String::from_utf16(&u16_chars)
+                .map_err(|e| format!("UTF-16 BE decode error: {}", e));
+        }
+        // UTF-16 LE BOM: FF FE
+        if bytes[0] == 0xFF && bytes[1] == 0xFE {
+            let u16_chars: Vec<u16> = bytes[2..]
+                .chunks_exact(2)
+                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+                .collect();
+            return String::from_utf16(&u16_chars)
+                .map_err(|e| format!("UTF-16 LE decode error: {}", e));
+        }
+    }
+
+    // No BOM, assume UTF-8
+    String::from_utf8(bytes).map_err(|e| format!("UTF-8 decode error: {}", e))
+}
+
 // ============================================================================
 // Roundtrip Test Harness
 // ============================================================================
@@ -559,8 +590,7 @@ fn roundtrip_spec_example(example_name: &str) -> Result<(ScorePartwise, ScorePar
         "{}/../../../specs/musicxml/examples/{}",
         manifest_dir, example_name
     );
-    let xml = fs::read_to_string(&fixture_path)
-        .map_err(|e| format!("Failed to read spec example {}: {}", example_name, e))?;
+    let xml = read_xml_file(&fixture_path)?;
     roundtrip(&xml)
 }
 
@@ -741,6 +771,20 @@ fn test_roundtrip_spec_mahl_fa_ge4_sample() {
     if !diffs.is_empty() {
         panic!(
             "Roundtrip differences found for MahlFaGe4Sample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
+
+#[test]
+fn test_roundtrip_spec_moza_chlo_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("MozaChloSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for MozaChloSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for MozaChloSample.musicxml:\n{}",
             diffs.report()
         );
     }
