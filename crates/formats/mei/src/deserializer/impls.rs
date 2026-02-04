@@ -12,8 +12,8 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl,
-    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttDirAnl,
-    AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
+    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttDataPointing,
+    AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
     AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttEvidence,
     AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttFiling,
     AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes,
@@ -31,14 +31,15 @@ use tusk_model::att::{
     AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
 };
 use tusk_model::elements::{
-    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Contributor, ContributorChild, Creator,
-    CreatorChild, Dir, Dot, Dynam, Editor, EditorChild, Fermata, FileDesc, FileDescChild, Funder,
-    FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, InstrDef, Label, Layer,
-    LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
-    MeiHeadChild, Note, NoteChild, RespStmt, Rest, RestChild, ScoreDef, ScoreDefChild, Section,
-    SectionChild, Slur, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild,
-    StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet,
-    TupletChild,
+    Accid, Artic, Availability, Beam, BeamChild, Chord, ChordChild, Clef, Contributor,
+    ContributorChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor,
+    EditorChild, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild,
+    Hairpin, Head, HeadChild, Identifier, InstrDef, Label, Layer, LayerChild, LayerDef,
+    LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Note, NoteChild,
+    PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest, RestChild, ScoreDef, ScoreDefChild,
+    Section, SectionChild, Slur, Space, Sponsor, SponsorChild, Staff, StaffChild, StaffDef,
+    StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt,
+    TitleStmtChild, Tuplet, TupletChild, Unpub,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -194,6 +195,13 @@ impl ExtractAttributes for AttXy {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "x", self.x);
         extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDataPointing {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "data", vec self.data);
         Ok(())
     }
 }
@@ -2828,7 +2836,13 @@ fn parse_file_desc_from_event<R: BufRead>(
                         .children
                         .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
                 }
-                // Other child elements (pubStmt, sourceDesc, etc.) are not
+                "pubStmt" => {
+                    let pub_stmt = parse_pub_stmt_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::PubStmt(Box::new(pub_stmt)));
+                }
+                // Other child elements (sourceDesc, editionStmt, etc.) are not
                 // yet implemented for parsing. Skip them in lenient mode.
                 _ => {
                     if !child_empty {
@@ -2924,6 +2938,291 @@ fn parse_title_stmt_from_event<R: BufRead>(
     }
 
     Ok(title_stmt)
+}
+
+/// Parse a `<pubStmt>` element from within another element.
+fn parse_pub_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PubStmt> {
+    let mut pub_stmt = PubStmt::default();
+
+    // Extract attributes into each attribute class
+    pub_stmt.common.extract_attributes(&mut attrs)?;
+    pub_stmt.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // pubStmt can contain: head*, (unpub | model.pubStmtPart*)
+    // model.pubStmtPart includes: availability, address, date, identifier,
+    // distributor, publisher, pubPlace, respStmt
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("pubStmt")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt.children.push(PubStmtChild::Head(Box::new(head)));
+                }
+                "unpub" => {
+                    let unpub = parse_unpub_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt.children.push(PubStmtChild::Unpub(Box::new(unpub)));
+                }
+                "publisher" => {
+                    let publisher = parse_publisher_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::Publisher(Box::new(publisher)));
+                }
+                "pubPlace" => {
+                    let pub_place = parse_pub_place_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::PubPlace(Box::new(pub_place)));
+                }
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt.children.push(PubStmtChild::Date(Box::new(date)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::Identifier(Box::new(identifier)));
+                }
+                "availability" => {
+                    let availability =
+                        parse_availability_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::Availability(Box::new(availability)));
+                }
+                "distributor" => {
+                    let distributor =
+                        parse_distributor_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::Distributor(Box::new(distributor)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    pub_stmt
+                        .children
+                        .push(PubStmtChild::RespStmt(Box::new(resp_stmt)));
+                }
+                // address is part of model.pubStmtPart but more complex - skip for now
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pub_stmt)
+}
+
+/// Parse an `<unpub>` element from within another element.
+fn parse_unpub_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Unpub> {
+    let mut unpub = Unpub::default();
+
+    // Extract attributes
+    unpub.common.extract_attributes(&mut attrs)?;
+    unpub.bibl.extract_attributes(&mut attrs)?;
+    unpub.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("unpub")? {
+            if !text.trim().is_empty() {
+                unpub
+                    .children
+                    .push(tusk_model::elements::UnpubChild::Text(text));
+            }
+        }
+    }
+
+    Ok(unpub)
+}
+
+/// Parse a `<publisher>` element from within another element.
+fn parse_publisher_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Publisher> {
+    let mut publisher = Publisher::default();
+
+    // Extract attributes
+    publisher.common.extract_attributes(&mut attrs)?;
+    publisher.bibl.extract_attributes(&mut attrs)?;
+    publisher.facsimile.extract_attributes(&mut attrs)?;
+    publisher.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // publisher can contain text and various child elements
+    // For now, we collect text content as PublisherChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("publisher")? {
+            if !text.trim().is_empty() {
+                publisher
+                    .children
+                    .push(tusk_model::elements::PublisherChild::Text(text));
+            }
+        }
+    }
+
+    Ok(publisher)
+}
+
+/// Parse a `<pubPlace>` element from within another element.
+fn parse_pub_place_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PubPlace> {
+    let mut pub_place = PubPlace::default();
+
+    // Extract attributes
+    pub_place.common.extract_attributes(&mut attrs)?;
+    pub_place.bibl.extract_attributes(&mut attrs)?;
+    pub_place.facsimile.extract_attributes(&mut attrs)?;
+    pub_place.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // pubPlace can contain text and various child elements
+    // For now, we collect text content as PubPlaceChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("pubPlace")? {
+            if !text.trim().is_empty() {
+                pub_place
+                    .children
+                    .push(tusk_model::elements::PubPlaceChild::Text(text));
+            }
+        }
+    }
+
+    Ok(pub_place)
+}
+
+/// Parse a `<date>` element from within another element.
+fn parse_date_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Date> {
+    let mut date = Date::default();
+
+    // Extract attributes
+    date.common.extract_attributes(&mut attrs)?;
+    date.bibl.extract_attributes(&mut attrs)?;
+    date.facsimile.extract_attributes(&mut attrs)?;
+    date.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // date can contain text and various child elements
+    // For now, we collect text content as DateChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("date")? {
+            if !text.trim().is_empty() {
+                date.children
+                    .push(tusk_model::elements::DateChild::Text(text));
+            }
+        }
+    }
+
+    Ok(date)
+}
+
+/// Parse an `<identifier>` element from within another element.
+fn parse_identifier_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Identifier> {
+    let mut identifier = Identifier::default();
+
+    // Extract attributes
+    identifier.common.extract_attributes(&mut attrs)?;
+    identifier.authorized.extract_attributes(&mut attrs)?;
+    identifier.bibl.extract_attributes(&mut attrs)?;
+    identifier.facsimile.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // identifier can contain text and various child elements
+    // For now, we collect text content as IdentifierChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("identifier")? {
+            if !text.trim().is_empty() {
+                identifier
+                    .children
+                    .push(tusk_model::elements::IdentifierChild::Text(text));
+            }
+        }
+    }
+
+    Ok(identifier)
+}
+
+/// Parse an `<availability>` element from within another element.
+fn parse_availability_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Availability> {
+    let mut availability = Availability::default();
+
+    // Extract attributes
+    availability.common.extract_attributes(&mut attrs)?;
+    availability.bibl.extract_attributes(&mut attrs)?;
+    availability.data_pointing.extract_attributes(&mut attrs)?;
+
+    // availability doesn't have children in the generated model
+    // Skip any content if present
+    if !is_empty {
+        reader.skip_to_end("availability")?;
+    }
+
+    Ok(availability)
+}
+
+/// Parse a `<distributor>` element from within another element.
+fn parse_distributor_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Distributor> {
+    let mut distributor = Distributor::default();
+
+    // Extract attributes
+    distributor.common.extract_attributes(&mut attrs)?;
+    distributor.bibl.extract_attributes(&mut attrs)?;
+    distributor.facsimile.extract_attributes(&mut attrs)?;
+    distributor.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    // distributor can contain text and various child elements
+    // For now, we collect text content as DistributorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("distributor")? {
+            if !text.trim().is_empty() {
+                distributor
+                    .children
+                    .push(tusk_model::elements::DistributorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(distributor)
 }
 
 /// Parse a `<title>` element from within another element.
@@ -3199,6 +3498,20 @@ impl MeiDeserialize for TitleStmt {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_title_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for PubStmt {
+    fn element_name() -> &'static str {
+        "pubStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_pub_stmt_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -7738,5 +8051,351 @@ mod tests {
             }
             _ => panic!("expected FileDesc child"),
         }
+    }
+
+    // ========== PubStmt tests ==========
+
+    #[test]
+    fn pub_stmt_deserializes_empty_element() {
+        use tusk_model::elements::PubStmt;
+
+        let xml = r#"<pubStmt/>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert!(pub_stmt.common.xml_id.is_none());
+        assert!(pub_stmt.children.is_empty());
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_xml_id() {
+        use tusk_model::elements::PubStmt;
+
+        let xml = r#"<pubStmt xml:id="ps1"/>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.common.xml_id, Some("ps1".to_string()));
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_bibl_attributes() {
+        use tusk_model::elements::PubStmt;
+
+        let xml = r#"<pubStmt analog="MARC21"/>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.bibl.analog, Some("MARC21".to_string()));
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_unpub_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <unpub>This file is unpublished</unpub>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Unpub(u) => {
+                assert!(!u.children.is_empty());
+            }
+            _ => panic!("expected Unpub child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_publisher_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <publisher>Music Press</publisher>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Publisher(p) => {
+                assert!(!p.children.is_empty());
+            }
+            _ => panic!("expected Publisher child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_publisher_with_xml_id() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <publisher xml:id="pub1">Music Press</publisher>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Publisher(p) => {
+                assert_eq!(p.common.xml_id, Some("pub1".to_string()));
+            }
+            _ => panic!("expected Publisher child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_pub_place_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <pubPlace>New York</pubPlace>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::PubPlace(pp) => {
+                assert!(!pp.children.is_empty());
+            }
+            _ => panic!("expected PubPlace child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_date_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <date>2024</date>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Date(_) => {}
+            _ => panic!("expected Date child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_identifier_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <identifier>ISBN:1234567890</identifier>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Identifier(_) => {}
+            _ => panic!("expected Identifier child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_availability_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <availability xml:id="avail1"/>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Availability(a) => {
+                assert_eq!(a.common.xml_id, Some("avail1".to_string()));
+            }
+            _ => panic!("expected Availability child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_distributor_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <distributor>Digital Archive</distributor>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Distributor(d) => {
+                assert!(!d.children.is_empty());
+            }
+            _ => panic!("expected Distributor child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_resp_stmt_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <respStmt xml:id="rs1"/>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::RespStmt(rs) => {
+                assert_eq!(rs.common.xml_id, Some("rs1".to_string()));
+            }
+            _ => panic!("expected RespStmt child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_head_child() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt>
+            <head>Publication Information</head>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.children.len(), 1);
+        match &pub_stmt.children[0] {
+            PubStmtChild::Head(h) => {
+                assert!(!h.children.is_empty());
+            }
+            _ => panic!("expected Head child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_deserializes_multiple_children() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt xml:id="ps1">
+            <publisher xml:id="pub1">Music Press</publisher>
+            <pubPlace>Vienna</pubPlace>
+            <date>1800</date>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.common.xml_id, Some("ps1".to_string()));
+        assert_eq!(pub_stmt.children.len(), 3);
+
+        match &pub_stmt.children[0] {
+            PubStmtChild::Publisher(p) => {
+                assert_eq!(p.common.xml_id, Some("pub1".to_string()));
+            }
+            _ => panic!("expected Publisher child"),
+        }
+        match &pub_stmt.children[1] {
+            PubStmtChild::PubPlace(_) => {}
+            _ => panic!("expected PubPlace child"),
+        }
+        match &pub_stmt.children[2] {
+            PubStmtChild::Date(_) => {}
+            _ => panic!("expected Date child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_skips_unknown_children_leniently() {
+        use tusk_model::elements::PubStmt;
+
+        let xml = r#"<pubStmt xml:id="ps1">
+            <unknownChild>content</unknownChild>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(pub_stmt.common.xml_id, Some("ps1".to_string()));
+        assert!(pub_stmt.children.is_empty());
+    }
+
+    #[test]
+    fn file_desc_deserializes_pub_stmt_child() {
+        use tusk_model::elements::{FileDesc, FileDescChild};
+
+        let xml = r#"<fileDesc xml:id="fd1">
+            <pubStmt xml:id="ps1">
+                <publisher>Music Press</publisher>
+            </pubStmt>
+        </fileDesc>"#;
+        let file_desc = FileDesc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(file_desc.common.xml_id, Some("fd1".to_string()));
+        assert_eq!(file_desc.children.len(), 1);
+        match &file_desc.children[0] {
+            FileDescChild::PubStmt(ps) => {
+                assert_eq!(ps.common.xml_id, Some("ps1".to_string()));
+                assert_eq!(ps.children.len(), 1);
+            }
+            _ => panic!("expected PubStmt child"),
+        }
+    }
+
+    #[test]
+    fn mei_head_with_file_desc_containing_pub_stmt() {
+        use tusk_model::elements::{FileDescChild, MeiHead, MeiHeadChild};
+
+        let xml = r#"<meiHead xml:id="h1">
+            <fileDesc xml:id="fd1">
+                <titleStmt>
+                    <title>Test Title</title>
+                </titleStmt>
+                <pubStmt xml:id="ps1">
+                    <publisher>Test Publisher</publisher>
+                    <pubPlace>Test City</pubPlace>
+                    <date>2024</date>
+                </pubStmt>
+            </fileDesc>
+        </meiHead>"#;
+        let mei_head = MeiHead::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(mei_head.children.len(), 1);
+        match &mei_head.children[0] {
+            MeiHeadChild::FileDesc(fd) => {
+                assert_eq!(fd.common.xml_id, Some("fd1".to_string()));
+                assert_eq!(fd.children.len(), 2);
+                match &fd.children[0] {
+                    FileDescChild::TitleStmt(_) => {}
+                    _ => panic!("expected TitleStmt child"),
+                }
+                match &fd.children[1] {
+                    FileDescChild::PubStmt(ps) => {
+                        assert_eq!(ps.common.xml_id, Some("ps1".to_string()));
+                        assert_eq!(ps.children.len(), 3);
+                    }
+                    _ => panic!("expected PubStmt child"),
+                }
+            }
+            _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    #[test]
+    fn pub_stmt_full_publication_example() {
+        use tusk_model::elements::{PubStmt, PubStmtChild};
+
+        let xml = r#"<pubStmt xml:id="ps1">
+            <head>Publication Information</head>
+            <publisher xml:id="pub1">Universal Edition</publisher>
+            <pubPlace>Vienna</pubPlace>
+            <pubPlace>London</pubPlace>
+            <date>1912</date>
+            <identifier>UE 2876</identifier>
+            <availability xml:id="avail1"/>
+            <respStmt xml:id="rs1"/>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(pub_stmt.common.xml_id, Some("ps1".to_string()));
+        assert_eq!(pub_stmt.children.len(), 8);
+
+        // Verify child types in order
+        assert!(matches!(pub_stmt.children[0], PubStmtChild::Head(_)));
+        assert!(matches!(pub_stmt.children[1], PubStmtChild::Publisher(_)));
+        assert!(matches!(pub_stmt.children[2], PubStmtChild::PubPlace(_)));
+        assert!(matches!(pub_stmt.children[3], PubStmtChild::PubPlace(_)));
+        assert!(matches!(pub_stmt.children[4], PubStmtChild::Date(_)));
+        assert!(matches!(pub_stmt.children[5], PubStmtChild::Identifier(_)));
+        assert!(matches!(
+            pub_stmt.children[6],
+            PubStmtChild::Availability(_)
+        ));
+        assert!(matches!(pub_stmt.children[7], PubStmtChild::RespStmt(_)));
     }
 }
