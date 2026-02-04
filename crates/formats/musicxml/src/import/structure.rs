@@ -16,11 +16,11 @@ use crate::import::{
     convert_note, convert_rest, convert_score_def, is_measure_rest,
 };
 use crate::model::elements::ScorePartwise;
-use tusk_model::data::{DataBoolean, DataMeasurementunsigned, DataWord};
 use tusk_model::data::DataUri;
+use tusk_model::data::{DataBoolean, DataMeasurementunsigned, DataWord};
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score,
-    ScoreChild, Section, SectionChild, Slur, StaffChild,
+    Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild,
+    Section, SectionChild, Slur, StaffChild,
 };
 
 /// Convert MusicXML content to MEI body.
@@ -200,7 +200,9 @@ fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut Convers
         // Set staff
         slur.slur_log.staff.push(completed.staff as u64);
 
-        mei_measure.children.push(MeasureChild::Slur(Box::new(slur)));
+        mei_measure
+            .children
+            .push(MeasureChild::Slur(Box::new(slur)));
     }
 }
 

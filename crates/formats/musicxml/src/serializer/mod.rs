@@ -219,7 +219,11 @@ impl<W: Write> MusicXmlWriter<W> {
     }
 
     /// Write an optional text element (only if value is Some).
-    pub fn write_opt_text_element(&mut self, name: &str, value: &Option<String>) -> SerializeResult<()> {
+    pub fn write_opt_text_element(
+        &mut self,
+        name: &str,
+        value: &Option<String>,
+    ) -> SerializeResult<()> {
         if let Some(text) = value {
             self.write_text_element(name, text)?;
         }
@@ -275,10 +279,20 @@ mod tests {
         let mut buffer = Vec::new();
         let config = SerializeConfig::default();
         let mut writer = MusicXmlWriter::new(&mut buffer, config);
-        writer.write_declaration().expect("should write declaration");
+        writer
+            .write_declaration()
+            .expect("should write declaration");
         let result = String::from_utf8(buffer).unwrap();
-        assert!(result.contains("<?xml"), "should have declaration: {}", result);
-        assert!(result.contains("version=\"1.0\""), "should have version: {}", result);
+        assert!(
+            result.contains("<?xml"),
+            "should have declaration: {}",
+            result
+        );
+        assert!(
+            result.contains("version=\"1.0\""),
+            "should have version: {}",
+            result
+        );
         assert!(result.contains("UTF-8"), "should have encoding: {}", result);
     }
 
@@ -289,8 +303,16 @@ mod tests {
         let mut writer = MusicXmlWriter::new(&mut buffer, config);
         writer.write_doctype().expect("should write doctype");
         let result = String::from_utf8(buffer).unwrap();
-        assert!(result.contains("<!DOCTYPE"), "should have doctype: {}", result);
-        assert!(result.contains("score-partwise"), "should have score-partwise: {}", result);
+        assert!(
+            result.contains("<!DOCTYPE"),
+            "should have doctype: {}",
+            result
+        );
+        assert!(
+            result.contains("score-partwise"),
+            "should have score-partwise: {}",
+            result
+        );
     }
 
     #[test]
@@ -307,7 +329,11 @@ mod tests {
         writer.write_empty(start).expect("should write");
         let result = String::from_utf8(buffer).unwrap();
         assert!(result.contains("<note"), "should have note: {}", result);
-        assert!(result.contains("default-x=\"10\""), "should have attr: {}", result);
+        assert!(
+            result.contains("default-x=\"10\""),
+            "should have attr: {}",
+            result
+        );
         assert!(result.contains("/>"), "should be self-closing: {}", result);
     }
 
@@ -320,7 +346,9 @@ mod tests {
             indent: None,
         };
         let mut writer = MusicXmlWriter::new(&mut buffer, config);
-        writer.write_text_element("work-title", "Symphony No. 5").expect("should write");
+        writer
+            .write_text_element("work-title", "Symphony No. 5")
+            .expect("should write");
         let result = String::from_utf8(buffer).unwrap();
         assert_eq!(result, "<work-title>Symphony No. 5</work-title>");
     }
@@ -337,7 +365,9 @@ mod tests {
 
         let start = writer.start_element("work");
         writer.write_start(start).expect("should write start");
-        writer.write_text_element("work-title", "Test").expect("should write child");
+        writer
+            .write_text_element("work-title", "Test")
+            .expect("should write child");
         writer.write_end("work").expect("should write end");
 
         let result = String::from_utf8(buffer).unwrap();

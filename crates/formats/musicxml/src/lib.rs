@@ -57,7 +57,9 @@ pub use context::{ConversionContext, ConversionDirection, PendingSlur, PendingTi
 pub use convert_error::{ConversionError, ConversionResult};
 
 // Re-export serializer types
-pub use serializer::{MusicXmlSerialize, MusicXmlWriter, SerializeConfig, SerializeError, SerializeResult};
+pub use serializer::{
+    MusicXmlSerialize, MusicXmlWriter, SerializeConfig, SerializeError, SerializeResult,
+};
 
 /// Import a MusicXML score-partwise document to MEI (lossless conversion).
 ///

@@ -11,7 +11,9 @@
 use std::io::Write;
 
 use crate::model::*;
-use crate::serializer::{MusicXmlSerialize, MusicXmlWriter, SerializeResult, push_opt_attr, push_opt_str_attr};
+use crate::serializer::{
+    MusicXmlSerialize, MusicXmlWriter, SerializeResult, push_opt_attr, push_opt_str_attr,
+};
 
 // ============================================================================
 // ScorePartwise
@@ -1595,7 +1597,10 @@ impl MusicXmlSerialize for DirectionType {
     }
 }
 
-fn serialize_dynamics_value<W: Write>(w: &mut MusicXmlWriter<W>, value: &DynamicsValue) -> SerializeResult<()> {
+fn serialize_dynamics_value<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    value: &DynamicsValue,
+) -> SerializeResult<()> {
     let name = match value {
         DynamicsValue::P => "p",
         DynamicsValue::Pp => "pp",
@@ -1708,7 +1713,11 @@ impl MusicXmlSerialize for Metronome {
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         match &self.content {
-            MetronomeContent::BeatUnit { beat_unit, beat_unit_dots, per_minute } => {
+            MetronomeContent::BeatUnit {
+                beat_unit,
+                beat_unit_dots,
+                per_minute,
+            } => {
                 w.write_text_element("beat-unit", beat_unit)?;
                 for _ in beat_unit_dots {
                     w.write_empty(w.start_element("beat-unit-dot"))?;
@@ -1967,13 +1976,21 @@ fn mode_str(m: &Mode) -> &'static str {
 }
 
 // Helper to push optional attribute to BytesStart
-fn push_opt_attr_start<T: std::fmt::Display>(start: &mut quick_xml::events::BytesStart<'_>, name: &'static str, opt: &Option<T>) {
+fn push_opt_attr_start<T: std::fmt::Display>(
+    start: &mut quick_xml::events::BytesStart<'_>,
+    name: &'static str,
+    opt: &Option<T>,
+) {
     if let Some(v) = opt {
         start.push_attribute((name, v.to_string().as_str()));
     }
 }
 
-fn push_opt_str_attr_start(start: &mut quick_xml::events::BytesStart<'_>, name: &'static str, opt: &Option<String>) {
+fn push_opt_str_attr_start(
+    start: &mut quick_xml::events::BytesStart<'_>,
+    name: &'static str,
+    opt: &Option<String>,
+) {
     if let Some(v) = opt {
         start.push_attribute((name, v.as_str()));
     }

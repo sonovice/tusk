@@ -505,7 +505,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Hairpin(_) => false, // Hairpin has no children
             MeasureChild::Tempo(tempo) => tempo.has_children(),
             MeasureChild::Slur(_) => false, // Slur has no children (just attributes)
-            MeasureChild::Tie(_) => false, // Tie has no children
+            MeasureChild::Tie(_) => false,  // Tie has no children
             // Other child types - assume no children for now
             _ => false,
         }

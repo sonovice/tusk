@@ -1,17 +1,17 @@
 //! Note, rest, and chord conversion from MusicXML to MEI.
 
 use crate::context::ConversionContext;
+use crate::context::PendingSlur;
 use crate::convert_error::ConversionResult;
 use crate::import::utils::{
     convert_accidental_value, convert_alter_to_gestural_accid, convert_grace,
     convert_note_type_to_duration, convert_note_type_to_duration_cmn, convert_pitch_name,
     convert_stem_direction,
 };
-use crate::context::PendingSlur;
-use crate::model::note::{FullNoteContent, Note as MusicXmlNote};
-use crate::model::notations::{Articulations, TiedType};
 use crate::model::StartStop;
 use crate::model::StartStopContinue;
+use crate::model::notations::{Articulations, TiedType};
+use crate::model::note::{FullNoteContent, Note as MusicXmlNote};
 use tusk_model::att::AttAccidLogFunc;
 use tusk_model::data::{DataArticulation, DataAugmentdot, DataBoolean, DataOctave, DataTie};
 use tusk_model::elements::{Accid, Chord, ChordChild, Note as MeiNote, NoteChild};
@@ -442,11 +442,7 @@ fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
         || note
             .notations
             .as_ref()
-            .map(|n| {
-                n.tied
-                    .iter()
-                    .any(|t| matches!(t.tied_type, TiedType::Stop))
-            })
+            .map(|n| n.tied.iter().any(|t| matches!(t.tied_type, TiedType::Stop)))
             .unwrap_or(false);
 
     // Set @tie attribute based on state

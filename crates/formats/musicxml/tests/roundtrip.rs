@@ -75,8 +75,7 @@ fn roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
     let xml2 = serialize(&exported).map_err(|e| format!("Serialize error: {}", e))?;
 
     // Step 5: Parse the re-serialized XML
-    let roundtripped =
-        parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
+    let roundtripped = parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
 
     Ok((original, roundtripped))
 }

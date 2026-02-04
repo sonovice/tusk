@@ -616,7 +616,10 @@ fn parse_slur(e: &BytesStart) -> Result<Slur> {
         "stop" => StartStopContinue::Stop,
         "continue" => StartStopContinue::Continue,
         s => {
-            return Err(ParseError::InvalidAttribute("type".to_string(), s.to_string()));
+            return Err(ParseError::InvalidAttribute(
+                "type".to_string(),
+                s.to_string(),
+            ));
         }
     };
 
@@ -655,7 +658,10 @@ fn parse_tied(e: &BytesStart) -> Result<Tied> {
         "continue" => TiedType::Continue,
         "let-ring" => TiedType::LetRing,
         s => {
-            return Err(ParseError::InvalidAttribute("type".to_string(), s.to_string()));
+            return Err(ParseError::InvalidAttribute(
+                "type".to_string(),
+                s.to_string(),
+            ));
         }
     };
 

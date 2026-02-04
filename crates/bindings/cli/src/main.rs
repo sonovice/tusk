@@ -1,6 +1,6 @@
 //! Tusk CLI - MusicXML <-> MEI converter command-line tool.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -83,8 +83,8 @@ fn main() -> Result<()> {
             let score = tusk_musicxml::parser::parse_score_partwise(&input_xml)
                 .or_else(|_| tusk_musicxml::parser::parse_score_timewise(&input_xml))
                 .with_context(|| "Failed to parse MusicXML")?;
-            let mei =
-                tusk_musicxml::import(&score).with_context(|| "Failed to import MusicXML to MEI")?;
+            let mei = tusk_musicxml::import(&score)
+                .with_context(|| "Failed to import MusicXML to MEI")?;
             tusk_mei::export(&mei).with_context(|| "Failed to export MEI")?
         }
         (Format::Mei, Format::MusicXml) => {
