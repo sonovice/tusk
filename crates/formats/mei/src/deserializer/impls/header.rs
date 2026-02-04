@@ -611,6 +611,10 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                                 parse_imprint_from_event(reader, child_attrs, child_empty)?;
                             bibl.children.push(BiblChild::Imprint(Box::new(imprint)));
                         }
+                        "editor" => {
+                            let editor = parse_editor_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children.push(BiblChild::Editor(Box::new(editor)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {
@@ -5115,6 +5119,54 @@ mod tests {
                 assert!(text.contains("with some text"));
             }
             other => panic!("expected Text child second, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn bibl_deserializes_editor_child() {
+        use tusk_model::elements::BiblChild;
+
+        // bibl with editor child element
+        let xml = r#"<source>
+          <bibl>
+            <title>Test Work</title>
+            <editor>John Smith</editor>
+          </bibl>
+        </source>"#;
+
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+
+        let bibl = source
+            .children
+            .iter()
+            .find_map(|c| {
+                if let SourceChild::Bibl(b) = c {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .expect("should have bibl child");
+
+        // Should have title and editor
+        assert_eq!(bibl.children.len(), 2);
+
+        // First child should be Title
+        assert!(matches!(&bibl.children[0], BiblChild::Title(_)));
+
+        // Second child should be Editor
+        match &bibl.children[1] {
+            BiblChild::Editor(editor) => {
+                // Check text content
+                assert!(editor.children.iter().any(|c| {
+                    if let tusk_model::elements::EditorChild::Text(t) = c {
+                        t.contains("John Smith")
+                    } else {
+                        false
+                    }
+                }));
+            }
+            other => panic!("expected Editor child, got {:?}", other),
         }
     }
 }
