@@ -6,6 +6,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 
 **Workflow**: Go through tasks top-to-bottom. Generated tasks block fixture tasks - fix them first, then retry the fixture.
 
+**Note**: MEI sample encodings may contain errors (unlikely but possible). If a roundtrip difference appears correct on our side, verify against the MEI schema before assuming our code is wrong.
+
 ---
 
 ## Generated Tasks
@@ -30,7 +32,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] RespStmt element: children (persName, name, corpName, resp) not being parsed - deserializer calls skip_to_end instead of parsing children (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] PubStmt: address element not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [x] [SERIALIZER_BUG] AvailabilityChild: UseRestrict not serialized - skipped in wildcard match arm (source: Aguado_Walzer_G-major.mei)
-- [ ] [SERIALIZER_BUG] PChild: Ref element not serialized - only Text is handled, all other variants skipped (source: Aguado_Walzer_G-major.mei)
+- [x] [SERIALIZER_BUG] PChild: Ref element not serialized - only Text is handled, all other variants skipped (source: Aguado_Walzer_G-major.mei)
 - [ ] [XML_COMPARE] Version element name migration: composer→creator comparison should treat as equivalent (MEI 5.1→6.0-dev migration) (source: Aguado_Walzer_G-major.mei)
 
 ---
