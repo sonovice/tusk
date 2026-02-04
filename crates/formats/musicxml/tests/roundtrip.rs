@@ -675,3 +675,17 @@ fn test_roundtrip_spec_chant() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_debu_mand_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("DebuMandSample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for DebuMandSample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for DebuMandSample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
