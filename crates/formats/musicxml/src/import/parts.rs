@@ -284,11 +284,13 @@ pub fn convert_staff_def_from_score_part(
         }
 
         // Apply clef (overrides default)
-        // Look for clef matching this staff number, or first clef if no staff number specified
+        // For single-staff parts or first staff of multi-staff parts, use clef number=1 or None
+        // Note: MusicXML clef@number is 1-based within the part, not global across all parts
+        // TODO: Multi-staff parts (like piano) should create multiple staffDef elements
         let clef = attrs
             .clefs
             .iter()
-            .find(|c| c.number.is_none_or(|n| n == staff_number))
+            .find(|c| c.number.is_none() || c.number == Some(1))
             .or_else(|| attrs.clefs.first());
 
         if let Some(clef) = clef {

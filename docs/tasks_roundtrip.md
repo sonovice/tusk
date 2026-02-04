@@ -24,6 +24,19 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `high_divisions.musicxml`
 - [x] Roundtrip test: `directions.musicxml`
 
+### Spec Example Fixtures
+- [x] Roundtrip test: `specs/musicxml/examples/Telemann.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/Binchois.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/MozartPianoSonata.musicxml`
+
+---
+
+## Completed Bug Fixes
+
+- [x] [BUGFIX] Clef selection used global staff number instead of part-internal staff number (source: Telemann.musicxml)
+  - Multi-staff parts (like piano) have clefs with `number=1` and `number=2` within the part
+  - Fixed to use `number=1` or `None` for first staffDef of each part
+
 ---
 
 ## Generated Tasks

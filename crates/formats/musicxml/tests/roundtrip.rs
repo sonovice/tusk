@@ -88,7 +88,11 @@ fn compare_scores(original: &ScorePartwise, roundtripped: &ScorePartwise) -> Dif
     compare_part_list(original, roundtripped, &mut diffs);
 
     // Compare each part
-    for (i, (orig_part, rt_part)) in original.parts.iter().zip(roundtripped.parts.iter()).enumerate()
+    for (i, (orig_part, rt_part)) in original
+        .parts
+        .iter()
+        .zip(roundtripped.parts.iter())
+        .enumerate()
     {
         let part_id = &orig_part.id;
 
@@ -142,7 +146,11 @@ fn compare_scores(original: &ScorePartwise, roundtripped: &ScorePartwise) -> Dif
     diffs
 }
 
-fn compare_part_list(original: &ScorePartwise, roundtripped: &ScorePartwise, diffs: &mut Differences) {
+fn compare_part_list(
+    original: &ScorePartwise,
+    roundtripped: &ScorePartwise,
+    diffs: &mut Differences,
+) {
     use tusk_musicxml::model::elements::PartListItem;
 
     let orig_parts: Vec<_> = original
@@ -227,7 +235,10 @@ fn compare_measure_content(
 
     // Compare each note
     for (n_idx, (orig_note, rt_note)) in orig_notes.iter().zip(rt_notes.iter()).enumerate() {
-        let ctx = format!("Part '{}', Measure '{}', Note {}", part_id, measure_num, n_idx);
+        let ctx = format!(
+            "Part '{}', Measure '{}', Note {}",
+            part_id, measure_num, n_idx
+        );
 
         // Compare pitch/rest
         compare_note_content(&ctx, &orig_note.content, &rt_note.content, diffs);
@@ -520,8 +531,8 @@ fn test_roundtrip_directions() {
 #[ignore] // Run with --ignored to debug
 fn debug_roundtrip_output() {
     let fixture_name = "hello_world.musicxml";
-    let (original, roundtripped) = roundtrip_fixture(fixture_name)
-        .unwrap_or_else(|e| panic!("Roundtrip failed: {}", e));
+    let (original, roundtripped) =
+        roundtrip_fixture(fixture_name).unwrap_or_else(|e| panic!("Roundtrip failed: {}", e));
 
     println!("=== Original ===");
     println!("Parts: {}", original.parts.len());
@@ -533,5 +544,64 @@ fn debug_roundtrip_output() {
     println!("Parts: {}", roundtripped.parts.len());
     for part in &roundtripped.parts {
         println!("  Part '{}': {} measures", part.id, part.measures.len());
+    }
+}
+
+// ============================================================================
+// Spec Examples Tests (from specs/musicxml/examples/)
+// ============================================================================
+
+/// Load a spec example file and perform roundtrip test.
+fn roundtrip_spec_example(example_name: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+    // Build path relative to the crate manifest directory
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let fixture_path = format!(
+        "{}/../../../specs/musicxml/examples/{}",
+        manifest_dir, example_name
+    );
+    let xml = fs::read_to_string(&fixture_path)
+        .map_err(|e| format!("Failed to read spec example {}: {}", example_name, e))?;
+    roundtrip(&xml)
+}
+
+#[test]
+fn test_roundtrip_spec_telemann() {
+    let (original, roundtripped) = roundtrip_spec_example("Telemann.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Telemann: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Telemann.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
+
+#[test]
+fn test_roundtrip_spec_binchois() {
+    let (original, roundtripped) = roundtrip_spec_example("Binchois.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Binchois: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Binchois.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
+
+#[test]
+fn test_roundtrip_spec_mozart_piano_sonata() {
+    let (original, roundtripped) = roundtrip_spec_example("MozartPianoSonata.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for MozartPianoSonata: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for MozartPianoSonata.musicxml:\n{}",
+            diffs.report()
+        );
     }
 }
