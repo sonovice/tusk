@@ -23,21 +23,28 @@
 
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::error::ConversionResult;
-use tusk_model::att::{AttAccidLogFunc, AttMeiVersionMeiversion, AttStaffGrpVisSymbol};
+use tusk_model::att::{
+    AttAccidLogFunc, AttHairpinLogForm, AttMeiVersionMeiversion, AttStaffGrpVisSymbol,
+    AttTempoLogFunc,
+};
 use tusk_model::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataAugmentdot, DataBoolean, DataClefline, DataClefshape,
+    DataAccidentalWrittenBasic, DataAugmentdot, DataBeat, DataBoolean, DataClefline, DataClefshape,
     DataDuration, DataDurationCmn, DataGrace, DataKeyfifths, DataMeasurementunsigned,
     DataMetersign, DataOctave, DataOctaveDis, DataPitchname, DataStaffrelBasic, DataStemdirection,
-    DataStemdirectionBasic, DataWord,
+    DataStemdirectionBasic, DataTempovalue, DataWord,
 };
 use tusk_model::elements::{
-    Accid, Body, BodyChild, Chord, ChordChild, Label, LabelAbbr, LabelAbbrChild, LabelChild,
-    LayerChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, NoteChild, Score,
-    ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+    Accid, Body, BodyChild, Chord, ChordChild, Dir, DirChild, Dynam, DynamChild, Hairpin, Label,
+    LabelAbbr, LabelAbbrChild, LabelChild, LayerChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead,
+    MeiHeadChild, Music, NoteChild, Score, ScoreChild, ScoreDef, Section, StaffDef, StaffDefChild,
+    StaffGrp, StaffGrpChild, Tempo, TempoChild,
 };
 use tusk_musicxml::model::attributes::{
     Clef, ClefSign, Key, KeyContent, Mode, Time, TimeContent, TimeSymbol,
+};
+use tusk_musicxml::model::direction::{
+    Direction, DirectionTypeContent, DynamicsValue, MetronomeContent, WedgeType,
 };
 use tusk_musicxml::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 use tusk_musicxml::model::note::{AccidentalValue, FullNoteContent, NoteTypeValue, StemValue};
@@ -654,10 +661,57 @@ pub fn convert_measure(
             mei_measure
                 .children
                 .push(MeasureChild::Staff(Box::new(staff)));
+
+            // Convert directions to control events
+            convert_measure_directions(musicxml_measure, &mut mei_measure, ctx)?;
         }
     }
 
     Ok(mei_measure)
+}
+
+/// Convert MusicXML directions in a measure to MEI control events.
+///
+/// Processes all Direction elements in the measure content and converts them
+/// to the appropriate MEI control events (dynam, hairpin, tempo, dir).
+fn convert_measure_directions(
+    musicxml_measure: &tusk_musicxml::model::elements::Measure,
+    mei_measure: &mut tusk_model::elements::Measure,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use tusk_model::elements::MeasureChild;
+    use tusk_musicxml::model::elements::MeasureContent;
+
+    for content in &musicxml_measure.content {
+        if let MeasureContent::Direction(direction) = content {
+            let results = convert_direction(direction, ctx)?;
+
+            for result in results {
+                match result {
+                    DirectionConversionResult::Dynam(dynam) => {
+                        mei_measure
+                            .children
+                            .push(MeasureChild::Dynam(Box::new(dynam)));
+                    }
+                    DirectionConversionResult::Hairpin(hairpin) => {
+                        mei_measure
+                            .children
+                            .push(MeasureChild::Hairpin(Box::new(hairpin)));
+                    }
+                    DirectionConversionResult::Tempo(tempo) => {
+                        mei_measure
+                            .children
+                            .push(MeasureChild::Tempo(Box::new(tempo)));
+                    }
+                    DirectionConversionResult::Dir(dir) => {
+                        mei_measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Convert MusicXML measure attributes to MEI measure attributes.
@@ -1542,6 +1596,352 @@ pub fn process_attributes(
             sd.staff_def_log.clef_dis_place = dis_place;
         }
     }
+}
+
+// ============================================================================
+// Direction to Control Event Conversion
+// ============================================================================
+
+/// Result of converting a MusicXML direction to MEI control events.
+///
+/// A single MusicXML direction can produce multiple MEI control events,
+/// for example when a direction contains both dynamics and a wedge.
+pub enum DirectionConversionResult {
+    /// Dynamic indication (f, p, mf, etc.)
+    Dynam(Dynam),
+    /// Hairpin/wedge (crescendo, diminuendo)
+    Hairpin(Hairpin),
+    /// Tempo indication
+    Tempo(Tempo),
+    /// General directive text
+    Dir(Dir),
+}
+
+/// Convert a MusicXML direction to MEI control events.
+///
+/// MusicXML `<direction>` elements can contain multiple direction types.
+/// Each direction type is converted to the appropriate MEI control event:
+/// - `<dynamics>` → `<dynam>`
+/// - `<wedge>` → `<hairpin>`
+/// - `<metronome>` → `<tempo>`
+/// - `<words>` → `<dir>` (or `<tempo>` if it contains tempo-like text)
+///
+/// # Arguments
+///
+/// * `direction` - The MusicXML direction to convert
+/// * `ctx` - The conversion context for tracking state
+///
+/// # Returns
+///
+/// A vector of MEI control events, one for each direction type in the input.
+pub fn convert_direction(
+    direction: &Direction,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Vec<DirectionConversionResult>> {
+    let mut results = Vec::new();
+
+    // Calculate timestamp for control events
+    let tstamp = calculate_tstamp(direction, ctx);
+    let staff = direction.staff.unwrap_or(ctx.current_staff());
+
+    for direction_type in &direction.direction_types {
+        match &direction_type.content {
+            DirectionTypeContent::Dynamics(dynamics) => {
+                let dynam = convert_dynamics(dynamics, tstamp.clone(), staff, ctx);
+                results.push(DirectionConversionResult::Dynam(dynam));
+            }
+            DirectionTypeContent::Wedge(wedge) => {
+                if let Some(hairpin) = convert_wedge(wedge, tstamp.clone(), staff, ctx) {
+                    results.push(DirectionConversionResult::Hairpin(hairpin));
+                }
+            }
+            DirectionTypeContent::Metronome(metronome) => {
+                let tempo = convert_metronome(metronome, tstamp.clone(), staff, ctx);
+                results.push(DirectionConversionResult::Tempo(tempo));
+            }
+            DirectionTypeContent::Words(words) => {
+                let dir = convert_words(words, tstamp.clone(), staff, ctx);
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            // Other direction types can be added in future phases
+            _ => {}
+        }
+    }
+
+    Ok(results)
+}
+
+/// Calculate the timestamp (beat position) for a direction.
+///
+/// Uses the current beat position from the context, optionally adjusted
+/// by the direction's offset value.
+fn calculate_tstamp(direction: &Direction, ctx: &ConversionContext) -> DataBeat {
+    let mut beat_position = ctx.beat_position();
+
+    // Apply offset if present (offset is in divisions)
+    if let Some(ref offset) = direction.offset {
+        let offset_beats = offset.value / ctx.divisions() as f64;
+        beat_position += offset_beats;
+    }
+
+    // MEI tstamp is 1-based (beat 1 is the first beat)
+    DataBeat::from(beat_position + 1.0)
+}
+
+/// Convert MusicXML dynamics to MEI dynam element.
+///
+/// Maps dynamic markings:
+/// - ppp, pp, p, mp, mf, f, ff, fff → text content
+/// - Combined dynamics (sfp, sfz, etc.) → text content
+fn convert_dynamics(
+    dynamics: &tusk_musicxml::model::direction::Dynamics,
+    tstamp: DataBeat,
+    staff: u32,
+    ctx: &mut ConversionContext,
+) -> Dynam {
+    let mut dynam = Dynam::default();
+
+    // Generate and set xml:id
+    let dynam_id = ctx.generate_id_with_suffix("dynam");
+    dynam.common.xml_id = Some(dynam_id);
+
+    // Set timestamp and staff
+    dynam.dynam_log.tstamp = Some(tstamp);
+    dynam.dynam_log.staff = vec![staff as u64];
+
+    // Convert dynamics values to text content
+    let text_content = dynamics
+        .values
+        .iter()
+        .map(dynamics_value_to_string)
+        .collect::<Vec<_>>()
+        .join("");
+
+    dynam.children.push(DynamChild::Text(text_content));
+
+    dynam
+}
+
+/// Convert a MusicXML dynamics value to string.
+fn dynamics_value_to_string(value: &DynamicsValue) -> String {
+    match value {
+        DynamicsValue::Ppp => "ppp".to_string(),
+        DynamicsValue::Pp => "pp".to_string(),
+        DynamicsValue::P => "p".to_string(),
+        DynamicsValue::Mp => "mp".to_string(),
+        DynamicsValue::Mf => "mf".to_string(),
+        DynamicsValue::F => "f".to_string(),
+        DynamicsValue::Ff => "ff".to_string(),
+        DynamicsValue::Fff => "fff".to_string(),
+        DynamicsValue::Fp => "fp".to_string(),
+        DynamicsValue::Sf => "sf".to_string(),
+        DynamicsValue::Sfz => "sfz".to_string(),
+        DynamicsValue::Sfp => "sfp".to_string(),
+        DynamicsValue::Sfpp => "sfpp".to_string(),
+        DynamicsValue::Sffz => "sffz".to_string(),
+        DynamicsValue::Sfzp => "sfzp".to_string(),
+        DynamicsValue::Rf => "rf".to_string(),
+        DynamicsValue::Rfz => "rfz".to_string(),
+        DynamicsValue::Fz => "fz".to_string(),
+        DynamicsValue::N => "n".to_string(),
+        DynamicsValue::Pppp => "pppp".to_string(),
+        DynamicsValue::Ffff => "ffff".to_string(),
+        DynamicsValue::Ppppp => "ppppp".to_string(),
+        DynamicsValue::Fffff => "fffff".to_string(),
+        DynamicsValue::Pppppp => "pppppp".to_string(),
+        DynamicsValue::Ffffff => "ffffff".to_string(),
+        DynamicsValue::OtherDynamics(s) => s.clone(),
+    }
+}
+
+/// Convert MusicXML wedge to MEI hairpin element.
+///
+/// Maps wedge types:
+/// - crescendo → hairpin with form="cres"
+/// - diminuendo → hairpin with form="dim"
+/// - stop → None (closes a previous hairpin via context)
+///
+/// Returns None for stop wedges since they don't create new elements,
+/// but rather close existing ones.
+fn convert_wedge(
+    wedge: &tusk_musicxml::model::direction::Wedge,
+    tstamp: DataBeat,
+    staff: u32,
+    ctx: &mut ConversionContext,
+) -> Option<Hairpin> {
+    use tusk_musicxml::model::data::YesNo;
+
+    match wedge.wedge_type {
+        WedgeType::Crescendo | WedgeType::Diminuendo => {
+            let mut hairpin = Hairpin::default();
+
+            // Generate and set xml:id
+            let hairpin_id = ctx.generate_id_with_suffix("hairpin");
+            hairpin.common.xml_id = Some(hairpin_id.clone());
+
+            // Map original ID if present
+            if let Some(ref orig_id) = wedge.id {
+                ctx.map_id(orig_id, hairpin_id.clone());
+            }
+
+            // Set form (cres or dim)
+            hairpin.hairpin_log.form = Some(match wedge.wedge_type {
+                WedgeType::Crescendo => AttHairpinLogForm::Cres,
+                WedgeType::Diminuendo => AttHairpinLogForm::Dim,
+                _ => unreachable!(),
+            });
+
+            // Set niente if present
+            if let Some(YesNo::Yes) = wedge.niente {
+                hairpin.hairpin_log.niente = Some(DataBoolean::True);
+            }
+
+            // Set timestamp and staff
+            hairpin.hairpin_log.tstamp = Some(tstamp);
+            hairpin.hairpin_log.staff = vec![staff as u64];
+
+            // Store the wedge number for matching with stop
+            // The stop wedge will need to set tstamp2 or endid
+            // For now, we create the hairpin without end information
+            // Full spanning support would require tracking open wedges in context
+
+            Some(hairpin)
+        }
+        WedgeType::Stop | WedgeType::Continue => {
+            // Stop and continue wedges don't create new elements
+            // In a full implementation, we would update the corresponding
+            // start hairpin with tstamp2 or endid
+            None
+        }
+    }
+}
+
+/// Convert MusicXML metronome to MEI tempo element.
+///
+/// Maps metronome content:
+/// - beat-unit + per-minute → tempo with mm, mm.unit attributes
+fn convert_metronome(
+    metronome: &tusk_musicxml::model::direction::Metronome,
+    tstamp: DataBeat,
+    staff: u32,
+    ctx: &mut ConversionContext,
+) -> Tempo {
+    let mut tempo = Tempo::default();
+
+    // Generate and set xml:id
+    let tempo_id = ctx.generate_id_with_suffix("tempo");
+    tempo.common.xml_id = Some(tempo_id);
+
+    // Set timestamp and staff
+    tempo.tempo_log.tstamp = Some(tstamp);
+    tempo.tempo_log.staff = vec![staff as u64];
+
+    // Set function to instantaneous (static tempo)
+    tempo.tempo_log.func = Some(AttTempoLogFunc::Instantaneous);
+
+    // Convert metronome content
+    match &metronome.content {
+        MetronomeContent::BeatUnit {
+            beat_unit,
+            beat_unit_dots,
+            per_minute,
+        } => {
+            // Convert beat unit to MEI duration
+            if let Some(mm_unit) = beat_unit_string_to_duration(beat_unit) {
+                tempo.tempo_log.mm_unit = Some(mm_unit);
+            }
+
+            // Set dots if present
+            if !beat_unit_dots.is_empty() {
+                tempo.tempo_log.mm_dots = Some(DataAugmentdot::from(beat_unit_dots.len() as u64));
+            }
+
+            // Parse per-minute value
+            if let Ok(mm_value) = per_minute.parse::<f64>() {
+                tempo.tempo_log.mm = Some(DataTempovalue::from(mm_value));
+            }
+
+            // Also add text content for display
+            let text = format_metronome_text(beat_unit, beat_unit_dots.len(), per_minute);
+            tempo.children.push(TempoChild::Text(text));
+        }
+        MetronomeContent::BeatUnitEquivalent(modulation) => {
+            // Metric modulation: beat-unit = beat-unit
+            // Set function to metricmod
+            tempo.tempo_log.func = Some(AttTempoLogFunc::Metricmod);
+
+            // Add text content for metric modulation
+            let text = format!("{} = {}", modulation.beat_unit_1, modulation.beat_unit_2);
+            tempo.children.push(TempoChild::Text(text));
+        }
+    }
+
+    tempo
+}
+
+/// Convert a beat unit string to MEI DataDuration.
+fn beat_unit_string_to_duration(beat_unit: &str) -> Option<DataDuration> {
+    use tusk_model::data::DataDurationCmn;
+
+    let cmn = match beat_unit {
+        "long" => DataDurationCmn::Long,
+        "breve" => DataDurationCmn::Breve,
+        "whole" => DataDurationCmn::N1,
+        "half" => DataDurationCmn::N2,
+        "quarter" => DataDurationCmn::N4,
+        "eighth" => DataDurationCmn::N8,
+        "16th" => DataDurationCmn::N16,
+        "32nd" => DataDurationCmn::N32,
+        "64th" => DataDurationCmn::N64,
+        "128th" => DataDurationCmn::N128,
+        "256th" => DataDurationCmn::N256,
+        "512th" => DataDurationCmn::N512,
+        "1024th" => DataDurationCmn::N1024,
+        _ => return None,
+    };
+    Some(DataDuration::DataDurationCmn(cmn))
+}
+
+/// Format metronome marking as text for display.
+fn format_metronome_text(beat_unit: &str, dots: usize, per_minute: &str) -> String {
+    let beat_unit_symbol = match beat_unit {
+        "whole" => "𝅝",
+        "half" => "𝅗𝅥",
+        "quarter" => "♩",
+        "eighth" => "♪",
+        "16th" => "𝅘𝅥𝅯",
+        _ => beat_unit,
+    };
+
+    let dot_string = ".".repeat(dots);
+    format!("{}{} = {}", beat_unit_symbol, dot_string, per_minute)
+}
+
+/// Convert MusicXML words to MEI dir element.
+///
+/// Words directions are converted to general directives.
+fn convert_words(
+    words: &[tusk_musicxml::model::direction::Words],
+    tstamp: DataBeat,
+    staff: u32,
+    ctx: &mut ConversionContext,
+) -> Dir {
+    let mut dir = Dir::default();
+
+    // Generate and set xml:id
+    let dir_id = ctx.generate_id_with_suffix("dir");
+    dir.common.xml_id = Some(dir_id);
+
+    // Set timestamp and staff
+    dir.dir_log.tstamp = Some(tstamp);
+    dir.dir_log.staff = vec![staff as u64];
+
+    // Combine all words text into dir content
+    for word in words {
+        dir.children.push(DirChild::Text(word.value.clone()));
+    }
+
+    dir
 }
 
 #[cfg(test)]
@@ -4208,6 +4608,447 @@ mod tests {
             // Context should have the latest key signature
             assert_eq!(ctx.key_fifths(), 3);
             assert_eq!(ctx.key_mode(), Some("minor"));
+        }
+    }
+
+    // ============================================================================
+    // Direction to Control Event Conversion Tests
+    // ============================================================================
+
+    mod direction_tests {
+        use super::*;
+        use tusk_model::data::DataDurationCmn;
+        use tusk_musicxml::model::direction::{
+            Dynamics, DynamicsValue, Metronome, MetronomeContent, Wedge, WedgeType, Words,
+        };
+
+        // ====================================================================
+        // Dynamics Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_dynamics_creates_dynam_element() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_staff(1);
+            ctx.set_beat_position(0.0);
+
+            let dynamics = Dynamics {
+                values: vec![DynamicsValue::F],
+            };
+            let tstamp = DataBeat::from(1.0);
+
+            let dynam = convert_dynamics(&dynamics, tstamp, 1, &mut ctx);
+
+            assert!(dynam.common.xml_id.is_some());
+            assert_eq!(dynam.dynam_log.tstamp, Some(DataBeat::from(1.0)));
+            assert_eq!(dynam.dynam_log.staff, vec![1]);
+        }
+
+        #[test]
+        fn convert_dynamics_f_to_text() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let dynamics = Dynamics {
+                values: vec![DynamicsValue::F],
+            };
+            let tstamp = DataBeat::from(1.0);
+
+            let dynam = convert_dynamics(&dynamics, tstamp, 1, &mut ctx);
+
+            assert_eq!(dynam.children.len(), 1);
+            if let DynamChild::Text(text) = &dynam.children[0] {
+                assert_eq!(text, "f");
+            } else {
+                panic!("Expected Text child");
+            }
+        }
+
+        #[test]
+        fn convert_dynamics_combined() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let dynamics = Dynamics {
+                values: vec![DynamicsValue::Sf, DynamicsValue::P],
+            };
+            let tstamp = DataBeat::from(2.5);
+
+            let dynam = convert_dynamics(&dynamics, tstamp, 2, &mut ctx);
+
+            if let DynamChild::Text(text) = &dynam.children[0] {
+                assert_eq!(text, "sfp");
+            } else {
+                panic!("Expected Text child");
+            }
+            assert_eq!(dynam.dynam_log.staff, vec![2]);
+        }
+
+        #[test]
+        fn convert_dynamics_all_standard_values() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let tstamp = DataBeat::from(1.0);
+
+            let test_cases = vec![
+                (DynamicsValue::Ppp, "ppp"),
+                (DynamicsValue::Pp, "pp"),
+                (DynamicsValue::P, "p"),
+                (DynamicsValue::Mp, "mp"),
+                (DynamicsValue::Mf, "mf"),
+                (DynamicsValue::F, "f"),
+                (DynamicsValue::Ff, "ff"),
+                (DynamicsValue::Fff, "fff"),
+                (DynamicsValue::Fp, "fp"),
+                (DynamicsValue::Sf, "sf"),
+                (DynamicsValue::Sfz, "sfz"),
+                (DynamicsValue::Fz, "fz"),
+            ];
+
+            for (value, expected) in test_cases {
+                let dynamics = Dynamics {
+                    values: vec![value],
+                };
+                let dynam = convert_dynamics(&dynamics, tstamp.clone(), 1, &mut ctx);
+
+                if let DynamChild::Text(text) = &dynam.children[0] {
+                    assert_eq!(text, expected, "Failed for dynamic: {:?}", expected);
+                }
+            }
+        }
+
+        // ====================================================================
+        // Wedge/Hairpin Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_wedge_crescendo_creates_hairpin() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let wedge = Wedge::crescendo();
+            let tstamp = DataBeat::from(1.0);
+
+            let hairpin = convert_wedge(&wedge, tstamp, 1, &mut ctx);
+
+            assert!(hairpin.is_some());
+            let hairpin = hairpin.unwrap();
+            assert!(hairpin.common.xml_id.is_some());
+            assert_eq!(hairpin.hairpin_log.form, Some(AttHairpinLogForm::Cres));
+            assert_eq!(hairpin.hairpin_log.tstamp, Some(DataBeat::from(1.0)));
+            assert_eq!(hairpin.hairpin_log.staff, vec![1]);
+        }
+
+        #[test]
+        fn convert_wedge_diminuendo_creates_hairpin() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let wedge = Wedge::diminuendo();
+            let tstamp = DataBeat::from(2.0);
+
+            let hairpin = convert_wedge(&wedge, tstamp, 2, &mut ctx);
+
+            assert!(hairpin.is_some());
+            let hairpin = hairpin.unwrap();
+            assert_eq!(hairpin.hairpin_log.form, Some(AttHairpinLogForm::Dim));
+            assert_eq!(hairpin.hairpin_log.staff, vec![2]);
+        }
+
+        #[test]
+        fn convert_wedge_stop_returns_none() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let wedge = Wedge::stop();
+            let tstamp = DataBeat::from(3.0);
+
+            let hairpin = convert_wedge(&wedge, tstamp, 1, &mut ctx);
+
+            assert!(hairpin.is_none());
+        }
+
+        #[test]
+        fn convert_wedge_with_niente() {
+            use tusk_musicxml::model::data::YesNo;
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let mut wedge = Wedge::crescendo();
+            wedge.niente = Some(YesNo::Yes);
+            let tstamp = DataBeat::from(1.0);
+
+            let hairpin = convert_wedge(&wedge, tstamp, 1, &mut ctx);
+
+            let hairpin = hairpin.unwrap();
+            assert_eq!(hairpin.hairpin_log.niente, Some(DataBoolean::True));
+        }
+
+        #[test]
+        fn convert_wedge_maps_original_id() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let mut wedge = Wedge::crescendo();
+            wedge.id = Some("wedge123".to_string());
+            let tstamp = DataBeat::from(1.0);
+
+            let hairpin = convert_wedge(&wedge, tstamp, 1, &mut ctx);
+            let hairpin = hairpin.unwrap();
+
+            // Check that the MEI id was generated and mapped
+            assert!(hairpin.common.xml_id.is_some());
+            let mei_id = hairpin.common.xml_id.as_ref().unwrap();
+            assert_eq!(ctx.get_mei_id("wedge123"), Some(mei_id.as_str()));
+        }
+
+        // ====================================================================
+        // Metronome/Tempo Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_metronome_quarter_120() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let metronome = Metronome::simple("quarter", 120);
+            let tstamp = DataBeat::from(1.0);
+
+            let tempo = convert_metronome(&metronome, tstamp, 1, &mut ctx);
+
+            assert!(tempo.common.xml_id.is_some());
+            assert_eq!(tempo.tempo_log.tstamp, Some(DataBeat::from(1.0)));
+            assert_eq!(tempo.tempo_log.staff, vec![1]);
+            assert_eq!(tempo.tempo_log.mm, Some(DataTempovalue::from(120.0)));
+            assert_eq!(
+                tempo.tempo_log.mm_unit,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            );
+            assert_eq!(tempo.tempo_log.func, Some(AttTempoLogFunc::Instantaneous));
+        }
+
+        #[test]
+        fn convert_metronome_half_60() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let metronome = Metronome::simple("half", 60);
+            let tstamp = DataBeat::from(1.0);
+
+            let tempo = convert_metronome(&metronome, tstamp, 1, &mut ctx);
+
+            assert_eq!(tempo.tempo_log.mm, Some(DataTempovalue::from(60.0)));
+            assert_eq!(
+                tempo.tempo_log.mm_unit,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N2))
+            );
+        }
+
+        #[test]
+        fn convert_metronome_eighth_144() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let metronome = Metronome::simple("eighth", 144);
+            let tstamp = DataBeat::from(1.0);
+
+            let tempo = convert_metronome(&metronome, tstamp, 1, &mut ctx);
+
+            assert_eq!(tempo.tempo_log.mm, Some(DataTempovalue::from(144.0)));
+            assert_eq!(
+                tempo.tempo_log.mm_unit,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+            );
+        }
+
+        #[test]
+        fn convert_metronome_has_text_content() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let metronome = Metronome::simple("quarter", 100);
+            let tstamp = DataBeat::from(1.0);
+
+            let tempo = convert_metronome(&metronome, tstamp, 1, &mut ctx);
+
+            assert!(!tempo.children.is_empty());
+            if let TempoChild::Text(text) = &tempo.children[0] {
+                assert!(text.contains("100"));
+            }
+        }
+
+        // ====================================================================
+        // Words/Dir Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_words_creates_dir_element() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let words = vec![Words::new("dolce")];
+            let tstamp = DataBeat::from(1.0);
+
+            let dir = convert_words(&words, tstamp, 1, &mut ctx);
+
+            assert!(dir.common.xml_id.is_some());
+            assert_eq!(dir.dir_log.tstamp, Some(DataBeat::from(1.0)));
+            assert_eq!(dir.dir_log.staff, vec![1]);
+        }
+
+        #[test]
+        fn convert_words_preserves_text() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let words = vec![Words::new("espressivo")];
+            let tstamp = DataBeat::from(1.0);
+
+            let dir = convert_words(&words, tstamp, 1, &mut ctx);
+
+            assert_eq!(dir.children.len(), 1);
+            if let DirChild::Text(text) = &dir.children[0] {
+                assert_eq!(text, "espressivo");
+            } else {
+                panic!("Expected Text child");
+            }
+        }
+
+        #[test]
+        fn convert_words_multiple() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+            let words = vec![Words::new("cresc."), Words::new("poco a poco")];
+            let tstamp = DataBeat::from(2.0);
+
+            let dir = convert_words(&words, tstamp, 2, &mut ctx);
+
+            assert_eq!(dir.children.len(), 2);
+            if let (DirChild::Text(t1), DirChild::Text(t2)) = (&dir.children[0], &dir.children[1]) {
+                assert_eq!(t1, "cresc.");
+                assert_eq!(t2, "poco a poco");
+            }
+        }
+
+        // ====================================================================
+        // Full Direction Conversion Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_direction_with_dynamics() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_staff(1);
+            ctx.set_beat_position(0.0);
+
+            let direction = Direction::dynamics(vec![DynamicsValue::Mf]);
+
+            let results =
+                convert_direction(&direction, &mut ctx).expect("conversion should succeed");
+
+            assert_eq!(results.len(), 1);
+            assert!(matches!(results[0], DirectionConversionResult::Dynam(_)));
+        }
+
+        #[test]
+        fn convert_direction_with_wedge() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_staff(1);
+            ctx.set_beat_position(0.0);
+
+            let direction = Direction::wedge(Wedge::crescendo());
+
+            let results =
+                convert_direction(&direction, &mut ctx).expect("conversion should succeed");
+
+            assert_eq!(results.len(), 1);
+            assert!(matches!(results[0], DirectionConversionResult::Hairpin(_)));
+        }
+
+        #[test]
+        fn convert_direction_uses_direction_staff() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_staff(1);
+            ctx.set_beat_position(0.0);
+
+            let mut direction = Direction::dynamics(vec![DynamicsValue::P]);
+            direction.staff = Some(2);
+
+            let results =
+                convert_direction(&direction, &mut ctx).expect("conversion should succeed");
+
+            if let DirectionConversionResult::Dynam(dynam) = &results[0] {
+                assert_eq!(dynam.dynam_log.staff, vec![2]);
+            }
+        }
+
+        #[test]
+        fn convert_direction_uses_context_staff_as_default() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_staff(3);
+            ctx.set_beat_position(0.0);
+
+            let direction = Direction::dynamics(vec![DynamicsValue::P]);
+
+            let results =
+                convert_direction(&direction, &mut ctx).expect("conversion should succeed");
+
+            if let DirectionConversionResult::Dynam(dynam) = &results[0] {
+                assert_eq!(dynam.dynam_log.staff, vec![3]);
+            }
+        }
+
+        #[test]
+        fn calculate_tstamp_basic() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_beat_position(0.0);
+
+            let direction = Direction::dynamics(vec![DynamicsValue::F]);
+
+            let tstamp = calculate_tstamp(&direction, &ctx);
+
+            // Beat position 0 → tstamp 1 (1-based)
+            assert_eq!(tstamp.0, 1.0);
+        }
+
+        #[test]
+        fn calculate_tstamp_mid_beat() {
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            ctx.set_beat_position(2.5);
+
+            let direction = Direction::dynamics(vec![DynamicsValue::F]);
+
+            let tstamp = calculate_tstamp(&direction, &ctx);
+
+            // Beat position 2.5 → tstamp 3.5 (1-based)
+            assert_eq!(tstamp.0, 3.5);
+        }
+
+        #[test]
+        fn beat_unit_string_to_duration_quarter() {
+            let dur = beat_unit_string_to_duration("quarter");
+            assert_eq!(
+                dur,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            );
+        }
+
+        #[test]
+        fn beat_unit_string_to_duration_all_values() {
+            let test_cases = vec![
+                ("long", DataDurationCmn::Long),
+                ("breve", DataDurationCmn::Breve),
+                ("whole", DataDurationCmn::N1),
+                ("half", DataDurationCmn::N2),
+                ("quarter", DataDurationCmn::N4),
+                ("eighth", DataDurationCmn::N8),
+                ("16th", DataDurationCmn::N16),
+                ("32nd", DataDurationCmn::N32),
+                ("64th", DataDurationCmn::N64),
+                ("128th", DataDurationCmn::N128),
+            ];
+
+            for (input, expected) in test_cases {
+                let result = beat_unit_string_to_duration(input);
+                assert_eq!(
+                    result,
+                    Some(DataDuration::DataDurationCmn(expected)),
+                    "Failed for: {}",
+                    input
+                );
+            }
+        }
+
+        #[test]
+        fn beat_unit_string_to_duration_unknown() {
+            let dur = beat_unit_string_to_duration("unknown");
+            assert!(dur.is_none());
         }
     }
 }

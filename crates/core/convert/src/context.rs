@@ -396,6 +396,11 @@ impl ConversionContext {
         self.position.layer = Some(layer);
     }
 
+    /// Get the current staff number, or 1 if not set.
+    pub fn current_staff(&self) -> u32 {
+        self.position.staff.unwrap_or(1)
+    }
+
     /// Get the current beat position in divisions.
     pub fn beat_position(&self) -> f64 {
         self.position.beat_position
