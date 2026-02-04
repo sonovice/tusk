@@ -151,8 +151,8 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Convert MusicXML chord to MEI chord
 - [x] Convert MusicXML attributes to MEI scoreDef/staffDef
 - [x] Convert MusicXML directions to MEI control events
-- [ ] Handle MusicXML divisions → MEI duration conversion
-- [ ] Add MusicXML → MEI conversion tests
+- [x] Handle MusicXML divisions → MEI duration conversion
+- [x] Add MusicXML → MEI conversion tests
 
 ### 4.4 MEI → MusicXML Conversion
 - [ ] Document MEI-only features that will be lost

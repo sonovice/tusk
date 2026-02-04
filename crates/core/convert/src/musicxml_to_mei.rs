@@ -1680,7 +1680,7 @@ fn calculate_tstamp(direction: &Direction, ctx: &ConversionContext) -> DataBeat 
 
     // Apply offset if present (offset is in divisions)
     if let Some(ref offset) = direction.offset {
-        let offset_beats = offset.value / ctx.divisions() as f64;
+        let offset_beats = offset.value / ctx.divisions();
         beat_position += offset_beats;
     }
 
@@ -5049,6 +5049,890 @@ mod tests {
         fn beat_unit_string_to_duration_unknown() {
             let dur = beat_unit_string_to_duration("unknown");
             assert!(dur.is_none());
+        }
+    }
+
+    // ============================================================================
+    // Integration Tests for MusicXML → MEI Conversion
+    // ============================================================================
+
+    mod integration_tests {
+        use super::*;
+
+        /// Helper to parse MusicXML and convert to MEI
+        fn parse_and_convert(xml: &str) -> ConversionResult<Mei> {
+            let score = tusk_musicxml::parse_score_partwise(xml)
+                .map_err(|e| crate::error::ConversionError::xml(e.to_string()))?;
+            convert_score(&score)
+        }
+
+        /// Extract note durations from a layer
+        fn extract_layer_note_durations(
+            layer: &tusk_model::elements::Layer,
+        ) -> Vec<Option<DataDuration>> {
+            layer
+                .children
+                .iter()
+                .filter_map(|c| match c {
+                    LayerChild::Note(n) => Some(n.note_log.dur.clone()),
+                    LayerChild::Chord(c) => Some(c.chord_log.dur.clone()),
+                    LayerChild::Rest(r) => Some(r.rest_log.dur.clone().map(|d| match d {
+                        tusk_model::data::DataDurationrests::DataDurationCmn(cmn) => {
+                            DataDuration::DataDurationCmn(cmn)
+                        }
+                        tusk_model::data::DataDurationrests::DataDurationrestsMensural(_) => {
+                            // Mensural durations not converted to CMN duration
+                            DataDuration::DataDurationCmn(DataDurationCmn::N4)
+                        }
+                    })),
+                    _ => None,
+                })
+                .collect()
+        }
+
+        /// Extract gestural durations (dur_ppq) from notes in a layer
+        fn extract_layer_ppq_durations(layer: &tusk_model::elements::Layer) -> Vec<Option<u64>> {
+            layer
+                .children
+                .iter()
+                .filter_map(|c| match c {
+                    LayerChild::Note(n) => Some(n.note_ges.dur_ppq),
+                    LayerChild::Chord(c) => Some(c.chord_ges.dur_ppq),
+                    LayerChild::Rest(r) => Some(r.rest_ges.dur_ppq),
+                    LayerChild::MRest(mr) => Some(mr.m_rest_ges.dur_ppq),
+                    _ => None,
+                })
+                .collect()
+        }
+
+        // ====================================================================
+        // Scale Test (Hello World, C Major Scale)
+        // ====================================================================
+
+        #[test]
+        fn convert_scale_hello_world() {
+            let xml = include_str!("../../../../tests/fixtures/musicxml/scale.musicxml");
+            let mei = parse_and_convert(xml).expect("conversion should succeed");
+
+            // Verify MEI structure
+            assert!(mei.children.len() >= 2);
+
+            // Check meiHead exists
+            let mei_head = mei
+                .children
+                .iter()
+                .find(|c| matches!(c, MeiChild::MeiHead(_)));
+            assert!(mei_head.is_some(), "MeiHead should exist");
+        }
+
+        #[test]
+        fn convert_scale_preserves_divisions() {
+            let xml = include_str!("../../../../tests/fixtures/musicxml/scale.musicxml");
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("body conversion should succeed");
+
+            // The scale fixture has divisions=1, 4 quarter notes per measure
+            // After processing, context should have divisions=1
+            assert_eq!(ctx.divisions(), 1.0);
+        }
+
+        // ====================================================================
+        // Duration Conversion Integration Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_durations_quarter_notes() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            // Navigate to the layer
+            let mdiv = &body.children[0];
+            if let BodyChild::Mdiv(mdiv) = mdiv {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    // Find section
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    assert!(section.is_some());
+
+                    let section = section.unwrap();
+                    // Find measure
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    assert!(measure.is_some());
+
+                    let measure = measure.unwrap();
+                    // Find staff
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    assert!(staff.is_some());
+
+                    let staff = staff.unwrap();
+                    // Find layer
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    assert!(layer.is_some());
+
+                    let layer = layer.unwrap();
+
+                    // Check durations
+                    let durations = extract_layer_note_durations(layer);
+                    assert_eq!(durations.len(), 2);
+                    assert_eq!(
+                        durations[0],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                    );
+                    assert_eq!(
+                        durations[1],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                    );
+
+                    // Check ppq values
+                    let ppq = extract_layer_ppq_durations(layer);
+                    assert_eq!(ppq, vec![Some(4), Some(4)]);
+                }
+            }
+        }
+
+        #[test]
+        fn convert_durations_mixed_values() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>8</duration>
+        <type>half</type>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>2</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>2</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch><step>F</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            // Navigate and extract
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    let durations = extract_layer_note_durations(layer);
+                    assert_eq!(durations.len(), 4);
+
+                    // Half note
+                    assert_eq!(
+                        durations[0],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N2))
+                    );
+                    // Eighth notes
+                    assert_eq!(
+                        durations[1],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+                    );
+                    assert_eq!(
+                        durations[2],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+                    );
+                    // Quarter note
+                    assert_eq!(
+                        durations[3],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                    );
+
+                    // Check ppq values match original divisions
+                    let ppq = extract_layer_ppq_durations(layer);
+                    assert_eq!(ppq, vec![Some(8), Some(2), Some(2), Some(4)]);
+                }
+            }
+        }
+
+        #[test]
+        fn convert_durations_high_divisions_96() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>96</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>96</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>48</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>24</duration>
+        <type>16th</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            // Verify high divisions are handled correctly
+            assert_eq!(ctx.divisions(), 96.0);
+
+            // Navigate and verify durations
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    let durations = extract_layer_note_durations(layer);
+                    assert_eq!(durations.len(), 3);
+
+                    // Durations should be correctly mapped despite high divisions
+                    assert_eq!(
+                        durations[0],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                    );
+                    assert_eq!(
+                        durations[1],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N8))
+                    );
+                    assert_eq!(
+                        durations[2],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N16))
+                    );
+
+                    // PPQ should preserve original high-resolution values
+                    let ppq = extract_layer_ppq_durations(layer);
+                    assert_eq!(ppq, vec![Some(96), Some(48), Some(24)]);
+                }
+            }
+        }
+
+        #[test]
+        fn convert_durations_dotted_notes() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>6</duration>
+        <type>quarter</type>
+        <dot/>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>3</duration>
+        <type>eighth</type>
+        <dot/>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    // Check that notes have dots attribute set
+                    for child in &layer.children {
+                        if let LayerChild::Note(note) = child {
+                            assert!(
+                                note.note_log.dots.is_some(),
+                                "Note should have dots attribute"
+                            );
+                            assert_eq!(note.note_log.dots.as_ref().unwrap().0, 1);
+                        }
+                    }
+
+                    // PPQ should reflect actual dotted duration
+                    let ppq = extract_layer_ppq_durations(layer);
+                    assert_eq!(ppq, vec![Some(6), Some(3)]);
+                }
+            }
+        }
+
+        // ====================================================================
+        // Chord and Rest Integration Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_chord_integration() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <chord/>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <chord/>
+        <pitch><step>G</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    // Should have exactly 1 chord (not 3 separate notes)
+                    assert_eq!(layer.children.len(), 1);
+                    assert!(matches!(layer.children[0], LayerChild::Chord(_)));
+
+                    if let LayerChild::Chord(chord) = &layer.children[0] {
+                        // Chord should have 3 note children
+                        let note_count = chord
+                            .children
+                            .iter()
+                            .filter(|c| matches!(c, tusk_model::elements::ChordChild::Note(_)))
+                            .count();
+                        assert_eq!(note_count, 3);
+
+                        // Chord should have duration
+                        assert_eq!(
+                            chord.chord_log.dur,
+                            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                        );
+
+                        // Chord should have ppq
+                        assert_eq!(chord.chord_ges.dur_ppq, Some(4));
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn convert_rest_integration() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <rest/>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <rest/>
+        <duration>8</duration>
+        <type>half</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    // Should have 2 rests
+                    assert_eq!(layer.children.len(), 2);
+                    assert!(matches!(layer.children[0], LayerChild::Rest(_)));
+                    assert!(matches!(layer.children[1], LayerChild::Rest(_)));
+
+                    // Check ppq values
+                    let ppq = extract_layer_ppq_durations(layer);
+                    assert_eq!(ppq, vec![Some(4), Some(8)]);
+                }
+            }
+        }
+
+        #[test]
+        fn convert_measure_rest_integration() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <rest measure="yes"/>
+        <duration>16</duration>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    // Should have 1 mRest (measure rest)
+                    assert_eq!(layer.children.len(), 1);
+                    assert!(matches!(layer.children[0], LayerChild::MRest(_)));
+
+                    if let LayerChild::MRest(mrest) = &layer.children[0] {
+                        // mRest should have gestural duration
+                        assert_eq!(mrest.m_rest_ges.dur_ppq, Some(16));
+                    }
+                }
+            }
+        }
+
+        // ====================================================================
+        // Duration Inference Tests (no explicit type)
+        // ====================================================================
+
+        #[test]
+        fn convert_duration_inference_from_divisions() {
+            // When note has duration but no explicit type, should infer from divisions
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>8</duration>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+                    let measure = section.children.iter().find_map(|c| match c {
+                        tusk_model::elements::SectionChild::Measure(m) => Some(m),
+                        _ => None,
+                    });
+                    let measure = measure.unwrap();
+                    let staff = measure.children.iter().find_map(|c| match c {
+                        tusk_model::elements::MeasureChild::Staff(s) => Some(s),
+                        _ => None,
+                    });
+                    let staff = staff.unwrap();
+                    let layer = staff.children.iter().find_map(|c| match c {
+                        tusk_model::elements::StaffChild::Layer(l) => Some(l),
+                        _ => None,
+                    });
+                    let layer = layer.unwrap();
+
+                    let durations = extract_layer_note_durations(layer);
+
+                    // Duration 4 with divisions=4 should infer quarter note
+                    assert_eq!(
+                        durations[0],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+                    );
+                    // Duration 8 with divisions=4 should infer half note
+                    assert_eq!(
+                        durations[1],
+                        Some(DataDuration::DataDurationCmn(DataDurationCmn::N2))
+                    );
+                }
+            }
+        }
+
+        // ====================================================================
+        // Complete Score Structure Tests
+        // ====================================================================
+
+        #[test]
+        fn convert_complete_score_structure() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work>
+    <work-title>Test Score</work-title>
+  </work>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let mei = parse_and_convert(xml).expect("conversion should succeed");
+
+            // Verify complete MEI structure
+            // Should have meiHead and music children
+            assert!(mei.children.len() >= 2);
+
+            // Check meiHead
+            let mei_head = mei.children.iter().find_map(|c| match c {
+                MeiChild::MeiHead(h) => Some(h),
+                _ => None,
+            });
+            assert!(mei_head.is_some());
+
+            let mei_head = mei_head.unwrap();
+            // meiHead should have fileDesc with title
+            let file_desc = mei_head.children.iter().find_map(|c| match c {
+                tusk_model::elements::MeiHeadChild::FileDesc(fd) => Some(fd),
+                _ => None,
+            });
+            assert!(file_desc.is_some());
+        }
+
+        #[test]
+        fn convert_key_signature_to_context() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+        <key>
+          <fifths>2</fifths>
+          <mode>major</mode>
+        </key>
+      </attributes>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let _body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            // Context should have key signature state (D major = 2 sharps)
+            assert_eq!(ctx.key_fifths(), 2);
+            assert_eq!(ctx.key_mode(), Some("major"));
+        }
+
+        #[test]
+        fn convert_multiple_measures() {
+            let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Test</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>16</duration>
+        <type>whole</type>
+      </note>
+    </measure>
+    <measure number="2">
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>16</duration>
+        <type>whole</type>
+      </note>
+    </measure>
+    <measure number="3">
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>16</duration>
+        <type>whole</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+            let score = tusk_musicxml::parse_score_partwise(xml).expect("parse should succeed");
+            let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+            let body = convert_body(&score, &mut ctx).expect("conversion should succeed");
+
+            if let BodyChild::Mdiv(mdiv) = &body.children[0] {
+                if let MdivChild::Score(score) = &mdiv.children[0] {
+                    let section = score.children.iter().find_map(|c| match c {
+                        ScoreChild::Section(s) => Some(s),
+                        _ => None,
+                    });
+                    let section = section.unwrap();
+
+                    // Count measures
+                    let measure_count = section
+                        .children
+                        .iter()
+                        .filter(|c| matches!(c, tusk_model::elements::SectionChild::Measure(_)))
+                        .count();
+
+                    assert_eq!(measure_count, 3);
+                }
+            }
         }
     }
 }
