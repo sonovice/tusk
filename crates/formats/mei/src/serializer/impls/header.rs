@@ -8,10 +8,11 @@ use std::io::Write;
 use tusk_model::elements::{
     Change, ChangeChild, ChangeDesc, ChangeDescChild, Contributor, ContributorChild, CorpName,
     CorpNameChild, Creator, CreatorChild, Date, DateChild, Editor, EditorChild, EncodingDesc,
-    EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild, MeiHead,
-    MeiHeadChild, Name, NameChild, P, PChild, PersName, PersNameChild, PubStmt, PubStmtChild, Resp,
-    RespChild, RespStmt, RespStmtChild, RevisionDesc, RevisionDescChild, SourceDesc,
-    SourceDescChild, Sponsor, SponsorChild, Title, TitleChild, TitleStmt, TitleStmtChild,
+    EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild, Lb, MeiHead,
+    MeiHeadChild, Name, NameChild, P, PChild, PersName, PersNameChild, PubStmt, PubStmtChild, Rend,
+    RendChild, Resp, RespChild, RespStmt, RespStmtChild, RevisionDesc, RevisionDescChild,
+    SourceDesc, SourceDescChild, Sponsor, SponsorChild, Title, TitleChild, TitlePart,
+    TitlePartChild, TitleStmt, TitleStmtChild,
 };
 
 // ============================================================================
@@ -264,6 +265,88 @@ impl MeiSerialize for TitleChild {
                 writer.write_text(text)?;
                 Ok(())
             }
+            TitleChild::TitlePart(elem) => elem.serialize_mei(writer),
+            TitleChild::Rend(elem) => elem.serialize_mei(writer),
+            TitleChild::CorpName(elem) => elem.serialize_mei(writer),
+            TitleChild::Name(elem) => elem.serialize_mei(writer),
+            TitleChild::PersName(elem) => elem.serialize_mei(writer),
+            TitleChild::Date(elem) => elem.serialize_mei(writer),
+            _ => Ok(()), // Other children skipped for now
+        }
+    }
+}
+
+impl MeiSerialize for TitlePart {
+    fn element_name(&self) -> &'static str {
+        "titlePart"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.classed.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.filing.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.n_integer.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TitlePartChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TitlePartChild::Text(_) => "#text",
+            TitlePartChild::Date(_) => "date",
+            TitlePartChild::Name(_) => "name",
+            TitlePartChild::PersName(_) => "persName",
+            TitlePartChild::CorpName(_) => "corpName",
+            TitlePartChild::Rend(_) => "rend",
+            TitlePartChild::Title(_) => "title",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, TitlePartChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TitlePartChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            TitlePartChild::Date(elem) => elem.serialize_mei(writer),
+            TitlePartChild::Name(elem) => elem.serialize_mei(writer),
+            TitlePartChild::PersName(elem) => elem.serialize_mei(writer),
+            TitlePartChild::CorpName(elem) => elem.serialize_mei(writer),
+            TitlePartChild::Rend(elem) => elem.serialize_mei(writer),
+            TitlePartChild::Title(elem) => elem.serialize_mei(writer),
             _ => Ok(()), // Other children skipped for now
         }
     }
@@ -1421,5 +1504,107 @@ impl MeiSerialize for NameChild {
             NameChild::PersName(elem) => elem.serialize_mei(writer),
             _ => Ok(()), // Other children skipped for now
         }
+    }
+}
+
+// ============================================================================
+// Rend element implementation (used by Title, TitlePart, and others)
+// ============================================================================
+
+impl MeiSerialize for Rend {
+    fn element_name(&self) -> &'static str {
+        "rend"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.color.collect_attributes());
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.ext_sym_auth.collect_attributes());
+        attrs.extend(self.horizontal_align.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.text_rendition.collect_attributes());
+        attrs.extend(self.typography.collect_attributes());
+        attrs.extend(self.vertical_align.collect_attributes());
+        attrs.extend(self.whitespace.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for RendChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            RendChild::Text(_) => "#text",
+            RendChild::Rend(_) => "rend",
+            RendChild::Date(_) => "date",
+            RendChild::Name(_) => "name",
+            RendChild::PersName(_) => "persName",
+            RendChild::CorpName(_) => "corpName",
+            RendChild::Title(_) => "title",
+            RendChild::Lb(_) => "lb",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, RendChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            RendChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            RendChild::Rend(elem) => elem.serialize_mei(writer),
+            RendChild::Date(elem) => elem.serialize_mei(writer),
+            RendChild::Name(elem) => elem.serialize_mei(writer),
+            RendChild::PersName(elem) => elem.serialize_mei(writer),
+            RendChild::CorpName(elem) => elem.serialize_mei(writer),
+            RendChild::Title(elem) => elem.serialize_mei(writer),
+            RendChild::Lb(elem) => elem.serialize_mei(writer),
+            _ => Ok(()), // Other children skipped for now
+        }
+    }
+}
+
+impl MeiSerialize for Lb {
+    fn element_name(&self) -> &'static str {
+        "lb"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
     }
 }

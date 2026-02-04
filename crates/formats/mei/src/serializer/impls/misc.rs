@@ -8,11 +8,12 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::att::{
     AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttCalendared,
-    AttClassed, AttCommon, AttDatable, AttEdit, AttEvidence, AttFacsimile, AttFiling,
-    AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttLabelled, AttLinking,
-    AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing,
-    AttResponsibility, AttTargetEval, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
-    AttTyped, AttXy,
+    AttClassed, AttColor, AttCommon, AttDatable, AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile,
+    AttFiling, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
+    AttLabelled, AttLinking, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike,
+    AttName, AttPointing, AttResponsibility, AttSource, AttTargetEval, AttTextRendition,
+    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttTypography,
+    AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -406,6 +407,82 @@ impl CollectAttributes for AttName {
         }
         push_attr!(attrs, "nymref", self.nymref);
         push_attr!(attrs, "role", vec self.role);
+        attrs
+    }
+}
+
+// ============================================================================
+// Rend-related attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttSource {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "source", vec self.source);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttColor {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttExtSymAuth {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttHorizontalAlign {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "halign", self.halign);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTextRendition {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altrend", vec self.altrend);
+        push_attr!(attrs, "rend", vec self.rend);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTypography {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttVerticalAlign {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "valign", self.valign);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttWhitespace {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "xml:space", self.xml_space);
         attrs
     }
 }
