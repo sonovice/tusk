@@ -523,7 +523,7 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             tusk_model::elements::StaffGrpChild::StaffGrp(sg) => sg.serialize_children(writer),
-            // StaffDef children not yet implemented
+            tusk_model::elements::StaffGrpChild::StaffDef(sd) => sd.serialize_children(writer),
             _ => Ok(()),
         }
     }
@@ -569,12 +569,55 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
                 attrs.push(("clef.line", s));
             }
         }
+        if let Some(v) = &self.staff_def_log.clef_dis {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("clef.dis", s));
+            }
+        }
+        if let Some(v) = &self.staff_def_log.clef_dis_place {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("clef.dis.place", s));
+            }
+        }
+
+        // Key signature
+        if !self.staff_def_log.keysig.is_empty() {
+            // Join multiple keysig values with space (rare but possible)
+            let keysig_str = self
+                .staff_def_log
+                .keysig
+                .iter()
+                .filter_map(|k| to_attr_string(k))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !keysig_str.is_empty() {
+                attrs.push(("keysig", keysig_str));
+            }
+        }
+
+        // Time signature (meter)
+        if let Some(ref count) = self.staff_def_log.meter_count {
+            attrs.push(("meter.count", count.clone()));
+        }
+        if let Some(unit) = self.staff_def_log.meter_unit {
+            attrs.push(("meter.unit", unit.to_string()));
+        }
+        if let Some(v) = &self.staff_def_log.meter_sym {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("meter.sym", s));
+            }
+        }
 
         // Notation type
         if let Some(v) = &self.staff_def_log.notationtype {
             if let Some(s) = to_attr_string(v) {
                 attrs.push(("notationtype", s));
             }
+        }
+
+        // PPQ (gestural - pulses per quarter note)
+        if let Some(ppq) = self.staff_def_ges.ppq {
+            attrs.push(("ppq", ppq.to_string()));
         }
 
         attrs
@@ -584,8 +627,55 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
         !self.children.is_empty()
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // StaffDef children not yet fully implemented
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::StaffDefChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            tusk_model::elements::StaffDefChild::Label(_) => "label",
+            tusk_model::elements::StaffDefChild::LabelAbbr(_) => "labelAbbr",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            tusk_model::elements::StaffDefChild::Label(label) => {
+                for child in &label.children {
+                    match child {
+                        tusk_model::elements::LabelChild::Text(text) => {
+                            writer.write_text(text)?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            tusk_model::elements::StaffDefChild::LabelAbbr(abbr) => {
+                for child in &abbr.children {
+                    match child {
+                        tusk_model::elements::LabelAbbrChild::Text(text) => {
+                            writer.write_text(text)?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
         Ok(())
     }
 }

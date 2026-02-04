@@ -12,7 +12,7 @@ use tusk_musicxml::model::attributes::{KeyContent, TimeContent};
 use tusk_musicxml::model::elements::{MeasureContent, ScorePartwise};
 use tusk_musicxml::model::note::FullNoteContent;
 use tusk_musicxml::parser::{parse_score_partwise, parse_score_timewise};
-use tusk_musicxml::{export, import};
+use tusk_musicxml::{export, import, serialize};
 
 /// Read a file and convert from UTF-16 to UTF-8 if needed.
 /// Handles both UTF-16 BE and LE with BOM detection.
@@ -54,8 +54,8 @@ fn is_timewise(xml: &str) -> bool {
     xml.contains("<score-timewise")
 }
 
-/// Perform a full roundtrip: MusicXML → MEI → MusicXML
-/// Returns the original parsed score and the roundtripped score.
+/// Perform a full roundtrip: MusicXML → MEI → MusicXML → XML → MusicXML
+/// Returns the original parsed score and the final roundtripped score (after serialization and re-parsing).
 /// Automatically detects score-partwise vs score-timewise format.
 fn roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
     // Step 1: Parse original MusicXML (detect format)
@@ -68,8 +68,15 @@ fn roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
     // Step 2: Convert to MEI
     let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
 
-    // Step 3: Convert back to MusicXML
-    let roundtripped = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    // Step 3: Convert back to MusicXML struct
+    let exported = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+
+    // Step 4: TRUE ROUNDTRIP - serialize to XML string
+    let xml2 = serialize(&exported).map_err(|e| format!("Serialize error: {}", e))?;
+
+    // Step 5: Parse the re-serialized XML
+    let roundtripped =
+        parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
 
     Ok((original, roundtripped))
 }

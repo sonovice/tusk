@@ -693,9 +693,47 @@ impl MeiSerialize for tusk_model::elements::Music {
         !self.children.is_empty()
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // MusicChild can contain: body, group, front, back, facsimile, genDesc, performance
-        // TODO: Implement MeiSerialize for MusicChild variants
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
         Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::MusicChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            tusk_model::elements::MusicChild::Body(_) => "body",
+            tusk_model::elements::MusicChild::Group(_) => "group",
+            tusk_model::elements::MusicChild::Front(_) => "front",
+            tusk_model::elements::MusicChild::Back(_) => "back",
+            tusk_model::elements::MusicChild::Facsimile(_) => "facsimile",
+            tusk_model::elements::MusicChild::GenDesc(_) => "genDesc",
+            tusk_model::elements::MusicChild::Performance(_) => "performance",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            tusk_model::elements::MusicChild::Body(body) => body.collect_all_attributes(),
+            // Other children not fully implemented yet
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            tusk_model::elements::MusicChild::Body(body) => body.has_children(),
+            _ => true,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            tusk_model::elements::MusicChild::Body(body) => body.serialize_children(writer),
+            // Other children not fully implemented yet
+            _ => Ok(()),
+        }
     }
 }

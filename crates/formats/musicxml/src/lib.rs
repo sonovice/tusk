@@ -45,6 +45,7 @@ pub mod export;
 pub mod import;
 pub mod model;
 pub mod parser;
+pub mod serializer;
 pub mod versions;
 
 // Re-export commonly used types from model
@@ -54,6 +55,9 @@ pub use parser::{ParseError, parse_score_partwise, parse_score_timewise};
 // Re-export conversion context types
 pub use context::{ConversionContext, ConversionDirection, PendingSlur, PendingTie};
 pub use convert_error::{ConversionError, ConversionResult};
+
+// Re-export serializer types
+pub use serializer::{MusicXmlSerialize, MusicXmlWriter, SerializeConfig, SerializeError, SerializeResult};
 
 /// Import a MusicXML score-partwise document to MEI (lossless conversion).
 ///
@@ -90,6 +94,22 @@ pub fn import(
 /// ```
 pub fn export(mei: &tusk_model::elements::Mei) -> ConversionResult<model::elements::ScorePartwise> {
     export::convert_mei(mei)
+}
+
+/// Serialize a MusicXML score-partwise document to an XML string.
+///
+/// This is the main entry point for MusicXML serialization.
+///
+/// # Example
+///
+/// ```ignore
+/// use tusk_musicxml::{serialize, model::elements::ScorePartwise};
+///
+/// let score = ScorePartwise::default();
+/// let xml = serialize(&score)?;
+/// ```
+pub fn serialize(score: &model::elements::ScorePartwise) -> SerializeResult<String> {
+    score.to_musicxml_string()
 }
 
 #[cfg(test)]
