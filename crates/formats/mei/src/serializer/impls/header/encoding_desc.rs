@@ -9,9 +9,9 @@ use std::io::Write;
 use tusk_model::elements::{
     AppInfo, AppInfoChild, Application, ApplicationChild, Category, CategoryChild, ClassDecls,
     ClassDeclsChild, Correction, CorrectionChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
-    EncodingDescChild, Interpretation, InterpretationChild, Normalization, NormalizationChild,
-    ProjectDesc, ProjectDescChild, SamplingDecl, SamplingDeclChild, Segmentation,
-    SegmentationChild, StdVals, StdValsChild, Taxonomy, TaxonomyChild,
+    EncodingDescChild, Interpretation, InterpretationChild, Label, LabelChild, Normalization,
+    NormalizationChild, ProjectDesc, ProjectDescChild, SamplingDecl, SamplingDeclChild,
+    Segmentation, SegmentationChild, StdVals, StdValsChild, Taxonomy, TaxonomyChild,
 };
 
 // ============================================================================
@@ -304,9 +304,9 @@ impl MeiSerialize for TaxonomyChild {
             TaxonomyChild::Head(elem) => elem.serialize_mei(writer),
             TaxonomyChild::Taxonomy(elem) => elem.serialize_mei(writer),
             TaxonomyChild::Category(elem) => elem.serialize_mei(writer),
-            TaxonomyChild::Bibl(_) => Ok(()), // TODO: implement Bibl serializer
+            TaxonomyChild::Bibl(elem) => elem.serialize_mei(writer),
             TaxonomyChild::Desc(_) => Ok(()), // TODO: implement Desc serializer
-            TaxonomyChild::BiblStruct(_) => Ok(()), // TODO: implement BiblStruct serializer
+            TaxonomyChild::BiblStruct(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -364,8 +364,8 @@ impl MeiSerialize for CategoryChild {
         match self {
             CategoryChild::AltId(elem) => elem.serialize_mei(writer),
             CategoryChild::Category(elem) => elem.serialize_mei(writer),
-            CategoryChild::Label(_) => Ok(()), // TODO: implement Label serializer
-            CategoryChild::Desc(_) => Ok(()),  // TODO: implement Desc serializer
+            CategoryChild::Label(elem) => elem.serialize_mei(writer),
+            CategoryChild::Desc(_) => Ok(()), // TODO: implement Desc serializer
             CategoryChild::CatRel(_) => Ok(()), // TODO: implement CatRel serializer
         }
     }
@@ -823,6 +823,148 @@ impl MeiSerialize for SamplingDeclChild {
         match self {
             SamplingDeclChild::P(elem) => elem.serialize_mei(writer),
             SamplingDeclChild::Head(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Label
+// ============================================================================
+
+impl MeiSerialize for Label {
+    fn element_name(&self) -> &'static str {
+        "label"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for LabelChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            LabelChild::Text(_) => "#text",
+            LabelChild::CorpName(_) => "corpName",
+            LabelChild::Height(_) => "height",
+            LabelChild::Relation(_) => "relation",
+            LabelChild::Bloc(_) => "bloc",
+            LabelChild::Stack(_) => "stack",
+            LabelChild::Ref(_) => "ref",
+            LabelChild::Subst(_) => "subst",
+            LabelChild::PostCode(_) => "postCode",
+            LabelChild::Corr(_) => "corr",
+            LabelChild::Width(_) => "width",
+            LabelChild::GeogFeat(_) => "geogFeat",
+            LabelChild::Dimensions(_) => "dimensions",
+            LabelChild::Q(_) => "q",
+            LabelChild::HandShift(_) => "handShift",
+            LabelChild::Del(_) => "del",
+            LabelChild::Orig(_) => "orig",
+            LabelChild::PostBox(_) => "postBox",
+            LabelChild::Restore(_) => "restore",
+            LabelChild::Supplied(_) => "supplied",
+            LabelChild::Catchwords(_) => "catchwords",
+            LabelChild::Bibl(_) => "bibl",
+            LabelChild::Expan(_) => "expan",
+            LabelChild::Add(_) => "add",
+            LabelChild::Reg(_) => "reg",
+            LabelChild::Repository(_) => "repository",
+            LabelChild::Region(_) => "region",
+            LabelChild::StyleName(_) => "styleName",
+            LabelChild::Sic(_) => "sic",
+            LabelChild::Abbr(_) => "abbr",
+            LabelChild::Title(_) => "title",
+            LabelChild::Heraldry(_) => "heraldry",
+            LabelChild::Fig(_) => "fig",
+            LabelChild::Locus(_) => "locus",
+            LabelChild::Num(_) => "num",
+            LabelChild::Rend(_) => "rend",
+            LabelChild::LocusGrp(_) => "locusGrp",
+            LabelChild::SecFolio(_) => "secFolio",
+            LabelChild::Seg(_) => "seg",
+            LabelChild::BiblStruct(_) => "biblStruct",
+            LabelChild::Stamp(_) => "stamp",
+            LabelChild::Damage(_) => "damage",
+            LabelChild::Name(_) => "name",
+            LabelChild::RelationList(_) => "relationList",
+            LabelChild::Street(_) => "street",
+            LabelChild::Identifier(_) => "identifier",
+            LabelChild::Lb(_) => "lb",
+            LabelChild::Settlement(_) => "settlement",
+            LabelChild::Annot(_) => "annot",
+            LabelChild::Ptr(_) => "ptr",
+            LabelChild::Address(_) => "address",
+            LabelChild::Choice(_) => "choice",
+            LabelChild::PersName(_) => "persName",
+            LabelChild::Symbol(_) => "symbol",
+            LabelChild::PeriodName(_) => "periodName",
+            LabelChild::Date(_) => "date",
+            LabelChild::Gap(_) => "gap",
+            LabelChild::District(_) => "district",
+            LabelChild::GeogName(_) => "geogName",
+            LabelChild::Country(_) => "country",
+            LabelChild::Term(_) => "term",
+            LabelChild::Depth(_) => "depth",
+            LabelChild::Unclear(_) => "unclear",
+            LabelChild::Signatures(_) => "signatures",
+            LabelChild::Extent(_) => "extent",
+            LabelChild::Dim(_) => "dim",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            LabelChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            LabelChild::Rend(elem) => elem.serialize_mei(writer),
+            LabelChild::Lb(elem) => elem.serialize_mei(writer),
+            LabelChild::Title(elem) => elem.serialize_mei(writer),
+            LabelChild::Name(elem) => elem.serialize_mei(writer),
+            LabelChild::Identifier(elem) => elem.serialize_mei(writer),
+            LabelChild::Ref(elem) => elem.serialize_mei(writer),
+            LabelChild::Ptr(elem) => elem.serialize_mei(writer),
+            LabelChild::Date(elem) => elem.serialize_mei(writer),
+            LabelChild::PersName(elem) => elem.serialize_mei(writer),
+            LabelChild::CorpName(elem) => elem.serialize_mei(writer),
+            LabelChild::GeogName(elem) => elem.serialize_mei(writer),
+            LabelChild::Address(elem) => elem.serialize_mei(writer),
+            LabelChild::Bibl(elem) => elem.serialize_mei(writer),
+            LabelChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            LabelChild::Annot(elem) => elem.serialize_mei(writer),
+            LabelChild::Extent(elem) => elem.serialize_mei(writer),
+            // Many other children - skip for now
+            _ => Ok(()),
         }
     }
 }

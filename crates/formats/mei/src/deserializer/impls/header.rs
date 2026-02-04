@@ -8,8 +8,9 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::elements::{
-    AddrLine, AddrLineChild, Annot, AnnotChild, AppInfo, AppInfoChild, Application,
-    ApplicationChild, Availability, AvailabilityChild, Bibl, BiblStruct, Contributor,
+    AddrLine, AddrLineChild, AltId, AltIdChild, Annot, AnnotChild, AppInfo, AppInfoChild,
+    Application, ApplicationChild, Availability, AvailabilityChild, Bibl, BiblStruct, CatRel,
+    CatRelChild, Category, CategoryChild, ClassDecls, ClassDeclsChild, Contributor,
     ContributorChild, CorpName, CorpNameChild, Correction, CorrectionChild, Creator, CreatorChild,
     Date, Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
     EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, GeogName, GeogNameChild, Head,
@@ -18,8 +19,9 @@ use tusk_model::elements::{
     PersNameChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher,
     PublisherChild, Ref, RefChild, Resp, RespChild, RespStmt, RespStmtChild, SamplingDecl,
     SamplingDeclChild, Segmentation, SegmentationChild, Source, SourceChild, SourceDesc,
-    SourceDescChild, Sponsor, SponsorChild, StdVals, StdValsChild, Title, TitleChild, TitlePart,
-    TitlePartChild, TitleStmt, TitleStmtChild, Unpub, UseRestrict, UseRestrictChild,
+    SourceDescChild, Sponsor, SponsorChild, StdVals, StdValsChild, Taxonomy, TaxonomyChild, Title,
+    TitleChild, TitlePart, TitlePartChild, TitleStmt, TitleStmtChild, Unpub, UseRestrict,
+    UseRestrictChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -772,7 +774,14 @@ pub(crate) fn parse_encoding_desc_from_event<R: BufRead>(
                         .children
                         .push(EncodingDescChild::SamplingDecl(Box::new(sampling_decl)));
                 }
-                // domainsDecl, tagsDecl, classDecls are more complex - skip for now
+                "classDecls" => {
+                    let class_decls =
+                        parse_class_decls_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::ClassDecls(Box::new(class_decls)));
+                }
+                // domainsDecl, tagsDecl are more complex - skip for now
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -1551,6 +1560,303 @@ pub(crate) fn parse_sampling_decl_from_event<R: BufRead>(
     }
 
     Ok(sampling_decl)
+}
+
+/// Parse a `<classDecls>` element from within another element.
+pub(crate) fn parse_class_decls_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ClassDecls> {
+    let mut class_decls = ClassDecls::default();
+
+    // Extract attributes
+    class_decls.common.extract_attributes(&mut attrs)?;
+    class_decls.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // classDecls can contain: head*, taxonomy+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("classDecls")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    class_decls
+                        .children
+                        .push(ClassDeclsChild::Head(Box::new(head)));
+                }
+                "taxonomy" => {
+                    let taxonomy = parse_taxonomy_from_event(reader, child_attrs, child_empty)?;
+                    class_decls
+                        .children
+                        .push(ClassDeclsChild::Taxonomy(Box::new(taxonomy)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(class_decls)
+}
+
+/// Parse a `<taxonomy>` element from within another element.
+pub(crate) fn parse_taxonomy_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Taxonomy> {
+    let mut taxonomy = Taxonomy::default();
+
+    // Extract attributes
+    taxonomy.common.extract_attributes(&mut attrs)?;
+    taxonomy.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // taxonomy can contain: category*, bibl?, biblStruct?, taxonomy*, head*, desc*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("taxonomy")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy.children.push(TaxonomyChild::Head(Box::new(head)));
+                }
+                "bibl" => {
+                    let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy.children.push(TaxonomyChild::Bibl(Box::new(bibl)));
+                }
+                "biblStruct" => {
+                    let bibl_struct =
+                        parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy
+                        .children
+                        .push(TaxonomyChild::BiblStruct(Box::new(bibl_struct)));
+                }
+                "category" => {
+                    let category = parse_category_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy
+                        .children
+                        .push(TaxonomyChild::Category(Box::new(category)));
+                }
+                "taxonomy" => {
+                    // Recursive taxonomy
+                    let nested_taxonomy =
+                        parse_taxonomy_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy
+                        .children
+                        .push(TaxonomyChild::Taxonomy(Box::new(nested_taxonomy)));
+                }
+                "desc" => {
+                    let desc = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy.children.push(TaxonomyChild::Desc(Box::new(desc)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(taxonomy)
+}
+
+/// Parse a `<category>` element from within another element.
+pub(crate) fn parse_category_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Category> {
+    let mut category = Category::default();
+
+    // Extract attributes
+    category.common.extract_attributes(&mut attrs)?;
+    category.authorized.extract_attributes(&mut attrs)?;
+    category.bibl.extract_attributes(&mut attrs)?;
+    category.data_pointing.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // category can contain: altId*, desc*, category*, label*, catRel*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("category")?
+        {
+            match name.as_str() {
+                "altId" => {
+                    let alt_id = parse_alt_id_from_event(reader, child_attrs, child_empty)?;
+                    category
+                        .children
+                        .push(CategoryChild::AltId(Box::new(alt_id)));
+                }
+                "desc" => {
+                    let desc = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    category.children.push(CategoryChild::Desc(Box::new(desc)));
+                }
+                "category" => {
+                    // Recursive category
+                    let nested_category =
+                        parse_category_from_event(reader, child_attrs, child_empty)?;
+                    category
+                        .children
+                        .push(CategoryChild::Category(Box::new(nested_category)));
+                }
+                "label" => {
+                    let label = super::parse_label_from_event(reader, child_attrs, child_empty)?;
+                    category
+                        .children
+                        .push(CategoryChild::Label(Box::new(label)));
+                }
+                "catRel" => {
+                    let cat_rel = parse_cat_rel_from_event(reader, child_attrs, child_empty)?;
+                    category
+                        .children
+                        .push(CategoryChild::CatRel(Box::new(cat_rel)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(category)
+}
+
+/// Parse an `<altId>` element from within another element.
+pub(crate) fn parse_alt_id_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<AltId> {
+    let mut alt_id = AltId::default();
+
+    // Extract attributes
+    alt_id.common.extract_attributes(&mut attrs)?;
+    alt_id.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // altId can contain mixed content: text, lb, rend, stack
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("altId")? {
+            match content {
+                MixedContent::Text(text) => {
+                    alt_id.children.push(AltIdChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let lb = super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        alt_id.children.push(AltIdChild::Lb(Box::new(lb)));
+                    }
+                    "rend" => {
+                        let rend = super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        alt_id.children.push(AltIdChild::Rend(Box::new(rend)));
+                    }
+                    // stack is more complex - skip for now
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(alt_id)
+}
+
+/// Parse a `<catRel>` element from within another element.
+pub(crate) fn parse_cat_rel_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CatRel> {
+    let mut cat_rel = CatRel::default();
+
+    // Extract attributes
+    cat_rel.authorized.extract_attributes(&mut attrs)?;
+    cat_rel.basic.extract_attributes(&mut attrs)?;
+    cat_rel.bibl.extract_attributes(&mut attrs)?;
+    cat_rel.labelled.extract_attributes(&mut attrs)?;
+    cat_rel.linking.extract_attributes(&mut attrs)?;
+    cat_rel.n_number_like.extract_attributes(&mut attrs)?;
+    cat_rel.responsibility.extract_attributes(&mut attrs)?;
+
+    // Extract @type attribute
+    if let Some(type_val) = attrs.remove("type") {
+        cat_rel.r#type = Some(type_val);
+    }
+
+    // Read children if not an empty element
+    // catRel can contain: desc*, label*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("catRel")? {
+            match name.as_str() {
+                "desc" => {
+                    let desc = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    cat_rel.children.push(CatRelChild::Desc(Box::new(desc)));
+                }
+                "label" => {
+                    let label = super::parse_label_from_event(reader, child_attrs, child_empty)?;
+                    cat_rel.children.push(CatRelChild::Label(Box::new(label)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(cat_rel)
+}
+
+/// Parse a `<desc>` element from within another element.
+pub(crate) fn parse_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<tusk_model::elements::Desc> {
+    let mut desc = tusk_model::elements::Desc::default();
+
+    // Extract attributes
+    desc.common.extract_attributes(&mut attrs)?;
+    desc.facsimile.extract_attributes(&mut attrs)?;
+    desc.lang.extract_attributes(&mut attrs)?;
+    desc.source.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // desc can contain mixed content with many possible child elements
+    // For now, just capture text content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("desc")? {
+            match content {
+                MixedContent::Text(text) => {
+                    desc.children
+                        .push(tusk_model::elements::DescChild::Text(text));
+                }
+                MixedContent::Element(name, _child_attrs, child_empty) => {
+                    // desc has many possible children - skip unknown for now
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(desc)
 }
 
 /// Parse an `<unpub>` element from within another element.

@@ -43,7 +43,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] AddrLine element: mixed content not parsed - uses read_text_until_end instead of read_next_mixed_content, losing geogName child elements (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Availability children not parsed - deserializer skips to end instead of parsing useRestrict, accessRestrict, etc. (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] FileDesc: seriesStmt child not parsed - skipped instead of deserialized, causing element ordering issues (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] EncodingDesc: classDecls child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] EncodingDesc: classDecls child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] Work: composer element (deprecated) not parsed correctly - child ordering shows composer vs key mismatch (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] P element: list child not parsed - mixed content parser missing list element handling (source: Aguado_Walzer_G-major.mei)
 - [ ] [DESERIALIZER_BUG] Music: body element not parsed - music children not being deserialized (source: Aguado_Walzer_G-major.mei)
