@@ -110,6 +110,106 @@ fn roundtrip_revision_desc_with_change() {
 }
 
 #[test]
+fn roundtrip_change_with_resp_stmt() {
+    use tusk_model::data::DataIsodate;
+    use tusk_model::elements::{
+        Change, ChangeChild, ChangeDesc, ChangeDescChild, P, PChild, PersName, PersNameChild, Resp,
+        RespChild, RespStmt, RespStmtChild, RevisionDesc, RevisionDescChild,
+    };
+
+    let mut revision_desc = RevisionDesc::default();
+    revision_desc.common.xml_id = Some("revdesc1".to_string());
+
+    // Create a change element with respStmt child
+    let mut change = Change::default();
+    change.common.xml_id = Some("change1".to_string());
+    change.datable.isodate = Some(DataIsodate("2025-01-20".to_string()));
+
+    // Add respStmt with resp and persName
+    let mut resp_stmt = RespStmt::default();
+    let mut resp = Resp::default();
+    resp.children
+        .push(RespChild::Text("Encoding by".to_string()));
+    resp_stmt.children.push(RespStmtChild::Resp(Box::new(resp)));
+
+    let mut pers_name = PersName::default();
+    pers_name
+        .children
+        .push(PersNameChild::Text("John Doe".to_string()));
+    resp_stmt
+        .children
+        .push(RespStmtChild::PersName(Box::new(pers_name)));
+
+    change
+        .children
+        .push(ChangeChild::RespStmt(Box::new(resp_stmt)));
+
+    // Add changeDesc with a paragraph
+    let mut change_desc = ChangeDesc::default();
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Added new section".to_string()));
+    change_desc.children.push(ChangeDescChild::P(Box::new(p)));
+    change
+        .children
+        .push(ChangeChild::ChangeDesc(Box::new(change_desc)));
+
+    revision_desc
+        .children
+        .push(RevisionDescChild::Change(Box::new(change)));
+
+    // Serialize and deserialize
+    let xml = revision_desc.to_mei_string().expect("serialize");
+    assert!(xml.contains("respStmt"), "should have respStmt: {}", xml);
+    assert!(xml.contains("resp"), "should have resp: {}", xml);
+    assert!(
+        xml.contains("Encoding by"),
+        "should have resp text: {}",
+        xml
+    );
+    assert!(xml.contains("persName"), "should have persName: {}", xml);
+    assert!(
+        xml.contains("John Doe"),
+        "should have persName text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("changeDesc"),
+        "should have changeDesc: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Added new section"),
+        "should have changeDesc text: {}",
+        xml
+    );
+
+    let parsed = RevisionDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+
+    if let RevisionDescChild::Change(change) = &parsed.children[0] {
+        // Should have 2 children: respStmt and changeDesc
+        assert_eq!(change.children.len(), 2);
+
+        // Check respStmt
+        let has_resp_stmt = change
+            .children
+            .iter()
+            .any(|c| matches!(c, ChangeChild::RespStmt(_)));
+        assert!(has_resp_stmt, "should have RespStmt child");
+
+        // Check changeDesc
+        let has_change_desc = change
+            .children
+            .iter()
+            .any(|c| matches!(c, ChangeChild::ChangeDesc(_)));
+        assert!(has_change_desc, "should have ChangeDesc child");
+    } else {
+        panic!("Expected Change child");
+    }
+}
+
+#[test]
 fn serialize_title_with_text_content() {
     use tusk_model::elements::{Title, TitleChild};
 

@@ -1453,7 +1453,7 @@ impl MeiSerialize for ChangeChild {
         match self {
             ChangeChild::Date(elem) => elem.serialize_mei(writer),
             ChangeChild::ChangeDesc(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            ChangeChild::RespStmt(elem) => elem.serialize_mei(writer),
         }
     }
 }
