@@ -107,6 +107,6 @@ Target: `crates/core/convert/src/mei_to_musicxml.rs` → split into `mei_to_musi
 ## Verification
 
 After all phases complete:
-- [ ] Run full test suite: `cargo test --workspace`
-- [ ] Run clippy: `cargo clippy --workspace`
-- [ ] Verify no file exceeds 2000 lines (excluding generated code)
+- [x] Run full test suite: `cargo test --workspace`
+- [x] Run clippy: `cargo clippy --workspace`
+- [x] Verify no file exceeds 2000 lines (excluding generated code)
