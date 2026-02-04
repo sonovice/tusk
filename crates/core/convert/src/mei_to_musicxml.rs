@@ -23,13 +23,15 @@
 
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::error::ConversionResult;
+use tusk_model::data::DataBoolean;
 use tusk_model::elements::{
     Body, BodyChild, Mdiv, MdivChild, Mei, MeiChild, MeiHead, MeiHeadChild, Music, Score,
     ScoreChild, ScoreDef, ScoreDefChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
 };
+use tusk_musicxml::model::data::YesNo;
 use tusk_musicxml::model::elements::{
-    Encoding, Identification, Part, PartList, PartListItem, PartName, ScorePart, ScorePartwise,
-    Work,
+    Encoding, Identification, Measure, Part, PartList, PartListItem, PartName, ScorePart,
+    ScorePartwise, Work,
 };
 
 /// Convert an MEI document to MusicXML score-partwise.
@@ -504,6 +506,103 @@ fn create_empty_parts(part_list: &PartList) -> Vec<Part> {
     }
 
     parts
+}
+
+// ============================================================================
+// MEI Measure → MusicXML Measure Conversion
+// ============================================================================
+
+/// Convert an MEI measure to a MusicXML measure.
+///
+/// This converts the structural attributes of an MEI measure to MusicXML:
+/// - MEI `@n` → MusicXML `@number` (measure number/label)
+/// - MEI `@metcon="false"` → MusicXML `@implicit="yes"` (pickup/incomplete measure)
+/// - MEI `@control="false"` → MusicXML `@non-controlling="yes"` (non-controlling barline)
+/// - MEI `@width` → MusicXML `@width` (measure width)
+/// - MEI `xml:id` → MusicXML `@id` (element ID)
+///
+/// Note: This function converts the measure attributes only. The measure content
+/// (notes, rests, etc.) will be converted by subsequent functions in Phase 4.4.
+///
+/// # Arguments
+///
+/// * `mei_measure` - The MEI measure to convert
+/// * `part_id` - The MusicXML part ID this measure belongs to
+/// * `ctx` - The conversion context for state tracking
+///
+/// # Returns
+///
+/// A MusicXML Measure element, or an error if conversion fails.
+pub fn convert_mei_measure(
+    mei_measure: &tusk_model::elements::Measure,
+    _part_id: &str,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Measure> {
+    // Create MusicXML measure with number
+    // Use @n if present, otherwise generate a measure number
+    let measure_number = mei_measure
+        .common
+        .n
+        .as_ref()
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| ctx.generate_id_with_suffix("measure"));
+
+    let mut mxml_measure = Measure::new(&measure_number);
+
+    // Convert xml:id to id
+    if let Some(ref xml_id) = mei_measure.common.xml_id {
+        mxml_measure.id = Some(xml_id.clone());
+        // Map the ID in context
+        ctx.map_id(xml_id, xml_id.clone());
+    }
+
+    // Convert metcon="false" → implicit="yes"
+    // In MEI, metcon="false" means the measure content doesn't conform to the meter
+    // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
+    if let Some(DataBoolean::False) = mei_measure.measure_log.metcon {
+        mxml_measure.implicit = Some(YesNo::Yes);
+    }
+
+    // Convert control="false" → non_controlling="yes"
+    // In MEI, control="false" means the right barline doesn't indicate alignment
+    // In MusicXML, non_controlling="yes" is used for measures in multi-rest regions
+    if let Some(DataBoolean::False) = mei_measure.measure_log.control {
+        mxml_measure.non_controlling = Some(YesNo::Yes);
+    }
+
+    // Convert width
+    // MEI @width is in DataMeasurementunsigned format (e.g., "200vu")
+    // MusicXML @width is a floating point number in tenths
+    if let Some(ref width) = mei_measure.measure_vis.width
+        && let Some(numeric_width) = parse_mei_measurement(width)
+    {
+        mxml_measure.width = Some(numeric_width);
+    }
+
+    // Note: Measure content (staff/layer/note/rest) conversion will be implemented
+    // in subsequent tasks (convert MEI note, rest, chord to MusicXML)
+
+    Ok(mxml_measure)
+}
+
+/// Parse an MEI measurement value (e.g., "200vu", "100", "50.5vu") to f64.
+///
+/// MEI measurements can include units like "vu" (virtual units), "pt" (points),
+/// etc. This function extracts the numeric value, discarding the unit suffix.
+fn parse_mei_measurement(measurement: &tusk_model::data::DataMeasurementunsigned) -> Option<f64> {
+    let s = measurement.to_string();
+
+    // Try to parse as a simple number first
+    if let Ok(val) = s.parse::<f64>() {
+        return Some(val);
+    }
+
+    // Try to extract numeric prefix (handle "200vu", "100pt", etc.)
+    let numeric_part: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    numeric_part.parse::<f64>().ok()
 }
 
 // ============================================================================
@@ -998,5 +1097,127 @@ mod tests {
         staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::False);
         let result = convert_staff_grp_barline(&staff_grp);
         assert_eq!(result.unwrap().value, GroupBarline::No);
+    }
+
+    // ========================================================================
+    // MEI Measure → MusicXML Measure Conversion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_measure_basic() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::Measure as MeiMeasure;
+
+        let mut mei_measure = MeiMeasure::default();
+        mei_measure.common.n = Some(DataWord::from("1".to_string()));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0); // Set divisions for duration calculations
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        assert_eq!(mxml_measure.number, "1");
+    }
+
+    #[test]
+    fn test_convert_mei_measure_with_id() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::Measure as MeiMeasure;
+
+        let mut mei_measure = MeiMeasure::default();
+        mei_measure.common.n = Some(DataWord::from("5".to_string()));
+        mei_measure.common.xml_id = Some("m5".to_string());
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        assert_eq!(mxml_measure.number, "5");
+        assert_eq!(mxml_measure.id, Some("m5".to_string()));
+    }
+
+    #[test]
+    fn test_convert_mei_measure_implicit() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::Measure as MeiMeasure;
+        use tusk_musicxml::model::data::YesNo;
+
+        let mut mei_measure = MeiMeasure::default();
+        mei_measure.common.n = Some(DataWord::from("0".to_string()));
+        // metcon="false" means pickup/incomplete measure → implicit="yes" in MusicXML
+        mei_measure.measure_log.metcon = Some(DataBoolean::False);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        assert_eq!(mxml_measure.implicit, Some(YesNo::Yes));
+    }
+
+    #[test]
+    fn test_convert_mei_measure_non_controlling() {
+        use tusk_model::data::DataWord;
+        use tusk_model::elements::Measure as MeiMeasure;
+        use tusk_musicxml::model::data::YesNo;
+
+        let mut mei_measure = MeiMeasure::default();
+        mei_measure.common.n = Some(DataWord::from("2".to_string()));
+        // control="false" means non-controlling barline
+        mei_measure.measure_log.control = Some(DataBoolean::False);
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        assert_eq!(mxml_measure.non_controlling, Some(YesNo::Yes));
+    }
+
+    #[test]
+    fn test_convert_mei_measure_with_width() {
+        use tusk_model::data::{DataMeasurementunsigned, DataWord};
+        use tusk_model::elements::Measure as MeiMeasure;
+
+        let mut mei_measure = MeiMeasure::default();
+        mei_measure.common.n = Some(DataWord::from("1".to_string()));
+        mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from("200vu".to_string()));
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        assert!(mxml_measure.width.is_some());
+        // The width value should be parsed as f64
+        assert_eq!(mxml_measure.width, Some(200.0));
+    }
+
+    #[test]
+    fn test_convert_mei_measure_generates_number_if_missing() {
+        use tusk_model::elements::Measure as MeiMeasure;
+
+        let mei_measure = MeiMeasure::default();
+
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let result = convert_mei_measure(&mei_measure, "P1", &mut ctx);
+        assert!(result.is_ok());
+
+        let mxml_measure = result.unwrap();
+        // Should generate a measure number even if not specified
+        assert!(!mxml_measure.number.is_empty());
     }
 }
