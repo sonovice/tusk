@@ -12,24 +12,25 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
-    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
-    AttDynamLog, AttDynamVis, AttFacsimile, AttHairpinAnl, AttHairpinGes, AttHairpinLog,
-    AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes,
-    AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl,
-    AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
-    AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing,
-    AttResponsibility, AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl,
-    AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog,
-    AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes,
-    AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog,
-    AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
-    AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
+    AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
+    AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttFacsimile,
+    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl,
+    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog,
+    AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl,
+    AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl,
+    AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes,
+    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
+    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
+    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
+    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Clef, Dot, Dynam, Hairpin, InstrDef, Label, Layer, LayerChild,
-    LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild, Rest,
-    RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff, StaffChild,
-    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tie,
+    Accid, Artic, Chord, ChordChild, Clef, Dir, Dot, Dynam, Hairpin, InstrDef, Label, Layer,
+    LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild,
+    Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff,
+    StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tie,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1574,6 +1575,73 @@ impl ExtractAttributes for AttHairpinAnl {
     }
 }
 
+// ============================================================================
+// Dir (directive) attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttDirLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDirGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDirVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "lendsym", self.lendsym);
+        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
+        extract_attr!(attrs, "lstartsym", self.lstartsym);
+        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        extract_attr!(attrs, "extender", self.extender);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttDirAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttDirAnl has no attributes
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttLang {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "xml:lang", string self.xml_lang);
@@ -2938,6 +3006,45 @@ impl MeiDeserialize for Hairpin {
         }
 
         Ok(hairpin)
+    }
+}
+
+impl MeiDeserialize for Dir {
+    fn element_name() -> &'static str {
+        "dir"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut dir = Dir::default();
+
+        // Extract attributes into each attribute class
+        dir.common.extract_attributes(&mut attrs)?;
+        dir.facsimile.extract_attributes(&mut attrs)?;
+        dir.lang.extract_attributes(&mut attrs)?;
+        dir.dir_log.extract_attributes(&mut attrs)?;
+        dir.dir_vis.extract_attributes(&mut attrs)?;
+        dir.dir_ges.extract_attributes(&mut attrs)?;
+        dir.dir_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Parse text content if not empty
+        if !is_empty {
+            // dir can contain text and various child elements
+            // For now, we collect text content as DirChild::Text
+            if let Some(text) = reader.read_text_until_end("dir")? {
+                if !text.trim().is_empty() {
+                    dir.children
+                        .push(tusk_model::elements::DirChild::Text(text));
+                }
+            }
+        }
+
+        Ok(dir)
     }
 }
 
@@ -4561,5 +4668,242 @@ mod tests {
         let hairpin = Hairpin::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(hairpin.hairpin_log.plist.len(), 3);
+    }
+
+    // ============================================================================
+    // Dir (directive) deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn dir_deserializes_from_empty_element() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir/>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.common.xml_id.is_none());
+        assert!(dir.dir_log.startid.is_none());
+        assert!(dir.children.is_empty());
+    }
+
+    #[test]
+    fn dir_deserializes_with_text_content() {
+        use tusk_model::elements::{Dir, DirChild};
+
+        let xml = r#"<dir>affettuoso</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.children.len(), 1);
+        match &dir.children[0] {
+            DirChild::Text(text) => assert_eq!(text, "affettuoso"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn dir_deserializes_xml_id() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir xml:id="dir1">arco</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.common.xml_id, Some("dir1".to_string()));
+    }
+
+    #[test]
+    fn dir_deserializes_startid() {
+        use tusk_model::elements::Dir;
+
+        let xml = r##"<dir startid="#n1">pizz.</dir>"##;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_log.startid.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_endid() {
+        use tusk_model::elements::Dir;
+
+        let xml = r##"<dir startid="#n1" endid="#n4">legato</dir>"##;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_log.startid.is_some());
+        assert!(dir.dir_log.endid.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_staff_and_layer() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir staff="1" layer="1">dolce</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.dir_log.staff, vec![1]);
+        assert_eq!(dir.dir_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn dir_deserializes_tstamp_attributes() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir tstamp="1" tstamp2="0m+4">rit.</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_log.tstamp.is_some());
+        assert!(dir.dir_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_place_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir place="above" staff="1" tstamp="1">sul G</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_vis.place.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_extender_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir extender="true" tstamp="1" tstamp2="1m+1">accel.</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_vis.extender.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_lang_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir xml:lang="it">con fuoco</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.lang.xml_lang, Some("it".to_string()));
+    }
+
+    #[test]
+    fn dir_deserializes_dur_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir tstamp="1" dur="2">poco a poco</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(!dir.dir_log.dur.is_empty());
+    }
+
+    #[test]
+    fn dir_deserializes_plist_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r##"<dir plist="#n1 #n2 #n3">espressivo</dir>"##;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.dir_log.plist.len(), 3);
+    }
+
+    #[test]
+    fn dir_deserializes_visual_color_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir color="red">important</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_vis.color.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir x="100" y="200">text</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_vis.ho.is_some() || dir.dir_vis.x.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_vgrp_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir vgrp="1" tstamp="1">align group</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.dir_vis.vgrp, Some(1));
+    }
+
+    #[test]
+    fn dir_deserializes_gestural_duration_attributes() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir dur.ges="4" dur.ppq="480">test</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_ges.dur_ges.is_some());
+        assert_eq!(dir.dir_ges.dur_ppq, Some(480));
+    }
+
+    #[test]
+    fn dir_deserializes_multiple_staff_values() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir staff="1 2" place="between">between staves</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.dir_log.staff, vec![1, 2]);
+    }
+
+    #[test]
+    fn dir_deserializes_full_attributes() {
+        use tusk_model::elements::{Dir, DirChild};
+
+        let xml = r##"<dir xml:id="dir1" staff="1" place="above" startid="#n1" endid="#n4" plist="#n1 #n2 #n3 #n4" extender="true">molto espressivo</dir>"##;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(dir.common.xml_id, Some("dir1".to_string()));
+        assert_eq!(dir.dir_log.staff, vec![1]);
+        assert!(dir.dir_vis.place.is_some());
+        assert!(dir.dir_log.startid.is_some());
+        assert!(dir.dir_log.endid.is_some());
+        assert_eq!(dir.dir_log.plist.len(), 4);
+        assert!(dir.dir_vis.extender.is_some());
+
+        assert_eq!(dir.children.len(), 1);
+        match &dir.children[0] {
+            DirChild::Text(text) => assert_eq!(text, "molto espressivo"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn dir_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir xml:id="dir1" unknown="value">test</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(dir.common.xml_id, Some("dir1".to_string()));
+    }
+
+    #[test]
+    fn dir_deserializes_evaluate_attribute() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir evaluate="all">test</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_log.evaluate.is_some());
+    }
+
+    #[test]
+    fn dir_deserializes_lform_and_lwidth() {
+        use tusk_model::elements::Dir;
+
+        let xml = r#"<dir lform="dashed" lwidth="medium" extender="true">dim.</dir>"#;
+        let dir = Dir::from_mei_str(xml).expect("should deserialize");
+
+        assert!(dir.dir_vis.lform.is_some());
+        assert!(dir.dir_vis.lwidth.is_some());
     }
 }
