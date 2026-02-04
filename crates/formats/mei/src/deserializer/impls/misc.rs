@@ -19,10 +19,11 @@ use tusk_model::elements::{
     Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
     ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition, EditionStmt,
     EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
-    Extent, History, HistoryChild, Incip, IncipChild, Key, LangUsage, LangUsageChild, Language,
-    Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium,
-    PerfMediumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild, ScoreFormat,
-    SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList, WorkListChild,
+    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, LangUsage,
+    LangUsageChild, Language, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar,
+    PerfDuration, PerfMedium, PerfMediumChild, RelationList, RelationListChild, RevisionDesc,
+    RevisionDescChild, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList,
+    WorkListChild,
 };
 
 // ============================================================================
@@ -1308,6 +1309,38 @@ fn parse_mensuration_from_event<R: BufRead>(
     Ok(mensuration)
 }
 
+/// Parse an `<incipCode>` element from within another element.
+fn parse_incip_code_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<IncipCode> {
+    let mut incip_code = IncipCode::default();
+
+    // Extract attributes
+    incip_code.common.extract_attributes(&mut attrs)?;
+    incip_code.bibl.extract_attributes(&mut attrs)?;
+    incip_code.internet_media.extract_attributes(&mut attrs)?;
+    incip_code.pointing.extract_attributes(&mut attrs)?;
+    incip_code.whitespace.extract_attributes(&mut attrs)?;
+
+    // Element-local attribute: @form
+    if let Some(form_val) = attrs.remove("form") {
+        incip_code.form = Some(form_val);
+    }
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("incipCode")? {
+            if !text.is_empty() {
+                incip_code.children.push(IncipCodeChild::Text(text));
+            }
+        }
+    }
+
+    Ok(incip_code)
+}
+
 /// Parse an `<incip>` element from within another element.
 fn parse_incip_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -1351,6 +1384,12 @@ fn parse_incip_from_event<R: BufRead>(
                 "clef" => {
                     let clef = parse_clef_from_event(reader, child_attrs, child_empty)?;
                     incip.children.push(IncipChild::Clef(Box::new(clef)));
+                }
+                "incipCode" => {
+                    let incip_code = parse_incip_code_from_event(reader, child_attrs, child_empty)?;
+                    incip
+                        .children
+                        .push(IncipChild::IncipCode(Box::new(incip_code)));
                 }
                 _ => {
                     if !child_empty {
@@ -3063,5 +3102,38 @@ mod tests {
             &mei_head.children[1],
             MeiHeadChild::RevisionDesc(_)
         ));
+    }
+
+    #[test]
+    fn incip_deserializes_incip_code() {
+        use tusk_model::elements::{IncipChild, IncipCodeChild, Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test Work</title>
+            <incip>
+                <incipCode form="notAvailable">Incipit is not available</incipCode>
+            </incip>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        match &work.children[1] {
+            WorkChild::Incip(incip) => {
+                assert_eq!(incip.children.len(), 1);
+                match &incip.children[0] {
+                    IncipChild::IncipCode(code) => {
+                        assert_eq!(code.form.as_deref(), Some("notAvailable"));
+                        assert_eq!(code.children.len(), 1);
+                        match &code.children[0] {
+                            IncipCodeChild::Text(text) => {
+                                assert_eq!(text, "Incipit is not available");
+                            }
+                        }
+                    }
+                    _ => panic!("Expected IncipCode child"),
+                }
+            }
+            _ => panic!("Expected Incip child"),
+        }
     }
 }

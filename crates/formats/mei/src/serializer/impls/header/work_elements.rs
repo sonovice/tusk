@@ -6,7 +6,8 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::elements::{
     AltId, AltIdChild, Classification, ClassificationChild, Creation, CreationChild, ExtMeta,
-    ExtMetaChild, Incip, IncipChild, Key, KeyChild, Meter, MeterChild, PerfMedium, PerfMediumChild,
+    ExtMetaChild, Incip, IncipChild, IncipCode, IncipCodeChild, Key, KeyChild, Meter, MeterChild,
+    PerfMedium, PerfMediumChild,
 };
 
 // ============================================================================
@@ -323,11 +324,76 @@ impl MeiSerialize for IncipChild {
             IncipChild::Tempo(elem) => elem.serialize_mei(writer),
             IncipChild::Annot(elem) => elem.serialize_mei(writer),
             IncipChild::Score(elem) => elem.serialize_mei(writer),
+            IncipChild::IncipCode(elem) => elem.serialize_mei(writer),
             // The following children need dedicated serializers - for now write empty element
             _ => {
                 let name = self.element_name();
                 let start = writer.start_element(name)?;
                 writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// IncipCode
+// ============================================================================
+
+impl MeiSerialize for IncipCode {
+    fn element_name(&self) -> &'static str {
+        "incipCode"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.internet_media.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.whitespace.collect_attributes());
+        // Element-local attribute: @form
+        if let Some(ref form) = self.form {
+            attrs.push(("form", form.clone()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for IncipCodeChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            IncipCodeChild::Text(_) => "#text",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            IncipCodeChild::Text(text) => {
+                writer.write_text(text)?;
                 Ok(())
             }
         }
