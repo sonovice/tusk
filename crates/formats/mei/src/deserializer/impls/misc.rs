@@ -9,14 +9,15 @@
 use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
     from_attr_string, parse_bibl_from_event, parse_bibl_struct_from_event, parse_clef_from_event,
-    parse_date_from_event, parse_head_from_event, parse_identifier_from_event,
-    parse_label_from_event, parse_p_from_event, parse_resp_stmt_from_event, parse_title_from_event,
+    parse_date_from_event, parse_deprecated_creator_from_event, parse_head_from_event,
+    parse_identifier_from_event, parse_label_from_event, parse_p_from_event,
+    parse_resp_stmt_from_event, parse_title_from_event,
 };
 use std::io::BufRead;
 use tusk_model::elements::{
     Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
     Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
-    ContentsChild, Context, Creation, CreationChild, Dedication, Edition, EditionStmt,
+    ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition, EditionStmt,
     EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
     Extent, History, HistoryChild, Incip, IncipChild, Key, LangUsage, LangUsageChild, Language,
     Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium,
@@ -1585,6 +1586,47 @@ pub(crate) fn parse_work_from_event<R: BufRead>(
                     let ext_meta = parse_ext_meta_from_event(reader, child_attrs, child_empty)?;
                     work.children.push(WorkChild::ExtMeta(Box::new(ext_meta)));
                 }
+                // Handle deprecated MEI 5.x elements by converting to Creator
+                "composer" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "composer",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Cmp,
+                    )?;
+                    work.children.push(WorkChild::Creator(Box::new(creator)));
+                }
+                "lyricist" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "lyricist",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Lyr,
+                    )?;
+                    work.children.push(WorkChild::Creator(Box::new(creator)));
+                }
+                "arranger" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "arranger",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Arr,
+                    )?;
+                    work.children.push(WorkChild::Creator(Box::new(creator)));
+                }
+                "author" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "author",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
+                    )?;
+                    work.children.push(WorkChild::Creator(Box::new(creator)));
+                }
                 // Unknown children are skipped in lenient mode
                 _ => {
                     if !child_empty {
@@ -2583,6 +2625,79 @@ mod tests {
                 .iter()
                 .any(|c| matches!(c, WorkChild::ExtMeta(_)))
         );
+    }
+
+    #[test]
+    fn work_deserializes_deprecated_composer() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        // MEI 5.x deprecated <composer> element - should be migrated to Creator
+        let xml = r#"<work>
+            <title>Walzer G-Dur</title>
+            <composer>
+                <persName role="creator">Dionisio Aguado</persName>
+            </composer>
+            <key pname="g" mode="major"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 3);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+        assert!(matches!(work.children[1], WorkChild::Creator(_)));
+        assert!(matches!(work.children[2], WorkChild::Key(_)));
+
+        // Verify the Creator has the expected role from migration
+        if let WorkChild::Creator(creator) = &work.children[1] {
+            // The role should be set to "cmp" (composer) from the migration
+            assert!(!creator.name.role.is_empty());
+        } else {
+            panic!("expected Creator");
+        }
+    }
+
+    #[test]
+    fn work_deserializes_deprecated_lyricist() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Song Title</title>
+            <lyricist>Lyrics Author</lyricist>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+        assert!(matches!(work.children[1], WorkChild::Creator(_)));
+    }
+
+    #[test]
+    fn work_deserializes_deprecated_arranger() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Arranged Work</title>
+            <arranger>Arranger Name</arranger>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+        assert!(matches!(work.children[1], WorkChild::Creator(_)));
+    }
+
+    #[test]
+    fn work_deserializes_deprecated_author() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Text Work</title>
+            <author>Author Name</author>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+        assert!(matches!(work.children[1], WorkChild::Creator(_)));
     }
 
     // ========== RevisionDesc tests ==========

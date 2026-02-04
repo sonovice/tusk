@@ -31,10 +31,10 @@ mod text;
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
 pub(crate) use header::{
     parse_bibl_from_event, parse_bibl_struct_from_event, parse_contributor_from_event,
-    parse_creator_from_event, parse_date_from_event, parse_editor_from_event,
-    parse_funder_from_event, parse_head_from_event, parse_identifier_from_event,
-    parse_p_from_event, parse_resp_stmt_from_event, parse_sponsor_from_event,
-    parse_title_from_event,
+    parse_creator_from_event, parse_date_from_event, parse_deprecated_creator_from_event,
+    parse_editor_from_event, parse_funder_from_event, parse_head_from_event,
+    parse_identifier_from_event, parse_p_from_event, parse_resp_stmt_from_event,
+    parse_sponsor_from_event, parse_title_from_event,
 };
 pub(crate) use misc::{
     parse_change_desc_from_event, parse_change_from_event, parse_edition_from_event,

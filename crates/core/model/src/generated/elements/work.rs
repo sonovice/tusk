@@ -57,6 +57,10 @@ pub enum WorkChild {
     ComponentList(Box<crate::generated::elements::ComponentList>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    /// Creator element (for deprecated composer/lyricist/arranger/author migration from MEI 5.x).
+    /// Not in MEI 6.0 ODD for Work, but needed for backwards compatibility.
+    #[serde(rename = "creator")]
+    Creator(Box<crate::generated::elements::Creator>),
 }
 impl WorkChild {
     /// Validate this child element.
@@ -189,6 +193,11 @@ impl WorkChild {
             }
             WorkChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WorkChild::Creator(elem) => {
+                ctx.enter("creator", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
