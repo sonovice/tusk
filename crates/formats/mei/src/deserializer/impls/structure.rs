@@ -14,7 +14,7 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Note,
-    Rest, Score, ScoreChild, Section, SectionChild, Space, Staff, StaffChild, Tuplet,
+    Rest, Score, ScoreChild, ScoreDef, Section, SectionChild, Space, Staff, StaffChild, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -631,11 +631,17 @@ impl MeiDeserialize for Score {
                 reader.read_next_child_start("score")?
             {
                 match name.as_str() {
+                    "scoreDef" => {
+                        let score_def = ScoreDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        score
+                            .children
+                            .push(ScoreChild::ScoreDef(Box::new(score_def)));
+                    }
                     "section" => {
                         let section = Section::from_mei_event(reader, child_attrs, child_empty)?;
                         score.children.push(ScoreChild::Section(Box::new(section)));
                     }
-                    // TODO: Add scoreDef, staffDef, ending, pb, sb, etc. when needed
+                    // TODO: Add staffDef, ending, pb, sb, etc. when needed
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
@@ -748,6 +754,87 @@ mod tests {
                 assert_eq!(child.common.xml_id, Some("nested".to_string()));
             }
             other => panic!("Expected Mdiv, got {:?}", other),
+        }
+    }
+
+    // ============================================================================
+    // Score deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn score_deserializes_from_empty_element() {
+        let xml = r#"<score/>"#;
+        let score = Score::from_mei_str(xml).expect("should deserialize");
+
+        assert!(score.common.xml_id.is_none());
+        assert!(score.children.is_empty());
+    }
+
+    #[test]
+    fn score_deserializes_with_score_def() {
+        let xml = r#"<score>
+            <scoreDef xml:id="sd1" meter.count="4" meter.unit="4"/>
+        </score>"#;
+        let score = Score::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(score.children.len(), 1);
+        match &score.children[0] {
+            ScoreChild::ScoreDef(score_def) => {
+                assert_eq!(score_def.common.xml_id, Some("sd1".to_string()));
+            }
+            other => panic!("Expected ScoreDef, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn score_deserializes_with_score_def_and_section() {
+        let xml = r#"<score xml:id="s1">
+            <scoreDef xml:id="sd1"/>
+            <section xml:id="sec1"/>
+        </score>"#;
+        let score = Score::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(score.common.xml_id, Some("s1".to_string()));
+        assert_eq!(score.children.len(), 2);
+
+        // First child should be scoreDef
+        match &score.children[0] {
+            ScoreChild::ScoreDef(score_def) => {
+                assert_eq!(score_def.common.xml_id, Some("sd1".to_string()));
+            }
+            other => panic!("Expected ScoreDef, got {:?}", other),
+        }
+
+        // Second child should be section
+        match &score.children[1] {
+            ScoreChild::Section(section) => {
+                assert_eq!(section.common.xml_id, Some("sec1".to_string()));
+            }
+            other => panic!("Expected Section, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn score_deserializes_with_score_def_containing_staff_grp() {
+        let xml = r#"<score>
+            <scoreDef xml:id="sd1">
+                <staffGrp xml:id="sg1">
+                    <staffDef n="1" lines="5" clef.shape="G" clef.line="2"/>
+                </staffGrp>
+            </scoreDef>
+            <section/>
+        </score>"#;
+        let score = Score::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(score.children.len(), 2);
+
+        // First child should be scoreDef with staffGrp
+        match &score.children[0] {
+            ScoreChild::ScoreDef(score_def) => {
+                assert_eq!(score_def.common.xml_id, Some("sd1".to_string()));
+                assert_eq!(score_def.children.len(), 1);
+            }
+            other => panic!("Expected ScoreDef, got {:?}", other),
         }
     }
 }

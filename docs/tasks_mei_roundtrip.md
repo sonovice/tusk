@@ -54,7 +54,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Incip element: incipCode child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] PerfMedium element: perfResList child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Classification element: termList child not parsed - skipped instead of deserialized (source: Aguado_Walzer_G-major.mei)
-- [ ] [DESERIALIZER_BUG] Score element: scoreDef child not parsed - only section is handled, scoreDef is skipped (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Score element: scoreDef child not parsed - only section is handled, scoreDef is skipped (source: Aguado_Walzer_G-major.mei)
+- [ ] [SERIALIZER_BUG] CorpNameChild::unknown - serializer not implemented for unknown variant (source: Aguado_Walzer_G-major.mei)
 
 ---
 
