@@ -34,8 +34,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] AvailabilityChild: UseRestrict not serialized - skipped in wildcard match arm (source: Aguado_Walzer_G-major.mei)
 - [x] [SERIALIZER_BUG] PChild: Ref element not serialized - only Text is handled, all other variants skipped (source: Aguado_Walzer_G-major.mei)
 - [x] [XML_COMPARE] Version element name migration: composer→creator comparison should treat as equivalent (MEI 5.1→6.0-dev migration) (source: Aguado_Walzer_G-major.mei)
-- [ ] [MISSING_SERIALIZER] PriceChild: missing serializers for Symbol, Bibl, BiblStruct, Height, Dimensions, PeriodName (source: pub_stmt.rs build errors)
-- [ ] [MISSING_SERIALIZER] AccessRestrictChild/UseRestrictChild/SysReqChild: many missing child serializers (Abbr, Add, Bloc, CastList, Choice, Corr, etc.) (source: pub_stmt.rs build errors)
+- [x] [MISSING_SERIALIZER] PriceChild: missing serializers for Symbol, Bibl, BiblStruct, Height, Dimensions, PeriodName (source: pub_stmt.rs build errors)
+- [x] [MISSING_SERIALIZER] AccessRestrictChild/UseRestrictChild/SysReqChild: many missing child serializers (Abbr, Add, Bloc, CastList, Choice, Corr, etc.) (source: pub_stmt.rs build errors)
 
 ---
 
