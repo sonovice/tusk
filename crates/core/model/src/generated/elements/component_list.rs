@@ -5,33 +5,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ComponentListChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "item")]
     Item(Box<crate::generated::elements::Item>),
-    #[serde(rename = "work")]
-    Work(Box<crate::generated::elements::Work>),
     #[serde(rename = "manifestation")]
     Manifestation(Box<crate::generated::elements::Manifestation>),
     #[serde(rename = "expression")]
     Expression(Box<crate::generated::elements::Expression>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "work")]
+    Work(Box<crate::generated::elements::Work>),
 }
 impl ComponentListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ComponentListChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ComponentListChild::Item(elem) => {
                 ctx.enter("item", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ComponentListChild::Work(elem) => {
-                ctx.enter("work", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,6 +32,16 @@ impl ComponentListChild {
             }
             ComponentListChild::Expression(elem) => {
                 ctx.enter("expression", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ComponentListChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ComponentListChild::Work(elem) => {
+                ctx.enter("work", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

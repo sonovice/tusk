@@ -27,7 +27,7 @@ impl TagUsageChild {
         }
     }
 }
-///Number of occurrences in the defined context that have anxml:idattribute.
+///Documents the usage of a specific element within the document.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tagUsage")]
 pub struct TagUsage {
@@ -35,6 +35,18 @@ pub struct TagUsage {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub bibl: crate::generated::att::AttBibl,
+    ///Name of the element.
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
+    pub name: Option<crate::generated::data::DataNmtoken>,
+    ///Circumstances in which the element appears, an XPath expression.
+    #[serde(rename = "@context", skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    ///Number of occurrences in the defined context.
+    #[serde(rename = "@occurs", skip_serializing_if = "Option::is_none")]
+    pub occurs: Option<u64>,
+    ///Number of occurrences in the defined context that have anxml:idattribute.
+    #[serde(rename = "@withid", skip_serializing_if = "Option::is_none")]
+    pub withid: Option<u64>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<TagUsageChild>,

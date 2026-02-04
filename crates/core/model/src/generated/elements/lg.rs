@@ -5,22 +5,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LgChild {
-    #[serde(rename = "l")]
-    L(Box<crate::generated::elements::L>),
     #[serde(rename = "lg")]
     Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "l")]
+    L(Box<crate::generated::elements::L>),
 }
 impl LgChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            LgChild::L(elem) => {
-                ctx.enter("l", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             LgChild::Lg(elem) => {
                 ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
@@ -28,6 +23,11 @@ impl LgChild {
             }
             LgChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LgChild::L(elem) => {
+                ctx.enter("l", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

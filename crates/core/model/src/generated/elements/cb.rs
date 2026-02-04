@@ -1,7 +1,8 @@
 //!Element: `<cb>`
 use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-///column beginning - Records the column number.
+/**column beginning - An empty formatting element that forces text to begin in a new
+column.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "cb")]
 pub struct Cb {
@@ -19,6 +20,9 @@ pub struct Cb {
     pub source: crate::generated::att::AttSource,
     #[serde(flatten)]
     pub typed: crate::generated::att::AttTyped,
+    ///Records the column number.
+    #[serde(rename = "@n", skip_serializing_if = "Option::is_none")]
+    pub n: Option<u64>,
 }
 impl crate::generated::model::ModelMilestoneLikeMusic for Cb {}
 impl crate::generated::model::ModelMilestoneLikeText for Cb {}

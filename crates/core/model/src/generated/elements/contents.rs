@@ -5,36 +5,36 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ContentsChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "contentItem")]
     ContentItem(Box<crate::generated::elements::ContentItem>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl ContentsChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ContentsChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ContentsChild::ContentItem(elem) => {
                 ctx.enter("contentItem", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ContentsChild::Head(elem) => {
-                ctx.enter("head", index);
+            ContentsChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             ContentsChild::Label(elem) => {
                 ctx.enter("label", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ContentsChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

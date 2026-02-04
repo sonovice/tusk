@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 pub enum MusicChild {
     #[serde(rename = "genDesc")]
     GenDesc(Box<crate::generated::elements::GenDesc>),
-    #[serde(rename = "back")]
-    Back(Box<crate::generated::elements::Back>),
-    #[serde(rename = "performance")]
-    Performance(Box<crate::generated::elements::Performance>),
-    #[serde(rename = "body")]
-    Body(Box<crate::generated::elements::Body>),
-    #[serde(rename = "group")]
-    Group(Box<crate::generated::elements::Group>),
     #[serde(rename = "front")]
     Front(Box<crate::generated::elements::Front>),
+    #[serde(rename = "back")]
+    Back(Box<crate::generated::elements::Back>),
+    #[serde(rename = "group")]
+    Group(Box<crate::generated::elements::Group>),
+    #[serde(rename = "body")]
+    Body(Box<crate::generated::elements::Body>),
+    #[serde(rename = "performance")]
+    Performance(Box<crate::generated::elements::Performance>),
     #[serde(rename = "facsimile")]
     Facsimile(Box<crate::generated::elements::Facsimile>),
 }
@@ -29,18 +29,13 @@ impl MusicChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MusicChild::Front(elem) => {
+                ctx.enter("front", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             MusicChild::Back(elem) => {
                 ctx.enter("back", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MusicChild::Performance(elem) => {
-                ctx.enter("performance", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MusicChild::Body(elem) => {
-                ctx.enter("body", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,8 +44,13 @@ impl MusicChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MusicChild::Front(elem) => {
-                ctx.enter("front", index);
+            MusicChild::Body(elem) => {
+                ctx.enter("body", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MusicChild::Performance(elem) => {
+                ctx.enter("performance", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

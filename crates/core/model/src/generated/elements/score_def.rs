@@ -5,24 +5,24 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ScoreDefChild {
+    #[serde(rename = "pgHead")]
+    PgHead(Box<crate::generated::elements::PgHead>),
+    #[serde(rename = "ambitus")]
+    Ambitus(Box<crate::generated::elements::Ambitus>),
     #[serde(rename = "keySig")]
     KeySig(Box<crate::generated::elements::KeySig>),
     #[serde(rename = "meterSig")]
     MeterSig(Box<crate::generated::elements::MeterSig>),
-    #[serde(rename = "pgHead")]
-    PgHead(Box<crate::generated::elements::PgHead>),
+    #[serde(rename = "chordTable")]
+    ChordTable(Box<crate::generated::elements::ChordTable>),
+    #[serde(rename = "instrGrp")]
+    InstrGrp(Box<crate::generated::elements::InstrGrp>),
     #[serde(rename = "meterSigGrp")]
     MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
     #[serde(rename = "staffGrp")]
     StaffGrp(Box<crate::generated::elements::StaffGrp>),
     #[serde(rename = "grpSym")]
     GrpSym(Box<crate::generated::elements::GrpSym>),
-    #[serde(rename = "ambitus")]
-    Ambitus(Box<crate::generated::elements::Ambitus>),
-    #[serde(rename = "chordTable")]
-    ChordTable(Box<crate::generated::elements::ChordTable>),
-    #[serde(rename = "instrGrp")]
-    InstrGrp(Box<crate::generated::elements::InstrGrp>),
     #[serde(rename = "symbolTable")]
     SymbolTable(Box<crate::generated::elements::SymbolTable>),
     #[serde(rename = "pgFoot")]
@@ -32,6 +32,16 @@ impl ScoreDefChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            ScoreDefChild::PgHead(elem) => {
+                ctx.enter("pgHead", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ScoreDefChild::Ambitus(elem) => {
+                ctx.enter("ambitus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ScoreDefChild::KeySig(elem) => {
                 ctx.enter("keySig", index);
                 elem.validate_with_context(ctx);
@@ -42,8 +52,13 @@ impl ScoreDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ScoreDefChild::PgHead(elem) => {
-                ctx.enter("pgHead", index);
+            ScoreDefChild::ChordTable(elem) => {
+                ctx.enter("chordTable", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ScoreDefChild::InstrGrp(elem) => {
+                ctx.enter("instrGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -59,21 +74,6 @@ impl ScoreDefChild {
             }
             ScoreDefChild::GrpSym(elem) => {
                 ctx.enter("grpSym", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ScoreDefChild::Ambitus(elem) => {
-                ctx.enter("ambitus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ScoreDefChild::ChordTable(elem) => {
-                ctx.enter("chordTable", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ScoreDefChild::InstrGrp(elem) => {
-                ctx.enter("instrGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

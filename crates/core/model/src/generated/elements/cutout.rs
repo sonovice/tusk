@@ -5,29 +5,29 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CutoutChild {
-    #[serde(rename = "bifolium")]
-    Bifolium(Box<crate::generated::elements::Bifolium>),
     #[serde(rename = "folium")]
     Folium(Box<crate::generated::elements::Folium>),
+    #[serde(rename = "bifolium")]
+    Bifolium(Box<crate::generated::elements::Bifolium>),
 }
 impl CutoutChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CutoutChild::Bifolium(elem) => {
-                ctx.enter("bifolium", index);
+            CutoutChild::Folium(elem) => {
+                ctx.enter("folium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CutoutChild::Folium(elem) => {
-                ctx.enter("folium", index);
+            CutoutChild::Bifolium(elem) => {
+                ctx.enter("bifolium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-///section is ripped off the page, leaving a rough edge.
+///A cutout is a section of a document sheet that has been removed and is now missing.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "cutout")]
 pub struct Cutout {
@@ -43,6 +43,12 @@ pub struct Cutout {
     pub trans: crate::generated::att::AttTrans,
     #[serde(flatten)]
     pub xy: crate::generated::att::AttXy,
+    ///Describes the position of the cutout on the parent folium / bifolium.
+    #[serde(rename = "@removed.from", skip_serializing_if = "Option::is_none")]
+    pub removed_from: Option<String>,
+    ///Describes the method of removing the cutout.
+    #[serde(rename = "@removed.by", skip_serializing_if = "Option::is_none")]
+    pub removed_by: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<CutoutChild>,

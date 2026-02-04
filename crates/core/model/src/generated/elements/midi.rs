@@ -5,56 +5,71 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MidiChild {
-    #[serde(rename = "port")]
-    Port(Box<crate::generated::elements::Port>),
     #[serde(rename = "cc")]
     Cc(Box<crate::generated::elements::Cc>),
-    #[serde(rename = "cue")]
-    Cue(Box<crate::generated::elements::Cue>),
+    #[serde(rename = "chanPr")]
+    ChanPr(Box<crate::generated::elements::ChanPr>),
+    #[serde(rename = "hex")]
+    Hex(Box<crate::generated::elements::Hex>),
+    #[serde(rename = "noteOff")]
+    NoteOff(Box<crate::generated::elements::NoteOff>),
     #[serde(rename = "noteOn")]
     NoteOn(Box<crate::generated::elements::NoteOn>),
+    #[serde(rename = "metaText")]
+    MetaText(Box<crate::generated::elements::MetaText>),
+    #[serde(rename = "port")]
+    Port(Box<crate::generated::elements::Port>),
     #[serde(rename = "prog")]
     Prog(Box<crate::generated::elements::Prog>),
     #[serde(rename = "seqNum")]
     SeqNum(Box<crate::generated::elements::SeqNum>),
-    #[serde(rename = "hex")]
-    Hex(Box<crate::generated::elements::Hex>),
-    #[serde(rename = "trkName")]
-    TrkName(Box<crate::generated::elements::TrkName>),
-    #[serde(rename = "metaText")]
-    MetaText(Box<crate::generated::elements::MetaText>),
     #[serde(rename = "vel")]
     Vel(Box<crate::generated::elements::Vel>),
-    #[serde(rename = "chanPr")]
-    ChanPr(Box<crate::generated::elements::ChanPr>),
-    #[serde(rename = "chan")]
-    Chan(Box<crate::generated::elements::Chan>),
+    #[serde(rename = "cue")]
+    Cue(Box<crate::generated::elements::Cue>),
     #[serde(rename = "marker")]
     Marker(Box<crate::generated::elements::Marker>),
-    #[serde(rename = "noteOff")]
-    NoteOff(Box<crate::generated::elements::NoteOff>),
+    #[serde(rename = "chan")]
+    Chan(Box<crate::generated::elements::Chan>),
+    #[serde(rename = "trkName")]
+    TrkName(Box<crate::generated::elements::TrkName>),
 }
 impl MidiChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MidiChild::Port(elem) => {
-                ctx.enter("port", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MidiChild::Cc(elem) => {
                 ctx.enter("cc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MidiChild::Cue(elem) => {
-                ctx.enter("cue", index);
+            MidiChild::ChanPr(elem) => {
+                ctx.enter("chanPr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MidiChild::Hex(elem) => {
+                ctx.enter("hex", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MidiChild::NoteOff(elem) => {
+                ctx.enter("noteOff", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             MidiChild::NoteOn(elem) => {
                 ctx.enter("noteOn", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MidiChild::MetaText(elem) => {
+                ctx.enter("metaText", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MidiChild::Port(elem) => {
+                ctx.enter("port", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,33 +83,13 @@ impl MidiChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MidiChild::Hex(elem) => {
-                ctx.enter("hex", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MidiChild::TrkName(elem) => {
-                ctx.enter("trkName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MidiChild::MetaText(elem) => {
-                ctx.enter("metaText", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MidiChild::Vel(elem) => {
                 ctx.enter("vel", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MidiChild::ChanPr(elem) => {
-                ctx.enter("chanPr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MidiChild::Chan(elem) => {
-                ctx.enter("chan", index);
+            MidiChild::Cue(elem) => {
+                ctx.enter("cue", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -103,8 +98,13 @@ impl MidiChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MidiChild::NoteOff(elem) => {
-                ctx.enter("noteOff", index);
+            MidiChild::Chan(elem) => {
+                ctx.enter("chan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MidiChild::TrkName(elem) => {
+                ctx.enter("trkName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

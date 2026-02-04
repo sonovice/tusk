@@ -5,101 +5,101 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StaffChild {
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "choice")]
     Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "fing")]
-    Fing(Box<crate::generated::elements::Fing>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "caesura")]
-    Caesura(Box<crate::generated::elements::Caesura>),
-    #[serde(rename = "repeatMark")]
-    RepeatMark(Box<crate::generated::elements::RepeatMark>),
-    #[serde(rename = "staffDef")]
-    StaffDef(Box<crate::generated::elements::StaffDef>),
-    #[serde(rename = "fingGrp")]
-    FingGrp(Box<crate::generated::elements::FingGrp>),
-    #[serde(rename = "stageDir")]
-    StageDir(Box<crate::generated::elements::StageDir>),
-    #[serde(rename = "cpMark")]
-    CpMark(Box<crate::generated::elements::CpMark>),
-    #[serde(rename = "curve")]
-    Curve(Box<crate::generated::elements::Curve>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "ossia")]
+    Ossia(Box<crate::generated::elements::Ossia>),
     #[serde(rename = "dynam")]
     Dynam(Box<crate::generated::elements::Dynam>),
+    #[serde(rename = "curve")]
+    Curve(Box<crate::generated::elements::Curve>),
+    #[serde(rename = "fing")]
+    Fing(Box<crate::generated::elements::Fing>),
+    #[serde(rename = "layer")]
+    Layer(Box<crate::generated::elements::Layer>),
+    #[serde(rename = "cpMark")]
+    CpMark(Box<crate::generated::elements::CpMark>),
+    #[serde(rename = "stageDir")]
+    StageDir(Box<crate::generated::elements::StageDir>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "anchoredText")]
+    AnchoredText(Box<crate::generated::elements::AnchoredText>),
+    #[serde(rename = "sp")]
+    Sp(Box<crate::generated::elements::Sp>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "fingGrp")]
+    FingGrp(Box<crate::generated::elements::FingGrp>),
     #[serde(rename = "line")]
     Line(Box<crate::generated::elements::Line>),
     #[serde(rename = "reg")]
     Reg(Box<crate::generated::elements::Reg>),
     #[serde(rename = "harm")]
     Harm(Box<crate::generated::elements::Harm>),
+    #[serde(rename = "staffDef")]
+    StaffDef(Box<crate::generated::elements::StaffDef>),
     #[serde(rename = "phrase")]
     Phrase(Box<crate::generated::elements::Phrase>),
-    #[serde(rename = "sb")]
-    Sb(Box<crate::generated::elements::Sb>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "ornam")]
-    Ornam(Box<crate::generated::elements::Ornam>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "bend")]
-    Bend(Box<crate::generated::elements::Bend>),
-    #[serde(rename = "metaMark")]
-    MetaMark(Box<crate::generated::elements::MetaMark>),
     #[serde(rename = "colLayout")]
     ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "ossia")]
-    Ossia(Box<crate::generated::elements::Ossia>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
     #[serde(rename = "orig")]
     Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "layer")]
-    Layer(Box<crate::generated::elements::Layer>),
-    #[serde(rename = "tempo")]
-    Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "gliss")]
-    Gliss(Box<crate::generated::elements::Gliss>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "anchoredText")]
-    AnchoredText(Box<crate::generated::elements::AnchoredText>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "caesura")]
+    Caesura(Box<crate::generated::elements::Caesura>),
+    #[serde(rename = "bend")]
+    Bend(Box<crate::generated::elements::Bend>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "gliss")]
+    Gliss(Box<crate::generated::elements::Gliss>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
     #[serde(rename = "dir")]
     Dir(Box<crate::generated::elements::Dir>),
-    #[serde(rename = "sp")]
-    Sp(Box<crate::generated::elements::Sp>),
+    #[serde(rename = "metaMark")]
+    MetaMark(Box<crate::generated::elements::MetaMark>),
+    #[serde(rename = "ornam")]
+    Ornam(Box<crate::generated::elements::Ornam>),
+    #[serde(rename = "sb")]
+    Sb(Box<crate::generated::elements::Sb>),
+    #[serde(rename = "tempo")]
+    Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
     #[serde(rename = "relation")]
     Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "repeatMark")]
+    RepeatMark(Box<crate::generated::elements::RepeatMark>),
 }
 impl StaffChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            StaffChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
+            StaffChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -108,48 +108,13 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Pb(elem) => {
-                ctx.enter("pb", index);
+            StaffChild::Ossia(elem) => {
+                ctx.enter("ossia", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Fing(elem) => {
-                ctx.enter("fing", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Caesura(elem) => {
-                ctx.enter("caesura", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::RepeatMark(elem) => {
-                ctx.enter("repeatMark", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::StaffDef(elem) => {
-                ctx.enter("staffDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::FingGrp(elem) => {
-                ctx.enter("fingGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::StageDir(elem) => {
-                ctx.enter("stageDir", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::CpMark(elem) => {
-                ctx.enter("cpMark", index);
+            StaffChild::Dynam(elem) => {
+                ctx.enter("dynam", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -158,8 +123,28 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::App(elem) => {
-                ctx.enter("app", index);
+            StaffChild::Fing(elem) => {
+                ctx.enter("fing", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Layer(elem) => {
+                ctx.enter("layer", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::CpMark(elem) => {
+                ctx.enter("cpMark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::StageDir(elem) => {
+                ctx.enter("stageDir", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Pb(elem) => {
+                ctx.enter("pb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -168,8 +153,38 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Dynam(elem) => {
-                ctx.enter("dynam", index);
+            StaffChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::AnchoredText(elem) => {
+                ctx.enter("anchoredText", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Sp(elem) => {
+                ctx.enter("sp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::FingGrp(elem) => {
+                ctx.enter("fingGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -188,43 +203,13 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            StaffChild::StaffDef(elem) => {
+                ctx.enter("staffDef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             StaffChild::Phrase(elem) => {
                 ctx.enter("phrase", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Sb(elem) => {
-                ctx.enter("sb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Ornam(elem) => {
-                ctx.enter("ornam", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Bend(elem) => {
-                ctx.enter("bend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::MetaMark(elem) => {
-                ctx.enter("metaMark", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -233,23 +218,8 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Ossia(elem) => {
-                ctx.enter("ossia", index);
+            StaffChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -258,43 +228,8 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Layer(elem) => {
-                ctx.enter("layer", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Tempo(elem) => {
-                ctx.enter("tempo", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Gliss(elem) => {
-                ctx.enter("gliss", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::AnchoredText(elem) => {
-                ctx.enter("anchoredText", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffChild::Sic(elem) => {
-                ctx.enter("sic", index);
+            StaffChild::Corr(elem) => {
+                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -303,18 +238,83 @@ impl StaffChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            StaffChild::Cb(elem) => {
+                ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Caesura(elem) => {
+                ctx.enter("caesura", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Bend(elem) => {
+                ctx.enter("bend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Gliss(elem) => {
+                ctx.enter("gliss", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             StaffChild::Dir(elem) => {
                 ctx.enter("dir", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StaffChild::Sp(elem) => {
-                ctx.enter("sp", index);
+            StaffChild::MetaMark(elem) => {
+                ctx.enter("metaMark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Ornam(elem) => {
+                ctx.enter("ornam", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Sb(elem) => {
+                ctx.enter("sb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::Tempo(elem) => {
+                ctx.enter("tempo", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::App(elem) => {
+                ctx.enter("app", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             StaffChild::Relation(elem) => {
                 ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            StaffChild::RepeatMark(elem) => {
+                ctx.enter("repeatMark", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

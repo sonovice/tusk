@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ZoneChild {
-    #[serde(rename = "figDesc")]
-    FigDesc(Box<crate::generated::elements::FigDesc>),
     #[serde(rename = "graphic")]
     Graphic(Box<crate::generated::elements::Graphic>),
+    #[serde(rename = "figDesc")]
+    FigDesc(Box<crate::generated::elements::FigDesc>),
 }
 impl ZoneChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ZoneChild::FigDesc(elem) => {
-                ctx.enter("figDesc", index);
+            ZoneChild::Graphic(elem) => {
+                ctx.enter("graphic", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ZoneChild::Graphic(elem) => {
-                ctx.enter("graphic", index);
+            ZoneChild::FigDesc(elem) => {
+                ctx.enter("figDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

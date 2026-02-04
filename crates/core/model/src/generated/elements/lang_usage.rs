@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LangUsageChild {
-    #[serde(rename = "language")]
-    Language(Box<crate::generated::elements::Language>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "language")]
+    Language(Box<crate::generated::elements::Language>),
 }
 impl LangUsageChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            LangUsageChild::Language(elem) => {
-                ctx.enter("language", index);
+            LangUsageChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LangUsageChild::Head(elem) => {
-                ctx.enter("head", index);
+            LangUsageChild::Language(elem) => {
+                ctx.enter("language", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

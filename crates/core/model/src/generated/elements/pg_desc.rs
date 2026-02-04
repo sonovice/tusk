@@ -8,42 +8,47 @@ pub enum PgDescChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "quote")]
-    Quote(Box<crate::generated::elements::Quote>),
-    #[serde(rename = "line")]
-    Line(Box<crate::generated::elements::Line>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "eventList")]
     EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
+    #[serde(rename = "quote")]
+    Quote(Box<crate::generated::elements::Quote>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "line")]
+    Line(Box<crate::generated::elements::Line>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "curve")]
+    Curve(Box<crate::generated::elements::Curve>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
     #[serde(rename = "anchoredText")]
     AnchoredText(Box<crate::generated::elements::AnchoredText>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "curve")]
-    Curve(Box<crate::generated::elements::Curve>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "ptr")]
     Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
 }
 impl PgDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             PgDescChild::Text(_) => {}
-            PgDescChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
+            PgDescChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::List(elem) => {
+                ctx.enter("list", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -52,18 +57,43 @@ impl PgDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PgDescChild::Line(elem) => {
-                ctx.enter("line", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PgDescChild::Lg(elem) => {
                 ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PgDescChild::EventList(elem) => {
-                ctx.enter("eventList", index);
+            PgDescChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::Line(elem) => {
+                ctx.enter("line", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::Table(elem) => {
+                ctx.enter("table", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::Curve(elem) => {
+                ctx.enter("curve", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PgDescChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -77,38 +107,8 @@ impl PgDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PgDescChild::List(elem) => {
-                ctx.enter("list", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PgDescChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PgDescChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PgDescChild::Curve(elem) => {
-                ctx.enter("curve", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PgDescChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PgDescChild::Ptr(elem) => {
                 ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PgDescChild::Table(elem) => {
-                ctx.enter("table", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

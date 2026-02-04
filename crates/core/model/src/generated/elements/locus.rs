@@ -10,10 +10,10 @@ pub enum LocusChild {
     Text(String),
     #[serde(rename = "rend")]
     Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
     #[serde(rename = "locus")]
     Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
 }
 impl LocusChild {
     /// Validate this child element.
@@ -25,20 +25,21 @@ impl LocusChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LocusChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
+            LocusChild::Locus(elem) => {
+                ctx.enter("locus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LocusChild::Locus(elem) => {
-                ctx.enter("locus", index);
+            LocusChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-///Specifies the end-point of the location in a normalized form.
+/**Defines a location within a manuscript or manuscript component, usually as a (possibly
+discontinuous) sequence of folio references.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "locus")]
 pub struct Locus {
@@ -50,6 +51,12 @@ pub struct Locus {
     pub foliation_scheme: crate::generated::att::AttFoliationScheme,
     #[serde(flatten)]
     pub lang: crate::generated::att::AttLang,
+    ///Specifies the starting point of the location in a normalized form.
+    #[serde(rename = "@from", skip_serializing_if = "Option::is_none")]
+    pub from: Option<crate::generated::data::DataWord>,
+    ///Specifies the end-point of the location in a normalized form.
+    #[serde(rename = "@to", skip_serializing_if = "Option::is_none")]
+    pub to: Option<crate::generated::data::DataWord>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<LocusChild>,

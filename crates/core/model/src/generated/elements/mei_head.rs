@@ -5,37 +5,27 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiHeadChild {
-    #[serde(rename = "extMeta")]
-    ExtMeta(Box<crate::generated::elements::ExtMeta>),
-    #[serde(rename = "altId")]
-    AltId(Box<crate::generated::elements::AltId>),
-    #[serde(rename = "encodingDesc")]
-    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
-    #[serde(rename = "manifestationList")]
-    ManifestationList(Box<crate::generated::elements::ManifestationList>),
-    #[serde(rename = "workList")]
-    WorkList(Box<crate::generated::elements::WorkList>),
-    #[serde(rename = "revisionDesc")]
-    RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
     #[serde(rename = "fileDesc")]
     FileDesc(Box<crate::generated::elements::FileDesc>),
+    #[serde(rename = "manifestationList")]
+    ManifestationList(Box<crate::generated::elements::ManifestationList>),
+    #[serde(rename = "extMeta")]
+    ExtMeta(Box<crate::generated::elements::ExtMeta>),
+    #[serde(rename = "encodingDesc")]
+    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
+    #[serde(rename = "revisionDesc")]
+    RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
+    #[serde(rename = "altId")]
+    AltId(Box<crate::generated::elements::AltId>),
+    #[serde(rename = "workList")]
+    WorkList(Box<crate::generated::elements::WorkList>),
 }
 impl MeiHeadChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiHeadChild::ExtMeta(elem) => {
-                ctx.enter("extMeta", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MeiHeadChild::AltId(elem) => {
-                ctx.enter("altId", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MeiHeadChild::EncodingDesc(elem) => {
-                ctx.enter("encodingDesc", index);
+            MeiHeadChild::FileDesc(elem) => {
+                ctx.enter("fileDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,8 +34,13 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::WorkList(elem) => {
-                ctx.enter("workList", index);
+            MeiHeadChild::ExtMeta(elem) => {
+                ctx.enter("extMeta", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MeiHeadChild::EncodingDesc(elem) => {
+                ctx.enter("encodingDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,16 +49,21 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::FileDesc(elem) => {
-                ctx.enter("fileDesc", index);
+            MeiHeadChild::AltId(elem) => {
+                ctx.enter("altId", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MeiHeadChild::WorkList(elem) => {
+                ctx.enter("workList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-/**MEI header - Header is independent;i.e., not attached to either a music or a corpus
-document.*/
+/**MEI header - Supplies the descriptive and declarative metadata prefixed to every
+MEI-conformant text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiHead")]
 pub struct MeiHead {
@@ -79,6 +79,10 @@ pub struct MeiHead {
     pub mei_version: crate::generated::att::AttMeiVersion,
     #[serde(flatten)]
     pub responsibility: crate::generated::att::AttResponsibility,
+    /**Specifies the kind of document to which the header is attached, for example whether it
+    is a corpus or individual text.*/
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<MeiHeadChild>,

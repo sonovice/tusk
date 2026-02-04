@@ -1,8 +1,7 @@
 //!Element: `<relation>`
 use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-/**Describes the relationship between the entities identified by the plist and target
-attributes.*/
+///Describes a relationship or linkage amongst entities.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "relation")]
 pub struct Relation {
@@ -22,6 +21,10 @@ pub struct Relation {
     pub pointing: crate::generated::att::AttPointing,
     #[serde(flatten)]
     pub target_eval: crate::generated::att::AttTargetEval,
+    /**Describes the relationship between the entities identified by the plist and target
+    attributes.*/
+    #[serde(rename = "@rel", skip_serializing_if = "Option::is_none")]
+    pub rel: Option<crate::generated::data::DataRelationship>,
 }
 impl crate::generated::model::ModelRelationLike for Relation {}
 impl Validate for Relation {

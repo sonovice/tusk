@@ -5,51 +5,31 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnalyticChild {
-    #[serde(rename = "funder")]
-    Funder(Box<crate::generated::elements::Funder>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "biblScope")]
     BiblScope(Box<crate::generated::elements::BiblScope>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "creator")]
-    Creator(Box<crate::generated::elements::Creator>),
-    #[serde(rename = "contributor")]
-    Contributor(Box<crate::generated::elements::Contributor>),
     #[serde(rename = "editor")]
     Editor(Box<crate::generated::elements::Editor>),
+    #[serde(rename = "contributor")]
+    Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
+    #[serde(rename = "creator")]
+    Creator(Box<crate::generated::elements::Creator>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "funder")]
+    Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
 }
 impl AnalyticChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            AnalyticChild::Funder(elem) => {
-                ctx.enter("funder", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AnalyticChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             AnalyticChild::BiblScope(elem) => {
                 ctx.enter("biblScope", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AnalyticChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AnalyticChild::Title(elem) => {
-                ctx.enter("title", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -58,8 +38,8 @@ impl AnalyticChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AnalyticChild::Creator(elem) => {
-                ctx.enter("creator", index);
+            AnalyticChild::Editor(elem) => {
+                ctx.enter("editor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +48,28 @@ impl AnalyticChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AnalyticChild::Editor(elem) => {
-                ctx.enter("editor", index);
+            AnalyticChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AnalyticChild::Creator(elem) => {
+                ctx.enter("creator", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AnalyticChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AnalyticChild::Funder(elem) => {
+                ctx.enter("funder", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AnalyticChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

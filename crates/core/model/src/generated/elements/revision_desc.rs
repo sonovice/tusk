@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RevisionDescChild {
-    #[serde(rename = "change")]
-    Change(Box<crate::generated::elements::Change>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "change")]
+    Change(Box<crate::generated::elements::Change>),
 }
 impl RevisionDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RevisionDescChild::Change(elem) => {
-                ctx.enter("change", index);
+            RevisionDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RevisionDescChild::Head(elem) => {
-                ctx.enter("head", index);
+            RevisionDescChild::Change(elem) => {
+                ctx.enter("change", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,29 +5,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PerfMediumChild {
-    #[serde(rename = "perfResList")]
-    PerfResList(Box<crate::generated::elements::PerfResList>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "perfResList")]
+    PerfResList(Box<crate::generated::elements::PerfResList>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
 }
 impl PerfMediumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PerfMediumChild::PerfResList(elem) => {
-                ctx.enter("perfResList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PerfMediumChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PerfMediumChild::CastList(elem) => {
                 ctx.enter("castList", index);
                 elem.validate_with_context(ctx);
@@ -35,6 +25,16 @@ impl PerfMediumChild {
             }
             PerfMediumChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PerfMediumChild::PerfResList(elem) => {
+                ctx.enter("perfResList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PerfMediumChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

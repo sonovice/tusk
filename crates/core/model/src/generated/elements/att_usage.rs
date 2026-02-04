@@ -20,7 +20,7 @@ impl AttUsageChild {
         }
     }
 }
-///Circumstances in which the attribute appears, an XPath expression.
+///Documents the usage of a specific attribute of the element.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "attUsage")]
 pub struct AttUsage {
@@ -28,6 +28,12 @@ pub struct AttUsage {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub bibl: crate::generated::att::AttBibl,
+    ///Name of the attribute.
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
+    pub name: Option<crate::generated::data::DataNmtoken>,
+    ///Circumstances in which the attribute appears, an XPath expression.
+    #[serde(rename = "@context", skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<AttUsageChild>,

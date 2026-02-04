@@ -5,32 +5,27 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EditorialDeclChild {
-    #[serde(rename = "segmentation")]
-    Segmentation(Box<crate::generated::elements::Segmentation>),
-    #[serde(rename = "stdVals")]
-    StdVals(Box<crate::generated::elements::StdVals>),
-    #[serde(rename = "interpretation")]
-    Interpretation(Box<crate::generated::elements::Interpretation>),
     #[serde(rename = "normalization")]
     Normalization(Box<crate::generated::elements::Normalization>),
+    #[serde(rename = "interpretation")]
+    Interpretation(Box<crate::generated::elements::Interpretation>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "stdVals")]
+    StdVals(Box<crate::generated::elements::StdVals>),
     #[serde(rename = "correction")]
     Correction(Box<crate::generated::elements::Correction>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "segmentation")]
+    Segmentation(Box<crate::generated::elements::Segmentation>),
 }
 impl EditorialDeclChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            EditorialDeclChild::Segmentation(elem) => {
-                ctx.enter("segmentation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EditorialDeclChild::StdVals(elem) => {
-                ctx.enter("stdVals", index);
+            EditorialDeclChild::Normalization(elem) => {
+                ctx.enter("normalization", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,8 +34,13 @@ impl EditorialDeclChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EditorialDeclChild::Normalization(elem) => {
-                ctx.enter("normalization", index);
+            EditorialDeclChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EditorialDeclChild::StdVals(elem) => {
+                ctx.enter("stdVals", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,8 +54,8 @@ impl EditorialDeclChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EditorialDeclChild::P(elem) => {
-                ctx.enter("p", index);
+            EditorialDeclChild::Segmentation(elem) => {
+                ctx.enter("segmentation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

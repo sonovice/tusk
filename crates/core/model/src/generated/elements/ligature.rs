@@ -7,74 +7,74 @@ use serde::{Deserialize, Serialize};
 pub enum LigatureChild {
     #[serde(rename = "barLine")]
     BarLine(Box<crate::generated::elements::BarLine>),
-    #[serde(rename = "note")]
-    Note(Box<crate::generated::elements::Note>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "space")]
-    Space(Box<crate::generated::elements::Space>),
-    #[serde(rename = "dot")]
-    Dot(Box<crate::generated::elements::Dot>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "chord")]
-    Chord(Box<crate::generated::elements::Chord>),
-    #[serde(rename = "proport")]
-    Proport(Box<crate::generated::elements::Proport>),
-    #[serde(rename = "meterSig")]
-    MeterSig(Box<crate::generated::elements::MeterSig>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "keySig")]
-    KeySig(Box<crate::generated::elements::KeySig>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "meterSigGrp")]
-    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "divLine")]
-    DivLine(Box<crate::generated::elements::DivLine>),
-    #[serde(rename = "tabDurSym")]
-    TabDurSym(Box<crate::generated::elements::TabDurSym>),
-    #[serde(rename = "ligature")]
-    Ligature(Box<crate::generated::elements::Ligature>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
-    #[serde(rename = "tabGrp")]
-    TabGrp(Box<crate::generated::elements::TabGrp>),
     #[serde(rename = "mensur")]
     Mensur(Box<crate::generated::elements::Mensur>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "neume")]
-    Neume(Box<crate::generated::elements::Neume>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "clefGrp")]
-    ClefGrp(Box<crate::generated::elements::ClefGrp>),
-    #[serde(rename = "custos")]
-    Custos(Box<crate::generated::elements::Custos>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "pad")]
-    Pad(Box<crate::generated::elements::Pad>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "clef")]
-    Clef(Box<crate::generated::elements::Clef>),
     #[serde(rename = "rest")]
     Rest(Box<crate::generated::elements::Rest>),
+    #[serde(rename = "dot")]
+    Dot(Box<crate::generated::elements::Dot>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "neume")]
+    Neume(Box<crate::generated::elements::Neume>),
+    #[serde(rename = "clefGrp")]
+    ClefGrp(Box<crate::generated::elements::ClefGrp>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "custos")]
+    Custos(Box<crate::generated::elements::Custos>),
+    #[serde(rename = "divLine")]
+    DivLine(Box<crate::generated::elements::DivLine>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
     #[serde(rename = "choice")]
     Choice(Box<crate::generated::elements::Choice>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "space")]
+    Space(Box<crate::generated::elements::Space>),
+    #[serde(rename = "meterSig")]
+    MeterSig(Box<crate::generated::elements::MeterSig>),
+    #[serde(rename = "meterSigGrp")]
+    MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
+    #[serde(rename = "tabDurSym")]
+    TabDurSym(Box<crate::generated::elements::TabDurSym>),
+    #[serde(rename = "proport")]
+    Proport(Box<crate::generated::elements::Proport>),
+    #[serde(rename = "chord")]
+    Chord(Box<crate::generated::elements::Chord>),
+    #[serde(rename = "keySig")]
+    KeySig(Box<crate::generated::elements::KeySig>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "note")]
+    Note(Box<crate::generated::elements::Note>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "ligature")]
+    Ligature(Box<crate::generated::elements::Ligature>),
+    #[serde(rename = "pad")]
+    Pad(Box<crate::generated::elements::Pad>),
+    #[serde(rename = "tabGrp")]
+    TabGrp(Box<crate::generated::elements::TabGrp>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "clef")]
+    Clef(Box<crate::generated::elements::Clef>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
 }
 impl LigatureChild {
     /// Validate this child element.
@@ -85,23 +85,13 @@ impl LigatureChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LigatureChild::Note(elem) => {
-                ctx.enter("note", index);
+            LigatureChild::Mensur(elem) => {
+                ctx.enter("mensur", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LigatureChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Space(elem) => {
-                ctx.enter("space", index);
+            LigatureChild::Rest(elem) => {
+                ctx.enter("rest", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -110,38 +100,8 @@ impl LigatureChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LigatureChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Chord(elem) => {
-                ctx.enter("chord", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Proport(elem) => {
-                ctx.enter("proport", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::MeterSig(elem) => {
-                ctx.enter("meterSig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::KeySig(elem) => {
-                ctx.enter("keySig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Add(elem) => {
-                ctx.enter("add", index);
+            LigatureChild::Restore(elem) => {
+                ctx.enter("restore", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -150,63 +110,8 @@ impl LigatureChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LigatureChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::MeterSigGrp(elem) => {
-                ctx.enter("meterSigGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::DivLine(elem) => {
-                ctx.enter("divLine", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::TabDurSym(elem) => {
-                ctx.enter("tabDurSym", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Ligature(elem) => {
-                ctx.enter("ligature", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::App(elem) => {
-                ctx.enter("app", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::TabGrp(elem) => {
-                ctx.enter("tabGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Mensur(elem) => {
-                ctx.enter("mensur", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             LigatureChild::Neume(elem) => {
                 ctx.enter("neume", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -215,8 +120,23 @@ impl LigatureChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            LigatureChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             LigatureChild::Custos(elem) => {
                 ctx.enter("custos", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::DivLine(elem) => {
+                ctx.enter("divLine", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -225,23 +145,8 @@ impl LigatureChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LigatureChild::Pad(elem) => {
-                ctx.enter("pad", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             LigatureChild::Orig(elem) => {
                 ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Clef(elem) => {
-                ctx.enter("clef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LigatureChild::Rest(elem) => {
-                ctx.enter("rest", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -252,6 +157,101 @@ impl LigatureChild {
             }
             LigatureChild::Unclear(elem) => {
                 ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Space(elem) => {
+                ctx.enter("space", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::MeterSig(elem) => {
+                ctx.enter("meterSig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::MeterSigGrp(elem) => {
+                ctx.enter("meterSigGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::TabDurSym(elem) => {
+                ctx.enter("tabDurSym", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Proport(elem) => {
+                ctx.enter("proport", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Chord(elem) => {
+                ctx.enter("chord", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::KeySig(elem) => {
+                ctx.enter("keySig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Note(elem) => {
+                ctx.enter("note", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Ligature(elem) => {
+                ctx.enter("ligature", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Pad(elem) => {
+                ctx.enter("pad", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::TabGrp(elem) => {
+                ctx.enter("tabGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::Clef(elem) => {
+                ctx.enter("clef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            LigatureChild::App(elem) => {
+                ctx.enter("app", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

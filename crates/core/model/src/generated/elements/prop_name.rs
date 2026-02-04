@@ -17,7 +17,7 @@ impl PropNameChild {
         }
     }
 }
-///property name - A locally defined name.
+///property name - Name of a property of the symbol.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "propName")]
 pub struct PropName {
@@ -31,6 +31,9 @@ pub struct PropName {
     pub n_number_like: crate::generated::att::AttNNumberLike,
     #[serde(flatten)]
     pub responsibility: crate::generated::att::AttResponsibility,
+    ///Characterizes the property name.
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<PropNameChild>,

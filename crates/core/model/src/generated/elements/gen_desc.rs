@@ -27,8 +27,8 @@ impl GenDescChild {
         }
     }
 }
-/**genetic description - When set to "true" the child elements are known to be in chronological order. When set
-to "false" or when not provided, the order of child elements is unknown.*/
+/**genetic description - Bundles information about the textual development of a
+work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genDesc")]
 pub struct GenDesc {
@@ -36,6 +36,10 @@ pub struct GenDesc {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub metadata_pointing: crate::generated::att::AttMetadataPointing,
+    /**When set to "true" the child elements are known to be in chronological order. When set
+    to "false" or when not provided, the order of child elements is unknown.*/
+    #[serde(rename = "@ordered", skip_serializing_if = "Option::is_none")]
+    pub ordered: Option<crate::generated::data::DataBoolean>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<GenDescChild>,

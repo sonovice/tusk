@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MdivChild {
-    #[serde(rename = "score")]
-    Score(Box<crate::generated::elements::Score>),
     #[serde(rename = "parts")]
     Parts(Box<crate::generated::elements::Parts>),
+    #[serde(rename = "score")]
+    Score(Box<crate::generated::elements::Score>),
     #[serde(rename = "mdiv")]
     Mdiv(Box<crate::generated::elements::Mdiv>),
 }
@@ -16,13 +16,13 @@ impl MdivChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MdivChild::Score(elem) => {
-                ctx.enter("score", index);
+            MdivChild::Parts(elem) => {
+                ctx.enter("parts", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MdivChild::Parts(elem) => {
-                ctx.enter("parts", index);
+            MdivChild::Score(elem) => {
+                ctx.enter("score", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

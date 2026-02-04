@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PbChild {
-    #[serde(rename = "pgDesc")]
-    PgDesc(Box<crate::generated::elements::PgDesc>),
     #[serde(rename = "pgFoot")]
     PgFoot(Box<crate::generated::elements::PgFoot>),
+    #[serde(rename = "pgDesc")]
+    PgDesc(Box<crate::generated::elements::PgDesc>),
     #[serde(rename = "pgHead")]
     PgHead(Box<crate::generated::elements::PgHead>),
 }
@@ -16,13 +16,13 @@ impl PbChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PbChild::PgDesc(elem) => {
-                ctx.enter("pgDesc", index);
+            PbChild::PgFoot(elem) => {
+                ctx.enter("pgFoot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PbChild::PgFoot(elem) => {
-                ctx.enter("pgFoot", index);
+            PbChild::PgDesc(elem) => {
+                ctx.enter("pgDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

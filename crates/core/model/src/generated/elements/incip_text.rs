@@ -5,19 +5,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IncipTextChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl IncipTextChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            IncipTextChild::Head(elem) => {
-                ctx.enter("head", index);
+            IncipTextChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -26,8 +26,8 @@ impl IncipTextChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipTextChild::P(elem) => {
-                ctx.enter("p", index);
+            IncipTextChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

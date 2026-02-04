@@ -5,99 +5,49 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TabGrpChild {
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
-    #[serde(rename = "rest")]
-    Rest(Box<crate::generated::elements::Rest>),
     #[serde(rename = "tabDurSym")]
     TabDurSym(Box<crate::generated::elements::TabDurSym>),
-    #[serde(rename = "note")]
-    Note(Box<crate::generated::elements::Note>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
     #[serde(rename = "reg")]
     Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "rest")]
+    Rest(Box<crate::generated::elements::Rest>),
+    #[serde(rename = "note")]
+    Note(Box<crate::generated::elements::Note>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
     #[serde(rename = "corr")]
     Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
 }
 impl TabGrpChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TabGrpChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             TabGrpChild::Unclear(elem) => {
                 ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::App(elem) => {
-                ctx.enter("app", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Rest(elem) => {
-                ctx.enter("rest", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -106,23 +56,48 @@ impl TabGrpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TabGrpChild::Note(elem) => {
-                ctx.enter("note", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TabGrpChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             TabGrpChild::Reg(elem) => {
                 ctx.enter("reg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TabGrpChild::Restore(elem) => {
-                ctx.enter("restore", index);
+            TabGrpChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Rest(elem) => {
+                ctx.enter("rest", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Note(elem) => {
+                ctx.enter("note", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::App(elem) => {
+                ctx.enter("app", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Corr(elem) => {
+                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -131,8 +106,33 @@ impl TabGrpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TabGrpChild::Corr(elem) => {
-                ctx.enter("corr", index);
+            TabGrpChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TabGrpChild::Del(elem) => {
+                ctx.enter("del", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

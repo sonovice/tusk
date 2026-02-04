@@ -27,7 +27,8 @@ impl RelatedItemChild {
         }
     }
 }
-///related item - Describes the relationship between the entity identified by therelatedItemelement and the resource described in the parent element,i.e.,bibl,sourceorrelatedItem.
+/**related item - Contains or references another bibliographic item which is related to the
+present one.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "relatedItem")]
 pub struct RelatedItem {
@@ -43,6 +44,9 @@ pub struct RelatedItem {
     pub pointing: crate::generated::att::AttPointing,
     #[serde(flatten)]
     pub target_eval: crate::generated::att::AttTargetEval,
+    ///Describes the relationship between the entity identified by therelatedItemelement and the resource described in the parent element,i.e.,bibl,sourceorrelatedItem.
+    #[serde(rename = "@rel", skip_serializing_if = "Option::is_none")]
+    pub rel: Option<crate::generated::data::DataModsrelationship>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<RelatedItemChild>,

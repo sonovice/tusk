@@ -9,10 +9,10 @@ pub enum PhysLocChild {
     Repository(Box<crate::generated::elements::Repository>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "history")]
     History(Box<crate::generated::elements::History>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
 }
 impl PhysLocChild {
     /// Validate this child element.
@@ -28,13 +28,13 @@ impl PhysLocChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysLocChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            PhysLocChild::History(elem) => {
+                ctx.enter("history", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysLocChild::History(elem) => {
-                ctx.enter("history", index);
+            PhysLocChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

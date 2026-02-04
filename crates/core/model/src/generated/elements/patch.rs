@@ -27,7 +27,7 @@ impl PatchChild {
         }
     }
 }
-///patch is attached on surface beneath using a staple.
+///Describes a physical writing surface attached to the original document.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "patch")]
 pub struct Patch {
@@ -41,6 +41,12 @@ pub struct Patch {
     pub trans: crate::generated::att::AttTrans,
     #[serde(flatten)]
     pub xy: crate::generated::att::AttXy,
+    ///Describes the position of the patch on the parent folium / bifolium.
+    #[serde(rename = "@attached.to", skip_serializing_if = "Option::is_none")]
+    pub attached_to: Option<String>,
+    ///Describes the method of attachment of the patch.
+    #[serde(rename = "@attached.by", skip_serializing_if = "Option::is_none")]
+    pub attached_by: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<PatchChild>,

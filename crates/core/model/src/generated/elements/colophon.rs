@@ -8,130 +8,130 @@ pub enum ColophonChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "geogName")]
     GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
     #[serde(rename = "height")]
     Height(Box<crate::generated::elements::Height>),
     #[serde(rename = "name")]
     Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "bloc")]
+    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
     #[serde(rename = "street")]
     Street(Box<crate::generated::elements::Street>),
     #[serde(rename = "title")]
     Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
     #[serde(rename = "persName")]
     PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "district")]
-    District(Box<crate::generated::elements::District>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
     #[serde(rename = "date")]
     Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "bloc")]
-    Bloc(Box<crate::generated::elements::Bloc>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "district")]
+    District(Box<crate::generated::elements::District>),
 }
 impl ColophonChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             ColophonChild::Text(_) => {}
-            ColophonChild::Depth(elem) => {
-                ctx.enter("depth", index);
+            ColophonChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             ColophonChild::GeogName(elem) => {
                 ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Locus(elem) => {
-                ctx.enter("locus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -145,6 +145,151 @@ impl ColophonChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ColophonChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::PostBox(elem) => {
+                ctx.enter("postBox", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Bloc(elem) => {
+                ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Extent(elem) => {
+                ctx.enter("extent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Expan(elem) => {
+                ctx.enter("expan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ColophonChild::Street(elem) => {
                 ctx.enter("street", index);
                 elem.validate_with_context(ctx);
@@ -155,108 +300,8 @@ impl ColophonChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ColophonChild::PersName(elem) => {
                 ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Region(elem) => {
-                ctx.enter("region", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::PostBox(elem) => {
-                ctx.enter("postBox", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Expan(elem) => {
-                ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -265,78 +310,18 @@ impl ColophonChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Abbr(elem) => {
-                ctx.enter("abbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::District(elem) => {
-                ctx.enter("district", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ColophonChild::Date(elem) => {
                 ctx.enter("date", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Dim(elem) => {
-                ctx.enter("dim", index);
+            ColophonChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Relation(elem) => {
-                ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
+            ColophonChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -345,18 +330,13 @@ impl ColophonChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            ColophonChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Bloc(elem) => {
-                ctx.enter("bloc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ColophonChild::Rend(elem) => {
-                ctx.enter("rend", index);
+            ColophonChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -365,23 +345,43 @@ impl ColophonChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
+            ColophonChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Extent(elem) => {
-                ctx.enter("extent", index);
+            ColophonChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::P(elem) => {
-                ctx.enter("p", index);
+            ColophonChild::Abbr(elem) => {
+                ctx.enter("abbr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ColophonChild::Lb(elem) => {
-                ctx.enter("lb", index);
+            ColophonChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ColophonChild::District(elem) => {
+                ctx.enter("district", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

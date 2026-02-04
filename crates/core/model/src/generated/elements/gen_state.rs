@@ -5,17 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GenStateChild {
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "respStmt")]
     RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
 }
 impl GenStateChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            GenStateChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             GenStateChild::Desc(elem) => {
                 ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
@@ -23,11 +28,6 @@ impl GenStateChild {
             }
             GenStateChild::RespStmt(elem) => {
                 ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            GenStateChild::Date(elem) => {
-                ctx.enter("date", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

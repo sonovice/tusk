@@ -5,78 +5,43 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HistoryChild {
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "quote")]
     Quote(Box<crate::generated::elements::Quote>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
-    #[serde(rename = "castList")]
-    CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "acquisition")]
-    Acquisition(Box<crate::generated::elements::Acquisition>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "treatHist")]
-    TreatHist(Box<crate::generated::elements::TreatHist>),
-    #[serde(rename = "treatSched")]
-    TreatSched(Box<crate::generated::elements::TreatSched>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "provenance")]
-    Provenance(Box<crate::generated::elements::Provenance>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "exhibHist")]
     ExhibHist(Box<crate::generated::elements::ExhibHist>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "treatSched")]
+    TreatSched(Box<crate::generated::elements::TreatSched>),
+    #[serde(rename = "acquisition")]
+    Acquisition(Box<crate::generated::elements::Acquisition>),
+    #[serde(rename = "provenance")]
+    Provenance(Box<crate::generated::elements::Provenance>),
+    #[serde(rename = "treatHist")]
+    TreatHist(Box<crate::generated::elements::TreatHist>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
+    #[serde(rename = "castList")]
+    CastList(Box<crate::generated::elements::CastList>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
 }
 impl HistoryChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            HistoryChild::Div(elem) => {
-                ctx.enter("div", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             HistoryChild::Quote(elem) => {
                 ctx.enter("quote", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::Table(elem) => {
-                ctx.enter("table", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::Lg(elem) => {
-                ctx.enter("lg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            HistoryChild::Acquisition(elem) => {
-                ctx.enter("acquisition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -85,13 +50,13 @@ impl HistoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HistoryChild::TreatHist(elem) => {
-                ctx.enter("treatHist", index);
+            HistoryChild::Lg(elem) => {
+                ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HistoryChild::TreatSched(elem) => {
-                ctx.enter("treatSched", index);
+            HistoryChild::ExhibHist(elem) => {
+                ctx.enter("exhibHist", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -100,8 +65,13 @@ impl HistoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HistoryChild::List(elem) => {
-                ctx.enter("list", index);
+            HistoryChild::TreatSched(elem) => {
+                ctx.enter("treatSched", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::Acquisition(elem) => {
+                ctx.enter("acquisition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -110,8 +80,38 @@ impl HistoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HistoryChild::ExhibHist(elem) => {
-                ctx.enter("exhibHist", index);
+            HistoryChild::TreatHist(elem) => {
+                ctx.enter("treatHist", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::Table(elem) => {
+                ctx.enter("table", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::List(elem) => {
+                ctx.enter("list", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::CastList(elem) => {
+                ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HistoryChild::Div(elem) => {
+                ctx.enter("div", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

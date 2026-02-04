@@ -8,151 +8,181 @@ pub enum RegionChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "height")]
+    Height(Box<crate::generated::elements::Height>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
     #[serde(rename = "supplied")]
     Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "street")]
+    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
     #[serde(rename = "dimensions")]
     Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "district")]
+    District(Box<crate::generated::elements::District>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
     #[serde(rename = "reg")]
     Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "signatures")]
     Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
     #[serde(rename = "catchwords")]
     Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "stack")]
+    Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
     #[serde(rename = "bloc")]
     Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
     #[serde(rename = "subst")]
     Subst(Box<crate::generated::elements::Subst>),
     #[serde(rename = "annot")]
     Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
     #[serde(rename = "expan")]
     Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
     #[serde(rename = "settlement")]
     Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
-    #[serde(rename = "height")]
-    Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "district")]
-    District(Box<crate::generated::elements::District>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "street")]
-    Street(Box<crate::generated::elements::Street>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
     #[serde(rename = "stamp")]
     Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "stack")]
-    Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
 }
 impl RegionChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             RegionChild::Text(_) => {}
-            RegionChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
+            RegionChild::Extent(elem) => {
+                ctx.enter("extent", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::Damage(elem) => {
-                ctx.enter("damage", index);
+            RegionChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Height(elem) => {
+                ctx.enter("height", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Restore(elem) => {
+                ctx.enter("restore", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -161,8 +191,18 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
+            RegionChild::Street(elem) => {
+                ctx.enter("street", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Ref(elem) => {
+                ctx.enter("ref", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -171,8 +211,28 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::Add(elem) => {
-                ctx.enter("add", index);
+            RegionChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Seg(elem) => {
+                ctx.enter("seg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::District(elem) => {
+                ctx.enter("district", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -181,8 +241,43 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            RegionChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -191,8 +286,33 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            RegionChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             RegionChild::Del(elem) => {
                 ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::PersName(elem) => {
+                ctx.enter("persName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Abbr(elem) => {
+                ctx.enter("abbr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -201,8 +321,93 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            RegionChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Stack(elem) => {
+                ctx.enter("stack", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             RegionChild::Bloc(elem) => {
                 ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -216,63 +421,8 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Relation(elem) => {
-                ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Region(elem) => {
-                ctx.enter("region", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             RegionChild::Expan(elem) => {
                 ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Seg(elem) => {
-                ctx.enter("seg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -281,28 +431,8 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Abbr(elem) => {
-                ctx.enter("abbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Height(elem) => {
-                ctx.enter("height", index);
+            RegionChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -311,8 +441,13 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::District(elem) => {
-                ctx.enter("district", index);
+            RegionChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RegionChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -321,73 +456,8 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Street(elem) => {
-                ctx.enter("street", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            RegionChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -396,83 +466,13 @@ impl RegionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::Date(elem) => {
-                ctx.enter("date", index);
+            RegionChild::Orig(elem) => {
+                ctx.enter("orig", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RegionChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Dim(elem) => {
-                ctx.enter("dim", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RegionChild::Stack(elem) => {
-                ctx.enter("stack", index);
+            RegionChild::Add(elem) => {
+                ctx.enter("add", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

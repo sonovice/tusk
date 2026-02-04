@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SymPropChild {
-    #[serde(rename = "propValue")]
-    PropValue(Box<crate::generated::elements::PropValue>),
     #[serde(rename = "propName")]
     PropName(Box<crate::generated::elements::PropName>),
+    #[serde(rename = "propValue")]
+    PropValue(Box<crate::generated::elements::PropValue>),
 }
 impl SymPropChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SymPropChild::PropValue(elem) => {
-                ctx.enter("propValue", index);
+            SymPropChild::PropName(elem) => {
+                ctx.enter("propName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SymPropChild::PropName(elem) => {
-                ctx.enter("propName", index);
+            SymPropChild::PropValue(elem) => {
+                ctx.enter("propValue", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

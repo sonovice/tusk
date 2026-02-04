@@ -8,58 +8,38 @@ pub enum SeriesChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "textLang")]
-    TextLang(Box<crate::generated::elements::TextLang>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
     #[serde(rename = "extent")]
     Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "textLang")]
+    TextLang(Box<crate::generated::elements::TextLang>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
     #[serde(rename = "editor")]
     Editor(Box<crate::generated::elements::Editor>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
 }
 impl SeriesChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             SeriesChild::Text(_) => {}
-            SeriesChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesChild::Pb(elem) => {
-                ctx.enter("pb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesChild::TextLang(elem) => {
-                ctx.enter("textLang", index);
+            SeriesChild::Extent(elem) => {
+                ctx.enter("extent", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +48,13 @@ impl SeriesChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
+            SeriesChild::TextLang(elem) => {
+                ctx.enter("textLang", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesChild::Pb(elem) => {
+                ctx.enter("pb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -78,8 +63,28 @@ impl SeriesChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SeriesChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SeriesChild::Ref(elem) => {
                 ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesChild::Editor(elem) => {
+                ctx.enter("editor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -88,13 +93,8 @@ impl SeriesChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesChild::Editor(elem) => {
-                ctx.enter("editor", index);
+            SeriesChild::Title(elem) => {
+                ctx.enter("title", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

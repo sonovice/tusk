@@ -26,7 +26,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_SERIALIZER] PublisherChild: missing serializer for CorpName (source: Aguado_Walzer_G-major.mei)
 - [x] [MISSING_SERIALIZER] AddressChild/AddrLineChild: missing serializers for GeogName, PostCode, etc (source: Aguado_Walzer_G-major.mei)
 - [x] [DESERIALIZER_BUG] Title element: mixed content not parsed correctly - titlePart and other child elements collapsed into single text node (source: Aguado_Walzer_G-major.mei)
-- [ ] [CODEGEN_BUG] Application element: missing @version attribute in generated model - element-local attribute from ODD attList not generated (source: Aguado_Walzer_G-major.mei)
+- [x] [CODEGEN_BUG] Application element: missing @version attribute in generated model - element-local attribute from ODD attList not generated (source: Aguado_Walzer_G-major.mei)
 
 ---
 

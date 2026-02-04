@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 pub enum ApplicationChild {
     #[serde(rename = "name")]
     Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "ptr")]
     Ptr(Box<crate::generated::elements::Ptr>),
     #[serde(rename = "ref")]
     Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
 }
 impl ApplicationChild {
     /// Validate this child element.
@@ -20,6 +20,11 @@ impl ApplicationChild {
         match self {
             ApplicationChild::Name(elem) => {
                 ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ApplicationChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,16 +38,11 @@ impl ApplicationChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ApplicationChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
         }
     }
 }
-/**Supplies a version number for an application, independent of its identifier or display
-name.*/
+/**Provides information about an application which has acted upon the current
+document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "application")]
 pub struct Application {
@@ -50,6 +50,10 @@ pub struct Application {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub datable: crate::generated::att::AttDatable,
+    /**Supplies a version number for an application, independent of its identifier or display
+    name.*/
+    #[serde(rename = "@version", skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<ApplicationChild>,

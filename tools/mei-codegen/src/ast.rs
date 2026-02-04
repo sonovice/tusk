@@ -207,6 +207,8 @@ pub struct Element {
     pub content: ContentModel,
     /// Element-level Schematron constraints.
     pub constraints: Vec<Constraint>,
+    /// Element-local attributes defined in attList (not from attribute classes).
+    pub local_attributes: Vec<Attribute>,
 }
 
 /// All definitions collected from MEI ODD files.

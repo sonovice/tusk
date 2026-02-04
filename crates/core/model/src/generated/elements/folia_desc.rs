@@ -5,42 +5,32 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FoliaDescChild {
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "folium")]
     Folium(Box<crate::generated::elements::Folium>),
-    #[serde(rename = "bifolium")]
-    Bifolium(Box<crate::generated::elements::Bifolium>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
     #[serde(rename = "restore")]
     Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "bifolium")]
+    Bifolium(Box<crate::generated::elements::Bifolium>),
 }
 impl FoliaDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FoliaDescChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             FoliaDescChild::Folium(elem) => {
                 ctx.enter("folium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Bifolium(elem) => {
-                ctx.enter("bifolium", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            FoliaDescChild::Add(elem) => {
-                ctx.enter("add", index);
+            FoliaDescChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,8 +44,18 @@ impl FoliaDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Gap(elem) => {
-                ctx.enter("gap", index);
+            FoliaDescChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FoliaDescChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FoliaDescChild::Bifolium(elem) => {
+                ctx.enter("bifolium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

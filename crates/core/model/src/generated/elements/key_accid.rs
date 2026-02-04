@@ -1,7 +1,7 @@
 //!Element: `<keyAccid>`
 use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-///key accidental - All enharmonic (written) values allowed.
+///key accidental - Accidental in a key signature.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "keyAccid")]
 pub struct KeyAccid {
@@ -17,6 +17,10 @@ pub struct KeyAccid {
     pub key_accid_log: crate::generated::att::AttKeyAccidLog,
     #[serde(flatten)]
     pub key_accid_vis: crate::generated::att::AttKeyAccidVis,
+    /**Specifies whether enharmonic (written) values or implicit ("perform-able") values are
+    allowed.*/
+    #[serde(rename = "@form", skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
 }
 impl crate::generated::model::ModelKeyAccidLike for KeyAccid {}
 impl Validate for KeyAccid {

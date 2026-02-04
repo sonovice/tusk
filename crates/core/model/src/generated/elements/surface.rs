@@ -5,22 +5,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SurfaceChild {
-    #[serde(rename = "graphic")]
-    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "figDesc")]
     FigDesc(Box<crate::generated::elements::FigDesc>),
     #[serde(rename = "zone")]
     Zone(Box<crate::generated::elements::Zone>),
+    #[serde(rename = "graphic")]
+    Graphic(Box<crate::generated::elements::Graphic>),
 }
 impl SurfaceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SurfaceChild::Graphic(elem) => {
-                ctx.enter("graphic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             SurfaceChild::FigDesc(elem) => {
                 ctx.enter("figDesc", index);
                 elem.validate_with_context(ctx);
@@ -28,6 +23,11 @@ impl SurfaceChild {
             }
             SurfaceChild::Zone(elem) => {
                 ctx.enter("zone", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SurfaceChild::Graphic(elem) => {
+                ctx.enter("graphic", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -7,28 +7,28 @@ use serde::{Deserialize, Serialize};
 pub enum SeriesStmtChild {
     #[serde(rename = "contributor")]
     Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "funder")]
+    Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "contents")]
+    Contents(Box<crate::generated::elements::Contents>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "creator")]
+    Creator(Box<crate::generated::elements::Creator>),
     #[serde(rename = "editor")]
     Editor(Box<crate::generated::elements::Editor>),
     #[serde(rename = "biblScope")]
     BiblScope(Box<crate::generated::elements::BiblScope>),
-    #[serde(rename = "contents")]
-    Contents(Box<crate::generated::elements::Contents>),
-    #[serde(rename = "creator")]
-    Creator(Box<crate::generated::elements::Creator>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
-    #[serde(rename = "funder")]
-    Funder(Box<crate::generated::elements::Funder>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "seriesStmt")]
     SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "title")]
     Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl SeriesStmtChild {
     /// Validate this child element.
@@ -39,13 +39,23 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SeriesStmtChild::Funder(elem) => {
+                ctx.enter("funder", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::Contents(elem) => {
+                ctx.enter("contents", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SeriesStmtChild::Identifier(elem) => {
                 ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::Head(elem) => {
-                ctx.enter("head", index);
+            SeriesStmtChild::Creator(elem) => {
+                ctx.enter("creator", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -59,13 +69,8 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::Contents(elem) => {
-                ctx.enter("contents", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::Creator(elem) => {
-                ctx.enter("creator", index);
+            SeriesStmtChild::SeriesStmt(elem) => {
+                ctx.enter("seriesStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -74,8 +79,8 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::Funder(elem) => {
-                ctx.enter("funder", index);
+            SeriesStmtChild::Title(elem) => {
+                ctx.enter("title", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -84,13 +89,8 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::SeriesStmt(elem) => {
-                ctx.enter("seriesStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::Title(elem) => {
-                ctx.enter("title", index);
+            SeriesStmtChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

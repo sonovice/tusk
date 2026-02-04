@@ -9,14 +9,14 @@ pub enum StaffGrpChild {
     LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
     #[serde(rename = "grpSym")]
     GrpSym(Box<crate::generated::elements::GrpSym>),
+    #[serde(rename = "staffDef")]
+    StaffDef(Box<crate::generated::elements::StaffDef>),
     #[serde(rename = "staffGrp")]
     StaffGrp(Box<crate::generated::elements::StaffGrp>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "instrDef")]
     InstrDef(Box<crate::generated::elements::InstrDef>),
-    #[serde(rename = "staffDef")]
-    StaffDef(Box<crate::generated::elements::StaffDef>),
 }
 impl StaffGrpChild {
     /// Validate this child element.
@@ -32,6 +32,11 @@ impl StaffGrpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            StaffGrpChild::StaffDef(elem) => {
+                ctx.enter("staffDef", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             StaffGrpChild::StaffGrp(elem) => {
                 ctx.enter("staffGrp", index);
                 elem.validate_with_context(ctx);
@@ -44,11 +49,6 @@ impl StaffGrpChild {
             }
             StaffGrpChild::InstrDef(elem) => {
                 ctx.enter("instrDef", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            StaffGrpChild::StaffDef(elem) => {
-                ctx.enter("staffDef", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

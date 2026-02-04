@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 pub enum FigChild {
     #[serde(rename = "figDesc")]
     FigDesc(Box<crate::generated::elements::FigDesc>),
-    #[serde(rename = "caption")]
-    Caption(Box<crate::generated::elements::Caption>),
     #[serde(rename = "score")]
     Score(Box<crate::generated::elements::Score>),
     #[serde(rename = "graphic")]
     Graphic(Box<crate::generated::elements::Graphic>),
+    #[serde(rename = "caption")]
+    Caption(Box<crate::generated::elements::Caption>),
 }
 impl FigChild {
     /// Validate this child element.
@@ -23,11 +23,6 @@ impl FigChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FigChild::Caption(elem) => {
-                ctx.enter("caption", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             FigChild::Score(elem) => {
                 ctx.enter("score", index);
                 elem.validate_with_context(ctx);
@@ -35,6 +30,11 @@ impl FigChild {
             }
             FigChild::Graphic(elem) => {
                 ctx.enter("graphic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            FigChild::Caption(elem) => {
+                ctx.enter("caption", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

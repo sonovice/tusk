@@ -671,6 +671,31 @@ fn parse_att_def(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<Optio
     }))
 }
 
+/// Parse an attList element (used for element-local attributes).
+fn parse_att_list(reader: &mut Reader<&[u8]>) -> Result<Vec<Attribute>> {
+    let mut attributes = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                if e.name().as_ref() == b"attDef" {
+                    if let Some(attr) = parse_att_def(reader, &e)? {
+                        attributes.push(attr);
+                    }
+                }
+            }
+            Ok(Event::End(e)) if e.name().as_ref() == b"attList" => break,
+            Ok(Event::Eof) => break,
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+        buf.clear();
+    }
+
+    Ok(attributes)
+}
+
 /// Parse the datatype of an attribute.
 fn parse_attribute_datatype(reader: &mut Reader<&[u8]>) -> Result<Option<AttributeDataType>> {
     let mut datatype = None;
@@ -879,6 +904,7 @@ fn parse_element_spec(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<
     let mut member_of = Vec::new();
     let mut content = Vec::new();
     let mut constraints = Vec::new();
+    let mut local_attributes = Vec::new();
     let mut buf = Vec::new();
 
     loop {
@@ -897,6 +923,11 @@ fn parse_element_spec(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<
                 b"constraintSpec" => {
                     let cs = parse_constraint_spec(reader, &e)?;
                     constraints.extend(cs);
+                }
+                b"attList" => {
+                    // Parse element-local attributes
+                    let attrs = parse_att_list(reader)?;
+                    local_attributes.extend(attrs);
                 }
                 _ => {}
             },
@@ -923,6 +954,7 @@ fn parse_element_spec(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<
         member_of,
         content,
         constraints,
+        local_attributes,
     }))
 }
 

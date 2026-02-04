@@ -5,20 +5,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EditionStmtChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "editor")]
-    Editor(Box<crate::generated::elements::Editor>),
-    #[serde(rename = "edition")]
-    Edition(Box<crate::generated::elements::Edition>),
     #[serde(rename = "respStmt")]
     RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "contributor")]
     Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "edition")]
+    Edition(Box<crate::generated::elements::Edition>),
+    #[serde(rename = "editor")]
+    Editor(Box<crate::generated::elements::Editor>),
     #[serde(rename = "funder")]
     Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "creator")]
     Creator(Box<crate::generated::elements::Creator>),
 }
@@ -26,28 +26,8 @@ impl EditionStmtChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            EditionStmtChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EditionStmtChild::Editor(elem) => {
-                ctx.enter("editor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EditionStmtChild::Edition(elem) => {
-                ctx.enter("edition", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             EditionStmtChild::RespStmt(elem) => {
                 ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EditionStmtChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -56,8 +36,28 @@ impl EditionStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            EditionStmtChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EditionStmtChild::Edition(elem) => {
+                ctx.enter("edition", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EditionStmtChild::Editor(elem) => {
+                ctx.enter("editor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             EditionStmtChild::Funder(elem) => {
                 ctx.enter("funder", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EditionStmtChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

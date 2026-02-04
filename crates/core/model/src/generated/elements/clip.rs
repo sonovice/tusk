@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ClipChild {
-    #[serde(rename = "when")]
-    When(Box<crate::generated::elements::When>),
     #[serde(rename = "avFile")]
     AvFile(Box<crate::generated::elements::AvFile>),
+    #[serde(rename = "when")]
+    When(Box<crate::generated::elements::When>),
 }
 impl ClipChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ClipChild::When(elem) => {
-                ctx.enter("when", index);
+            ClipChild::AvFile(elem) => {
+                ctx.enter("avFile", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ClipChild::AvFile(elem) => {
-                ctx.enter("avFile", index);
+            ClipChild::When(elem) => {
+                ctx.enter("when", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,28 +5,28 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemChild {
-    #[serde(rename = "physDesc")]
-    PhysDesc(Box<crate::generated::elements::PhysDesc>),
-    #[serde(rename = "componentList")]
-    ComponentList(Box<crate::generated::elements::ComponentList>),
-    #[serde(rename = "availability")]
-    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "relationList")]
     RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "history")]
+    History(Box<crate::generated::elements::History>),
     #[serde(rename = "extMeta")]
     ExtMeta(Box<crate::generated::elements::ExtMeta>),
+    #[serde(rename = "physDesc")]
+    PhysDesc(Box<crate::generated::elements::PhysDesc>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "notesStmt")]
     NotesStmt(Box<crate::generated::elements::NotesStmt>),
     #[serde(rename = "classification")]
     Classification(Box<crate::generated::elements::Classification>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "availability")]
+    Availability(Box<crate::generated::elements::Availability>),
     #[serde(rename = "physLoc")]
     PhysLoc(Box<crate::generated::elements::PhysLoc>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "history")]
-    History(Box<crate::generated::elements::History>),
+    #[serde(rename = "componentList")]
+    ComponentList(Box<crate::generated::elements::ComponentList>),
     #[serde(rename = "dedication")]
     Dedication(Box<crate::generated::elements::Dedication>),
 }
@@ -34,18 +34,8 @@ impl ItemChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ItemChild::PhysDesc(elem) => {
-                ctx.enter("physDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ItemChild::ComponentList(elem) => {
-                ctx.enter("componentList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ItemChild::Availability(elem) => {
-                ctx.enter("availability", index);
+            ItemChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,8 +44,23 @@ impl ItemChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ItemChild::History(elem) => {
+                ctx.enter("history", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ItemChild::ExtMeta(elem) => {
                 ctx.enter("extMeta", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ItemChild::PhysDesc(elem) => {
+                ctx.enter("physDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ItemChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -69,8 +74,8 @@ impl ItemChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ItemChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            ItemChild::Availability(elem) => {
+                ctx.enter("availability", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -79,13 +84,8 @@ impl ItemChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ItemChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ItemChild::History(elem) => {
-                ctx.enter("history", index);
+            ItemChild::ComponentList(elem) => {
+                ctx.enter("componentList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

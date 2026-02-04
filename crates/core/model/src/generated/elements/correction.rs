@@ -5,29 +5,29 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CorrectionChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl CorrectionChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CorrectionChild::Head(elem) => {
-                ctx.enter("head", index);
+            CorrectionChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CorrectionChild::P(elem) => {
-                ctx.enter("p", index);
+            CorrectionChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-///The correction status of the text is unknown.
+///States how and under what circumstances corrections have been made in the text.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "correction")]
 pub struct Correction {
@@ -41,6 +41,9 @@ pub struct Correction {
     pub lang: crate::generated::att::AttLang,
     #[serde(flatten)]
     pub regular_method: crate::generated::att::AttRegularMethod,
+    ///Indicates the degree of correction applied to the text.
+    #[serde(rename = "@corrlevel", skip_serializing_if = "Option::is_none")]
+    pub corrlevel: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<CorrectionChild>,

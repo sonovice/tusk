@@ -17,7 +17,7 @@ impl IncipCodeChild {
         }
     }
 }
-///Parsons code.
+///Incipit coded in a non-XML, plain text format, such as Plaine & Easie Code.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "incipCode")]
 pub struct IncipCode {
@@ -31,6 +31,9 @@ pub struct IncipCode {
     pub pointing: crate::generated::att::AttPointing,
     #[serde(flatten)]
     pub whitespace: crate::generated::att::AttWhitespace,
+    ///Form of the encoded incipit.
+    #[serde(rename = "@form", skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<IncipCodeChild>,

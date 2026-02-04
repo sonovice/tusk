@@ -7,36 +7,36 @@ use serde::{Deserialize, Serialize};
 pub enum DivChild {
     #[serde(rename = "lg")]
     Lg(Box<crate::generated::elements::Lg>),
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "quote")]
+    Quote(Box<crate::generated::elements::Quote>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "fig")]
     Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
     #[serde(rename = "cb")]
     Cb(Box<crate::generated::elements::Cb>),
     #[serde(rename = "list")]
     List(Box<crate::generated::elements::List>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "quote")]
-    Quote(Box<crate::generated::elements::Quote>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "pb")]
     Pb(Box<crate::generated::elements::Pb>),
     #[serde(rename = "sp")]
     Sp(Box<crate::generated::elements::Sp>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
 }
 impl DivChild {
     /// Validate this child element.
@@ -47,18 +47,43 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Div(elem) => {
-                ctx.enter("div", index);
+            DivChild::Quote(elem) => {
+                ctx.enter("quote", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Table(elem) => {
-                ctx.enter("table", index);
+            DivChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             DivChild::Fig(elem) => {
                 ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::Table(elem) => {
+                ctx.enter("table", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -72,23 +97,18 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::EventList(elem) => {
-                ctx.enter("eventList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::Quote(elem) => {
-                ctx.enter("quote", index);
+            DivChild::Div(elem) => {
+                ctx.enter("div", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             DivChild::CastList(elem) => {
                 ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            DivChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -102,31 +122,11 @@ impl DivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            DivChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            DivChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
         }
     }
 }
-/**division - A foreword or preface addressed to the reader in which the author or publisher
-explains the content, purpose, or origin of the text.*/
+/**division - Major structural division of text, such as a preface, chapter or
+section.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "div")]
 pub struct Div {
@@ -148,6 +148,10 @@ pub struct Div {
     pub n_number_like: crate::generated::att::AttNNumberLike,
     #[serde(flatten)]
     pub responsibility: crate::generated::att::AttResponsibility,
+    /**Characterizes the textual division in some sense, using any convenient classification
+    scheme or typology that employs single-token labels.*/
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<DivChild>,

@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GroupChild {
-    #[serde(rename = "music")]
-    Music(Box<crate::generated::elements::Music>),
     #[serde(rename = "group")]
     Group(Box<crate::generated::elements::Group>),
+    #[serde(rename = "music")]
+    Music(Box<crate::generated::elements::Music>),
 }
 impl GroupChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            GroupChild::Music(elem) => {
-                ctx.enter("music", index);
+            GroupChild::Group(elem) => {
+                ctx.enter("group", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            GroupChild::Group(elem) => {
-                ctx.enter("group", index);
+            GroupChild::Music(elem) => {
+                ctx.enter("music", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

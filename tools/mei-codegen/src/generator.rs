@@ -851,6 +851,46 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         })
         .collect();
 
+    // Generate local attribute fields (element-specific attributes not from classes)
+    let local_attr_fields: Vec<_> = elem
+        .local_attributes
+        .iter()
+        .map(|attr| {
+            let field_name =
+                make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
+            let field_doc = &attr.desc;
+            let xml_name = &attr.ident;
+
+            // Check if this is a multi-valued attribute
+            let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
+
+            // Determine serde rename (with @ prefix for XML attributes)
+            let rename = if is_unbounded {
+                // Vec fields use default and is_empty
+                if xml_name.starts_with("xml:") {
+                    quote! { #[serde(rename = #xml_name, default, skip_serializing_if = "Vec::is_empty")] }
+                } else {
+                    let attr_name = format!("@{}", xml_name);
+                    quote! { #[serde(rename = #attr_name, default, skip_serializing_if = "Vec::is_empty")] }
+                }
+            } else if xml_name.starts_with("xml:") {
+                quote! { #[serde(rename = #xml_name, skip_serializing_if = "Option::is_none")] }
+            } else {
+                let attr_name = format!("@{}", xml_name);
+                quote! { #[serde(rename = #attr_name, skip_serializing_if = "Option::is_none")] }
+            };
+
+            // Determine field type
+            let field_type = attribute_type_tokens(&attr.datatype, &attr.max_occurs, defs);
+
+            quote! {
+                #[doc = #field_doc]
+                #rename
+                pub #field_name: #field_type,
+            }
+        })
+        .collect();
+
     // Generate child element enum and field if content model is non-empty
     let (child_enum, child_field) = generate_child_content(elem, defs);
 
@@ -886,6 +926,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         #[serde(rename = #xml_name)]
         pub struct #name {
             #(#att_class_fields)*
+            #(#local_attr_fields)*
             #child_field_tokens
         }
 

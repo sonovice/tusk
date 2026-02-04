@@ -5,95 +5,70 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExpressionChild {
-    #[serde(rename = "meter")]
-    Meter(Box<crate::generated::elements::Meter>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "key")]
-    Key(Box<crate::generated::elements::Key>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "context")]
-    Context(Box<crate::generated::elements::Context>),
-    #[serde(rename = "creation")]
-    Creation(Box<crate::generated::elements::Creation>),
-    #[serde(rename = "componentList")]
-    ComponentList(Box<crate::generated::elements::ComponentList>),
+    #[serde(rename = "dedication")]
+    Dedication(Box<crate::generated::elements::Dedication>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
     #[serde(rename = "otherChar")]
     OtherChar(Box<crate::generated::elements::OtherChar>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "history")]
+    History(Box<crate::generated::elements::History>),
     #[serde(rename = "perfMedium")]
     PerfMedium(Box<crate::generated::elements::PerfMedium>),
+    #[serde(rename = "componentList")]
+    ComponentList(Box<crate::generated::elements::ComponentList>),
+    #[serde(rename = "perfDuration")]
+    PerfDuration(Box<crate::generated::elements::PerfDuration>),
+    #[serde(rename = "incip")]
+    Incip(Box<crate::generated::elements::Incip>),
+    #[serde(rename = "langUsage")]
+    LangUsage(Box<crate::generated::elements::LangUsage>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "mensuration")]
     Mensuration(Box<crate::generated::elements::Mensuration>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
+    #[serde(rename = "creation")]
+    Creation(Box<crate::generated::elements::Creation>),
+    #[serde(rename = "scoreFormat")]
+    ScoreFormat(Box<crate::generated::elements::ScoreFormat>),
+    #[serde(rename = "context")]
+    Context(Box<crate::generated::elements::Context>),
+    #[serde(rename = "tempo")]
+    Tempo(Box<crate::generated::elements::Tempo>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
     #[serde(rename = "classification")]
     Classification(Box<crate::generated::elements::Classification>),
+    #[serde(rename = "contents")]
+    Contents(Box<crate::generated::elements::Contents>),
     #[serde(rename = "notesStmt")]
     NotesStmt(Box<crate::generated::elements::NotesStmt>),
     #[serde(rename = "extMeta")]
     ExtMeta(Box<crate::generated::elements::ExtMeta>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "tempo")]
-    Tempo(Box<crate::generated::elements::Tempo>),
-    #[serde(rename = "langUsage")]
-    LangUsage(Box<crate::generated::elements::LangUsage>),
-    #[serde(rename = "contents")]
-    Contents(Box<crate::generated::elements::Contents>),
-    #[serde(rename = "dedication")]
-    Dedication(Box<crate::generated::elements::Dedication>),
-    #[serde(rename = "incip")]
-    Incip(Box<crate::generated::elements::Incip>),
-    #[serde(rename = "perfDuration")]
-    PerfDuration(Box<crate::generated::elements::PerfDuration>),
-    #[serde(rename = "history")]
-    History(Box<crate::generated::elements::History>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "scoreFormat")]
-    ScoreFormat(Box<crate::generated::elements::ScoreFormat>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "meter")]
+    Meter(Box<crate::generated::elements::Meter>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "key")]
+    Key(Box<crate::generated::elements::Key>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
 }
 impl ExpressionChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ExpressionChild::Meter(elem) => {
-                ctx.enter("meter", index);
+            ExpressionChild::Dedication(elem) => {
+                ctx.enter("dedication", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::Key(elem) => {
-                ctx.enter("key", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::Context(elem) => {
-                ctx.enter("context", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::Creation(elem) => {
-                ctx.enter("creation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::ComponentList(elem) => {
-                ctx.enter("componentList", index);
+            ExpressionChild::Title(elem) => {
+                ctx.enter("title", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -102,8 +77,8 @@ impl ExpressionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Extent(elem) => {
-                ctx.enter("extent", index);
+            ExpressionChild::History(elem) => {
+                ctx.enter("history", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -112,23 +87,73 @@ impl ExpressionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ExpressionChild::ComponentList(elem) => {
+                ctx.enter("componentList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::PerfDuration(elem) => {
+                ctx.enter("perfDuration", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::Incip(elem) => {
+                ctx.enter("incip", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::LangUsage(elem) => {
+                ctx.enter("langUsage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ExpressionChild::Mensuration(elem) => {
                 ctx.enter("mensuration", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            ExpressionChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
+            ExpressionChild::Creation(elem) => {
+                ctx.enter("creation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::ScoreFormat(elem) => {
+                ctx.enter("scoreFormat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::Context(elem) => {
+                ctx.enter("context", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::Tempo(elem) => {
+                ctx.enter("tempo", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             ExpressionChild::Classification(elem) => {
                 ctx.enter("classification", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExpressionChild::Contents(elem) => {
+                ctx.enter("contents", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -142,53 +167,28 @@ impl ExpressionChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Head(elem) => {
-                ctx.enter("head", index);
+            ExpressionChild::Extent(elem) => {
+                ctx.enter("extent", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Tempo(elem) => {
-                ctx.enter("tempo", index);
+            ExpressionChild::Meter(elem) => {
+                ctx.enter("meter", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::LangUsage(elem) => {
-                ctx.enter("langUsage", index);
+            ExpressionChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Contents(elem) => {
-                ctx.enter("contents", index);
+            ExpressionChild::Key(elem) => {
+                ctx.enter("key", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExpressionChild::Dedication(elem) => {
-                ctx.enter("dedication", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::Incip(elem) => {
-                ctx.enter("incip", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::PerfDuration(elem) => {
-                ctx.enter("perfDuration", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::History(elem) => {
-                ctx.enter("history", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExpressionChild::ScoreFormat(elem) => {
-                ctx.enter("scoreFormat", index);
+            ExpressionChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

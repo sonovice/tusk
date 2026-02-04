@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum NamespaceChild {
     #[serde(rename = "tagUsage")]
     TagUsage(Box<crate::generated::elements::TagUsage>),
-    #[serde(rename = "attUsage")]
-    AttUsage(Box<crate::generated::elements::AttUsage>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "attUsage")]
+    AttUsage(Box<crate::generated::elements::AttUsage>),
 }
 impl NamespaceChild {
     /// Validate this child element.
@@ -21,20 +21,21 @@ impl NamespaceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            NamespaceChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            NamespaceChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-///Prefix associated with the formal identifier.
+/**Supplies the formal name of the namespace to which the elements documented by its children
+belong.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "namespace")]
 pub struct Namespace {
@@ -42,6 +43,12 @@ pub struct Namespace {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub bibl: crate::generated::att::AttBibl,
+    ///Formal namespace identifier; that is, a uniform resource identifier (URI).
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
+    pub name: Option<crate::generated::data::DataUri>,
+    ///Prefix associated with the formal identifier.
+    #[serde(rename = "@prefix", skip_serializing_if = "Option::is_none")]
+    pub prefix: Option<crate::generated::data::DataNmtoken>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<NamespaceChild>,

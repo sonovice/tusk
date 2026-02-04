@@ -5,30 +5,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CatRelChild {
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
 }
 impl CatRelChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CatRelChild::Label(elem) => {
-                ctx.enter("label", index);
+            CatRelChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CatRelChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            CatRelChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
         }
     }
 }
-/**category relationship - Non-preferred category; often a synonym or near-synonym for the preferred category
-label.*/
+/**category relationship - Contains the name, i.e., label, of a related
+category.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "catRel")]
 pub struct CatRel {
@@ -46,6 +46,10 @@ pub struct CatRel {
     pub n_number_like: crate::generated::att::AttNNumberLike,
     #[serde(flatten)]
     pub responsibility: crate::generated::att::AttResponsibility,
+    /**Provides a description of the relationship between the current and the target
+    categories.*/
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
     /// Child elements.
     #[serde(default, rename = "$value")]
     pub children: Vec<CatRelChild>,

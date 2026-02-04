@@ -1,7 +1,7 @@
 //!Element: `<seqNum>`
 use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-///sequence number - Number in the range 0-65535.
+///sequence number - MIDI sequence number.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "seqNum")]
 pub struct SeqNum {
@@ -9,6 +9,9 @@ pub struct SeqNum {
     pub common: crate::generated::att::AttCommon,
     #[serde(flatten)]
     pub midi_event: crate::generated::att::AttMidiEvent,
+    ///Number in the range 0-65535.
+    #[serde(rename = "@num", skip_serializing_if = "Option::is_none")]
+    pub num: Option<u64>,
 }
 impl Validate for SeqNum {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {

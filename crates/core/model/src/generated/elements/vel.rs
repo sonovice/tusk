@@ -1,7 +1,7 @@
 //!Element: `<vel>`
 use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
-///velocity - Note-off velocity.
+///velocity - MIDI Note-on/off velocity.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "vel")]
 pub struct Vel {
@@ -11,6 +11,9 @@ pub struct Vel {
     pub midi_event: crate::generated::att::AttMidiEvent,
     #[serde(flatten)]
     pub midi_number: crate::generated::att::AttMidiNumber,
+    ///Indicates whether this is note-on or note-off velocity data.
+    #[serde(rename = "@form", skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
 }
 impl Validate for Vel {
     fn validate_with_context(&self, ctx: &mut ValidationContext) {
