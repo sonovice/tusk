@@ -10153,3 +10153,264 @@ fn roundtrip_gracegrp_complete() {
     assert_eq!(parsed.grace_grp_log.attach, original.grace_grp_log.attach);
     assert_eq!(parsed.children.len(), 3);
 }
+
+// ----------------------------------------------------------------------------
+// ExpressionList Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn deserialize_expressionlist_empty() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::ExpressionList;
+
+    let xml = r#"<expressionList/>"#;
+    let expr_list = ExpressionList::from_mei_str(xml).expect("should deserialize");
+
+    assert!(expr_list.common.xml_id.is_none());
+    assert!(expr_list.children.is_empty());
+}
+
+#[test]
+fn deserialize_expressionlist_with_xml_id() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::ExpressionList;
+
+    let xml = r#"<expressionList xml:id="exprl1"/>"#;
+    let expr_list = ExpressionList::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr_list.common.xml_id, Some("exprl1".to_string()));
+    assert!(expr_list.children.is_empty());
+}
+
+#[test]
+fn deserialize_expressionlist_with_head() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{ExpressionList, ExpressionListChild};
+
+    let xml = r#"<expressionList>
+        <head>Expression List Title</head>
+    </expressionList>"#;
+    let expr_list = ExpressionList::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr_list.children.len(), 1);
+    match &expr_list.children[0] {
+        ExpressionListChild::Head(head) => {
+            // Head contains text as HeadChild::Text
+            assert!(!head.children.is_empty());
+        }
+        other => panic!("Expected Head, got {:?}", other),
+    }
+}
+
+#[test]
+fn deserialize_expressionlist_with_expression() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{ExpressionList, ExpressionListChild};
+
+    let xml = r#"<expressionList xml:id="exprl1">
+        <expression xml:id="expr1">
+            <title>First Edition</title>
+        </expression>
+    </expressionList>"#;
+    let expr_list = ExpressionList::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr_list.common.xml_id, Some("exprl1".to_string()));
+    assert_eq!(expr_list.children.len(), 1);
+    match &expr_list.children[0] {
+        ExpressionListChild::Expression(expr) => {
+            assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+            assert_eq!(expr.children.len(), 1);
+        }
+        other => panic!("Expected Expression, got {:?}", other),
+    }
+}
+
+#[test]
+fn deserialize_expressionlist_with_multiple_expressions() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{ExpressionList, ExpressionListChild};
+
+    let xml = r#"<expressionList xml:id="exprl1">
+        <head>Expressions</head>
+        <expression xml:id="expr1">
+            <title>First Edition</title>
+        </expression>
+        <expression xml:id="expr2">
+            <title>Second Edition</title>
+        </expression>
+    </expressionList>"#;
+    let expr_list = ExpressionList::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr_list.children.len(), 3);
+
+    // First child should be head
+    match &expr_list.children[0] {
+        ExpressionListChild::Head(_) => {}
+        other => panic!("Expected Head as first child, got {:?}", other),
+    }
+
+    // Second child should be expression
+    match &expr_list.children[1] {
+        ExpressionListChild::Expression(expr) => {
+            assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+        }
+        other => panic!("Expected Expression as second child, got {:?}", other),
+    }
+
+    // Third child should be expression
+    match &expr_list.children[2] {
+        ExpressionListChild::Expression(expr) => {
+            assert_eq!(expr.common.xml_id, Some("expr2".to_string()));
+        }
+        other => panic!("Expected Expression as third child, got {:?}", other),
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Expression Round-Trip Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn deserialize_expression_empty() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::Expression;
+
+    let xml = r#"<expression/>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    assert!(expr.common.xml_id.is_none());
+    assert!(expr.children.is_empty());
+}
+
+#[test]
+fn deserialize_expression_with_xml_id() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::Expression;
+
+    let xml = r#"<expression xml:id="expr1"/>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+}
+
+#[test]
+fn deserialize_expression_with_authorized_attrs() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Expression;
+
+    let xml = r#"<expression xml:id="expr1" auth="RISM" auth.uri="https://rism.online/"/>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+    assert_eq!(expr.authorized.auth, Some("RISM".to_string()));
+    assert_eq!(
+        expr.authorized.auth_uri,
+        Some(DataUri("https://rism.online/".to_string()))
+    );
+}
+
+#[test]
+fn deserialize_expression_with_title() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{Expression, ExpressionChild};
+
+    let xml = r#"<expression xml:id="expr1">
+        <title>First Edition</title>
+    </expression>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr.children.len(), 1);
+    match &expr.children[0] {
+        ExpressionChild::Title(title) => {
+            // Title contains text as TitleChild::Text
+            assert!(!title.children.is_empty());
+        }
+        other => panic!("Expected Title, got {:?}", other),
+    }
+}
+
+#[test]
+fn deserialize_expression_with_multiple_children() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{Expression, ExpressionChild};
+
+    let xml = r#"<expression xml:id="expr1">
+        <head>Expression Header</head>
+        <identifier>12345</identifier>
+        <title>Piano Sonata Op. 13 - First Edition</title>
+        <respStmt>
+            <persName role="editor">John Editor</persName>
+        </respStmt>
+        <creation>
+            <date>1801</date>
+        </creation>
+        <langUsage>
+            <language xml:id="en">English</language>
+        </langUsage>
+        <perfMedium>
+            <perfResList>
+                <perfRes>Piano</perfRes>
+            </perfResList>
+        </perfMedium>
+        <notesStmt>
+            <annot>First published edition</annot>
+        </notesStmt>
+    </expression>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+    // Should have multiple children
+    assert!(expr.children.len() >= 5);
+
+    // Check various child types are present
+    let mut has_head = false;
+    let mut has_identifier = false;
+    let mut has_title = false;
+    let mut has_resp_stmt = false;
+    let mut has_creation = false;
+
+    for child in &expr.children {
+        match child {
+            ExpressionChild::Head(_) => has_head = true,
+            ExpressionChild::Identifier(_) => has_identifier = true,
+            ExpressionChild::Title(_) => has_title = true,
+            ExpressionChild::RespStmt(_) => has_resp_stmt = true,
+            ExpressionChild::Creation(_) => has_creation = true,
+            _ => {}
+        }
+    }
+
+    assert!(has_head, "Should have head child");
+    assert!(has_identifier, "Should have identifier child");
+    assert!(has_title, "Should have title child");
+    assert!(has_resp_stmt, "Should have respStmt child");
+    assert!(has_creation, "Should have creation child");
+}
+
+#[test]
+fn deserialize_expression_with_extent_and_score_format() {
+    use crate::deserializer::MeiDeserialize;
+    use tusk_model::elements::{Expression, ExpressionChild};
+
+    let xml = r#"<expression xml:id="expr1">
+        <title>Symphony No. 5</title>
+        <extent unit="pages">120</extent>
+        <scoreFormat>score</scoreFormat>
+    </expression>"#;
+    let expr = Expression::from_mei_str(xml).expect("should deserialize");
+
+    let mut has_extent = false;
+    let mut has_score_format = false;
+
+    for child in &expr.children {
+        match child {
+            ExpressionChild::Extent(_) => has_extent = true,
+            ExpressionChild::ScoreFormat(_) => has_score_format = true,
+            _ => {}
+        }
+    }
+
+    assert!(has_extent, "Should have extent child");
+    assert!(has_score_format, "Should have scoreFormat child");
+}

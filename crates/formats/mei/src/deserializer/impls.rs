@@ -23,14 +23,15 @@ use tusk_model::att::{
     AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
     AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing,
     AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog,
-    AttNoteVis, AttPitch, AttPointing, AttRecordType, AttResponsibility, AttRestAnl, AttRestGes,
-    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
-    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
-    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
-    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
-    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
-    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttWhitespace, AttXy,
+    AttNoteVis, AttPitch, AttPointing, AttQuantity, AttRecordType, AttResponsibility, AttRestAnl,
+    AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
+    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
+    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
+    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
+    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
+    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
+    AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
     Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Audience, Availability,
@@ -38,20 +39,21 @@ use tusk_model::elements::{
     ClassificationChild, Clef, ComponentList, ComponentListChild, Contents, ContentsChild, Context,
     Contributor, ContributorChild, Correction, CorrectionChild, Creation, CreationChild, Creator,
     CreatorChild, Date, Dedication, Dir, Distributor, Dot, Dynam, Editor, EditorChild,
-    EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, ExpressionList,
-    ExpressionListChild, ExtMeta, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
-    GraceGrpChild, Hairpin, Head, HeadChild, History, HistoryChild, Identifier, Incip, IncipChild,
-    InstrDef, Interpretation, InterpretationChild, Key, Label, LangUsage, LangUsageChild, Language,
-    Layer, LayerChild, LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure,
-    MeasureChild, MeiHead, MeiHeadChild, Mensuration, Meter, Name, NameChild, Normalization,
-    NormalizationChild, Note, NoteChild, NotesStmt, NotesStmtChild, OtherChar, P, PChild,
-    PerfDuration, PerfMedium, PerfMediumChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace,
-    PubStmt, PubStmtChild, Publisher, RelationList, RelationListChild, RespStmt, Rest, RestChild,
-    SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild, Segmentation,
-    SegmentationChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor,
-    SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, StdVals,
-    StdValsChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet, TupletChild,
-    Unpub, Work, WorkChild, WorkList, WorkListChild,
+    EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, Expression,
+    ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta, Extent, Fermata, FileDesc,
+    FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, History,
+    HistoryChild, Identifier, Incip, IncipChild, InstrDef, Interpretation, InterpretationChild,
+    Key, Label, LangUsage, LangUsageChild, Language, Layer, LayerChild, LayerDef, LayerDefChild,
+    Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead, MeiHeadChild, Mensuration,
+    Meter, Name, NameChild, Normalization, NormalizationChild, Note, NoteChild, NotesStmt,
+    NotesStmtChild, OtherChar, P, PChild, PerfDuration, PerfMedium, PerfMediumChild, ProjectDesc,
+    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RelationList,
+    RelationListChild, RespStmt, Rest, RestChild, SamplingDecl, SamplingDeclChild, ScoreDef,
+    ScoreDefChild, ScoreFormat, Section, SectionChild, Segmentation, SegmentationChild, Slur,
+    Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff,
+    StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, StdVals, StdValsChild, Tempo,
+    Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet, TupletChild, Unpub, Work, WorkChild,
+    WorkList, WorkListChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -2068,6 +2070,19 @@ impl ExtractAttributes for AttLang {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "xml:lang", string self.xml_lang);
         extract_attr!(attrs, "translit", string self.translit);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttQuantity {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "unit", self.unit);
+        extract_attr!(attrs, "atleast", self.atleast);
+        extract_attr!(attrs, "atmost", self.atmost);
+        extract_attr!(attrs, "min", self.min);
+        extract_attr!(attrs, "max", self.max);
+        extract_attr!(attrs, "confidence", self.confidence);
+        extract_attr!(attrs, "quantity", self.quantity);
         Ok(())
     }
 }
@@ -5876,6 +5891,51 @@ fn parse_perf_duration_from_event<R: BufRead>(
     Ok(perf_duration)
 }
 
+/// Parse an `<extent>` element from within another element.
+fn parse_extent_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Extent> {
+    let mut extent = Extent::default();
+
+    // Extract attributes
+    extent.common.extract_attributes(&mut attrs)?;
+    extent.bibl.extract_attributes(&mut attrs)?;
+    extent.facsimile.extract_attributes(&mut attrs)?;
+    extent.lang.extract_attributes(&mut attrs)?;
+    extent.quantity.extract_attributes(&mut attrs)?;
+
+    // extent can have text and various child elements - for now just collect text
+    if !is_empty {
+        reader.skip_to_end("extent")?;
+    }
+
+    Ok(extent)
+}
+
+/// Parse a `<scoreFormat>` element from within another element.
+fn parse_score_format_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ScoreFormat> {
+    let mut score_format = ScoreFormat::default();
+
+    // Extract attributes
+    score_format.common.extract_attributes(&mut attrs)?;
+    score_format.authorized.extract_attributes(&mut attrs)?;
+    score_format.bibl.extract_attributes(&mut attrs)?;
+    score_format.lang.extract_attributes(&mut attrs)?;
+
+    // scoreFormat has no children
+    if !is_empty {
+        reader.skip_to_end("scoreFormat")?;
+    }
+
+    Ok(score_format)
+}
+
 /// Parse an `<audience>` element from within another element.
 fn parse_audience_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -6104,6 +6164,222 @@ fn parse_classification_from_event<R: BufRead>(
     Ok(classification)
 }
 
+/// Parse an `<expression>` element from within another element.
+fn parse_expression_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Expression> {
+    let mut expression = Expression::default();
+
+    // Extract attributes
+    // expression has: att.common, att.authorized, att.bibl, att.dataPointing
+    expression.common.extract_attributes(&mut attrs)?;
+    expression.authorized.extract_attributes(&mut attrs)?;
+    expression.bibl.extract_attributes(&mut attrs)?;
+    expression.data_pointing.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // expression can contain: head*, identifier*, title+, respStmt?, dedication?,
+    // key*, tempo*, meter*, mensuration*, incip*, otherChar*, creation?,
+    // history?, langUsage?, perfMedium?, perfDuration?, extent*, scoreFormat?,
+    // contents?, context?, biblList*, notesStmt?, classification?, componentList?,
+    // relationList*, extMeta*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("expression")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Head(Box::new(head)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Identifier(Box::new(identifier)));
+                }
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Title(Box::new(title)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::RespStmt(Box::new(resp_stmt)));
+                }
+                "dedication" => {
+                    let dedication = parse_dedication_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Dedication(Box::new(dedication)));
+                }
+                "key" => {
+                    let key = parse_key_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Key(Box::new(key)));
+                }
+                "tempo" => {
+                    let tempo = parse_tempo_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Tempo(Box::new(tempo)));
+                }
+                "meter" => {
+                    let meter = parse_meter_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Meter(Box::new(meter)));
+                }
+                "mensuration" => {
+                    let mensuration =
+                        parse_mensuration_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Mensuration(Box::new(mensuration)));
+                }
+                "incip" => {
+                    let incip = parse_incip_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Incip(Box::new(incip)));
+                }
+                "otherChar" => {
+                    let other_char = parse_other_char_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::OtherChar(Box::new(other_char)));
+                }
+                "creation" => {
+                    let creation = parse_creation_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Creation(Box::new(creation)));
+                }
+                "history" => {
+                    let history = parse_history_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::History(Box::new(history)));
+                }
+                "langUsage" => {
+                    let lang_usage = parse_lang_usage_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::LangUsage(Box::new(lang_usage)));
+                }
+                "perfMedium" => {
+                    let perf_medium =
+                        parse_perf_medium_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::PerfMedium(Box::new(perf_medium)));
+                }
+                "perfDuration" => {
+                    let perf_duration =
+                        parse_perf_duration_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::PerfDuration(Box::new(perf_duration)));
+                }
+                "extent" => {
+                    let extent = parse_extent_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Extent(Box::new(extent)));
+                }
+                "scoreFormat" => {
+                    let score_format =
+                        parse_score_format_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::ScoreFormat(Box::new(score_format)));
+                }
+                "contents" => {
+                    let contents = parse_contents_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Contents(Box::new(contents)));
+                }
+                "context" => {
+                    let context = parse_context_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Context(Box::new(context)));
+                }
+                "biblList" => {
+                    let bibl_list = parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::BiblList(Box::new(bibl_list)));
+                }
+                "notesStmt" => {
+                    let notes_stmt = parse_notes_stmt_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::NotesStmt(Box::new(notes_stmt)));
+                }
+                "classification" => {
+                    let classification =
+                        parse_classification_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::Classification(Box::new(classification)));
+                }
+                "componentList" => {
+                    let component_list =
+                        parse_component_list_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::ComponentList(Box::new(component_list)));
+                }
+                "relationList" => {
+                    let relation_list =
+                        parse_relation_list_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::RelationList(Box::new(relation_list)));
+                }
+                "extMeta" => {
+                    let ext_meta = parse_ext_meta_from_event(reader, child_attrs, child_empty)?;
+                    expression
+                        .children
+                        .push(ExpressionChild::ExtMeta(Box::new(ext_meta)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(expression)
+}
+
+impl MeiDeserialize for Expression {
+    fn element_name() -> &'static str {
+        "expression"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_expression_from_event(reader, attrs, is_empty)
+    }
+}
+
 /// Parse an `<expressionList>` element from within another element.
 fn parse_expression_list_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -6116,7 +6392,7 @@ fn parse_expression_list_from_event<R: BufRead>(
     expression_list.common.extract_attributes(&mut attrs)?;
 
     // Read children if not an empty element
-    // expressionList can contain: head*, expression+
+    // expressionList can contain: head*, expression*
     if !is_empty {
         while let Some((name, child_attrs, child_empty)) =
             reader.read_next_child_start("expressionList")?
@@ -6128,6 +6404,13 @@ fn parse_expression_list_from_event<R: BufRead>(
                         .children
                         .push(ExpressionListChild::Head(Box::new(head)));
                 }
+                "expression" => {
+                    let expression = parse_expression_from_event(reader, child_attrs, child_empty)?;
+                    expression_list
+                        .children
+                        .push(ExpressionListChild::Expression(Box::new(expression)));
+                }
+                // Unknown children are skipped in lenient mode
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -6138,6 +6421,20 @@ fn parse_expression_list_from_event<R: BufRead>(
     }
 
     Ok(expression_list)
+}
+
+impl MeiDeserialize for ExpressionList {
+    fn element_name() -> &'static str {
+        "expressionList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_expression_list_from_event(reader, attrs, is_empty)
+    }
 }
 
 /// Parse a `<componentList>` element from within another element.
