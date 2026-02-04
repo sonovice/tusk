@@ -187,3 +187,18 @@ fn test_roundtrip_helper_works_on_simple_mei() {
     let result = roundtrip_mei_file(&temp_file);
     assert!(result.is_ok(), "Simple MEI roundtrip failed: {:?}", result);
 }
+
+// ============================================================================
+// Complete Examples Roundtrip Tests
+// ============================================================================
+
+#[test]
+fn test_roundtrip_aguado_walzer_g_major() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Aguado_Walzer_G-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Aguado_Walzer_G-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
