@@ -34,6 +34,7 @@
 pub mod deserializer;
 pub mod serializer;
 pub mod versions;
+pub mod xml_compare;
 
 pub use deserializer::{
     DeserializeConfig, DeserializeError, DeserializeResult, ExtractAttributes, MEI_NAMESPACE,

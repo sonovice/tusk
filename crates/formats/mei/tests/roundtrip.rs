@@ -10,7 +10,7 @@
 //! 1. Read original MEI file
 //! 2. Parse to internal model: `mei::import(xml_str)` → `tusk_model::elements::Mei`
 //! 3. Serialize back to MEI: `mei::export(&mei)` → XML string
-//! 4. Compare: re-parse output and verify structural equivalence
+//! 4. Compare: tree-based XML comparison with semantic equivalence
 //!
 //! # Acceptable Differences
 //!
@@ -19,8 +19,10 @@
 //! - Default values explicitly stated vs. omitted
 //! - Namespace prefix differences (e.g., `mei:note` vs `note`)
 //! - XML declaration differences
+//! - xmlns declarations (not semantic content)
 
 use std::path::{Path, PathBuf};
+use tusk_mei::xml_compare::{CompareError, compare_xml, get_differences};
 use tusk_mei::{export, import};
 
 /// Find the workspace root by looking for Cargo.toml with [workspace] section.
@@ -50,6 +52,9 @@ fn sample_encodings_music_dir() -> PathBuf {
 /// Perform roundtrip test on an MEI file.
 ///
 /// Returns Ok(()) if roundtrip succeeds, Err with details if it fails.
+///
+/// The comparison is tree-based, handling acceptable differences like
+/// attribute ordering, whitespace, and namespace prefixes.
 pub fn roundtrip_mei_file(path: &Path) -> Result<(), String> {
     // Read original file
     let original_xml =
@@ -62,7 +67,7 @@ pub fn roundtrip_mei_file(path: &Path) -> Result<(), String> {
     let roundtripped_xml = export(&mei).map_err(|e| format!("Failed to serialize MEI: {}", e))?;
 
     // Re-parse the roundtripped XML to verify it's valid
-    let reparsed = import(&roundtripped_xml).map_err(|e| {
+    let _reparsed = import(&roundtripped_xml).map_err(|e| {
         format!(
             "Failed to re-parse roundtripped MEI: {}\n\nRoundtripped XML:\n{}",
             e,
@@ -70,44 +75,38 @@ pub fn roundtrip_mei_file(path: &Path) -> Result<(), String> {
         )
     })?;
 
-    // Compare the two parsed structures
-    // For now, we re-serialize both and compare the XML
-    // This handles ordering differences while catching structural issues
-    let original_reserialized =
-        export(&mei).map_err(|e| format!("Failed to re-serialize original: {}", e))?;
-    let reparsed_serialized =
-        export(&reparsed).map_err(|e| format!("Failed to serialize reparsed: {}", e))?;
-
-    if original_reserialized != reparsed_serialized {
-        // Find first difference for debugging
-        let orig_lines: Vec<&str> = original_reserialized.lines().collect();
-        let new_lines: Vec<&str> = reparsed_serialized.lines().collect();
-
-        for (i, (orig, new)) in orig_lines.iter().zip(new_lines.iter()).enumerate() {
-            if orig != new {
-                return Err(format!(
-                    "Roundtrip mismatch at line {}:\n  Original:    {}\n  Roundtripped: {}",
+    // Tree-based comparison handles acceptable differences:
+    // - Attribute ordering
+    // - Whitespace/formatting
+    // - Namespace prefixes
+    // - XML declarations
+    // - xmlns declarations
+    compare_xml(&original_xml, &roundtripped_xml).map_err(|e| match e {
+        CompareError::ParseError(msg) => format!("XML parse error during comparison: {}", msg),
+        CompareError::Differences(diffs) => {
+            let mut msg = format!("Roundtrip found {} differences:\n", diffs.len());
+            for (i, diff) in diffs.iter().take(20).enumerate() {
+                msg.push_str(&format!(
+                    "  {}. at {}: {}\n",
                     i + 1,
-                    orig,
-                    new
+                    diff.path,
+                    diff.description
                 ));
             }
+            if diffs.len() > 20 {
+                msg.push_str(&format!("  ... and {} more\n", diffs.len() - 20));
+            }
+            msg
         }
-
-        if orig_lines.len() != new_lines.len() {
-            return Err(format!(
-                "Line count mismatch: original {} lines, roundtripped {} lines",
-                orig_lines.len(),
-                new_lines.len()
-            ));
-        }
-    }
-
-    Ok(())
+    })
 }
 
-/// Detailed comparison that reports all differences.
-#[allow(dead_code)]
+/// Detailed comparison that reports all differences between original and roundtripped MEI.
+///
+/// Uses tree-based comparison to handle acceptable differences like attribute
+/// ordering, whitespace, and namespace prefixes.
+///
+/// Returns a list of difference descriptions (empty if documents match).
 pub fn compare_mei_detailed(path: &Path) -> Result<Vec<String>, String> {
     let original_xml =
         std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
@@ -116,71 +115,18 @@ pub fn compare_mei_detailed(path: &Path) -> Result<Vec<String>, String> {
 
     let roundtripped_xml = export(&mei).map_err(|e| format!("Failed to serialize MEI: {}", e))?;
 
-    let mut differences = Vec::new();
-
-    // Line-by-line comparison for detailed output
-    let orig_lines: Vec<&str> = original_xml.lines().collect();
-    let new_lines: Vec<&str> = roundtripped_xml.lines().collect();
-
-    // Compare line by line (accounting for whitespace normalization)
-    for (i, (orig, new)) in orig_lines.iter().zip(new_lines.iter()).enumerate() {
-        let orig_trimmed = orig.trim();
-        let new_trimmed = new.trim();
-
-        // Skip empty lines
-        if orig_trimmed.is_empty() && new_trimmed.is_empty() {
-            continue;
-        }
-
-        // Skip XML declarations (acceptable difference)
-        if orig_trimmed.starts_with("<?xml") && new_trimmed.starts_with("<?xml") {
-            continue;
-        }
-
-        // Normalize and compare
-        if normalize_xml_line(orig_trimmed) != normalize_xml_line(new_trimmed) {
-            differences.push(format!(
-                "Line {}: \n  Original:    '{}'\n  Roundtripped: '{}'",
-                i + 1,
-                orig_trimmed,
-                new_trimmed
-            ));
-        }
+    // Use tree-based comparison for semantic equivalence
+    match get_differences(&original_xml, &roundtripped_xml) {
+        Ok(diffs) => Ok(diffs
+            .into_iter()
+            .map(|d| format!("at {}: {}", d.path, d.description))
+            .collect()),
+        Err(CompareError::ParseError(msg)) => Err(format!("XML parse error: {}", msg)),
+        Err(CompareError::Differences(diffs)) => Ok(diffs
+            .into_iter()
+            .map(|d| format!("at {}: {}", d.path, d.description))
+            .collect()),
     }
-
-    // Check for missing/extra lines
-    if orig_lines.len() > new_lines.len() {
-        for (i, line) in orig_lines.iter().skip(new_lines.len()).enumerate() {
-            differences.push(format!(
-                "Line {} missing in output: '{}'",
-                new_lines.len() + i + 1,
-                line.trim()
-            ));
-        }
-    } else if new_lines.len() > orig_lines.len() {
-        for (i, line) in new_lines.iter().skip(orig_lines.len()).enumerate() {
-            differences.push(format!(
-                "Extra line {} in output: '{}'",
-                orig_lines.len() + i + 1,
-                line.trim()
-            ));
-        }
-    }
-
-    Ok(differences)
-}
-
-/// Normalize an XML line for comparison.
-///
-/// This handles acceptable differences like:
-/// - Namespace prefix variations
-/// - Attribute ordering (partial - same attributes should be present)
-fn normalize_xml_line(line: &str) -> String {
-    // Remove mei: namespace prefix for comparison (but keep xml: for xml:id)
-    let normalized = line.replace("mei:", "");
-
-    // Trim whitespace
-    normalized.trim().to_string()
 }
 
 // ============================================================================
@@ -217,8 +163,10 @@ fn test_harness_can_find_sample_encodings() {
 #[test]
 fn test_roundtrip_helper_works_on_simple_mei() {
     // Create a minimal valid MEI document
+    // Note: meiversion is omitted as the model is generated from 6.0-dev ODD spec
+    // and doesn't support 5.1 as a valid value
     let simple_mei = r#"<?xml version="1.0" encoding="UTF-8"?>
-<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.1">
+<mei xmlns="http://www.music-encoding.org/ns/mei">
   <meiHead>
     <fileDesc>
       <titleStmt>
