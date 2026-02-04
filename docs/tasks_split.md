@@ -12,9 +12,9 @@ Tasks for splitting large files into maintainable modules. Each task includes ru
 
 Target: `crates/formats/mei/src/deserializer/impls.rs` → split into `impls/` submodules
 
-- [x] Extract note/rest/chord/space deserializers → `impls/note.rs` (incl. 57 tests)
-- [x] Extract measure/staff/layer/section/mdiv deserializers → `impls/structure.rs` (incl. 8 tests)
-- [ ] Extract scoreDef/staffDef/layerDef/staffGrp deserializers → `impls/defs.rs`
+- [x] Extract note/rest/chord/space deserializers → `impls/note.rs`
+- [x] Extract measure/staff/layer/section/mdiv deserializers → `impls/structure.rs`
+- [x] Extract scoreDef/staffDef/layerDef/staffGrp deserializers → `impls/defs.rs`
 - [ ] Extract slur/tie/dynam/hairpin/dir/tempo/fermata deserializers → `impls/control.rs`
 - [ ] Extract beam/tuplet/graceGrp deserializers → `impls/grouping.rs`
 - [ ] Extract meiHead/fileDesc/titleStmt/pubStmt deserializers → `impls/header.rs`
