@@ -607,7 +607,6 @@ fn test_roundtrip_spec_mozart_piano_sonata() {
 }
 
 #[test]
-#[ignore = "Blocked by: unpitched notes not yet supported (percussion parts P15, P16)"]
 fn test_roundtrip_spec_actor_prelude_sample() {
     let (original, roundtripped) = roundtrip_spec_example("ActorPreludeSample.musicxml")
         .unwrap_or_else(|e| panic!("Roundtrip failed for ActorPreludeSample: {}", e));

@@ -954,6 +954,82 @@ impl Note {
         }
     }
 
+    /// Create an unpitched note (for percussion).
+    pub fn unpitched(unpitched: Unpitched, duration: f64) -> Self {
+        Self {
+            grace: None,
+            cue: None,
+            chord: None,
+            content: FullNoteContent::Unpitched(unpitched),
+            duration: Some(duration),
+            ties: Vec::new(),
+            footnote: None,
+            level: None,
+            voice: None,
+            instruments: Vec::new(),
+            note_type: None,
+            dots: Vec::new(),
+            accidental: None,
+            time_modification: None,
+            stem: None,
+            notehead: None,
+            staff: None,
+            beams: Vec::new(),
+            default_x: None,
+            default_y: None,
+            relative_x: None,
+            relative_y: None,
+            print_object: None,
+            print_leger: None,
+            print_spacing: None,
+            dynamics: None,
+            end_dynamics: None,
+            attack: None,
+            release: None,
+            pizzicato: None,
+            color: None,
+            id: None,
+        }
+    }
+
+    /// Create an unpitched grace note (for percussion).
+    pub fn unpitched_grace(unpitched: Unpitched, grace: Grace) -> Self {
+        Self {
+            grace: Some(grace),
+            cue: None,
+            chord: None,
+            content: FullNoteContent::Unpitched(unpitched),
+            duration: None, // Grace notes have no duration
+            ties: Vec::new(),
+            footnote: None,
+            level: None,
+            voice: None,
+            instruments: Vec::new(),
+            note_type: None,
+            dots: Vec::new(),
+            accidental: None,
+            time_modification: None,
+            stem: None,
+            notehead: None,
+            staff: None,
+            beams: Vec::new(),
+            default_x: None,
+            default_y: None,
+            relative_x: None,
+            relative_y: None,
+            print_object: None,
+            print_leger: None,
+            print_spacing: None,
+            dynamics: None,
+            end_dynamics: None,
+            attack: None,
+            release: None,
+            pizzicato: None,
+            color: None,
+            id: None,
+        }
+    }
+
     /// Check if this is a grace note.
     pub fn is_grace(&self) -> bool {
         self.grace.is_some()
@@ -978,6 +1054,19 @@ impl Note {
     pub fn pitch(&self) -> Option<&Pitch> {
         match &self.content {
             FullNoteContent::Pitch(p) => Some(p),
+            _ => None,
+        }
+    }
+
+    /// Check if this is an unpitched note (percussion).
+    pub fn is_unpitched(&self) -> bool {
+        matches!(self.content, FullNoteContent::Unpitched(_))
+    }
+
+    /// Get the unpitched content if this is an unpitched note.
+    pub fn unpitched_content(&self) -> Option<&Unpitched> {
+        match &self.content {
+            FullNoteContent::Unpitched(u) => Some(u),
             _ => None,
         }
     }

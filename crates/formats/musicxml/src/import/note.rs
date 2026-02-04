@@ -14,9 +14,10 @@ use tusk_model::elements::{Accid, Chord, ChordChild, NoteChild};
 
 /// Convert a MusicXML note to MEI note.
 ///
-/// This function handles the conversion of a pitched MusicXML note to MEI,
+/// This function handles the conversion of a MusicXML note to MEI,
 /// including:
-/// - Pitch (step, octave, alter)
+/// - Pitch (step, octave, alter) for pitched notes
+/// - Staff location (@loc) for unpitched percussion notes
 /// - Duration (note type and dots)
 /// - Accidentals (written accidentals)
 /// - Grace notes
@@ -47,18 +48,35 @@ pub fn convert_note(
         ctx.map_id(orig_id, note_id);
     }
 
-    // Convert pitch (for pitched notes)
-    if let FullNoteContent::Pitch(ref pitch) = note.content {
-        // Convert pitch name (step)
-        mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
+    // Convert pitch/unpitched content
+    match &note.content {
+        FullNoteContent::Pitch(pitch) => {
+            // Convert pitch name (step)
+            mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
 
-        // Convert octave
-        mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
+            // Convert octave
+            mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
 
-        // Store gestural accidental (@accid.ges) for sounding pitch
-        // This represents the actual sounding pitch after key signature and accidentals
-        if let Some(alter) = pitch.alter {
-            mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
+            // Store gestural accidental (@accid.ges) for sounding pitch
+            // This represents the actual sounding pitch after key signature and accidentals
+            if let Some(alter) = pitch.alter {
+                mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
+            }
+        }
+        FullNoteContent::Unpitched(unpitched) => {
+            // For unpitched notes (percussion), use @loc for visual staff positioning
+            // @loc is calculated from display-step and display-octave
+            if let (Some(display_step), Some(display_octave)) =
+                (unpitched.display_step, unpitched.display_octave)
+            {
+                // Calculate staff line location and store in @loc
+                mei_note.note_vis.loc =
+                    Some(calculate_staff_loc(display_step, display_octave).into());
+            }
+            // Note: pname and oct are NOT set for unpitched notes
+        }
+        FullNoteContent::Rest(_) => {
+            // Rests are handled by convert_rest, not convert_note
         }
     }
 
@@ -89,6 +107,40 @@ pub fn convert_note(
     }
 
     Ok(mei_note)
+}
+
+/// Calculate MEI staff location (@loc) from MusicXML display-step and display-octave.
+///
+/// MEI @loc represents position on the staff where 0 is the bottom line.
+/// Each step (A-G) increments by 1. This gives a rough staff position.
+///
+/// For a standard 5-line staff with treble clef:
+/// - E4 is the bottom line (loc=0)
+/// - F4 is the first space (loc=1)
+/// - G4 is the second line (loc=2)
+/// etc.
+///
+/// We calculate a relative position, recognizing that the actual mapping
+/// depends on the clef in use. We use a simple formula that preserves
+/// the display position for round-trip conversion.
+fn calculate_staff_loc(step: crate::model::data::Step, octave: u8) -> i64 {
+    use crate::model::data::Step;
+
+    // Convert step to a numeric value (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
+    let step_value = match step {
+        Step::C => 0,
+        Step::D => 1,
+        Step::E => 2,
+        Step::F => 3,
+        Step::G => 4,
+        Step::A => 5,
+        Step::B => 6,
+    };
+
+    // Calculate absolute position: 7 steps per octave
+    // This gives us a continuous value we can use for @loc
+    // The value is relative, and the actual staff position depends on clef
+    (octave as i64) * 7 + step_value
 }
 
 /// Convert note duration information from MusicXML to MEI.

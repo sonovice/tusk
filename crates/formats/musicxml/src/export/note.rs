@@ -20,7 +20,8 @@ use tusk_model::data::DataBoolean;
 /// Convert an MEI note to a MusicXML note.
 ///
 /// This converts an MEI note element to MusicXML, including:
-/// - Pitch (pname, oct → step, octave; accid.ges → alter)
+/// - Pitch (pname, oct → step, octave; accid.ges → alter) for pitched notes
+/// - Unpitched (from @loc) for percussion/unpitched notes
 /// - Duration (dur → type; dots → dot elements; calculated duration in divisions)
 /// - Grace notes (@grace → grace element)
 /// - Written accidentals (accid child → accidental element)
@@ -57,17 +58,31 @@ pub fn convert_mei_note(
     // Determine if this is a grace note (grace notes have no duration)
     let is_grace = mei_note.note_log.grace.is_some();
 
-    // Convert pitch from MEI (pname, oct) to MusicXML (step, octave, alter)
-    let pitch = convert_mei_pitch(mei_note, ctx)?;
+    // Determine if this is an unpitched note (no pname = percussion/unpitched)
+    let is_unpitched = mei_note.note_log.pname.is_none();
 
-    if is_grace {
-        // Grace note: no duration
-        let grace = convert_mei_grace(mei_note);
-        mxml_note = MxmlNote::grace_note(pitch, grace);
+    if is_unpitched {
+        // Unpitched note: convert @loc to display-step/display-octave
+        let unpitched = convert_mei_loc_to_unpitched(mei_note);
+
+        if is_grace {
+            let grace = convert_mei_grace(mei_note);
+            mxml_note = MxmlNote::unpitched_grace(unpitched, grace);
+        } else {
+            let duration = calculate_mei_note_duration(mei_note, ctx);
+            mxml_note = MxmlNote::unpitched(unpitched, duration);
+        }
     } else {
-        // Regular note: calculate duration
-        let duration = calculate_mei_note_duration(mei_note, ctx);
-        mxml_note = MxmlNote::pitched(pitch, duration);
+        // Pitched note: convert pname, oct to step, octave, alter
+        let pitch = convert_mei_pitch(mei_note, ctx)?;
+
+        if is_grace {
+            let grace = convert_mei_grace(mei_note);
+            mxml_note = MxmlNote::grace_note(pitch, grace);
+        } else {
+            let duration = calculate_mei_note_duration(mei_note, ctx);
+            mxml_note = MxmlNote::pitched(pitch, duration);
+        }
     }
 
     // Set ID from xml:id
@@ -110,6 +125,46 @@ pub fn convert_mei_note(
     add_note_conversion_warnings(mei_note, ctx);
 
     Ok(mxml_note)
+}
+
+/// Convert MEI @loc attribute to MusicXML Unpitched element.
+///
+/// The @loc attribute in MEI represents staff position (0 = bottom line).
+/// We convert this back to MusicXML display-step and display-octave.
+fn convert_mei_loc_to_unpitched(
+    mei_note: &tusk_model::elements::Note,
+) -> crate::model::note::Unpitched {
+    use crate::model::data::Step;
+    use crate::model::note::Unpitched;
+
+    if let Some(ref loc) = mei_note.note_vis.loc {
+        // Convert @loc back to display-step and display-octave
+        let loc_value = loc.0;
+
+        // loc = octave * 7 + step_value
+        // where step_value: C=0, D=1, E=2, F=3, G=4, A=5, B=6
+        let octave = (loc_value / 7) as u8;
+        let step_value = loc_value % 7;
+
+        let display_step = match step_value {
+            0 => Step::C,
+            1 => Step::D,
+            2 => Step::E,
+            3 => Step::F,
+            4 => Step::G,
+            5 => Step::A,
+            6 => Step::B,
+            _ => Step::C, // Fallback
+        };
+
+        Unpitched {
+            display_step: Some(display_step),
+            display_octave: Some(octave),
+        }
+    } else {
+        // No @loc - return empty unpitched
+        Unpitched::default()
+    }
 }
 
 /// Convert MEI pitch attributes to MusicXML Pitch.
@@ -730,16 +785,28 @@ pub fn convert_mei_chord(
     let mut mxml_notes = Vec::with_capacity(mei_notes.len());
 
     for (i, mei_note) in mei_notes.iter().enumerate() {
-        // Convert the pitch from the MEI note
-        let pitch = convert_mei_pitch(mei_note, ctx)?;
+        // Check if this note is unpitched (no pname = percussion)
+        let is_unpitched = mei_note.note_log.pname.is_none();
 
         // Create the MusicXML note
-        let mut mxml_note = if is_grace {
-            // Grace chord - notes have no duration
-            let grace = convert_mei_grace_chord(mei_chord);
-            MxmlNote::grace_note(pitch, grace)
+        let mut mxml_note = if is_unpitched {
+            // Unpitched note in chord
+            let unpitched = convert_mei_loc_to_unpitched(mei_note);
+            if is_grace {
+                let grace = convert_mei_grace_chord(mei_chord);
+                MxmlNote::unpitched_grace(unpitched, grace)
+            } else {
+                MxmlNote::unpitched(unpitched, chord_duration.unwrap())
+            }
         } else {
-            MxmlNote::pitched(pitch, chord_duration.unwrap())
+            // Pitched note in chord
+            let pitch = convert_mei_pitch(mei_note, ctx)?;
+            if is_grace {
+                let grace = convert_mei_grace_chord(mei_chord);
+                MxmlNote::grace_note(pitch, grace)
+            } else {
+                MxmlNote::pitched(pitch, chord_duration.unwrap())
+            }
         };
 
         // Set chord flag for all notes except the first

@@ -314,9 +314,8 @@ pub fn convert_staff_def_from_score_part(
             if let Some(s) = shape {
                 staff_def.staff_def_log.clef_shape = Some(s);
             }
-            if let Some(l) = line {
-                staff_def.staff_def_log.clef_line = Some(l);
-            }
+            // Always set clef_line (even if None) to preserve missing lines in percussion clefs
+            staff_def.staff_def_log.clef_line = line;
             staff_def.staff_def_log.clef_dis = dis;
             staff_def.staff_def_log.clef_dis_place = dis_place;
         }
