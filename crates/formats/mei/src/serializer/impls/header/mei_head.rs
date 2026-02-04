@@ -310,6 +310,10 @@ impl MeiSerialize for TitlePart {
         attrs.extend(self.linking.collect_attributes());
         attrs.extend(self.n_integer.collect_attributes());
         attrs.extend(self.responsibility.collect_attributes());
+        // Element-local attribute
+        if let Some(ref type_) = self.r#type {
+            attrs.push(("type", type_.clone()));
+        }
         attrs
     }
 

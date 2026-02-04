@@ -144,6 +144,10 @@ impl MeiSerialize for Application {
         let mut attrs = Vec::new();
         attrs.extend(self.common.collect_attributes());
         attrs.extend(self.datable.collect_attributes());
+        // Element-local attribute
+        if let Some(ref version) = self.version {
+            attrs.push(("version", version.clone()));
+        }
         attrs
     }
 

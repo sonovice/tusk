@@ -806,7 +806,8 @@ pub(crate) fn parse_application_from_event<R: BufRead>(
     application.common.extract_attributes(&mut attrs)?;
     application.datable.extract_attributes(&mut attrs)?;
 
-    // Remaining attributes (like @version) are unknown - ignore in lenient mode
+    // Element-local attribute: @version
+    extract_attr!(attrs, "version", string application.version);
 
     // Read children if not an empty element
     // application can contain: name+, then (ptr* | ref* | p*)
@@ -1709,6 +1710,9 @@ pub(crate) fn parse_title_part_from_event<R: BufRead>(
     title_part.linking.extract_attributes(&mut attrs)?;
     title_part.n_integer.extract_attributes(&mut attrs)?;
     title_part.responsibility.extract_attributes(&mut attrs)?;
+
+    // Element-local attribute: @type
+    extract_attr!(attrs, "type", string title_part.r#type);
 
     // TitlePart can contain mixed content (text + elements)
     if !is_empty {
