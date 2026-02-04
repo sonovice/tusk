@@ -2027,11 +2027,16 @@ pub(crate) fn parse_date_from_event<R: BufRead>(
 }
 
 /// Parse an `<identifier>` element from within another element.
+///
+/// Identifier is a mixed content element that can contain text and various child elements
+/// such as ref, ptr, rend, name, persName, corpName, date, lb, etc.
 pub(crate) fn parse_identifier_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Identifier> {
+    use tusk_model::elements::IdentifierChild;
+
     let mut identifier = Identifier::default();
 
     // Extract attributes
@@ -2040,15 +2045,117 @@ pub(crate) fn parse_identifier_from_event<R: BufRead>(
     identifier.bibl.extract_attributes(&mut attrs)?;
     identifier.facsimile.extract_attributes(&mut attrs)?;
 
-    // Parse text content if not empty
-    // identifier can contain text and various child elements
-    // For now, we collect text content as IdentifierChild::Text
+    // Parse mixed content (text and child elements)
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("identifier")? {
-            if !text.trim().is_empty() {
-                identifier
-                    .children
-                    .push(tusk_model::elements::IdentifierChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("identifier")? {
+            match content {
+                MixedContent::Text(text) => {
+                    identifier.children.push(IdentifierChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Ptr(Box::new(ptr)));
+                        }
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Rend(Box::new(rend)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::CorpName(Box::new(corp_name)));
+                        }
+                        "date" => {
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Date(Box::new(date)));
+                        }
+                        "lb" => {
+                            let lb = super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            identifier.children.push(IdentifierChild::Lb(Box::new(lb)));
+                        }
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Title(Box::new(title)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Bibl(Box::new(bibl)));
+                        }
+                        "annot" => {
+                            let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Annot(Box::new(annot)));
+                        }
+                        "geogName" => {
+                            let geog_name =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::GeogName(Box::new(geog_name)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Address(Box::new(address)));
+                        }
+                        "identifier" => {
+                            // Recursive: identifier can contain identifier
+                            let nested_identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Identifier(Box::new(nested_identifier)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -3850,6 +3957,20 @@ impl MeiDeserialize for Source {
     }
 }
 
+impl MeiDeserialize for Identifier {
+    fn element_name() -> &'static str {
+        "identifier"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_identifier_from_event(reader, attrs, is_empty)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::deserializer::MeiDeserialize;
@@ -4565,5 +4686,135 @@ mod tests {
             .expect("should have funder child");
 
         assert!(funder.children.is_empty());
+    }
+
+    // ========== Identifier tests (via PubStmt wrapper) ==========
+
+    #[test]
+    fn identifier_deserializes_with_ref_child() {
+        use tusk_model::elements::IdentifierChild;
+
+        let xml = r#"<pubStmt>
+          <identifier>
+            <ref target="http://music-encoding.org/Support/MEI_Sample_Collection"/>
+          </identifier>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        // Find the identifier child
+        let identifier = pub_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let PubStmtChild::Identifier(id) = c {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .expect("should have identifier child");
+
+        // Should have a ref child
+        assert_eq!(identifier.children.len(), 1);
+        match &identifier.children[0] {
+            IdentifierChild::Ref(r) => {
+                assert_eq!(r.pointing.target.len(), 1);
+                assert_eq!(
+                    r.pointing.target[0].0,
+                    "http://music-encoding.org/Support/MEI_Sample_Collection"
+                );
+            }
+            other => panic!("expected Ref child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn identifier_deserializes_text_only() {
+        use tusk_model::elements::IdentifierChild;
+
+        let xml = r#"<pubStmt>
+          <identifier type="URI">http://example.com/test</identifier>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        let identifier = pub_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let PubStmtChild::Identifier(id) = c {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .expect("should have identifier child");
+
+        assert_eq!(identifier.children.len(), 1);
+        match &identifier.children[0] {
+            IdentifierChild::Text(text) => {
+                assert_eq!(text.trim(), "http://example.com/test");
+            }
+            other => panic!("expected Text child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn identifier_deserializes_mixed_content() {
+        use tusk_model::elements::IdentifierChild;
+
+        let xml = r#"<pubStmt>
+          <identifier>ISMN <ref target="http://ismn.org/">979-0-1234-5678-9</ref></identifier>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        let identifier = pub_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let PubStmtChild::Identifier(id) = c {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .expect("should have identifier child");
+
+        // Should have text followed by ref child
+        assert_eq!(identifier.children.len(), 2);
+        match &identifier.children[0] {
+            IdentifierChild::Text(text) => {
+                assert_eq!(text.trim(), "ISMN");
+            }
+            other => panic!("expected Text child first, got {:?}", other),
+        }
+        match &identifier.children[1] {
+            IdentifierChild::Ref(r) => {
+                assert_eq!(r.pointing.target.len(), 1);
+                assert_eq!(r.pointing.target[0].0, "http://ismn.org/");
+            }
+            other => panic!("expected Ref child second, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn identifier_deserializes_empty_element() {
+        let xml = r#"<pubStmt>
+          <identifier/>
+        </pubStmt>"#;
+        let pub_stmt = PubStmt::from_mei_str(xml).expect("should deserialize");
+
+        let identifier = pub_stmt
+            .children
+            .iter()
+            .find_map(|c| {
+                if let PubStmtChild::Identifier(id) = c {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .expect("should have identifier child");
+
+        assert!(identifier.children.is_empty());
     }
 }
