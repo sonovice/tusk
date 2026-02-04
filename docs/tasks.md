@@ -134,12 +134,12 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Implement MusicXML parser for score-partwise documents
 - [x] Implement MusicXML parser for score-timewise documents (convert to partwise)
 - [x] Handle MusicXML divisions and duration calculation
-- [ ] Parse MusicXML note elements with pitch/duration
-- [ ] Parse MusicXML rest elements
-- [ ] Parse MusicXML chord notation (backup/forward)
-- [ ] Parse MusicXML attributes (key, time, clef, divisions)
-- [ ] Parse MusicXML direction elements
-- [ ] Add MusicXML parser tests
+- [x] Parse MusicXML note elements with pitch/duration
+- [x] Parse MusicXML rest elements
+- [x] Parse MusicXML chord notation (backup/forward)
+- [x] Parse MusicXML attributes (key, time, clef, divisions)
+- [x] Parse MusicXML direction elements
+- [x] Add MusicXML parser tests
 
 ### 4.3 MusicXML → MEI Conversion
 - [ ] Create conversion context (state tracking, ID mapping)
