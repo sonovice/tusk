@@ -860,7 +860,7 @@ pub use att_dimensions::AttDimensions;
 mod att_slur_present;
 pub use att_slur_present::AttSlurPresent;
 mod att_grace_grp_log;
-pub use att_grace_grp_log::AttGraceGrpLog;
+pub use att_grace_grp_log::{AttGraceGrpLog, AttGraceGrpLogAttach};
 mod att_augment_dots;
 pub use att_augment_dots::AttAugmentDots;
 mod att_staff_ident;

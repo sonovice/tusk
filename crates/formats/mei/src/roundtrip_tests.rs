@@ -7140,3 +7140,327 @@ fn fermata_parse_inverted() {
     assert!(parsed.fermata_log.startid.is_some());
     assert_eq!(parsed.fermata_vis.form, Some(AttFermataVisForm::Inv));
 }
+
+// ============================================================================
+// Grouping Element Tests - GraceGrp
+// ============================================================================
+
+#[test]
+fn gracegrp_parse_empty() {
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.grace_grp_log.grace.is_none());
+    assert!(parsed.grace_grp_log.attach.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn gracegrp_parse_with_id() {
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp xml:id="gg1"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("gg1".to_string()));
+}
+
+#[test]
+fn gracegrp_parse_with_grace_unknown() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp grace="unknown"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Unknown));
+}
+
+#[test]
+fn gracegrp_parse_with_grace_unacc() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp grace="unacc"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Unacc));
+}
+
+#[test]
+fn gracegrp_parse_with_grace_acc() {
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp grace="acc"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Acc));
+}
+
+#[test]
+fn gracegrp_parse_with_attach_pre() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp attach="pre"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.attach, Some(AttGraceGrpLogAttach::Pre));
+}
+
+#[test]
+fn gracegrp_parse_with_attach_post() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::elements::GraceGrp;
+
+    // "post" attach indicates a Nachschlag (grace notes after main note)
+    let xml = r#"<graceGrp attach="post"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.grace_grp_log.attach,
+        Some(AttGraceGrpLogAttach::Post)
+    );
+}
+
+#[test]
+fn gracegrp_parse_with_staff_layer() {
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp staff="1" layer="1"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.staff, vec![1]);
+    assert_eq!(parsed.grace_grp_log.layer, vec![1]);
+}
+
+#[test]
+fn gracegrp_parse_with_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::GraceGrp;
+
+    let xml = r#"<graceGrp tstamp="2.5"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.grace_grp_log.tstamp, Some(DataBeat(2.5)));
+}
+
+#[test]
+fn gracegrp_parse_with_grace_time() {
+    use tusk_model::data::DataPercent;
+    use tusk_model::elements::GraceGrp;
+
+    // grace.time records the amount of time to be "stolen" from a non-grace note
+    let xml = r#"<graceGrp grace.time="25%"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.grace_grp_log.grace_time,
+        Some(DataPercent("25%".to_string()))
+    );
+}
+
+#[test]
+fn gracegrp_parse_with_single_note_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    let xml = r#"<graceGrp xml:id="gg1" grace="acc">
+        <note xml:id="n1" pname="d" oct="5" dur="8"/>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("gg1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Note(note) => {
+            assert_eq!(note.common.xml_id, Some("n1".to_string()));
+        }
+        _ => panic!("Expected Note child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_multiple_note_children() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    let xml = r#"<graceGrp xml:id="gg1" grace="unacc">
+        <note xml:id="n1" pname="d" oct="5" dur="16"/>
+        <note xml:id="n2" pname="e" oct="5" dur="16"/>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 2);
+    for child in &parsed.children {
+        match child {
+            GraceGrpChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_chord_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    let xml = r#"<graceGrp xml:id="gg1">
+        <chord xml:id="c1" dur="8">
+            <note pname="c" oct="4"/>
+            <note pname="e" oct="4"/>
+        </chord>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Chord(chord) => {
+            assert_eq!(chord.common.xml_id, Some("c1".to_string()));
+        }
+        _ => panic!("Expected Chord child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_beam_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    // Grace notes are often beamed together
+    let xml = r#"<graceGrp xml:id="gg1" grace="acc">
+        <beam>
+            <note xml:id="n1" pname="a" oct="4" dur="16"/>
+            <note xml:id="n2" pname="b" oct="4" dur="16"/>
+        </beam>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Beam(beam) => {
+            assert_eq!(beam.children.len(), 2);
+        }
+        _ => panic!("Expected Beam child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_rest_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    // While unusual, rests can appear in graceGrp
+    let xml = r#"<graceGrp xml:id="gg1">
+        <rest xml:id="r1" dur="16"/>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Rest(rest) => {
+            assert_eq!(rest.common.xml_id, Some("r1".to_string()));
+        }
+        _ => panic!("Expected Rest child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_space_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    let xml = r#"<graceGrp xml:id="gg1">
+        <space xml:id="sp1" dur="16"/>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Space(_) => {}
+        _ => panic!("Expected Space child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_tuplet_child() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    // Grace notes can be in tuplet groupings
+    let xml = r#"<graceGrp xml:id="gg1" grace="acc">
+        <tuplet num="3" numbase="2">
+            <note pname="c" oct="5" dur="16"/>
+            <note pname="d" oct="5" dur="16"/>
+            <note pname="e" oct="5" dur="16"/>
+        </tuplet>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::Tuplet(tuplet) => {
+            assert_eq!(tuplet.children.len(), 3);
+        }
+        _ => panic!("Expected Tuplet child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_nested_gracegrp() {
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    // Nested graceGrp elements are allowed by MEI schema
+    let xml = r#"<graceGrp xml:id="gg1">
+        <graceGrp xml:id="gg2">
+            <note pname="c" oct="4"/>
+        </graceGrp>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        GraceGrpChild::GraceGrp(inner) => {
+            assert_eq!(inner.common.xml_id, Some("gg2".to_string()));
+        }
+        _ => panic!("Expected nested GraceGrp child"),
+    }
+}
+
+#[test]
+fn gracegrp_parse_with_color() {
+    use tusk_model::data::{DataColor, DataColornames};
+    use tusk_model::elements::GraceGrp;
+
+    // Visual attribute from AttGraceGrpVis
+    let xml = r#"<graceGrp color="red"/>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.grace_grp_vis.color,
+        Some(DataColor::DataColornames(DataColornames::Red))
+    );
+}
+
+#[test]
+fn gracegrp_parse_complete() {
+    use tusk_model::att::AttGraceGrpLogAttach;
+    use tusk_model::data::DataGrace;
+    use tusk_model::elements::{GraceGrp, GraceGrpChild};
+
+    let xml = r#"<graceGrp xml:id="gg1" grace="acc" attach="pre" staff="1" layer="1">
+        <note xml:id="n1" pname="d" oct="5" dur="8"/>
+        <note xml:id="n2" pname="c" oct="5" dur="8"/>
+    </graceGrp>"#;
+    let parsed = GraceGrp::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("gg1".to_string()));
+    assert_eq!(parsed.grace_grp_log.grace, Some(DataGrace::Acc));
+    assert_eq!(parsed.grace_grp_log.attach, Some(AttGraceGrpLogAttach::Pre));
+    assert_eq!(parsed.grace_grp_log.staff, vec![1]);
+    assert_eq!(parsed.grace_grp_log.layer, vec![1]);
+    assert_eq!(parsed.children.len(), 2);
+    for child in &parsed.children {
+        match child {
+            GraceGrpChild::Note(_) => {}
+            _ => panic!("Expected Note children"),
+        }
+    }
+}

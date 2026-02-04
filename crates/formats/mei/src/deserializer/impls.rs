@@ -15,25 +15,26 @@ use tusk_model::att::{
     AttChordGes, AttChordLog, AttChordVis, AttCommon, AttDirAnl, AttDirGes, AttDirLog, AttDirVis,
     AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
     AttDynamLog, AttDynamVis, AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog,
-    AttFermataVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled,
-    AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis,
-    AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMetadataPointing,
-    AttNInteger, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttPointing, AttResponsibility,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog,
-    AttScoreDefVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl,
-    AttSlurGes, AttSlurLog, AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
-    AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
-    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
-    AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
+    AttFermataVis, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl,
+    AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
+    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
+    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttMetadataPointing, AttNInteger, AttNoteAnl, AttNoteGes,
+    AttNoteLog, AttNoteVis, AttPointing, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
+    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
+    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
+    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
+    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
 };
 use tusk_model::elements::{
-    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, Hairpin,
-    InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure,
-    MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild,
-    Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
-    Tuplet, TupletChild,
+    Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, GraceGrp,
+    GraceGrpChild, Hairpin, InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv,
+    MdivChild, Measure, MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild,
+    Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp,
+    StaffGrpChild, Tempo, Tie, Tuplet, TupletChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1469,6 +1470,42 @@ impl ExtractAttributes for AttTupletGes {
 impl ExtractAttributes for AttTupletAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttTupletAnl has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttGraceGrpLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "grace", self.grace);
+        extract_attr!(attrs, "grace.time", self.grace_time);
+        extract_attr!(attrs, "attach", self.attach);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttGraceGrpVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttGraceGrpGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttGraceGrpGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttGraceGrpAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttGraceGrpAnl has no attributes
         Ok(())
     }
 }
@@ -3497,6 +3534,86 @@ impl MeiDeserialize for Tuplet {
         }
 
         Ok(tuplet)
+    }
+}
+
+impl MeiDeserialize for GraceGrp {
+    fn element_name() -> &'static str {
+        "graceGrp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut grace_grp = GraceGrp::default();
+
+        // Extract attributes into each attribute class
+        grace_grp.common.extract_attributes(&mut attrs)?;
+        grace_grp.facsimile.extract_attributes(&mut attrs)?;
+        grace_grp.grace_grp_log.extract_attributes(&mut attrs)?;
+        grace_grp.grace_grp_vis.extract_attributes(&mut attrs)?;
+        grace_grp.grace_grp_ges.extract_attributes(&mut attrs)?;
+        grace_grp.grace_grp_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Read children if not empty
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("graceGrp")?
+            {
+                match name.as_str() {
+                    "note" => {
+                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp.children.push(GraceGrpChild::Note(Box::new(note)));
+                    }
+                    "rest" => {
+                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp.children.push(GraceGrpChild::Rest(Box::new(rest)));
+                    }
+                    "chord" => {
+                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp
+                            .children
+                            .push(GraceGrpChild::Chord(Box::new(chord)));
+                    }
+                    "space" => {
+                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp
+                            .children
+                            .push(GraceGrpChild::Space(Box::new(space)));
+                    }
+                    "beam" => {
+                        let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp.children.push(GraceGrpChild::Beam(Box::new(beam)));
+                    }
+                    "tuplet" => {
+                        let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp
+                            .children
+                            .push(GraceGrpChild::Tuplet(Box::new(tuplet)));
+                    }
+                    "graceGrp" => {
+                        // Nested graceGrp is allowed
+                        let nested = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
+                        grace_grp
+                            .children
+                            .push(GraceGrpChild::GraceGrp(Box::new(nested)));
+                    }
+                    // Other child types (clef, barLine, etc.) can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(grace_grp)
     }
 }
 

@@ -79,7 +79,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 ### 2.5 Grouping Elements
 - [x] Implement MEI parsing for `<beam>` element
 - [x] Implement MEI parsing for `<tuplet>` element
-- [ ] Implement MEI parsing for `<graceGrp>` element
+- [x] Implement MEI parsing for `<graceGrp>` element
 - [ ] Add beam and tuplet tests
 
 ### 2.6 MEI CMN Serialization
