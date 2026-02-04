@@ -39,6 +39,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Many Child serializers use `_ => Ok(())` catch-all which silently drops elements - changed to return NotImplemented error for: Symbol, Bibl, BiblStruct, Height, Width, Depth, Dim, Dimensions, Abbr, Expan, Q, Fig, Seg, Stack, Relation, RelationList, Repository, Locus, LocusGrp, Term, StyleName, PeriodName, Catchwords, Signatures, SecFolio, Stamp, Heraldry (source: Aguado_Walzer_G-major.mei roundtrip test)
 - [x] [MISSING_SERIALIZER] SourceDescChild::Source needs serializer - added Source, SourceChild serializers (source: Aguado_Walzer_G-major.mei)
 - [x] [SERIALIZER_BUG] Creator (migrated from composer) adds extra @role attribute 'cmp' that wasn't in original - composer→creator migration should preserve original structure (source: Aguado_Walzer_G-major.mei)
+- [x] [DESERIALIZER_BUG] Deprecated creator elements (composer, lyricist, etc.): child elements like persName, corpName not parsed - parse_deprecated_creator_from_event uses read_text_until_end instead of read_next_mixed_content (source: Aguado_Walzer_G-major.mei)
 
 ---
 

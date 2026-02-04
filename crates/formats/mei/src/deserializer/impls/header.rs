@@ -2064,13 +2064,44 @@ pub(crate) fn parse_deprecated_creator_from_event<R: BufRead>(
 
     // Remaining attributes are unknown - in lenient mode we ignore them
 
-    // Parse text content if not empty
-    // These deprecated elements can contain text and child elements like persName, corpName
-    // For now, we collect text content as CreatorChild::Text
+    // Parse mixed content: deprecated elements can contain text and child elements like persName, corpName
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end(element_name)? {
-            if !text.trim().is_empty() {
-                creator.children.push(CreatorChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content(element_name)? {
+            match content {
+                MixedContent::Text(text) => {
+                    creator.children.push(CreatorChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            creator
+                                .children
+                                .push(CreatorChild::PersName(Box::new(pers)));
+                        }
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            creator
+                                .children
+                                .push(CreatorChild::CorpName(Box::new(corp)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            creator
+                                .children
+                                .push(CreatorChild::Name(Box::new(name_elem)));
+                        }
+                        _ => {
+                            // Skip unknown children in lenient mode
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
