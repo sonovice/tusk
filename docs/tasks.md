@@ -72,7 +72,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Implement MEI parsing for `<dynam>` element
 - [x] Implement MEI parsing for `<hairpin>` element
 - [x] Implement MEI parsing for `<dir>` element
-- [ ] Implement MEI parsing for `<tempo>` element
+- [x] Implement MEI parsing for `<tempo>` element
 - [ ] Implement MEI parsing for `<fermata>` element
 - [ ] Add control event tests
 

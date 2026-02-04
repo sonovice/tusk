@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttBasic, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
+    AttArticVis, AttBasic, AttBibl, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttCommon,
     AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes, AttDotLog, AttDotVis,
     AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttFacsimile,
     AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttLabelled, AttLang, AttLayerAnl,
@@ -23,14 +23,14 @@ use tusk_model::att::{
     AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
     AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
     AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
-    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTyped,
+    AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
+    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Chord, ChordChild, Clef, Dir, Dot, Dynam, Hairpin, InstrDef, Label, Layer,
     LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure, MeasureChild, Note, NoteChild,
     Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Space, Staff,
-    StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tie,
+    StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -108,6 +108,13 @@ impl ExtractAttributes for AttCommon {
 impl ExtractAttributes for AttFacsimile {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "facs", vec self.facs);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBibl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "analog", string self.analog);
         Ok(())
     }
 }
@@ -1642,6 +1649,74 @@ impl ExtractAttributes for AttDirAnl {
     }
 }
 
+// ============================================================================
+// Tempo attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttTempoLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "mm", self.mm);
+        extract_attr!(attrs, "mm.unit", self.mm_unit);
+        extract_attr!(attrs, "mm.dots", self.mm_dots);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        extract_attr!(attrs, "func", self.func);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTempoGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "midi.bpm", self.midi_bpm);
+        extract_attr!(attrs, "midi.mspb", self.midi_mspb);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTempoVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "lendsym", self.lendsym);
+        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
+        extract_attr!(attrs, "lstartsym", self.lstartsym);
+        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        extract_attr!(attrs, "extender", self.extender);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTempoAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTempoAnl has no attributes
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttLang {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "xml:lang", string self.xml_lang);
@@ -3045,6 +3120,47 @@ impl MeiDeserialize for Dir {
         }
 
         Ok(dir)
+    }
+}
+
+impl MeiDeserialize for Tempo {
+    fn element_name() -> &'static str {
+        "tempo"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut tempo = Tempo::default();
+
+        // Extract attributes into each attribute class
+        tempo.common.extract_attributes(&mut attrs)?;
+        tempo.bibl.extract_attributes(&mut attrs)?;
+        tempo.facsimile.extract_attributes(&mut attrs)?;
+        tempo.lang.extract_attributes(&mut attrs)?;
+        tempo.tempo_log.extract_attributes(&mut attrs)?;
+        tempo.tempo_vis.extract_attributes(&mut attrs)?;
+        tempo.tempo_ges.extract_attributes(&mut attrs)?;
+        tempo.tempo_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Parse text content if not empty
+        if !is_empty {
+            // tempo can contain text and various child elements
+            // For now, we collect text content as TempoChild::Text
+            if let Some(text) = reader.read_text_until_end("tempo")? {
+                if !text.trim().is_empty() {
+                    tempo
+                        .children
+                        .push(tusk_model::elements::TempoChild::Text(text));
+                }
+            }
+        }
+
+        Ok(tempo)
     }
 }
 
@@ -4905,5 +5021,259 @@ mod tests {
 
         assert!(dir.dir_vis.lform.is_some());
         assert!(dir.dir_vis.lwidth.is_some());
+    }
+
+    // ============================================================================
+    // Tempo deserialization tests
+    // ============================================================================
+
+    #[test]
+    fn tempo_deserializes_from_empty_element() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo/>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.common.xml_id.is_none());
+        assert!(tempo.tempo_log.startid.is_none());
+        assert!(tempo.children.is_empty());
+    }
+
+    #[test]
+    fn tempo_deserializes_with_text_content() {
+        use tusk_model::elements::{Tempo, TempoChild};
+
+        let xml = r#"<tempo>Allegro</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.children.len(), 1);
+        match &tempo.children[0] {
+            TempoChild::Text(text) => assert_eq!(text, "Allegro"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn tempo_deserializes_xml_id() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo xml:id="tempo1">Andante</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.common.xml_id, Some("tempo1".to_string()));
+    }
+
+    #[test]
+    fn tempo_deserializes_startid() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r##"<tempo startid="#n1">Moderato</tempo>"##;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_log.startid.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_staff_and_tstamp() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo staff="1" tstamp="1">Presto</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.staff, vec![1]);
+        assert!(tempo.tempo_log.tstamp.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_mm_attributes() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo mm="120" mm.unit="4" mm.dots="0">♩ = 120</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_log.mm.is_some());
+        assert!(tempo.tempo_log.mm_unit.is_some());
+        assert!(tempo.tempo_log.mm_dots.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_func_instantaneous() {
+        use tusk_model::att::AttTempoLogFunc;
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo func="instantaneous">Largo</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.func, Some(AttTempoLogFunc::Instantaneous));
+    }
+
+    #[test]
+    fn tempo_deserializes_func_continuous() {
+        use tusk_model::att::AttTempoLogFunc;
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo func="continuous" tstamp="1" tstamp2="0m+4">accel.</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.func, Some(AttTempoLogFunc::Continuous));
+        assert!(tempo.tempo_log.tstamp2.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_func_metricmod() {
+        use tusk_model::att::AttTempoLogFunc;
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo func="metricmod">♩ = ♪</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.func, Some(AttTempoLogFunc::Metricmod));
+    }
+
+    #[test]
+    fn tempo_deserializes_place_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo place="above" staff="1" tstamp="1">Vivace</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_vis.place.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_extender_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo extender="true" tstamp="1" tstamp2="1m+1">rit.</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_vis.extender.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_lang_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo xml:lang="it">Allegro con brio</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.lang.xml_lang, Some("it".to_string()));
+    }
+
+    #[test]
+    fn tempo_deserializes_midi_bpm() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo midi.bpm="120">Allegro</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_ges.midi_bpm.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_midi_mspb() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo midi.mspb="500000">Allegro</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_ges.midi_mspb.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_visual_color_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo color="red">Largo</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_vis.color.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_coordinate_attributes() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo x="100" y="200">Adagio</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_vis.x.is_some());
+        assert!(tempo.tempo_vis.y.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_layer_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo layer="1" staff="1" tstamp="1">Andante</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn tempo_deserializes_endid() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r##"<tempo startid="#n1" endid="#n4" func="continuous">rallentando</tempo>"##;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_log.startid.is_some());
+        assert!(tempo.tempo_log.endid.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_plist_attribute() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r##"<tempo plist="#n1 #n2 #n3">Presto</tempo>"##;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.tempo_log.plist.len(), 3);
+    }
+
+    #[test]
+    fn tempo_handles_unknown_attributes_leniently() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo xml:id="tempo1" unknown="value">Allegro</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize in lenient mode");
+
+        assert_eq!(tempo.common.xml_id, Some("tempo1".to_string()));
+    }
+
+    #[test]
+    fn tempo_deserializes_all_common_attributes() {
+        use tusk_model::elements::{Tempo, TempoChild};
+
+        let xml = r#"<tempo xml:id="tempo1" staff="1" tstamp="1" mm="120" mm.unit="4" func="instantaneous" place="above" extender="false" xml:lang="de">Schnell</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.common.xml_id, Some("tempo1".to_string()));
+        assert_eq!(tempo.tempo_log.staff, vec![1]);
+        assert!(tempo.tempo_log.tstamp.is_some());
+        assert!(tempo.tempo_log.mm.is_some());
+        assert!(tempo.tempo_log.mm_unit.is_some());
+        assert!(tempo.tempo_log.func.is_some());
+        assert!(tempo.tempo_vis.place.is_some());
+        assert!(tempo.tempo_vis.extender.is_some());
+        assert_eq!(tempo.lang.xml_lang, Some("de".to_string()));
+
+        assert_eq!(tempo.children.len(), 1);
+        match &tempo.children[0] {
+            TempoChild::Text(text) => assert_eq!(text, "Schnell"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn tempo_deserializes_lform_and_lwidth() {
+        use tusk_model::elements::Tempo;
+
+        let xml = r#"<tempo lform="dashed" lwidth="medium" extender="true">accel.</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.tempo_vis.lform.is_some());
+        assert!(tempo.tempo_vis.lwidth.is_some());
     }
 }

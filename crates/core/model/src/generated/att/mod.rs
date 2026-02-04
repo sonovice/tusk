@@ -572,7 +572,7 @@ pub use att_vertical_align::AttVerticalAlign;
 mod att_volta_log;
 pub use att_volta_log::AttVoltaLog;
 mod att_tempo_log;
-pub use att_tempo_log::AttTempoLog;
+pub use att_tempo_log::{AttTempoLog, AttTempoLogEvaluate, AttTempoLogFunc};
 mod att_layer_def_log;
 pub use att_layer_def_log::AttLayerDefLog;
 mod att_meta_mark_vis;
