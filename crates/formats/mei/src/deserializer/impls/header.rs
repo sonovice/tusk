@@ -523,11 +523,15 @@ pub(crate) fn parse_source_from_event<R: BufRead>(
 }
 
 /// Parse a `<bibl>` element from within another element.
+///
+/// Bibl can contain mixed content (text and many child elements).
 pub(crate) fn parse_bibl_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Bibl> {
+    use tusk_model::elements::BiblChild;
+
     let mut bibl = Bibl::default();
 
     // Extract attributes
@@ -537,82 +541,82 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
     bibl.lang.extract_attributes(&mut attrs)?;
     bibl.pointing.extract_attributes(&mut attrs)?;
 
-    // Read children if not an empty element
-    // bibl can contain text and many child elements
+    // Parse mixed content (text and child elements)
     if !is_empty {
-        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("bibl")? {
-            match name.as_str() {
-                "title" => {
-                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Title(Box::new(title)));
+        while let Some(content) = reader.read_next_mixed_content("bibl")? {
+            match content {
+                MixedContent::Text(text) => {
+                    bibl.children.push(BiblChild::Text(text));
                 }
-                "identifier" => {
-                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Identifier(Box::new(
-                            identifier,
-                        )));
-                }
-                "creator" => {
-                    let creator = parse_creator_from_event(reader, child_attrs, child_empty)?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
-                }
-                // Handle deprecated MEI elements by converting to Creator
-                "composer" => {
-                    let creator = parse_deprecated_creator_from_event(
-                        reader,
-                        child_attrs,
-                        child_empty,
-                        "composer",
-                        tusk_model::generated::data::DataMarcrelatorsBasic::Cmp,
-                    )?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
-                }
-                "lyricist" => {
-                    let creator = parse_deprecated_creator_from_event(
-                        reader,
-                        child_attrs,
-                        child_empty,
-                        "lyricist",
-                        tusk_model::generated::data::DataMarcrelatorsBasic::Lyr,
-                    )?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
-                }
-                "arranger" => {
-                    let creator = parse_deprecated_creator_from_event(
-                        reader,
-                        child_attrs,
-                        child_empty,
-                        "arranger",
-                        tusk_model::generated::data::DataMarcrelatorsBasic::Arr,
-                    )?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
-                }
-                "author" => {
-                    let creator = parse_deprecated_creator_from_event(
-                        reader,
-                        child_attrs,
-                        child_empty,
-                        "author",
-                        tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
-                    )?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
-                }
-                "imprint" => {
-                    let imprint = parse_imprint_from_event(reader, child_attrs, child_empty)?;
-                    bibl.children
-                        .push(tusk_model::elements::BiblChild::Imprint(Box::new(imprint)));
-                }
-                // Unknown children are skipped in lenient mode
-                _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children.push(BiblChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children
+                                .push(BiblChild::Identifier(Box::new(identifier)));
+                        }
+                        "creator" => {
+                            let creator =
+                                parse_creator_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
+                        // Handle deprecated MEI elements by converting to Creator
+                        "composer" => {
+                            let creator = parse_deprecated_creator_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                                "composer",
+                                tusk_model::generated::data::DataMarcrelatorsBasic::Cmp,
+                            )?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
+                        "lyricist" => {
+                            let creator = parse_deprecated_creator_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                                "lyricist",
+                                tusk_model::generated::data::DataMarcrelatorsBasic::Lyr,
+                            )?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
+                        "arranger" => {
+                            let creator = parse_deprecated_creator_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                                "arranger",
+                                tusk_model::generated::data::DataMarcrelatorsBasic::Arr,
+                            )?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
+                        "author" => {
+                            let creator = parse_deprecated_creator_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                                "author",
+                                tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
+                            )?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
+                        "imprint" => {
+                            let imprint =
+                                parse_imprint_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children.push(BiblChild::Imprint(Box::new(imprint)));
+                        }
+                        // Unknown children are skipped in lenient mode
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
                     }
                 }
             }
@@ -4986,5 +4990,90 @@ mod tests {
             .expect("should have identifier child");
 
         assert!(identifier.children.is_empty());
+    }
+
+    // ============================================================================
+    // Bibl element tests
+    // ============================================================================
+
+    #[test]
+    fn bibl_deserializes_text_content() {
+        use tusk_model::elements::BiblChild;
+
+        // bibl with text content and attributes (similar to Aguado_Walzer_G-major.mei line 122)
+        let xml = r#"<source>
+          <bibl xml:id="OCLC_DDC" target="http://example.com">OCLC_DDC</bibl>
+        </source>"#;
+
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+
+        let bibl = source
+            .children
+            .iter()
+            .find_map(|c| {
+                if let SourceChild::Bibl(b) = c {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .expect("should have bibl child");
+
+        // Check attributes
+        assert_eq!(bibl.common.xml_id, Some("OCLC_DDC".to_string()));
+        assert!(!bibl.pointing.target.is_empty());
+
+        // Check text content is preserved
+        assert_eq!(bibl.children.len(), 1);
+        match &bibl.children[0] {
+            BiblChild::Text(text) => assert_eq!(text, "OCLC_DDC"),
+            other => panic!("expected Text child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn bibl_deserializes_mixed_content() {
+        use tusk_model::elements::BiblChild;
+
+        // bibl with both child elements and text content
+        let xml = r#"<source>
+          <bibl>
+            <title>Some Title</title>
+            with some text
+          </bibl>
+        </source>"#;
+
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+
+        let bibl = source
+            .children
+            .iter()
+            .find_map(|c| {
+                if let SourceChild::Bibl(b) = c {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .expect("should have bibl child");
+
+        // Should have both title element and text content
+        assert_eq!(bibl.children.len(), 2);
+
+        // First child should be Title
+        match &bibl.children[0] {
+            BiblChild::Title(_t) => {
+                // Title text check can be added if needed
+            }
+            other => panic!("expected Title child first, got {:?}", other),
+        }
+
+        // Second child should be Text
+        match &bibl.children[1] {
+            BiblChild::Text(text) => {
+                assert!(text.contains("with some text"));
+            }
+            other => panic!("expected Text child second, got {:?}", other),
+        }
     }
 }
