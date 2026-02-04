@@ -17,7 +17,7 @@ Target: `crates/formats/mei/src/deserializer/impls.rs` → split into `impls/` s
 - [x] Extract scoreDef/staffDef/layerDef/staffGrp deserializers → `impls/defs.rs`
 - [x] Extract slur/tie/dynam/hairpin/dir/tempo/fermata deserializers → `impls/control.rs`
 - [x] Extract beam/tuplet/graceGrp deserializers → `impls/grouping.rs`
-- [ ] Extract meiHead/fileDesc/titleStmt/pubStmt deserializers → `impls/header.rs`
+- [x] Extract meiHead/fileDesc/titleStmt/pubStmt deserializers → `impls/header.rs`
 - [ ] Extract app/lem/rdg/choice/corr/sic/add/del deserializers → `impls/editorial.rs`
 - [ ] Extract text/prose/annotation deserializers → `impls/text.rs`
 - [ ] Extract remaining deserializers → `impls/misc.rs`, verify impls.rs only has re-exports
@@ -101,34 +101,6 @@ Target: `crates/formats/musicxml/src/model/elements.rs` → split into `elements
 - [ ] Extract measure types → `elements/measure.rs`
 - [ ] Extract barline/ending types → `elements/barline.rs`
 
----
-
-## Phase 7: MusicXML Parser (3,109 lines total)
-
-### 7.1 Main Parser (1,467 lines)
-Target: `crates/formats/musicxml/src/parser.rs`
-
-- [ ] Extract attributes parsing → `parser/parse_attributes.rs`
-- [ ] Extract measure parsing → `parser/parse_measure.rs`
-
-### 7.2 Parser Tests (1,642 lines)
-Target: `crates/formats/musicxml/src/parser/tests.rs` → split into `tests/` submodules
-
-- [ ] Extract note parsing tests → `tests/note.rs`
-- [ ] Extract direction parsing tests → `tests/direction.rs`
-- [ ] Extract attributes parsing tests → `tests/attributes.rs`
-- [ ] Extract full document tests → `tests/document.rs`
-
----
-
-## Phase 8: MEI Codegen (1,681 lines)
-
-Target: `tools/mei-codegen/src/generator.rs` → split into `generator/` submodules
-
-- [ ] Extract data type generation → `generator/data.rs`
-- [ ] Extract attribute class generation → `generator/attributes.rs`
-- [ ] Extract element generation → `generator/elements.rs`
-- [ ] Extract shared helpers → `generator/utils.rs`, verify main file only has entry point
 
 ---
 
