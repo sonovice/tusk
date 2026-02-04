@@ -12,8 +12,9 @@ use tusk_model::att::{
     AttEvidence, AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes,
     AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign, AttLabelled, AttLinking, AttMeiVersion,
     AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing, AttRecordType,
-    AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes,
-    AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttRegularMethod, AttResponsibility, AttSource, AttTargetEval, AttTextRendition, AttTupletAnl,
+    AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttTypography, AttVerticalAlign,
+    AttWhitespace, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -507,6 +508,14 @@ impl CollectAttributes for AttRecordType {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "recordtype", self.recordtype);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRegularMethod {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "method", self.method);
         attrs
     }
 }

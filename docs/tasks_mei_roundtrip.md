@@ -20,7 +20,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_SERIALIZER] FileDescChild: missing serializers for SeriesStmt, EditionStmt, NotesStmt, Extent (source: Aguado_Walzer_G-major.mei)
 - [x] [MISSING_SERIALIZER] MeiHeadChild: missing serializers for WorkList, ManifestationList, AltId, ExtMeta (source: Aguado_Walzer_G-major.mei)
 - [x] [VERSION_COMPAT] MEI 5.1 deprecated elements need migration: composer→Creator, lyricist→Creator, arranger→Creator, author→Creator; deserializer must map these on import (source: Aguado_Walzer_G-major.mei)
-- [ ] [MISSING_SERIALIZER] EncodingDescChild: missing serializers for AppInfo, ClassDecls, EditorialDecl, ProjectDesc, SamplingDecl, StdVals (source: Aguado_Walzer_G-major.mei)
+- [x] [MISSING_SERIALIZER] EncodingDescChild: missing serializers for AppInfo, ClassDecls, EditorialDecl, ProjectDesc, SamplingDecl, StdVals (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] WorkChild: missing serializers for Composer, Key, Meter, Incip, Creation, PerfMedium, Classification (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] ChangeChild: missing serializers for RespStmt, ChangeDesc (source: Aguado_Walzer_G-major.mei)
 - [ ] [MISSING_SERIALIZER] PublisherChild: missing serializer for CorpName (source: Aguado_Walzer_G-major.mei)
