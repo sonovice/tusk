@@ -106,7 +106,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 
 ### 3.3 Work Description
 - [x] Implement MEI parsing for `<workList>` element
-- [ ] Implement MEI parsing for `<work>` element
+- [x] Implement MEI parsing for `<work>` element
 - [ ] Implement MEI parsing for `<expressionList>` element
 
 ### 3.4 Revision Description

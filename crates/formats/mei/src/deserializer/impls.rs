@@ -10,42 +10,48 @@ use super::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, 
 use serde::Deserialize;
 use std::io::BufRead;
 use tusk_model::att::{
-    AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
-    AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttBibl,
-    AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon, AttComponentType,
-    AttDataPointing, AttDatable, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDotAnl, AttDotGes,
-    AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis,
-    AttEdit, AttEvidence, AttFacsimile, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis,
-    AttFiling, AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis,
-    AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttInternetMedia, AttLabelled,
-    AttLang, AttLayerAnl, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis,
-    AttLayerGes, AttLayerLog, AttLayerVis, AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttMeiVersion,
-    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog,
-    AttNoteVis, AttPointing, AttRecordType, AttResponsibility, AttRestAnl, AttRestGes, AttRestLog,
-    AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis,
-    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
+    AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttAccidental, AttArticAnl, AttArticGes,
+    AttArticLog, AttArticVis, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog,
+    AttBeamVis, AttBibl, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttClassed, AttCommon,
+    AttComponentType, AttDataPointing, AttDatable, AttDirAnl, AttDirGes, AttDirLog, AttDirVis,
+    AttDotAnl, AttDotGes, AttDotLog, AttDotVis, AttDurationQuality, AttDynamAnl, AttDynamGes,
+    AttDynamLog, AttDynamVis, AttEdit, AttEvidence, AttFacsimile, AttFermataAnl, AttFermataGes,
+    AttFermataLog, AttFermataVis, AttFiling, AttFoliationScheme, AttGraceGrpAnl, AttGraceGrpGes,
+    AttGraceGrpLog, AttGraceGrpVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis,
+    AttInternetMedia, AttKeyMode, AttLabelled, AttLang, AttLayerAnl, AttLayerDefAnl,
+    AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttLayerGes, AttLayerLog, AttLayerVis,
+    AttLinking, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing,
+    AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttNoteAnl, AttNoteGes, AttNoteLog,
+    AttNoteVis, AttPitch, AttPointing, AttRecordType, AttResponsibility, AttRestAnl, AttRestGes,
+    AttRestLog, AttRestVis, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis,
+    AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttSlurAnl, AttSlurGes, AttSlurLog,
+    AttSlurVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis, AttStaffAnl, AttStaffDefAnl,
     AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes, AttStaffGrpAnl, AttStaffGrpGes,
     AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis, AttTargetEval, AttTempoAnl,
     AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
-    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttXy,
+    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Availability, Beam,
-    BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef, Contributor, ContributorChild,
-    Correction, CorrectionChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor,
-    EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, Fermata,
-    FileDesc, FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head,
-    HeadChild, Identifier, InstrDef, Interpretation, InterpretationChild, Label, Layer, LayerChild,
-    LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
-    MeiHeadChild, Name, NameChild, Normalization, NormalizationChild, Note, NoteChild, P, PChild,
-    ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest,
-    RestChild, SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild,
-    Segmentation, SegmentationChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space,
-    Sponsor, SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
-    StdVals, StdValsChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet,
-    TupletChild, Unpub, Work, WorkChild, WorkList, WorkListChild,
+    Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Audience, Availability,
+    Beam, BeamChild, Bibl, BiblList, BiblListChild, BiblStruct, Chord, ChordChild, Classification,
+    ClassificationChild, Clef, ComponentList, ComponentListChild, Contents, ContentsChild, Context,
+    Contributor, ContributorChild, Correction, CorrectionChild, Creation, CreationChild, Creator,
+    CreatorChild, Date, Dedication, Dir, Distributor, Dot, Dynam, Editor, EditorChild,
+    EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, ExpressionList,
+    ExpressionListChild, ExtMeta, Fermata, FileDesc, FileDescChild, Funder, FunderChild, GraceGrp,
+    GraceGrpChild, Hairpin, Head, HeadChild, History, HistoryChild, Identifier, Incip, IncipChild,
+    InstrDef, Interpretation, InterpretationChild, Key, Label, LangUsage, LangUsageChild, Language,
+    Layer, LayerChild, LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure,
+    MeasureChild, MeiHead, MeiHeadChild, Mensuration, Meter, Name, NameChild, Normalization,
+    NormalizationChild, Note, NoteChild, NotesStmt, NotesStmtChild, OtherChar, P, PChild,
+    PerfDuration, PerfMedium, PerfMediumChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace,
+    PubStmt, PubStmtChild, Publisher, RelationList, RelationListChild, RespStmt, Rest, RestChild,
+    SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild, Segmentation,
+    SegmentationChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space, Sponsor,
+    SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, StdVals,
+    StdValsChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet, TupletChild,
+    Unpub, Work, WorkChild, WorkList, WorkListChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -2131,6 +2137,82 @@ impl ExtractAttributes for AttDynamGes {
 impl ExtractAttributes for AttDynamAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttDynamAnl has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttWhitespace {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "xml:space", self.xml_space);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAccidental {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "accid", self.accid);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttKeyMode {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "mode", self.mode);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPitch {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "pname", self.pname);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeterSigLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "count", string self.count);
+        extract_attr!(attrs, "sym", self.sym);
+        extract_attr!(attrs, "unit", self.unit);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMensurLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "num", self.num);
+        extract_attr!(attrs, "numbase", self.numbase);
+        extract_attr!(attrs, "modusmaior", self.modusmaior);
+        extract_attr!(attrs, "modusminor", self.modusminor);
+        extract_attr!(attrs, "prolatio", self.prolatio);
+        extract_attr!(attrs, "tempus", self.tempus);
+        extract_attr!(attrs, "divisio", self.divisio);
+        extract_attr!(attrs, "level", self.level);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMensurVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "slash", self.slash);
+        extract_attr!(attrs, "dot", self.dot);
+        extract_attr!(attrs, "form", self.form);
+        extract_attr!(attrs, "orient", self.orient);
+        extract_attr!(attrs, "sign", self.sign);
         Ok(())
     }
 }
@@ -5550,6 +5632,820 @@ impl MeiDeserialize for GraceGrp {
 }
 
 // ============================================================================
+// Work child elements - parse functions
+// ============================================================================
+
+/// Parse a `<dedication>` element from within another element.
+fn parse_dedication_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Dedication> {
+    let mut dedication = Dedication::default();
+
+    // Extract attributes
+    dedication.common.extract_attributes(&mut attrs)?;
+    dedication.bibl.extract_attributes(&mut attrs)?;
+    dedication.facsimile.extract_attributes(&mut attrs)?;
+    dedication.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("dedication")? {
+            if !text.trim().is_empty() {
+                dedication
+                    .children
+                    .push(tusk_model::elements::DedicationChild::Text(text));
+            }
+        }
+    }
+
+    Ok(dedication)
+}
+
+/// Parse a `<creation>` element from within another element.
+fn parse_creation_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Creation> {
+    let mut creation = Creation::default();
+
+    // Extract attributes
+    creation.common.extract_attributes(&mut attrs)?;
+    creation.bibl.extract_attributes(&mut attrs)?;
+    creation.datable.extract_attributes(&mut attrs)?;
+    creation.facsimile.extract_attributes(&mut attrs)?;
+    creation.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // creation can contain: head*, date*, text content, and various other elements
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("creation")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    creation.children.push(CreationChild::Head(Box::new(head)));
+                }
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    creation.children.push(CreationChild::Date(Box::new(date)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(creation)
+}
+
+/// Parse a `<history>` element from within another element.
+fn parse_history_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<History> {
+    let mut history = History::default();
+
+    // Extract attributes
+    history.common.extract_attributes(&mut attrs)?;
+    history.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // history can contain: head*, p*, eventList*, etc.
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("history")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    history.children.push(HistoryChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    history.children.push(HistoryChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(history)
+}
+
+/// Parse a `<langUsage>` element from within another element.
+fn parse_lang_usage_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<LangUsage> {
+    let mut lang_usage = LangUsage::default();
+
+    // Extract attributes
+    lang_usage.common.extract_attributes(&mut attrs)?;
+    lang_usage.bibl.extract_attributes(&mut attrs)?;
+    lang_usage.data_pointing.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // langUsage can contain: head*, language+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("langUsage")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    lang_usage
+                        .children
+                        .push(LangUsageChild::Head(Box::new(head)));
+                }
+                "language" => {
+                    let language = parse_language_from_event(reader, child_attrs, child_empty)?;
+                    lang_usage
+                        .children
+                        .push(LangUsageChild::Language(Box::new(language)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(lang_usage)
+}
+
+/// Parse a `<language>` element from within another element.
+fn parse_language_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Language> {
+    let mut language = Language::default();
+
+    // Extract attributes
+    language.common.extract_attributes(&mut attrs)?;
+    language.authorized.extract_attributes(&mut attrs)?;
+    language.bibl.extract_attributes(&mut attrs)?;
+    language.lang.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("language")? {
+            if !text.trim().is_empty() {
+                language
+                    .children
+                    .push(tusk_model::elements::LanguageChild::Text(text));
+            }
+        }
+    }
+
+    Ok(language)
+}
+
+/// Parse a `<perfMedium>` element from within another element.
+fn parse_perf_medium_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PerfMedium> {
+    let mut perf_medium = PerfMedium::default();
+
+    // Extract attributes
+    perf_medium.common.extract_attributes(&mut attrs)?;
+    perf_medium.authorized.extract_attributes(&mut attrs)?;
+    perf_medium.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // perfMedium can contain: head*, annot*, castList*, perfResList*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("perfMedium")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    perf_medium
+                        .children
+                        .push(PerfMediumChild::Head(Box::new(head)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(perf_medium)
+}
+
+/// Parse a `<perfDuration>` element from within another element.
+fn parse_perf_duration_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PerfDuration> {
+    let mut perf_duration = PerfDuration::default();
+
+    // Extract attributes
+    perf_duration.common.extract_attributes(&mut attrs)?;
+    perf_duration.bibl.extract_attributes(&mut attrs)?;
+    perf_duration.facsimile.extract_attributes(&mut attrs)?;
+    perf_duration.lang.extract_attributes(&mut attrs)?;
+
+    // perfDuration has no children in the model
+    if !is_empty {
+        reader.skip_to_end("perfDuration")?;
+    }
+
+    Ok(perf_duration)
+}
+
+/// Parse an `<audience>` element from within another element.
+fn parse_audience_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Audience> {
+    let mut audience = Audience::default();
+
+    // Extract attributes
+    audience.common.extract_attributes(&mut attrs)?;
+    audience.authorized.extract_attributes(&mut attrs)?;
+    audience.bibl.extract_attributes(&mut attrs)?;
+    audience.lang.extract_attributes(&mut attrs)?;
+
+    // audience has no children in the model
+    if !is_empty {
+        reader.skip_to_end("audience")?;
+    }
+
+    Ok(audience)
+}
+
+/// Parse a `<contents>` element from within another element.
+fn parse_contents_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Contents> {
+    let mut contents = Contents::default();
+
+    // Extract attributes
+    contents.common.extract_attributes(&mut attrs)?;
+    contents.bibl.extract_attributes(&mut attrs)?;
+    contents.pointing.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // contents can contain: head*, p*, contentItem*, label*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("contents")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    contents.children.push(ContentsChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    contents.children.push(ContentsChild::P(Box::new(p)));
+                }
+                "label" => {
+                    let label = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    contents
+                        .children
+                        .push(ContentsChild::Label(Box::new(label)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(contents)
+}
+
+/// Parse a `<context>` element from within another element.
+fn parse_context_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Context> {
+    let mut context = Context::default();
+
+    // Extract attributes
+    context.common.extract_attributes(&mut attrs)?;
+    context.authorized.extract_attributes(&mut attrs)?;
+    context.bibl.extract_attributes(&mut attrs)?;
+    context.lang.extract_attributes(&mut attrs)?;
+
+    // context has no children in the model
+    if !is_empty {
+        reader.skip_to_end("context")?;
+    }
+
+    Ok(context)
+}
+
+/// Parse a `<biblList>` element from within another element.
+fn parse_bibl_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<BiblList> {
+    let mut bibl_list = BiblList::default();
+
+    // Extract attributes
+    bibl_list.common.extract_attributes(&mut attrs)?;
+    bibl_list.bibl.extract_attributes(&mut attrs)?;
+    bibl_list.facsimile.extract_attributes(&mut attrs)?;
+    bibl_list.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // biblList can contain: head*, bibl*, biblStruct*, label*, biblList*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("biblList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    bibl_list.children.push(BiblListChild::Head(Box::new(head)));
+                }
+                "bibl" => {
+                    let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                    bibl_list.children.push(BiblListChild::Bibl(Box::new(bibl)));
+                }
+                "biblStruct" => {
+                    let bibl_struct =
+                        parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                    bibl_list
+                        .children
+                        .push(BiblListChild::BiblStruct(Box::new(bibl_struct)));
+                }
+                "label" => {
+                    let label = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    bibl_list
+                        .children
+                        .push(BiblListChild::Label(Box::new(label)));
+                }
+                "biblList" => {
+                    let nested_bibl_list =
+                        parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    bibl_list
+                        .children
+                        .push(BiblListChild::BiblList(Box::new(nested_bibl_list)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(bibl_list)
+}
+
+/// Parse a `<notesStmt>` element from within another element.
+fn parse_notes_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<NotesStmt> {
+    let mut notes_stmt = NotesStmt::default();
+
+    // Extract attributes
+    notes_stmt.common.extract_attributes(&mut attrs)?;
+    notes_stmt.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // notesStmt can contain: head*, annot*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("notesStmt")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    notes_stmt
+                        .children
+                        .push(NotesStmtChild::Head(Box::new(head)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(notes_stmt)
+}
+
+/// Parse a `<classification>` element from within another element.
+fn parse_classification_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Classification> {
+    let mut classification = Classification::default();
+
+    // Extract attributes
+    classification.common.extract_attributes(&mut attrs)?;
+    classification.bibl.extract_attributes(&mut attrs)?;
+    classification
+        .data_pointing
+        .extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // classification can contain: head*, termList*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("classification")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    classification
+                        .children
+                        .push(ClassificationChild::Head(Box::new(head)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(classification)
+}
+
+/// Parse an `<expressionList>` element from within another element.
+fn parse_expression_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ExpressionList> {
+    let mut expression_list = ExpressionList::default();
+
+    // Extract attributes
+    expression_list.common.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // expressionList can contain: head*, expression+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("expressionList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    expression_list
+                        .children
+                        .push(ExpressionListChild::Head(Box::new(head)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(expression_list)
+}
+
+/// Parse a `<componentList>` element from within another element.
+fn parse_component_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ComponentList> {
+    let mut component_list = ComponentList::default();
+
+    // Extract attributes
+    component_list.common.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // componentList can contain: head*, work*, expression*, manifestation*, item*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("componentList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    component_list
+                        .children
+                        .push(ComponentListChild::Head(Box::new(head)));
+                }
+                "work" => {
+                    let work = parse_work_from_event(reader, child_attrs, child_empty)?;
+                    component_list
+                        .children
+                        .push(ComponentListChild::Work(Box::new(work)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(component_list)
+}
+
+/// Parse a `<relationList>` element from within another element.
+fn parse_relation_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<RelationList> {
+    let mut relation_list = RelationList::default();
+
+    // Extract attributes
+    relation_list.common.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // relationList can contain: head*, relation*, relationList*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("relationList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    relation_list
+                        .children
+                        .push(RelationListChild::Head(Box::new(head)));
+                }
+                "relationList" => {
+                    let nested = parse_relation_list_from_event(reader, child_attrs, child_empty)?;
+                    relation_list
+                        .children
+                        .push(RelationListChild::RelationList(Box::new(nested)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(relation_list)
+}
+
+/// Parse an `<extMeta>` element from within another element.
+fn parse_ext_meta_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ExtMeta> {
+    let mut ext_meta = ExtMeta::default();
+
+    // Extract attributes
+    ext_meta.common.extract_attributes(&mut attrs)?;
+    ext_meta.bibl.extract_attributes(&mut attrs)?;
+    ext_meta.whitespace.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("extMeta")? {
+            if !text.trim().is_empty() {
+                ext_meta
+                    .children
+                    .push(tusk_model::elements::ExtMetaChild::Text(text));
+            }
+        }
+    }
+
+    Ok(ext_meta)
+}
+
+/// Parse an `<otherChar>` element from within another element.
+fn parse_other_char_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<OtherChar> {
+    let mut other_char = OtherChar::default();
+
+    // Extract attributes
+    other_char.common.extract_attributes(&mut attrs)?;
+    other_char.bibl.extract_attributes(&mut attrs)?;
+    other_char.lang.extract_attributes(&mut attrs)?;
+
+    // otherChar has no children in the model
+    if !is_empty {
+        reader.skip_to_end("otherChar")?;
+    }
+
+    Ok(other_char)
+}
+
+/// Parse a `<key>` element from within another element.
+fn parse_key_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Key> {
+    let mut key = Key::default();
+
+    // Extract attributes
+    key.common.extract_attributes(&mut attrs)?;
+    key.accidental.extract_attributes(&mut attrs)?;
+    key.bibl.extract_attributes(&mut attrs)?;
+    key.key_mode.extract_attributes(&mut attrs)?;
+    key.pitch.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("key")? {
+            if !text.trim().is_empty() {
+                key.children
+                    .push(tusk_model::elements::KeyChild::Text(text));
+            }
+        }
+    }
+
+    Ok(key)
+}
+
+/// Parse a `<tempo>` element from within another element.
+fn parse_tempo_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Tempo> {
+    let mut tempo = Tempo::default();
+
+    // Extract attributes
+    tempo.common.extract_attributes(&mut attrs)?;
+    tempo.bibl.extract_attributes(&mut attrs)?;
+    tempo.facsimile.extract_attributes(&mut attrs)?;
+    tempo.lang.extract_attributes(&mut attrs)?;
+    tempo.tempo_anl.extract_attributes(&mut attrs)?;
+    tempo.tempo_ges.extract_attributes(&mut attrs)?;
+    tempo.tempo_log.extract_attributes(&mut attrs)?;
+    tempo.tempo_vis.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("tempo")? {
+            if !text.trim().is_empty() {
+                tempo
+                    .children
+                    .push(tusk_model::elements::TempoChild::Text(text));
+            }
+        }
+    }
+
+    Ok(tempo)
+}
+
+/// Parse a `<meter>` element from within another element.
+fn parse_meter_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Meter> {
+    let mut meter = Meter::default();
+
+    // Extract attributes
+    meter.common.extract_attributes(&mut attrs)?;
+    meter.bibl.extract_attributes(&mut attrs)?;
+    meter.lang.extract_attributes(&mut attrs)?;
+    meter.meter_sig_log.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("meter")? {
+            if !text.trim().is_empty() {
+                meter
+                    .children
+                    .push(tusk_model::elements::MeterChild::Text(text));
+            }
+        }
+    }
+
+    Ok(meter)
+}
+
+/// Parse a `<mensuration>` element from within another element.
+fn parse_mensuration_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Mensuration> {
+    let mut mensuration = Mensuration::default();
+
+    // Extract attributes
+    mensuration.common.extract_attributes(&mut attrs)?;
+    mensuration.bibl.extract_attributes(&mut attrs)?;
+    mensuration.lang.extract_attributes(&mut attrs)?;
+    mensuration.mensur_log.extract_attributes(&mut attrs)?;
+    mensuration.mensur_vis.extract_attributes(&mut attrs)?;
+
+    // Parse text content if not empty
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("mensuration")? {
+            if !text.trim().is_empty() {
+                mensuration
+                    .children
+                    .push(tusk_model::elements::MensurationChild::Text(text));
+            }
+        }
+    }
+
+    Ok(mensuration)
+}
+
+/// Parse an `<incip>` element from within another element.
+fn parse_incip_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Incip> {
+    let mut incip = Incip::default();
+
+    // Extract attributes
+    incip.common.extract_attributes(&mut attrs)?;
+    incip.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // incip can contain many child elements
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("incip")? {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Head(Box::new(head)));
+                }
+                "key" => {
+                    let key = parse_key_from_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Key(Box::new(key)));
+                }
+                "meter" => {
+                    let meter = parse_meter_from_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Meter(Box::new(meter)));
+                }
+                "tempo" => {
+                    let tempo = parse_tempo_from_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Tempo(Box::new(tempo)));
+                }
+                "mensuration" => {
+                    let mensuration =
+                        parse_mensuration_from_event(reader, child_attrs, child_empty)?;
+                    incip
+                        .children
+                        .push(IncipChild::Mensuration(Box::new(mensuration)));
+                }
+                "clef" => {
+                    let clef = parse_clef_from_event(reader, child_attrs, child_empty)?;
+                    incip.children.push(IncipChild::Clef(Box::new(clef)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(incip)
+}
+
+// ============================================================================
 // WorkList element implementation
 // ============================================================================
 
@@ -5640,11 +6536,11 @@ fn parse_work_from_event<R: BufRead>(
     // Remaining attributes are unknown - in lenient mode we ignore them
 
     // Read children if not an empty element
-    // work can contain: head*, componentList?, key*, tempo*, extMeta?, audience*,
-    // incip*, otherChar*, perfMedium*, dedication*, identifier*, respStmt*,
-    // meter*, langUsage*, contents*, biblList*, mensuration*, history*,
-    // creation*, perfDuration*, context*, notesStmt*, classification*,
-    // expressionList?, title*, relationList*
+    // work can contain: head*, identifier*, title+, respStmt?, dedication?,
+    // key*, tempo*, meter*, mensuration*, incip*, otherChar*, creation?,
+    // history?, langUsage?, perfMedium?, perfDuration?, audience?, contents?,
+    // context?, biblList*, notesStmt?, classification?, expressionList?,
+    // componentList?, relationList*, extMeta*
     if !is_empty {
         while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("work")? {
             match name.as_str() {
@@ -5665,8 +6561,113 @@ fn parse_work_from_event<R: BufRead>(
                     let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
                     work.children.push(WorkChild::RespStmt(Box::new(resp_stmt)));
                 }
-                // Other child elements can be added here as needed. For now,
-                // unknown children are skipped in lenient mode.
+                "dedication" => {
+                    let dedication = parse_dedication_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::Dedication(Box::new(dedication)));
+                }
+                "key" => {
+                    let key = parse_key_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Key(Box::new(key)));
+                }
+                "tempo" => {
+                    let tempo = parse_tempo_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Tempo(Box::new(tempo)));
+                }
+                "meter" => {
+                    let meter = parse_meter_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Meter(Box::new(meter)));
+                }
+                "mensuration" => {
+                    let mensuration =
+                        parse_mensuration_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::Mensuration(Box::new(mensuration)));
+                }
+                "incip" => {
+                    let incip = parse_incip_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Incip(Box::new(incip)));
+                }
+                "otherChar" => {
+                    let other_char = parse_other_char_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::OtherChar(Box::new(other_char)));
+                }
+                "creation" => {
+                    let creation = parse_creation_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Creation(Box::new(creation)));
+                }
+                "history" => {
+                    let history = parse_history_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::History(Box::new(history)));
+                }
+                "langUsage" => {
+                    let lang_usage = parse_lang_usage_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::LangUsage(Box::new(lang_usage)));
+                }
+                "perfMedium" => {
+                    let perf_medium =
+                        parse_perf_medium_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::PerfMedium(Box::new(perf_medium)));
+                }
+                "perfDuration" => {
+                    let perf_duration =
+                        parse_perf_duration_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::PerfDuration(Box::new(perf_duration)));
+                }
+                "audience" => {
+                    let audience = parse_audience_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Audience(Box::new(audience)));
+                }
+                "contents" => {
+                    let contents = parse_contents_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Contents(Box::new(contents)));
+                }
+                "context" => {
+                    let context = parse_context_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::Context(Box::new(context)));
+                }
+                "biblList" => {
+                    let bibl_list = parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::BiblList(Box::new(bibl_list)));
+                }
+                "notesStmt" => {
+                    let notes_stmt = parse_notes_stmt_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::NotesStmt(Box::new(notes_stmt)));
+                }
+                "classification" => {
+                    let classification =
+                        parse_classification_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::Classification(Box::new(classification)));
+                }
+                "expressionList" => {
+                    let expression_list =
+                        parse_expression_list_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::ExpressionList(Box::new(expression_list)));
+                }
+                "componentList" => {
+                    let component_list =
+                        parse_component_list_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::ComponentList(Box::new(component_list)));
+                }
+                "relationList" => {
+                    let relation_list =
+                        parse_relation_list_from_event(reader, child_attrs, child_empty)?;
+                    work.children
+                        .push(WorkChild::RelationList(Box::new(relation_list)));
+                }
+                "extMeta" => {
+                    let ext_meta = parse_ext_meta_from_event(reader, child_attrs, child_empty)?;
+                    work.children.push(WorkChild::ExtMeta(Box::new(ext_meta)));
+                }
+                // Unknown children are skipped in lenient mode
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -11005,5 +12006,569 @@ mod tests {
             }
             _ => panic!("expected WorkList"),
         }
+    }
+
+    // ========================================================================
+    // Work tests
+    // ========================================================================
+
+    #[test]
+    fn work_deserializes_empty() {
+        use tusk_model::elements::Work;
+
+        let xml = r#"<work/>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert!(work.common.xml_id.is_none());
+        assert!(work.children.is_empty());
+    }
+
+    #[test]
+    fn work_deserializes_with_xml_id() {
+        use tusk_model::elements::Work;
+
+        let xml = r#"<work xml:id="w1"/>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.common.xml_id, Some("w1".to_string()));
+    }
+
+    #[test]
+    fn work_deserializes_with_title() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Symphony No. 5</title>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 1);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_identifier() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <identifier>ISMN 979-0-1234-5678-9</identifier>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[0], WorkChild::Title(_)));
+        assert!(matches!(work.children[1], WorkChild::Identifier(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_resp_stmt() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <respStmt xml:id="rs1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::RespStmt(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_dedication() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <dedication>For my beloved</dedication>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Dedication(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_creation() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <creation>
+                <date isodate="1808">1808</date>
+            </creation>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Creation(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_history() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <history>
+                <p>Composed in Vienna.</p>
+            </history>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::History(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_lang_usage() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <langUsage>
+                <language xml:lang="de">German</language>
+            </langUsage>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::LangUsage(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_perf_medium() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <perfMedium>
+                <head>Instrumentation</head>
+            </perfMedium>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::PerfMedium(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_perf_duration() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <perfDuration xml:id="pd1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::PerfDuration(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_audience() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <audience xml:id="aud1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Audience(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_contents() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <contents>
+                <head>Contents</head>
+            </contents>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Contents(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_context() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <context xml:id="ctx1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Context(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_bibl_list() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <biblList>
+                <head>Bibliography</head>
+            </biblList>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::BiblList(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_notes_stmt() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <notesStmt>
+                <head>Notes</head>
+            </notesStmt>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::NotesStmt(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_classification() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <classification>
+                <head>Classification</head>
+            </classification>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Classification(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_expression_list() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <expressionList>
+                <head>Expressions</head>
+            </expressionList>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::ExpressionList(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_component_list() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <componentList>
+                <head>Components</head>
+            </componentList>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::ComponentList(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_relation_list() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <relationList>
+                <head>Relations</head>
+            </relationList>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::RelationList(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_ext_meta() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <extMeta xml:id="em1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::ExtMeta(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_other_char() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <otherChar xml:id="oc1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::OtherChar(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_key() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <key pname="c" mode="major">C major</key>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Key(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_tempo() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <tempo>Allegro</tempo>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Tempo(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_meter() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <meter count="4" unit="4">4/4</meter>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Meter(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_mensuration() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <mensuration xml:id="mens1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Mensuration(_)));
+    }
+
+    #[test]
+    fn work_deserializes_with_incip() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work>
+            <title>Test</title>
+            <incip xml:id="inc1">
+                <head>Incipit</head>
+            </incip>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.children.len(), 2);
+        assert!(matches!(work.children[1], WorkChild::Incip(_)));
+    }
+
+    #[test]
+    fn work_deserializes_full_example() {
+        use tusk_model::elements::{Work, WorkChild};
+
+        let xml = r#"<work xml:id="w1">
+            <head>Work Information</head>
+            <identifier>TEST-001</identifier>
+            <title>Symphony No. 5 in C minor</title>
+            <respStmt xml:id="rs1"/>
+            <dedication>For the Prince</dedication>
+            <key pname="c" mode="minor"/>
+            <tempo>Allegro con brio</tempo>
+            <meter count="2" unit="4"/>
+            <creation>
+                <date isodate="1808">1808</date>
+            </creation>
+            <history>
+                <p>Premiered in Vienna.</p>
+            </history>
+            <langUsage>
+                <language xml:lang="de">German</language>
+            </langUsage>
+            <perfMedium>
+                <head>Orchestra</head>
+            </perfMedium>
+            <audience xml:id="aud1"/>
+            <contents>
+                <head>Movements</head>
+            </contents>
+            <context xml:id="ctx1"/>
+            <biblList>
+                <head>Bibliography</head>
+            </biblList>
+            <notesStmt>
+                <head>Notes</head>
+            </notesStmt>
+            <classification>
+                <head>Classification</head>
+            </classification>
+            <expressionList>
+                <head>Expressions</head>
+            </expressionList>
+            <componentList>
+                <head>Components</head>
+            </componentList>
+            <relationList>
+                <head>Relations</head>
+            </relationList>
+            <extMeta xml:id="em1"/>
+        </work>"#;
+        let work = Work::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(work.common.xml_id, Some("w1".to_string()));
+        // Should have multiple children
+        assert!(work.children.len() > 10);
+
+        // Verify specific children
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Head(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Title(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Identifier(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::RespStmt(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Dedication(_)))
+        );
+        assert!(work.children.iter().any(|c| matches!(c, WorkChild::Key(_))));
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Tempo(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Meter(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Creation(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::History(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::LangUsage(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::PerfMedium(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Audience(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Contents(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Context(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::BiblList(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::NotesStmt(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::Classification(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::ExpressionList(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::ComponentList(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::RelationList(_)))
+        );
+        assert!(
+            work.children
+                .iter()
+                .any(|c| matches!(c, WorkChild::ExtMeta(_)))
+        );
     }
 }
