@@ -844,3 +844,344 @@ fn test_parse_empty_document_returns_error() {
     let result = parse_score_partwise(xml);
     assert!(result.is_err());
 }
+
+// ============================================================================
+// Score-Timewise Tests
+// ============================================================================
+
+#[test]
+fn test_parse_minimal_score_timewise() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-timewise PUBLIC "-//Recordare//DTD MusicXML 4.0 Timewise//EN" "http://www.musicxml.org/dtds/timewise.dtd">
+<score-timewise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1">
+    <part id="P1">
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    assert_eq!(score.version, Some("4.0".to_string()));
+    assert_eq!(score.part_list.items.len(), 1);
+    assert_eq!(score.parts.len(), 1);
+
+    // Check part-list
+    match &score.part_list.items[0] {
+        PartListItem::ScorePart(sp) => {
+            assert_eq!(sp.id, "P1");
+            assert_eq!(sp.part_name.value, "Piano");
+        }
+        _ => panic!("Expected ScorePart"),
+    }
+
+    // Check converted part structure
+    assert_eq!(score.parts[0].id, "P1");
+    assert_eq!(score.parts[0].measures.len(), 1);
+    assert_eq!(score.parts[0].measures[0].number, "1");
+}
+
+#[test]
+fn test_parse_score_timewise_multiple_parts() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-timewise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Violin</part-name>
+    </score-part>
+    <score-part id="P2">
+      <part-name>Cello</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1">
+    <part id="P1">
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+    <part id="P2">
+      <note>
+        <pitch>
+          <step>G</step>
+          <octave>3</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    assert_eq!(score.parts.len(), 2);
+
+    // Check Violin part
+    assert_eq!(score.parts[0].id, "P1");
+    assert_eq!(score.parts[0].measures.len(), 1);
+    assert_eq!(score.parts[0].measures[0].number, "1");
+    assert_eq!(score.parts[0].measures[0].content.len(), 1);
+
+    match &score.parts[0].measures[0].content[0] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => {
+                assert_eq!(pitch.step, Step::C);
+                assert_eq!(pitch.octave, 5);
+            }
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+
+    // Check Cello part
+    assert_eq!(score.parts[1].id, "P2");
+    assert_eq!(score.parts[1].measures.len(), 1);
+
+    match &score.parts[1].measures[0].content[0] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => {
+                assert_eq!(pitch.step, Step::G);
+                assert_eq!(pitch.octave, 3);
+            }
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_score_timewise_multiple_measures() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-timewise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1">
+    <part id="P1">
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+  </measure>
+  <measure number="2">
+    <part id="P1">
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+  </measure>
+  <measure number="3">
+    <part id="P1">
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    assert_eq!(score.parts.len(), 1);
+    assert_eq!(score.parts[0].measures.len(), 3);
+
+    // Measure 1
+    assert_eq!(score.parts[0].measures[0].number, "1");
+    match &score.parts[0].measures[0].content[0] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => assert_eq!(pitch.step, Step::C),
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+
+    // Measure 2
+    assert_eq!(score.parts[0].measures[1].number, "2");
+    match &score.parts[0].measures[1].content[0] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => assert_eq!(pitch.step, Step::D),
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+
+    // Measure 3
+    assert_eq!(score.parts[0].measures[2].number, "3");
+    match &score.parts[0].measures[2].content[0] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => assert_eq!(pitch.step, Step::E),
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_score_timewise_with_header() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-timewise version="4.0">
+  <work>
+    <work-title>Test Timewise Score</work-title>
+  </work>
+  <identification>
+    <creator type="composer">Test Composer</creator>
+  </identification>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1">
+    <part id="P1">
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    // Verify header is preserved
+    let work = score.work.as_ref().expect("work missing");
+    assert_eq!(work.work_title, Some("Test Timewise Score".to_string()));
+
+    let ident = score
+        .identification
+        .as_ref()
+        .expect("identification missing");
+    assert_eq!(ident.creators.len(), 1);
+    assert_eq!(ident.creators[0].value, "Test Composer");
+}
+
+#[test]
+fn test_parse_score_timewise_preserves_measure_attributes() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-timewise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1" implicit="yes" width="200.5">
+    <part id="P1">
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+    assert_eq!(measure.number, "1");
+    assert_eq!(measure.implicit, Some(YesNo::Yes));
+    assert_eq!(measure.width, Some(200.5));
+}
+
+#[test]
+fn test_parse_score_timewise_with_complex_content() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-timewise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <measure number="1">
+    <part id="P1">
+      <attributes>
+        <divisions>1</divisions>
+        <key>
+          <fifths>0</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <direction placement="above">
+        <direction-type>
+          <dynamics>
+            <f/>
+          </dynamics>
+        </direction-type>
+      </direction>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+      </note>
+    </part>
+  </measure>
+</score-timewise>"#;
+
+    let score = parse_score_timewise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+    assert_eq!(measure.content.len(), 3); // attributes, direction, note
+
+    // Verify attributes
+    match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => {
+            assert_eq!(attrs.divisions, Some(1.0));
+        }
+        _ => panic!("Expected Attributes"),
+    }
+
+    // Verify direction
+    match &measure.content[1] {
+        MeasureContent::Direction(dir) => {
+            assert_eq!(dir.placement, Some(AboveBelow::Above));
+        }
+        _ => panic!("Expected Direction"),
+    }
+
+    // Verify note
+    match &measure.content[2] {
+        MeasureContent::Note(note) => match &note.content {
+            FullNoteContent::Pitch(pitch) => assert_eq!(pitch.step, Step::C),
+            _ => panic!("Expected Pitch"),
+        },
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_missing_score_timewise_returns_error() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<not-a-score>
+</not-a-score>"#;
+
+    let result = parse_score_timewise(xml);
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), ParseError::MissingElement(_)));
+}

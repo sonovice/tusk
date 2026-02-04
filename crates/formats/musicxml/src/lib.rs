@@ -26,7 +26,7 @@ pub mod versions;
 
 // Re-export commonly used types
 pub use model::*;
-pub use parser::{ParseError, parse_score_partwise};
+pub use parser::{ParseError, parse_score_partwise, parse_score_timewise};
 
 #[cfg(test)]
 mod tests {

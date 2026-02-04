@@ -1,10 +1,15 @@
-//! MusicXML parser for score-partwise documents.
+//! MusicXML parser for score-partwise and score-timewise documents.
 //!
 //! This module provides parsing functionality for MusicXML files,
 //! converting XML into the intermediate MusicXML model types.
+//!
+//! Both document formats are supported:
+//! - `score-partwise`: Parts contain measures (most common)
+//! - `score-timewise`: Measures contain parts (converted to partwise internally)
 
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
+use std::collections::HashMap;
 use std::io::BufRead;
 use thiserror::Error;
 
@@ -64,6 +69,16 @@ pub fn parse_score_partwise(xml: &str) -> Result<ScorePartwise> {
     parse_score_partwise_from_reader(&mut reader)
 }
 
+/// Parse a MusicXML score-timewise document from a string.
+///
+/// The timewise document is converted to partwise format internally,
+/// as ScorePartwise is the canonical representation.
+pub fn parse_score_timewise(xml: &str) -> Result<ScorePartwise> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    parse_score_timewise_from_reader(&mut reader)
+}
+
 /// Parse a MusicXML score-partwise document from a reader.
 pub fn parse_score_partwise_from_reader<R: BufRead>(
     reader: &mut Reader<R>,
@@ -83,6 +98,36 @@ pub fn parse_score_partwise_from_reader<R: BufRead>(
             }
             Event::Eof => {
                 return Err(ParseError::MissingElement("score-partwise".to_string()));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(score)
+}
+
+/// Parse a MusicXML score-timewise document from a reader.
+///
+/// Converts to partwise format during parsing.
+pub fn parse_score_timewise_from_reader<R: BufRead>(
+    reader: &mut Reader<R>,
+) -> Result<ScorePartwise> {
+    let mut buf = Vec::new();
+    let mut score = ScorePartwise::default();
+
+    // Find the root element
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) if e.name().as_ref() == b"score-timewise" => {
+                // Parse version attribute
+                score.version = get_attr(&e, "version")?;
+                // Parse content and convert to partwise
+                parse_score_timewise_content(reader, &mut score)?;
+                break;
+            }
+            Event::Eof => {
+                return Err(ParseError::MissingElement("score-timewise".to_string()));
             }
             _ => {}
         }
@@ -121,7 +166,9 @@ fn parse_score_partwise_content<R: BufRead>(
             Event::Empty(e) => {
                 // Handle empty elements if needed
                 let name = e.name();
-                if name.as_ref() == b"credit" { score.credits.push(parse_credit_empty(&e)?) }
+                if name.as_ref() == b"credit" {
+                    score.credits.push(parse_credit_empty(&e)?)
+                }
             }
             Event::End(e) if e.name().as_ref() == b"score-partwise" => break,
             Event::Eof => return Err(ParseError::MissingElement("score-partwise end".to_string())),
@@ -131,6 +178,227 @@ fn parse_score_partwise_content<R: BufRead>(
     }
 
     Ok(())
+}
+
+/// Parse score-timewise content and convert to partwise format.
+///
+/// In timewise format, the structure is:
+/// ```xml
+/// <score-timewise>
+///   <part-list>...</part-list>
+///   <measure number="1">
+///     <part id="P1">...</part>
+///     <part id="P2">...</part>
+///   </measure>
+///   <measure number="2">
+///     ...
+///   </measure>
+/// </score-timewise>
+/// ```
+///
+/// This is converted to partwise format where each part contains its measures.
+fn parse_score_timewise_content<R: BufRead>(
+    reader: &mut Reader<R>,
+    score: &mut ScorePartwise,
+) -> Result<()> {
+    let mut buf = Vec::new();
+
+    // Collect measures in timewise format, then reorganize to partwise
+    // Key: part_id, Value: list of measures for that part
+    let mut part_measures: HashMap<String, Vec<Measure>> = HashMap::new();
+    // Track part order from part-list
+    let mut part_order: Vec<String> = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => {
+                let name = e.name();
+                match name.as_ref() {
+                    b"work" => score.work = Some(parse_work(reader)?),
+                    b"movement-number" => {
+                        score.movement_number = Some(read_text(reader, b"movement-number")?)
+                    }
+                    b"movement-title" => {
+                        score.movement_title = Some(read_text(reader, b"movement-title")?)
+                    }
+                    b"identification" => score.identification = Some(parse_identification(reader)?),
+                    b"defaults" => score.defaults = Some(parse_defaults(reader)?),
+                    b"credit" => score.credits.push(parse_credit(reader, &e)?),
+                    b"part-list" => {
+                        score.part_list = parse_part_list(reader)?;
+                        // Extract part IDs in order
+                        for item in &score.part_list.items {
+                            if let PartListItem::ScorePart(sp) = item {
+                                part_order.push(sp.id.clone());
+                                part_measures.insert(sp.id.clone(), Vec::new());
+                            }
+                        }
+                    }
+                    b"measure" => {
+                        parse_timewise_measure(reader, &e, &mut part_measures)?;
+                    }
+                    _ => skip_element(reader, &e)?,
+                }
+            }
+            Event::Empty(e) => {
+                let name = e.name();
+                if name.as_ref() == b"credit" {
+                    score.credits.push(parse_credit_empty(&e)?)
+                }
+            }
+            Event::End(e) if e.name().as_ref() == b"score-timewise" => break,
+            Event::Eof => return Err(ParseError::MissingElement("score-timewise end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    // Convert collected timewise data to partwise format
+    for part_id in part_order {
+        let measures = part_measures.remove(&part_id).unwrap_or_default();
+        score.parts.push(Part {
+            id: part_id,
+            measures,
+        });
+    }
+
+    Ok(())
+}
+
+/// Parse a single measure in timewise format.
+///
+/// A timewise measure contains parts as children:
+/// ```xml
+/// <measure number="1" width="200">
+///   <part id="P1">
+///     <note>...</note>
+///   </part>
+///   <part id="P2">
+///     <note>...</note>
+///   </part>
+/// </measure>
+/// ```
+fn parse_timewise_measure<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+    part_measures: &mut HashMap<String, Vec<Measure>>,
+) -> Result<()> {
+    let mut buf = Vec::new();
+
+    // Parse measure attributes
+    let measure_number = get_attr_required(start, "number")?;
+    let implicit = get_attr(start, "implicit")?.and_then(|s| match s.as_str() {
+        "yes" => Some(YesNo::Yes),
+        "no" => Some(YesNo::No),
+        _ => None,
+    });
+    let non_controlling = get_attr(start, "non-controlling")?.and_then(|s| match s.as_str() {
+        "yes" => Some(YesNo::Yes),
+        "no" => Some(YesNo::No),
+        _ => None,
+    });
+    let width = get_attr(start, "width")?.and_then(|s| s.parse().ok());
+    let measure_id = get_attr(start, "id")?;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => {
+                if e.name().as_ref() == b"part" {
+                    let part_id = get_attr_required(&e, "id")?;
+                    let content = parse_timewise_part_content(reader)?;
+
+                    // Create measure for this part
+                    let measure = Measure {
+                        number: measure_number.clone(),
+                        implicit,
+                        non_controlling,
+                        width,
+                        id: measure_id.clone(),
+                        content,
+                    };
+
+                    // Add to part's measures
+                    if let Some(measures) = part_measures.get_mut(&part_id) {
+                        measures.push(measure);
+                    } else {
+                        // Part not in part-list, create entry
+                        part_measures.insert(part_id, vec![measure]);
+                    }
+                } else {
+                    skip_element(reader, &e)?;
+                }
+            }
+            Event::Empty(e) => {
+                // Handle empty <part id="..."/> elements
+                if e.name().as_ref() == b"part" {
+                    let part_id = get_attr_required(&e, "id")?;
+                    let measure = Measure {
+                        number: measure_number.clone(),
+                        implicit,
+                        non_controlling,
+                        width,
+                        id: measure_id.clone(),
+                        content: Vec::new(),
+                    };
+
+                    if let Some(measures) = part_measures.get_mut(&part_id) {
+                        measures.push(measure);
+                    } else {
+                        part_measures.insert(part_id, vec![measure]);
+                    }
+                }
+            }
+            Event::End(e) if e.name().as_ref() == b"measure" => break,
+            Event::Eof => return Err(ParseError::MissingElement("measure end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(())
+}
+
+/// Parse the content of a part element within a timewise measure.
+///
+/// This is the same content as in partwise measure elements:
+/// notes, rests, attributes, directions, etc.
+fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec<MeasureContent>> {
+    let mut buf = Vec::new();
+    let mut content = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"note" => content.push(MeasureContent::Note(Box::new(parse_note(reader, &e)?))),
+                b"backup" => content.push(MeasureContent::Backup(Box::new(parse_backup(reader)?))),
+                b"forward" => {
+                    content.push(MeasureContent::Forward(Box::new(parse_forward(reader)?)))
+                }
+                b"attributes" => content.push(MeasureContent::Attributes(Box::new(
+                    parse_attributes(reader)?,
+                ))),
+                b"direction" => content.push(MeasureContent::Direction(Box::new(parse_direction(
+                    reader, &e,
+                )?))),
+                b"barline" => {
+                    content.push(MeasureContent::Barline(Box::new(BarlinePlaceholder)));
+                    skip_element(reader, &e)?;
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) => {
+                if e.name().as_ref() == b"barline" {
+                    content.push(MeasureContent::Barline(Box::new(BarlinePlaceholder)));
+                }
+            }
+            Event::End(e) if e.name().as_ref() == b"part" => break,
+            Event::Eof => return Err(ParseError::MissingElement("part end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(content)
 }
 
 fn parse_work<R: BufRead>(reader: &mut Reader<R>) -> Result<Work> {
@@ -1059,9 +1327,11 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
             }
             Event::Empty(e) => {
                 // Handle empty note elements (rare but possible)
-                if e.name().as_ref() == b"barline" { measure
-                .content
-                .push(MeasureContent::Barline(Box::new(BarlinePlaceholder))) }
+                if e.name().as_ref() == b"barline" {
+                    measure
+                        .content
+                        .push(MeasureContent::Barline(Box::new(BarlinePlaceholder)))
+                }
             }
             Event::End(e) if e.name().as_ref() == b"measure" => break,
             Event::Eof => return Err(ParseError::MissingElement("measure end".to_string())),
