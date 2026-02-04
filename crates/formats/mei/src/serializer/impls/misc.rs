@@ -8,12 +8,12 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::att::{
     AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis, AttCalendared,
-    AttClassed, AttColor, AttCommon, AttDatable, AttEdit, AttEvidence, AttExtSymAuth, AttFacsimile,
-    AttFiling, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
-    AttLabelled, AttLinking, AttMeiVersion, AttMetadataPointing, AttNInteger, AttNNumberLike,
-    AttName, AttPointing, AttResponsibility, AttSource, AttTargetEval, AttTextRendition,
-    AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped, AttTypography,
-    AttVerticalAlign, AttWhitespace, AttXy,
+    AttClassed, AttColor, AttCommon, AttDataPointing, AttDatable, AttEdit, AttEvidence,
+    AttExtSymAuth, AttFacsimile, AttFiling, AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog,
+    AttGraceGrpVis, AttHorizontalAlign, AttLabelled, AttLinking, AttMeiVersion,
+    AttMetadataPointing, AttNInteger, AttNNumberLike, AttName, AttPointing, AttResponsibility,
+    AttSource, AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog,
+    AttTupletVis, AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{Beam, BeamChild, GraceGrp, GraceGrpChild, Tuplet, TupletChild};
 
@@ -407,6 +407,14 @@ impl CollectAttributes for AttName {
         }
         push_attr!(attrs, "nymref", self.nymref);
         push_attr!(attrs, "role", vec self.role);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttDataPointing {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "data", vec self.data);
         attrs
     }
 }
