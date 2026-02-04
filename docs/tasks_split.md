@@ -55,7 +55,7 @@ Target: `crates/formats/mei/src/roundtrip_tests.rs` → split into `roundtrip_te
 
 Target: `crates/core/convert/src/musicxml_to_mei.rs` → split into `musicxml_to_mei/` submodules
 
-- [ ] Extract note/rest/chord conversion → `musicxml_to_mei/note.rs`
+- [x] Extract note/rest/chord conversion → `musicxml_to_mei/note.rs`
 - [ ] Extract key/time/clef/divisions conversion → `musicxml_to_mei/attributes.rs`
 - [ ] Extract direction/dynamics/tempo conversion → `musicxml_to_mei/direction.rs`
 - [ ] Extract measure/part/score structure conversion → `musicxml_to_mei/structure.rs`
