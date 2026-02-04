@@ -30,12 +30,21 @@ tusk/
 │   │   └── wasm/                     # WASM bindings (wasm-bindgen)
 │   ├── core/
 │   │   ├── model/                    # Internal MEI-based model (version-agnostic)
+│   │   │   └── src/
+│   │   │       ├── lib.rs
+│   │   │       └── generated/        # Generated from MEI ODD specs
+│   │   │           ├── mod.rs
+│   │   │           ├── att/          # Attribute classes (att.duration.log → AttDurationLog)
+│   │   │           ├── elements/     # Elements (note → Note)
+│   │   │           └── data.rs       # Data types (data.DURATION → DataDuration)
 │   │   └── convert/                  # Conversion layer (MusicXML ↔ MEI)
 │   └── formats/
 │       ├── mei/                      # MEI parsing/serialization
 │       │   └── src/versions/         # Version-specific (5.1, 5.0, 4.0.1, 3.0.0)
 │       └── musicxml/                 # MusicXML parsing/serialization
 │           └── src/versions/         # Version-specific (4.0, 3.1, 3.0, 2.0)
+├── tools/
+│   └── mei-codegen/                  # ODD → Rust code generator
 ├── docs/                             # Requirements & architecture docs
 └── tests/                            # Integration & round-trip tests
     └── fixtures/                     # Test files for each version
@@ -48,11 +57,11 @@ tusk/
 ### Phase 1: Foundation & Code Generation
 - Cargo workspace setup with all crates
 - Requirements documentation in `docs/requirements.md`
-- **MEI ODD code generator** (`tools/mei-codegen/`): Parse ODD specs → generate Rust types
-- Generate core model from `specs/mei/modules/*.xml`:
-  - Data types from `macroSpec` → Rust enums
-  - Attribute classes from `classSpec type="atts"` → Rust structs
-  - Elements from `elementSpec` → Rust structs with attribute class composition
+- **MEI ODD code generator** (`tools/mei-codegen/`): DONE - parses ODD specs, generates Rust types
+- Generate core model to `crates/core/model/src/generated/`:
+  - Data types from `macroSpec` → Rust enums (`generated/data.rs`)
+  - Attribute classes from `classSpec type="atts"` → Rust structs (`generated/att/`)
+  - Elements from `elementSpec` → Rust structs with attribute class composition (`generated/elements/`)
 - Unit test infrastructure with coverage
 
 ### Phase 2: MEI CMN Module

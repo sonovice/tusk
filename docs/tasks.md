@@ -166,6 +166,7 @@ Tasks for implementing the MusicXML ↔ MEI converter. Each task should be compl
 - [x] Convert MEI control events to MusicXML directions
 - [ ] Handle MEI duration → MusicXML divisions conversion
 - [ ] Add MEI → MusicXML conversion tests
+- [ ] Add tests against `specs/musicxml/examples/`
 
 ### 4.5 Round-Trip Testing
 - [ ] Create round-trip test: MusicXML → MEI → MusicXML
