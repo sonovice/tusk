@@ -15,6 +15,8 @@ mod misc;
 mod note;
 mod structure;
 
+// Header module is now a directory with submodules
+
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
 pub(crate) fn to_attr_string<T: Serialize>(v: &T) -> Option<String> {
