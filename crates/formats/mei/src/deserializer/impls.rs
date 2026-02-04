@@ -26,13 +26,14 @@ use tusk_model::att::{
     AttStaffAnl, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis, AttStaffGes,
     AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis, AttStaffLog, AttStaffVis,
     AttTargetEval, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
-    AttTieLog, AttTieVis, AttTyped,
+    AttTieLog, AttTieVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
 };
 use tusk_model::elements::{
     Accid, Artic, Beam, BeamChild, Chord, ChordChild, Clef, Dir, Dot, Dynam, Fermata, Hairpin,
     InstrDef, Label, Layer, LayerChild, LayerDef, LayerDefChild, Mdiv, MdivChild, Measure,
     MeasureChild, Note, NoteChild, Rest, RestChild, ScoreDef, ScoreDefChild, Section, SectionChild,
     Slur, Space, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie,
+    Tuplet, TupletChild,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -1423,6 +1424,55 @@ impl ExtractAttributes for AttBeamAnl {
     }
 }
 
+impl ExtractAttributes for AttTupletLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam.with", self.beam_with);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "num", self.num);
+        extract_attr!(attrs, "numbase", self.numbase);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "num.place", self.num_place);
+        extract_attr!(attrs, "num.visible", self.num_visible);
+        extract_attr!(attrs, "bracket.place", self.bracket_place);
+        extract_attr!(attrs, "bracket.visible", self.bracket_visible);
+        extract_attr!(attrs, "num.format", self.num_format);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTupletAnl has no attributes
+        Ok(())
+    }
+}
+
 impl ExtractAttributes for AttSlurLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -2393,6 +2443,10 @@ impl MeiDeserialize for Layer {
                         let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::Beam(Box::new(beam)));
                     }
+                    "tuplet" => {
+                        let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Tuplet(Box::new(tuplet)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -3356,7 +3410,11 @@ impl MeiDeserialize for Beam {
                         let nested_beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
                         beam.children.push(BeamChild::Beam(Box::new(nested_beam)));
                     }
-                    // Other child types (clef, tuplet, etc.) can be added here as needed
+                    "tuplet" => {
+                        let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Tuplet(Box::new(tuplet)));
+                    }
+                    // Other child types (clef, etc.) can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
                         if !child_empty {
@@ -3368,6 +3426,77 @@ impl MeiDeserialize for Beam {
         }
 
         Ok(beam)
+    }
+}
+
+impl MeiDeserialize for Tuplet {
+    fn element_name() -> &'static str {
+        "tuplet"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut tuplet = Tuplet::default();
+
+        // Extract attributes into each attribute class
+        tuplet.common.extract_attributes(&mut attrs)?;
+        tuplet.facsimile.extract_attributes(&mut attrs)?;
+        tuplet.tuplet_log.extract_attributes(&mut attrs)?;
+        tuplet.tuplet_vis.extract_attributes(&mut attrs)?;
+        tuplet.tuplet_ges.extract_attributes(&mut attrs)?;
+        tuplet.tuplet_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Read children if not empty
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("tuplet")?
+            {
+                match name.as_str() {
+                    "note" => {
+                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::Note(Box::new(note)));
+                    }
+                    "rest" => {
+                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::Rest(Box::new(rest)));
+                    }
+                    "chord" => {
+                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::Chord(Box::new(chord)));
+                    }
+                    "space" => {
+                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::Space(Box::new(space)));
+                    }
+                    "beam" => {
+                        let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::Beam(Box::new(beam)));
+                    }
+                    "tuplet" => {
+                        // Nested tuplets are allowed
+                        let nested_tuplet =
+                            Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet
+                            .children
+                            .push(TupletChild::Tuplet(Box::new(nested_tuplet)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(tuplet)
     }
 }
 
@@ -5994,6 +6123,336 @@ mod tests {
                 assert_eq!(beam.children.len(), 2);
             }
             _ => panic!("Expected beam child"),
+        }
+    }
+
+    // ===== Tuplet element tests =====
+
+    #[test]
+    fn tuplet_deserializes_from_empty_element() {
+        let xml = r#"<tuplet/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tuplet.common.xml_id.is_none());
+        assert!(tuplet.children.is_empty());
+    }
+
+    #[test]
+    fn tuplet_deserializes_xml_id() {
+        let xml = r#"<tuplet xml:id="t1"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+    }
+
+    #[test]
+    fn tuplet_deserializes_num_and_numbase() {
+        let xml = r#"<tuplet num="3" numbase="2"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_log.num, Some(3));
+        assert_eq!(tuplet.tuplet_log.numbase, Some(2));
+    }
+
+    #[test]
+    fn tuplet_deserializes_with_note_children() {
+        let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+            <note xml:id="n1" pname="c" oct="4" dur="8"/>
+            <note xml:id="n2" pname="d" oct="4" dur="8"/>
+            <note xml:id="n3" pname="e" oct="4" dur="8"/>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+        assert_eq!(tuplet.tuplet_log.num, Some(3));
+        assert_eq!(tuplet.tuplet_log.numbase, Some(2));
+        assert_eq!(tuplet.children.len(), 3);
+
+        // Check all children are notes
+        for (i, child) in tuplet.children.iter().enumerate() {
+            match child {
+                TupletChild::Note(note) => {
+                    assert_eq!(note.common.xml_id, Some(format!("n{}", i + 1)));
+                }
+                _ => panic!("Expected note child at position {}", i),
+            }
+        }
+    }
+
+    #[test]
+    fn tuplet_deserializes_with_mixed_children() {
+        let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+            <note xml:id="n1" pname="c" oct="4" dur="8"/>
+            <rest xml:id="r1" dur="8"/>
+            <chord xml:id="ch1" dur="8">
+                <note pname="e" oct="4"/>
+                <note pname="g" oct="4"/>
+            </chord>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.children.len(), 3);
+
+        match &tuplet.children[0] {
+            TupletChild::Note(_) => {}
+            _ => panic!("Expected note"),
+        }
+        match &tuplet.children[1] {
+            TupletChild::Rest(_) => {}
+            _ => panic!("Expected rest"),
+        }
+        match &tuplet.children[2] {
+            TupletChild::Chord(_) => {}
+            _ => panic!("Expected chord"),
+        }
+    }
+
+    #[test]
+    fn tuplet_deserializes_nested_tuplets() {
+        let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+            <note xml:id="n1" dur="8"/>
+            <tuplet xml:id="t2" num="5" numbase="4">
+                <note xml:id="n2" dur="16"/>
+                <note xml:id="n3" dur="16"/>
+                <note xml:id="n4" dur="16"/>
+                <note xml:id="n5" dur="16"/>
+                <note xml:id="n6" dur="16"/>
+            </tuplet>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+        assert_eq!(tuplet.children.len(), 2);
+
+        match &tuplet.children[1] {
+            TupletChild::Tuplet(nested) => {
+                assert_eq!(nested.common.xml_id, Some("t2".to_string()));
+                assert_eq!(nested.tuplet_log.num, Some(5));
+                assert_eq!(nested.tuplet_log.numbase, Some(4));
+                assert_eq!(nested.children.len(), 5);
+            }
+            _ => panic!("Expected nested tuplet"),
+        }
+    }
+
+    #[test]
+    fn tuplet_deserializes_staff_attribute() {
+        let xml = r#"<tuplet staff="1"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_log.staff, vec![1]);
+    }
+
+    #[test]
+    fn tuplet_deserializes_layer_attribute() {
+        let xml = r#"<tuplet layer="1"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_log.layer, vec![1]);
+    }
+
+    #[test]
+    fn tuplet_deserializes_dur_attribute() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        let xml = r#"<tuplet dur="8"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            tuplet.tuplet_log.dur,
+            vec![DataDuration::DataDurationCmn(DataDurationCmn::N8)]
+        );
+    }
+
+    #[test]
+    fn tuplet_deserializes_bracket_visible_attribute() {
+        use tusk_model::data::DataBoolean;
+
+        let xml = r#"<tuplet bracket.visible="true"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_vis.bracket_visible, Some(DataBoolean::True));
+
+        let xml = r#"<tuplet bracket.visible="false"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_vis.bracket_visible, Some(DataBoolean::False));
+    }
+
+    #[test]
+    fn tuplet_deserializes_bracket_place_attribute() {
+        use tusk_model::data::DataStaffrelBasic;
+
+        let xml = r#"<tuplet bracket.place="above"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            tuplet.tuplet_vis.bracket_place,
+            Some(DataStaffrelBasic::Above)
+        );
+
+        let xml = r#"<tuplet bracket.place="below"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            tuplet.tuplet_vis.bracket_place,
+            Some(DataStaffrelBasic::Below)
+        );
+    }
+
+    #[test]
+    fn tuplet_deserializes_num_place_attribute() {
+        use tusk_model::data::DataStaffrelBasic;
+
+        let xml = r#"<tuplet num.place="above"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_vis.num_place, Some(DataStaffrelBasic::Above));
+    }
+
+    #[test]
+    fn tuplet_deserializes_num_visible_attribute() {
+        use tusk_model::data::DataBoolean;
+
+        let xml = r#"<tuplet num.visible="true"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.tuplet_vis.num_visible, Some(DataBoolean::True));
+    }
+
+    #[test]
+    fn tuplet_deserializes_num_format_attribute() {
+        use tusk_model::att::AttTupletVisNumFormat;
+
+        let xml = r#"<tuplet num.format="count"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            tuplet.tuplet_vis.num_format,
+            Some(AttTupletVisNumFormat::Count)
+        );
+
+        let xml = r#"<tuplet num.format="ratio"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(
+            tuplet.tuplet_vis.num_format,
+            Some(AttTupletVisNumFormat::Ratio)
+        );
+    }
+
+    #[test]
+    fn tuplet_deserializes_color_attribute() {
+        let xml = r#"<tuplet color="red"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tuplet.tuplet_vis.color.is_some());
+    }
+
+    #[test]
+    fn tuplet_handles_unknown_attributes_leniently() {
+        let xml = r#"<tuplet xml:id="t1" unknown="value"/>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+    }
+
+    #[test]
+    fn tuplet_handles_unknown_children_leniently() {
+        let xml = r#"<tuplet xml:id="t1">
+            <unknown>content</unknown>
+            <note xml:id="n1" dur="8"/>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+        // Unknown element should be skipped, only note remains
+        assert_eq!(tuplet.children.len(), 1);
+    }
+
+    #[test]
+    fn tuplet_deserializes_all_common_attributes() {
+        let xml = r#"<tuplet
+            xml:id="t1"
+            label="triplet"
+            n="1"
+            num="3"
+            numbase="2"
+            staff="1"
+            layer="1"
+            bracket.visible="true"
+            bracket.place="above"
+            num.visible="true"
+            num.place="above"
+            num.format="ratio"
+        />"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+        assert_eq!(tuplet.common.label, Some("triplet".to_string()));
+    }
+
+    #[test]
+    fn tuplet_inside_layer_deserializes() {
+        let xml = r#"<layer xml:id="l1">
+            <tuplet xml:id="t1" num="3" numbase="2">
+                <note xml:id="n1" dur="8"/>
+                <note xml:id="n2" dur="8"/>
+                <note xml:id="n3" dur="8"/>
+            </tuplet>
+        </layer>"#;
+        let layer = Layer::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(layer.children.len(), 1);
+
+        match &layer.children[0] {
+            LayerChild::Tuplet(tuplet) => {
+                assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+                assert_eq!(tuplet.children.len(), 3);
+            }
+            _ => panic!("Expected tuplet child"),
+        }
+    }
+
+    #[test]
+    fn tuplet_with_beam_child_deserializes() {
+        let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+            <beam xml:id="b1">
+                <note xml:id="n1" dur="16"/>
+                <note xml:id="n2" dur="16"/>
+                <note xml:id="n3" dur="16"/>
+            </beam>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.common.xml_id, Some("t1".to_string()));
+        assert_eq!(tuplet.children.len(), 1);
+
+        match &tuplet.children[0] {
+            TupletChild::Beam(beam) => {
+                assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+                assert_eq!(beam.children.len(), 3);
+            }
+            _ => panic!("Expected beam child"),
+        }
+    }
+
+    #[test]
+    fn tuplet_with_space_child_deserializes() {
+        let xml = r#"<tuplet xml:id="t1" num="3" numbase="2">
+            <note xml:id="n1" dur="8"/>
+            <space xml:id="s1" dur="8"/>
+            <note xml:id="n2" dur="8"/>
+        </tuplet>"#;
+        let tuplet = Tuplet::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tuplet.children.len(), 3);
+
+        match &tuplet.children[1] {
+            TupletChild::Space(space) => {
+                assert_eq!(space.common.xml_id, Some("s1".to_string()));
+            }
+            _ => panic!("Expected space child"),
         }
     }
 }

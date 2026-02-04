@@ -200,7 +200,7 @@ pub use att_halfm_rpt_ges::AttHalfmRptGes;
 mod att_duration_additive;
 pub use att_duration_additive::AttDurationAdditive;
 mod att_tuplet_vis;
-pub use att_tuplet_vis::AttTupletVis;
+pub use att_tuplet_vis::{AttTupletVis, AttTupletVisNumFormat};
 mod att_lv_ges;
 pub use att_lv_ges::AttLvGes;
 mod att_sequence;
