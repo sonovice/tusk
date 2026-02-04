@@ -228,6 +228,55 @@ pub(crate) fn parse_title_stmt_from_event<R: BufRead>(
                         .children
                         .push(TitleStmtChild::Contributor(Box::new(contributor)));
                 }
+                // Handle deprecated MEI elements by converting to Creator with appropriate role
+                "composer" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "composer",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Cmp,
+                    )?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Creator(Box::new(creator)));
+                }
+                "lyricist" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "lyricist",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Lyr,
+                    )?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Creator(Box::new(creator)));
+                }
+                "arranger" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "arranger",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Arr,
+                    )?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Creator(Box::new(creator)));
+                }
+                "author" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "author",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
+                    )?;
+                    title_stmt
+                        .children
+                        .push(TitleStmtChild::Creator(Box::new(creator)));
+                }
                 // Unknown children are skipped in lenient mode
                 _ => {
                     if !child_empty {
@@ -451,13 +500,79 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
     bibl.lang.extract_attributes(&mut attrs)?;
     bibl.pointing.extract_attributes(&mut attrs)?;
 
-    // Parse text content if not empty
-    // bibl can contain text and various child elements (for now, just text)
+    // Read children if not an empty element
+    // bibl can contain text and many child elements
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("bibl")? {
-            if !text.trim().is_empty() {
-                bibl.children
-                    .push(tusk_model::elements::BiblChild::Text(text));
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("bibl")? {
+            match name.as_str() {
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Title(Box::new(title)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Identifier(Box::new(
+                            identifier,
+                        )));
+                }
+                "creator" => {
+                    let creator = parse_creator_from_event(reader, child_attrs, child_empty)?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
+                }
+                // Handle deprecated MEI elements by converting to Creator
+                "composer" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "composer",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Cmp,
+                    )?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
+                }
+                "lyricist" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "lyricist",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Lyr,
+                    )?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
+                }
+                "arranger" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "arranger",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Arr,
+                    )?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
+                }
+                "author" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "author",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
+                    )?;
+                    bibl.children
+                        .push(tusk_model::elements::BiblChild::Creator(Box::new(creator)));
+                }
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
             }
         }
     }
@@ -1580,6 +1695,52 @@ pub(crate) fn parse_creator_from_event<R: BufRead>(
     Ok(creator)
 }
 
+/// Parse a deprecated MEI element (composer, lyricist, arranger, author) as a Creator.
+///
+/// MEI 5.1 deprecated composer, lyricist, arranger, and author in favor of creator.
+/// This function parses these deprecated elements and converts them to Creator with
+/// the appropriate role attribute set.
+pub(crate) fn parse_deprecated_creator_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+    element_name: &str,
+    role: tusk_model::generated::data::DataMarcrelatorsBasic,
+) -> DeserializeResult<Creator> {
+    let mut creator = Creator::default();
+
+    // Extract attributes into each attribute class
+    creator.common.extract_attributes(&mut attrs)?;
+    creator.bibl.extract_attributes(&mut attrs)?;
+    creator.evidence.extract_attributes(&mut attrs)?;
+    creator.facsimile.extract_attributes(&mut attrs)?;
+    creator.lang.extract_attributes(&mut attrs)?;
+    creator.name.extract_attributes(&mut attrs)?;
+
+    // Set the role based on the deprecated element type, but only if role is not already set
+    if creator.name.role.is_empty() {
+        creator
+            .name
+            .role
+            .push(tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role));
+    }
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Parse text content if not empty
+    // These deprecated elements can contain text and child elements like persName, corpName
+    // For now, we collect text content as CreatorChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end(element_name)? {
+            if !text.trim().is_empty() {
+                creator.children.push(CreatorChild::Text(text));
+            }
+        }
+    }
+
+    Ok(creator)
+}
+
 /// Parse a `<funder>` element from within another element.
 pub(crate) fn parse_funder_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -2127,6 +2288,119 @@ mod tests {
                 }
             }
             _ => panic!("expected FileDesc child"),
+        }
+    }
+
+    // ========== Deprecated element migration tests ==========
+
+    #[test]
+    fn title_stmt_deserializes_deprecated_composer_as_creator() {
+        let xml = r#"<titleStmt>
+            <title>Walzer G-Dur</title>
+            <composer>Dionisio Aguado</composer>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(title_stmt.children.len(), 2);
+
+        // First child should be title
+        assert!(matches!(&title_stmt.children[0], TitleStmtChild::Title(_)));
+
+        // Second child should be Creator (migrated from composer)
+        match &title_stmt.children[1] {
+            TitleStmtChild::Creator(creator) => {
+                // Verify the role was set to composer (Cmp)
+                assert_eq!(creator.name.role.len(), 1);
+                match &creator.name.role[0] {
+                    tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role) => {
+                        assert_eq!(
+                            *role,
+                            tusk_model::generated::data::DataMarcrelatorsBasic::Cmp
+                        );
+                    }
+                    _ => panic!("expected DataMarcrelatorsBasic role"),
+                }
+                // Verify text content was captured
+                assert!(!creator.children.is_empty());
+            }
+            _ => panic!("expected Creator child (migrated from composer)"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_deprecated_lyricist_as_creator() {
+        let xml = r#"<titleStmt>
+            <title>A Song</title>
+            <lyricist>A Poet</lyricist>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(title_stmt.children.len(), 2);
+
+        match &title_stmt.children[1] {
+            TitleStmtChild::Creator(creator) => {
+                assert_eq!(creator.name.role.len(), 1);
+                match &creator.name.role[0] {
+                    tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role) => {
+                        assert_eq!(
+                            *role,
+                            tusk_model::generated::data::DataMarcrelatorsBasic::Lyr
+                        );
+                    }
+                    _ => panic!("expected DataMarcrelatorsBasic role"),
+                }
+            }
+            _ => panic!("expected Creator child (migrated from lyricist)"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_deprecated_arranger_as_creator() {
+        let xml = r#"<titleStmt>
+            <title>Arranged Work</title>
+            <arranger>An Arranger</arranger>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(title_stmt.children.len(), 2);
+
+        match &title_stmt.children[1] {
+            TitleStmtChild::Creator(creator) => {
+                assert_eq!(creator.name.role.len(), 1);
+                match &creator.name.role[0] {
+                    tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role) => {
+                        assert_eq!(
+                            *role,
+                            tusk_model::generated::data::DataMarcrelatorsBasic::Arr
+                        );
+                    }
+                    _ => panic!("expected DataMarcrelatorsBasic role"),
+                }
+            }
+            _ => panic!("expected Creator child (migrated from arranger)"),
+        }
+    }
+
+    #[test]
+    fn title_stmt_deserializes_deprecated_author_as_creator() {
+        let xml = r#"<titleStmt>
+            <title>A Text Work</title>
+            <author>An Author</author>
+        </titleStmt>"#;
+        let title_stmt = TitleStmt::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(title_stmt.children.len(), 2);
+
+        match &title_stmt.children[1] {
+            TitleStmtChild::Creator(creator) => {
+                assert_eq!(creator.name.role.len(), 1);
+                match &creator.name.role[0] {
+                    tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role) => {
+                        assert_eq!(
+                            *role,
+                            tusk_model::generated::data::DataMarcrelatorsBasic::Aut
+                        );
+                    }
+                    _ => panic!("expected DataMarcrelatorsBasic role"),
+                }
+            }
+            _ => panic!("expected Creator child (migrated from author)"),
         }
     }
 }
