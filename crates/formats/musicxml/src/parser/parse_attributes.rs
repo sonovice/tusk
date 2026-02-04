@@ -4,7 +4,7 @@ use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
-use super::{get_attr, read_text, skip_element, ParseError, Result};
+use super::{ParseError, Result, get_attr, read_text, skip_element};
 use crate::model::attributes::*;
 use crate::model::data::*;
 

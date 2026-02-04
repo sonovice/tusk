@@ -1185,3 +1185,458 @@ fn test_parse_missing_score_timewise_returns_error() {
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), ParseError::MissingElement(_)));
 }
+
+// ============================================================================
+// Duration and Divisions Tests
+// ============================================================================
+
+#[test]
+fn test_parse_divisions_and_calculate_durations() {
+    use crate::model::duration::DurationContext;
+    use crate::model::note::NoteTypeValue;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>2</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>2</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch>
+          <step>F</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>8</duration>
+        <type>half</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+
+    // Extract divisions from attributes
+    let divisions = match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+
+    assert_eq!(divisions, 4.0);
+
+    // Create duration context
+    let ctx = DurationContext::with_divisions(divisions);
+
+    // Verify calculated durations match expected values
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Quarter, 0), 4.0);
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Eighth, 0), 2.0);
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Half, 0), 8.0);
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Whole, 0), 16.0);
+
+    // Verify notes match calculated durations
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(4.0)); // quarter
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    match &measure.content[2] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(2.0)); // eighth
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    match &measure.content[4] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(8.0)); // half
+        }
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_dotted_notes_with_divisions() {
+    use crate::model::duration::DurationContext;
+    use crate::model::note::NoteTypeValue;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>6</duration>
+        <type>quarter</type>
+        <dot/>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>3</duration>
+        <type>eighth</type>
+        <dot/>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+
+    // Extract divisions
+    let divisions = match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+
+    let ctx = DurationContext::with_divisions(divisions);
+
+    // Verify dotted calculations
+    // Dotted quarter = quarter + quarter/2 = 4 + 2 = 6
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Quarter, 1), 6.0);
+    // Dotted eighth = eighth + eighth/2 = 2 + 1 = 3
+    assert_eq!(ctx.duration_for_type(NoteTypeValue::Eighth, 1), 3.0);
+
+    // Check first note (dotted quarter)
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(6.0));
+            assert_eq!(note.dots.len(), 1);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Check second note (dotted eighth)
+    match &measure.content[2] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(3.0));
+            assert_eq!(note.dots.len(), 1);
+        }
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_infer_note_type_from_parsed_durations() {
+    use crate::model::duration::DurationContext;
+    use crate::model::note::NoteTypeValue;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>96</divisions>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>96</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>48</duration>
+        <type>eighth</type>
+      </note>
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>144</duration>
+        <type>quarter</type>
+        <dot/>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+
+    // Extract divisions
+    let divisions = match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+
+    assert_eq!(divisions, 96.0);
+
+    let ctx = DurationContext::with_divisions(divisions);
+
+    // Verify note type inference
+    assert_eq!(ctx.infer_note_type(96.0), Some((NoteTypeValue::Quarter, 0)));
+    assert_eq!(ctx.infer_note_type(48.0), Some((NoteTypeValue::Eighth, 0)));
+    assert_eq!(
+        ctx.infer_note_type(144.0),
+        Some((NoteTypeValue::Quarter, 1))
+    ); // dotted quarter
+    assert_eq!(ctx.infer_note_type(192.0), Some((NoteTypeValue::Half, 0)));
+    assert_eq!(ctx.infer_note_type(384.0), Some((NoteTypeValue::Whole, 0)));
+}
+
+#[test]
+fn test_divisions_changes_across_measures() {
+    use crate::model::duration::DurationContext;
+    use crate::model::note::NoteTypeValue;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+    <measure number="2">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    // Measure 1: divisions=1
+    let measure1 = &score.parts[0].measures[0];
+    let div1 = match &measure1.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+    assert_eq!(div1, 1.0);
+
+    let ctx1 = DurationContext::with_divisions(div1);
+    assert_eq!(ctx1.duration_for_type(NoteTypeValue::Quarter, 0), 1.0);
+
+    // Measure 2: divisions=4
+    let measure2 = &score.parts[0].measures[1];
+    let div2 = match &measure2.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+    assert_eq!(div2, 4.0);
+
+    let ctx2 = DurationContext::with_divisions(div2);
+    assert_eq!(ctx2.duration_for_type(NoteTypeValue::Quarter, 0), 4.0);
+}
+
+#[test]
+fn test_measure_duration_calculation() {
+    use crate::model::duration::{DurationContext, measure_duration};
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+      </attributes>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+
+    // Extract divisions and time signature
+    let (divisions, beats, beat_type) = match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => {
+            let div = attrs.divisions.expect("divisions missing");
+            let time = &attrs.times[0];
+            match &time.content {
+                TimeContent::Standard(std_time) => {
+                    let b: u32 = std_time.signatures[0].beats.parse().unwrap();
+                    let bt: u32 = std_time.signatures[0].beat_type.parse().unwrap();
+                    (div, b, bt)
+                }
+                _ => panic!("Expected Standard time"),
+            }
+        }
+        _ => panic!("Expected Attributes"),
+    };
+
+    assert_eq!(divisions, 4.0);
+    assert_eq!(beats, 4);
+    assert_eq!(beat_type, 4);
+
+    // 4/4 time with divisions=4 should have measure duration of 16
+    let expected_measure_duration = measure_duration(beats, beat_type, divisions);
+    assert_eq!(expected_measure_duration, 16.0);
+}
+
+#[test]
+fn test_backup_forward_with_divisions_context() {
+    use crate::model::duration::DurationContext;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>16</duration>
+        <voice>1</voice>
+        <type>whole</type>
+      </note>
+      <backup>
+        <duration>16</duration>
+      </backup>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>8</duration>
+        <voice>2</voice>
+        <type>half</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+
+    let measure = &score.parts[0].measures[0];
+
+    // Extract divisions
+    let divisions = match &measure.content[0] {
+        MeasureContent::Attributes(attrs) => attrs.divisions.expect("divisions missing"),
+        _ => panic!("Expected Attributes"),
+    };
+
+    let ctx = DurationContext::with_divisions(divisions);
+
+    // Whole note has duration 16 (= 4 quarter notes)
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(16.0));
+            // In quarter notes: 16 / 4 = 4
+            assert_eq!(ctx.to_quarter_notes(16.0), 4.0);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Backup of 16 = 4 quarter notes
+    match &measure.content[2] {
+        MeasureContent::Backup(backup) => {
+            assert_eq!(backup.duration, 16.0);
+            assert_eq!(ctx.to_quarter_notes(16.0), 4.0);
+        }
+        _ => panic!("Expected Backup"),
+    }
+
+    // Half note has duration 8 (= 2 quarter notes)
+    match &measure.content[3] {
+        MeasureContent::Note(note) => {
+            assert_eq!(note.duration, Some(8.0));
+            assert_eq!(ctx.to_quarter_notes(8.0), 2.0);
+        }
+        _ => panic!("Expected Note"),
+    }
+}
