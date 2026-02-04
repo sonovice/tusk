@@ -146,8 +146,35 @@ pub(crate) fn parse_file_desc_from_event<R: BufRead>(
                         .children
                         .push(FileDescChild::SourceDesc(Box::new(source_desc)));
                 }
-                // Other child elements (editionStmt, etc.) are not
-                // yet implemented for parsing. Skip them in lenient mode.
+                "seriesStmt" => {
+                    let series_stmt =
+                        super::parse_series_stmt_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::SeriesStmt(Box::new(series_stmt)));
+                }
+                "editionStmt" => {
+                    let edition_stmt =
+                        super::parse_edition_stmt_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::EditionStmt(Box::new(edition_stmt)));
+                }
+                "notesStmt" => {
+                    let notes_stmt =
+                        super::parse_notes_stmt_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::NotesStmt(Box::new(notes_stmt)));
+                }
+                "extent" => {
+                    let extent = super::parse_extent_from_event(reader, child_attrs, child_empty)?;
+                    file_desc
+                        .children
+                        .push(FileDescChild::Extent(Box::new(extent)));
+                }
+                // Other child elements are not yet implemented for parsing.
+                // Skip them in lenient mode.
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;

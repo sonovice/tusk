@@ -16,11 +16,12 @@ use std::io::BufRead;
 use tusk_model::elements::{
     Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
     Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
-    ContentsChild, Context, Creation, CreationChild, Dedication, Expression, ExpressionChild,
-    ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild, Incip, IncipChild,
-    Key, LangUsage, LangUsageChild, Language, Mensuration, Meter, NotesStmt, NotesStmtChild,
-    OtherChar, PerfDuration, PerfMedium, PerfMediumChild, RelationList, RelationListChild,
-    RevisionDesc, RevisionDescChild, ScoreFormat, Tempo, Work, WorkChild, WorkList, WorkListChild,
+    ContentsChild, Context, Creation, CreationChild, Dedication, Edition, EditionStmt,
+    EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
+    Extent, History, HistoryChild, Incip, IncipChild, Key, LangUsage, LangUsageChild, Language,
+    Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium,
+    PerfMediumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild, ScoreFormat,
+    SeriesStmt, SeriesStmtChild, Tempo, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -269,7 +270,7 @@ fn parse_perf_duration_from_event<R: BufRead>(
 }
 
 /// Parse an `<extent>` element from within another element.
-fn parse_extent_from_event<R: BufRead>(
+pub(crate) fn parse_extent_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
@@ -465,7 +466,7 @@ fn parse_bibl_list_from_event<R: BufRead>(
 }
 
 /// Parse a `<notesStmt>` element from within another element.
-fn parse_notes_stmt_from_event<R: BufRead>(
+pub(crate) fn parse_notes_stmt_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
@@ -499,6 +500,249 @@ fn parse_notes_stmt_from_event<R: BufRead>(
     }
 
     Ok(notes_stmt)
+}
+
+/// Parse an `<edition>` element from within another element.
+pub(crate) fn parse_edition_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Edition> {
+    let mut edition = Edition::default();
+
+    // Extract attributes
+    edition.common.extract_attributes(&mut attrs)?;
+    edition.bibl.extract_attributes(&mut attrs)?;
+    edition.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // edition can contain text and various child elements
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("edition")?
+        {
+            match name.as_str() {
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    edition
+                        .children
+                        .push(tusk_model::elements::EditionChild::RespStmt(Box::new(
+                            resp_stmt,
+                        )));
+                }
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    edition
+                        .children
+                        .push(tusk_model::elements::EditionChild::Title(Box::new(title)));
+                }
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    edition
+                        .children
+                        .push(tusk_model::elements::EditionChild::Date(Box::new(date)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(edition)
+}
+
+/// Parse an `<editionStmt>` element from within another element.
+pub(crate) fn parse_edition_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<EditionStmt> {
+    use super::{
+        parse_contributor_from_event, parse_creator_from_event, parse_editor_from_event,
+        parse_funder_from_event, parse_sponsor_from_event,
+    };
+
+    let mut edition_stmt = EditionStmt::default();
+
+    // Extract attributes
+    edition_stmt.common.extract_attributes(&mut attrs)?;
+    edition_stmt.bibl.extract_attributes(&mut attrs)?;
+    edition_stmt.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // editionStmt can contain: head*, edition*, respStmt*, model.respLikePart
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("editionStmt")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Head(Box::new(head)));
+                }
+                "edition" => {
+                    let edition = parse_edition_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Edition(Box::new(edition)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::RespStmt(Box::new(resp_stmt)));
+                }
+                "creator" => {
+                    let creator = parse_creator_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Creator(Box::new(creator)));
+                }
+                "editor" => {
+                    let editor = parse_editor_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Editor(Box::new(editor)));
+                }
+                "funder" => {
+                    let funder = parse_funder_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Funder(Box::new(funder)));
+                }
+                "sponsor" => {
+                    let sponsor = parse_sponsor_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Sponsor(Box::new(sponsor)));
+                }
+                "contributor" => {
+                    let contributor =
+                        parse_contributor_from_event(reader, child_attrs, child_empty)?;
+                    edition_stmt
+                        .children
+                        .push(EditionStmtChild::Contributor(Box::new(contributor)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(edition_stmt)
+}
+
+/// Parse a `<seriesStmt>` element from within another element.
+pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<SeriesStmt> {
+    use super::{
+        parse_contributor_from_event, parse_creator_from_event, parse_editor_from_event,
+        parse_funder_from_event, parse_sponsor_from_event,
+    };
+
+    let mut series_stmt = SeriesStmt::default();
+
+    // Extract attributes
+    series_stmt.common.extract_attributes(&mut attrs)?;
+    series_stmt.bibl.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // seriesStmt can contain: head*, title*, respStmt*, biblScope*, identifier*, contents*,
+    // seriesStmt*, model.respLikePart
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("seriesStmt")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Head(Box::new(head)));
+                }
+                "title" => {
+                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Title(Box::new(title)));
+                }
+                "respStmt" => {
+                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::RespStmt(Box::new(resp_stmt)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Identifier(Box::new(identifier)));
+                }
+                "contents" => {
+                    let contents = parse_contents_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Contents(Box::new(contents)));
+                }
+                "seriesStmt" => {
+                    // Recursive - nested seriesStmt
+                    let nested = parse_series_stmt_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::SeriesStmt(Box::new(nested)));
+                }
+                "creator" => {
+                    let creator = parse_creator_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Creator(Box::new(creator)));
+                }
+                "editor" => {
+                    let editor = parse_editor_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Editor(Box::new(editor)));
+                }
+                "funder" => {
+                    let funder = parse_funder_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Funder(Box::new(funder)));
+                }
+                "sponsor" => {
+                    let sponsor = parse_sponsor_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Sponsor(Box::new(sponsor)));
+                }
+                "contributor" => {
+                    let contributor =
+                        parse_contributor_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::Contributor(Box::new(contributor)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(series_stmt)
 }
 
 /// Parse a `<classification>` element from within another element.
