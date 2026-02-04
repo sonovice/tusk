@@ -1017,3 +1017,17 @@ fn test_roundtrip_tutorial_hello_world() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_tutorial_percussion() {
+    let (original, roundtripped) = roundtrip_spec_examples_fixture("tutorial_percussion.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_percussion: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for tutorial_percussion.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
