@@ -8,16 +8,17 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::elements::{
-    AppInfo, AppInfoChild, Application, ApplicationChild, Availability, Bibl, BiblStruct,
-    Contributor, ContributorChild, CorpName, CorpNameChild, Correction, CorrectionChild, Creator,
-    CreatorChild, Date, Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild,
-    EncodingDesc, EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, Head, HeadChild,
-    Identifier, Interpretation, InterpretationChild, Locus, LocusGrp, MeiHead, MeiHeadChild, Name,
-    NameChild, Normalization, NormalizationChild, P, PChild, PersName, PersNameChild, ProjectDesc,
-    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, PublisherChild, RespStmt,
-    SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild, Source, SourceChild,
-    SourceDesc, SourceDescChild, Sponsor, SponsorChild, StdVals, StdValsChild, Title, TitleChild,
-    TitlePart, TitlePartChild, TitleStmt, TitleStmtChild, Unpub,
+    Annot, AnnotChild, AppInfo, AppInfoChild, Application, ApplicationChild, Availability, Bibl,
+    BiblStruct, Contributor, ContributorChild, CorpName, CorpNameChild, Correction,
+    CorrectionChild, Creator, CreatorChild, Date, Distributor, Editor, EditorChild, EditorialDecl,
+    EditorialDeclChild, EncodingDesc, EncodingDescChild, FileDesc, FileDescChild, Funder,
+    FunderChild, Head, HeadChild, Identifier, Interpretation, InterpretationChild, Locus, LocusGrp,
+    MeiHead, MeiHeadChild, Name, NameChild, Normalization, NormalizationChild, P, PChild, PersName,
+    PersNameChild, ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher,
+    PublisherChild, Resp, RespChild, RespStmt, RespStmtChild, SamplingDecl, SamplingDeclChild,
+    Segmentation, SegmentationChild, Source, SourceChild, SourceDesc, SourceDescChild, Sponsor,
+    SponsorChild, StdVals, StdValsChild, Title, TitleChild, TitlePart, TitlePartChild, TitleStmt,
+    TitleStmtChild, Unpub,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1847,13 +1848,120 @@ pub(crate) fn parse_resp_stmt_from_event<R: BufRead>(
 
     // Remaining attributes are unknown - in lenient mode we ignore them
 
-    // respStmt can contain various child elements
-    // For now, we skip children in lenient mode
+    // respStmt can contain: name, resp, corpName, annot, head, persName
     if !is_empty {
-        reader.skip_to_end("respStmt")?;
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("respStmt")?
+        {
+            match name.as_str() {
+                "name" => {
+                    let name_elem = parse_name_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt
+                        .children
+                        .push(RespStmtChild::Name(Box::new(name_elem)));
+                }
+                "resp" => {
+                    let resp = parse_resp_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt.children.push(RespStmtChild::Resp(Box::new(resp)));
+                }
+                "corpName" => {
+                    let corp = parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt
+                        .children
+                        .push(RespStmtChild::CorpName(Box::new(corp)));
+                }
+                "annot" => {
+                    let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt
+                        .children
+                        .push(RespStmtChild::Annot(Box::new(annot)));
+                }
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt.children.push(RespStmtChild::Head(Box::new(head)));
+                }
+                "persName" => {
+                    let pers = parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                    resp_stmt
+                        .children
+                        .push(RespStmtChild::PersName(Box::new(pers)));
+                }
+                _ => {
+                    // Skip unknown children in lenient mode
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
     }
 
     Ok(resp_stmt)
+}
+
+/// Parse a `<resp>` element from within another element.
+pub(crate) fn parse_resp_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Resp> {
+    let mut resp = Resp::default();
+
+    // Extract attributes into each attribute class
+    resp.common.extract_attributes(&mut attrs)?;
+    resp.authorized.extract_attributes(&mut attrs)?;
+    resp.bibl.extract_attributes(&mut attrs)?;
+    resp.datable.extract_attributes(&mut attrs)?;
+    resp.facsimile.extract_attributes(&mut attrs)?;
+    resp.lang.extract_attributes(&mut attrs)?;
+
+    // resp can contain text and many child elements (mixed content)
+    // For now, we collect text content as RespChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("resp")? {
+            if !text.trim().is_empty() {
+                resp.children.push(RespChild::Text(text));
+            }
+        }
+    }
+
+    Ok(resp)
+}
+
+/// Parse an `<annot>` element from within another element.
+pub(crate) fn parse_annot_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Annot> {
+    let mut annot = Annot::default();
+
+    // Extract attributes into each attribute class
+    annot.common.extract_attributes(&mut attrs)?;
+    annot.audience.extract_attributes(&mut attrs)?;
+    annot.bibl.extract_attributes(&mut attrs)?;
+    annot.data_pointing.extract_attributes(&mut attrs)?;
+    annot.facsimile.extract_attributes(&mut attrs)?;
+    annot.lang.extract_attributes(&mut attrs)?;
+    annot.plist.extract_attributes(&mut attrs)?;
+    annot.source.extract_attributes(&mut attrs)?;
+    annot.target_eval.extract_attributes(&mut attrs)?;
+    annot.annot_anl.extract_attributes(&mut attrs)?;
+    annot.annot_ges.extract_attributes(&mut attrs)?;
+    annot.annot_log.extract_attributes(&mut attrs)?;
+    annot.annot_vis.extract_attributes(&mut attrs)?;
+
+    // annot can contain text and many child elements (mixed content)
+    // For now, we collect text content as AnnotChild::Text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("annot")? {
+            if !text.trim().is_empty() {
+                annot.children.push(AnnotChild::Text(text));
+            }
+        }
+    }
+
+    Ok(annot)
 }
 
 /// Parse an `<editor>` element from within another element.
