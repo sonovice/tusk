@@ -184,9 +184,9 @@ Prerequisite: Complete tasks_split.md Phase 4 & 5 first (splits conversion files
 - [x] Verify all tests pass after migration
 
 ### 4.4b Remaining MEI → MusicXML work
-- [ ] Handle MEI duration → MusicXML divisions conversion
-- [ ] Add MEI → MusicXML conversion tests
-- [ ] Add tests against `specs/musicxml/examples/`
+- [x] Handle MEI duration → MusicXML divisions conversion
+- [x] Add MEI → MusicXML conversion tests
+- [x] Add tests against `specs/musicxml/examples/`
 
 ### 4.5 Round-Trip Testing
 - [ ] Create round-trip test: MusicXML → MEI → MusicXML

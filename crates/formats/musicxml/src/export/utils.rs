@@ -370,3 +370,376 @@ pub fn create_empty_parts(
 
     parts
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Duration to Quarter Notes Tests
+    // ========================================================================
+
+    #[test]
+    fn test_duration_to_quarter_notes_all_cmn_values() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        let test_cases = [
+            (DataDurationCmn::Long, 16.0),
+            (DataDurationCmn::Breve, 8.0),
+            (DataDurationCmn::N1, 4.0),
+            (DataDurationCmn::N2, 2.0),
+            (DataDurationCmn::N4, 1.0),
+            (DataDurationCmn::N8, 0.5),
+            (DataDurationCmn::N16, 0.25),
+            (DataDurationCmn::N32, 0.125),
+            (DataDurationCmn::N64, 0.0625),
+            (DataDurationCmn::N128, 0.03125),
+            (DataDurationCmn::N256, 0.015625),
+            (DataDurationCmn::N512, 0.0078125),
+            (DataDurationCmn::N1024, 0.00390625),
+            (DataDurationCmn::N2048, 0.001953125),
+        ];
+
+        for (cmn_dur, expected) in test_cases {
+            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let result = duration_to_quarter_notes(&dur);
+            assert!(
+                (result - expected).abs() < 1e-10,
+                "Duration {:?} expected {} but got {}",
+                cmn_dur,
+                expected,
+                result
+            );
+        }
+    }
+
+    #[test]
+    fn test_duration_rests_to_quarter_notes_all_cmn_values() {
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+
+        let test_cases = [
+            (DataDurationCmn::Long, 16.0),
+            (DataDurationCmn::Breve, 8.0),
+            (DataDurationCmn::N1, 4.0),
+            (DataDurationCmn::N2, 2.0),
+            (DataDurationCmn::N4, 1.0),
+            (DataDurationCmn::N8, 0.5),
+            (DataDurationCmn::N16, 0.25),
+            (DataDurationCmn::N32, 0.125),
+        ];
+
+        for (cmn_dur, expected) in test_cases {
+            let dur = DataDurationrests::DataDurationCmn(cmn_dur);
+            let result = duration_rests_to_quarter_notes(&dur);
+            assert!(
+                (result - expected).abs() < 1e-10,
+                "Rest duration {:?} expected {} but got {}",
+                cmn_dur,
+                expected,
+                result
+            );
+        }
+    }
+
+    // ========================================================================
+    // Apply Dots Tests
+    // ========================================================================
+
+    #[test]
+    fn test_apply_dots_zero_dots() {
+        // Quarter note with no dots = 1.0
+        assert!((apply_dots(1.0, 0) - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_apply_dots_single_dot() {
+        // Dotted quarter = 1.0 + 0.5 = 1.5
+        assert!((apply_dots(1.0, 1) - 1.5).abs() < 1e-10);
+
+        // Dotted half = 2.0 + 1.0 = 3.0
+        assert!((apply_dots(2.0, 1) - 3.0).abs() < 1e-10);
+
+        // Dotted whole = 4.0 + 2.0 = 6.0
+        assert!((apply_dots(4.0, 1) - 6.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_apply_dots_double_dot() {
+        // Double-dotted quarter = 1.0 + 0.5 + 0.25 = 1.75
+        assert!((apply_dots(1.0, 2) - 1.75).abs() < 1e-10);
+
+        // Double-dotted half = 2.0 + 1.0 + 0.5 = 3.5
+        assert!((apply_dots(2.0, 2) - 3.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_apply_dots_triple_dot() {
+        // Triple-dotted quarter = 1.0 + 0.5 + 0.25 + 0.125 = 1.875
+        assert!((apply_dots(1.0, 3) - 1.875).abs() < 1e-10);
+    }
+
+    // ========================================================================
+    // Duration to Note Type Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_duration_to_note_type_all_values() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        let test_cases = [
+            (DataDurationCmn::Long, NoteTypeValue::Long),
+            (DataDurationCmn::Breve, NoteTypeValue::Breve),
+            (DataDurationCmn::N1, NoteTypeValue::Whole),
+            (DataDurationCmn::N2, NoteTypeValue::Half),
+            (DataDurationCmn::N4, NoteTypeValue::Quarter),
+            (DataDurationCmn::N8, NoteTypeValue::Eighth),
+            (DataDurationCmn::N16, NoteTypeValue::N16th),
+            (DataDurationCmn::N32, NoteTypeValue::N32nd),
+            (DataDurationCmn::N64, NoteTypeValue::N64th),
+            (DataDurationCmn::N128, NoteTypeValue::N128th),
+            (DataDurationCmn::N256, NoteTypeValue::N256th),
+            (DataDurationCmn::N512, NoteTypeValue::N512th),
+            (DataDurationCmn::N1024, NoteTypeValue::N1024th),
+            // 2048th maps to 1024th since MusicXML doesn't support 2048th
+            (DataDurationCmn::N2048, NoteTypeValue::N1024th),
+        ];
+
+        for (cmn_dur, expected) in test_cases {
+            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let result = convert_mei_duration_to_note_type(&dur);
+            assert_eq!(
+                result, expected,
+                "Duration {:?} expected {:?} but got {:?}",
+                cmn_dur, expected, result
+            );
+        }
+    }
+
+    #[test]
+    fn test_convert_mei_duration_rests_to_note_type_all_values() {
+        use crate::model::note::NoteTypeValue;
+        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+
+        let test_cases = [
+            (DataDurationCmn::Long, Some(NoteTypeValue::Long)),
+            (DataDurationCmn::Breve, Some(NoteTypeValue::Breve)),
+            (DataDurationCmn::N1, Some(NoteTypeValue::Whole)),
+            (DataDurationCmn::N2, Some(NoteTypeValue::Half)),
+            (DataDurationCmn::N4, Some(NoteTypeValue::Quarter)),
+            (DataDurationCmn::N8, Some(NoteTypeValue::Eighth)),
+            (DataDurationCmn::N16, Some(NoteTypeValue::N16th)),
+            (DataDurationCmn::N32, Some(NoteTypeValue::N32nd)),
+        ];
+
+        for (cmn_dur, expected) in test_cases {
+            let dur = DataDurationrests::DataDurationCmn(cmn_dur);
+            let result = convert_mei_duration_rests_to_note_type(&dur);
+            assert_eq!(
+                result, expected,
+                "Rest duration {:?} expected {:?} but got {:?}",
+                cmn_dur, expected, result
+            );
+        }
+    }
+
+    // ========================================================================
+    // Duration to Beat Unit Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_duration_to_beat_unit() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        let test_cases = [
+            (DataDurationCmn::Long, "long"),
+            (DataDurationCmn::Breve, "breve"),
+            (DataDurationCmn::N1, "whole"),
+            (DataDurationCmn::N2, "half"),
+            (DataDurationCmn::N4, "quarter"),
+            (DataDurationCmn::N8, "eighth"),
+            (DataDurationCmn::N16, "16th"),
+            (DataDurationCmn::N32, "32nd"),
+            (DataDurationCmn::N64, "64th"),
+            (DataDurationCmn::N128, "128th"),
+            (DataDurationCmn::N256, "256th"),
+            (DataDurationCmn::N512, "512th"),
+            (DataDurationCmn::N1024, "1024th"),
+            (DataDurationCmn::N2048, "2048th"),
+        ];
+
+        for (cmn_dur, expected) in test_cases {
+            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let result = convert_mei_duration_to_beat_unit(&dur);
+            assert_eq!(
+                result, expected,
+                "Duration {:?} expected {} but got {}",
+                cmn_dur, expected, result
+            );
+        }
+    }
+
+    // ========================================================================
+    // Stem Direction Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_stem_direction_up() {
+        use crate::model::note::StemValue;
+        use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
+
+        let stem_dir = DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up);
+        let result = convert_mei_stem_direction(&stem_dir);
+        assert_eq!(result, StemValue::Up);
+    }
+
+    #[test]
+    fn test_convert_mei_stem_direction_down() {
+        use crate::model::note::StemValue;
+        use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
+
+        let stem_dir = DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Down);
+        let result = convert_mei_stem_direction(&stem_dir);
+        assert_eq!(result, StemValue::Down);
+    }
+
+    // ========================================================================
+    // Duration Division Calculation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_duration_with_divisions_quarter_note() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Quarter note with divisions=4 should be 4 divisions
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let quarters = duration_to_quarter_notes(&dur);
+        let divisions = 4.0;
+        let result = quarters * divisions;
+        assert!((result - 4.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_duration_with_divisions_half_note() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Half note with divisions=4 should be 8 divisions
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N2);
+        let quarters = duration_to_quarter_notes(&dur);
+        let divisions = 4.0;
+        let result = quarters * divisions;
+        assert!((result - 8.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_duration_with_divisions_eighth_note() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Eighth note with divisions=4 should be 2 divisions
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N8);
+        let quarters = duration_to_quarter_notes(&dur);
+        let divisions = 4.0;
+        let result = quarters * divisions;
+        assert!((result - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_duration_with_divisions_whole_note() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Whole note with divisions=4 should be 16 divisions
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N1);
+        let quarters = duration_to_quarter_notes(&dur);
+        let divisions = 4.0;
+        let result = quarters * divisions;
+        assert!((result - 16.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_duration_with_divisions_dotted_quarter() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Dotted quarter with divisions=4 should be 6 divisions
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let quarters = duration_to_quarter_notes(&dur);
+        let dotted = apply_dots(quarters, 1);
+        let divisions = 4.0;
+        let result = dotted * divisions;
+        assert!((result - 6.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_duration_high_precision_divisions() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+
+        // Test with divisions=96 (common high precision)
+        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let quarters = duration_to_quarter_notes(&dur);
+        let divisions = 96.0;
+        let result = quarters * divisions;
+        assert!((result - 96.0).abs() < 1e-10);
+
+        // Eighth note with divisions=96 = 48
+        let dur_eighth = DataDuration::DataDurationCmn(DataDurationCmn::N8);
+        let quarters_eighth = duration_to_quarter_notes(&dur_eighth);
+        let result_eighth = quarters_eighth * divisions;
+        assert!((result_eighth - 48.0).abs() < 1e-10);
+
+        // Sixteenth note with divisions=96 = 24
+        let dur_16th = DataDuration::DataDurationCmn(DataDurationCmn::N16);
+        let quarters_16th = duration_to_quarter_notes(&dur_16th);
+        let result_16th = quarters_16th * divisions;
+        assert!((result_16th - 24.0).abs() < 1e-10);
+    }
+
+    // ========================================================================
+    // Create Empty Parts Tests
+    // ========================================================================
+
+    #[test]
+    fn test_create_empty_parts_single_part() {
+        use crate::model::elements::{PartList, PartListItem, ScorePart};
+
+        let mut part_list = PartList::default();
+        let score_part = ScorePart::new("P1", "Piano");
+        part_list
+            .items
+            .push(PartListItem::ScorePart(Box::new(score_part)));
+
+        let parts = create_empty_parts(&part_list);
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0].id, "P1");
+    }
+
+    #[test]
+    fn test_create_empty_parts_multiple_parts() {
+        use crate::model::elements::{PartList, PartListItem, ScorePart};
+
+        let mut part_list = PartList::default();
+        for (id, name) in [("P1", "Violin I"), ("P2", "Violin II"), ("P3", "Cello")] {
+            let score_part = ScorePart::new(id, name);
+            part_list
+                .items
+                .push(PartListItem::ScorePart(Box::new(score_part)));
+        }
+
+        let parts = create_empty_parts(&part_list);
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[0].id, "P1");
+        assert_eq!(parts[1].id, "P2");
+        assert_eq!(parts[2].id, "P3");
+    }
+
+    #[test]
+    fn test_create_empty_parts_empty_list() {
+        use crate::model::elements::PartList;
+
+        let part_list = PartList::default();
+        let parts = create_empty_parts(&part_list);
+        assert!(parts.is_empty());
+    }
+}
