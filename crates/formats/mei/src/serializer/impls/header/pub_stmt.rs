@@ -5,9 +5,10 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    Address, AddressChild, Availability, AvailabilityChild, Distributor, DistributorChild,
-    Identifier, IdentifierChild, PubPlace, PubPlaceChild, PubStmt, PubStmtChild, Publisher,
-    PublisherChild, Unpub, UnpubChild,
+    AccessRestrict, AccessRestrictChild, Address, AddressChild, Availability, AvailabilityChild,
+    Distributor, DistributorChild, Identifier, IdentifierChild, Price, PriceChild, PubPlace,
+    PubPlaceChild, PubStmt, PubStmtChild, Publisher, PublisherChild, SysReq, SysReqChild, Unpub,
+    UnpubChild, UseRestrict, UseRestrictChild,
 };
 
 // ============================================================================
@@ -376,12 +377,15 @@ impl MeiSerialize for AvailabilityChild {
                 writer.write_text(text)?;
                 Ok(())
             }
-            AvailabilityChild::Date(elem) => elem.serialize_mei(writer),
+            AvailabilityChild::SysReq(elem) => elem.serialize_mei(writer),
             AvailabilityChild::Distributor(elem) => elem.serialize_mei(writer),
+            AvailabilityChild::Price(elem) => elem.serialize_mei(writer),
+            AvailabilityChild::Date(elem) => elem.serialize_mei(writer),
             AvailabilityChild::Identifier(elem) => elem.serialize_mei(writer),
+            AvailabilityChild::AccessRestrict(elem) => elem.serialize_mei(writer),
             AvailabilityChild::Address(elem) => elem.serialize_mei(writer),
             AvailabilityChild::Head(elem) => elem.serialize_mei(writer),
-            _ => Ok(()), // Other children skipped for now
+            AvailabilityChild::UseRestrict(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -598,6 +602,668 @@ impl MeiSerialize for UnpubChild {
                 writer.write_text(text)?;
                 Ok(())
             }
+        }
+    }
+}
+
+// ============================================================================
+// UseRestrict
+// ============================================================================
+
+impl MeiSerialize for UseRestrict {
+    fn element_name(&self) -> &'static str {
+        "useRestrict"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for UseRestrictChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            UseRestrictChild::Text(_) => "#text",
+            UseRestrictChild::PersName(_) => "persName",
+            UseRestrictChild::CorpName(_) => "corpName",
+            UseRestrictChild::District(_) => "district",
+            UseRestrictChild::Region(_) => "region",
+            UseRestrictChild::Dimensions(_) => "dimensions",
+            UseRestrictChild::Street(_) => "street",
+            UseRestrictChild::Lb(_) => "lb",
+            UseRestrictChild::Signatures(_) => "signatures",
+            UseRestrictChild::GeogFeat(_) => "geogFeat",
+            UseRestrictChild::PeriodName(_) => "periodName",
+            UseRestrictChild::RelationList(_) => "relationList",
+            UseRestrictChild::Catchwords(_) => "catchwords",
+            UseRestrictChild::PostBox(_) => "postBox",
+            UseRestrictChild::Address(_) => "address",
+            UseRestrictChild::Height(_) => "height",
+            UseRestrictChild::Annot(_) => "annot",
+            UseRestrictChild::Symbol(_) => "symbol",
+            UseRestrictChild::Relation(_) => "relation",
+            UseRestrictChild::Country(_) => "country",
+            UseRestrictChild::Dim(_) => "dim",
+            UseRestrictChild::Fig(_) => "fig",
+            UseRestrictChild::Q(_) => "q",
+            UseRestrictChild::Stamp(_) => "stamp",
+            UseRestrictChild::PostCode(_) => "postCode",
+            UseRestrictChild::Width(_) => "width",
+            UseRestrictChild::LocusGrp(_) => "locusGrp",
+            UseRestrictChild::Ptr(_) => "ptr",
+            UseRestrictChild::Ref(_) => "ref",
+            UseRestrictChild::Head(_) => "head",
+            UseRestrictChild::Repository(_) => "repository",
+            UseRestrictChild::P(_) => "p",
+            UseRestrictChild::Seg(_) => "seg",
+            UseRestrictChild::Settlement(_) => "settlement",
+            UseRestrictChild::Term(_) => "term",
+            UseRestrictChild::Rend(_) => "rend",
+            UseRestrictChild::Title(_) => "title",
+            UseRestrictChild::BiblStruct(_) => "biblStruct",
+            UseRestrictChild::Depth(_) => "depth",
+            UseRestrictChild::Num(_) => "num",
+            UseRestrictChild::Extent(_) => "extent",
+            UseRestrictChild::SecFolio(_) => "secFolio",
+            UseRestrictChild::Stack(_) => "stack",
+            UseRestrictChild::Identifier(_) => "identifier",
+            UseRestrictChild::Bibl(_) => "bibl",
+            UseRestrictChild::Date(_) => "date",
+            UseRestrictChild::Bloc(_) => "bloc",
+            UseRestrictChild::Heraldry(_) => "heraldry",
+            UseRestrictChild::StyleName(_) => "styleName",
+            UseRestrictChild::Abbr(_) => "abbr",
+            UseRestrictChild::Name(_) => "name",
+            UseRestrictChild::Expan(_) => "expan",
+            UseRestrictChild::Locus(_) => "locus",
+            UseRestrictChild::GeogName(_) => "geogName",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, UseRestrictChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            UseRestrictChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            UseRestrictChild::PersName(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::CorpName(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::District(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Region(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Dimensions(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Street(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Lb(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Signatures(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::PeriodName(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::RelationList(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Catchwords(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::PostBox(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Address(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Height(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Annot(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Symbol(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Relation(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Country(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Dim(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Fig(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Q(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Stamp(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::PostCode(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Width(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Ptr(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Ref(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Head(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Repository(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::P(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Seg(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Settlement(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Term(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Rend(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Title(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Depth(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Num(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Extent(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::SecFolio(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Stack(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Identifier(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Bibl(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Date(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Bloc(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Heraldry(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::StyleName(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Abbr(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Name(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Expan(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::Locus(elem) => elem.serialize_mei(writer),
+            UseRestrictChild::GeogName(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// AccessRestrict
+// ============================================================================
+
+impl MeiSerialize for AccessRestrict {
+    fn element_name(&self) -> &'static str {
+        "accessRestrict"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for AccessRestrictChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            AccessRestrictChild::Text(_) => "#text",
+            AccessRestrictChild::P(_) => "p",
+            AccessRestrictChild::District(_) => "district",
+            AccessRestrictChild::PeriodName(_) => "periodName",
+            AccessRestrictChild::Bibl(_) => "bibl",
+            AccessRestrictChild::Signatures(_) => "signatures",
+            AccessRestrictChild::Stack(_) => "stack",
+            AccessRestrictChild::Lb(_) => "lb",
+            AccessRestrictChild::Annot(_) => "annot",
+            AccessRestrictChild::Address(_) => "address",
+            AccessRestrictChild::Bloc(_) => "bloc",
+            AccessRestrictChild::PostCode(_) => "postCode",
+            AccessRestrictChild::GeogName(_) => "geogName",
+            AccessRestrictChild::Depth(_) => "depth",
+            AccessRestrictChild::PersName(_) => "persName",
+            AccessRestrictChild::Identifier(_) => "identifier",
+            AccessRestrictChild::LocusGrp(_) => "locusGrp",
+            AccessRestrictChild::GeogFeat(_) => "geogFeat",
+            AccessRestrictChild::Dim(_) => "dim",
+            AccessRestrictChild::Num(_) => "num",
+            AccessRestrictChild::Ptr(_) => "ptr",
+            AccessRestrictChild::Country(_) => "country",
+            AccessRestrictChild::Rend(_) => "rend",
+            AccessRestrictChild::Region(_) => "region",
+            AccessRestrictChild::BiblStruct(_) => "biblStruct",
+            AccessRestrictChild::Locus(_) => "locus",
+            AccessRestrictChild::Repository(_) => "repository",
+            AccessRestrictChild::Seg(_) => "seg",
+            AccessRestrictChild::Settlement(_) => "settlement",
+            AccessRestrictChild::Stamp(_) => "stamp",
+            AccessRestrictChild::Head(_) => "head",
+            AccessRestrictChild::StyleName(_) => "styleName",
+            AccessRestrictChild::PostBox(_) => "postBox",
+            AccessRestrictChild::Relation(_) => "relation",
+            AccessRestrictChild::SecFolio(_) => "secFolio",
+            AccessRestrictChild::Heraldry(_) => "heraldry",
+            AccessRestrictChild::Abbr(_) => "abbr",
+            AccessRestrictChild::Term(_) => "term",
+            AccessRestrictChild::Q(_) => "q",
+            AccessRestrictChild::Extent(_) => "extent",
+            AccessRestrictChild::Street(_) => "street",
+            AccessRestrictChild::Height(_) => "height",
+            AccessRestrictChild::Fig(_) => "fig",
+            AccessRestrictChild::Catchwords(_) => "catchwords",
+            AccessRestrictChild::Expan(_) => "expan",
+            AccessRestrictChild::Symbol(_) => "symbol",
+            AccessRestrictChild::Title(_) => "title",
+            AccessRestrictChild::CorpName(_) => "corpName",
+            AccessRestrictChild::Width(_) => "width",
+            AccessRestrictChild::Name(_) => "name",
+            AccessRestrictChild::Date(_) => "date",
+            AccessRestrictChild::RelationList(_) => "relationList",
+            AccessRestrictChild::Dimensions(_) => "dimensions",
+            AccessRestrictChild::Ref(_) => "ref",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, AccessRestrictChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            AccessRestrictChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            AccessRestrictChild::P(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::District(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::PeriodName(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Bibl(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Signatures(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Stack(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Lb(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Annot(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Address(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Bloc(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::PostCode(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::GeogName(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Depth(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::PersName(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Identifier(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Dim(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Num(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Ptr(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Country(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Rend(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Region(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Locus(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Repository(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Seg(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Settlement(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Stamp(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Head(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::StyleName(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::PostBox(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Relation(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::SecFolio(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Heraldry(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Abbr(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Term(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Q(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Extent(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Street(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Height(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Fig(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Catchwords(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Expan(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Symbol(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Title(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::CorpName(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Width(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Name(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Date(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::RelationList(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Dimensions(elem) => elem.serialize_mei(writer),
+            AccessRestrictChild::Ref(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// SysReq
+// ============================================================================
+
+impl MeiSerialize for SysReq {
+    fn element_name(&self) -> &'static str {
+        "sysReq"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for SysReqChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            SysReqChild::Text(_) => "#text",
+            SysReqChild::Date(_) => "date",
+            SysReqChild::Width(_) => "width",
+            SysReqChild::Name(_) => "name",
+            SysReqChild::CorpName(_) => "corpName",
+            SysReqChild::BiblStruct(_) => "biblStruct",
+            SysReqChild::PeriodName(_) => "periodName",
+            SysReqChild::PostCode(_) => "postCode",
+            SysReqChild::Identifier(_) => "identifier",
+            SysReqChild::Q(_) => "q",
+            SysReqChild::Region(_) => "region",
+            SysReqChild::Country(_) => "country",
+            SysReqChild::Repository(_) => "repository",
+            SysReqChild::Stamp(_) => "stamp",
+            SysReqChild::Lb(_) => "lb",
+            SysReqChild::Bibl(_) => "bibl",
+            SysReqChild::Head(_) => "head",
+            SysReqChild::Annot(_) => "annot",
+            SysReqChild::LocusGrp(_) => "locusGrp",
+            SysReqChild::Title(_) => "title",
+            SysReqChild::Address(_) => "address",
+            SysReqChild::Street(_) => "street",
+            SysReqChild::RelationList(_) => "relationList",
+            SysReqChild::SecFolio(_) => "secFolio",
+            SysReqChild::Heraldry(_) => "heraldry",
+            SysReqChild::Dim(_) => "dim",
+            SysReqChild::Num(_) => "num",
+            SysReqChild::Height(_) => "height",
+            SysReqChild::Seg(_) => "seg",
+            SysReqChild::Signatures(_) => "signatures",
+            SysReqChild::Bloc(_) => "bloc",
+            SysReqChild::Locus(_) => "locus",
+            SysReqChild::District(_) => "district",
+            SysReqChild::Relation(_) => "relation",
+            SysReqChild::Stack(_) => "stack",
+            SysReqChild::Abbr(_) => "abbr",
+            SysReqChild::Term(_) => "term",
+            SysReqChild::Settlement(_) => "settlement",
+            SysReqChild::Catchwords(_) => "catchwords",
+            SysReqChild::Depth(_) => "depth",
+            SysReqChild::Expan(_) => "expan",
+            SysReqChild::PostBox(_) => "postBox",
+            SysReqChild::StyleName(_) => "styleName",
+            SysReqChild::Fig(_) => "fig",
+            SysReqChild::Ptr(_) => "ptr",
+            SysReqChild::Rend(_) => "rend",
+            SysReqChild::Symbol(_) => "symbol",
+            SysReqChild::GeogFeat(_) => "geogFeat",
+            SysReqChild::P(_) => "p",
+            SysReqChild::GeogName(_) => "geogName",
+            SysReqChild::PersName(_) => "persName",
+            SysReqChild::Dimensions(_) => "dimensions",
+            SysReqChild::Extent(_) => "extent",
+            SysReqChild::Ref(_) => "ref",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, SysReqChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            SysReqChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            SysReqChild::Date(elem) => elem.serialize_mei(writer),
+            SysReqChild::Width(elem) => elem.serialize_mei(writer),
+            SysReqChild::Name(elem) => elem.serialize_mei(writer),
+            SysReqChild::CorpName(elem) => elem.serialize_mei(writer),
+            SysReqChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            SysReqChild::PeriodName(elem) => elem.serialize_mei(writer),
+            SysReqChild::PostCode(elem) => elem.serialize_mei(writer),
+            SysReqChild::Identifier(elem) => elem.serialize_mei(writer),
+            SysReqChild::Q(elem) => elem.serialize_mei(writer),
+            SysReqChild::Region(elem) => elem.serialize_mei(writer),
+            SysReqChild::Country(elem) => elem.serialize_mei(writer),
+            SysReqChild::Repository(elem) => elem.serialize_mei(writer),
+            SysReqChild::Stamp(elem) => elem.serialize_mei(writer),
+            SysReqChild::Lb(elem) => elem.serialize_mei(writer),
+            SysReqChild::Bibl(elem) => elem.serialize_mei(writer),
+            SysReqChild::Head(elem) => elem.serialize_mei(writer),
+            SysReqChild::Annot(elem) => elem.serialize_mei(writer),
+            SysReqChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            SysReqChild::Title(elem) => elem.serialize_mei(writer),
+            SysReqChild::Address(elem) => elem.serialize_mei(writer),
+            SysReqChild::Street(elem) => elem.serialize_mei(writer),
+            SysReqChild::RelationList(elem) => elem.serialize_mei(writer),
+            SysReqChild::SecFolio(elem) => elem.serialize_mei(writer),
+            SysReqChild::Heraldry(elem) => elem.serialize_mei(writer),
+            SysReqChild::Dim(elem) => elem.serialize_mei(writer),
+            SysReqChild::Num(elem) => elem.serialize_mei(writer),
+            SysReqChild::Height(elem) => elem.serialize_mei(writer),
+            SysReqChild::Seg(elem) => elem.serialize_mei(writer),
+            SysReqChild::Signatures(elem) => elem.serialize_mei(writer),
+            SysReqChild::Bloc(elem) => elem.serialize_mei(writer),
+            SysReqChild::Locus(elem) => elem.serialize_mei(writer),
+            SysReqChild::District(elem) => elem.serialize_mei(writer),
+            SysReqChild::Relation(elem) => elem.serialize_mei(writer),
+            SysReqChild::Stack(elem) => elem.serialize_mei(writer),
+            SysReqChild::Abbr(elem) => elem.serialize_mei(writer),
+            SysReqChild::Term(elem) => elem.serialize_mei(writer),
+            SysReqChild::Settlement(elem) => elem.serialize_mei(writer),
+            SysReqChild::Catchwords(elem) => elem.serialize_mei(writer),
+            SysReqChild::Depth(elem) => elem.serialize_mei(writer),
+            SysReqChild::Expan(elem) => elem.serialize_mei(writer),
+            SysReqChild::PostBox(elem) => elem.serialize_mei(writer),
+            SysReqChild::StyleName(elem) => elem.serialize_mei(writer),
+            SysReqChild::Fig(elem) => elem.serialize_mei(writer),
+            SysReqChild::Ptr(elem) => elem.serialize_mei(writer),
+            SysReqChild::Rend(elem) => elem.serialize_mei(writer),
+            SysReqChild::Symbol(elem) => elem.serialize_mei(writer),
+            SysReqChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            SysReqChild::P(elem) => elem.serialize_mei(writer),
+            SysReqChild::GeogName(elem) => elem.serialize_mei(writer),
+            SysReqChild::PersName(elem) => elem.serialize_mei(writer),
+            SysReqChild::Dimensions(elem) => elem.serialize_mei(writer),
+            SysReqChild::Extent(elem) => elem.serialize_mei(writer),
+            SysReqChild::Ref(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Price
+// ============================================================================
+
+impl MeiSerialize for Price {
+    fn element_name(&self) -> &'static str {
+        "price"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        if let Some(amount) = self.amount {
+            attrs.push(("amount", amount.to_string()));
+        }
+        if let Some(ref currency) = self.currency {
+            attrs.push(("currency", currency.clone()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for PriceChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            PriceChild::Text(_) => "#text",
+            PriceChild::Stack(_) => "stack",
+            PriceChild::Width(_) => "width",
+            PriceChild::Street(_) => "street",
+            PriceChild::PostBox(_) => "postBox",
+            PriceChild::GeogFeat(_) => "geogFeat",
+            PriceChild::LocusGrp(_) => "locusGrp",
+            PriceChild::Depth(_) => "depth",
+            PriceChild::Signatures(_) => "signatures",
+            PriceChild::StyleName(_) => "styleName",
+            PriceChild::Term(_) => "term",
+            PriceChild::Address(_) => "address",
+            PriceChild::Abbr(_) => "abbr",
+            PriceChild::Fig(_) => "fig",
+            PriceChild::Relation(_) => "relation",
+            PriceChild::SecFolio(_) => "secFolio",
+            PriceChild::Q(_) => "q",
+            PriceChild::Repository(_) => "repository",
+            PriceChild::CorpName(_) => "corpName",
+            PriceChild::Title(_) => "title",
+            PriceChild::Expan(_) => "expan",
+            PriceChild::Identifier(_) => "identifier",
+            PriceChild::Date(_) => "date",
+            PriceChild::Lb(_) => "lb",
+            PriceChild::Name(_) => "name",
+            PriceChild::PersName(_) => "persName",
+            PriceChild::PostCode(_) => "postCode",
+            PriceChild::Dim(_) => "dim",
+            PriceChild::Heraldry(_) => "heraldry",
+            PriceChild::Locus(_) => "locus",
+            PriceChild::Ptr(_) => "ptr",
+            PriceChild::Head(_) => "head",
+            PriceChild::Catchwords(_) => "catchwords",
+            PriceChild::Country(_) => "country",
+            PriceChild::Stamp(_) => "stamp",
+            PriceChild::Annot(_) => "annot",
+            PriceChild::Bloc(_) => "bloc",
+            PriceChild::Ref(_) => "ref",
+            PriceChild::Region(_) => "region",
+            PriceChild::Seg(_) => "seg",
+            PriceChild::Settlement(_) => "settlement",
+            PriceChild::District(_) => "district",
+            PriceChild::RelationList(_) => "relationList",
+            PriceChild::Symbol(_) => "symbol",
+            PriceChild::Bibl(_) => "bibl",
+            PriceChild::BiblStruct(_) => "biblStruct",
+            PriceChild::GeogName(_) => "geogName",
+            PriceChild::Extent(_) => "extent",
+            PriceChild::Height(_) => "height",
+            PriceChild::Dimensions(_) => "dimensions",
+            PriceChild::PeriodName(_) => "periodName",
+            PriceChild::Num(_) => "num",
+            PriceChild::Rend(_) => "rend",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, PriceChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            PriceChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            PriceChild::Stack(elem) => elem.serialize_mei(writer),
+            PriceChild::Width(elem) => elem.serialize_mei(writer),
+            PriceChild::Street(elem) => elem.serialize_mei(writer),
+            PriceChild::PostBox(elem) => elem.serialize_mei(writer),
+            PriceChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            PriceChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            PriceChild::Depth(elem) => elem.serialize_mei(writer),
+            PriceChild::Signatures(elem) => elem.serialize_mei(writer),
+            PriceChild::StyleName(elem) => elem.serialize_mei(writer),
+            PriceChild::Term(elem) => elem.serialize_mei(writer),
+            PriceChild::Address(elem) => elem.serialize_mei(writer),
+            PriceChild::Abbr(elem) => elem.serialize_mei(writer),
+            PriceChild::Fig(elem) => elem.serialize_mei(writer),
+            PriceChild::Relation(elem) => elem.serialize_mei(writer),
+            PriceChild::SecFolio(elem) => elem.serialize_mei(writer),
+            PriceChild::Q(elem) => elem.serialize_mei(writer),
+            PriceChild::Repository(elem) => elem.serialize_mei(writer),
+            PriceChild::CorpName(elem) => elem.serialize_mei(writer),
+            PriceChild::Title(elem) => elem.serialize_mei(writer),
+            PriceChild::Expan(elem) => elem.serialize_mei(writer),
+            PriceChild::Identifier(elem) => elem.serialize_mei(writer),
+            PriceChild::Date(elem) => elem.serialize_mei(writer),
+            PriceChild::Lb(elem) => elem.serialize_mei(writer),
+            PriceChild::Name(elem) => elem.serialize_mei(writer),
+            PriceChild::PersName(elem) => elem.serialize_mei(writer),
+            PriceChild::PostCode(elem) => elem.serialize_mei(writer),
+            PriceChild::Dim(elem) => elem.serialize_mei(writer),
+            PriceChild::Heraldry(elem) => elem.serialize_mei(writer),
+            PriceChild::Locus(elem) => elem.serialize_mei(writer),
+            PriceChild::Ptr(elem) => elem.serialize_mei(writer),
+            PriceChild::Head(elem) => elem.serialize_mei(writer),
+            PriceChild::Catchwords(elem) => elem.serialize_mei(writer),
+            PriceChild::Country(elem) => elem.serialize_mei(writer),
+            PriceChild::Stamp(elem) => elem.serialize_mei(writer),
+            PriceChild::Annot(elem) => elem.serialize_mei(writer),
+            PriceChild::Bloc(elem) => elem.serialize_mei(writer),
+            PriceChild::Ref(elem) => elem.serialize_mei(writer),
+            PriceChild::Region(elem) => elem.serialize_mei(writer),
+            PriceChild::Seg(elem) => elem.serialize_mei(writer),
+            PriceChild::Settlement(elem) => elem.serialize_mei(writer),
+            PriceChild::District(elem) => elem.serialize_mei(writer),
+            PriceChild::RelationList(elem) => elem.serialize_mei(writer),
+            PriceChild::Symbol(elem) => elem.serialize_mei(writer),
+            PriceChild::Bibl(elem) => elem.serialize_mei(writer),
+            PriceChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            PriceChild::GeogName(elem) => elem.serialize_mei(writer),
+            PriceChild::Extent(elem) => elem.serialize_mei(writer),
+            PriceChild::Height(elem) => elem.serialize_mei(writer),
+            PriceChild::Dimensions(elem) => elem.serialize_mei(writer),
+            PriceChild::PeriodName(elem) => elem.serialize_mei(writer),
+            PriceChild::Num(elem) => elem.serialize_mei(writer),
+            PriceChild::Rend(elem) => elem.serialize_mei(writer),
         }
     }
 }
