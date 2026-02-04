@@ -33,17 +33,19 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Accid, AppInfo, AppInfoChild, Application, ApplicationChild, Artic, Availability, Beam,
-    BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef, Contributor, ContributorChild, Creator,
-    CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor, EditorChild, EditorialDecl,
-    EditorialDeclChild, EncodingDesc, EncodingDescChild, Fermata, FileDesc, FileDescChild, Funder,
-    FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head, HeadChild, Identifier, InstrDef, Label,
-    Layer, LayerChild, LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure,
-    MeasureChild, MeiHead, MeiHeadChild, Name, NameChild, Note, NoteChild, ProjectDesc,
-    ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest, RestChild,
-    SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Source,
-    SourceChild, SourceDesc, SourceDescChild, Space, Sponsor, SponsorChild, Staff, StaffChild,
-    StaffDef, StaffDefChild, StaffGrp, StaffGrpChild, Tempo, Tie, Title, TitleChild, TitleStmt,
-    TitleStmtChild, Tuplet, TupletChild, Unpub,
+    BeamChild, Bibl, BiblStruct, Chord, ChordChild, Clef, Contributor, ContributorChild,
+    Correction, CorrectionChild, Creator, CreatorChild, Date, Dir, Distributor, Dot, Dynam, Editor,
+    EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, Fermata,
+    FileDesc, FileDescChild, Funder, FunderChild, GraceGrp, GraceGrpChild, Hairpin, Head,
+    HeadChild, Identifier, InstrDef, Interpretation, InterpretationChild, Label, Layer, LayerChild,
+    LayerDef, LayerDefChild, Locus, LocusGrp, Mdiv, MdivChild, Measure, MeasureChild, MeiHead,
+    MeiHeadChild, Name, NameChild, Normalization, NormalizationChild, Note, NoteChild, P, PChild,
+    ProjectDesc, ProjectDescChild, Ptr, PubPlace, PubStmt, PubStmtChild, Publisher, RespStmt, Rest,
+    RestChild, SamplingDecl, SamplingDeclChild, ScoreDef, ScoreDefChild, Section, SectionChild,
+    Segmentation, SegmentationChild, Slur, Source, SourceChild, SourceDesc, SourceDescChild, Space,
+    Sponsor, SponsorChild, Staff, StaffChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+    StdVals, StdValsChild, Tempo, Tie, Title, TitleChild, TitleStmt, TitleStmtChild, Tuplet,
+    TupletChild, Unpub,
 };
 
 /// Parse a value using serde_json from XML attribute string.
@@ -3559,6 +3561,269 @@ fn parse_ptr_from_event<R: BufRead>(
     Ok(ptr)
 }
 
+/// Parse a `<p>` (paragraph) element from within another element.
+fn parse_p_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<P> {
+    let mut p = P::default();
+
+    // Extract attributes
+    p.common.extract_attributes(&mut attrs)?;
+    p.facsimile.extract_attributes(&mut attrs)?;
+    p.lang.extract_attributes(&mut attrs)?;
+    p.metadata_pointing.extract_attributes(&mut attrs)?;
+    p.xy.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read text content if not an empty element
+    // p can contain text and many element types - for simplicity, just handle text
+    if !is_empty {
+        if let Some(text) = reader.read_text_until_end("p")? {
+            if !text.trim().is_empty() {
+                p.children.push(PChild::Text(text));
+            }
+        }
+    }
+
+    Ok(p)
+}
+
+/// Parse a `<correction>` element from within another element.
+fn parse_correction_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Correction> {
+    let mut correction = Correction::default();
+
+    // Extract attributes
+    correction.common.extract_attributes(&mut attrs)?;
+    correction.bibl.extract_attributes(&mut attrs)?;
+    correction.data_pointing.extract_attributes(&mut attrs)?;
+    correction.lang.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "method", correction.regular_method.method);
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // correction can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("correction")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    correction
+                        .children
+                        .push(CorrectionChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    correction.children.push(CorrectionChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(correction)
+}
+
+/// Parse an `<interpretation>` element from within another element.
+fn parse_interpretation_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Interpretation> {
+    let mut interpretation = Interpretation::default();
+
+    // Extract attributes
+    interpretation.common.extract_attributes(&mut attrs)?;
+    interpretation.bibl.extract_attributes(&mut attrs)?;
+    interpretation
+        .data_pointing
+        .extract_attributes(&mut attrs)?;
+    interpretation.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // interpretation can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("interpretation")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    interpretation
+                        .children
+                        .push(InterpretationChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    interpretation
+                        .children
+                        .push(InterpretationChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(interpretation)
+}
+
+/// Parse a `<normalization>` element from within another element.
+fn parse_normalization_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Normalization> {
+    let mut normalization = Normalization::default();
+
+    // Extract attributes
+    normalization.common.extract_attributes(&mut attrs)?;
+    normalization.bibl.extract_attributes(&mut attrs)?;
+    normalization.data_pointing.extract_attributes(&mut attrs)?;
+    normalization.lang.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "method", normalization.regular_method.method);
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // normalization can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("normalization")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    normalization
+                        .children
+                        .push(NormalizationChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    normalization
+                        .children
+                        .push(NormalizationChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(normalization)
+}
+
+/// Parse a `<segmentation>` element from within another element.
+fn parse_segmentation_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Segmentation> {
+    let mut segmentation = Segmentation::default();
+
+    // Extract attributes
+    segmentation.common.extract_attributes(&mut attrs)?;
+    segmentation.bibl.extract_attributes(&mut attrs)?;
+    segmentation.data_pointing.extract_attributes(&mut attrs)?;
+    segmentation.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // segmentation can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("segmentation")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    segmentation
+                        .children
+                        .push(SegmentationChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    segmentation
+                        .children
+                        .push(SegmentationChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(segmentation)
+}
+
+/// Parse a `<stdVals>` element from within another element.
+fn parse_std_vals_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<StdVals> {
+    let mut std_vals = StdVals::default();
+
+    // Extract attributes
+    std_vals.common.extract_attributes(&mut attrs)?;
+    std_vals.bibl.extract_attributes(&mut attrs)?;
+    std_vals.data_pointing.extract_attributes(&mut attrs)?;
+    std_vals.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // stdVals can contain: head*, p+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("stdVals")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    std_vals.children.push(StdValsChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    std_vals.children.push(StdValsChild::P(Box::new(p)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(std_vals)
+}
+
 /// Parse an `<editorialDecl>` element from within another element.
 fn parse_editorial_decl_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -3591,8 +3856,45 @@ fn parse_editorial_decl_from_event<R: BufRead>(
                         .children
                         .push(EditorialDeclChild::Head(Box::new(head)));
                 }
-                // p, correction, interpretation, normalization, segmentation, stdVals
-                // are more complex - skip for now
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::P(Box::new(p)));
+                }
+                "correction" => {
+                    let correction = parse_correction_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::Correction(Box::new(correction)));
+                }
+                "interpretation" => {
+                    let interpretation =
+                        parse_interpretation_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::Interpretation(Box::new(interpretation)));
+                }
+                "normalization" => {
+                    let normalization =
+                        parse_normalization_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::Normalization(Box::new(normalization)));
+                }
+                "segmentation" => {
+                    let segmentation =
+                        parse_segmentation_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::Segmentation(Box::new(segmentation)));
+                }
+                "stdVals" => {
+                    let std_vals = parse_std_vals_from_event(reader, child_attrs, child_empty)?;
+                    editorial_decl
+                        .children
+                        .push(EditorialDeclChild::StdVals(Box::new(std_vals)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -4230,6 +4532,20 @@ impl MeiDeserialize for Application {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_application_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for EditorialDecl {
+    fn element_name() -> &'static str {
+        "editorialDecl"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_editorial_decl_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -9892,5 +10208,323 @@ mod tests {
                 "2023-12-31".to_string()
             ))
         );
+    }
+
+    // ========== EditorialDecl tests ==========
+
+    #[test]
+    fn editorial_decl_deserializes_empty_element() {
+        use tusk_model::elements::EditorialDecl;
+
+        let xml = r#"<editorialDecl/>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert!(editorial_decl.common.xml_id.is_none());
+        assert!(editorial_decl.children.is_empty());
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_xml_id() {
+        use tusk_model::elements::EditorialDecl;
+
+        let xml = r#"<editorialDecl xml:id="ed1"/>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.common.xml_id, Some("ed1".to_string()));
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_head_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <head>Editorial Principles</head>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        assert!(matches!(
+            editorial_decl.children[0],
+            EditorialDeclChild::Head(_)
+        ));
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_p_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild, PChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <p>All trills should be resolved by playing three alternations.</p>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::P(p) => {
+                assert_eq!(p.children.len(), 1);
+                match &p.children[0] {
+                    PChild::Text(text) => {
+                        assert!(text.contains("trills"));
+                    }
+                    _ => panic!("expected text child"),
+                }
+            }
+            _ => panic!("expected P child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_correction_child() {
+        use tusk_model::elements::{CorrectionChild, EditorialDecl, EditorialDeclChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <correction>
+                <p>Errors in transcription controlled by using the Finale editor.</p>
+            </correction>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Correction(correction) => {
+                assert_eq!(correction.children.len(), 1);
+                assert!(matches!(correction.children[0], CorrectionChild::P(_)));
+            }
+            _ => panic!("expected Correction child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_correction_with_method_attribute() {
+        use tusk_model::att::AttRegularMethodMethod;
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild};
+
+        let xml = r#"<editorialDecl>
+            <correction method="markup">
+                <p>Corrections marked with corr element.</p>
+            </correction>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Correction(correction) => {
+                assert_eq!(
+                    correction.regular_method.method,
+                    Some(AttRegularMethodMethod::Markup)
+                );
+            }
+            _ => panic!("expected Correction child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_interpretation_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild, InterpretationChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <interpretation>
+                <p>The harmonic analysis applied throughout movement 1 was added by hand.</p>
+            </interpretation>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Interpretation(interp) => {
+                assert_eq!(interp.children.len(), 1);
+                assert!(matches!(interp.children[0], InterpretationChild::P(_)));
+            }
+            _ => panic!("expected Interpretation child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_normalization_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild, NormalizationChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <normalization>
+                <p>All sung text converted to Modern American spelling.</p>
+            </normalization>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Normalization(norm) => {
+                assert_eq!(norm.children.len(), 1);
+                assert!(matches!(norm.children[0], NormalizationChild::P(_)));
+            }
+            _ => panic!("expected Normalization child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_normalization_with_method_attribute() {
+        use tusk_model::att::AttRegularMethodMethod;
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild};
+
+        let xml = r#"<editorialDecl>
+            <normalization method="silent">
+                <p>Silently normalized text.</p>
+            </normalization>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Normalization(norm) => {
+                assert_eq!(
+                    norm.regular_method.method,
+                    Some(AttRegularMethodMethod::Silent)
+                );
+            }
+            _ => panic!("expected Normalization child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_segmentation_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild, SegmentationChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <segmentation>
+                <p>Separate mdiv elements have been created for each movement of the work.</p>
+            </segmentation>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Segmentation(seg) => {
+                assert_eq!(seg.children.len(), 1);
+                assert!(matches!(seg.children[0], SegmentationChild::P(_)));
+            }
+            _ => panic!("expected Segmentation child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_with_std_vals_child() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild, StdValsChild};
+
+        let xml = r#"<editorialDecl xml:id="ed1">
+            <stdVals>
+                <p>Dates are expressed in ISO 8601 format.</p>
+            </stdVals>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 1);
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::StdVals(sv) => {
+                assert_eq!(sv.children.len(), 1);
+                assert!(matches!(sv.children[0], StdValsChild::P(_)));
+            }
+            _ => panic!("expected StdVals child"),
+        }
+    }
+
+    #[test]
+    fn editorial_decl_deserializes_real_world_example() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild};
+
+        // Example from MEI spec header-sample049.txt
+        let xml = r#"<editorialDecl>
+            <segmentation>
+                <p>Separate mdiv elements have been created for each movement of the work.</p>
+            </segmentation>
+            <interpretation>
+                <p>The harmonic analysis applied throughout movement 1 was added by hand.</p>
+            </interpretation>
+            <correction>
+                <p>Errors in transcription controlled by using the Finale editor.</p>
+            </correction>
+            <normalization>
+                <p>All sung text converted to Modern American spelling.</p>
+            </normalization>
+            <p>Other editorial practices described here.</p>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 5);
+        assert!(matches!(
+            editorial_decl.children[0],
+            EditorialDeclChild::Segmentation(_)
+        ));
+        assert!(matches!(
+            editorial_decl.children[1],
+            EditorialDeclChild::Interpretation(_)
+        ));
+        assert!(matches!(
+            editorial_decl.children[2],
+            EditorialDeclChild::Correction(_)
+        ));
+        assert!(matches!(
+            editorial_decl.children[3],
+            EditorialDeclChild::Normalization(_)
+        ));
+        assert!(matches!(
+            editorial_decl.children[4],
+            EditorialDeclChild::P(_)
+        ));
+    }
+
+    #[test]
+    fn editorial_decl_child_elements_preserve_attributes() {
+        use tusk_model::elements::{EditorialDecl, EditorialDeclChild};
+
+        let xml = r#"<editorialDecl>
+            <correction xml:id="corr1">
+                <p>Test</p>
+            </correction>
+            <interpretation xml:id="int1">
+                <p>Test</p>
+            </interpretation>
+            <normalization xml:id="norm1">
+                <p>Test</p>
+            </normalization>
+            <segmentation xml:id="seg1">
+                <p>Test</p>
+            </segmentation>
+            <stdVals xml:id="sv1">
+                <p>Test</p>
+            </stdVals>
+        </editorialDecl>"#;
+        let editorial_decl = EditorialDecl::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(editorial_decl.children.len(), 5);
+
+        match &editorial_decl.children[0] {
+            EditorialDeclChild::Correction(c) => {
+                assert_eq!(c.common.xml_id, Some("corr1".to_string()));
+            }
+            _ => panic!("expected Correction"),
+        }
+        match &editorial_decl.children[1] {
+            EditorialDeclChild::Interpretation(i) => {
+                assert_eq!(i.common.xml_id, Some("int1".to_string()));
+            }
+            _ => panic!("expected Interpretation"),
+        }
+        match &editorial_decl.children[2] {
+            EditorialDeclChild::Normalization(n) => {
+                assert_eq!(n.common.xml_id, Some("norm1".to_string()));
+            }
+            _ => panic!("expected Normalization"),
+        }
+        match &editorial_decl.children[3] {
+            EditorialDeclChild::Segmentation(s) => {
+                assert_eq!(s.common.xml_id, Some("seg1".to_string()));
+            }
+            _ => panic!("expected Segmentation"),
+        }
+        match &editorial_decl.children[4] {
+            EditorialDeclChild::StdVals(sv) => {
+                assert_eq!(sv.common.xml_id, Some("sv1".to_string()));
+            }
+            _ => panic!("expected StdVals"),
+        }
     }
 }

@@ -840,7 +840,7 @@ pub use att_section_log::AttSectionLog;
 mod att_timestamp_log;
 pub use att_timestamp_log::AttTimestampLog;
 mod att_regular_method;
-pub use att_regular_method::AttRegularMethod;
+pub use att_regular_method::{AttRegularMethod, AttRegularMethodMethod};
 mod att_clef_vis;
 pub use att_clef_vis::AttClefVis;
 mod att_staff_grp_ges;
