@@ -8,11 +8,14 @@
 
 use crate::context::ConversionContext;
 use crate::error::ConversionResult;
+use crate::musicxml_to_mei::utils::{
+    beat_unit_string_to_duration, dynamics_value_to_string, format_metronome_text,
+};
 use tusk_model::att::{AttHairpinLogForm, AttTempoLogFunc};
-use tusk_model::data::{DataAugmentdot, DataBeat, DataBoolean, DataDuration, DataTempovalue};
+use tusk_model::data::{DataAugmentdot, DataBeat, DataBoolean, DataTempovalue};
 use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
 use tusk_musicxml::model::direction::{
-    Direction, DirectionTypeContent, DynamicsValue, MetronomeContent, WedgeType,
+    Direction, DirectionTypeContent, MetronomeContent, WedgeType,
 };
 
 // ============================================================================
@@ -139,38 +142,6 @@ fn convert_dynamics(
     dynam
 }
 
-/// Convert a MusicXML dynamics value to string.
-fn dynamics_value_to_string(value: &DynamicsValue) -> String {
-    match value {
-        DynamicsValue::Ppp => "ppp".to_string(),
-        DynamicsValue::Pp => "pp".to_string(),
-        DynamicsValue::P => "p".to_string(),
-        DynamicsValue::Mp => "mp".to_string(),
-        DynamicsValue::Mf => "mf".to_string(),
-        DynamicsValue::F => "f".to_string(),
-        DynamicsValue::Ff => "ff".to_string(),
-        DynamicsValue::Fff => "fff".to_string(),
-        DynamicsValue::Fp => "fp".to_string(),
-        DynamicsValue::Sf => "sf".to_string(),
-        DynamicsValue::Sfz => "sfz".to_string(),
-        DynamicsValue::Sfp => "sfp".to_string(),
-        DynamicsValue::Sfpp => "sfpp".to_string(),
-        DynamicsValue::Sffz => "sffz".to_string(),
-        DynamicsValue::Sfzp => "sfzp".to_string(),
-        DynamicsValue::Rf => "rf".to_string(),
-        DynamicsValue::Rfz => "rfz".to_string(),
-        DynamicsValue::Fz => "fz".to_string(),
-        DynamicsValue::N => "n".to_string(),
-        DynamicsValue::Pppp => "pppp".to_string(),
-        DynamicsValue::Ffff => "ffff".to_string(),
-        DynamicsValue::Ppppp => "ppppp".to_string(),
-        DynamicsValue::Fffff => "fffff".to_string(),
-        DynamicsValue::Pppppp => "pppppp".to_string(),
-        DynamicsValue::Ffffff => "ffffff".to_string(),
-        DynamicsValue::OtherDynamics(s) => s.clone(),
-    }
-}
-
 /// Convert MusicXML wedge to MEI hairpin element.
 ///
 /// Maps wedge types:
@@ -294,44 +265,6 @@ fn convert_metronome(
     }
 
     tempo
-}
-
-/// Convert a beat unit string to MEI DataDuration.
-fn beat_unit_string_to_duration(beat_unit: &str) -> Option<DataDuration> {
-    use tusk_model::data::DataDurationCmn;
-
-    let cmn = match beat_unit {
-        "long" => DataDurationCmn::Long,
-        "breve" => DataDurationCmn::Breve,
-        "whole" => DataDurationCmn::N1,
-        "half" => DataDurationCmn::N2,
-        "quarter" => DataDurationCmn::N4,
-        "eighth" => DataDurationCmn::N8,
-        "16th" => DataDurationCmn::N16,
-        "32nd" => DataDurationCmn::N32,
-        "64th" => DataDurationCmn::N64,
-        "128th" => DataDurationCmn::N128,
-        "256th" => DataDurationCmn::N256,
-        "512th" => DataDurationCmn::N512,
-        "1024th" => DataDurationCmn::N1024,
-        _ => return None,
-    };
-    Some(DataDuration::DataDurationCmn(cmn))
-}
-
-/// Format metronome marking as text for display.
-fn format_metronome_text(beat_unit: &str, dots: usize, per_minute: &str) -> String {
-    let beat_unit_symbol = match beat_unit {
-        "whole" => "𝅝",
-        "half" => "𝅗𝅥",
-        "quarter" => "♩",
-        "eighth" => "♪",
-        "16th" => "𝅘𝅥𝅯",
-        _ => beat_unit,
-    };
-
-    let dot_string = ".".repeat(dots);
-    format!("{}{} = {}", beat_unit_symbol, dot_string, per_minute)
 }
 
 /// Convert MusicXML words to MEI dir element.

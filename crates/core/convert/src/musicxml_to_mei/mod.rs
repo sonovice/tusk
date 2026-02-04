@@ -26,6 +26,7 @@ mod direction;
 mod note;
 mod parts;
 mod structure;
+mod utils;
 
 // Re-export attributes conversion functions
 pub use attributes::{

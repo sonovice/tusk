@@ -2,14 +2,15 @@
 
 use crate::context::ConversionContext;
 use crate::error::ConversionResult;
-use tusk_model::att::AttAccidLogFunc;
-use tusk_model::data::{
-    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataAugmentdot, DataBoolean, DataDuration, DataDurationCmn,
-    DataGrace, DataOctave, DataPitchname, DataStemdirection, DataStemdirectionBasic,
+use crate::musicxml_to_mei::utils::{
+    convert_accidental_value, convert_alter_to_gestural_accid, convert_grace,
+    convert_note_type_to_duration, convert_note_type_to_duration_cmn, convert_pitch_name,
+    convert_stem_direction,
 };
+use tusk_model::att::AttAccidLogFunc;
+use tusk_model::data::{DataAugmentdot, DataBoolean, DataOctave};
 use tusk_model::elements::{Accid, Chord, ChordChild, NoteChild};
-use tusk_musicxml::model::note::{AccidentalValue, FullNoteContent, NoteTypeValue, StemValue};
+use tusk_musicxml::model::note::FullNoteContent;
 
 /// Convert a MusicXML note to MEI note.
 ///
@@ -90,38 +91,6 @@ pub fn convert_note(
     Ok(mei_note)
 }
 
-/// Convert MusicXML Step to MEI DataPitchname.
-pub(crate) fn convert_pitch_name(step: tusk_musicxml::model::data::Step) -> DataPitchname {
-    use tusk_musicxml::model::data::Step;
-
-    let name = match step {
-        Step::A => "a",
-        Step::B => "b",
-        Step::C => "c",
-        Step::D => "d",
-        Step::E => "e",
-        Step::F => "f",
-        Step::G => "g",
-    };
-    DataPitchname::from(name.to_string())
-}
-
-/// Convert MusicXML alter value to MEI gestural accidental.
-pub(crate) fn convert_alter_to_gestural_accid(alter: f64) -> DataAccidentalGestural {
-    // Map common alterations to gestural accidentals
-    match alter as i32 {
-        -2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ff),
-        -1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::F),
-        0 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N),
-        1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::S),
-        2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ss), // Double sharp
-        _ => {
-            // For microtones or other alterations, use natural as fallback
-            DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N)
-        }
-    }
-}
-
 /// Convert note duration information from MusicXML to MEI.
 pub(crate) fn convert_note_duration(
     note: &tusk_musicxml::model::note::Note,
@@ -147,39 +116,6 @@ pub(crate) fn convert_note_duration(
     // Store gestural duration in ppq (divisions) for MIDI/playback
     if let Some(duration) = note.duration {
         mei_note.note_ges.dur_ppq = Some(duration as u64);
-    }
-}
-
-/// Convert MusicXML NoteTypeValue to MEI DataDuration.
-pub(crate) fn convert_note_type_to_duration(note_type: NoteTypeValue) -> DataDuration {
-    let dur = match note_type {
-        NoteTypeValue::Maxima => DataDurationCmn::Long, // MEI doesn't have maxima, use long
-        NoteTypeValue::Long => DataDurationCmn::Long,
-        NoteTypeValue::Breve => DataDurationCmn::Breve,
-        NoteTypeValue::Whole => DataDurationCmn::N1,
-        NoteTypeValue::Half => DataDurationCmn::N2,
-        NoteTypeValue::Quarter => DataDurationCmn::N4,
-        NoteTypeValue::Eighth => DataDurationCmn::N8,
-        NoteTypeValue::N16th => DataDurationCmn::N16,
-        NoteTypeValue::N32nd => DataDurationCmn::N32,
-        NoteTypeValue::N64th => DataDurationCmn::N64,
-        NoteTypeValue::N128th => DataDurationCmn::N128,
-        NoteTypeValue::N256th => DataDurationCmn::N256,
-        NoteTypeValue::N512th => DataDurationCmn::N512,
-        NoteTypeValue::N1024th => DataDurationCmn::N1024,
-    };
-    DataDuration::DataDurationCmn(dur)
-}
-
-/// Convert MusicXML grace note to MEI grace attribute.
-pub(crate) fn convert_grace(grace: &tusk_musicxml::model::note::Grace) -> DataGrace {
-    use tusk_musicxml::model::data::YesNo;
-
-    // MusicXML grace/@slash="yes" → MEI @grace="unacc" (unaccented/slashed)
-    // MusicXML grace/@slash="no" or absent → MEI @grace="acc" (accented/no slash)
-    match grace.slash {
-        Some(YesNo::Yes) => DataGrace::Unacc,
-        _ => DataGrace::Acc,
     }
 }
 
@@ -217,75 +153,6 @@ pub(crate) fn convert_accidental(
     }
 
     Ok(accid)
-}
-
-/// Convert MusicXML AccidentalValue to MEI DataAccidentalWritten.
-pub(crate) fn convert_accidental_value(value: AccidentalValue) -> DataAccidentalWritten {
-    let basic = match value {
-        AccidentalValue::Sharp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::Natural => DataAccidentalWrittenBasic::N,
-        AccidentalValue::Flat => DataAccidentalWrittenBasic::F,
-        AccidentalValue::DoubleSharp | AccidentalValue::SharpSharp => DataAccidentalWrittenBasic::X,
-        AccidentalValue::FlatFlat => DataAccidentalWrittenBasic::Ff,
-        AccidentalValue::NaturalSharp => DataAccidentalWrittenBasic::Ns,
-        AccidentalValue::NaturalFlat => DataAccidentalWrittenBasic::Nf,
-        AccidentalValue::TripleSharp => DataAccidentalWrittenBasic::Ts,
-        AccidentalValue::TripleFlat => DataAccidentalWrittenBasic::Tf,
-        // For extended accidentals (quarter tones, etc.), use the closest basic equivalent
-        AccidentalValue::QuarterFlat => DataAccidentalWrittenBasic::F,
-        AccidentalValue::QuarterSharp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::ThreeQuartersFlat => DataAccidentalWrittenBasic::Ff,
-        AccidentalValue::ThreeQuartersSharp => DataAccidentalWrittenBasic::Ss,
-        // Arrow variants map to basic equivalents
-        AccidentalValue::SharpDown | AccidentalValue::SharpUp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::NaturalDown | AccidentalValue::NaturalUp => DataAccidentalWrittenBasic::N,
-        AccidentalValue::FlatDown | AccidentalValue::FlatUp => DataAccidentalWrittenBasic::F,
-        AccidentalValue::DoubleSharpDown | AccidentalValue::DoubleSharpUp => {
-            DataAccidentalWrittenBasic::X
-        }
-        AccidentalValue::FlatFlatDown | AccidentalValue::FlatFlatUp => {
-            DataAccidentalWrittenBasic::Ff
-        }
-        AccidentalValue::ArrowDown | AccidentalValue::ArrowUp => DataAccidentalWrittenBasic::N,
-        // Slash variants
-        AccidentalValue::SlashQuarterSharp | AccidentalValue::SlashSharp => {
-            DataAccidentalWrittenBasic::S
-        }
-        AccidentalValue::SlashFlat | AccidentalValue::DoubleSlashFlat => {
-            DataAccidentalWrittenBasic::F
-        }
-        // Numbered sharps/flats (Stein-Zimmermann notation)
-        AccidentalValue::Sharp1
-        | AccidentalValue::Sharp2
-        | AccidentalValue::Sharp3
-        | AccidentalValue::Sharp5 => DataAccidentalWrittenBasic::S,
-        AccidentalValue::Flat1
-        | AccidentalValue::Flat2
-        | AccidentalValue::Flat3
-        | AccidentalValue::Flat4 => DataAccidentalWrittenBasic::F,
-        // Persian accidentals
-        AccidentalValue::Sori => DataAccidentalWrittenBasic::S, // Quarter-tone sharp
-        AccidentalValue::Koron => DataAccidentalWrittenBasic::F, // Quarter-tone flat
-        // Other
-        AccidentalValue::Other => DataAccidentalWrittenBasic::N,
-    };
-    DataAccidentalWritten::DataAccidentalWrittenBasic(basic)
-}
-
-/// Convert MusicXML StemValue to MEI DataStemdirection.
-pub(crate) fn convert_stem_direction(stem: StemValue) -> DataStemdirection {
-    match stem {
-        StemValue::Up => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up),
-        StemValue::Down => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Down),
-        StemValue::Double => {
-            // MEI doesn't have double, default to up
-            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
-        }
-        StemValue::None => {
-            // No stem, but still need a direction value
-            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
-        }
-    }
 }
 
 /// Convert a MusicXML rest to MEI rest.
@@ -398,29 +265,6 @@ pub fn convert_measure_rest(
     Ok(mei_mrest)
 }
 
-/// Convert MusicXML NoteTypeValue to MEI DataDurationCmn.
-///
-/// Similar to `convert_note_type_to_duration` but returns the CMN-specific type
-/// for use with rests (which use `DataDurationrests` instead of `DataDuration`).
-pub(crate) fn convert_note_type_to_duration_cmn(note_type: NoteTypeValue) -> DataDurationCmn {
-    match note_type {
-        NoteTypeValue::Maxima => DataDurationCmn::Long, // MEI doesn't have maxima, use long
-        NoteTypeValue::Long => DataDurationCmn::Long,
-        NoteTypeValue::Breve => DataDurationCmn::Breve,
-        NoteTypeValue::Whole => DataDurationCmn::N1,
-        NoteTypeValue::Half => DataDurationCmn::N2,
-        NoteTypeValue::Quarter => DataDurationCmn::N4,
-        NoteTypeValue::Eighth => DataDurationCmn::N8,
-        NoteTypeValue::N16th => DataDurationCmn::N16,
-        NoteTypeValue::N32nd => DataDurationCmn::N32,
-        NoteTypeValue::N64th => DataDurationCmn::N64,
-        NoteTypeValue::N128th => DataDurationCmn::N128,
-        NoteTypeValue::N256th => DataDurationCmn::N256,
-        NoteTypeValue::N512th => DataDurationCmn::N512,
-        NoteTypeValue::N1024th => DataDurationCmn::N1024,
-    }
-}
-
 /// Check if a MusicXML rest is a whole-measure rest.
 pub fn is_measure_rest(note: &tusk_musicxml::model::note::Note) -> bool {
     use tusk_musicxml::model::data::YesNo;
@@ -508,6 +352,10 @@ pub fn convert_chord(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
+    use tusk_model::data::{
+        DataAccidentalWritten, DataAccidentalWrittenBasic, DataDuration, DataDurationCmn,
+        DataGrace, DataStemdirection, DataStemdirectionBasic,
+    };
 
     // ============================================================================
     // Note Conversion Tests
