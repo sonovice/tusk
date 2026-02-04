@@ -6,10 +6,13 @@
 //! # Module Organization
 //!
 //! - `data` - Simple types (xs:simpleType definitions from XSD)
+//! - `elements` - Complex types/element structs (xs:complexType definitions)
 //!
 //! Types follow MusicXML 4.0 specification naming conventions.
 
 pub mod data;
+pub mod elements;
 
 // Re-export commonly used types
 pub use data::*;
+pub use elements::*;
