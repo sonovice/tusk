@@ -2008,3 +2008,54 @@ fn layerdef_parse_with_multiple_children() {
     assert!(matches!(&parsed.children[2], LayerDefChild::InstrDef(_)));
     assert!(matches!(&parsed.children[3], LayerDefChild::MeterSig(_)));
 }
+
+/// Test that label element text content is parsed correctly
+#[test]
+fn label_parses_text_content() {
+    use tusk_model::elements::{Label, LabelChild};
+
+    let xml = r#"<label xml:id="l1">Stringed instruments</label>"#;
+
+    let parsed = Label::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("l1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LabelChild::Text(text) => {
+            assert_eq!(text, "Stringed instruments");
+        }
+        other => panic!("Expected Text, got {:?}", other),
+    }
+}
+
+/// Test that label element roundtrips with text content
+#[test]
+fn roundtrip_label_with_text_content() {
+    use tusk_model::elements::{Label, LabelChild};
+
+    let mut original = Label::default();
+    original.common.xml_id = Some("l1".to_string());
+    original
+        .children
+        .push(LabelChild::Text("Gitarrenmusik".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("Gitarrenmusik"),
+        "xml should contain text: {}",
+        xml
+    );
+
+    let parsed = Label::from_mei_str(&xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("l1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        LabelChild::Text(text) => {
+            assert_eq!(text, "Gitarrenmusik");
+        }
+        other => panic!("Expected Text, got {:?}", other),
+    }
+}

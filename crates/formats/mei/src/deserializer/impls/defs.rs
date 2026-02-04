@@ -3,7 +3,7 @@
 //! This module contains implementations for ScoreDef, StaffDef, LayerDef, StaffGrp.
 
 use crate::deserializer::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
 use std::io::BufRead;
 use tusk_model::att::{
@@ -12,8 +12,8 @@ use tusk_model::att::{
     AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
 use tusk_model::elements::{
-    Clef, InstrDef, LayerDef, LayerDefChild, ScoreDef, ScoreDefChild, StaffDef, StaffDefChild,
-    StaffGrp, StaffGrpChild,
+    Clef, InstrDef, LabelChild, LayerDef, LayerDefChild, ScoreDef, ScoreDefChild, StaffDef,
+    StaffDefChild, StaffGrp, StaffGrpChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -838,15 +838,126 @@ pub(crate) fn parse_label_from_event<R: BufRead>(
 ) -> DeserializeResult<tusk_model::elements::Label> {
     let mut label = tusk_model::elements::Label::default();
 
-    // Extract common attributes
+    // Extract all attribute classes
     label.common.extract_attributes(&mut attrs)?;
+    label.facsimile.extract_attributes(&mut attrs)?;
+    label.lang.extract_attributes(&mut attrs)?;
+    label.source.extract_attributes(&mut attrs)?;
 
-    // Skip children (label can contain text and other elements)
+    // Parse mixed content (text and child elements)
     if !is_empty {
-        reader.skip_to_end("label")?;
+        while let Some(content) = reader.read_next_mixed_content("label")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve text content
+                    if !text.trim().is_empty() {
+                        label.children.push(LabelChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label.children.push(LabelChild::Rend(Box::new(rend)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label.children.push(LabelChild::Ref(Box::new(ref_elem)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            label.children.push(LabelChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label
+                                .children
+                                .push(LabelChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label
+                                .children
+                                .push(LabelChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label.children.push(LabelChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label.children.push(LabelChild::Date(Box::new(date)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label.children.push(LabelChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            label
+                                .children
+                                .push(LabelChild::Identifier(Box::new(identifier)));
+                        }
+                        _ => {
+                            // Skip unknown child elements
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(label)
+}
+
+impl MeiDeserialize for tusk_model::elements::Label {
+    fn element_name() -> &'static str {
+        "label"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_label_from_event(reader, attrs, is_empty)
+    }
 }
 
 /// Helper to parse LabelAbbr from event
