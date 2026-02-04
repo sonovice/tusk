@@ -11,7 +11,7 @@ use std::fs;
 use tusk_musicxml::model::attributes::{KeyContent, TimeContent};
 use tusk_musicxml::model::elements::{MeasureContent, ScorePartwise};
 use tusk_musicxml::model::note::FullNoteContent;
-use tusk_musicxml::parser::parse_score_partwise;
+use tusk_musicxml::parser::{parse_score_partwise, parse_score_timewise};
 use tusk_musicxml::{export, import};
 
 /// Read a file and convert from UTF-16 to UTF-8 if needed.
@@ -49,11 +49,21 @@ fn read_xml_file(path: &str) -> Result<String, String> {
 // Roundtrip Test Harness
 // ============================================================================
 
+/// Detect whether a MusicXML string is in timewise format.
+fn is_timewise(xml: &str) -> bool {
+    xml.contains("<score-timewise")
+}
+
 /// Perform a full roundtrip: MusicXML → MEI → MusicXML
 /// Returns the original parsed score and the roundtripped score.
+/// Automatically detects score-partwise vs score-timewise format.
 fn roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    // Step 1: Parse original MusicXML
-    let original = parse_score_partwise(xml).map_err(|e| format!("Parse error: {}", e))?;
+    // Step 1: Parse original MusicXML (detect format)
+    let original = if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+    } else {
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
+    };
 
     // Step 2: Convert to MEI
     let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
@@ -929,6 +939,21 @@ fn test_roundtrip_movement_number_and_movement_title_elements() {
     if !diffs.is_empty() {
         panic!(
             "Roundtrip differences found for movement_number_and_movement_title_elements.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
+
+#[test]
+fn test_roundtrip_score_timewise_element() {
+    let (original, roundtripped) =
+        roundtrip_spec_examples_fixture("score_timewise_element.musicxml")
+            .unwrap_or_else(|e| panic!("Roundtrip failed for score_timewise_element: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for score_timewise_element.musicxml:\n{}",
             diffs.report()
         );
     }
