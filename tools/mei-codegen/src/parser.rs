@@ -955,7 +955,10 @@ fn parse_content_model(reader: &mut Reader<&[u8]>) -> Result<ContentModel> {
 }
 
 /// Parse a content model item from a start tag.
-fn parse_content_item(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<Option<ContentItem>> {
+fn parse_content_item(
+    reader: &mut Reader<&[u8]>,
+    start: &BytesStart,
+) -> Result<Option<ContentItem>> {
     let item = match start.name().as_ref() {
         b"rng:zeroOrMore" => {
             let inner = parse_content_model_inner(reader, b"rng:zeroOrMore")?;
@@ -1098,7 +1101,10 @@ fn parse_content_model_choices(
 // ============================================================================
 
 /// Parse a constraintSpec element (Schematron rules).
-fn parse_constraint_spec(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<Vec<Constraint>> {
+fn parse_constraint_spec(
+    reader: &mut Reader<&[u8]>,
+    start: &BytesStart,
+) -> Result<Vec<Constraint>> {
     let ident = get_attr(start, b"ident").unwrap_or_default();
     let mut constraints = Vec::new();
     let mut buf = Vec::new();
@@ -1106,8 +1112,7 @@ fn parse_constraint_spec(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Resu
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) if e.name().as_ref() == b"constraint" => {
-                let inner_constraints =
-                    parse_schematron_constraint(reader, &ident, b"constraint")?;
+                let inner_constraints = parse_schematron_constraint(reader, &ident, b"constraint")?;
                 constraints.extend(inner_constraints);
             }
             Ok(Event::End(e)) if e.name().as_ref() == b"constraintSpec" => break,
