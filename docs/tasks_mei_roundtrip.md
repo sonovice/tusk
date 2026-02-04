@@ -38,7 +38,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_SERIALIZER] AccessRestrictChild/UseRestrictChild/SysReqChild: many missing child serializers (Abbr, Add, Bloc, CastList, Choice, Corr, etc.) (source: pub_stmt.rs build errors)
 - [x] [SERIALIZER_BUG] Many Child serializers use `_ => Ok(())` catch-all which silently drops elements - changed to return NotImplemented error for: Symbol, Bibl, BiblStruct, Height, Width, Depth, Dim, Dimensions, Abbr, Expan, Q, Fig, Seg, Stack, Relation, RelationList, Repository, Locus, LocusGrp, Term, StyleName, PeriodName, Catchwords, Signatures, SecFolio, Stamp, Heraldry (source: Aguado_Walzer_G-major.mei roundtrip test)
 - [x] [MISSING_SERIALIZER] SourceDescChild::Source needs serializer - added Source, SourceChild serializers (source: Aguado_Walzer_G-major.mei)
-- [ ] [SERIALIZER_BUG] Creator (migrated from composer) adds extra @role attribute 'cmp' that wasn't in original - composer→creator migration should preserve original structure (source: Aguado_Walzer_G-major.mei)
+- [x] [SERIALIZER_BUG] Creator (migrated from composer) adds extra @role attribute 'cmp' that wasn't in original - composer→creator migration should preserve original structure (source: Aguado_Walzer_G-major.mei)
 
 ---
 

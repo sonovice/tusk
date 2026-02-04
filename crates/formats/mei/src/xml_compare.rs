@@ -91,6 +91,19 @@ fn strip_namespace_prefix(name: &str) -> &str {
     }
 }
 
+/// Deprecated element → replacement mappings (MEI 5.1 → 6.0)
+/// Format: (deprecated_name, replacement_name, implicit_role_value)
+///
+/// When deprecated elements like `<composer>` are migrated to `<creator>`,
+/// the element name itself implies a role. The migration adds this as an
+/// explicit `@role` attribute, but the original element didn't have it.
+const ELEMENT_MIGRATIONS: &[(&str, &str, &str)] = &[
+    ("composer", "creator", "cmp"),
+    ("lyricist", "creator", "lyr"),
+    ("arranger", "creator", "arr"),
+    ("author", "creator", "aut"),
+];
+
 /// Check if two element names are equivalent considering MEI version migrations.
 ///
 /// MEI 5.1 deprecated several elements that were renamed in MEI 6.0:
@@ -104,16 +117,7 @@ fn elements_are_equivalent(name1: &str, name2: &str) -> bool {
         return true;
     }
 
-    // Deprecated element → replacement mappings (MEI 5.1 → 6.0)
-    // Format: (deprecated_name, replacement_name)
-    const ELEMENT_MIGRATIONS: &[(&str, &str)] = &[
-        ("composer", "creator"),
-        ("lyricist", "creator"),
-        ("arranger", "creator"),
-        ("author", "creator"),
-    ];
-
-    for &(deprecated, replacement) in ELEMENT_MIGRATIONS {
+    for &(deprecated, replacement, _) in ELEMENT_MIGRATIONS {
         // Check both directions: deprecated→replacement or replacement←deprecated
         if (name1 == deprecated && name2 == replacement)
             || (name1 == replacement && name2 == deprecated)
@@ -123,6 +127,23 @@ fn elements_are_equivalent(name1: &str, name2: &str) -> bool {
     }
 
     false
+}
+
+/// Get the implicit role value for a deprecated element migration.
+///
+/// When `<composer>` is migrated to `<creator>`, the role "cmp" is implicit
+/// from the element name. Returns Some(role) if this is a migration pair,
+/// where name1 is the deprecated element and name2 is the replacement.
+fn get_implicit_migration_role(
+    deprecated_name: &str,
+    replacement_name: &str,
+) -> Option<&'static str> {
+    for &(deprecated, replacement, implicit_role) in ELEMENT_MIGRATIONS {
+        if deprecated_name == deprecated && replacement_name == replacement {
+            return Some(implicit_role);
+        }
+    }
+    None
 }
 
 /// Parse XML string into a canonical tree representation.
@@ -284,13 +305,18 @@ fn compare_elements(
         return; // No point comparing children if names differ
     }
 
-    // Compare attributes (skip meiversion on root <mei> element)
+    // Check if this is a deprecated element migration (e.g., composer→creator)
+    // If so, we need to ignore the implicit role attribute that gets added
+    let implicit_role = get_implicit_migration_role(&elem1.name, &elem2.name);
+
+    // Compare attributes (skip meiversion on root <mei> element, skip implicit role on migrations)
     compare_attributes(
         &elem1.attributes,
         &elem2.attributes,
         &current_path,
         diffs,
         is_root_mei,
+        implicit_role,
     );
 
     // Compare children
@@ -302,12 +328,18 @@ fn compare_elements(
 /// If `skip_meiversion` is true, the `meiversion` attribute is ignored.
 /// This is needed because MEI export always uses the version from codegen
 /// (currently 6.0-dev from ODD spec), not the original file's version.
+///
+/// If `implicit_migration_role` is Some, the `role` attribute with that value
+/// is ignored when it appears only in the second (output) document. This handles
+/// the case where deprecated elements like `<composer>` are migrated to `<creator>`
+/// and the implicit role is added as an explicit attribute.
 fn compare_attributes(
     attrs1: &HashMap<String, String>,
     attrs2: &HashMap<String, String>,
     path: &str,
     diffs: &mut Vec<Difference>,
     skip_meiversion: bool,
+    implicit_migration_role: Option<&str>,
 ) {
     // Find attributes in first but not second
     for (key, value1) in attrs1 {
@@ -340,9 +372,17 @@ fn compare_attributes(
     }
 
     // Find attributes in second but not first
-    for key in attrs2.keys() {
+    for (key, value) in attrs2 {
         // Skip meiversion on root <mei> element - export uses codegen version
         if skip_meiversion && key == "meiversion" {
+            continue;
+        }
+        // Skip implicit role attribute added during element migration
+        // e.g., <composer> → <creator role="cmp"> adds role="cmp" implicitly
+        if key == "role"
+            && let Some(implicit_role) = implicit_migration_role
+            && value == implicit_role
+        {
             continue;
         }
         if !attrs1.contains_key(key) {
@@ -350,8 +390,7 @@ fn compare_attributes(
                 path: path.to_string(),
                 description: format!(
                     "unexpected attribute '{}' in output (value '{}')",
-                    key,
-                    attrs2.get(key).unwrap()
+                    key, value
                 ),
             });
         }
@@ -783,5 +822,97 @@ mod tests {
         let xml2 = r#"<creator><persName>W.A. Mozart</persName></creator>"#;
         let result = compare_xml(xml1, xml2);
         assert!(result.is_err(), "different content should still fail");
+    }
+
+    // ============================================================================
+    // Implicit Role Attribute Tests (deprecated element migration adds @role)
+    // ============================================================================
+
+    #[test]
+    fn test_composer_migration_with_implicit_role_attribute() {
+        // When <composer> is migrated to <creator>, the deserializer adds role="cmp"
+        // This implicit role should be ignored in comparisons
+        let xml1 = r#"<composer>Johann S. Bach</composer>"#;
+        let xml2 = r#"<creator role="cmp">Johann S. Bach</creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "implicit role='cmp' from composer→creator migration should be ignored"
+        );
+    }
+
+    #[test]
+    fn test_lyricist_migration_with_implicit_role_attribute() {
+        let xml1 = r#"<lyricist>Text Author</lyricist>"#;
+        let xml2 = r#"<creator role="lyr">Text Author</creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "implicit role='lyr' from lyricist→creator migration should be ignored"
+        );
+    }
+
+    #[test]
+    fn test_arranger_migration_with_implicit_role_attribute() {
+        let xml1 = r#"<arranger>Arr. Name</arranger>"#;
+        let xml2 = r#"<creator role="arr">Arr. Name</creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "implicit role='arr' from arranger→creator migration should be ignored"
+        );
+    }
+
+    #[test]
+    fn test_author_migration_with_implicit_role_attribute() {
+        let xml1 = r#"<author>Author Name</author>"#;
+        let xml2 = r#"<creator role="aut">Author Name</creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "implicit role='aut' from author→creator migration should be ignored"
+        );
+    }
+
+    #[test]
+    fn test_migration_with_wrong_implicit_role_fails() {
+        // If the role doesn't match the expected implicit role, it should fail
+        let xml1 = r#"<composer>Johann S. Bach</composer>"#;
+        let xml2 = r#"<creator role="lyr">Johann S. Bach</creator>"#; // wrong role!
+        let result = compare_xml(xml1, xml2);
+        assert!(
+            result.is_err(),
+            "wrong implicit role should fail comparison"
+        );
+    }
+
+    #[test]
+    fn test_migration_preserves_explicit_role_from_original() {
+        // If the original deprecated element had a role attribute, it should be preserved
+        let xml1 = r#"<composer role="custom">Johann S. Bach</composer>"#;
+        let xml2 = r#"<creator role="custom">Johann S. Bach</creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "explicit role from original should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_migration_with_nested_content_and_implicit_role() {
+        // Test nested content with implicit role
+        let xml1 = r#"<composer><persName>J.S. Bach</persName></composer>"#;
+        let xml2 = r#"<creator role="cmp"><persName>J.S. Bach</persName></creator>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "nested content with implicit role should work"
+        );
+    }
+
+    #[test]
+    fn test_non_migrated_elements_with_extra_role_fails() {
+        // For non-migrated elements, an extra role attribute should still fail
+        let xml1 = r#"<title>Test Title</title>"#;
+        let xml2 = r#"<title role="main">Test Title</title>"#;
+        let result = compare_xml(xml1, xml2);
+        assert!(
+            result.is_err(),
+            "extra role on non-migrated element should fail"
+        );
     }
 }
