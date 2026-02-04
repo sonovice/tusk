@@ -731,3 +731,17 @@ fn test_roundtrip_spec_faur_reve_sample() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_mahl_fa_ge4_sample() {
+    let (original, roundtripped) = roundtrip_spec_example("MahlFaGe4Sample.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for MahlFaGe4Sample: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for MahlFaGe4Sample.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
