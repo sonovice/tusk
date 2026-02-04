@@ -703,3 +703,17 @@ fn test_roundtrip_spec_dichterliebe01() {
         );
     }
 }
+
+#[test]
+fn test_roundtrip_spec_echigo_jishi() {
+    let (original, roundtripped) = roundtrip_spec_example("Echigo-Jishi.musicxml")
+        .unwrap_or_else(|e| panic!("Roundtrip failed for Echigo-Jishi: {}", e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Roundtrip differences found for Echigo-Jishi.musicxml:\n{}",
+            diffs.report()
+        );
+    }
+}
