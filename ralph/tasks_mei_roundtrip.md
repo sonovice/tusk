@@ -47,6 +47,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `music` child element parsing to Group deserializer - currently skipped with comment "parser not yet available" but Music deserializer exists in misc.rs (source: group_element.mei)
 - [x] [SERIALIZER_BUG] AnnotChild serializer incomplete - missing Ref, Ptr, and 47 other variants (only handles Text, P, Head, Rend, Name, PersName, CorpName, Date, Identifier, Lb, Title); causes annot text/ref content loss (sources: multiple_sectionsII.mei, Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
 - [x] [SERIALIZER_BUG] PgFootChild serializer incomplete - missing Table variant (and ~50 other variants); causes table to serialize as 'unknown' (source: part_element.mei)
+- [ ] [SERIALIZER_BUG] SectionChild::Annot serialization incomplete - `collect_all_attributes()` returns empty, `has_children()` returns false, `serialize_children()` returns error; causes annot text content to be lost in sections (source: Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
 
 ---
 
@@ -162,8 +163,8 @@ Different encoding approaches for the same content (Mozart's Das Veilchen).
 
 Testing document structure: mdiv, section, group elements.
 
-- [ ] Roundtrip test: `Music_structure/group_element.mei`
-- [ ] Roundtrip test: `Music_structure/mdivs_Tschaikovsky/Tschaikovsky_Symphony_No5_Op64_mulitple_mdivs.mei`
+- [x] Roundtrip test: `Music_structure/group_element.mei`
+- [x] Roundtrip test: `Music_structure/mdivs_Tschaikovsky/Tschaikovsky_Symphony_No5_Op64_mulitple_mdivs.mei`
 - [ ] Roundtrip test: `Music_structure/mdivs_Vivaldi/Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei`
 - [ ] Roundtrip test: `Music_structure/multiple_sectionsI.mei`
 - [ ] Roundtrip test: `Music_structure/multiple_sectionsII.mei`
