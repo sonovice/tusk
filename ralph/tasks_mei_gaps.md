@@ -169,8 +169,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 13.5 Relations and References / Encoding and Tags
-- [ ] Implement `Relation`, `RelationList`, `RelatedItem`, `Item`, `ItemList`, `ComponentList` and `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`
-- [ ] Add roundtrip tests
+- [x] Implement `Relation`, `RelationList`, `RelatedItem`, `Item`, `ItemList`, `ComponentList` and `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`
+- [x] Add roundtrip tests
 
 ### 13.7 Miscellaneous Header
 - [ ] Implement `Genre`, `Audience`, `TextLang`, `Heraldry`, `Inscription`, `PhysLoc`, `Repository`, `SecFolio`, `SpecRepro`, `Recipient`, `PeriodName`, `TreatHist`, `TreatSched`, `PgDesc`

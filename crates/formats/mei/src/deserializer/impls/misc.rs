@@ -112,7 +112,7 @@ fn parse_creation_from_event<R: BufRead>(
 }
 
 /// Parse a `<history>` element from within another element.
-fn parse_history_from_event<R: BufRead>(
+pub(crate) fn parse_history_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
@@ -1544,7 +1544,7 @@ fn parse_term_list_from_event<R: BufRead>(
 }
 
 /// Parse a `<classification>` element from within another element.
-fn parse_classification_from_event<R: BufRead>(
+pub(crate) fn parse_classification_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
@@ -1989,7 +1989,7 @@ fn parse_relation_list_from_event<R: BufRead>(
 }
 
 /// Parse an `<extMeta>` element from within another element.
-fn parse_ext_meta_from_event<R: BufRead>(
+pub(crate) fn parse_ext_meta_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,

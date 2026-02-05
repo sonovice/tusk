@@ -97,8 +97,8 @@ impl MeiSerialize for ProvenanceChild {
             ProvenanceChild::Q(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Extent(elem) => elem.serialize_mei(writer),
             ProvenanceChild::EventList(elem) => elem.serialize_mei(writer),
-            ProvenanceChild::RelationList(_) => Ok(()), // Not yet implemented
-            ProvenanceChild::Relation(_) => Ok(()),     // Not yet implemented
+            ProvenanceChild::RelationList(elem) => elem.serialize_mei(writer),
+            ProvenanceChild::Relation(elem) => elem.serialize_mei(writer),
             ProvenanceChild::PeriodName(elem) => elem.serialize_mei(writer),
             ProvenanceChild::StyleName(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -107,9 +107,9 @@ impl MeiSerialize for ProvenanceChild {
             ProvenanceChild::PostBox(elem) => elem.serialize_mei(writer),
             ProvenanceChild::PostCode(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Street(elem) => elem.serialize_mei(writer),
-            ProvenanceChild::Repository(_) => Ok(()), // Not yet implemented
-            ProvenanceChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            ProvenanceChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            ProvenanceChild::Repository(elem) => elem.serialize_mei(writer),
+            ProvenanceChild::Heraldry(_) => Ok(()), // Not yet implemented
+            ProvenanceChild::SecFolio(_) => Ok(()), // Not yet implemented
             ProvenanceChild::Catchwords(_) => Ok(()), // Not yet implemented
             ProvenanceChild::Signatures(_) => Ok(()), // Not yet implemented
             ProvenanceChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -205,8 +205,8 @@ impl MeiSerialize for AcquisitionChild {
             AcquisitionChild::Q(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Extent(elem) => elem.serialize_mei(writer),
             AcquisitionChild::EventList(elem) => elem.serialize_mei(writer),
-            AcquisitionChild::RelationList(_) => Ok(()), // Not yet implemented
-            AcquisitionChild::Relation(_) => Ok(()),     // Not yet implemented
+            AcquisitionChild::RelationList(elem) => elem.serialize_mei(writer),
+            AcquisitionChild::Relation(elem) => elem.serialize_mei(writer),
             AcquisitionChild::PeriodName(elem) => elem.serialize_mei(writer),
             AcquisitionChild::StyleName(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -215,9 +215,9 @@ impl MeiSerialize for AcquisitionChild {
             AcquisitionChild::PostBox(elem) => elem.serialize_mei(writer),
             AcquisitionChild::PostCode(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Street(elem) => elem.serialize_mei(writer),
-            AcquisitionChild::Repository(_) => Ok(()), // Not yet implemented
-            AcquisitionChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            AcquisitionChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            AcquisitionChild::Repository(elem) => elem.serialize_mei(writer),
+            AcquisitionChild::Heraldry(_) => Ok(()), // Not yet implemented
+            AcquisitionChild::SecFolio(_) => Ok(()), // Not yet implemented
             AcquisitionChild::Catchwords(_) => Ok(()), // Not yet implemented
             AcquisitionChild::Signatures(_) => Ok(()), // Not yet implemented
             AcquisitionChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -313,8 +313,8 @@ impl MeiSerialize for ExhibHistChild {
             ExhibHistChild::Q(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Extent(elem) => elem.serialize_mei(writer),
             ExhibHistChild::EventList(elem) => elem.serialize_mei(writer),
-            ExhibHistChild::RelationList(_) => Ok(()), // Not yet implemented
-            ExhibHistChild::Relation(_) => Ok(()),     // Not yet implemented
+            ExhibHistChild::RelationList(elem) => elem.serialize_mei(writer),
+            ExhibHistChild::Relation(elem) => elem.serialize_mei(writer),
             ExhibHistChild::PeriodName(elem) => elem.serialize_mei(writer),
             ExhibHistChild::StyleName(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -323,9 +323,9 @@ impl MeiSerialize for ExhibHistChild {
             ExhibHistChild::PostBox(elem) => elem.serialize_mei(writer),
             ExhibHistChild::PostCode(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Street(elem) => elem.serialize_mei(writer),
-            ExhibHistChild::Repository(_) => Ok(()), // Not yet implemented
-            ExhibHistChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            ExhibHistChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            ExhibHistChild::Repository(elem) => elem.serialize_mei(writer),
+            ExhibHistChild::Heraldry(_) => Ok(()), // Not yet implemented
+            ExhibHistChild::SecFolio(_) => Ok(()), // Not yet implemented
             ExhibHistChild::Catchwords(_) => Ok(()), // Not yet implemented
             ExhibHistChild::Signatures(_) => Ok(()), // Not yet implemented
             ExhibHistChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -419,8 +419,8 @@ impl MeiSerialize for AccMatChild {
             AccMatChild::Symbol(elem) => elem.serialize_mei(writer),
             AccMatChild::Q(elem) => elem.serialize_mei(writer),
             AccMatChild::Extent(elem) => elem.serialize_mei(writer),
-            AccMatChild::RelationList(_) => Ok(()), // Not yet implemented
-            AccMatChild::Relation(_) => Ok(()),     // Not yet implemented
+            AccMatChild::RelationList(elem) => elem.serialize_mei(writer),
+            AccMatChild::Relation(elem) => elem.serialize_mei(writer),
             AccMatChild::PeriodName(elem) => elem.serialize_mei(writer),
             AccMatChild::StyleName(elem) => elem.serialize_mei(writer),
             AccMatChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -429,9 +429,9 @@ impl MeiSerialize for AccMatChild {
             AccMatChild::PostBox(elem) => elem.serialize_mei(writer),
             AccMatChild::PostCode(elem) => elem.serialize_mei(writer),
             AccMatChild::Street(elem) => elem.serialize_mei(writer),
-            AccMatChild::Repository(_) => Ok(()), // Not yet implemented
-            AccMatChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            AccMatChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            AccMatChild::Repository(elem) => elem.serialize_mei(writer),
+            AccMatChild::Heraldry(_) => Ok(()), // Not yet implemented
+            AccMatChild::SecFolio(_) => Ok(()), // Not yet implemented
             AccMatChild::Catchwords(_) => Ok(()), // Not yet implemented
             AccMatChild::Signatures(_) => Ok(()), // Not yet implemented
             AccMatChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -525,8 +525,8 @@ impl MeiSerialize for AddDescChild {
             AddDescChild::Symbol(elem) => elem.serialize_mei(writer),
             AddDescChild::Q(elem) => elem.serialize_mei(writer),
             AddDescChild::Extent(elem) => elem.serialize_mei(writer),
-            AddDescChild::RelationList(_) => Ok(()), // Not yet implemented
-            AddDescChild::Relation(_) => Ok(()),     // Not yet implemented
+            AddDescChild::RelationList(elem) => elem.serialize_mei(writer),
+            AddDescChild::Relation(elem) => elem.serialize_mei(writer),
             AddDescChild::PeriodName(elem) => elem.serialize_mei(writer),
             AddDescChild::StyleName(elem) => elem.serialize_mei(writer),
             AddDescChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -535,9 +535,9 @@ impl MeiSerialize for AddDescChild {
             AddDescChild::PostBox(elem) => elem.serialize_mei(writer),
             AddDescChild::PostCode(elem) => elem.serialize_mei(writer),
             AddDescChild::Street(elem) => elem.serialize_mei(writer),
-            AddDescChild::Repository(_) => Ok(()), // Not yet implemented
-            AddDescChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            AddDescChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            AddDescChild::Repository(elem) => elem.serialize_mei(writer),
+            AddDescChild::Heraldry(_) => Ok(()), // Not yet implemented
+            AddDescChild::SecFolio(_) => Ok(()), // Not yet implemented
             AddDescChild::Catchwords(_) => Ok(()), // Not yet implemented
             AddDescChild::Signatures(_) => Ok(()), // Not yet implemented
             AddDescChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -625,9 +625,9 @@ impl MeiSerialize for WatermarkChild {
             WatermarkChild::Title(elem) => elem.serialize_mei(writer),
             WatermarkChild::Q(elem) => elem.serialize_mei(writer),
             WatermarkChild::Extent(elem) => elem.serialize_mei(writer),
-            WatermarkChild::RelationList(_) => Ok(()), // Not yet implemented
-            WatermarkChild::Relation(_) => Ok(()),     // Not yet implemented
-            WatermarkChild::Heraldry(_) => Ok(()),     // Not yet implemented
+            WatermarkChild::RelationList(elem) => elem.serialize_mei(writer),
+            WatermarkChild::Relation(elem) => elem.serialize_mei(writer),
+            WatermarkChild::Heraldry(_) => Ok(()), // Not yet implemented
             WatermarkChild::Stack(elem) => elem.serialize_mei(writer),
         }
     }
@@ -842,8 +842,8 @@ impl MeiSerialize for TypeDescChild {
             TypeDescChild::Symbol(elem) => elem.serialize_mei(writer),
             TypeDescChild::Q(elem) => elem.serialize_mei(writer),
             TypeDescChild::Extent(elem) => elem.serialize_mei(writer),
-            TypeDescChild::RelationList(_) => Ok(()), // Not yet implemented
-            TypeDescChild::Relation(_) => Ok(()),     // Not yet implemented
+            TypeDescChild::RelationList(elem) => elem.serialize_mei(writer),
+            TypeDescChild::Relation(elem) => elem.serialize_mei(writer),
             TypeDescChild::PeriodName(elem) => elem.serialize_mei(writer),
             TypeDescChild::StyleName(elem) => elem.serialize_mei(writer),
             TypeDescChild::Abbr(elem) => elem.serialize_mei(writer),
@@ -852,9 +852,9 @@ impl MeiSerialize for TypeDescChild {
             TypeDescChild::PostBox(elem) => elem.serialize_mei(writer),
             TypeDescChild::PostCode(elem) => elem.serialize_mei(writer),
             TypeDescChild::Street(elem) => elem.serialize_mei(writer),
-            TypeDescChild::Repository(_) => Ok(()), // Not yet implemented
-            TypeDescChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            TypeDescChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            TypeDescChild::Repository(elem) => elem.serialize_mei(writer),
+            TypeDescChild::Heraldry(_) => Ok(()), // Not yet implemented
+            TypeDescChild::SecFolio(_) => Ok(()), // Not yet implemented
             TypeDescChild::Catchwords(_) => Ok(()), // Not yet implemented
             TypeDescChild::Signatures(_) => Ok(()), // Not yet implemented
             TypeDescChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -948,8 +948,8 @@ impl MeiSerialize for TypeNoteChild {
             TypeNoteChild::Symbol(elem) => elem.serialize_mei(writer),
             TypeNoteChild::Q(elem) => elem.serialize_mei(writer),
             TypeNoteChild::Extent(elem) => elem.serialize_mei(writer),
-            TypeNoteChild::RelationList(_) => Ok(()), // Not yet implemented
-            TypeNoteChild::Relation(_) => Ok(()),     // Not yet implemented
+            TypeNoteChild::RelationList(elem) => elem.serialize_mei(writer),
+            TypeNoteChild::Relation(elem) => elem.serialize_mei(writer),
             TypeNoteChild::PeriodName(elem) => elem.serialize_mei(writer),
             TypeNoteChild::StyleName(elem) => elem.serialize_mei(writer),
             TypeNoteChild::Abbr(elem) => elem.serialize_mei(writer),

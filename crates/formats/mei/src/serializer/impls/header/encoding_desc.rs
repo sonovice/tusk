@@ -2,16 +2,19 @@
 //!
 //! Contains: EncodingDesc, AppInfo, Application, ClassDecls, Taxonomy, Category,
 //! EditorialDecl, Segmentation, StdVals, Interpretation, Normalization, Correction,
-//! ProjectDesc, SamplingDecl.
+//! ProjectDesc, SamplingDecl, DomainsDecl, TagsDecl, Namespace, TagUsage, AttUsage.
 
+use super::super::to_attr_string;
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    AppInfo, AppInfoChild, Application, ApplicationChild, Category, CategoryChild, ClassDecls,
-    ClassDeclsChild, Correction, CorrectionChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
-    EncodingDescChild, Interpretation, InterpretationChild, Label, LabelChild, Normalization,
-    NormalizationChild, ProjectDesc, ProjectDescChild, SamplingDecl, SamplingDeclChild,
-    Segmentation, SegmentationChild, StdVals, StdValsChild, Taxonomy, TaxonomyChild,
+    AppInfo, AppInfoChild, Application, ApplicationChild, AttUsage, AttUsageChild, Category,
+    CategoryChild, ClassDecls, ClassDeclsChild, Correction, CorrectionChild, Desc, DescChild,
+    DomainsDecl, EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild,
+    Interpretation, InterpretationChild, Label, LabelChild, Namespace, NamespaceChild,
+    Normalization, NormalizationChild, ProjectDesc, ProjectDescChild, SamplingDecl,
+    SamplingDeclChild, Segmentation, SegmentationChild, StdVals, StdValsChild, TagUsage,
+    TagUsageChild, TagsDecl, TagsDeclChild, Taxonomy, TaxonomyChild,
 };
 
 // ============================================================================
@@ -76,8 +79,8 @@ impl MeiSerialize for EncodingDescChild {
             EncodingDescChild::EditorialDecl(elem) => elem.serialize_mei(writer),
             EncodingDescChild::ProjectDesc(elem) => elem.serialize_mei(writer),
             EncodingDescChild::SamplingDecl(elem) => elem.serialize_mei(writer),
-            EncodingDescChild::TagsDecl(_) => Ok(()), // TODO: implement TagsDecl serializer
-            EncodingDescChild::DomainsDecl(_) => Ok(()), // TODO: implement DomainsDecl serializer
+            EncodingDescChild::TagsDecl(elem) => elem.serialize_mei(writer),
+            EncodingDescChild::DomainsDecl(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -965,6 +968,486 @@ impl MeiSerialize for LabelChild {
             LabelChild::Extent(elem) => elem.serialize_mei(writer),
             // Many other children - skip for now
             _ => Ok(()),
+        }
+    }
+}
+
+// ============================================================================
+// DomainsDecl
+// ============================================================================
+
+impl MeiSerialize for DomainsDecl {
+    fn element_name(&self) -> &'static str {
+        "domainsDecl"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        if let Some(ref anl) = self.anl {
+            if let Some(s) = to_attr_string(anl) {
+                attrs.push(("anl", s));
+            }
+        }
+        if let Some(ref ges) = self.ges {
+            if let Some(s) = to_attr_string(ges) {
+                attrs.push(("ges", s));
+            }
+        }
+        if let Some(ref vis) = self.vis {
+            if let Some(s) = to_attr_string(vis) {
+                attrs.push(("vis", s));
+            }
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// TagsDecl
+// ============================================================================
+
+impl MeiSerialize for TagsDecl {
+    fn element_name(&self) -> &'static str {
+        "tagsDecl"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TagsDeclChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TagsDeclChild::Head(_) => "head",
+            TagsDeclChild::Namespace(_) => "namespace",
+            TagsDeclChild::Desc(_) => "desc",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TagsDeclChild::Head(elem) => elem.serialize_mei(writer),
+            TagsDeclChild::Namespace(elem) => elem.serialize_mei(writer),
+            TagsDeclChild::Desc(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Namespace
+// ============================================================================
+
+impl MeiSerialize for Namespace {
+    fn element_name(&self) -> &'static str {
+        "namespace"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        if let Some(ref name) = self.name {
+            attrs.push(("name", name.0.clone()));
+        }
+        if let Some(ref prefix) = self.prefix {
+            attrs.push(("prefix", prefix.to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for NamespaceChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            NamespaceChild::Desc(_) => "desc",
+            NamespaceChild::TagUsage(_) => "tagUsage",
+            NamespaceChild::AttUsage(_) => "attUsage",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            NamespaceChild::Desc(elem) => elem.serialize_mei(writer),
+            NamespaceChild::TagUsage(elem) => elem.serialize_mei(writer),
+            NamespaceChild::AttUsage(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// TagUsage
+// ============================================================================
+
+impl MeiSerialize for TagUsage {
+    fn element_name(&self) -> &'static str {
+        "tagUsage"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        if let Some(ref name) = self.name {
+            attrs.push(("name", name.to_string()));
+        }
+        if let Some(ref context) = self.context {
+            attrs.push(("context", context.clone()));
+        }
+        if let Some(occurs) = self.occurs {
+            attrs.push(("occurs", occurs.to_string()));
+        }
+        if let Some(withid) = self.withid {
+            attrs.push(("withid", withid.to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TagUsageChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TagUsageChild::AttUsage(_) => "attUsage",
+            TagUsageChild::Desc(_) => "desc",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TagUsageChild::AttUsage(elem) => elem.serialize_mei(writer),
+            TagUsageChild::Desc(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// AttUsage
+// ============================================================================
+
+impl MeiSerialize for AttUsage {
+    fn element_name(&self) -> &'static str {
+        "attUsage"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        if let Some(ref name) = self.name {
+            attrs.push(("name", name.to_string()));
+        }
+        if let Some(ref context) = self.context {
+            attrs.push(("context", context.clone()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for AttUsageChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            AttUsageChild::Desc(_) => "desc",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            AttUsageChild::Desc(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// Desc
+// ============================================================================
+
+impl MeiSerialize for Desc {
+    fn element_name(&self) -> &'static str {
+        "desc"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for DescChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            DescChild::Text(_) => "#text",
+            DescChild::Region(_) => "region",
+            DescChild::Depth(_) => "depth",
+            DescChild::Locus(_) => "locus",
+            DescChild::Num(_) => "num",
+            DescChild::Signatures(_) => "signatures",
+            DescChild::Expan(_) => "expan",
+            DescChild::Symbol(_) => "symbol",
+            DescChild::GeogFeat(_) => "geogFeat",
+            DescChild::District(_) => "district",
+            DescChild::Stamp(_) => "stamp",
+            DescChild::Annot(_) => "annot",
+            DescChild::Orig(_) => "orig",
+            DescChild::SecFolio(_) => "secFolio",
+            DescChild::Seg(_) => "seg",
+            DescChild::LocusGrp(_) => "locusGrp",
+            DescChild::GeogName(_) => "geogName",
+            DescChild::Unclear(_) => "unclear",
+            DescChild::Width(_) => "width",
+            DescChild::Gap(_) => "gap",
+            DescChild::Corr(_) => "corr",
+            DescChild::Lb(_) => "lb",
+            DescChild::Dimensions(_) => "dimensions",
+            DescChild::Address(_) => "address",
+            DescChild::PostCode(_) => "postCode",
+            DescChild::Sic(_) => "sic",
+            DescChild::Term(_) => "term",
+            DescChild::Fig(_) => "fig",
+            DescChild::PeriodName(_) => "periodName",
+            DescChild::Stack(_) => "stack",
+            DescChild::Catchwords(_) => "catchwords",
+            DescChild::Extent(_) => "extent",
+            DescChild::Dim(_) => "dim",
+            DescChild::Ref(_) => "ref",
+            DescChild::CorpName(_) => "corpName",
+            DescChild::Bloc(_) => "bloc",
+            DescChild::Date(_) => "date",
+            DescChild::Q(_) => "q",
+            DescChild::Title(_) => "title",
+            DescChild::Subst(_) => "subst",
+            DescChild::BiblStruct(_) => "biblStruct",
+            DescChild::Reg(_) => "reg",
+            DescChild::Height(_) => "height",
+            DescChild::PostBox(_) => "postBox",
+            DescChild::Ptr(_) => "ptr",
+            DescChild::Identifier(_) => "identifier",
+            DescChild::Rend(_) => "rend",
+            DescChild::Damage(_) => "damage",
+            DescChild::RelationList(_) => "relationList",
+            DescChild::Name(_) => "name",
+            DescChild::Del(_) => "del",
+            DescChild::Street(_) => "street",
+            DescChild::HandShift(_) => "handShift",
+            DescChild::Choice(_) => "choice",
+            DescChild::Abbr(_) => "abbr",
+            DescChild::Restore(_) => "restore",
+            DescChild::Repository(_) => "repository",
+            DescChild::Relation(_) => "relation",
+            DescChild::Add(_) => "add",
+            DescChild::Heraldry(_) => "heraldry",
+            DescChild::Country(_) => "country",
+            DescChild::StyleName(_) => "styleName",
+            DescChild::PersName(_) => "persName",
+            DescChild::Bibl(_) => "bibl",
+            DescChild::Settlement(_) => "settlement",
+            DescChild::Supplied(_) => "supplied",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            DescChild::Text(text) => writer.write_text(text),
+            DescChild::Region(elem) => elem.serialize_mei(writer),
+            DescChild::Depth(elem) => elem.serialize_mei(writer),
+            DescChild::Locus(elem) => elem.serialize_mei(writer),
+            DescChild::Num(elem) => elem.serialize_mei(writer),
+            // Phase 14 elements - stub
+            DescChild::Signatures(_) => Ok(()),
+            DescChild::Expan(elem) => elem.serialize_mei(writer),
+            DescChild::Symbol(elem) => elem.serialize_mei(writer),
+            DescChild::GeogFeat(elem) => elem.serialize_mei(writer),
+            DescChild::District(elem) => elem.serialize_mei(writer),
+            DescChild::Stamp(elem) => elem.serialize_mei(writer),
+            DescChild::Annot(elem) => elem.serialize_mei(writer),
+            DescChild::Orig(elem) => elem.serialize_mei(writer),
+            // Phase 14 element - stub
+            DescChild::SecFolio(_) => Ok(()),
+            DescChild::Seg(elem) => elem.serialize_mei(writer),
+            DescChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            DescChild::GeogName(elem) => elem.serialize_mei(writer),
+            DescChild::Unclear(elem) => elem.serialize_mei(writer),
+            DescChild::Width(elem) => elem.serialize_mei(writer),
+            DescChild::Gap(elem) => elem.serialize_mei(writer),
+            DescChild::Corr(elem) => elem.serialize_mei(writer),
+            DescChild::Lb(elem) => elem.serialize_mei(writer),
+            DescChild::Dimensions(elem) => elem.serialize_mei(writer),
+            DescChild::Address(elem) => elem.serialize_mei(writer),
+            DescChild::PostCode(elem) => elem.serialize_mei(writer),
+            DescChild::Sic(elem) => elem.serialize_mei(writer),
+            DescChild::Term(elem) => elem.serialize_mei(writer),
+            DescChild::Fig(elem) => elem.serialize_mei(writer),
+            DescChild::PeriodName(elem) => elem.serialize_mei(writer),
+            DescChild::Stack(elem) => elem.serialize_mei(writer),
+            // Phase 14 element - stub
+            DescChild::Catchwords(_) => Ok(()),
+            DescChild::Extent(elem) => elem.serialize_mei(writer),
+            DescChild::Dim(elem) => elem.serialize_mei(writer),
+            DescChild::Ref(elem) => elem.serialize_mei(writer),
+            DescChild::CorpName(elem) => elem.serialize_mei(writer),
+            DescChild::Bloc(elem) => elem.serialize_mei(writer),
+            DescChild::Date(elem) => elem.serialize_mei(writer),
+            DescChild::Q(elem) => elem.serialize_mei(writer),
+            DescChild::Title(elem) => elem.serialize_mei(writer),
+            DescChild::Subst(elem) => elem.serialize_mei(writer),
+            DescChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            DescChild::Reg(elem) => elem.serialize_mei(writer),
+            DescChild::Height(elem) => elem.serialize_mei(writer),
+            DescChild::PostBox(elem) => elem.serialize_mei(writer),
+            DescChild::Ptr(elem) => elem.serialize_mei(writer),
+            DescChild::Identifier(elem) => elem.serialize_mei(writer),
+            DescChild::Rend(elem) => elem.serialize_mei(writer),
+            DescChild::Damage(elem) => elem.serialize_mei(writer),
+            DescChild::RelationList(elem) => elem.serialize_mei(writer),
+            DescChild::Name(elem) => elem.serialize_mei(writer),
+            DescChild::Del(elem) => elem.serialize_mei(writer),
+            DescChild::Street(elem) => elem.serialize_mei(writer),
+            DescChild::HandShift(elem) => elem.serialize_mei(writer),
+            DescChild::Choice(elem) => elem.serialize_mei(writer),
+            DescChild::Abbr(elem) => elem.serialize_mei(writer),
+            DescChild::Restore(elem) => elem.serialize_mei(writer),
+            DescChild::Repository(elem) => elem.serialize_mei(writer),
+            DescChild::Relation(elem) => elem.serialize_mei(writer),
+            DescChild::Add(elem) => elem.serialize_mei(writer),
+            // Phase 14 element - stub
+            DescChild::Heraldry(_) => Ok(()),
+            DescChild::Country(elem) => elem.serialize_mei(writer),
+            DescChild::StyleName(elem) => elem.serialize_mei(writer),
+            DescChild::PersName(elem) => elem.serialize_mei(writer),
+            DescChild::Bibl(elem) => elem.serialize_mei(writer),
+            DescChild::Settlement(elem) => elem.serialize_mei(writer),
+            DescChild::Supplied(elem) => elem.serialize_mei(writer),
         }
     }
 }

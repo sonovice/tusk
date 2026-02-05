@@ -1151,7 +1151,12 @@ fn acquisition_deserializes_with_date_child() {
     </acquisition>"#;
     let acquisition = Acquisition::from_mei_str(xml).expect("should deserialize");
     assert_eq!(acquisition.common.xml_id, Some("acq1".to_string()));
-    assert!(acquisition.children.iter().any(|c| matches!(c, AcquisitionChild::Date(_))));
+    assert!(
+        acquisition
+            .children
+            .iter()
+            .any(|c| matches!(c, AcquisitionChild::Date(_)))
+    );
 }
 
 // ============================================================================
@@ -1219,7 +1224,11 @@ fn watermark_desc_deserializes_with_watermark_child() {
         <watermark>Crown over shield</watermark>
     </watermarkDesc>"#;
     let desc = WatermarkDesc::from_mei_str(xml).expect("should deserialize");
-    assert!(desc.children.iter().any(|c| matches!(c, WatermarkDescChild::Watermark(_))));
+    assert!(
+        desc.children
+            .iter()
+            .any(|c| matches!(c, WatermarkDescChild::Watermark(_)))
+    );
 }
 
 // ============================================================================
@@ -1244,7 +1253,11 @@ fn type_desc_deserializes_with_type_note_child() {
         <typeNote>Roman type, 12pt</typeNote>
     </typeDesc>"#;
     let desc = TypeDesc::from_mei_str(xml).expect("should deserialize");
-    assert!(desc.children.iter().any(|c| matches!(c, TypeDescChild::TypeNote(_))));
+    assert!(
+        desc.children
+            .iter()
+            .any(|c| matches!(c, TypeDescChild::TypeNote(_)))
+    );
 }
 
 // ============================================================================

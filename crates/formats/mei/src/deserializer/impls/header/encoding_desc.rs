@@ -6,12 +6,13 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::elements::{
-    AltId, AltIdChild, AppInfo, AppInfoChild, Application, ApplicationChild, CatRel, CatRelChild,
-    Category, CategoryChild, ClassDecls, ClassDeclsChild, Correction, CorrectionChild, Desc,
-    DescChild, EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, Interpretation,
-    InterpretationChild, Normalization, NormalizationChild, ProjectDesc, ProjectDescChild,
-    SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild, StdVals, StdValsChild,
-    Taxonomy, TaxonomyChild,
+    AltId, AltIdChild, AppInfo, AppInfoChild, Application, ApplicationChild, AttUsage,
+    AttUsageChild, CatRel, CatRelChild, Category, CategoryChild, ClassDecls, ClassDeclsChild,
+    Correction, CorrectionChild, Desc, DescChild, DomainsDecl, EditorialDecl, EditorialDeclChild,
+    EncodingDesc, EncodingDescChild, Interpretation, InterpretationChild, Namespace,
+    NamespaceChild, Normalization, NormalizationChild, ProjectDesc, ProjectDescChild, SamplingDecl,
+    SamplingDeclChild, Segmentation, SegmentationChild, StdVals, StdValsChild, TagUsage,
+    TagUsageChild, TagsDecl, TagsDeclChild, Taxonomy, TaxonomyChild,
 };
 
 // MeiDeserialize trait implementations
@@ -184,6 +185,71 @@ impl MeiDeserialize for Category {
     }
 }
 
+impl MeiDeserialize for DomainsDecl {
+    fn element_name() -> &'static str {
+        "domainsDecl"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_domains_decl_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for TagsDecl {
+    fn element_name() -> &'static str {
+        "tagsDecl"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_tags_decl_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Namespace {
+    fn element_name() -> &'static str {
+        "namespace"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_namespace_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for TagUsage {
+    fn element_name() -> &'static str {
+        "tagUsage"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_tag_usage_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for AttUsage {
+    fn element_name() -> &'static str {
+        "attUsage"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_att_usage_from_event(reader, attrs, is_empty)
+    }
+}
+
 /// Parse an `<encodingDesc>` element from within another element.
 pub(crate) fn parse_encoding_desc_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
@@ -242,7 +308,19 @@ pub(crate) fn parse_encoding_desc_from_event<R: BufRead>(
                         .children
                         .push(EncodingDescChild::ClassDecls(Box::new(class_decls)));
                 }
-                // domainsDecl, tagsDecl are more complex - skip for now
+                "domainsDecl" => {
+                    let domains_decl =
+                        parse_domains_decl_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::DomainsDecl(Box::new(domains_decl)));
+                }
+                "tagsDecl" => {
+                    let tags_decl = parse_tags_decl_from_event(reader, child_attrs, child_empty)?;
+                    encoding_desc
+                        .children
+                        .push(EncodingDescChild::TagsDecl(Box::new(tags_decl)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -1022,4 +1100,188 @@ pub(crate) fn parse_desc_from_event<R: BufRead>(
     }
 
     Ok(desc)
+}
+
+/// Parse a `<domainsDecl>` element from within another element.
+pub(crate) fn parse_domains_decl_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<DomainsDecl> {
+    let mut elem = DomainsDecl::default();
+
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "anl", elem.anl);
+    extract_attr!(attrs, "ges", elem.ges);
+    extract_attr!(attrs, "vis", elem.vis);
+
+    // DomainsDecl is an empty element (no children)
+    if !is_empty {
+        reader.skip_to_end("domainsDecl")?;
+    }
+
+    Ok(elem)
+}
+
+/// Parse a `<tagsDecl>` element from within another element.
+pub(crate) fn parse_tags_decl_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TagsDecl> {
+    let mut elem = TagsDecl::default();
+
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("tagsDecl")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let child = super::parse_head_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(TagsDeclChild::Head(Box::new(child)));
+                }
+                "namespace" => {
+                    let child = parse_namespace_from_event(reader, child_attrs, child_empty)?;
+                    elem.children
+                        .push(TagsDeclChild::Namespace(Box::new(child)));
+                }
+                "desc" => {
+                    let child = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(TagsDeclChild::Desc(Box::new(child)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+/// Parse a `<namespace>` element from within another element.
+pub(crate) fn parse_namespace_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Namespace> {
+    let mut elem = Namespace::default();
+
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    // Parse name attribute as DataUri
+    if let Some(value) = attrs.remove("name") {
+        elem.name = Some(tusk_model::generated::data::DataUri(value));
+    }
+    extract_attr!(attrs, "prefix", elem.prefix);
+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("namespace")?
+        {
+            match name.as_str() {
+                "desc" => {
+                    let child = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(NamespaceChild::Desc(Box::new(child)));
+                }
+                "tagUsage" => {
+                    let child = parse_tag_usage_from_event(reader, child_attrs, child_empty)?;
+                    elem.children
+                        .push(NamespaceChild::TagUsage(Box::new(child)));
+                }
+                "attUsage" => {
+                    let child = parse_att_usage_from_event(reader, child_attrs, child_empty)?;
+                    elem.children
+                        .push(NamespaceChild::AttUsage(Box::new(child)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+/// Parse a `<tagUsage>` element from within another element.
+pub(crate) fn parse_tag_usage_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TagUsage> {
+    let mut elem = TagUsage::default();
+
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "name", elem.name);
+    extract_attr!(attrs, "context", string elem.context);
+    extract_attr!(attrs, "occurs", elem.occurs);
+    extract_attr!(attrs, "withid", elem.withid);
+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("tagUsage")?
+        {
+            match name.as_str() {
+                "attUsage" => {
+                    let child = parse_att_usage_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(TagUsageChild::AttUsage(Box::new(child)));
+                }
+                "desc" => {
+                    let child = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(TagUsageChild::Desc(Box::new(child)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+/// Parse an `<attUsage>` element from within another element.
+pub(crate) fn parse_att_usage_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<AttUsage> {
+    let mut elem = AttUsage::default();
+
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "name", elem.name);
+    extract_attr!(attrs, "context", string elem.context);
+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("attUsage")?
+        {
+            match name.as_str() {
+                "desc" => {
+                    let child = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(AttUsageChild::Desc(Box::new(child)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(elem)
 }

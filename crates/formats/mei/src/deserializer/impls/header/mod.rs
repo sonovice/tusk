@@ -24,6 +24,7 @@ pub(crate) mod phys_desc;
 mod provenance;
 mod pub_stmt;
 mod recording;
+mod relations;
 
 // Re-export all public parse functions
 pub(crate) use address::{
@@ -47,11 +48,13 @@ pub(crate) use bibl::{
 
 pub(crate) use encoding_desc::{
     parse_alt_id_from_event, parse_app_info_from_event, parse_application_from_event,
-    parse_cat_rel_from_event, parse_category_from_event, parse_class_decls_from_event,
-    parse_correction_from_event, parse_desc_from_event, parse_editorial_decl_from_event,
-    parse_encoding_desc_from_event, parse_interpretation_from_event,
-    parse_normalization_from_event, parse_project_desc_from_event, parse_sampling_decl_from_event,
-    parse_segmentation_from_event, parse_std_vals_from_event, parse_taxonomy_from_event,
+    parse_att_usage_from_event, parse_cat_rel_from_event, parse_category_from_event,
+    parse_class_decls_from_event, parse_correction_from_event, parse_desc_from_event,
+    parse_domains_decl_from_event, parse_editorial_decl_from_event, parse_encoding_desc_from_event,
+    parse_interpretation_from_event, parse_namespace_from_event, parse_normalization_from_event,
+    parse_project_desc_from_event, parse_sampling_decl_from_event, parse_segmentation_from_event,
+    parse_std_vals_from_event, parse_tag_usage_from_event, parse_tags_decl_from_event,
+    parse_taxonomy_from_event,
 };
 
 pub(crate) use mei_head::{
@@ -107,6 +110,12 @@ pub(crate) use recording::{
     parse_other_char_from_event, parse_perf_duration_from_event, parse_performance_from_event,
     parse_playing_speed_from_event, parse_recording_from_event, parse_score_format_from_event,
     parse_sound_chan_from_event, parse_track_config_from_event,
+};
+
+pub(crate) use relations::{
+    parse_component_list_from_event, parse_item_from_event, parse_item_list_from_event,
+    parse_phys_loc_from_event, parse_related_item_from_event, parse_relation_from_event,
+    parse_relation_list_from_event, parse_repository_from_event,
 };
 
 #[cfg(test)]

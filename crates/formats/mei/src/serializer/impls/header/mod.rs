@@ -27,6 +27,7 @@ mod phys_desc;
 mod provenance;
 mod pub_stmt;
 mod recording;
+mod relations;
 mod revision_desc;
 mod work_elements;
 mod work_list;

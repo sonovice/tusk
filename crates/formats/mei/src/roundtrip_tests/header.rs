@@ -5132,3 +5132,601 @@ fn roundtrip_score_format_with_auth() {
     assert_eq!(parsed.authorized.auth, Some("marcScoreFormat".to_string()));
     assert_eq!(parsed.children.len(), 1);
 }
+
+// ============================================================================
+// Relation and Reference Elements
+// ============================================================================
+
+#[test]
+fn roundtrip_relation_empty() {
+    use tusk_model::elements::Relation;
+
+    let mut original = Relation::default();
+    original.common.xml_id = Some("rel1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("relation"),
+        "xml should contain relation: {}",
+        xml
+    );
+    assert!(xml.contains("xml:id=\"rel1\""), "should have id: {}", xml);
+
+    let parsed = Relation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("rel1".to_string()));
+}
+
+#[test]
+fn roundtrip_relation_with_rel_attr() {
+    use tusk_model::data::{DataFrbrrelationship, DataRelationship, DataUri};
+    use tusk_model::elements::Relation;
+
+    let mut original = Relation::default();
+    original.common.xml_id = Some("rel2".to_string());
+    original.rel = Some(DataRelationship::DataFrbrrelationship(
+        DataFrbrrelationship::HasReproduction,
+    ));
+    original.pointing.target = vec![DataUri::from("http://example.com/repro".to_string())];
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("rel=\"hasReproduction\""),
+        "should have rel: {}",
+        xml
+    );
+    assert!(
+        xml.contains("target=\"http://example.com/repro\""),
+        "should have target: {}",
+        xml
+    );
+
+    let parsed = Relation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(
+        parsed.rel,
+        Some(DataRelationship::DataFrbrrelationship(
+            DataFrbrrelationship::HasReproduction
+        ))
+    );
+    assert_eq!(parsed.pointing.target.len(), 1);
+    assert_eq!(parsed.pointing.target[0].0, "http://example.com/repro");
+}
+
+#[test]
+fn roundtrip_relation_list_empty() {
+    use tusk_model::elements::RelationList;
+
+    let mut original = RelationList::default();
+    original.common.xml_id = Some("rl1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("relationList"),
+        "xml should contain relationList: {}",
+        xml
+    );
+
+    let parsed = RelationList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("rl1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_relation_list_with_relation() {
+    use tusk_model::data::{DataFrbrrelationship, DataRelationship};
+    use tusk_model::elements::{Relation, RelationList, RelationListChild};
+
+    let mut original = RelationList::default();
+    original.common.xml_id = Some("rl2".to_string());
+
+    let mut rel = Relation::default();
+    rel.common.xml_id = Some("rel1".to_string());
+    rel.rel = Some(DataRelationship::DataFrbrrelationship(
+        DataFrbrrelationship::IsPartOf,
+    ));
+
+    original
+        .children
+        .push(RelationListChild::Relation(Box::new(rel)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("relationList"), "should have list: {}", xml);
+    assert!(xml.contains("relation"), "should have relation: {}", xml);
+    assert!(
+        xml.contains("rel=\"isPartOf\""),
+        "should have rel attr: {}",
+        xml
+    );
+
+    let parsed = RelationList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    if let RelationListChild::Relation(rel) = &parsed.children[0] {
+        assert_eq!(
+            rel.rel,
+            Some(DataRelationship::DataFrbrrelationship(
+                DataFrbrrelationship::IsPartOf
+            ))
+        );
+    } else {
+        panic!("Expected Relation child");
+    }
+}
+
+#[test]
+fn roundtrip_related_item_empty() {
+    use tusk_model::elements::RelatedItem;
+
+    let mut original = RelatedItem::default();
+    original.common.xml_id = Some("ri1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("relatedItem"),
+        "xml should contain relatedItem: {}",
+        xml
+    );
+
+    let parsed = RelatedItem::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ri1".to_string()));
+}
+
+#[test]
+fn roundtrip_related_item_with_rel() {
+    use tusk_model::data::{DataModsrelationship, DataUri};
+    use tusk_model::elements::RelatedItem;
+
+    let mut original = RelatedItem::default();
+    original.common.xml_id = Some("ri2".to_string());
+    original.rel = Some(DataModsrelationship::Preceding);
+    original.pointing.target = vec![DataUri::from("#item123".to_string())];
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("rel=\"preceding\""),
+        "should have rel: {}",
+        xml
+    );
+    assert!(
+        xml.contains("target=\"#item123\""),
+        "should have target: {}",
+        xml
+    );
+
+    let parsed = RelatedItem::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.rel, Some(DataModsrelationship::Preceding));
+    assert_eq!(parsed.pointing.target.len(), 1);
+    assert_eq!(parsed.pointing.target[0].0, "#item123");
+}
+
+#[test]
+fn roundtrip_item_empty() {
+    use tusk_model::elements::Item;
+
+    let mut original = Item::default();
+    original.common.xml_id = Some("item1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("item"), "xml should contain item: {}", xml);
+
+    let parsed = Item::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("item1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_item_with_phys_loc() {
+    use tusk_model::elements::{Item, ItemChild, PhysLoc};
+
+    let mut original = Item::default();
+    original.common.xml_id = Some("item2".to_string());
+
+    let mut phys_loc = PhysLoc::default();
+    phys_loc.common.xml_id = Some("pl1".to_string());
+    original
+        .children
+        .push(ItemChild::PhysLoc(Box::new(phys_loc)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("item"), "should have item: {}", xml);
+    assert!(xml.contains("physLoc"), "should have physLoc: {}", xml);
+
+    let parsed = Item::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], ItemChild::PhysLoc(_)));
+}
+
+#[test]
+fn roundtrip_item_list_empty() {
+    use tusk_model::elements::ItemList;
+
+    let mut original = ItemList::default();
+    original.common.xml_id = Some("il1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("itemList"),
+        "xml should contain itemList: {}",
+        xml
+    );
+
+    let parsed = ItemList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("il1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_item_list_with_items() {
+    use tusk_model::elements::{Item, ItemList, ItemListChild};
+
+    let mut original = ItemList::default();
+    original.common.xml_id = Some("il2".to_string());
+
+    let mut item1 = Item::default();
+    item1.common.xml_id = Some("item1".to_string());
+    let mut item2 = Item::default();
+    item2.common.xml_id = Some("item2".to_string());
+
+    original.children.push(ItemListChild::Item(Box::new(item1)));
+    original.children.push(ItemListChild::Item(Box::new(item2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("itemList"), "should have list: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"item1\""),
+        "should have item1: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"item2\""),
+        "should have item2: {}",
+        xml
+    );
+
+    let parsed = ItemList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_component_list_empty() {
+    use tusk_model::elements::ComponentList;
+
+    let mut original = ComponentList::default();
+    original.common.xml_id = Some("cl1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("componentList"),
+        "xml should contain componentList: {}",
+        xml
+    );
+
+    let parsed = ComponentList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cl1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_component_list_with_items() {
+    use tusk_model::elements::{ComponentList, ComponentListChild, Item};
+
+    let mut original = ComponentList::default();
+    original.common.xml_id = Some("cl2".to_string());
+
+    let mut item = Item::default();
+    item.common.xml_id = Some("item1".to_string());
+    original
+        .children
+        .push(ComponentListChild::Item(Box::new(item)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("componentList"), "should have list: {}", xml);
+    assert!(xml.contains("item"), "should have item: {}", xml);
+
+    let parsed = ComponentList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], ComponentListChild::Item(_)));
+}
+
+#[test]
+fn roundtrip_phys_loc_empty() {
+    use tusk_model::elements::PhysLoc;
+
+    let mut original = PhysLoc::default();
+    original.common.xml_id = Some("pl1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("physLoc"),
+        "xml should contain physLoc: {}",
+        xml
+    );
+
+    let parsed = PhysLoc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pl1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_phys_loc_with_repository() {
+    use tusk_model::elements::{PhysLoc, PhysLocChild, Repository, RepositoryChild};
+
+    let mut original = PhysLoc::default();
+    original.common.xml_id = Some("pl2".to_string());
+
+    let mut repo = Repository::default();
+    repo.common.xml_id = Some("repo1".to_string());
+    repo.children
+        .push(RepositoryChild::Text("Library of Congress".to_string()));
+
+    original
+        .children
+        .push(PhysLocChild::Repository(Box::new(repo)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("physLoc"), "should have physLoc: {}", xml);
+    assert!(
+        xml.contains("repository"),
+        "should have repository: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Library of Congress"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = PhysLoc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    if let PhysLocChild::Repository(repo) = &parsed.children[0] {
+        assert_eq!(repo.common.xml_id, Some("repo1".to_string()));
+    } else {
+        panic!("Expected Repository child");
+    }
+}
+
+#[test]
+fn roundtrip_repository_empty() {
+    use tusk_model::elements::Repository;
+
+    let mut original = Repository::default();
+    original.common.xml_id = Some("repo1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("repository"),
+        "xml should contain repository: {}",
+        xml
+    );
+
+    let parsed = Repository::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("repo1".to_string()));
+}
+
+#[test]
+fn roundtrip_repository_with_text() {
+    use tusk_model::elements::{Repository, RepositoryChild};
+
+    let mut original = Repository::default();
+    original.common.xml_id = Some("repo2".to_string());
+    original
+        .children
+        .push(RepositoryChild::Text("British Library".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("British Library"), "should have text: {}", xml);
+
+    let parsed = Repository::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    if let RepositoryChild::Text(text) = &parsed.children[0] {
+        assert_eq!(text, "British Library");
+    } else {
+        panic!("Expected Text child");
+    }
+}
+
+// ============================================================================
+// Encoding and Tags Declaration Elements
+// ============================================================================
+
+#[test]
+fn roundtrip_domains_decl_empty() {
+    use tusk_model::elements::DomainsDecl;
+
+    let mut original = DomainsDecl::default();
+    original.common.xml_id = Some("dd1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("domainsDecl"),
+        "xml should contain domainsDecl: {}",
+        xml
+    );
+
+    let parsed = DomainsDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("dd1".to_string()));
+}
+
+#[test]
+fn roundtrip_domains_decl_with_attrs() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::DomainsDecl;
+
+    let mut original = DomainsDecl::default();
+    original.common.xml_id = Some("dd2".to_string());
+    original.anl = Some(DataBoolean::True);
+    original.ges = Some(DataBoolean::False);
+    original.vis = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("domainsDecl"), "should have decl: {}", xml);
+    assert!(xml.contains("anl=\"true\""), "should have anl: {}", xml);
+    assert!(xml.contains("ges=\"false\""), "should have ges: {}", xml);
+    assert!(xml.contains("vis=\"true\""), "should have vis: {}", xml);
+
+    let parsed = DomainsDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.anl, Some(DataBoolean::True));
+    assert_eq!(parsed.ges, Some(DataBoolean::False));
+    assert_eq!(parsed.vis, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_namespace_empty() {
+    use tusk_model::elements::Namespace;
+
+    let mut original = Namespace::default();
+    original.common.xml_id = Some("ns1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("namespace"),
+        "xml should contain namespace: {}",
+        xml
+    );
+
+    let parsed = Namespace::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ns1".to_string()));
+}
+
+#[test]
+fn roundtrip_namespace_with_name_attr() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Namespace;
+
+    let mut original = Namespace::default();
+    original.common.xml_id = Some("ns2".to_string());
+    original.name = Some(DataUri("http://www.music-encoding.org/ns/mei".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("name=\"http://www.music-encoding.org/ns/mei\""),
+        "should have name: {}",
+        xml
+    );
+
+    let parsed = Namespace::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(
+        parsed.name,
+        Some(DataUri("http://www.music-encoding.org/ns/mei".to_string()))
+    );
+}
+
+#[test]
+fn roundtrip_tags_decl_empty() {
+    use tusk_model::elements::TagsDecl;
+
+    let mut original = TagsDecl::default();
+    original.common.xml_id = Some("td1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("tagsDecl"),
+        "xml should contain tagsDecl: {}",
+        xml
+    );
+
+    let parsed = TagsDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("td1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_tags_decl_with_namespace() {
+    use tusk_model::elements::{Namespace, TagsDecl, TagsDeclChild};
+
+    let mut original = TagsDecl::default();
+    original.common.xml_id = Some("td2".to_string());
+
+    let mut ns = Namespace::default();
+    ns.common.xml_id = Some("ns1".to_string());
+    original
+        .children
+        .push(TagsDeclChild::Namespace(Box::new(ns)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("tagsDecl"), "should have decl: {}", xml);
+    assert!(xml.contains("namespace"), "should have namespace: {}", xml);
+
+    let parsed = TagsDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], TagsDeclChild::Namespace(_)));
+}
+
+#[test]
+fn roundtrip_tag_usage_empty() {
+    use tusk_model::elements::TagUsage;
+
+    let mut original = TagUsage::default();
+    original.common.xml_id = Some("tu1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("tagUsage"),
+        "xml should contain tagUsage: {}",
+        xml
+    );
+
+    let parsed = TagUsage::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("tu1".to_string()));
+}
+
+#[test]
+fn roundtrip_tag_usage_with_attrs() {
+    use tusk_model::data::DataNmtoken;
+    use tusk_model::elements::TagUsage;
+
+    let mut original = TagUsage::default();
+    original.common.xml_id = Some("tu2".to_string());
+    original.name = Some(DataNmtoken("note".to_string()));
+    original.occurs = Some(42);
+    original.withid = Some(15);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("name=\"note\""), "should have name: {}", xml);
+    assert!(xml.contains("occurs=\"42\""), "should have occurs: {}", xml);
+    assert!(xml.contains("withid=\"15\""), "should have withid: {}", xml);
+
+    let parsed = TagUsage::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.name, Some(DataNmtoken("note".to_string())));
+    assert_eq!(parsed.occurs, Some(42));
+    assert_eq!(parsed.withid, Some(15));
+}
+
+#[test]
+fn roundtrip_att_usage_empty() {
+    use tusk_model::elements::AttUsage;
+
+    let mut original = AttUsage::default();
+    original.common.xml_id = Some("au1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("attUsage"),
+        "xml should contain attUsage: {}",
+        xml
+    );
+
+    let parsed = AttUsage::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("au1".to_string()));
+}
+
+#[test]
+fn roundtrip_att_usage_with_attrs() {
+    use tusk_model::data::DataNmtoken;
+    use tusk_model::elements::AttUsage;
+
+    let mut original = AttUsage::default();
+    original.common.xml_id = Some("au2".to_string());
+    original.name = Some(DataNmtoken("xml:id".to_string()));
+    original.context = Some("/mei:mei//".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("name=\"xml:id\""), "should have name: {}", xml);
+    assert!(
+        xml.contains("context=\"/mei:mei//\""),
+        "should have context: {}",
+        xml
+    );
+
+    let parsed = AttUsage::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.name, Some(DataNmtoken("xml:id".to_string())));
+    assert_eq!(parsed.context, Some("/mei:mei//".to_string()));
+}
