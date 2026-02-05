@@ -53,6 +53,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Critical apparatus Rdg/Lem children: deserializers skipped all children (reader.skip_to_end); now parses Staff, Note, Rest, Chord, Space, MRest, Beam, Tuplet, Accid, Artic, Dot, BarLine, Pb, Sb, Cb, and editorial elements (Add, Del, Corr, Sic, Orig, Reg, Supplied, Unclear, Gap, Damage, App, Choice, Subst, HandShift, Restore); serializers already handled all 170+ variants
 - [x] [MISSING_DESERIALIZER] Control event deserializers missing: Slur, Tie, Hairpin, Dynam, Dir, Tempo, Fermata, Trill, Mordent, Turn, Pedal, Arpeg - needed for full critical apparatus rdg support and other test fixtures (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 - [x] [MISSING_ATTR] Name element missing `type` attribute serialization (source: Layout_information/Layout_information.mei)
+- [ ] [MISSING_ELEMENT] Editorial markup: Measure deserializer missing `add` child; Note deserializer missing `app` child - both needed for critical apparatus roundtrip (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 
 ---
 
