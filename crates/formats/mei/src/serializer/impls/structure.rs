@@ -14,7 +14,7 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Body, BodyChild, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Sb, Score,
-    ScoreChild, Section, SectionChild, Staff, StaffChild,
+    ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -799,6 +799,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::ScoreDef(score_def) => score_def.collect_all_attributes(),
             SectionChild::Sb(sb) => sb.collect_all_attributes(),
             SectionChild::Div(div) => div.collect_all_attributes(),
+            SectionChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -812,6 +813,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::ScoreDef(score_def) => score_def.has_children(),
             SectionChild::Sb(sb) => sb.has_children(),
             SectionChild::Div(div) => div.has_children(),
+            SectionChild::StaffDef(staff_def) => staff_def.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -825,6 +827,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::ScoreDef(score_def) => score_def.serialize_children(writer),
             SectionChild::Sb(sb) => sb.serialize_children(writer),
             SectionChild::Div(div) => div.serialize_children(writer),
+            SectionChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "SectionChild::{}::serialize_children",
                 other.element_name()

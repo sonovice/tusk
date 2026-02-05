@@ -631,6 +631,13 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             attrs.push(("ppq", ppq.to_string()));
         }
 
+        // Spacing (visual)
+        if let Some(ref spacing) = self.staff_def_vis.spacing {
+            if let Some(s) = to_attr_string(spacing) {
+                attrs.push(("spacing", s));
+            }
+        }
+
         attrs
     }
 

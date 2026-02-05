@@ -15,7 +15,7 @@ use tusk_model::att::{
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Dir, Div, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest,
     Mdiv, MdivChild, Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
-    SectionChild, Slur, Space, Staff, StaffChild, Tempo, Tie, Trill, Tuplet,
+    SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -598,6 +598,13 @@ impl MeiDeserialize for Section {
                         let div =
                             super::text::parse_div_from_event(reader, child_attrs, child_empty)?;
                         section.children.push(SectionChild::Div(Box::new(div)));
+                    }
+                    "staffDef" => {
+                        // staffDef can appear directly in section for mid-piece staff changes
+                        let staff_def = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        section
+                            .children
+                            .push(SectionChild::StaffDef(Box::new(staff_def)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

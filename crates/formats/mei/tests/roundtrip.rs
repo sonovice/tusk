@@ -226,3 +226,14 @@ fn test_roundtrip_altenburg_concerto_c_major() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_altenburg_ein_feste_burg() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Altenburg_Ein_feste_Burg.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Altenburg_Ein_feste_Burg.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
