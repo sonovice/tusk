@@ -79,26 +79,30 @@ fn parse_creation_from_event<R: BufRead>(
     creation.facsimile.extract_attributes(&mut attrs)?;
     creation.lang.extract_attributes(&mut attrs)?;
 
-    // Read children if not an empty element
-    // creation can contain: head*, date*, text content, and various other elements
+    // Creation has mixed content - text and child elements like date, head, persName, etc.
     if !is_empty {
-        while let Some((name, child_attrs, child_empty)) =
-            reader.read_next_child_start("creation")?
-        {
-            match name.as_str() {
-                "head" => {
-                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
-                    creation.children.push(CreationChild::Head(Box::new(head)));
-                }
-                "date" => {
-                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
-                    creation.children.push(CreationChild::Date(Box::new(date)));
-                }
-                _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
+        while let Some(content) = reader.read_next_mixed_content("creation")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        creation.children.push(CreationChild::Text(text));
                     }
                 }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "head" => {
+                        let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                        creation.children.push(CreationChild::Head(Box::new(head)));
+                    }
+                    "date" => {
+                        let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                        creation.children.push(CreationChild::Date(Box::new(date)));
+                    }
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
             }
         }
     }
