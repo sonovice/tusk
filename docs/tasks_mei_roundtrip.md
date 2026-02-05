@@ -103,7 +103,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Measure: pedal element not parsed - missing handler in match (source: Beethoven_Song_Op98.mei)
 - [x] [DESERIALIZER_BUG] PgHead: anchoredText element not parsed in score/scoreDef/pgHead context (source: Beethoven_Song_Op98.mei)
 - [x] [WHITESPACE_BUG] bezier attribute: leading whitespace in value not preserved - '  -7 -12' becomes '-7 -12' (source: Beethoven_Song_Op98.mei) - FIXED: xml_compare now normalizes whitespace for attribute value comparison per XML list type semantics
-- [ ] [SERIALIZER_BUG] PgHeadChild::AnchoredText not serialized - element_name returns "unknown" instead of "anchoredText", missing from match arms (source: Beethoven_Song_Op98.mei)
+- [x] [SERIALIZER_BUG] PgHeadChild::AnchoredText not serialized - element_name returns "unknown" instead of "anchoredText", missing from match arms (source: Beethoven_Song_Op98.mei)
 
 ---
 
@@ -137,7 +137,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Hymn_to_joy.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Song_Op98.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Song_Op98.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_StringQuartet_Op18_No1.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Berlioz_Symphony_Op25.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Borodin_StringTrio_g-minor.mei`

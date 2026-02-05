@@ -9,9 +9,7 @@ use tusk_model::att::{
     AttFormework, AttScoreDefAnl, AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttStaffGrpAnl,
     AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
-use tusk_model::elements::{
-    PgFoot, PgFootChild, PgHead, PgHeadChild, ScoreDef, ScoreDefChild, Seg, SegChild,
-};
+use tusk_model::elements::{PgFoot, PgFootChild, PgHead, PgHeadChild, ScoreDef, ScoreDefChild};
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
 
@@ -1325,6 +1323,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::List(_) => "list",
             PgHeadChild::Seg(_) => "seg",
             PgHeadChild::Table(_) => "table",
+            PgHeadChild::AnchoredText(_) => "anchoredText",
             // Many other child types exist but are not commonly used
             _ => "unknown",
         }
@@ -1346,6 +1345,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::List(l) => l.collect_all_attributes(),
             PgHeadChild::Seg(s) => s.collect_all_attributes(),
             PgHeadChild::Table(t) => t.collect_all_attributes(),
+            PgHeadChild::AnchoredText(at) => at.collect_all_attributes(),
             // Lg and other elements - not yet implemented
             _ => Vec::new(),
         }
@@ -1368,6 +1368,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::List(l) => !l.children.is_empty(),
             PgHeadChild::Seg(s) => !s.children.is_empty(),
             PgHeadChild::Table(t) => !t.children.is_empty(),
+            PgHeadChild::AnchoredText(at) => !at.children.is_empty(),
             // Lg and other elements
             _ => false,
         }
@@ -1393,6 +1394,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::List(l) => l.serialize_children(writer),
             PgHeadChild::Seg(s) => s.serialize_children(writer),
             PgHeadChild::Table(t) => t.serialize_children(writer),
+            PgHeadChild::AnchoredText(at) => at.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PgHeadChild::{}::serialize_children",
                 other.element_name()
