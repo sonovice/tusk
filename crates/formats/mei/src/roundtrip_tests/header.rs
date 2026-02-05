@@ -1007,3 +1007,182 @@ fn roundtrip_resp_stmt_with_resp_and_name() {
         .any(|c| matches!(c, RespStmtChild::Name(_)));
     assert!(has_name, "should have Name child");
 }
+
+// ============================================================================
+// Bibliographic Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_bibl_scope() {
+    use tusk_model::elements::BiblScope;
+
+    let original = BiblScope::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_bibl_scope_with_text() {
+    use tusk_model::elements::{BiblScope, BiblScopeChild};
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs1".to_string());
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Text("pp. 100-150".to_string()));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"bs1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("pp. 100-150"), "should have text: {}", xml);
+    assert!(
+        xml.contains("</biblScope>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bs1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BiblScopeChild::Text(text) => assert_eq!(text, "pp. 100-150"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_bibl_scope_with_from_to_attributes() {
+    use tusk_model::elements::{BiblScope, BiblScopeChild};
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs2".to_string());
+    bibl_scope.from = Some("1".to_string());
+    bibl_scope.to = Some("10".to_string());
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Text("pages 1-10".to_string()));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(xml.contains("from=\"1\""), "should have from attr: {}", xml);
+    assert!(xml.contains("to=\"10\""), "should have to attr: {}", xml);
+    assert!(xml.contains("pages 1-10"), "should have text: {}", xml);
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.from, Some("1".to_string()));
+    assert_eq!(parsed.to, Some("10".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_bibl_scope_with_title_child() {
+    use tusk_model::elements::{BiblScope, BiblScopeChild, Title, TitleChild};
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs3".to_string());
+
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Chapter 1".to_string()));
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Title(Box::new(title)));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+    assert!(xml.contains("<title>"), "should have title: {}", xml);
+    assert!(xml.contains("Chapter 1"), "should have title text: {}", xml);
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bs3".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BiblScopeChild::Title(title) => {
+            assert_eq!(title.children.len(), 1);
+            match &title.children[0] {
+                TitleChild::Text(text) => assert_eq!(text, "Chapter 1"),
+                other => panic!("Expected Text child, got {:?}", other),
+            }
+        }
+        other => panic!("Expected Title child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_series_stmt_with_bibl_scope() {
+    use tusk_model::elements::{BiblScope, BiblScopeChild, SeriesStmt, SeriesStmtChild};
+
+    let mut series_stmt = SeriesStmt::default();
+    series_stmt.common.xml_id = Some("ss1".to_string());
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs1".to_string());
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Text("Volume 3".to_string()));
+    series_stmt
+        .children
+        .push(SeriesStmtChild::BiblScope(Box::new(bibl_scope)));
+
+    let xml = series_stmt.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<seriesStmt"),
+        "should have seriesStmt: {}",
+        xml
+    );
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+    assert!(xml.contains("Volume 3"), "should have text: {}", xml);
+    assert!(
+        xml.contains("</seriesStmt>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = SeriesStmt::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ss1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SeriesStmtChild::BiblScope(bs) => {
+            assert_eq!(bs.common.xml_id, Some("bs1".to_string()));
+            assert_eq!(bs.children.len(), 1);
+        }
+        other => panic!("Expected BiblScope child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_bibl_with_bibl_scope() {
+    use tusk_model::elements::{Bibl, BiblChild, BiblScope, BiblScopeChild};
+
+    let mut bibl = Bibl::default();
+    bibl.common.xml_id = Some("bibl1".to_string());
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs1".to_string());
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Text("pp. 25-30".to_string()));
+    bibl.children
+        .push(BiblChild::BiblScope(Box::new(bibl_scope)));
+
+    let xml = bibl.to_mei_string().expect("serialize");
+    assert!(xml.contains("<bibl"), "should have bibl: {}", xml);
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+    assert!(xml.contains("pp. 25-30"), "should have text: {}", xml);
+
+    let parsed = Bibl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bibl1".to_string()));
+
+    let has_bibl_scope = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, BiblChild::BiblScope(_)));
+    assert!(has_bibl_scope, "should have BiblScope child");
+}

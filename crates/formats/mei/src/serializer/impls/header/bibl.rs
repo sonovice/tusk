@@ -483,6 +483,13 @@ impl MeiSerialize for BiblScope {
         attrs.extend(self.facsimile.collect_attributes());
         // Note: extent doesn't have CollectAttributes impl yet
         attrs.extend(self.lang.collect_attributes());
+        // Element-specific attributes
+        if let Some(ref from) = self.from {
+            attrs.push(("from", from.to_string()));
+        }
+        if let Some(ref to) = self.to {
+            attrs.push(("to", to.to_string()));
+        }
         attrs
     }
 

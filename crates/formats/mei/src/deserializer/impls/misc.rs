@@ -1271,8 +1271,8 @@ pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
     is_empty: bool,
 ) -> DeserializeResult<SeriesStmt> {
     use super::{
-        parse_contributor_from_event, parse_creator_from_event, parse_editor_from_event,
-        parse_funder_from_event, parse_sponsor_from_event,
+        parse_bibl_scope_from_event, parse_contributor_from_event, parse_creator_from_event,
+        parse_editor_from_event, parse_funder_from_event, parse_sponsor_from_event,
     };
 
     let mut series_stmt = SeriesStmt::default();
@@ -1306,6 +1306,12 @@ pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
                     series_stmt
                         .children
                         .push(SeriesStmtChild::RespStmt(Box::new(resp_stmt)));
+                }
+                "biblScope" => {
+                    let bibl_scope = parse_bibl_scope_from_event(reader, child_attrs, child_empty)?;
+                    series_stmt
+                        .children
+                        .push(SeriesStmtChild::BiblScope(Box::new(bibl_scope)));
                 }
                 "identifier" => {
                     let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
@@ -3461,6 +3467,104 @@ impl MeiDeserialize for Num {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_num_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for SeriesStmt {
+    fn element_name() -> &'static str {
+        "seriesStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_series_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Edition {
+    fn element_name() -> &'static str {
+        "edition"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_edition_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for EditionStmt {
+    fn element_name() -> &'static str {
+        "editionStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_edition_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for NotesStmt {
+    fn element_name() -> &'static str {
+        "notesStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_notes_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Extent {
+    fn element_name() -> &'static str {
+        "extent"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_extent_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Contents {
+    fn element_name() -> &'static str {
+        "contents"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_contents_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for ContentItem {
+    fn element_name() -> &'static str {
+        "contentItem"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_content_item_from_event(reader, attrs, is_empty)
     }
 }
 

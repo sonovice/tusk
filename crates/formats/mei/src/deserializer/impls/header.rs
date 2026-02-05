@@ -9,8 +9,8 @@ use crate::deserializer::{
 use std::io::BufRead;
 use tusk_model::elements::{
     AddrLine, AddrLineChild, AltId, AltIdChild, Annot, AnnotChild, AppInfo, AppInfoChild,
-    Application, ApplicationChild, Availability, AvailabilityChild, Bibl, BiblStruct, CatRel,
-    CatRelChild, Category, CategoryChild, ClassDecls, ClassDeclsChild, Contributor,
+    Application, ApplicationChild, Availability, AvailabilityChild, Bibl, BiblScope, BiblStruct,
+    CatRel, CatRelChild, Category, CategoryChild, ClassDecls, ClassDeclsChild, Contributor,
     ContributorChild, CorpName, CorpNameChild, Correction, CorrectionChild, Creator, CreatorChild,
     Date, Distributor, Editor, EditorChild, EditorialDecl, EditorialDeclChild, EncodingDesc,
     EncodingDescChild, FileDesc, FileDescChild, Funder, FunderChild, GeogName, GeogNameChild, Head,
@@ -637,6 +637,12 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             let editor = parse_editor_from_event(reader, child_attrs, child_empty)?;
                             bibl.children.push(BiblChild::Editor(Box::new(editor)));
                         }
+                        "biblScope" => {
+                            let bibl_scope =
+                                parse_bibl_scope_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children
+                                .push(BiblChild::BiblScope(Box::new(bibl_scope)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {
@@ -917,6 +923,171 @@ pub(crate) fn parse_bibl_struct_from_event<R: BufRead>(
     }
 
     Ok(bibl_struct)
+}
+
+/// Parse a `<biblScope>` element from within another element.
+///
+/// BiblScope defines the scope of a bibliographic reference (page numbers, subdivisions, etc.)
+/// It can contain mixed content (text and child elements).
+pub(crate) fn parse_bibl_scope_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<BiblScope> {
+    use tusk_model::elements::BiblScopeChild;
+
+    let mut bibl_scope = BiblScope::default();
+
+    // Extract attributes
+    bibl_scope.common.extract_attributes(&mut attrs)?;
+    bibl_scope.bibl.extract_attributes(&mut attrs)?;
+    bibl_scope.facsimile.extract_attributes(&mut attrs)?;
+    bibl_scope.extent.extract_attributes(&mut attrs)?;
+    bibl_scope.lang.extract_attributes(&mut attrs)?;
+
+    // Extract element-specific attributes
+    extract_attr!(attrs, "from", string bibl_scope.from);
+    extract_attr!(attrs, "to", string bibl_scope.to);
+
+    // BiblScope has mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("biblScope")? {
+            match content {
+                MixedContent::Text(text) => {
+                    bibl_scope.children.push(BiblScopeChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Identifier(Box::new(identifier)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Date(Box::new(date)));
+                        }
+                        "persName" => {
+                            let pers_name =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem =
+                                parse_name_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Name(Box::new(name_elem)));
+                        }
+                        "geogName" => {
+                            let geog_name =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::GeogName(Box::new(geog_name)));
+                        }
+                        "address" => {
+                            let address =
+                                parse_address_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Address(Box::new(address)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Bibl(Box::new(bibl)));
+                        }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::BiblStruct(Box::new(bibl_struct)));
+                        }
+                        "locus" => {
+                            let locus = parse_locus_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Locus(Box::new(locus)));
+                        }
+                        "locusGrp" => {
+                            let locus_grp =
+                                parse_locus_grp_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::LocusGrp(Box::new(locus_grp)));
+                        }
+                        "rend" => {
+                            let rend =
+                                super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope.children.push(BiblScopeChild::Lb(Box::new(lb)));
+                        }
+                        "annot" => {
+                            let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Annot(Box::new(annot)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope.children.push(BiblScopeChild::Ptr(Box::new(ptr)));
+                        }
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Ref(Box::new(ref_elem)));
+                        }
+                        "symbol" => {
+                            let symbol = super::control::parse_symbol_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            bibl_scope
+                                .children
+                                .push(BiblScopeChild::Symbol(Box::new(symbol)));
+                        }
+                        // Skip unknown children in lenient mode
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(bibl_scope)
 }
 
 /// Parse an `<encodingDesc>` element from within another element.
@@ -4421,6 +4592,90 @@ impl MeiDeserialize for RespStmt {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_resp_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for BiblScope {
+    fn element_name() -> &'static str {
+        "biblScope"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_bibl_scope_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Bibl {
+    fn element_name() -> &'static str {
+        "bibl"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_bibl_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for BiblStruct {
+    fn element_name() -> &'static str {
+        "biblStruct"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_bibl_struct_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Imprint {
+    fn element_name() -> &'static str {
+        "imprint"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_imprint_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Locus {
+    fn element_name() -> &'static str {
+        "locus"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_locus_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for LocusGrp {
+    fn element_name() -> &'static str {
+        "locusGrp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_locus_grp_from_event(reader, attrs, is_empty)
     }
 }
 

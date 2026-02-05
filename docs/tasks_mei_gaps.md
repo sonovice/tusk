@@ -19,7 +19,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ### 1.2 Header Element Deserializers
 - [x] Add deserializers for address/geographic elements (12): `Address`, `AddrLine`, `PostBox`, `PostCode`, `Street`, `District`, `Region`, `Settlement`, `Country`, `Bloc`, `GeogFeat`, `GeogName`
 - [x] Add deserializers for agent/responsibility elements (7): `Creator`, `Editor`, `Funder`, `Sponsor`, `Contributor`, `Resp`, `RespStmt`
-- [ ] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
+- [x] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
 - [ ] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
 - [ ] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
 - [ ] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
