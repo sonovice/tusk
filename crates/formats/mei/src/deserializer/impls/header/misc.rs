@@ -345,6 +345,11 @@ pub(crate) fn parse_annot_from_event<R: BufRead>(
                             )?;
                             annot.children.push(AnnotChild::Lb(Box::new(lb)));
                         }
+                        "date" => {
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            annot.children.push(AnnotChild::Date(Box::new(date)));
+                        }
                         // Skip unknown children
                         _ => {
                             if !child_empty {
