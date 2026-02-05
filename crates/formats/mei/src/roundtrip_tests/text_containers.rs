@@ -712,3 +712,235 @@ fn stamp_roundtrip_nested() {
         _ => panic!("Expected nested Stamp"),
     }
 }
+
+// ============================================================================
+// Cb (column beginning) Tests
+// ============================================================================
+
+#[test]
+fn cb_roundtrip_empty() {
+    use tusk_model::elements::Cb;
+
+    let original = Cb::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cb::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.n.is_none());
+}
+
+#[test]
+fn cb_roundtrip_with_xml_id() {
+    use tusk_model::elements::Cb;
+
+    let mut original = Cb::default();
+    original.basic.xml_id = Some("cb-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cb::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("cb-1".to_string()));
+}
+
+#[test]
+fn cb_roundtrip_with_column_number() {
+    use tusk_model::elements::Cb;
+
+    let mut original = Cb::default();
+    original.basic.xml_id = Some("cb-1".to_string());
+    original.n = Some(2);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cb::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.n, Some(2));
+}
+
+#[test]
+fn cb_roundtrip_with_label() {
+    use tusk_model::elements::Cb;
+
+    let mut original = Cb::default();
+    original.basic.xml_id = Some("cb-1".to_string());
+    original.labelled.label = Some("column A".to_string());
+    original.n = Some(1);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cb::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.labelled.label, Some("column A".to_string()));
+    assert_eq!(parsed.n, Some(1));
+}
+
+// ============================================================================
+// DivLine (division line in neumes) Tests
+// ============================================================================
+
+#[test]
+fn div_line_roundtrip_empty() {
+    use tusk_model::elements::DivLine;
+
+    let original = DivLine::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = DivLine::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.div_line_log.form.is_empty());
+}
+
+#[test]
+fn div_line_roundtrip_with_xml_id() {
+    use tusk_model::elements::DivLine;
+
+    let mut original = DivLine::default();
+    original.basic.xml_id = Some("divLine-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = DivLine::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("divLine-1".to_string()));
+}
+
+#[test]
+fn div_line_roundtrip_with_form() {
+    use tusk_model::att::AttDivLineLogForm;
+    use tusk_model::elements::DivLine;
+
+    let mut original = DivLine::default();
+    original.basic.xml_id = Some("divLine-1".to_string());
+    original.div_line_log.form = vec![AttDivLineLogForm::Maior];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = DivLine::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.div_line_log.form.len(), 1);
+    assert_eq!(parsed.div_line_log.form[0], AttDivLineLogForm::Maior);
+}
+
+#[test]
+fn div_line_roundtrip_with_location() {
+    use tusk_model::elements::DivLine;
+    use tusk_model::generated::data::DataStaffloc;
+
+    let mut original = DivLine::default();
+    original.basic.xml_id = Some("divLine-1".to_string());
+    original.staff_loc.loc = Some(DataStaffloc(2));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = DivLine::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.staff_loc.loc, Some(DataStaffloc(2)));
+}
+
+#[test]
+fn div_line_roundtrip_with_visibility() {
+    use tusk_model::elements::DivLine;
+    use tusk_model::generated::data::DataBoolean;
+
+    let mut original = DivLine::default();
+    original.basic.xml_id = Some("divLine-1".to_string());
+    original.visibility.visible = Some(DataBoolean::False);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = DivLine::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.visibility.visible, Some(DataBoolean::False));
+}
+
+// ============================================================================
+// Curve (generic curved line) Tests
+// ============================================================================
+
+#[test]
+fn curve_roundtrip_empty() {
+    use tusk_model::elements::Curve;
+
+    let original = Curve::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn curve_roundtrip_with_xml_id() {
+    use tusk_model::elements::Curve;
+
+    let mut original = Curve::default();
+    original.common.xml_id = Some("curve-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("curve-1".to_string()));
+}
+
+#[test]
+fn curve_roundtrip_with_endpoints() {
+    use tusk_model::elements::Curve;
+    use tusk_model::generated::data::DataUri;
+
+    let mut original = Curve::default();
+    original.common.xml_id = Some("curve-1".to_string());
+    original.curve_log.startid = Some(DataUri("#note1".to_string()));
+    original.curve_log.endid = Some(DataUri("#note2".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(
+        parsed.curve_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+    assert_eq!(parsed.curve_log.endid, Some(DataUri("#note2".to_string())));
+}
+
+#[test]
+fn curve_roundtrip_with_curvedir() {
+    use tusk_model::att::AttCurveVisCurvedir;
+    use tusk_model::elements::Curve;
+
+    let mut original = Curve::default();
+    original.common.xml_id = Some("curve-1".to_string());
+    original.curve_vis.curvedir = Some(AttCurveVisCurvedir::Above);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.curve_vis.curvedir, Some(AttCurveVisCurvedir::Above));
+}
+
+#[test]
+fn curve_roundtrip_with_coordinates() {
+    use tusk_model::elements::Curve;
+
+    let mut original = Curve::default();
+    original.common.xml_id = Some("curve-1".to_string());
+    original.curve_vis.x = Some(100.0);
+    original.curve_vis.y = Some(50.0);
+    original.curve_vis.x2 = Some(200.0);
+    original.curve_vis.y2 = Some(75.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.curve_vis.x, Some(100.0));
+    assert_eq!(parsed.curve_vis.y, Some(50.0));
+    assert_eq!(parsed.curve_vis.x2, Some(200.0));
+    assert_eq!(parsed.curve_vis.y2, Some(75.0));
+}
+
+#[test]
+fn curve_roundtrip_with_func() {
+    use tusk_model::att::AttCurveLogFunc;
+    use tusk_model::elements::Curve;
+
+    let mut original = Curve::default();
+    original.common.xml_id = Some("curve-1".to_string());
+    original.curve_log.func = Some(AttCurveLogFunc::Unknown);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Curve::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.curve_log.func, Some(AttCurveLogFunc::Unknown));
+}

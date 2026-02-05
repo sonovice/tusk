@@ -1277,3 +1277,228 @@ impl MeiSerialize for StackChild {
         }
     }
 }
+
+// ============================================================================
+// Cb (column beginning) element implementation
+// ============================================================================
+
+use tusk_model::att::{
+    AttCurveAnl, AttCurveGes, AttCurveLog, AttCurveVis, AttDivLineLog, AttExtSym, AttStaffLoc,
+    AttVisibility, AttVisualOffsetHo,
+};
+use tusk_model::elements::{Cb, Curve, DivLine};
+
+impl CollectAttributes for AttVisibility {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "visible", self.visible);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttStaffLoc {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "loc", self.loc);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttVisualOffsetHo {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "ho", self.ho);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttExtSym {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        attrs
+    }
+}
+
+impl MeiSerialize for Cb {
+    fn element_name(&self) -> &'static str {
+        "cb"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs.extend(self.typed.collect_attributes());
+
+        // Element-specific n attribute (column number)
+        if let Some(v) = &self.n {
+            attrs.push(("n", v.to_string()));
+        }
+
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// DivLine (division line in neumes) element implementation
+// ============================================================================
+
+impl CollectAttributes for AttDivLineLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "form", vec self.form);
+        attrs
+    }
+}
+
+impl MeiSerialize for DivLine {
+    fn element_name(&self) -> &'static str {
+        "divLine"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.classed.collect_attributes());
+        attrs.extend(self.color.collect_attributes());
+        attrs.extend(self.div_line_log.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.n_number_like.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        attrs.extend(self.ext_sym.collect_attributes());
+        attrs.extend(self.staff_loc.collect_attributes());
+        attrs.extend(self.visibility.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs.extend(self.visual_offset_ho.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Curve (generic curved line) element implementation
+// ============================================================================
+
+impl CollectAttributes for AttCurveLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "endid", self.endid);
+        push_attr!(attrs, "func", self.func);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttCurveVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        // bezier is space-separated f64 values
+        if let Some(ref bezier) = self.bezier {
+            if !bezier.is_empty() {
+                let values: Vec<String> = bezier.0.iter().map(|v| v.to_string()).collect();
+                attrs.push(("bezier", values.join(" ")));
+            }
+        }
+        // bulge is space-separated DataPercent values
+        if let Some(ref bulge) = self.bulge {
+            if !bulge.is_empty() {
+                if let Some(s) = serialize_vec_serde(&bulge.0) {
+                    attrs.push(("bulge", s));
+                }
+            }
+        }
+        push_attr!(attrs, "curvedir", self.curvedir);
+        push_attr!(attrs, "lform", self.lform);
+        push_attr!(attrs, "lwidth", self.lwidth);
+        if let Some(v) = &self.lsegs {
+            attrs.push(("lsegs", v.to_string()));
+        }
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "startho", self.startho);
+        push_attr!(attrs, "endho", self.endho);
+        push_attr!(attrs, "startto", self.startto);
+        push_attr!(attrs, "endto", self.endto);
+        push_attr!(attrs, "startvo", self.startvo);
+        push_attr!(attrs, "endvo", self.endvo);
+        if let Some(v) = &self.x {
+            attrs.push(("x", v.to_string()));
+        }
+        if let Some(v) = &self.y {
+            attrs.push(("y", v.to_string()));
+        }
+        if let Some(v) = &self.x2 {
+            attrs.push(("x2", v.to_string()));
+        }
+        if let Some(v) = &self.y2 {
+            attrs.push(("y2", v.to_string()));
+        }
+        attrs
+    }
+}
+
+impl CollectAttributes for AttCurveGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttCurveGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttCurveAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttCurveAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Curve {
+    fn element_name(&self) -> &'static str {
+        "curve"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.curve_anl.collect_attributes());
+        attrs.extend(self.curve_ges.collect_attributes());
+        attrs.extend(self.curve_log.collect_attributes());
+        attrs.extend(self.curve_vis.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}

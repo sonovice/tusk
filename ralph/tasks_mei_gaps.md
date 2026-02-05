@@ -92,8 +92,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ### 6.3 Text Structure Elements
 - [x] Implement text containers: `Group`, `Quote`, `Q`, `Phrase`, `Line`, `Refrain`, `Stack`
 - [x] Implement metadata text: `Rubric`, `Explicit`, `Byline`, `Stamp`
-- [ ] Implement breaks/lines: `Cb`, `DivLine`, `Curve`
-- [ ] Add roundtrip tests
+- [x] Implement breaks/lines: `Cb`, `DivLine`, `Curve`
+- [x] Add roundtrip tests
 
 ### 6.4 Name Elements
 - [ ] Implement `ForeName`, `FamName`, `AddName`, `GenName`, `NameLink`, `PeriodName`, `StyleName`
