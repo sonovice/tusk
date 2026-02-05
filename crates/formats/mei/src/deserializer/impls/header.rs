@@ -4326,6 +4326,104 @@ impl MeiDeserialize for Identifier {
     }
 }
 
+impl MeiDeserialize for Creator {
+    fn element_name() -> &'static str {
+        "creator"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_creator_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Editor {
+    fn element_name() -> &'static str {
+        "editor"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_editor_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Funder {
+    fn element_name() -> &'static str {
+        "funder"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_funder_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Sponsor {
+    fn element_name() -> &'static str {
+        "sponsor"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_sponsor_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Contributor {
+    fn element_name() -> &'static str {
+        "contributor"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_contributor_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Resp {
+    fn element_name() -> &'static str {
+        "resp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_resp_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for RespStmt {
+    fn element_name() -> &'static str {
+        "respStmt"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_resp_stmt_from_event(reader, attrs, is_empty)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::deserializer::MeiDeserialize;

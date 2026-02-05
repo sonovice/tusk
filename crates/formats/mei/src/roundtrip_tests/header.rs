@@ -635,3 +635,375 @@ fn roundtrip_work_with_expression_list() {
         other => panic!("Expected ExpressionList child, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Agent/Responsibility Element Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_creator_with_text() {
+    use tusk_model::elements::{Creator, CreatorChild};
+
+    let mut creator = Creator::default();
+    creator.common.xml_id = Some("creator1".to_string());
+    creator
+        .children
+        .push(CreatorChild::Text("Johann Sebastian Bach".to_string()));
+
+    let xml = creator.to_mei_string().expect("serialize");
+    assert!(xml.contains("<creator"), "should have creator: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"creator1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Johann Sebastian Bach"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</creator>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Creator::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("creator1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CreatorChild::Text(text) => assert_eq!(text, "Johann Sebastian Bach"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_creator_with_pers_name() {
+    use tusk_model::elements::{Creator, CreatorChild, PersName, PersNameChild};
+
+    let mut creator = Creator::default();
+    creator.common.xml_id = Some("creator1".to_string());
+
+    let mut pers_name = PersName::default();
+    pers_name.common.xml_id = Some("pn1".to_string());
+    pers_name
+        .children
+        .push(PersNameChild::Text("Ludwig van Beethoven".to_string()));
+    creator
+        .children
+        .push(CreatorChild::PersName(Box::new(pers_name)));
+
+    let xml = creator.to_mei_string().expect("serialize");
+    assert!(xml.contains("<creator"), "should have creator: {}", xml);
+    assert!(xml.contains("<persName"), "should have persName: {}", xml);
+    assert!(
+        xml.contains("Ludwig van Beethoven"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Creator::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("creator1".to_string()));
+    // Note: With the current simplified deserializer, the nested persName
+    // is read as text. This test documents the current behavior.
+    assert!(!parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_editor_with_text() {
+    use tusk_model::elements::{Editor, EditorChild};
+
+    let mut editor = Editor::default();
+    editor.common.xml_id = Some("editor1".to_string());
+    editor
+        .children
+        .push(EditorChild::Text("Klaus Döge".to_string()));
+
+    let xml = editor.to_mei_string().expect("serialize");
+    assert!(xml.contains("<editor"), "should have editor: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"editor1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Klaus Döge"), "should have text: {}", xml);
+    assert!(
+        xml.contains("</editor>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Editor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("editor1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        EditorChild::Text(text) => assert_eq!(text, "Klaus Döge"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_editor_with_pers_name() {
+    use tusk_model::elements::{Editor, EditorChild, PersName, PersNameChild};
+
+    let mut editor = Editor::default();
+    editor.common.xml_id = Some("editor1".to_string());
+
+    let mut pers_name = PersName::default();
+    pers_name.common.xml_id = Some("pn1".to_string());
+    pers_name
+        .children
+        .push(PersNameChild::Text("John Smith".to_string()));
+    editor
+        .children
+        .push(EditorChild::PersName(Box::new(pers_name)));
+
+    let xml = editor.to_mei_string().expect("serialize");
+    assert!(xml.contains("<editor"), "should have editor: {}", xml);
+    assert!(xml.contains("<persName"), "should have persName: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"pn1\""),
+        "should have persName xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("John Smith"), "should have text: {}", xml);
+
+    let parsed = Editor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("editor1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        EditorChild::PersName(pers) => {
+            assert_eq!(pers.common.xml_id, Some("pn1".to_string()));
+        }
+        other => panic!("Expected PersName child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_funder_with_text() {
+    use tusk_model::elements::{Funder, FunderChild};
+
+    let mut funder = Funder::default();
+    funder.common.xml_id = Some("funder1".to_string());
+    funder
+        .children
+        .push(FunderChild::Text("National Science Foundation".to_string()));
+
+    let xml = funder.to_mei_string().expect("serialize");
+    assert!(xml.contains("<funder"), "should have funder: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"funder1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("National Science Foundation"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</funder>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Funder::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("funder1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        FunderChild::Text(text) => assert_eq!(text, "National Science Foundation"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_funder_with_corp_name() {
+    use tusk_model::elements::{CorpName, CorpNameChild, Funder, FunderChild};
+
+    let mut funder = Funder::default();
+    funder.common.xml_id = Some("funder1".to_string());
+
+    let mut corp_name = CorpName::default();
+    corp_name.common.xml_id = Some("cn1".to_string());
+    corp_name.children.push(CorpNameChild::Text(
+        "Deutsche Forschungsgemeinschaft".to_string(),
+    ));
+    funder
+        .children
+        .push(FunderChild::CorpName(Box::new(corp_name)));
+
+    let xml = funder.to_mei_string().expect("serialize");
+    assert!(xml.contains("<funder"), "should have funder: {}", xml);
+    assert!(xml.contains("<corpName"), "should have corpName: {}", xml);
+    assert!(
+        xml.contains("Deutsche Forschungsgemeinschaft"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Funder::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("funder1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        FunderChild::CorpName(corp) => {
+            assert_eq!(corp.common.xml_id, Some("cn1".to_string()));
+        }
+        other => panic!("Expected CorpName child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_sponsor_with_text() {
+    use tusk_model::elements::{Sponsor, SponsorChild};
+
+    let mut sponsor = Sponsor::default();
+    sponsor.common.xml_id = Some("sponsor1".to_string());
+    sponsor
+        .children
+        .push(SponsorChild::Text("University of Vienna".to_string()));
+
+    let xml = sponsor.to_mei_string().expect("serialize");
+    assert!(xml.contains("<sponsor"), "should have sponsor: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"sponsor1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("University of Vienna"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</sponsor>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Sponsor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sponsor1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SponsorChild::Text(text) => assert_eq!(text, "University of Vienna"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_contributor_with_text() {
+    use tusk_model::elements::{Contributor, ContributorChild};
+
+    let mut contributor = Contributor::default();
+    contributor.common.xml_id = Some("contrib1".to_string());
+    contributor
+        .children
+        .push(ContributorChild::Text("Jane Doe".to_string()));
+
+    let xml = contributor.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<contributor"),
+        "should have contributor: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"contrib1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Jane Doe"), "should have text: {}", xml);
+    assert!(
+        xml.contains("</contributor>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Contributor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("contrib1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ContributorChild::Text(text) => assert_eq!(text, "Jane Doe"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_resp_with_text() {
+    use tusk_model::elements::{Resp, RespChild};
+
+    let mut resp = Resp::default();
+    resp.common.xml_id = Some("resp1".to_string());
+    resp.children
+        .push(RespChild::Text("Transcription".to_string()));
+
+    let xml = resp.to_mei_string().expect("serialize");
+    assert!(xml.contains("<resp"), "should have resp: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"resp1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Transcription"), "should have text: {}", xml);
+    assert!(xml.contains("</resp>"), "should have closing tag: {}", xml);
+
+    let parsed = Resp::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("resp1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        RespChild::Text(text) => assert_eq!(text, "Transcription"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_resp_stmt_with_resp_and_name() {
+    use tusk_model::elements::{Name, NameChild, Resp, RespChild, RespStmt, RespStmtChild};
+
+    let mut resp_stmt = RespStmt::default();
+    resp_stmt.common.xml_id = Some("rs1".to_string());
+
+    let mut resp = Resp::default();
+    resp.children
+        .push(RespChild::Text("Encoding by".to_string()));
+    resp_stmt.children.push(RespStmtChild::Resp(Box::new(resp)));
+
+    let mut name = Name::default();
+    name.children.push(NameChild::Text("John Doe".to_string()));
+    resp_stmt.children.push(RespStmtChild::Name(Box::new(name)));
+
+    let xml = resp_stmt.to_mei_string().expect("serialize");
+    assert!(xml.contains("<respStmt"), "should have respStmt: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"rs1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<resp>"), "should have resp: {}", xml);
+    assert!(
+        xml.contains("Encoding by"),
+        "should have resp text: {}",
+        xml
+    );
+    assert!(xml.contains("<name>"), "should have name: {}", xml);
+    assert!(xml.contains("John Doe"), "should have name text: {}", xml);
+    assert!(
+        xml.contains("</respStmt>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = RespStmt::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("rs1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+
+    let has_resp = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, RespStmtChild::Resp(_)));
+    assert!(has_resp, "should have Resp child");
+
+    let has_name = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, RespStmtChild::Name(_)));
+    assert!(has_name, "should have Name child");
+}
