@@ -976,6 +976,13 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             }
         }
 
+        // Lines visible (visual)
+        if let Some(ref lines_visible) = self.staff_def_vis.lines_visible {
+            if let Some(s) = to_attr_string(lines_visible) {
+                attrs.push(("lines.visible", s));
+            }
+        }
+
         // Analytical attributes (key info)
         if let Some(v) = &self.staff_def_anl.key_accid {
             if let Some(s) = to_attr_string(v) {
