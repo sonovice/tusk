@@ -156,7 +156,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 
 ### 13.1 Manuscript Physical Description
 - [x] Implement dimensions: `Dimensions`, `Height`, `Width`, `Depth`, `Dim`, support: `Support`, `SupportDesc`, `Collation`, `Foliation`, `Condition`
-- [ ] Implement layout: `LayoutDesc`, `Layout`, `ColLayout`, hands/scripts: `HandList`, `Hand`, `ScriptDesc`, `ScriptNote`
+- [x] Implement layout: `LayoutDesc`, `Layout`, `ColLayout`, hands/scripts: `HandList`, `Hand`, `ScriptDesc`, `ScriptNote`
 - [ ] Implement decoration: `DecoDesc`, `DecoNote`, binding: `BindingDesc`, `Binding`, `SealDesc`, `Seal`
 - [ ] Add roundtrip tests
 

@@ -4235,3 +4235,274 @@ fn roundtrip_condition_with_text() {
     assert_eq!(parsed.common.xml_id, Some("cond1".to_string()));
     assert_eq!(parsed.children.len(), 1);
 }
+
+// ============================================================================
+// Layout, Hand, Script Element Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_layout_desc_with_layout() {
+    use tusk_model::elements::{Layout, LayoutDesc, LayoutDescChild, P, PChild};
+
+    let mut original = LayoutDesc::default();
+    original.common.xml_id = Some("ldesc1".to_string());
+
+    let mut layout = Layout::default();
+    layout.common.xml_id = Some("lay1".to_string());
+    layout.cols = Some(2);
+    layout.ruledlines = Some(20);
+    layout.writtenlines = Some(18);
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Two columns per page".to_string()));
+    layout
+        .children
+        .push(tusk_model::elements::LayoutChild::P(Box::new(p)));
+
+    original
+        .children
+        .push(LayoutDescChild::Layout(Box::new(layout)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("layoutDesc"),
+        "xml should contain layoutDesc: {}",
+        xml
+    );
+    assert!(xml.contains("layout"), "should have layout: {}", xml);
+    assert!(xml.contains("cols=\"2\""), "should have cols: {}", xml);
+    assert!(
+        xml.contains("ruledlines=\"20\""),
+        "should have ruledlines: {}",
+        xml
+    );
+    assert!(
+        xml.contains("writtenlines=\"18\""),
+        "should have writtenlines: {}",
+        xml
+    );
+    assert!(xml.contains("Two columns"), "should have text: {}", xml);
+
+    let parsed = LayoutDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ldesc1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let LayoutDescChild::Layout(lay) = &parsed.children[0] {
+        assert_eq!(lay.cols, Some(2));
+        assert_eq!(lay.ruledlines, Some(20));
+        assert_eq!(lay.writtenlines, Some(18));
+    } else {
+        panic!("Expected Layout child");
+    }
+}
+
+#[test]
+fn roundtrip_layout_with_all_attrs() {
+    use tusk_model::elements::Layout;
+
+    let mut original = Layout::default();
+    original.common.xml_id = Some("lay1".to_string());
+    original.cols = Some(1);
+    original.ruledlines = Some(30);
+    original.writtenlines = Some(28);
+    original.ruledstaves = Some(12);
+    original.writtenstaves = Some(10);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("layout"), "xml should contain layout: {}", xml);
+    assert!(xml.contains("cols=\"1\""), "should have cols: {}", xml);
+    assert!(
+        xml.contains("ruledstaves=\"12\""),
+        "should have ruledstaves: {}",
+        xml
+    );
+    assert!(
+        xml.contains("writtenstaves=\"10\""),
+        "should have writtenstaves: {}",
+        xml
+    );
+
+    let parsed = Layout::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.cols, Some(1));
+    assert_eq!(parsed.ruledlines, Some(30));
+    assert_eq!(parsed.writtenlines, Some(28));
+    assert_eq!(parsed.ruledstaves, Some(12));
+    assert_eq!(parsed.writtenstaves, Some(10));
+}
+
+#[test]
+fn roundtrip_col_layout() {
+    use tusk_model::elements::ColLayout;
+
+    let mut original = ColLayout::default();
+    original.common.xml_id = Some("cl1".to_string());
+    original.cols = Some(3);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("colLayout"),
+        "xml should contain colLayout: {}",
+        xml
+    );
+    assert!(xml.contains("cols=\"3\""), "should have cols: {}", xml);
+
+    let parsed = ColLayout::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cl1".to_string()));
+    assert_eq!(parsed.cols, Some(3));
+}
+
+#[test]
+fn roundtrip_hand_list_with_hands() {
+    use tusk_model::elements::{Hand, HandChild, HandList, HandListChild};
+
+    let mut original = HandList::default();
+    original.common.xml_id = Some("hlist1".to_string());
+
+    let mut hand1 = Hand::default();
+    hand1.common.xml_id = Some("h1".to_string());
+    hand1.initial = Some(tusk_model::data::DataBoolean::True);
+    hand1
+        .children
+        .push(HandChild::Text("Main scribe".to_string()));
+
+    let mut hand2 = Hand::default();
+    hand2.common.xml_id = Some("h2".to_string());
+    hand2
+        .children
+        .push(HandChild::Text("Second hand".to_string()));
+
+    original.children.push(HandListChild::Hand(Box::new(hand1)));
+    original.children.push(HandListChild::Hand(Box::new(hand2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("handList"),
+        "xml should contain handList: {}",
+        xml
+    );
+    assert!(xml.contains("hand"), "should have hand: {}", xml);
+    assert!(
+        xml.contains("initial=\"true\""),
+        "should have initial: {}",
+        xml
+    );
+    assert!(xml.contains("Main scribe"), "should have text: {}", xml);
+    assert!(xml.contains("Second hand"), "should have text: {}", xml);
+
+    let parsed = HandList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("hlist1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_hand_with_pers_name() {
+    use tusk_model::elements::{Hand, HandChild, PersName, PersNameChild};
+
+    let mut original = Hand::default();
+    original.common.xml_id = Some("h1".to_string());
+    original.initial = Some(tusk_model::data::DataBoolean::True);
+    original.medium.medium = Some("ink".to_string());
+
+    let mut pers_name = PersName::default();
+    pers_name
+        .children
+        .push(PersNameChild::Text("Johannes Scriptor".to_string()));
+    original
+        .children
+        .push(HandChild::PersName(Box::new(pers_name)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("hand"), "xml should contain hand: {}", xml);
+    assert!(
+        xml.contains("initial=\"true\""),
+        "should have initial: {}",
+        xml
+    );
+    assert!(
+        xml.contains("medium=\"ink\""),
+        "should have medium: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Johannes Scriptor"),
+        "should have pers name: {}",
+        xml
+    );
+
+    let parsed = Hand::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("h1".to_string()));
+    assert_eq!(parsed.initial, Some(tusk_model::data::DataBoolean::True));
+    assert_eq!(parsed.medium.medium, Some("ink".to_string()));
+}
+
+#[test]
+fn roundtrip_script_desc_with_note() {
+    use tusk_model::elements::{ScriptDesc, ScriptDescChild, ScriptNote, ScriptNoteChild};
+
+    let mut original = ScriptDesc::default();
+    original.common.xml_id = Some("sd1".to_string());
+
+    let mut note = ScriptNote::default();
+    note.common.xml_id = Some("sn1".to_string());
+    note.children
+        .push(ScriptNoteChild::Text("Gothic textualis".to_string()));
+
+    original
+        .children
+        .push(ScriptDescChild::ScriptNote(Box::new(note)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("scriptDesc"),
+        "xml should contain scriptDesc: {}",
+        xml
+    );
+    assert!(
+        xml.contains("scriptNote"),
+        "should have scriptNote: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Gothic textualis"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = ScriptDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_script_note_with_p() {
+    use tusk_model::elements::{P, PChild, ScriptNote, ScriptNoteChild};
+
+    let mut original = ScriptNote::default();
+    original.common.xml_id = Some("sn1".to_string());
+    original.lang.xml_lang = Some("la".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Littera textualis with some cursive elements".to_string(),
+    ));
+    original.children.push(ScriptNoteChild::P(Box::new(p)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("scriptNote"),
+        "xml should contain scriptNote: {}",
+        xml
+    );
+    assert!(xml.contains("xml:lang=\"la\""), "should have lang: {}", xml);
+    assert!(
+        xml.contains("Littera textualis"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = ScriptNote::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sn1".to_string()));
+    assert_eq!(parsed.lang.xml_lang, Some("la".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}

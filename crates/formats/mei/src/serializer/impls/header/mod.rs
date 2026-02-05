@@ -11,12 +11,14 @@
 //! - `manifestation`: Manifestation list elements
 //! - `work_elements`: Work-specific child elements (Key, Meter, etc.)
 //! - `address`: Address-related elements (AddrLine, GeogName, etc.)
+//! - `layout_hand`: Layout, hand, and script elements (LayoutDesc, Layout, Hand, etc.)
 
 mod address;
 mod agents;
 mod bibl;
 mod encoding_desc;
 mod expression;
+mod layout_hand;
 mod manifestation;
 mod mei_head;
 mod names;

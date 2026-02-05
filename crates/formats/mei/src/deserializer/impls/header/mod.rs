@@ -9,15 +9,17 @@
 //! - `address`: Address-related elements (Address, AddrLine, GeogName, etc.)
 //! - `misc`: Shared mixed-content elements (P, Ptr, Ref, Annot)
 //! - `phys_desc`: Physical description elements (Dimensions, Height, Width, etc.)
+//! - `layout_hand`: Layout, hand, and script elements (LayoutDesc, Layout, Hand, etc.)
 
 mod address;
 mod agents;
 mod bibl;
 mod encoding_desc;
+mod layout_hand;
 mod mei_head;
 mod misc;
 mod names;
-mod phys_desc;
+pub(crate) mod phys_desc;
 mod pub_stmt;
 
 // Re-export all public parse functions
@@ -77,6 +79,12 @@ pub(crate) use phys_desc::{
     parse_dim_from_event, parse_dimensions_from_event, parse_foliation_from_event,
     parse_height_from_event, parse_support_desc_from_event, parse_support_from_event,
     parse_width_from_event,
+};
+
+pub(crate) use layout_hand::{
+    parse_col_layout_from_event, parse_hand_from_event, parse_hand_list_from_event,
+    parse_layout_desc_from_event, parse_layout_from_event, parse_script_desc_from_event,
+    parse_script_note_from_event,
 };
 
 #[cfg(test)]
