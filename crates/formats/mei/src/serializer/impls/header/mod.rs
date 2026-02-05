@@ -24,6 +24,7 @@ mod manifestation;
 mod mei_head;
 mod names;
 mod phys_desc;
+mod provenance;
 mod pub_stmt;
 mod revision_desc;
 mod work_elements;

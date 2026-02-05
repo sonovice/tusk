@@ -1088,3 +1088,218 @@ fn editor_deserializes_pers_name_child() {
         other => panic!("expected Editor child, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Provenance element tests
+// ============================================================================
+
+#[test]
+fn provenance_deserializes_empty_element() {
+    use tusk_model::elements::Provenance;
+
+    let xml = r#"<provenance/>"#;
+    let provenance = Provenance::from_mei_str(xml).expect("should deserialize");
+    assert!(provenance.common.xml_id.is_none());
+    assert!(provenance.children.is_empty());
+}
+
+#[test]
+fn provenance_deserializes_with_attributes() {
+    use tusk_model::elements::Provenance;
+
+    let xml = r#"<provenance xml:id="prov1" isodate="1850"/>"#;
+    let provenance = Provenance::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(provenance.common.xml_id, Some("prov1".to_string()));
+    assert!(provenance.datable.isodate.is_some());
+}
+
+#[test]
+fn provenance_deserializes_text_content() {
+    use tusk_model::elements::{Provenance, ProvenanceChild};
+
+    let xml = r#"<provenance>Formerly in the library of Count Esterhazy</provenance>"#;
+    let provenance = Provenance::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(provenance.children.len(), 1);
+    match &provenance.children[0] {
+        ProvenanceChild::Text(text) => {
+            assert!(text.contains("Esterhazy"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// Acquisition element tests
+// ============================================================================
+
+#[test]
+fn acquisition_deserializes_empty_element() {
+    use tusk_model::elements::Acquisition;
+
+    let xml = r#"<acquisition/>"#;
+    let acquisition = Acquisition::from_mei_str(xml).expect("should deserialize");
+    assert!(acquisition.common.xml_id.is_none());
+    assert!(acquisition.children.is_empty());
+}
+
+#[test]
+fn acquisition_deserializes_with_date_child() {
+    use tusk_model::elements::{Acquisition, AcquisitionChild};
+
+    let xml = r#"<acquisition xml:id="acq1">
+        <date isodate="1920-05-15"/>
+    </acquisition>"#;
+    let acquisition = Acquisition::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(acquisition.common.xml_id, Some("acq1".to_string()));
+    assert!(acquisition.children.iter().any(|c| matches!(c, AcquisitionChild::Date(_))));
+}
+
+// ============================================================================
+// ExhibHist element tests
+// ============================================================================
+
+#[test]
+fn exhib_hist_deserializes_empty_element() {
+    use tusk_model::elements::ExhibHist;
+
+    let xml = r#"<exhibHist/>"#;
+    let exhib_hist = ExhibHist::from_mei_str(xml).expect("should deserialize");
+    assert!(exhib_hist.common.xml_id.is_none());
+    assert!(exhib_hist.children.is_empty());
+}
+
+// ============================================================================
+// Watermark element tests
+// ============================================================================
+
+#[test]
+fn watermark_deserializes_empty_element() {
+    use tusk_model::elements::Watermark;
+
+    let xml = r#"<watermark/>"#;
+    let watermark = Watermark::from_mei_str(xml).expect("should deserialize");
+    assert!(watermark.common.xml_id.is_none());
+    assert!(watermark.children.is_empty());
+}
+
+#[test]
+fn watermark_deserializes_text_content() {
+    use tusk_model::elements::{Watermark, WatermarkChild};
+
+    let xml = r#"<watermark>Three crescents</watermark>"#;
+    let watermark = Watermark::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(watermark.children.len(), 1);
+    match &watermark.children[0] {
+        WatermarkChild::Text(text) => {
+            assert!(text.contains("crescents"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// WatermarkDesc element tests
+// ============================================================================
+
+#[test]
+fn watermark_desc_deserializes_empty_element() {
+    use tusk_model::elements::WatermarkDesc;
+
+    let xml = r#"<watermarkDesc/>"#;
+    let desc = WatermarkDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(desc.common.xml_id.is_none());
+    assert!(desc.children.is_empty());
+}
+
+#[test]
+fn watermark_desc_deserializes_with_watermark_child() {
+    use tusk_model::elements::{WatermarkDesc, WatermarkDescChild};
+
+    let xml = r#"<watermarkDesc>
+        <watermark>Crown over shield</watermark>
+    </watermarkDesc>"#;
+    let desc = WatermarkDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(desc.children.iter().any(|c| matches!(c, WatermarkDescChild::Watermark(_))));
+}
+
+// ============================================================================
+// TypeDesc element tests
+// ============================================================================
+
+#[test]
+fn type_desc_deserializes_empty_element() {
+    use tusk_model::elements::TypeDesc;
+
+    let xml = r#"<typeDesc/>"#;
+    let desc = TypeDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(desc.common.xml_id.is_none());
+    assert!(desc.children.is_empty());
+}
+
+#[test]
+fn type_desc_deserializes_with_type_note_child() {
+    use tusk_model::elements::{TypeDesc, TypeDescChild};
+
+    let xml = r#"<typeDesc>
+        <typeNote>Roman type, 12pt</typeNote>
+    </typeDesc>"#;
+    let desc = TypeDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(desc.children.iter().any(|c| matches!(c, TypeDescChild::TypeNote(_))));
+}
+
+// ============================================================================
+// TypeNote element tests
+// ============================================================================
+
+#[test]
+fn type_note_deserializes_empty_element() {
+    use tusk_model::elements::TypeNote;
+
+    let xml = r#"<typeNote/>"#;
+    let note = TypeNote::from_mei_str(xml).expect("should deserialize");
+    assert!(note.common.xml_id.is_none());
+    assert!(note.children.is_empty());
+}
+
+#[test]
+fn type_note_deserializes_text_content() {
+    use tusk_model::elements::{TypeNote, TypeNoteChild};
+
+    let xml = r#"<typeNote>Gothic blackletter type</typeNote>"#;
+    let note = TypeNote::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(note.children.len(), 1);
+    match &note.children[0] {
+        TypeNoteChild::Text(text) => {
+            assert!(text.contains("blackletter"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ============================================================================
+// AccMat element tests
+// ============================================================================
+
+#[test]
+fn acc_mat_deserializes_empty_element() {
+    use tusk_model::elements::AccMat;
+
+    let xml = r#"<accMat/>"#;
+    let acc_mat = AccMat::from_mei_str(xml).expect("should deserialize");
+    assert!(acc_mat.common.xml_id.is_none());
+    assert!(acc_mat.children.is_empty());
+}
+
+// ============================================================================
+// AddDesc element tests
+// ============================================================================
+
+#[test]
+fn add_desc_deserializes_empty_element() {
+    use tusk_model::elements::AddDesc;
+
+    let xml = r#"<addDesc/>"#;
+    let add_desc = AddDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(add_desc.common.xml_id.is_none());
+    assert!(add_desc.children.is_empty());
+}

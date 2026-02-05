@@ -21,6 +21,7 @@ mod mei_head;
 mod misc;
 mod names;
 pub(crate) mod phys_desc;
+mod provenance;
 mod pub_stmt;
 
 // Re-export all public parse functions
@@ -91,6 +92,13 @@ pub(crate) use layout_hand::{
 pub(crate) use deco_binding::{
     parse_binding_desc_from_event, parse_binding_from_event, parse_deco_desc_from_event,
     parse_deco_note_from_event, parse_seal_desc_from_event, parse_seal_from_event,
+};
+
+pub(crate) use provenance::{
+    parse_acc_mat_from_event, parse_acquisition_from_event, parse_add_desc_from_event,
+    parse_exhib_hist_from_event, parse_provenance_from_event, parse_type_desc_from_event,
+    parse_type_note_from_event, parse_watermark_desc_from_event, parse_watermark_from_event,
+    parse_watermark_list_from_event,
 };
 
 #[cfg(test)]

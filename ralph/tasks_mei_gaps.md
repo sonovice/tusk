@@ -160,24 +160,16 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Implement decoration: `DecoDesc`, `DecoNote`, binding: `BindingDesc`, `Binding`, `SealDesc`, `Seal`
 - [x] Add roundtrip tests
 
-### 13.2 Provenance and History
-- [ ] Implement `Provenance`, `Acquisition`, `ExhibHist`, `History`, `AccMat`, `AddDesc`
-- [ ] Add roundtrip tests
-
-### 13.3 Watermarks and Type
-- [ ] Implement `Watermark`, `WatermarkDesc`, `WatermarkList`, `TypeDesc`, `TypeNote`
-- [ ] Add roundtrip tests
+### 13.2 Provenance and History / Watermarks and Type
+- [x] Implement `Provenance`, `Acquisition`, `ExhibHist`, `History`, `AccMat`, `AddDesc` and `Watermark`, `WatermarkDesc`, `WatermarkList`, `TypeDesc`, `TypeNote`
+- [x] Add roundtrip tests
 
 ### 13.4 Recording and Performance Metadata
 - [ ] Implement `Recording`, `Performance`, `PerfDuration`, `TrackConfig`, `CaptureMode`, `PlayingSpeed`, `SoundChan`, `CarrierForm`, `FileChar`, `OtherChar`, `ScoreFormat`
 - [ ] Add roundtrip tests
 
-### 13.5 Relations and References
-- [ ] Implement `Relation`, `RelationList`, `RelatedItem`, `Item`, `ItemList`, `ComponentList`
-- [ ] Add roundtrip tests
-
-### 13.6 Encoding and Tags
-- [ ] Implement `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`
+### 13.5 Relations and References / Encoding and Tags
+- [ ] Implement `Relation`, `RelationList`, `RelatedItem`, `Item`, `ItemList`, `ComponentList` and `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`
 - [ ] Add roundtrip tests
 
 ### 13.7 Miscellaneous Header
