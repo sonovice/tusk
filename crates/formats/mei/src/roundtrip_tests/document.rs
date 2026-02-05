@@ -3113,3 +3113,200 @@ fn deserialize_expression_with_extent_and_score_format() {
     assert!(has_extent, "Should have extent child");
     assert!(has_score_format, "Should have scoreFormat child");
 }
+
+// ============================================================================
+// MeiCorpus Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_mei_corpus_empty() {
+    use tusk_model::elements::MeiCorpus;
+
+    let original = MeiCorpus::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_mei_corpus_with_xml_id() {
+    use tusk_model::elements::MeiCorpus;
+
+    let mut original = MeiCorpus::default();
+    original.common.xml_id = Some("corpus-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"corpus-1\""),
+        "xml should contain id: {}",
+        xml
+    );
+
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("corpus-1".to_string()));
+}
+
+#[test]
+fn roundtrip_mei_corpus_with_meiversion() {
+    use tusk_model::att::AttMeiVersionMeiversion;
+    use tusk_model::elements::MeiCorpus;
+
+    let mut original = MeiCorpus::default();
+    original.mei_version.meiversion = Some(AttMeiVersionMeiversion::N60Dev);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("meiversion=\"6.0-dev\""),
+        "xml should contain meiversion: {}",
+        xml
+    );
+
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(
+        parsed.mei_version.meiversion,
+        Some(AttMeiVersionMeiversion::N60Dev)
+    );
+}
+
+#[test]
+fn roundtrip_mei_corpus_with_mei_head() {
+    use tusk_model::elements::{MeiCorpus, MeiCorpusChild, MeiHead};
+
+    let mut mei_head = MeiHead::default();
+    mei_head.basic.xml_id = Some("head-1".to_string());
+
+    let mut original = MeiCorpus::default();
+    original.common.xml_id = Some("corpus-1".to_string());
+    original
+        .children
+        .push(MeiCorpusChild::MeiHead(Box::new(mei_head)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<meiHead"),
+        "xml should contain meiHead: {}",
+        xml
+    );
+
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MeiCorpusChild::MeiHead(head) => {
+            assert_eq!(head.basic.xml_id, Some("head-1".to_string()));
+        }
+        _ => panic!("Expected MeiHead child"),
+    }
+}
+
+#[test]
+fn roundtrip_mei_corpus_with_mei_documents() {
+    use tusk_model::elements::{Mei, MeiCorpus, MeiCorpusChild};
+
+    let mut mei1 = Mei::default();
+    mei1.id.xml_id = Some("mei-1".to_string());
+
+    let mut mei2 = Mei::default();
+    mei2.id.xml_id = Some("mei-2".to_string());
+
+    let mut original = MeiCorpus::default();
+    original.common.xml_id = Some("corpus-1".to_string());
+    original.children.push(MeiCorpusChild::Mei(Box::new(mei1)));
+    original.children.push(MeiCorpusChild::Mei(Box::new(mei2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"mei-1\""),
+        "xml should contain mei-1: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"mei-2\""),
+        "xml should contain mei-2: {}",
+        xml
+    );
+
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 2);
+
+    match &parsed.children[0] {
+        MeiCorpusChild::Mei(mei) => {
+            assert_eq!(mei.id.xml_id, Some("mei-1".to_string()));
+        }
+        _ => panic!("Expected Mei child"),
+    }
+    match &parsed.children[1] {
+        MeiCorpusChild::Mei(mei) => {
+            assert_eq!(mei.id.xml_id, Some("mei-2".to_string()));
+        }
+        _ => panic!("Expected Mei child"),
+    }
+}
+
+#[test]
+fn roundtrip_mei_corpus_complete() {
+    use tusk_model::att::AttMeiVersionMeiversion;
+    use tusk_model::elements::{Mei, MeiCorpus, MeiCorpusChild, MeiHead};
+
+    // Corpus header for the collection
+    let mut corpus_head = MeiHead::default();
+    corpus_head.basic.xml_id = Some("corpus-head".to_string());
+
+    // Individual MEI documents in the corpus
+    let mut mei1 = Mei::default();
+    mei1.id.xml_id = Some("work-1".to_string());
+
+    let mut mei2 = Mei::default();
+    mei2.id.xml_id = Some("work-2".to_string());
+
+    let mut original = MeiCorpus::default();
+    original.common.xml_id = Some("complete-corpus".to_string());
+    original.mei_version.meiversion = Some(AttMeiVersionMeiversion::N60Dev);
+    original
+        .children
+        .push(MeiCorpusChild::MeiHead(Box::new(corpus_head)));
+    original.children.push(MeiCorpusChild::Mei(Box::new(mei1)));
+    original.children.push(MeiCorpusChild::Mei(Box::new(mei2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+
+    // Verify structure
+    assert!(xml.contains("<meiCorpus"), "xml should contain meiCorpus");
+    assert!(xml.contains("<meiHead"), "xml should contain meiHead");
+    assert!(xml.contains("<mei"), "xml should contain mei elements");
+    assert!(
+        xml.contains("meiversion=\"6.0-dev\""),
+        "xml should contain meiversion"
+    );
+
+    let parsed = MeiCorpus::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("complete-corpus".to_string()));
+    assert_eq!(
+        parsed.mei_version.meiversion,
+        Some(AttMeiVersionMeiversion::N60Dev)
+    );
+    assert_eq!(parsed.children.len(), 3);
+
+    // First child should be meiHead
+    match &parsed.children[0] {
+        MeiCorpusChild::MeiHead(head) => {
+            assert_eq!(head.basic.xml_id, Some("corpus-head".to_string()));
+        }
+        _ => panic!("First child should be MeiHead"),
+    }
+
+    // Second and third children should be mei documents
+    match &parsed.children[1] {
+        MeiCorpusChild::Mei(mei) => {
+            assert_eq!(mei.id.xml_id, Some("work-1".to_string()));
+        }
+        _ => panic!("Second child should be Mei"),
+    }
+    match &parsed.children[2] {
+        MeiCorpusChild::Mei(mei) => {
+            assert_eq!(mei.id.xml_id, Some("work-2".to_string()));
+        }
+        _ => panic!("Third child should be Mei"),
+    }
+}

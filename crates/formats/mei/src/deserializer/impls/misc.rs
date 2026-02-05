@@ -3322,6 +3322,68 @@ impl MeiDeserialize for tusk_model::elements::Mei {
 }
 
 // ============================================================================
+// MeiCorpus (root element for corpus) implementation
+// ============================================================================
+
+impl MeiDeserialize for tusk_model::elements::MeiCorpus {
+    fn element_name() -> &'static str {
+        "meiCorpus"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        use tusk_model::elements::{MeiCorpus, MeiCorpusChild};
+
+        let mut mei_corpus = MeiCorpus::default();
+
+        // Extract attributes
+        // MeiCorpus has: AttCommon, AttMeiVersion
+        mei_corpus.common.extract_attributes(&mut attrs)?;
+        mei_corpus.mei_version.extract_attributes(&mut attrs)?;
+
+        // Parse children if not empty
+        // meiCorpus can contain: meiHead, mei*
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("meiCorpus")?
+            {
+                match name.as_str() {
+                    "meiHead" => {
+                        let mei_head = tusk_model::elements::MeiHead::from_mei_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        mei_corpus
+                            .children
+                            .push(MeiCorpusChild::MeiHead(Box::new(mei_head)));
+                    }
+                    "mei" => {
+                        let mei = tusk_model::elements::Mei::from_mei_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        mei_corpus.children.push(MeiCorpusChild::Mei(Box::new(mei)));
+                    }
+                    // Unknown children are skipped in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(mei_corpus)
+    }
+}
+
+// ============================================================================
 // Music element implementation
 // ============================================================================
 

@@ -875,6 +875,90 @@ impl MeiSerialize for tusk_model::elements::MeiChild {
 }
 
 // ============================================================================
+// MeiCorpus (root element for corpus) implementation
+// ============================================================================
+
+impl MeiSerialize for tusk_model::elements::MeiCorpus {
+    fn element_name(&self) -> &'static str {
+        "meiCorpus"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        // AttCommon
+        attrs.extend(self.common.collect_attributes());
+        // AttMeiVersion: meiversion
+        attrs.extend(self.mei_version.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        let name = self.element_name();
+        let attrs = self.collect_all_attributes();
+
+        let mut start = writer.start_element(name)?;
+
+        // Add namespace declarations for root element
+        writer.add_root_namespaces(&mut start);
+
+        for (attr_name, value) in attrs {
+            start.push_attribute((attr_name, value.as_str()));
+        }
+
+        if self.has_children() {
+            writer.write_start(start)?;
+            self.serialize_children(writer)?;
+            writer.write_end(name)?;
+        } else {
+            writer.write_empty(start)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::MeiCorpusChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            tusk_model::elements::MeiCorpusChild::MeiHead(_) => "meiHead",
+            tusk_model::elements::MeiCorpusChild::Mei(_) => "mei",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new() // Handled by recursive serialization
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            tusk_model::elements::MeiCorpusChild::MeiHead(mei_head) => {
+                mei_head.serialize_mei(writer)
+            }
+            tusk_model::elements::MeiCorpusChild::Mei(mei) => mei.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
 // Music element implementation
 // ============================================================================
 
