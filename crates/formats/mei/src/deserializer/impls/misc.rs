@@ -6,11 +6,14 @@
 //! - Expression, ExpressionList, ComponentList, RelationList
 //! - Various supporting elements (Dedication, Creation, History, etc.)
 
-use super::header::{parse_annot_from_event, parse_geog_name_from_event};
+use super::header::{
+    parse_annot_from_event, parse_geog_name_from_event, parse_performance_from_event,
+};
 use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
-    from_attr_string, parse_bibl_from_event, parse_bibl_struct_from_event, parse_clef_from_event,
-    parse_date_from_event, parse_deprecated_creator_from_event, parse_head_from_event,
+    from_attr_string, parse_back_from_event, parse_bibl_from_event, parse_bibl_struct_from_event,
+    parse_clef_from_event, parse_date_from_event, parse_deprecated_creator_from_event,
+    parse_front_from_event, parse_gen_desc_from_event, parse_head_from_event,
     parse_identifier_from_event, parse_label_from_event, parse_lb_from_event, parse_p_from_event,
     parse_rend_from_event, parse_resp_stmt_from_event, parse_title_from_event,
 };
@@ -3409,7 +3412,9 @@ impl MeiDeserialize for tusk_model::elements::Music {
         mut attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
-        use tusk_model::elements::{Body, Music, MusicChild};
+        use tusk_model::elements::{
+            Back, Body, Facsimile, GenDesc, Group, Music, MusicChild, Performance,
+        };
 
         let mut music = Music::default();
 
@@ -3430,7 +3435,36 @@ impl MeiDeserialize for tusk_model::elements::Music {
                         let body = Body::from_mei_event(reader, child_attrs, child_empty)?;
                         music.children.push(MusicChild::Body(Box::new(body)));
                     }
-                    // TODO: Add group, front, back, facsimile, genDesc, performance when needed
+                    "back" => {
+                        let back = parse_back_from_event(reader, child_attrs, child_empty)?;
+                        music.children.push(MusicChild::Back(Box::new(back)));
+                    }
+                    "front" => {
+                        let front = parse_front_from_event(reader, child_attrs, child_empty)?;
+                        music.children.push(MusicChild::Front(Box::new(front)));
+                    }
+                    "group" => {
+                        let group = Group::from_mei_event(reader, child_attrs, child_empty)?;
+                        music.children.push(MusicChild::Group(Box::new(group)));
+                    }
+                    "facsimile" => {
+                        let facsimile =
+                            Facsimile::from_mei_event(reader, child_attrs, child_empty)?;
+                        music
+                            .children
+                            .push(MusicChild::Facsimile(Box::new(facsimile)));
+                    }
+                    "genDesc" => {
+                        let gen_desc = parse_gen_desc_from_event(reader, child_attrs, child_empty)?;
+                        music.children.push(MusicChild::GenDesc(Box::new(gen_desc)));
+                    }
+                    "performance" => {
+                        let performance =
+                            parse_performance_from_event(reader, child_attrs, child_empty)?;
+                        music
+                            .children
+                            .push(MusicChild::Performance(Box::new(performance)));
+                    }
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;

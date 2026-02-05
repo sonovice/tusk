@@ -1058,25 +1058,50 @@ impl MeiSerialize for tusk_model::elements::MusicChild {
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         match self {
             tusk_model::elements::MusicChild::Body(body) => body.collect_all_attributes(),
-            // Other children not fully implemented yet
-            _ => Vec::new(),
+            tusk_model::elements::MusicChild::Back(back) => back.collect_all_attributes(),
+            tusk_model::elements::MusicChild::Front(front) => front.collect_all_attributes(),
+            tusk_model::elements::MusicChild::Group(group) => group.collect_all_attributes(),
+            tusk_model::elements::MusicChild::Facsimile(facsimile) => {
+                facsimile.collect_all_attributes()
+            }
+            tusk_model::elements::MusicChild::GenDesc(gen_desc) => {
+                gen_desc.collect_all_attributes()
+            }
+            tusk_model::elements::MusicChild::Performance(performance) => {
+                performance.collect_all_attributes()
+            }
         }
     }
 
     fn has_children(&self) -> bool {
         match self {
             tusk_model::elements::MusicChild::Body(body) => body.has_children(),
-            _ => true,
+            tusk_model::elements::MusicChild::Back(back) => back.has_children(),
+            tusk_model::elements::MusicChild::Front(front) => front.has_children(),
+            tusk_model::elements::MusicChild::Group(group) => group.has_children(),
+            tusk_model::elements::MusicChild::Facsimile(facsimile) => facsimile.has_children(),
+            tusk_model::elements::MusicChild::GenDesc(gen_desc) => gen_desc.has_children(),
+            tusk_model::elements::MusicChild::Performance(performance) => {
+                performance.has_children()
+            }
         }
     }
 
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             tusk_model::elements::MusicChild::Body(body) => body.serialize_children(writer),
-            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
-                "MusicChild::{}::serialize_children",
-                other.element_name()
-            ))),
+            tusk_model::elements::MusicChild::Back(back) => back.serialize_children(writer),
+            tusk_model::elements::MusicChild::Front(front) => front.serialize_children(writer),
+            tusk_model::elements::MusicChild::Group(group) => group.serialize_children(writer),
+            tusk_model::elements::MusicChild::Facsimile(facsimile) => {
+                facsimile.serialize_children(writer)
+            }
+            tusk_model::elements::MusicChild::GenDesc(gen_desc) => {
+                gen_desc.serialize_children(writer)
+            }
+            tusk_model::elements::MusicChild::Performance(performance) => {
+                performance.serialize_children(writer)
+            }
         }
     }
 }
@@ -1757,6 +1782,28 @@ impl MeiSerialize for LChild {
             LChild::Settlement(elem) => elem.serialize_mei(writer),
             LChild::GeogFeat(elem) => elem.serialize_mei(writer),
             LChild::Bloc(elem) => elem.serialize_mei(writer),
+            LChild::Syl(elem) => elem.serialize_mei(writer),
+            LChild::Seg(elem) => elem.serialize_mei(writer),
+            LChild::Dim(elem) => elem.serialize_mei(writer),
+            LChild::Fig(elem) => elem.serialize_mei(writer),
+            LChild::Term(elem) => elem.serialize_mei(writer),
+            LChild::Symbol(elem) => elem.serialize_mei(writer),
+            LChild::Abbr(elem) => elem.serialize_mei(writer),
+            LChild::Pb(elem) => elem.serialize_mei(writer),
+            LChild::Add(elem) => elem.serialize_mei(writer),
+            // Editorial elements
+            LChild::Choice(elem) => elem.serialize_mei(writer),
+            LChild::Corr(elem) => elem.serialize_mei(writer),
+            LChild::Damage(elem) => elem.serialize_mei(writer),
+            LChild::Del(elem) => elem.serialize_mei(writer),
+            LChild::Gap(elem) => elem.serialize_mei(writer),
+            LChild::Orig(elem) => elem.serialize_mei(writer),
+            LChild::Reg(elem) => elem.serialize_mei(writer),
+            LChild::Restore(elem) => elem.serialize_mei(writer),
+            LChild::Sic(elem) => elem.serialize_mei(writer),
+            LChild::Subst(elem) => elem.serialize_mei(writer),
+            LChild::Supplied(elem) => elem.serialize_mei(writer),
+            LChild::Unclear(elem) => elem.serialize_mei(writer),
             // Other elements that need their own serializers - skip for now
             _ => {
                 // TODO: Implement serializers for remaining LChild variants
