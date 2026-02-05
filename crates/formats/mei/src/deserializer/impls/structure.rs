@@ -14,10 +14,11 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Arpeg, Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm,
-    Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Pb, Pedal,
-    Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff,
-    StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
+    Arpeg, BTrem, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
+    EndingChild, FTrem, Fermata, Gliss, Hairpin, Harm, Layer, LayerChild, Lv, MRest, Mdiv,
+    MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Reh, Rest, Sb, Score,
+    ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo,
+    Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -556,6 +557,14 @@ impl MeiDeserialize for Layer {
                         let clef = super::parse_clef_from_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::Clef(Box::new(clef)));
                     }
+                    "bTrem" => {
+                        let b_trem = BTrem::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::BTrem(Box::new(b_trem)));
+                    }
+                    "fTrem" => {
+                        let f_trem = FTrem::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::FTrem(Box::new(f_trem)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -671,6 +680,33 @@ impl MeiDeserialize for Measure {
                     "reh" => {
                         let reh = Reh::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Reh(Box::new(reh)));
+                    }
+                    "beamSpan" => {
+                        let beam_span = BeamSpan::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::BeamSpan(Box::new(beam_span)));
+                    }
+                    "octave" => {
+                        let octave = Octave::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::Octave(Box::new(octave)));
+                    }
+                    "gliss" => {
+                        let gliss = Gliss::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Gliss(Box::new(gliss)));
+                    }
+                    "lv" => {
+                        let lv = Lv::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Lv(Box::new(lv)));
+                    }
+                    "bracketSpan" => {
+                        let bracket_span =
+                            BracketSpan::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::BracketSpan(Box::new(bracket_span)));
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {

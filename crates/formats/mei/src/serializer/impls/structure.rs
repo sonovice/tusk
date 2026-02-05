@@ -14,8 +14,9 @@ use tusk_model::att::{
     AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Clef, Ending, EndingChild, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure,
-    MeasureChild, Pb, Sb, Score, ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
+    BTrem, Body, BodyChild, Clef, Ending, EndingChild, FTrem, Layer, LayerChild, MRest, Mdiv,
+    MdivChild, Measure, MeasureChild, Pb, Sb, Score, ScoreChild, Section, SectionChild, Staff,
+    StaffChild, StaffDef,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -523,6 +524,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::MRest(_) => "mRest",
             LayerChild::MSpace(_) => "mSpace",
             LayerChild::MultiRest(_) => "multiRest",
+            LayerChild::BTrem(_) => "bTrem",
+            LayerChild::FTrem(_) => "fTrem",
             // Many other child types...
             _ => "unknown",
         }
@@ -541,6 +544,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Dot(dot) => dot.collect_all_attributes(),
             LayerChild::MRest(mrest) => mrest.collect_all_attributes(),
             LayerChild::Clef(clef) => clef.collect_all_attributes(),
+            LayerChild::BTrem(btrem) => btrem.collect_all_attributes(),
+            LayerChild::FTrem(ftrem) => ftrem.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -559,6 +564,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Space(_) => false, // Space has no children per MEI spec
             LayerChild::MRest(_) => false, // MRest has no children per MEI spec
             LayerChild::Clef(_) => false,  // Clef has no children per MEI spec
+            LayerChild::BTrem(btrem) => btrem.has_children(),
+            LayerChild::FTrem(ftrem) => ftrem.has_children(),
             _ => false,
         }
     }
@@ -571,6 +578,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Beam(beam) => beam.serialize_children(writer),
             LayerChild::Tuplet(tuplet) => tuplet.serialize_children(writer),
             LayerChild::MRest(_) => Ok(()), // MRest has no children
+            LayerChild::BTrem(btrem) => btrem.serialize_children(writer),
+            LayerChild::FTrem(ftrem) => ftrem.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "LayerChild::{}::serialize_children",
                 other.element_name()
@@ -828,6 +837,11 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Arpeg(arpeg) => arpeg.collect_all_attributes(),
             MeasureChild::TupletSpan(tuplet_span) => tuplet_span.collect_all_attributes(),
             MeasureChild::Reh(reh) => reh.collect_all_attributes(),
+            MeasureChild::BeamSpan(beam_span) => beam_span.collect_all_attributes(),
+            MeasureChild::Octave(octave) => octave.collect_all_attributes(),
+            MeasureChild::Gliss(gliss) => gliss.collect_all_attributes(),
+            MeasureChild::Lv(lv) => lv.collect_all_attributes(),
+            MeasureChild::BracketSpan(bracket_span) => bracket_span.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -850,6 +864,11 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Arpeg(_) => false, // Arpeg has no children
             MeasureChild::TupletSpan(_) => false, // TupletSpan has no children
             MeasureChild::Reh(reh) => reh.has_children(),
+            MeasureChild::BeamSpan(_) => false, // BeamSpan has no children
+            MeasureChild::Octave(octave) => octave.has_children(),
+            MeasureChild::Gliss(gliss) => gliss.has_children(),
+            MeasureChild::Lv(lv) => lv.has_children(),
+            MeasureChild::BracketSpan(bracket_span) => bracket_span.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -869,6 +888,11 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Arpeg(_) => Ok(()), // Arpeg has no children
             MeasureChild::TupletSpan(_) => Ok(()), // TupletSpan has no children
             MeasureChild::Reh(reh) => reh.serialize_children(writer),
+            MeasureChild::BeamSpan(_) => Ok(()), // BeamSpan has no children
+            MeasureChild::Octave(octave) => octave.serialize_children(writer),
+            MeasureChild::Gliss(gliss) => gliss.serialize_children(writer),
+            MeasureChild::Lv(lv) => lv.serialize_children(writer),
+            MeasureChild::BracketSpan(bracket_span) => bracket_span.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()

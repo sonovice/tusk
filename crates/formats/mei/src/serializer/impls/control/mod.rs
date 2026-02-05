@@ -10,6 +10,7 @@
 //! - `harmony`: Harm, Fb, F, Symbol (harmony elements)
 //! - `pedal`: Pedal, TupletSpan (pedal and tuplet spans)
 //! - `repeats`: RepeatMark, Volta, MRpt, etc. (repeat elements)
+//! - `spanning`: BeamSpan, Octave, Gliss, Lv, BracketSpan, BTrem, FTrem
 
 mod articulation;
 mod curves;
@@ -19,6 +20,7 @@ mod ornaments;
 mod pedal;
 mod reh;
 mod repeats;
+mod spanning;
 mod text_dir;
 
 use crate::serializer::CollectAttributes;

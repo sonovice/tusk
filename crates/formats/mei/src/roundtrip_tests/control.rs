@@ -2593,3 +2593,441 @@ fn roundtrip_m_num_with_place() {
     assert_eq!(parsed.common.xml_id, original.common.xml_id);
     assert_eq!(parsed.m_num_vis.place, original.m_num_vis.place);
 }
+
+// ============================================================================
+// BeamSpan Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_beam_span_empty() {
+    use tusk_model::elements::BeamSpan;
+
+    let original = BeamSpan::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeamSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_beam_span_with_refs() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::BeamSpan;
+
+    let mut original = BeamSpan::default();
+    original.common.xml_id = Some("bs1".to_string());
+    original.beam_span_log.startid = Some(DataUri("#n1".to_string()));
+    original.beam_span_log.endid = Some(DataUri("#n4".to_string()));
+    original.beam_span_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeamSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.beam_span_log.startid, original.beam_span_log.startid);
+    assert_eq!(parsed.beam_span_log.endid, original.beam_span_log.endid);
+    assert_eq!(parsed.beam_span_log.staff, original.beam_span_log.staff);
+}
+
+#[test]
+fn roundtrip_beam_span_with_plist() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::BeamSpan;
+
+    let mut original = BeamSpan::default();
+    original.common.xml_id = Some("bs2".to_string());
+    original.beam_span_log.plist = vec![
+        DataUri("#n1".to_string()),
+        DataUri("#n2".to_string()),
+        DataUri("#n3".to_string()),
+    ];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeamSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.beam_span_log.plist, original.beam_span_log.plist);
+}
+
+// ============================================================================
+// Octave Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_octave_empty() {
+    use tusk_model::elements::Octave;
+
+    let original = Octave::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Octave::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_octave_with_dis() {
+    use tusk_model::data::{DataOctaveDis, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::Octave;
+
+    let mut original = Octave::default();
+    original.common.xml_id = Some("oct1".to_string());
+    original.octave_log.dis = Some(DataOctaveDis(8));
+    original.octave_log.dis_place = Some(DataStaffrelBasic::Above);
+    original.octave_log.startid = Some(DataUri("#n1".to_string()));
+    original.octave_log.endid = Some(DataUri("#n8".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Octave::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.octave_log.dis, original.octave_log.dis);
+    assert_eq!(parsed.octave_log.dis_place, original.octave_log.dis_place);
+    assert_eq!(parsed.octave_log.startid, original.octave_log.startid);
+    assert_eq!(parsed.octave_log.endid, original.octave_log.endid);
+}
+
+#[test]
+fn roundtrip_octave_with_tstamp() {
+    use tusk_model::data::{DataBeat, DataMeasurebeat, DataOctaveDis, DataStaffrelBasic};
+    use tusk_model::elements::Octave;
+
+    let mut original = Octave::default();
+    original.common.xml_id = Some("oct2".to_string());
+    original.octave_log.dis = Some(DataOctaveDis(15));
+    original.octave_log.dis_place = Some(DataStaffrelBasic::Below);
+    original.octave_log.tstamp = Some(DataBeat(1.0));
+    original.octave_log.tstamp2 = Some(DataMeasurebeat("2m+1".to_string()));
+    original.octave_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Octave::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.octave_log.dis, original.octave_log.dis);
+    assert_eq!(parsed.octave_log.dis_place, original.octave_log.dis_place);
+    assert_eq!(parsed.octave_log.tstamp, original.octave_log.tstamp);
+    assert_eq!(parsed.octave_log.tstamp2, original.octave_log.tstamp2);
+    assert_eq!(parsed.octave_log.staff, original.octave_log.staff);
+}
+
+// ============================================================================
+// Gliss Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_gliss_empty() {
+    use tusk_model::elements::Gliss;
+
+    let original = Gliss::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gliss::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_gliss_with_refs() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Gliss;
+
+    let mut original = Gliss::default();
+    original.common.xml_id = Some("gliss1".to_string());
+    original.gliss_log.startid = Some(DataUri("#n1".to_string()));
+    original.gliss_log.endid = Some(DataUri("#n2".to_string()));
+    original.gliss_log.staff = vec![1];
+    original.gliss_log.layer = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gliss::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.gliss_log.startid, original.gliss_log.startid);
+    assert_eq!(parsed.gliss_log.endid, original.gliss_log.endid);
+    assert_eq!(parsed.gliss_log.staff, original.gliss_log.staff);
+    assert_eq!(parsed.gliss_log.layer, original.gliss_log.layer);
+}
+
+#[test]
+fn roundtrip_gliss_with_line_style() {
+    use tusk_model::data::{DataLineform, DataUri};
+    use tusk_model::elements::Gliss;
+
+    let mut original = Gliss::default();
+    original.common.xml_id = Some("gliss2".to_string());
+    original.gliss_log.startid = Some(DataUri("#n1".to_string()));
+    original.gliss_log.endid = Some(DataUri("#n2".to_string()));
+    original.gliss_vis.lform = Some(DataLineform::Wavy);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gliss::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.gliss_vis.lform, original.gliss_vis.lform);
+}
+
+// ============================================================================
+// Lv (laissez vibrer) Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_lv_empty() {
+    use tusk_model::elements::Lv;
+
+    let original = Lv::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Lv::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_lv_with_refs() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Lv;
+
+    let mut original = Lv::default();
+    original.common.xml_id = Some("lv1".to_string());
+    original.lv_log.startid = Some(DataUri("#n1".to_string()));
+    original.lv_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Lv::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.lv_log.startid, original.lv_log.startid);
+    assert_eq!(parsed.lv_log.staff, original.lv_log.staff);
+}
+
+#[test]
+fn roundtrip_lv_with_curvedir() {
+    use tusk_model::att::AttLvVisCurvedir;
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Lv;
+
+    let mut original = Lv::default();
+    original.common.xml_id = Some("lv2".to_string());
+    original.lv_log.startid = Some(DataUri("#n1".to_string()));
+    original.lv_vis.curvedir = Some(AttLvVisCurvedir::Above);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Lv::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.lv_vis.curvedir, original.lv_vis.curvedir);
+}
+
+// ============================================================================
+// BracketSpan Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_bracket_span_empty() {
+    use tusk_model::elements::BracketSpan;
+
+    let original = BracketSpan::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BracketSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_bracket_span_with_refs() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::BracketSpan;
+
+    let mut original = BracketSpan::default();
+    original.common.xml_id = Some("brspan1".to_string());
+    original.bracket_span_log.startid = Some(DataUri("#n1".to_string()));
+    original.bracket_span_log.endid = Some(DataUri("#n4".to_string()));
+    original.bracket_span_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BracketSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(
+        parsed.bracket_span_log.startid,
+        original.bracket_span_log.startid
+    );
+    assert_eq!(
+        parsed.bracket_span_log.endid,
+        original.bracket_span_log.endid
+    );
+    assert_eq!(
+        parsed.bracket_span_log.staff,
+        original.bracket_span_log.staff
+    );
+}
+
+#[test]
+fn roundtrip_bracket_span_with_line_style() {
+    use tusk_model::data::{DataLineform, DataUri};
+    use tusk_model::elements::BracketSpan;
+
+    let mut original = BracketSpan::default();
+    original.common.xml_id = Some("brspan2".to_string());
+    original.bracket_span_log.startid = Some(DataUri("#n1".to_string()));
+    original.bracket_span_log.endid = Some(DataUri("#n4".to_string()));
+    original.bracket_span_vis.lform = Some(DataLineform::Solid);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BracketSpan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(
+        parsed.bracket_span_vis.lform,
+        original.bracket_span_vis.lform
+    );
+}
+
+// ============================================================================
+// BTrem (bowed tremolo) Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_b_trem_empty() {
+    use tusk_model::elements::BTrem;
+
+    let original = BTrem::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_b_trem_with_note() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{BTrem, BTremChild, Note};
+
+    let mut note = Note::default();
+    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note.note_log.oct = Some(DataOctave(4));
+    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+
+    let mut original = BTrem::default();
+    original.common.xml_id = Some("btrem1".to_string());
+    original.b_trem_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.children.push(BTremChild::Note(Box::new(note)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.b_trem_log.dur, original.b_trem_log.dur);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BTremChild::Note(n) => {
+            assert_eq!(n.note_log.pname, Some(DataPitchname::from("c".to_string())));
+            assert_eq!(n.note_log.oct, Some(DataOctave(4)));
+        }
+        _ => panic!("Expected Note child"),
+    }
+}
+
+#[test]
+fn roundtrip_b_trem_with_chord() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{BTrem, BTremChild, Chord, ChordChild, Note};
+
+    let mut note1 = Note::default();
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut note2 = Note::default();
+    note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+    note2.note_log.oct = Some(DataOctave(4));
+
+    let mut chord = Chord::default();
+    chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    chord.children.push(ChordChild::Note(Box::new(note1)));
+    chord.children.push(ChordChild::Note(Box::new(note2)));
+
+    let mut original = BTrem::default();
+    original.common.xml_id = Some("btrem2".to_string());
+    original.children.push(BTremChild::Chord(Box::new(chord)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BTremChild::Chord(c) => {
+            assert_eq!(c.children.len(), 2);
+        }
+        _ => panic!("Expected Chord child"),
+    }
+}
+
+// ============================================================================
+// FTrem (fingered tremolo) Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_f_trem_empty() {
+    use tusk_model::elements::FTrem;
+
+    let original = FTrem::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_f_trem_with_notes() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{FTrem, FTremChild, Note};
+
+    let mut note1 = Note::default();
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut note2 = Note::default();
+    note2.note_log.pname = Some(DataPitchname::from("g".to_string()));
+    note2.note_log.oct = Some(DataOctave(4));
+
+    let mut original = FTrem::default();
+    original.common.xml_id = Some("ftrem1".to_string());
+    original.f_trem_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2));
+    original.children.push(FTremChild::Note(Box::new(note1)));
+    original.children.push(FTremChild::Note(Box::new(note2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.f_trem_log.dur, original.f_trem_log.dur);
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_f_trem_with_beams() {
+    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+    use tusk_model::elements::{FTrem, FTremChild, Note};
+
+    let mut note1 = Note::default();
+    note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+    note1.note_log.oct = Some(DataOctave(4));
+
+    let mut note2 = Note::default();
+    note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+    note2.note_log.oct = Some(DataOctave(4));
+
+    let mut original = FTrem::default();
+    original.common.xml_id = Some("ftrem2".to_string());
+    original.f_trem_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    original.f_trem_vis.beams = Some(3);
+    original.children.push(FTremChild::Note(Box::new(note1)));
+    original.children.push(FTremChild::Note(Box::new(note2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FTrem::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.f_trem_vis.beams, original.f_trem_vis.beams);
+}

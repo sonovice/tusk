@@ -1736,4 +1736,277 @@ mod tests {
         assert_eq!(reh.common.xml_id, Some("r1".to_string()));
         assert!(reh.children.is_empty());
     }
+
+    // ============================================================================
+    // BeamSpan roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn beamspan_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BeamSpan;
+
+        let xml = r#"<beamSpan/>"#;
+        let beamspan = BeamSpan::from_mei_str(xml).expect("should deserialize");
+        let serialized = beamspan.to_mei_string().expect("should serialize");
+        let reparsed = BeamSpan::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(beamspan.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn beamspan_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BeamSpan;
+
+        let xml = r##"<beamSpan xml:id="bs1" staff="1" tstamp="1" tstamp2="0m+4" startid="#n1" endid="#n4"/>"##;
+        let beamspan = BeamSpan::from_mei_str(xml).expect("should deserialize");
+        let serialized = beamspan.to_mei_string().expect("should serialize");
+        let reparsed = BeamSpan::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(beamspan.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(beamspan.beam_span_log.staff, reparsed.beam_span_log.staff);
+        assert!(reparsed.beam_span_log.startid.is_some());
+        assert!(reparsed.beam_span_log.endid.is_some());
+    }
+
+    // ============================================================================
+    // Octave roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn octave_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Octave;
+
+        let xml = r#"<octave/>"#;
+        let octave = Octave::from_mei_str(xml).expect("should deserialize");
+        let serialized = octave.to_mei_string().expect("should serialize");
+        let reparsed = Octave::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(octave.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn octave_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Octave;
+
+        let xml = r##"<octave xml:id="o1" staff="1" tstamp="1" tstamp2="0m+4" dis="8" dis.place="above" startid="#n1" endid="#n4"/>"##;
+        let octave = Octave::from_mei_str(xml).expect("should deserialize");
+        let serialized = octave.to_mei_string().expect("should serialize");
+        let reparsed = Octave::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(octave.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(octave.octave_log.staff, reparsed.octave_log.staff);
+        assert!(reparsed.octave_log.dis.is_some());
+        assert!(reparsed.octave_log.dis_place.is_some());
+    }
+
+    // ============================================================================
+    // Gliss roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn gliss_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Gliss;
+
+        let xml = r#"<gliss/>"#;
+        let gliss = Gliss::from_mei_str(xml).expect("should deserialize");
+        let serialized = gliss.to_mei_string().expect("should serialize");
+        let reparsed = Gliss::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(gliss.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn gliss_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Gliss;
+
+        let xml = r##"<gliss xml:id="g1" staff="1" tstamp="1" tstamp2="0m+2" startid="#n1" endid="#n2" lform="wavy"/>"##;
+        let gliss = Gliss::from_mei_str(xml).expect("should deserialize");
+        let serialized = gliss.to_mei_string().expect("should serialize");
+        let reparsed = Gliss::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(gliss.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(gliss.gliss_log.staff, reparsed.gliss_log.staff);
+        assert!(reparsed.gliss_log.startid.is_some());
+        assert!(reparsed.gliss_vis.lform.is_some());
+    }
+
+    // ============================================================================
+    // Lv roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn lv_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Lv;
+
+        let xml = r#"<lv/>"#;
+        let lv = Lv::from_mei_str(xml).expect("should deserialize");
+        let serialized = lv.to_mei_string().expect("should serialize");
+        let reparsed = Lv::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(lv.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn lv_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::Lv;
+
+        let xml = r##"<lv xml:id="lv1" staff="1" tstamp="1" tstamp2="0m+4" startid="#n1" endid="#n2" curvedir="above"/>"##;
+        let lv = Lv::from_mei_str(xml).expect("should deserialize");
+        let serialized = lv.to_mei_string().expect("should serialize");
+        let reparsed = Lv::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(lv.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(lv.lv_log.staff, reparsed.lv_log.staff);
+        assert!(reparsed.lv_log.startid.is_some());
+        assert!(reparsed.lv_vis.curvedir.is_some());
+    }
+
+    // ============================================================================
+    // BracketSpan roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn bracketspan_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BracketSpan;
+
+        let xml = r#"<bracketSpan/>"#;
+        let bracketspan = BracketSpan::from_mei_str(xml).expect("should deserialize");
+        let serialized = bracketspan.to_mei_string().expect("should serialize");
+        let reparsed = BracketSpan::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(bracketspan.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn bracketspan_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BracketSpan;
+
+        let xml = r##"<bracketSpan xml:id="bsp1" staff="1" tstamp="1" tstamp2="0m+4" startid="#n1" endid="#n4" func="ligature"/>"##;
+        let bracketspan = BracketSpan::from_mei_str(xml).expect("should deserialize");
+        let serialized = bracketspan.to_mei_string().expect("should serialize");
+        let reparsed = BracketSpan::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(bracketspan.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(
+            bracketspan.bracket_span_log.staff,
+            reparsed.bracket_span_log.staff
+        );
+        assert!(reparsed.bracket_span_log.startid.is_some());
+        assert!(reparsed.bracket_span_log.func.is_some());
+    }
+
+    // ============================================================================
+    // BTrem (bowed tremolo) roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn btrem_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BTrem;
+
+        let xml = r#"<bTrem/>"#;
+        let btrem = BTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = btrem.to_mei_string().expect("should serialize");
+        let reparsed = BTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(btrem.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn btrem_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::BTrem;
+
+        let xml = r#"<bTrem xml:id="bt1" dur="4" dots="0" unitdur="32"/>"#;
+        let btrem = BTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = btrem.to_mei_string().expect("should serialize");
+        let reparsed = BTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(btrem.common.xml_id, reparsed.common.xml_id);
+        assert!(reparsed.b_trem_log.dur.is_some());
+        assert!(reparsed.b_trem_ges.unitdur.is_some());
+    }
+
+    #[test]
+    fn btrem_roundtrip_with_note_child() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::{BTrem, BTremChild};
+
+        let xml = r#"<bTrem xml:id="bt1" dur="4"><note xml:id="n1" pname="c" oct="4"/></bTrem>"#;
+        let btrem = BTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = btrem.to_mei_string().expect("should serialize");
+        let reparsed = BTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(btrem.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(btrem.children.len(), reparsed.children.len());
+        match (&btrem.children[0], &reparsed.children[0]) {
+            (BTremChild::Note(orig), BTremChild::Note(rep)) => {
+                assert_eq!(orig.common.xml_id, rep.common.xml_id);
+            }
+            _ => panic!("Expected Note children"),
+        }
+    }
+
+    // ============================================================================
+    // FTrem (fingered tremolo) roundtrip tests
+    // ============================================================================
+
+    #[test]
+    fn ftrem_roundtrip_empty() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::FTrem;
+
+        let xml = r#"<fTrem/>"#;
+        let ftrem = FTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = ftrem.to_mei_string().expect("should serialize");
+        let reparsed = FTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(ftrem.common.xml_id, reparsed.common.xml_id);
+    }
+
+    #[test]
+    fn ftrem_roundtrip_with_attributes() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::FTrem;
+
+        let xml = r#"<fTrem xml:id="ft1" dur="2" beams="3" unitdur="16"/>"#;
+        let ftrem = FTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = ftrem.to_mei_string().expect("should serialize");
+        let reparsed = FTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(ftrem.common.xml_id, reparsed.common.xml_id);
+        assert!(reparsed.f_trem_log.dur.is_some());
+        assert!(reparsed.f_trem_ges.unitdur.is_some());
+    }
+
+    #[test]
+    fn ftrem_roundtrip_with_note_children() {
+        use crate::serializer::MeiSerialize;
+        use tusk_model::elements::{FTrem, FTremChild};
+
+        let xml = r#"<fTrem xml:id="ft1" dur="2" beams="2"><note xml:id="n1" pname="c" oct="4"/><note xml:id="n2" pname="e" oct="4"/></fTrem>"#;
+        let ftrem = FTrem::from_mei_str(xml).expect("should deserialize");
+        let serialized = ftrem.to_mei_string().expect("should serialize");
+        let reparsed = FTrem::from_mei_str(&serialized).expect("should reparse");
+
+        assert_eq!(ftrem.common.xml_id, reparsed.common.xml_id);
+        assert_eq!(ftrem.children.len(), reparsed.children.len());
+        assert_eq!(ftrem.children.len(), 2);
+        match (&ftrem.children[0], &reparsed.children[0]) {
+            (FTremChild::Note(orig), FTremChild::Note(rep)) => {
+                assert_eq!(orig.common.xml_id, rep.common.xml_id);
+            }
+            _ => panic!("Expected Note children"),
+        }
+    }
 }

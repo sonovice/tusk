@@ -42,8 +42,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 2.3 Spanning and Continuation Elements etc.
-- [ ] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan` and `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)
-- [ ] Add roundtrip tests
+- [x] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan` and `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)
+- [x] Add roundtrip tests
 
 ### 2.5 Core Music Elements
 - [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad` and key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym` and: `Part`, `Parts`, `Ossia` and also `HarpPedal`
