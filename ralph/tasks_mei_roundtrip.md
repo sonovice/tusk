@@ -31,7 +31,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Add custom `serialize_mei` impl for `HarmChild` to handle Text variant - currently outputs `<$text>D</$text>` instead of just text (source: Marney_BreakThouTheBreadOfLife.mei)
 - [x] [MISSING_ELEMENT] Add `parts` child element parsing to Mdiv deserializer (source: McFerrin_Don't_worry.mei)
 - [x] [MISSING_ELEMENT] Add `lg` child element parsing to Div deserializer (source: McFerrin_Don't_worry.mei)
-- [ ] [MISSING_ELEMENT] Add `FunderChild` serializer impl, `bTrem` to Tuplet deserializer, `symbol` to Rend deserializer, `annot` to Bibl deserializer, `staffDef` to Measure deserializer, `instrDef` to LayerDef deserializer (sources: Parker-Gillespie_ShawNuff.mei, Schubert_Erlkoenig.mei, Praetorius_PuerNobisNascitur.mei, Schubert_Lindenbaum.mei, Webern_Variations_for_Piano_Op27_No2.mei, Ponchielli_LarrivoDelRe.mei)
+- [x] [MISSING_ELEMENT] Add `FunderChild` serializer impl, `bTrem` to Tuplet deserializer, `symbol` to Rend deserializer, `annot` to Bibl deserializer, `staffDef` to Measure deserializer, `instrDef` to LayerDef deserializer (sources: Parker-Gillespie_ShawNuff.mei, Schubert_Erlkoenig.mei, Praetorius_PuerNobisNascitur.mei, Schubert_Lindenbaum.mei, Webern_Variations_for_Piano_Op27_No2.mei, Ponchielli_LarrivoDelRe.mei)
 
 ---
 

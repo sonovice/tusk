@@ -436,6 +436,14 @@ pub(crate) fn parse_rend_from_event<R: BufRead>(
                             rend.children
                                 .push(RendChild::Identifier(Box::new(identifier)));
                         }
+                        "symbol" => {
+                            let symbol = super::control::parse_symbol_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            rend.children.push(RendChild::Symbol(Box::new(symbol)));
+                        }
                         // Skip unknown children in lenient mode
                         _ => {
                             if !child_empty {

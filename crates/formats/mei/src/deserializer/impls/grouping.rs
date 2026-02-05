@@ -295,6 +295,11 @@ impl MeiDeserialize for Tuplet {
                             .children
                             .push(TupletChild::GraceGrp(Box::new(grace_grp)));
                     }
+                    "bTrem" => {
+                        use tusk_model::elements::BTrem;
+                        let b_trem = BTrem::from_mei_event(reader, child_attrs, child_empty)?;
+                        tuplet.children.push(TupletChild::BTrem(Box::new(b_trem)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {

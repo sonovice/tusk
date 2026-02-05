@@ -734,6 +734,12 @@ impl MeiDeserialize for Measure {
                         let sb = Sb::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Sb(Box::new(sb)));
                     }
+                    "staffDef" => {
+                        let staff_def = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::StaffDef(Box::new(staff_def)));
+                    }
                     // Other child types - skip in lenient mode for now
                     _ => {
                         if !child_empty {

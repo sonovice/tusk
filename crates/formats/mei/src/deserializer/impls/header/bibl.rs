@@ -178,6 +178,11 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             )?;
                             bibl.children.push(BiblChild::Edition(Box::new(edition)));
                         }
+                        "annot" => {
+                            let annot =
+                                super::parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children.push(BiblChild::Annot(Box::new(annot)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {
