@@ -1086,8 +1086,10 @@ impl CollectAttributes for AttSylVis {
         push_attr!(attrs, "lineheight", self.lineheight);
         push_attr!(attrs, "ho", self.ho);
         push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
         push_attr!(attrs, "x", self.x);
         push_attr!(attrs, "y", self.y);
+        push_attr!(attrs, "halign", self.halign);
         attrs
     }
 }
