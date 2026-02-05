@@ -15,7 +15,7 @@ use tusk_model::att::{
     AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, MRest, Note, NoteChild, Rest, RestChild, Space, Syl,
+    Accid, App, Artic, Chord, ChordChild, Dot, MRest, Note, NoteChild, Rest, RestChild, Space, Syl,
     Verse,
 };
 
@@ -656,6 +656,10 @@ impl MeiDeserialize for Note {
                     "syl" => {
                         let syl = Syl::from_mei_event(reader, child_attrs, child_empty)?;
                         note.children.push(NoteChild::Syl(Box::new(syl)));
+                    }
+                    "app" => {
+                        let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                        note.children.push(NoteChild::App(Box::new(app)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

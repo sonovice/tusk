@@ -762,6 +762,10 @@ impl MeiDeserialize for Measure {
                         let app = App::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::App(Box::new(app)));
                     }
+                    "add" => {
+                        let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Add(Box::new(add)));
+                    }
                     // Other child types - skip in lenient mode for now
                     _ => {
                         if !child_empty {
