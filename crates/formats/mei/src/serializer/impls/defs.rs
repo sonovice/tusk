@@ -835,6 +835,10 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
         match self {
             tusk_model::elements::StaffGrpChild::StaffDef(sd) => sd.collect_all_attributes(),
             tusk_model::elements::StaffGrpChild::StaffGrp(sg) => sg.collect_all_attributes(),
+            tusk_model::elements::StaffGrpChild::Label(label) => label.collect_all_attributes(),
+            tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
+                label_abbr.collect_all_attributes()
+            }
             // Other children not yet fully implemented
             _ => Vec::new(),
         }
@@ -844,6 +848,10 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
         match self {
             tusk_model::elements::StaffGrpChild::StaffGrp(sg) => !sg.children.is_empty(),
             tusk_model::elements::StaffGrpChild::StaffDef(sd) => !sd.children.is_empty(),
+            tusk_model::elements::StaffGrpChild::Label(label) => !label.children.is_empty(),
+            tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
+                !label_abbr.children.is_empty()
+            }
             _ => false,
         }
     }
@@ -852,6 +860,10 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
         match self {
             tusk_model::elements::StaffGrpChild::StaffGrp(sg) => sg.serialize_children(writer),
             tusk_model::elements::StaffGrpChild::StaffDef(sd) => sd.serialize_children(writer),
+            tusk_model::elements::StaffGrpChild::Label(label) => label.serialize_children(writer),
+            tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
+                label_abbr.serialize_children(writer)
+            }
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "StaffGrpChild::{}::serialize_children",
                 other.element_name()
@@ -944,6 +956,14 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             if let Some(s) = to_attr_string(v) {
                 attrs.push(("notationtype", s));
             }
+        }
+
+        // Transposition
+        if let Some(v) = &self.staff_def_log.trans_diat {
+            attrs.push(("trans.diat", v.to_string()));
+        }
+        if let Some(v) = &self.staff_def_log.trans_semi {
+            attrs.push(("trans.semi", v.to_string()));
         }
 
         // PPQ (gestural - pulses per quarter note)
@@ -1597,5 +1617,170 @@ impl MeiSerialize for tusk_model::elements::InstrDef {
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         Ok(())
+    }
+}
+
+// ============================================================================
+// LabelAbbr serialization
+// ============================================================================
+
+impl MeiSerialize for tusk_model::elements::LabelAbbr {
+    fn element_name(&self) -> &'static str {
+        "labelAbbr"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.source.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::LabelAbbrChild {
+    fn element_name(&self) -> &'static str {
+        use tusk_model::elements::LabelAbbrChild::*;
+        match self {
+            Text(_) => "#text",
+            Q(_) => "q",
+            BiblStruct(_) => "biblStruct",
+            Sic(_) => "sic",
+            Locus(_) => "locus",
+            PeriodName(_) => "periodName",
+            Width(_) => "width",
+            Depth(_) => "depth",
+            Ref(_) => "ref",
+            Del(_) => "del",
+            SecFolio(_) => "secFolio",
+            Bloc(_) => "bloc",
+            LocusGrp(_) => "locusGrp",
+            Gap(_) => "gap",
+            RelationList(_) => "relationList",
+            PostBox(_) => "postBox",
+            Stamp(_) => "stamp",
+            Restore(_) => "restore",
+            CorpName(_) => "corpName",
+            Dimensions(_) => "dimensions",
+            Region(_) => "region",
+            PostCode(_) => "postCode",
+            Supplied(_) => "supplied",
+            Seg(_) => "seg",
+            Subst(_) => "subst",
+            Ptr(_) => "ptr",
+            Settlement(_) => "settlement",
+            Choice(_) => "choice",
+            Abbr(_) => "abbr",
+            Unclear(_) => "unclear",
+            Address(_) => "address",
+            Name(_) => "name",
+            Catchwords(_) => "catchwords",
+            Term(_) => "term",
+            Annot(_) => "annot",
+            Country(_) => "country",
+            Identifier(_) => "identifier",
+            Height(_) => "height",
+            Heraldry(_) => "heraldry",
+            Repository(_) => "repository",
+            Lb(_) => "lb",
+            Num(_) => "num",
+            Stack(_) => "stack",
+            Add(_) => "add",
+            Fig(_) => "fig",
+            StyleName(_) => "styleName",
+            Bibl(_) => "bibl",
+            Dim(_) => "dim",
+            Title(_) => "title",
+            Corr(_) => "corr",
+            Extent(_) => "extent",
+            Signatures(_) => "signatures",
+            Expan(_) => "expan",
+            District(_) => "district",
+            GeogFeat(_) => "geogFeat",
+            GeogName(_) => "geogName",
+            PersName(_) => "persName",
+            Symbol(_) => "symbol",
+            Orig(_) => "orig",
+            Relation(_) => "relation",
+            Date(_) => "date",
+            Rend(_) => "rend",
+            Street(_) => "street",
+            HandShift(_) => "handShift",
+            Reg(_) => "reg",
+            Damage(_) => "damage",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        use tusk_model::elements::LabelAbbrChild::*;
+        match self {
+            Rend(r) => r.collect_all_attributes(),
+            Lb(lb) => lb.collect_all_attributes(),
+            Ref(r) => r.collect_all_attributes(),
+            Ptr(p) => p.collect_all_attributes(),
+            PersName(pn) => pn.collect_all_attributes(),
+            CorpName(cn) => cn.collect_all_attributes(),
+            Name(n) => n.collect_all_attributes(),
+            Title(t) => t.collect_all_attributes(),
+            Date(d) => d.collect_all_attributes(),
+            Identifier(i) => i.collect_all_attributes(),
+            // Most children not commonly used - return empty for now
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        use tusk_model::elements::LabelAbbrChild::*;
+        match self {
+            Text(_) => false,
+            Rend(r) => !r.children.is_empty(),
+            Lb(_) => false,
+            Ptr(_) => false,
+            PersName(pn) => !pn.children.is_empty(),
+            CorpName(cn) => !cn.children.is_empty(),
+            Name(n) => !n.children.is_empty(),
+            Title(t) => !t.children.is_empty(),
+            Date(d) => !d.children.is_empty(),
+            Identifier(i) => !i.children.is_empty(),
+            Ref(r) => !r.children.is_empty(),
+            // Most children not commonly used
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        use tusk_model::elements::LabelAbbrChild::*;
+        match self {
+            Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            Rend(r) => r.serialize_children(writer),
+            Lb(_) => Ok(()),
+            Ptr(_) => Ok(()),
+            PersName(pn) => pn.serialize_children(writer),
+            CorpName(cn) => cn.serialize_children(writer),
+            Name(n) => n.serialize_children(writer),
+            Title(t) => t.serialize_children(writer),
+            Date(d) => d.serialize_children(writer),
+            Identifier(i) => i.serialize_children(writer),
+            Ref(r) => r.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "LabelAbbrChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
     }
 }

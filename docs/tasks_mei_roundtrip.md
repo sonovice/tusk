@@ -83,7 +83,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] StaffDefChild::InstrDef serialization incomplete - returns "unknown" element name, no attributes collected (source: Bach-JC_Fughette_No2.mei)
 - [x] [DESERIALIZER_BUG] Section: pb (page break) element not parsed - skipped instead of deserialized (source: Bach-JC_Fughette_No2.mei)
 - [x] [DESERIALIZER_BUG] PgFoot: anchoredText element not parsed - skipped instead of deserialized (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
-- [ ] [SERIALIZER_BUG] StaffDef: trans.diat and trans.semi attributes not serialized - missing from collect_all_attributes (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
+- [x] [SERIALIZER_BUG] StaffDef: trans.diat and trans.semi attributes not serialized - missing from collect_all_attributes (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
 
 ---
 
@@ -109,7 +109,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No2_I_BWV1047.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No2_II_BWV1047.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No2_III_BWV1047.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No4_II_BWV1049.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Ein_feste_Burg.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Herzliebster_Jesu_BWV244-46.mei`

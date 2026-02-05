@@ -642,16 +642,16 @@ fn parse_staff_grp_from_event<R: BufRead>(
                         .push(StaffGrpChild::StaffGrp(Box::new(nested_staff_grp)));
                 }
                 "label" => {
-                    // Label element - skip for now
-                    if !child_empty {
-                        reader.skip_to_end("label")?;
-                    }
+                    let label = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    staff_grp
+                        .children
+                        .push(StaffGrpChild::Label(Box::new(label)));
                 }
                 "labelAbbr" => {
-                    // LabelAbbr element - skip for now
-                    if !child_empty {
-                        reader.skip_to_end("labelAbbr")?;
-                    }
+                    let label_abbr = parse_label_abbr_from_event(reader, child_attrs, child_empty)?;
+                    staff_grp
+                        .children
+                        .push(StaffGrpChild::LabelAbbr(Box::new(label_abbr)));
                 }
                 "grpSym" => {
                     // GrpSym element - skip for now
