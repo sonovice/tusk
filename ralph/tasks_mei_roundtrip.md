@@ -43,6 +43,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
 - [x] [MISSING_ELEMENT] Add `back` child element parsing to Music deserializer - currently only `body` is handled, missing `back`, `front`, `group`, `facsimile`, `genDesc`, `performance` (source: Lyrics/lyrics.mei)
 - [x] [MISSING_ATTR] StaffDef serializer missing `visible` attribute from AttStaffDefVis; Clef deserializer missing AttEvent extraction (`tstamp`, `layer`, `staff`, `when`, `tstamp.ges`, `tstamp.real`) and AttClefVis attributes (`altsym`, `color`, `enclose`, `glyph.*`, `font*`, `visible`, `ho`, `to`, `vo`) (source: Das_Veilchen_0Parameters.mei)
+- [ ] [SERIALIZER_BUG] WorkChild::ComponentList not handled in serialize_mei match - falls through to default that writes empty element; Section deserializer missing `annot` child handling; Identifier deserializer missing `annot` child handling; PgFoot deserializer missing `table` child handling (sources: group_element.mei, vivaldi_multiple_mdivs.mei, multiple_sectionsII.mei, part_element.mei)
 
 ---
 
@@ -147,12 +148,12 @@ Testing syllable and verse encoding.
 
 Different encoding approaches for the same content (Mozart's Das Veilchen).
 
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_0Parameters.mei`
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_all_Parameters.mei`
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_attribute.mei`
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_element.mei`
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_keep_attributes.mei`
-- [ ] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_layout.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_0Parameters.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_all_Parameters.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_attribute.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_element.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_keep_attributes.mei`
+- [x] Roundtrip test: `Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_layout.mei`
 
 ### Music Structure (7 files)
 

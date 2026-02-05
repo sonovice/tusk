@@ -1119,3 +1119,147 @@ fn test_roundtrip_encoding_alternatives_das_veilchen_0parameters() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_all_parameters() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_all_Parameters.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_all_Parameters.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_artic_attribute() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_attribute.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_artic_attribute.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_artic_element() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_artic_element.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_artic_element.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_keep_attributes() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_keep_attributes.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_keep_attributes.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_layout() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_layout.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_layout.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+// ============================================================================
+// Music Structure Roundtrip Tests
+// ============================================================================
+
+#[test]
+fn test_roundtrip_music_structure_group_element() {
+    let path = sample_encodings_music_dir().join("Music_structure/group_element.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Music_structure/group_element.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_tschaikovsky_multiple_mdivs() {
+    let path = sample_encodings_music_dir().join(
+        "Music_structure/mdivs_Tschaikovsky/Tschaikovsky_Symphony_No5_Op64_mulitple_mdivs.mei",
+    );
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Tschaikovsky_Symphony_No5_Op64_mulitple_mdivs.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_vivaldi_multiple_mdivs() {
+    let path = sample_encodings_music_dir()
+        .join("Music_structure/mdivs_Vivaldi/Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_multiple_sections_i() {
+    let path = sample_encodings_music_dir().join("Music_structure/multiple_sectionsI.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Music_structure/multiple_sectionsI.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_multiple_sections_ii() {
+    let path = sample_encodings_music_dir().join("Music_structure/multiple_sectionsII.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Music_structure/multiple_sectionsII.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_opera() {
+    let path = sample_encodings_music_dir().join("Music_structure/opera.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Music_structure/opera.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_music_structure_part_element() {
+    let path = sample_encodings_music_dir().join("Music_structure/part_element.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Music_structure/part_element.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
