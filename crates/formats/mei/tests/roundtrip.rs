@@ -320,3 +320,15 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no4_i_bwv1049() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_brandenburg_concerto_no4_ii_bwv1049() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JS_BrandenburgConcert_No4_II_BWV1049.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_BrandenburgConcert_No4_II_BWV1049.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
