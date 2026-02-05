@@ -13,8 +13,9 @@ use tusk_model::att::{
     AttRdgVis, AttReasonIdent, AttTextRendition, AttTrans,
 };
 use tusk_model::elements::{
-    Abbr, Add, AddChild, App, AppChild, Choice, ChoiceChild, Corr, Damage, Del, Expan, Gap,
-    HandShift, Lem, Orig, Rdg, Reg, Restore, Sic, Space, Subst, Supplied, Unclear,
+    Abbr, Accid, Add, AddChild, App, AppChild, Artic, BarLine, Beam, Cb, Choice, ChoiceChild,
+    Chord, Corr, Damage, Del, Dot, Expan, Gap, HandShift, Lem, LemChild, MRest, Note, Orig, Pb,
+    Rdg, RdgChild, Reg, Rest, Restore, Sb, Sic, Space, Staff, Subst, Supplied, Tuplet, Unclear,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -325,10 +326,145 @@ fn parse_lem_from_event<R: BufRead>(
     lem.rdg_anl.extract_attributes(&mut attrs)?;
     lem.target_eval.extract_attributes(&mut attrs)?;
 
-    // Lem can contain many child elements - for now, skip to end
-    // A full implementation would parse all child types
+    // Parse child elements
     if !is_empty {
-        reader.skip_to_end("lem")?;
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("lem")? {
+            match name.as_str() {
+                // Music structure elements
+                "staff" => {
+                    let staff = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Staff(Box::new(staff)));
+                }
+                // Event elements
+                "note" => {
+                    let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Note(Box::new(note)));
+                }
+                "rest" => {
+                    let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Rest(Box::new(rest)));
+                }
+                "chord" => {
+                    let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Chord(Box::new(chord)));
+                }
+                "space" => {
+                    let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Space(Box::new(space)));
+                }
+                "mRest" => {
+                    let m_rest = MRest::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::MRest(Box::new(m_rest)));
+                }
+                // Grouping elements
+                "beam" => {
+                    let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Beam(Box::new(beam)));
+                }
+                "tuplet" => {
+                    let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Tuplet(Box::new(tuplet)));
+                }
+                // Auxiliary elements
+                "accid" => {
+                    let accid = Accid::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Accid(Box::new(accid)));
+                }
+                "artic" => {
+                    let artic = Artic::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Artic(Box::new(artic)));
+                }
+                "dot" => {
+                    let dot = Dot::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Dot(Box::new(dot)));
+                }
+                "barLine" => {
+                    let bar_line = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::BarLine(Box::new(bar_line)));
+                }
+                // Page/system breaks
+                "pb" => {
+                    let pb = Pb::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Pb(Box::new(pb)));
+                }
+                "sb" => {
+                    let sb = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Sb(Box::new(sb)));
+                }
+                "cb" => {
+                    let cb = Cb::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Cb(Box::new(cb)));
+                }
+                // Editorial elements (nested)
+                "add" => {
+                    let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Add(Box::new(add)));
+                }
+                "del" => {
+                    let del = Del::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Del(Box::new(del)));
+                }
+                "corr" => {
+                    let corr = parse_corr_from_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Corr(Box::new(corr)));
+                }
+                "sic" => {
+                    let sic = parse_sic_from_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Sic(Box::new(sic)));
+                }
+                "orig" => {
+                    let orig = Orig::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Orig(Box::new(orig)));
+                }
+                "reg" => {
+                    let reg = Reg::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Reg(Box::new(reg)));
+                }
+                "supplied" => {
+                    let supplied = Supplied::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Supplied(Box::new(supplied)));
+                }
+                "unclear" => {
+                    let unclear = Unclear::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Unclear(Box::new(unclear)));
+                }
+                "gap" => {
+                    let gap = Gap::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Gap(Box::new(gap)));
+                }
+                "damage" => {
+                    let damage = Damage::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Damage(Box::new(damage)));
+                }
+                "app" => {
+                    let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::App(Box::new(app)));
+                }
+                "choice" => {
+                    let choice = Choice::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Choice(Box::new(choice)));
+                }
+                "subst" => {
+                    let subst = Subst::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Subst(Box::new(subst)));
+                }
+                "handShift" => {
+                    let hand_shift = HandShift::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::HandShift(Box::new(hand_shift)));
+                }
+                "restore" => {
+                    let restore = Restore::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Restore(Box::new(restore)));
+                }
+                // Text content is handled via MixedContent if needed
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
     }
 
     Ok(lem)
@@ -352,10 +488,145 @@ fn parse_rdg_from_event<R: BufRead>(
     rdg.rdg_anl.extract_attributes(&mut attrs)?;
     rdg.target_eval.extract_attributes(&mut attrs)?;
 
-    // Rdg can contain many child elements - for now, skip to end
-    // A full implementation would parse all child types
+    // Parse child elements
     if !is_empty {
-        reader.skip_to_end("rdg")?;
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("rdg")? {
+            match name.as_str() {
+                // Music structure elements
+                "staff" => {
+                    let staff = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Staff(Box::new(staff)));
+                }
+                // Event elements
+                "note" => {
+                    let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Note(Box::new(note)));
+                }
+                "rest" => {
+                    let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Rest(Box::new(rest)));
+                }
+                "chord" => {
+                    let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Chord(Box::new(chord)));
+                }
+                "space" => {
+                    let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Space(Box::new(space)));
+                }
+                "mRest" => {
+                    let m_rest = MRest::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::MRest(Box::new(m_rest)));
+                }
+                // Grouping elements
+                "beam" => {
+                    let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Beam(Box::new(beam)));
+                }
+                "tuplet" => {
+                    let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Tuplet(Box::new(tuplet)));
+                }
+                // Auxiliary elements
+                "accid" => {
+                    let accid = Accid::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Accid(Box::new(accid)));
+                }
+                "artic" => {
+                    let artic = Artic::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Artic(Box::new(artic)));
+                }
+                "dot" => {
+                    let dot = Dot::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Dot(Box::new(dot)));
+                }
+                "barLine" => {
+                    let bar_line = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::BarLine(Box::new(bar_line)));
+                }
+                // Page/system breaks
+                "pb" => {
+                    let pb = Pb::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Pb(Box::new(pb)));
+                }
+                "sb" => {
+                    let sb = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Sb(Box::new(sb)));
+                }
+                "cb" => {
+                    let cb = Cb::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Cb(Box::new(cb)));
+                }
+                // Editorial elements (nested)
+                "add" => {
+                    let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Add(Box::new(add)));
+                }
+                "del" => {
+                    let del = Del::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Del(Box::new(del)));
+                }
+                "corr" => {
+                    let corr = parse_corr_from_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Corr(Box::new(corr)));
+                }
+                "sic" => {
+                    let sic = parse_sic_from_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Sic(Box::new(sic)));
+                }
+                "orig" => {
+                    let orig = Orig::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Orig(Box::new(orig)));
+                }
+                "reg" => {
+                    let reg = Reg::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Reg(Box::new(reg)));
+                }
+                "supplied" => {
+                    let supplied = Supplied::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Supplied(Box::new(supplied)));
+                }
+                "unclear" => {
+                    let unclear = Unclear::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Unclear(Box::new(unclear)));
+                }
+                "gap" => {
+                    let gap = Gap::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Gap(Box::new(gap)));
+                }
+                "damage" => {
+                    let damage = Damage::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Damage(Box::new(damage)));
+                }
+                "app" => {
+                    let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::App(Box::new(app)));
+                }
+                "choice" => {
+                    let choice = Choice::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Choice(Box::new(choice)));
+                }
+                "subst" => {
+                    let subst = Subst::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Subst(Box::new(subst)));
+                }
+                "handShift" => {
+                    let hand_shift = HandShift::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::HandShift(Box::new(hand_shift)));
+                }
+                "restore" => {
+                    let restore = Restore::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Restore(Box::new(restore)));
+                }
+                // Text content is handled via MixedContent if needed
+                // Unknown children are skipped in lenient mode
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
     }
 
     Ok(rdg)
