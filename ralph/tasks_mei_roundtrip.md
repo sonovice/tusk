@@ -38,6 +38,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Add `space` child element serialization/deserialization to Add element - currently Add only serializes Text children (source: Parker-Gillespie_ShawNuff.mei)
 - [x] [SERIALIZER_BUG] Add LayerDef children serialization - currently `serialize_children` returns Ok(()) without serializing any children (InstrDef, Label, LabelAbbr, MeterSig, MeterSigGrp, Ambitus) (source: Ponchielli_LarrivoDelRe.mei)
 - [x] [SERIALIZER_BUG] RendChild serializer incomplete - missing Symbol variant (and many others), returns "unknown" and fails to serialize (source: Praetorius_PuerNobisNascitur.mei)
+- [ ] [SERIALIZER_BUG] TupletChild serializer incomplete - missing BTrem variant (and many others: FTrem, Clef, ClefGrp, BarLine, KeySig, MeterSig, MeterSigGrp, Custos, TabDurSym, TabGrp, Pad, HandShift, HalfmRpt, BeatRpt, Supplied, Subst, App, Reg, Del, Corr, Add, Restore, Choice, Unclear, Orig, Gap, Damage, Sic) (source: Schubert_Erlkoenig.mei)
 
 ---
 
@@ -111,11 +112,11 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Pachelbel_Canon_in_D.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Parker-Gillespie_ShawNuff.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Ponchielli_LarrivoDelRe.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Praetorius_PuerNobisNascitur.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Ravel_Le_tombeau.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Rimsky-Korsakov_StringQuartet_B-LA-F.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Saint-Saens_LeCarnevalDesAnimaux.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Scarlatti_Sonata_in_C-major.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Praetorius_PuerNobisNascitur.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Ravel_Le_tombeau.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Rimsky-Korsakov_StringQuartet_B-LA-F.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Saint-Saens_LeCarnevalDesAnimaux.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Scarlatti_Sonata_in_C-major.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schubert_Erlkoenig.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schubert_Lindenbaum.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schuetz_DomineDeus.mei`
