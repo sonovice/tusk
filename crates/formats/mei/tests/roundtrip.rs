@@ -667,3 +667,14 @@ fn test_roundtrip_hummel_preludes_op67_no11() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_ives_the_cage() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Ives_TheCage.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Ives_TheCage.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
