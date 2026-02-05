@@ -2315,3 +2315,536 @@ fn roundtrip_ext_meta_element() {
     assert_eq!(parsed.common.xml_id, Some("extm1".to_string()));
     assert_eq!(parsed.children.len(), 1);
 }
+
+// ============================================================================
+// Publication Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_pub_place_with_text() {
+    use tusk_model::elements::{PubPlace, PubPlaceChild};
+
+    let mut pub_place = PubPlace::default();
+    pub_place.common.xml_id = Some("pp1".to_string());
+    pub_place
+        .children
+        .push(PubPlaceChild::Text("Vienna".to_string()));
+
+    let xml = pub_place.to_mei_string().expect("serialize");
+    assert!(xml.contains("<pubPlace"), "should have pubPlace: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"pp1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Vienna"), "should have text: {}", xml);
+
+    let parsed = PubPlace::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pp1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        PubPlaceChild::Text(text) => assert_eq!(text, "Vienna"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_pub_place_with_address() {
+    use tusk_model::elements::{
+        Address, AddressChild, PubPlace, PubPlaceChild, Settlement, SettlementChild,
+    };
+
+    let mut pub_place = PubPlace::default();
+    pub_place.common.xml_id = Some("pp1".to_string());
+
+    // Add address with settlement
+    let mut address = Address::default();
+    let mut settlement = Settlement::default();
+    settlement
+        .children
+        .push(SettlementChild::Text("Vienna".to_string()));
+    address
+        .children
+        .push(AddressChild::Settlement(Box::new(settlement)));
+    pub_place
+        .children
+        .push(PubPlaceChild::Address(Box::new(address)));
+
+    let xml = pub_place.to_mei_string().expect("serialize");
+    assert!(xml.contains("<pubPlace"), "should have pubPlace: {}", xml);
+    assert!(xml.contains("<address"), "should have address: {}", xml);
+    assert!(
+        xml.contains("<settlement"),
+        "should have settlement: {}",
+        xml
+    );
+
+    let parsed = PubPlace::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pp1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_distributor_with_text() {
+    use tusk_model::elements::{Distributor, DistributorChild};
+
+    let mut distributor = Distributor::default();
+    distributor.common.xml_id = Some("dist1".to_string());
+    distributor
+        .children
+        .push(DistributorChild::Text("Music Archive".to_string()));
+
+    let xml = distributor.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<distributor"),
+        "should have distributor: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"dist1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Music Archive"), "should have text: {}", xml);
+
+    let parsed = Distributor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("dist1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        DistributorChild::Text(text) => assert_eq!(text, "Music Archive"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_distributor_with_corp_name() {
+    use tusk_model::elements::{CorpName, CorpNameChild, Distributor, DistributorChild};
+
+    let mut distributor = Distributor::default();
+    let mut corp_name = CorpName::default();
+    corp_name
+        .children
+        .push(CorpNameChild::Text("IMSLP".to_string()));
+    distributor
+        .children
+        .push(DistributorChild::CorpName(Box::new(corp_name)));
+
+    let xml = distributor.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<distributor"),
+        "should have distributor: {}",
+        xml
+    );
+    assert!(xml.contains("<corpName"), "should have corpName: {}", xml);
+    assert!(xml.contains("IMSLP"), "should have text: {}", xml);
+
+    let parsed = Distributor::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_availability_basic() {
+    use tusk_model::elements::{Availability, AvailabilityChild};
+
+    let mut availability = Availability::default();
+    availability.common.xml_id = Some("avail1".to_string());
+    availability
+        .children
+        .push(AvailabilityChild::Text("Public domain".to_string()));
+
+    let xml = availability.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<availability"),
+        "should have availability: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"avail1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Public domain"), "should have text: {}", xml);
+
+    let parsed = Availability::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("avail1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_availability_with_use_restrict() {
+    use tusk_model::elements::{Availability, AvailabilityChild, UseRestrict, UseRestrictChild};
+
+    let mut availability = Availability::default();
+    let mut use_restrict = UseRestrict::default();
+    use_restrict.children.push(UseRestrictChild::Text(
+        "Creative Commons Attribution".to_string(),
+    ));
+    availability
+        .children
+        .push(AvailabilityChild::UseRestrict(Box::new(use_restrict)));
+
+    let xml = availability.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<availability"),
+        "should have availability: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<useRestrict"),
+        "should have useRestrict: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Creative Commons Attribution"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Availability::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        AvailabilityChild::UseRestrict(ur) => {
+            assert_eq!(ur.children.len(), 1);
+        }
+        other => panic!("Expected UseRestrict child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_access_restrict_with_text() {
+    use tusk_model::elements::{AccessRestrict, AccessRestrictChild};
+
+    let mut access_restrict = AccessRestrict::default();
+    access_restrict.common.xml_id = Some("ar1".to_string());
+    access_restrict
+        .children
+        .push(AccessRestrictChild::Text("Restricted access".to_string()));
+
+    let xml = access_restrict.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<accessRestrict"),
+        "should have accessRestrict: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"ar1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Restricted access"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = AccessRestrict::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ar1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_access_restrict_with_p() {
+    use tusk_model::elements::{AccessRestrict, AccessRestrictChild, P, PChild};
+
+    let mut access_restrict = AccessRestrict::default();
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Access is restricted to authorized users.".to_string(),
+    ));
+    access_restrict
+        .children
+        .push(AccessRestrictChild::P(Box::new(p)));
+
+    let xml = access_restrict.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<accessRestrict"),
+        "should have accessRestrict: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("authorized users"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = AccessRestrict::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        AccessRestrictChild::P(p) => {
+            assert_eq!(p.children.len(), 1);
+        }
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_use_restrict_basic() {
+    use tusk_model::elements::{UseRestrict, UseRestrictChild};
+
+    let mut use_restrict = UseRestrict::default();
+    use_restrict.common.xml_id = Some("ur1".to_string());
+    use_restrict.children.push(UseRestrictChild::Text(
+        "For educational use only".to_string(),
+    ));
+
+    let xml = use_restrict.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<useRestrict"),
+        "should have useRestrict: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"ur1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("educational use"), "should have text: {}", xml);
+
+    let parsed = UseRestrict::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ur1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_sys_req_with_text() {
+    use tusk_model::elements::{SysReq, SysReqChild};
+
+    let mut sys_req = SysReq::default();
+    sys_req.common.xml_id = Some("sr1".to_string());
+    sys_req.children.push(SysReqChild::Text(
+        "Requires MEI-compatible viewer".to_string(),
+    ));
+
+    let xml = sys_req.to_mei_string().expect("serialize");
+    assert!(xml.contains("<sysReq"), "should have sysReq: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"sr1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("MEI-compatible viewer"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = SysReq::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sr1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_sys_req_with_p() {
+    use tusk_model::elements::{P, PChild, SysReq, SysReqChild};
+
+    let mut sys_req = SysReq::default();
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Minimum: Windows 10, 8GB RAM".to_string()));
+    sys_req.children.push(SysReqChild::P(Box::new(p)));
+
+    let xml = sys_req.to_mei_string().expect("serialize");
+    assert!(xml.contains("<sysReq"), "should have sysReq: {}", xml);
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(xml.contains("Windows 10"), "should have text: {}", xml);
+
+    let parsed = SysReq::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_price_with_text() {
+    use tusk_model::elements::{Price, PriceChild};
+
+    let mut price = Price::default();
+    price.common.xml_id = Some("price1".to_string());
+    price.children.push(PriceChild::Text("Free".to_string()));
+
+    let xml = price.to_mei_string().expect("serialize");
+    assert!(xml.contains("<price"), "should have price: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"price1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("Free"), "should have text: {}", xml);
+
+    let parsed = Price::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("price1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_price_with_amount_and_currency() {
+    use tusk_model::elements::{Price, PriceChild};
+
+    let mut price = Price::default();
+    price.common.xml_id = Some("price1".to_string());
+    price.amount = Some(19.99);
+    price.currency = Some("USD".to_string());
+    price.children.push(PriceChild::Text("$19.99".to_string()));
+
+    let xml = price.to_mei_string().expect("serialize");
+    assert!(xml.contains("<price"), "should have price: {}", xml);
+    assert!(
+        xml.contains("amount=\"19.99\""),
+        "should have amount: {}",
+        xml
+    );
+    assert!(
+        xml.contains("currency=\"USD\""),
+        "should have currency: {}",
+        xml
+    );
+    assert!(xml.contains("$19.99"), "should have text: {}", xml);
+
+    let parsed = Price::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("price1".to_string()));
+    assert_eq!(parsed.amount, Some(19.99));
+    assert_eq!(parsed.currency, Some("USD".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_unpub_with_text() {
+    use tusk_model::elements::{Unpub, UnpubChild};
+
+    let mut unpub = Unpub::default();
+    unpub.common.xml_id = Some("unpub1".to_string());
+    unpub
+        .children
+        .push(UnpubChild::Text("Unpublished manuscript".to_string()));
+
+    let xml = unpub.to_mei_string().expect("serialize");
+    assert!(xml.contains("<unpub"), "should have unpub: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"unpub1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Unpublished manuscript"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Unpub::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("unpub1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        UnpubChild::Text(text) => assert_eq!(text, "Unpublished manuscript"),
+    }
+}
+
+#[test]
+fn roundtrip_availability_with_all_publication_elements() {
+    use tusk_model::elements::{
+        AccessRestrict, AccessRestrictChild, Availability, AvailabilityChild, Distributor,
+        DistributorChild, Price, PriceChild, SysReq, SysReqChild, UseRestrict, UseRestrictChild,
+    };
+
+    let mut availability = Availability::default();
+    availability.common.xml_id = Some("avail1".to_string());
+
+    // Add useRestrict
+    let mut use_restrict = UseRestrict::default();
+    use_restrict
+        .children
+        .push(UseRestrictChild::Text("CC-BY-4.0".to_string()));
+    availability
+        .children
+        .push(AvailabilityChild::UseRestrict(Box::new(use_restrict)));
+
+    // Add accessRestrict
+    let mut access_restrict = AccessRestrict::default();
+    access_restrict
+        .children
+        .push(AccessRestrictChild::Text("Open access".to_string()));
+    availability
+        .children
+        .push(AvailabilityChild::AccessRestrict(Box::new(access_restrict)));
+
+    // Add sysReq
+    let mut sys_req = SysReq::default();
+    sys_req
+        .children
+        .push(SysReqChild::Text("Web browser".to_string()));
+    availability
+        .children
+        .push(AvailabilityChild::SysReq(Box::new(sys_req)));
+
+    // Add price
+    let mut price = Price::default();
+    price.amount = Some(0.0);
+    price.currency = Some("USD".to_string());
+    price.children.push(PriceChild::Text("Free".to_string()));
+    availability
+        .children
+        .push(AvailabilityChild::Price(Box::new(price)));
+
+    // Add distributor
+    let mut distributor = Distributor::default();
+    distributor
+        .children
+        .push(DistributorChild::Text("IMSLP".to_string()));
+    availability
+        .children
+        .push(AvailabilityChild::Distributor(Box::new(distributor)));
+
+    let xml = availability.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<availability"),
+        "should have availability: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<useRestrict"),
+        "should have useRestrict: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<accessRestrict"),
+        "should have accessRestrict: {}",
+        xml
+    );
+    assert!(xml.contains("<sysReq"), "should have sysReq: {}", xml);
+    assert!(xml.contains("<price"), "should have price: {}", xml);
+    assert!(
+        xml.contains("<distributor"),
+        "should have distributor: {}",
+        xml
+    );
+
+    let parsed = Availability::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("avail1".to_string()));
+    assert_eq!(parsed.children.len(), 5);
+
+    // Verify each child type
+    let mut found_use_restrict = false;
+    let mut found_access_restrict = false;
+    let mut found_sys_req = false;
+    let mut found_price = false;
+    let mut found_distributor = false;
+
+    for child in &parsed.children {
+        match child {
+            AvailabilityChild::UseRestrict(_) => found_use_restrict = true,
+            AvailabilityChild::AccessRestrict(_) => found_access_restrict = true,
+            AvailabilityChild::SysReq(_) => found_sys_req = true,
+            AvailabilityChild::Price(p) => {
+                found_price = true;
+                assert_eq!(p.amount, Some(0.0));
+                assert_eq!(p.currency, Some("USD".to_string()));
+            }
+            AvailabilityChild::Distributor(_) => found_distributor = true,
+            _ => {}
+        }
+    }
+
+    assert!(found_use_restrict, "should have useRestrict child");
+    assert!(found_access_restrict, "should have accessRestrict child");
+    assert!(found_sys_req, "should have sysReq child");
+    assert!(found_price, "should have price child");
+    assert!(found_distributor, "should have distributor child");
+}
