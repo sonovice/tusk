@@ -123,8 +123,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 9: Mensural Module
 
 ### 9.1 Mensural Notation Elements
-- [ ] Implement `Mensur`, `Mensuration`, `Proport`, `Ligature`
-- [ ] Add roundtrip tests
+- [x] Implement `Mensur`, `Mensuration`, `Proport`, `Ligature`
+- [x] Add roundtrip tests
 
 ---
 

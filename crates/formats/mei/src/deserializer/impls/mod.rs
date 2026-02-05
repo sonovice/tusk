@@ -27,6 +27,7 @@ mod editorial;
 mod facsimile;
 mod grouping;
 mod header;
+mod mensural;
 mod midi;
 mod misc;
 mod neumes;

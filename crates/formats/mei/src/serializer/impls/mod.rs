@@ -16,6 +16,7 @@ mod drama;
 mod editorial;
 mod facsimile;
 mod header;
+mod mensural;
 mod metadata_text;
 mod midi;
 mod misc;
