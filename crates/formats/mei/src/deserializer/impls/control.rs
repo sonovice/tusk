@@ -584,6 +584,8 @@ impl MeiDeserialize for Dynam {
         mut attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
+        use tusk_model::elements::DynamChild;
+
         let mut dynam = Dynam::default();
 
         // Extract attributes into each attribute class
@@ -597,15 +599,79 @@ impl MeiDeserialize for Dynam {
 
         // Remaining attributes are unknown - in lenient mode we ignore them
 
-        // Parse text content if not empty
+        // Parse mixed content (text and child elements)
         if !is_empty {
-            // dynam can contain text and various child elements
-            // For now, we collect text content as DynamChild::Text
-            if let Some(text) = reader.read_text_until_end("dynam")? {
-                if !text.trim().is_empty() {
-                    dynam
-                        .children
-                        .push(tusk_model::elements::DynamChild::Text(text));
+            while let Some(content) = reader.read_next_mixed_content("dynam")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            dynam.children.push(DynamChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "rend" => {
+                                let rend =
+                                    super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                dynam.children.push(DynamChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb =
+                                    super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                dynam.children.push(DynamChild::Lb(Box::new(lb)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dynam.children.push(DynamChild::Ref(Box::new(ref_elem)));
+                            }
+                            "persName" => {
+                                let pers_name = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dynam
+                                    .children
+                                    .push(DynamChild::PersName(Box::new(pers_name)));
+                            }
+                            "corpName" => {
+                                let corp_name = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dynam
+                                    .children
+                                    .push(DynamChild::CorpName(Box::new(corp_name)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dynam.children.push(DynamChild::Name(Box::new(name_elem)));
+                            }
+                            "seg" => {
+                                let seg = super::text::parse_seg_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dynam.children.push(DynamChild::Seg(Box::new(seg)));
+                            }
+                            _ => {
+                                // Skip unknown child elements
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
