@@ -14,6 +14,7 @@
 //! Some tests also verify XML → Struct → XML for external MEI documents.
 
 mod analysis;
+mod biblio;
 mod control;
 mod defs;
 mod document;

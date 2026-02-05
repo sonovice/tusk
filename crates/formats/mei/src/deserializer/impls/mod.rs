@@ -20,6 +20,7 @@ use tusk_model::att::{
 };
 
 mod analysis;
+mod biblio;
 mod chords;
 mod cmn_core;
 mod control;
@@ -45,6 +46,11 @@ pub(crate) use analysis::{
     parse_cp_mark_from_event, parse_expansion_from_event, parse_gen_desc_from_event,
     parse_gen_state_from_event, parse_meta_mark_from_event, parse_o_layer_from_event,
     parse_o_staff_from_event, parse_when_from_event,
+};
+pub(crate) use biblio::{
+    parse_analytic_from_event, parse_bifolium_from_event, parse_cutout_from_event,
+    parse_folium_from_event, parse_monogr_from_event, parse_patch_from_event,
+    parse_series_from_event,
 };
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
 pub(crate) use drama::{

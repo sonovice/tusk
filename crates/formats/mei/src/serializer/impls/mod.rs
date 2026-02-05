@@ -9,6 +9,7 @@
 use serde::Serialize;
 
 mod analysis;
+mod biblio;
 mod chords;
 mod cmn_core;
 mod control;
