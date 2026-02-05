@@ -39,8 +39,9 @@ pub(crate) use header::{
 pub(crate) use misc::{
     parse_change_desc_from_event, parse_change_from_event, parse_edition_from_event,
     parse_edition_stmt_from_event, parse_expression_from_event, parse_expression_list_from_event,
-    parse_extent_from_event, parse_notes_stmt_from_event, parse_revision_desc_from_event,
-    parse_series_stmt_from_event, parse_work_from_event, parse_work_list_from_event,
+    parse_extent_from_event, parse_manifestation_list_from_event, parse_notes_stmt_from_event,
+    parse_revision_desc_from_event, parse_series_stmt_from_event, parse_work_from_event,
+    parse_work_list_from_event,
 };
 pub(crate) use text::{
     parse_div_from_event, parse_lb_from_event, parse_li_from_event, parse_list_from_event,

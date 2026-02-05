@@ -23,11 +23,12 @@ use tusk_model::elements::{
     EditionStmtChild, Event, EventChild, EventList, EventListChild, Expression, ExpressionChild,
     ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild, Incip, IncipChild,
     IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, LangUsage, LangUsageChild, Language,
-    Lg, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium,
-    PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild, RelationList,
-    RelationListChild, RevisionDesc, RevisionDescChild, Score, ScoreFormat, SeriesStmt,
-    SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild, Work, WorkChild, WorkList,
-    WorkListChild,
+    Lg, Manifestation, ManifestationChild, ManifestationList, ManifestationListChild, Mensuration,
+    Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild,
+    PerfRes, PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild, PlateNum,
+    PlateNumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild, Score,
+    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
+    Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -2100,6 +2101,373 @@ pub(crate) fn parse_work_list_from_event<R: BufRead>(
     }
 
     Ok(work_list)
+}
+
+// ============================================================================
+// ManifestationList implementation
+// ============================================================================
+
+impl MeiDeserialize for ManifestationList {
+    fn element_name() -> &'static str {
+        "manifestationList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_manifestation_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<manifestationList>` element from within another element.
+pub(crate) fn parse_manifestation_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ManifestationList> {
+    let mut manifestation_list = ManifestationList::default();
+
+    // Extract attributes
+    manifestation_list.common.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // manifestationList can contain: head*, manifestation+
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("manifestationList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    manifestation_list
+                        .children
+                        .push(ManifestationListChild::Head(Box::new(head)));
+                }
+                "manifestation" => {
+                    let manifestation =
+                        parse_manifestation_from_event(reader, child_attrs, child_empty)?;
+                    manifestation_list
+                        .children
+                        .push(ManifestationListChild::Manifestation(Box::new(
+                            manifestation,
+                        )));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(manifestation_list)
+}
+
+impl MeiDeserialize for Manifestation {
+    fn element_name() -> &'static str {
+        "manifestation"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_manifestation_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<manifestation>` element from within another element.
+pub(crate) fn parse_manifestation_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Manifestation> {
+    let mut manifestation = Manifestation::default();
+
+    // Extract attributes
+    manifestation.common.extract_attributes(&mut attrs)?;
+    manifestation.authorized.extract_attributes(&mut attrs)?;
+    manifestation.bibl.extract_attributes(&mut attrs)?;
+    manifestation
+        .component_type
+        .extract_attributes(&mut attrs)?;
+    manifestation.data_pointing.extract_attributes(&mut attrs)?;
+    manifestation.pointing.extract_attributes(&mut attrs)?;
+    manifestation.record_type.extract_attributes(&mut attrs)?;
+    manifestation.target_eval.extract_attributes(&mut attrs)?;
+
+    // Extract local attribute: @singleton
+    if let Some(val) = attrs.remove("singleton") {
+        manifestation.singleton = from_attr_string(&val).ok();
+    }
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // manifestation can contain: head*, titleStmt?, editionStmt?, pubStmt?, physDesc?,
+    // seriesStmt?, contents?, langUsage?, notesStmt?, classification?, itemList?,
+    // componentList?, relationList?, extMeta*
+    // Also: identifier*, physLoc?, history?, biblList*, dedication*, creation?,
+    // locus*, locusGrp*, availability?
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("manifestation")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Head(Box::new(head)));
+                }
+                "titleStmt" => {
+                    let title_stmt = super::header::parse_title_stmt_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::TitleStmt(Box::new(title_stmt)));
+                }
+                "editionStmt" => {
+                    let edition_stmt =
+                        parse_edition_stmt_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::EditionStmt(Box::new(edition_stmt)));
+                }
+                "pubStmt" => {
+                    let pub_stmt =
+                        super::header::parse_pub_stmt_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::PubStmt(Box::new(pub_stmt)));
+                }
+                "physDesc" => {
+                    let phys_desc = parse_phys_desc_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::PhysDesc(Box::new(phys_desc)));
+                }
+                "seriesStmt" => {
+                    let series_stmt =
+                        parse_series_stmt_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::SeriesStmt(Box::new(series_stmt)));
+                }
+                "contents" => {
+                    let contents = parse_contents_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Contents(Box::new(contents)));
+                }
+                "langUsage" => {
+                    let lang_usage = parse_lang_usage_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::LangUsage(Box::new(lang_usage)));
+                }
+                "notesStmt" => {
+                    let notes_stmt = parse_notes_stmt_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::NotesStmt(Box::new(notes_stmt)));
+                }
+                "classification" => {
+                    let classification =
+                        parse_classification_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Classification(Box::new(classification)));
+                }
+                "identifier" => {
+                    let identifier = parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Identifier(Box::new(identifier)));
+                }
+                "history" => {
+                    let history = parse_history_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::History(Box::new(history)));
+                }
+                "biblList" => {
+                    let bibl_list = parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::BiblList(Box::new(bibl_list)));
+                }
+                "dedication" => {
+                    let dedication = parse_dedication_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Dedication(Box::new(dedication)));
+                }
+                "creation" => {
+                    let creation = parse_creation_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Creation(Box::new(creation)));
+                }
+                "availability" => {
+                    let availability = super::header::parse_availability_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::Availability(Box::new(availability)));
+                }
+                "relationList" => {
+                    let relation_list =
+                        parse_relation_list_from_event(reader, child_attrs, child_empty)?;
+                    manifestation
+                        .children
+                        .push(ManifestationChild::RelationList(Box::new(relation_list)));
+                }
+                // Skipped for now: itemList, componentList, physLoc, locus, locusGrp, extMeta
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(manifestation)
+}
+
+// ============================================================================
+// PhysDesc implementation
+// ============================================================================
+
+impl MeiDeserialize for PhysDesc {
+    fn element_name() -> &'static str {
+        "physDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_phys_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<physDesc>` element from within another element.
+pub(crate) fn parse_phys_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PhysDesc> {
+    let mut phys_desc = PhysDesc::default();
+
+    // Extract attributes
+    phys_desc.common.extract_attributes(&mut attrs)?;
+    phys_desc.bibl.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children if not an empty element
+    // physDesc can contain many children; for now we handle common ones
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("physDesc")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc.children.push(PhysDescChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc.children.push(PhysDescChild::P(Box::new(p)));
+                }
+                "plateNum" => {
+                    let plate_num = parse_plate_num_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc
+                        .children
+                        .push(PhysDescChild::PlateNum(Box::new(plate_num)));
+                }
+                "extent" => {
+                    let extent = parse_extent_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc
+                        .children
+                        .push(PhysDescChild::Extent(Box::new(extent)));
+                }
+                // Other physDesc children are skipped for now
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(phys_desc)
+}
+
+impl MeiDeserialize for PlateNum {
+    fn element_name() -> &'static str {
+        "plateNum"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_plate_num_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<plateNum>` element from within another element.
+pub(crate) fn parse_plate_num_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<PlateNum> {
+    let mut plate_num = PlateNum::default();
+
+    // Extract attributes
+    plate_num.common.extract_attributes(&mut attrs)?;
+    plate_num.bibl.extract_attributes(&mut attrs)?;
+    plate_num.facsimile.extract_attributes(&mut attrs)?;
+    plate_num.lang.extract_attributes(&mut attrs)?;
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read mixed content if not empty
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("plateNum")? {
+            match content {
+                MixedContent::Text(text) => {
+                    plate_num.children.push(PlateNumChild::Text(text));
+                }
+                MixedContent::Element(name, _child_attrs, child_empty) => {
+                    // For now, skip child elements - plateNum typically contains just text
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(plate_num)
 }
 
 impl MeiDeserialize for Work {

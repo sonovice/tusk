@@ -92,7 +92,19 @@ impl MeiDeserialize for MeiHead {
                             .children
                             .push(MeiHeadChild::RevisionDesc(Box::new(revision_desc)));
                     }
-                    // Other child elements (manifestationList, etc.) are not
+                    "manifestationList" => {
+                        let manifestation_list = super::parse_manifestation_list_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        mei_head
+                            .children
+                            .push(MeiHeadChild::ManifestationList(Box::new(
+                                manifestation_list,
+                            )));
+                    }
+                    // Other child elements (extMeta, etc.) are not
                     // yet implemented for parsing. Skip them in lenient mode.
                     _ => {
                         if !child_empty {

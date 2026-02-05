@@ -367,3 +367,15 @@ fn test_roundtrip_bach_js_hilf_herr_jesu_bwv344() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_musikalisches_opfer_trio_bwv1079() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
