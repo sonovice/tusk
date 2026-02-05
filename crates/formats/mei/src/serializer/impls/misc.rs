@@ -615,6 +615,7 @@ impl MeiSerialize for BeamChild {
             BeamChild::Beam(_) => "beam",
             BeamChild::Tuplet(_) => "tuplet",
             BeamChild::GraceGrp(_) => "graceGrp",
+            BeamChild::Clef(_) => "clef",
             _ => "unknown", // Other children not yet implemented
         }
     }
@@ -640,6 +641,7 @@ impl MeiSerialize for BeamChild {
             BeamChild::Beam(beam) => beam.serialize_mei(writer),
             BeamChild::Tuplet(tuplet) => tuplet.serialize_mei(writer),
             BeamChild::GraceGrp(grace_grp) => grace_grp.serialize_mei(writer),
+            BeamChild::Clef(clef) => clef.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "BeamChild::{}",
                 other.element_name()

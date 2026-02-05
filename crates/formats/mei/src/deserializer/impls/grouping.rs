@@ -14,7 +14,7 @@ use tusk_model::elements::{
     Beam, BeamChild, Chord, GraceGrp, GraceGrpChild, Note, Rest, Space, Tuplet, TupletChild,
 };
 
-use super::{extract_attr, from_attr_string};
+use super::{extract_attr, from_attr_string, parse_clef_from_event};
 
 // ============================================================================
 // Beam attribute class implementations
@@ -214,7 +214,11 @@ impl MeiDeserialize for Beam {
                         let grace_grp = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
                         beam.children.push(BeamChild::GraceGrp(Box::new(grace_grp)));
                     }
-                    // Other child types (clef, etc.) can be added here as needed
+                    "clef" => {
+                        let clef = parse_clef_from_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::Clef(Box::new(clef)));
+                    }
+                    // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
                         if !child_empty {
@@ -1002,6 +1006,63 @@ mod tests {
                 assert_eq!(space.common.xml_id, Some("s1".to_string()));
             }
             _ => panic!("Expected space child"),
+        }
+    }
+
+    // ===== Beam with clef child tests =====
+
+    #[test]
+    fn beam_deserializes_with_clef_child() {
+        let xml = r#"<beam xml:id="b1">
+            <note xml:id="n1" dur="8"/>
+            <clef xml:id="c1" shape="G" line="2"/>
+            <note xml:id="n2" dur="8"/>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.common.xml_id, Some("b1".to_string()));
+        assert_eq!(beam.children.len(), 3);
+
+        match &beam.children[0] {
+            BeamChild::Note(note) => {
+                assert_eq!(note.common.xml_id, Some("n1".to_string()));
+            }
+            _ => panic!("Expected note child"),
+        }
+
+        match &beam.children[1] {
+            BeamChild::Clef(clef) => {
+                assert_eq!(clef.common.xml_id, Some("c1".to_string()));
+            }
+            _ => panic!("Expected clef child"),
+        }
+
+        match &beam.children[2] {
+            BeamChild::Note(note) => {
+                assert_eq!(note.common.xml_id, Some("n2".to_string()));
+            }
+            _ => panic!("Expected note child"),
+        }
+    }
+
+    #[test]
+    fn beam_deserializes_clef_with_attributes() {
+        use tusk_model::data::{DataClefline, DataClefshape};
+
+        let xml = r#"<beam xml:id="b1">
+            <clef xml:id="c1" shape="F" line="4"/>
+        </beam>"#;
+        let beam = Beam::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(beam.children.len(), 1);
+
+        match &beam.children[0] {
+            BeamChild::Clef(clef) => {
+                assert_eq!(clef.common.xml_id, Some("c1".to_string()));
+                assert_eq!(clef.clef_log.shape, Some(DataClefshape::F));
+                assert_eq!(clef.clef_log.line, Some(DataClefline(4)));
+            }
+            _ => panic!("Expected clef child"),
         }
     }
 }

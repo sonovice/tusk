@@ -2412,6 +2412,50 @@ fn roundtrip_beam_complete() {
     assert_eq!(parsed.children.len(), 4);
 }
 
+#[test]
+fn roundtrip_beam_with_clef_child() {
+    use tusk_model::data::{DataClefline, DataClefshape, DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Beam, BeamChild, Clef, Note};
+
+    let mut original = Beam::default();
+    original.common.xml_id = Some("beam-with-clef".to_string());
+
+    // Add note before clef
+    let mut note1 = Note::default();
+    note1.common.xml_id = Some("n1".to_string());
+    note1.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    original.children.push(BeamChild::Note(Box::new(note1)));
+
+    // Add clef mid-beam (clef change)
+    let mut clef = Clef::default();
+    clef.common.xml_id = Some("c1".to_string());
+    clef.clef_log.shape = Some(DataClefshape::F);
+    clef.clef_log.line = Some(DataClefline(4));
+    original.children.push(BeamChild::Clef(Box::new(clef)));
+
+    // Add note after clef
+    let mut note2 = Note::default();
+    note2.common.xml_id = Some("n2".to_string());
+    note2.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+    original.children.push(BeamChild::Note(Box::new(note2)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Beam::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("beam-with-clef".to_string()));
+    assert_eq!(parsed.children.len(), 3);
+
+    // Check clef child
+    match &parsed.children[1] {
+        BeamChild::Clef(clef) => {
+            assert_eq!(clef.common.xml_id, Some("c1".to_string()));
+            assert_eq!(clef.clef_log.shape, Some(DataClefshape::F));
+            assert_eq!(clef.clef_log.line, Some(DataClefline(4)));
+        }
+        other => panic!("Expected Clef, got {:?}", other),
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Tuplet Round-Trip Tests
 // ----------------------------------------------------------------------------
