@@ -6,16 +6,16 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::att::{
-    AttClefAnl, AttClefGes, AttClefLog, AttClefVis, AttEvent, AttLayerAnl, AttLayerGes,
-    AttLayerLog, AttLayerVis, AttMRestAnl, AttMRestGes, AttMRestLog, AttMRestVis, AttMdivAnl,
-    AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
-    AttPbAnl, AttPbGes, AttPbLog, AttPbVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl,
-    AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog,
-    AttStaffVis,
+    AttClefAnl, AttClefGes, AttClefLog, AttClefVis, AttEndingAnl, AttEndingGes, AttEndingLog,
+    AttEndingVis, AttEvent, AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMRestAnl,
+    AttMRestGes, AttMRestLog, AttMRestVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis,
+    AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttPbAnl, AttPbGes, AttPbLog,
+    AttPbVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog,
+    AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Clef, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Pb,
-    Sb, Score, ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
+    Body, BodyChild, Clef, Ending, EndingChild, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure,
+    MeasureChild, Pb, Sb, Score, ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -235,6 +235,46 @@ impl CollectAttributes for AttSectionVis {
 impl CollectAttributes for AttSectionAnl {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         // AttSectionAnl has no attributes
+        Vec::new()
+    }
+}
+
+// ============================================================================
+// Ending attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttEndingLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttEndingGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttEndingGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttEndingVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "lform", self.lform);
+        push_attr!(attrs, "lwidth", self.lwidth);
+        push_attr!(attrs, "lsegs", self.lsegs);
+        push_attr!(attrs, "lendsym", self.lendsym);
+        push_attr!(attrs, "lendsym.size", self.lendsym_size);
+        push_attr!(attrs, "lstartsym", self.lstartsym);
+        push_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttEndingAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttEndingAnl has no attributes
         Vec::new()
     }
 }
@@ -782,6 +822,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Tie(tie) => tie.collect_all_attributes(),
             MeasureChild::Fermata(fermata) => fermata.collect_all_attributes(),
             MeasureChild::Trill(trill) => trill.collect_all_attributes(),
+            MeasureChild::Harm(harm) => harm.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -798,6 +839,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Tie(_) => false,  // Tie has no children
             MeasureChild::Fermata(_) => false, // Fermata has no children
             MeasureChild::Trill(_) => false, // Trill has no children
+            MeasureChild::Harm(harm) => harm.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -811,6 +853,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Tempo(tempo) => tempo.serialize_children(writer),
             MeasureChild::Fermata(_) => Ok(()), // Fermata has no children
             MeasureChild::Trill(_) => Ok(()),   // Trill has no children
+            MeasureChild::Harm(harm) => harm.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()
@@ -919,6 +962,122 @@ impl MeiSerialize for Pb {
     }
 }
 
+// ============================================================================
+// Ending element implementation
+// ============================================================================
+
+impl MeiSerialize for Ending {
+    fn element_name(&self) -> &'static str {
+        "ending"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.pointing.collect_attributes());
+        attrs.extend(self.target_eval.collect_attributes());
+        attrs.extend(self.ending_log.collect_attributes());
+        attrs.extend(self.ending_ges.collect_attributes());
+        attrs.extend(self.ending_vis.collect_attributes());
+        attrs.extend(self.ending_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for EndingChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            EndingChild::Measure(_) => "measure",
+            EndingChild::Staff(_) => "staff",
+            EndingChild::Section(_) => "section",
+            EndingChild::ScoreDef(_) => "scoreDef",
+            EndingChild::StaffDef(_) => "staffDef",
+            EndingChild::Sb(_) => "sb",
+            EndingChild::Pb(_) => "pb",
+            EndingChild::Cb(_) => "cb",
+            EndingChild::Annot(_) => "annot",
+            EndingChild::App(_) => "app",
+            EndingChild::Choice(_) => "choice",
+            EndingChild::Orig(_) => "orig",
+            EndingChild::Reg(_) => "reg",
+            EndingChild::Sic(_) => "sic",
+            EndingChild::Corr(_) => "corr",
+            EndingChild::Add(_) => "add",
+            EndingChild::Del(_) => "del",
+            EndingChild::Subst(_) => "subst",
+            EndingChild::Supplied(_) => "supplied",
+            EndingChild::Unclear(_) => "unclear",
+            EndingChild::Damage(_) => "damage",
+            EndingChild::Gap(_) => "gap",
+            EndingChild::Restore(_) => "restore",
+            EndingChild::AnchoredText(_) => "anchoredText",
+            EndingChild::ColLayout(_) => "colLayout",
+            EndingChild::Curve(_) => "curve",
+            EndingChild::Expansion(_) => "expansion",
+            EndingChild::HandShift(_) => "handShift",
+            EndingChild::Line(_) => "line",
+            EndingChild::Relation(_) => "relation",
+            EndingChild::RelationList(_) => "relationList",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            EndingChild::Measure(measure) => measure.collect_all_attributes(),
+            EndingChild::Staff(staff) => staff.collect_all_attributes(),
+            EndingChild::Section(section) => section.collect_all_attributes(),
+            EndingChild::ScoreDef(score_def) => score_def.collect_all_attributes(),
+            EndingChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
+            EndingChild::Sb(sb) => sb.collect_all_attributes(),
+            EndingChild::Pb(pb) => pb.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            EndingChild::Measure(measure) => measure.has_children(),
+            EndingChild::Staff(staff) => staff.has_children(),
+            EndingChild::Section(section) => section.has_children(),
+            EndingChild::ScoreDef(score_def) => score_def.has_children(),
+            EndingChild::StaffDef(staff_def) => staff_def.has_children(),
+            EndingChild::Sb(sb) => sb.has_children(),
+            EndingChild::Pb(pb) => pb.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            EndingChild::Measure(measure) => measure.serialize_children(writer),
+            EndingChild::Staff(staff) => staff.serialize_children(writer),
+            EndingChild::Section(section) => section.serialize_children(writer),
+            EndingChild::ScoreDef(score_def) => score_def.serialize_children(writer),
+            EndingChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
+            EndingChild::Sb(sb) => sb.serialize_children(writer),
+            EndingChild::Pb(pb) => pb.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "EndingChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
 impl MeiSerialize for SectionChild {
     fn element_name(&self) -> &'static str {
         match self {
@@ -968,6 +1127,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Pb(pb) => pb.collect_all_attributes(),
             SectionChild::Div(div) => div.collect_all_attributes(),
             SectionChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
+            SectionChild::Ending(ending) => ending.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -983,6 +1143,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Pb(pb) => pb.has_children(),
             SectionChild::Div(div) => div.has_children(),
             SectionChild::StaffDef(staff_def) => staff_def.has_children(),
+            SectionChild::Ending(ending) => ending.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -998,6 +1159,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Pb(pb) => pb.serialize_children(writer),
             SectionChild::Div(div) => div.serialize_children(writer),
             SectionChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
+            SectionChild::Ending(ending) => ending.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "SectionChild::{}::serialize_children",
                 other.element_name()

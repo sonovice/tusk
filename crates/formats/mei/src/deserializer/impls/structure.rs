@@ -7,15 +7,17 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::att::{
-    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttPbAnl, AttPbGes,
-    AttPbLog, AttPbVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes,
-    AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
+    AttEndingAnl, AttEndingGes, AttEndingLog, AttEndingVis, AttLayerAnl, AttLayerGes, AttLayerLog,
+    AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttPbAnl, AttPbGes, AttPbLog, AttPbVis, AttSbAnl, AttSbGes,
+    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
+    AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest, Mdiv,
-    MdivChild, Measure, MeasureChild, Note, Pb, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
-    SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet,
+    Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm, Layer,
+    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Note, Pb, Rest, Sb, Score,
+    ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo,
+    Tie, Trill, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -155,6 +157,44 @@ impl ExtractAttributes for AttSectionVis {
 impl ExtractAttributes for AttSectionAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttSectionAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Ending attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttEndingLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttEndingGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttEndingGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttEndingVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "lendsym", self.lendsym);
+        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
+        extract_attr!(attrs, "lstartsym", self.lstartsym);
+        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttEndingAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttEndingAnl has no attributes
         Ok(())
     }
 }
@@ -603,6 +643,10 @@ impl MeiDeserialize for Measure {
                         let trill = Trill::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Trill(Box::new(trill)));
                     }
+                    "harm" => {
+                        let harm = Harm::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                    }
                     // Other child types - skip in lenient mode for now
                     _ => {
                         if !child_empty {
@@ -694,6 +738,12 @@ impl MeiDeserialize for Section {
                             .children
                             .push(SectionChild::StaffDef(Box::new(staff_def)));
                     }
+                    "ending" => {
+                        let ending = Ending::from_mei_event(reader, child_attrs, child_empty)?;
+                        section
+                            .children
+                            .push(SectionChild::Ending(Box::new(ending)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -706,6 +756,85 @@ impl MeiDeserialize for Section {
         }
 
         Ok(section)
+    }
+}
+
+impl MeiDeserialize for Ending {
+    fn element_name() -> &'static str {
+        "ending"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut ending = Ending::default();
+
+        // Extract attributes into each attribute class
+        ending.common.extract_attributes(&mut attrs)?;
+        ending.facsimile.extract_attributes(&mut attrs)?;
+        ending.pointing.extract_attributes(&mut attrs)?;
+        ending.target_eval.extract_attributes(&mut attrs)?;
+        ending.ending_log.extract_attributes(&mut attrs)?;
+        ending.ending_ges.extract_attributes(&mut attrs)?;
+        ending.ending_vis.extract_attributes(&mut attrs)?;
+        ending.ending_anl.extract_attributes(&mut attrs)?;
+
+        // Read children if not an empty element
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("ending")?
+            {
+                match name.as_str() {
+                    "measure" => {
+                        let measure = Measure::from_mei_event(reader, child_attrs, child_empty)?;
+                        ending
+                            .children
+                            .push(EndingChild::Measure(Box::new(measure)));
+                    }
+                    "staff" => {
+                        let staff = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+                        ending.children.push(EndingChild::Staff(Box::new(staff)));
+                    }
+                    "scoreDef" => {
+                        let score_def = ScoreDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        ending
+                            .children
+                            .push(EndingChild::ScoreDef(Box::new(score_def)));
+                    }
+                    "staffDef" => {
+                        let staff_def = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        ending
+                            .children
+                            .push(EndingChild::StaffDef(Box::new(staff_def)));
+                    }
+                    "sb" => {
+                        let sb = parse_sb_from_event(reader, child_attrs, child_empty)?;
+                        ending.children.push(EndingChild::Sb(Box::new(sb)));
+                    }
+                    "pb" => {
+                        let pb = parse_pb_from_event(reader, child_attrs, child_empty)?;
+                        ending.children.push(EndingChild::Pb(Box::new(pb)));
+                    }
+                    "section" => {
+                        let section = Section::from_mei_event(reader, child_attrs, child_empty)?;
+                        ending
+                            .children
+                            .push(EndingChild::Section(Box::new(section)));
+                    }
+                    // Other child types can be added here as needed
+                    // For now, unknown children are skipped (lenient mode)
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(ending)
     }
 }
 
