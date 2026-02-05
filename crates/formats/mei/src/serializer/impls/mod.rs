@@ -13,6 +13,7 @@ mod cmn_core;
 mod control;
 mod defs;
 mod editorial;
+mod facsimile;
 mod header;
 mod misc;
 mod note;

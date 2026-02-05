@@ -23,6 +23,7 @@ mod cmn_core;
 mod control;
 mod defs;
 mod editorial;
+mod facsimile;
 mod grouping;
 mod header;
 mod misc;
@@ -46,8 +47,8 @@ pub(crate) use misc::{
     parse_work_from_event, parse_work_list_from_event,
 };
 pub(crate) use text::{
-    parse_div_from_event, parse_l_from_event, parse_lb_from_event, parse_li_from_event,
-    parse_list_from_event, parse_rend_from_event,
+    parse_div_from_event, parse_fig_desc_from_event, parse_l_from_event, parse_lb_from_event,
+    parse_li_from_event, parse_list_from_event, parse_rend_from_event,
 };
 
 /// Parse a value using serde_json from XML attribute string.

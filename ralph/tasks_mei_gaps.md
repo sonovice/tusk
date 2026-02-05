@@ -74,8 +74,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 5: Facsimile Module
 
 ### 5.1 Image Linking Elements
-- [ ] Implement `Facsimile`, `Surface`, `Zone`, `Graphic`
-- [ ] Add roundtrip tests
+- [x] Implement `Facsimile`, `Surface`, `Zone`, `Graphic`
+- [x] Add roundtrip tests
 
 ---
 
