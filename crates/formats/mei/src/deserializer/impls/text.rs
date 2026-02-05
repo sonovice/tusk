@@ -195,8 +195,10 @@ impl ExtractAttributes for AttSylVis {
         extract_attr!(attrs, "lineheight", self.lineheight);
         extract_attr!(attrs, "ho", self.ho);
         extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
         extract_attr!(attrs, "x", self.x);
         extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "halign", self.halign);
         Ok(())
     }
 }

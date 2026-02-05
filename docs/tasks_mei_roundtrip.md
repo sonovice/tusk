@@ -132,7 +132,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Hilf_Herr_Jesu_BWV344.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Hymn_to_joy.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Hymn_to_joy.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_Song_Op98.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_StringQuartet_Op18_No1.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Berlioz_Symphony_Op25.mei`
