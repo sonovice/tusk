@@ -12,7 +12,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 
 ### 1.1 Editorial Elements Serializers
 - [x] Add serializers for editorial elements that have deserializers: `Add`, `Del`, `App`, `Lem`, `Rdg`, `Choice`, `Corr`, `Sic`
-- [ ] Add serializers for `Fig`, `FigDesc`
+- [x] Add serializers for `Fig`, `FigDesc`
 - [ ] Add serializers for `Expression`, `ExpressionList`
 - [x] Add roundtrip tests for editorial markup
 

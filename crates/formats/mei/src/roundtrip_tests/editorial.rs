@@ -461,3 +461,147 @@ fn del_serialize_with_text() {
     assert!(xml.contains("<del>"));
     assert!(xml.contains("</del>"));
 }
+
+// ============================================================================
+// Fig (Figure) Tests
+// ============================================================================
+
+#[test]
+fn fig_roundtrip_empty() {
+    use tusk_model::elements::Fig;
+
+    let original = Fig::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fig::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn fig_roundtrip_with_xml_id() {
+    use tusk_model::elements::Fig;
+
+    let mut original = Fig::default();
+    original.common.xml_id = Some("fig-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fig::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("fig-1".to_string()));
+}
+
+#[test]
+fn fig_roundtrip_with_fig_desc() {
+    use tusk_model::elements::{Fig, FigChild, FigDesc, FigDescChild};
+
+    let mut original = Fig::default();
+    original.common.xml_id = Some("fig-1".to_string());
+
+    let mut fig_desc = FigDesc::default();
+    fig_desc.common.xml_id = Some("figDesc-1".to_string());
+    fig_desc
+        .children
+        .push(FigDescChild::Text("A musical figure".to_string()));
+    original
+        .children
+        .push(FigChild::FigDesc(Box::new(fig_desc)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Fig::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        FigChild::FigDesc(fd) => {
+            assert_eq!(fd.common.xml_id, Some("figDesc-1".to_string()));
+            assert!(!fd.children.is_empty());
+        }
+        _ => panic!("Expected FigDesc child"),
+    }
+}
+
+#[test]
+fn fig_serialize_with_halign() {
+    use tusk_model::data::DataHorizontalalignment;
+    use tusk_model::elements::Fig;
+
+    let mut original = Fig::default();
+    original.horizontal_align.halign = Some(DataHorizontalalignment::Center);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains(r#"halign="center""#));
+}
+
+#[test]
+fn fig_serialize_with_valign() {
+    use tusk_model::data::DataVerticalalignment;
+    use tusk_model::elements::Fig;
+
+    let mut original = Fig::default();
+    original.vertical_align.valign = Some(DataVerticalalignment::Middle);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains(r#"valign="middle""#));
+}
+
+// ============================================================================
+// FigDesc (Figure Description) Tests
+// ============================================================================
+
+#[test]
+fn fig_desc_roundtrip_empty() {
+    use tusk_model::elements::FigDesc;
+
+    let original = FigDesc::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FigDesc::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn fig_desc_roundtrip_with_xml_id() {
+    use tusk_model::elements::FigDesc;
+
+    let mut original = FigDesc::default();
+    original.common.xml_id = Some("figDesc-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FigDesc::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("figDesc-1".to_string()));
+}
+
+#[test]
+fn fig_desc_roundtrip_with_text() {
+    use tusk_model::elements::{FigDesc, FigDescChild};
+
+    let mut original = FigDesc::default();
+    original.common.xml_id = Some("figDesc-1".to_string());
+    original.children.push(FigDescChild::Text(
+        "Description of a musical example.".to_string(),
+    ));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = FigDesc::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        FigDescChild::Text(text) => {
+            assert_eq!(text, "Description of a musical example.");
+        }
+        _ => panic!("Expected Text child"),
+    }
+}
+
+#[test]
+fn fig_desc_serialize_with_lang() {
+    use tusk_model::elements::FigDesc;
+
+    let mut original = FigDesc::default();
+    original.lang.xml_lang = Some("en".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains(r#"xml:lang="en""#));
+}

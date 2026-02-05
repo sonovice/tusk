@@ -20,9 +20,10 @@ use tusk_model::att::{
     AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, Caption, CaptionChild, Event, EventChild, EventList, EventListChild, GraceGrp,
-    GraceGrpChild, History, HistoryChild, L, LChild, Lg, LgChild, Li, LiChild, List, ListChild,
-    Num, Ptr, Ref, Table, TableChild, Td, TdChild, Th, ThChild, Tr, TrChild, Tuplet, TupletChild,
+    Beam, BeamChild, Caption, CaptionChild, Event, EventChild, EventList, EventListChild, Fig,
+    FigChild, FigDesc, FigDescChild, GraceGrp, GraceGrpChild, History, HistoryChild, L, LChild, Lg,
+    LgChild, Li, LiChild, List, ListChild, Num, Ptr, Ref, Table, TableChild, Td, TdChild, Th,
+    ThChild, Tr, TrChild, Tuplet, TupletChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -1337,6 +1338,11 @@ impl MeiSerialize for LiChild {
             LiChild::P(elem) => elem.serialize_mei(writer),
             LiChild::Bibl(elem) => elem.serialize_mei(writer),
             LiChild::List(elem) => elem.serialize_mei(writer),
+            LiChild::Fig(elem) => elem.serialize_mei(writer),
+            LiChild::Lg(elem) => elem.serialize_mei(writer),
+            LiChild::Table(elem) => elem.serialize_mei(writer),
+            LiChild::Seg(elem) => elem.serialize_mei(writer),
+            LiChild::Term(elem) => elem.serialize_mei(writer),
             // Elements that need serializers - for now skip with warning
             _ => {
                 // TODO: Implement serializers for remaining LiChild variants
@@ -2426,6 +2432,181 @@ impl MeiSerialize for EventChild {
                 let name = self.element_name();
                 let start = writer.start_element(name)?;
                 writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Fig (figure) element
+// ============================================================================
+
+impl MeiSerialize for Fig {
+    fn element_name(&self) -> &'static str {
+        "fig"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.horizontal_align.collect_attributes());
+        attrs.extend(self.vertical_align.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for FigChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            FigChild::Score(_) => "score",
+            FigChild::Graphic(_) => "graphic",
+            FigChild::FigDesc(_) => "figDesc",
+            FigChild::Caption(_) => "caption",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            FigChild::FigDesc(elem) => elem.serialize_mei(writer),
+            FigChild::Caption(elem) => elem.serialize_mei(writer),
+            // Score and Graphic need dedicated serializers - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// FigDesc (figure description) element
+// ============================================================================
+
+impl MeiSerialize for FigDesc {
+    fn element_name(&self) -> &'static str {
+        "figDesc"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for FigDescChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            FigDescChild::Text(_) => "#text",
+            FigDescChild::P(_) => "p",
+            FigDescChild::Rend(_) => "rend",
+            FigDescChild::Lb(_) => "lb",
+            FigDescChild::Seg(_) => "seg",
+            FigDescChild::Name(_) => "name",
+            FigDescChild::PersName(_) => "persName",
+            FigDescChild::CorpName(_) => "corpName",
+            FigDescChild::Date(_) => "date",
+            FigDescChild::Identifier(_) => "identifier",
+            FigDescChild::Title(_) => "title",
+            FigDescChild::Ref(_) => "ref",
+            FigDescChild::Ptr(_) => "ptr",
+            FigDescChild::Fig(_) => "fig",
+            FigDescChild::Bibl(_) => "bibl",
+            FigDescChild::Annot(_) => "annot",
+            FigDescChild::Table(_) => "table",
+            FigDescChild::List(_) => "list",
+            FigDescChild::Lg(_) => "lg",
+            FigDescChild::Num(_) => "num",
+            FigDescChild::Term(_) => "term",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        !matches!(self, FigDescChild::Text(_))
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            FigDescChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            FigDescChild::P(elem) => elem.serialize_mei(writer),
+            FigDescChild::Rend(elem) => elem.serialize_mei(writer),
+            FigDescChild::Lb(elem) => elem.serialize_mei(writer),
+            FigDescChild::Seg(elem) => elem.serialize_mei(writer),
+            FigDescChild::Name(elem) => elem.serialize_mei(writer),
+            FigDescChild::PersName(elem) => elem.serialize_mei(writer),
+            FigDescChild::CorpName(elem) => elem.serialize_mei(writer),
+            FigDescChild::Date(elem) => elem.serialize_mei(writer),
+            FigDescChild::Identifier(elem) => elem.serialize_mei(writer),
+            FigDescChild::Title(elem) => elem.serialize_mei(writer),
+            FigDescChild::Ref(elem) => elem.serialize_mei(writer),
+            FigDescChild::Ptr(elem) => elem.serialize_mei(writer),
+            FigDescChild::Fig(elem) => elem.serialize_mei(writer),
+            FigDescChild::Bibl(elem) => elem.serialize_mei(writer),
+            FigDescChild::Annot(elem) => elem.serialize_mei(writer),
+            FigDescChild::Table(elem) => elem.serialize_mei(writer),
+            FigDescChild::List(elem) => elem.serialize_mei(writer),
+            FigDescChild::Lg(elem) => elem.serialize_mei(writer),
+            FigDescChild::Num(elem) => elem.serialize_mei(writer),
+            FigDescChild::Term(elem) => elem.serialize_mei(writer),
+            // Remaining children not yet implemented - for now write empty element
+            other => {
+                let name = other.element_name();
+                if name != "unknown" {
+                    let start = writer.start_element(name)?;
+                    writer.write_empty(start)?;
+                }
                 Ok(())
             }
         }
