@@ -89,7 +89,9 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Application element: p child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [x] [DESERIALIZER_BUG] History element: eventList child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [x] [DESERIALIZER_BUG] Layer element: clef child not parsed - skipped instead of deserialized, causing element ordering issues (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
-- [ ] [DESERIALIZER_BUG] Measure: harm element not parsed - missing handler in match, harm control events skipped instead of deserialized (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
+- [x] [DESERIALIZER_BUG] Measure: harm element not parsed - missing handler in match, harm control events skipped instead of deserialized (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
+- [ ] [DESERIALIZER_BUG] Section: ending element not parsed - skipped instead of deserialized (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
+- [ ] [DESERIALIZER_BUG] MeiHead: revisionDesc element not parsed - missing in output after roundtrip (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
 
 ---
 
