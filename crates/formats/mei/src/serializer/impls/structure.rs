@@ -6,13 +6,14 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::att::{
-    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSbAnl, AttSbGes,
-    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
-    AttStaffGes, AttStaffLog, AttStaffVis,
+    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMRestAnl, AttMRestGes, AttMRestLog,
+    AttMRestVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
+    AttMeasureLog, AttMeasureVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog,
+    AttStaffVis,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Sb, Score,
+    Body, BodyChild, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Sb, Score,
     ScoreChild, Section, SectionChild, Staff, StaffChild,
 };
 
@@ -130,6 +131,75 @@ impl CollectAttributes for AttLayerAnl {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         // AttLayerAnl has no attributes
         Vec::new()
+    }
+}
+
+// ============================================================================
+// MRest (measure rest) attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttMRestLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "cue", self.cue);
+        push_attr!(attrs, "dur", vec self.dur);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMRestGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMRestVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "cutout", self.cutout);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMRestAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "fermata", self.fermata);
+        attrs
     }
 }
 
@@ -394,6 +464,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Accid(accid) => accid.collect_all_attributes(),
             LayerChild::Artic(artic) => artic.collect_all_attributes(),
             LayerChild::Dot(dot) => dot.collect_all_attributes(),
+            LayerChild::MRest(mrest) => mrest.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -410,6 +481,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Artic(_) => false,
             LayerChild::Dot(_) => false,
             LayerChild::Space(_) => false, // Space has no children per MEI spec
+            LayerChild::MRest(_) => false, // MRest has no children per MEI spec
             _ => false,
         }
     }
@@ -421,11 +493,41 @@ impl MeiSerialize for LayerChild {
             LayerChild::Chord(chord) => chord.serialize_children(writer),
             LayerChild::Beam(beam) => beam.serialize_children(writer),
             LayerChild::Tuplet(tuplet) => tuplet.serialize_children(writer),
+            LayerChild::MRest(_) => Ok(()), // MRest has no children
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "LayerChild::{}::serialize_children",
                 other.element_name()
             ))),
         }
+    }
+}
+
+// ============================================================================
+// MRest (measure rest) element implementation
+// ============================================================================
+
+impl MeiSerialize for MRest {
+    fn element_name(&self) -> &'static str {
+        "mRest"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.m_rest_log.collect_attributes());
+        attrs.extend(self.m_rest_vis.collect_attributes());
+        attrs.extend(self.m_rest_ges.collect_attributes());
+        attrs.extend(self.m_rest_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // MRest has no children per MEI spec
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
     }
 }
 
