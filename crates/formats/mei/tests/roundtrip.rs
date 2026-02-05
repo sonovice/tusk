@@ -237,3 +237,15 @@ fn test_roundtrip_altenburg_ein_feste_burg() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_altenburg_macht_auf_die_tor() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Altenburg_Macht_auf_die_Tor.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Altenburg_Macht_auf_die_Tor.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
