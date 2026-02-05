@@ -4,6 +4,8 @@
 //! - ExtData, AvFile, Cutout, Bifolium, Folium (codicology)
 //! - Analytic, Monogr, Series (bibliography)
 //! - Patch (codicology helper)
+//! - Catchwords, Signatures, SignifLet (manuscript description)
+//! - Actor, CatRel, Context (misc elements)
 //!
 //! Note: Desc is implemented in header/encoding_desc.rs
 
@@ -13,20 +15,23 @@ use crate::deserializer::{
 use std::io::BufRead;
 use tusk_model::att::{
     AttBibl, AttBifoliumSurfaces, AttComponentType, AttDataPointing, AttDimensions, AttEvidence,
-    AttFoliumSurfaces, AttMeasurement, AttRecordType, AttTargetEval, AttTrans,
+    AttFoliumSurfaces, AttMeasurement, AttRecordType, AttSignifLetAnl, AttSignifLetGes,
+    AttSignifLetLog, AttSignifLetVis, AttTargetEval, AttTrans,
 };
 use tusk_model::elements::{
-    Analytic, AnalyticChild, AvFile, AvFileChild, Bifolium, BifoliumChild, Cutout, CutoutChild,
+    Actor, ActorChild, Analytic, AnalyticChild, AvFile, AvFileChild, Bifolium, BifoliumChild,
+    CatRel, CatRelChild, Catchwords, CatchwordsChild, Context, ContextChild, Cutout, CutoutChild,
     ExtData, ExtDataChild, Folium, FoliumChild, Monogr, MonogrChild, Patch, PatchChild, Series,
-    SeriesChild,
+    SeriesChild, Signatures, SignaturesChild, SignifLet, SignifLetChild,
 };
 
+use super::header::parse_desc_from_event;
 use super::{
     extract_attr, parse_bibl_scope_from_event, parse_clip_from_event, parse_contributor_from_event,
     parse_creator_from_event, parse_edition_from_event, parse_editor_from_event,
     parse_extent_from_event, parse_funder_from_event, parse_identifier_from_event,
-    parse_lb_from_event, parse_resp_stmt_from_event, parse_sponsor_from_event,
-    parse_title_from_event,
+    parse_label_from_event, parse_lb_from_event, parse_resp_stmt_from_event,
+    parse_sponsor_from_event, parse_title_from_event,
 };
 
 // ============================================================================
@@ -694,6 +699,435 @@ impl MeiDeserialize for Series {
 }
 
 // Note: Desc implementation is in header/encoding_desc.rs
+
+// ============================================================================
+// Catchwords element implementation
+// ============================================================================
+
+pub(crate) fn parse_catchwords_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Catchwords> {
+    let mut elem = Catchwords::default();
+
+    // Extract attributes
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    elem.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("catchwords")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        elem.children.push(CatchwordsChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let child = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(CatchwordsChild::Lb(Box::new(child)));
+                    }
+                    "signatures" => {
+                        let child = parse_signatures_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(CatchwordsChild::Signatures(Box::new(child)));
+                    }
+                    "catchwords" => {
+                        let child = parse_catchwords_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(CatchwordsChild::Catchwords(Box::new(child)));
+                    }
+                    _ => {
+                        // Skip other children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for Catchwords {
+    fn element_name() -> &'static str {
+        "catchwords"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_catchwords_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// Signatures element implementation
+// ============================================================================
+
+pub(crate) fn parse_signatures_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Signatures> {
+    let mut elem = Signatures::default();
+
+    // Extract attributes
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    elem.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("signatures")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        elem.children.push(SignaturesChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let child = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(SignaturesChild::Lb(Box::new(child)));
+                    }
+                    "catchwords" => {
+                        let child = parse_catchwords_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(SignaturesChild::Catchwords(Box::new(child)));
+                    }
+                    "signatures" => {
+                        let child = parse_signatures_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(SignaturesChild::Signatures(Box::new(child)));
+                    }
+                    _ => {
+                        // Skip other children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for Signatures {
+    fn element_name() -> &'static str {
+        "signatures"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_signatures_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// SignifLet element implementation
+// ============================================================================
+
+impl ExtractAttributes for AttSignifLetAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // No specific attributes defined for this class
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSignifLetGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // No specific attributes defined for this class
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSignifLetLog {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // No specific attributes defined for this class
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttSignifLetVis {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // No specific attributes defined for this class
+        Ok(())
+    }
+}
+
+pub(crate) fn parse_signif_let_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<SignifLet> {
+    let mut elem = SignifLet::default();
+
+    // Extract attributes
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.facsimile.extract_attributes(&mut attrs)?;
+    elem.signif_let_anl.extract_attributes(&mut attrs)?;
+    elem.signif_let_ges.extract_attributes(&mut attrs)?;
+    elem.signif_let_log.extract_attributes(&mut attrs)?;
+    elem.signif_let_vis.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("signifLet")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        elem.children.push(SignifLetChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let child = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(SignifLetChild::Lb(Box::new(child)));
+                    }
+                    "catchwords" => {
+                        let child = parse_catchwords_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(SignifLetChild::Catchwords(Box::new(child)));
+                    }
+                    "signatures" => {
+                        let child = parse_signatures_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(SignifLetChild::Signatures(Box::new(child)));
+                    }
+                    _ => {
+                        // Skip other children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for SignifLet {
+    fn element_name() -> &'static str {
+        "signifLet"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_signif_let_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// Actor element implementation
+// ============================================================================
+
+pub(crate) fn parse_actor_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Actor> {
+    let mut elem = Actor::default();
+
+    // Extract attributes
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.facsimile.extract_attributes(&mut attrs)?;
+    elem.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("actor")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        elem.children.push(ActorChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let child = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(ActorChild::Lb(Box::new(child)));
+                    }
+                    "catchwords" => {
+                        let child = parse_catchwords_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(ActorChild::Catchwords(Box::new(child)));
+                    }
+                    "signatures" => {
+                        let child = parse_signatures_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(ActorChild::Signatures(Box::new(child)));
+                    }
+                    _ => {
+                        // Skip other children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for Actor {
+    fn element_name() -> &'static str {
+        "actor"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_actor_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// CatRel element implementation
+// ============================================================================
+
+pub(crate) fn parse_cat_rel_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CatRel> {
+    let mut elem = CatRel::default();
+
+    // Extract attributes
+    elem.authorized.extract_attributes(&mut attrs)?;
+    elem.basic.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    elem.labelled.extract_attributes(&mut attrs)?;
+    elem.linking.extract_attributes(&mut attrs)?;
+    elem.n_number_like.extract_attributes(&mut attrs)?;
+    elem.responsibility.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "type", string elem.r#type);
+
+    // Parse children (label and desc)
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("catRel")? {
+            match name.as_str() {
+                "label" => {
+                    let child = parse_label_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(CatRelChild::Label(Box::new(child)));
+                }
+                "desc" => {
+                    let child = parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    elem.children.push(CatRelChild::Desc(Box::new(child)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for CatRel {
+    fn element_name() -> &'static str {
+        "catRel"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_cat_rel_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// Context element implementation
+// ============================================================================
+
+pub(crate) fn parse_context_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Context> {
+    let mut elem = Context::default();
+
+    // Extract attributes
+    elem.common.extract_attributes(&mut attrs)?;
+    elem.authorized.extract_attributes(&mut attrs)?;
+    elem.bibl.extract_attributes(&mut attrs)?;
+    elem.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("context")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        elem.children.push(ContextChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let child = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(ContextChild::Lb(Box::new(child)));
+                    }
+                    "catchwords" => {
+                        let child = parse_catchwords_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(ContextChild::Catchwords(Box::new(child)));
+                    }
+                    "signatures" => {
+                        let child = parse_signatures_from_event(reader, child_attrs, child_empty)?;
+                        elem.children
+                            .push(ContextChild::Signatures(Box::new(child)));
+                    }
+                    _ => {
+                        // Skip other children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    Ok(elem)
+}
+
+impl MeiDeserialize for Context {
+    fn element_name() -> &'static str {
+        "context"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_context_from_event(reader, attrs, is_empty)
+    }
+}
 
 #[cfg(test)]
 mod tests {

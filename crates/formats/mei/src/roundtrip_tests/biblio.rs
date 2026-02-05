@@ -36,7 +36,10 @@ fn ext_data_roundtrip_with_text() {
     let parsed = ExtData::from_mei_str(&xml).expect("deserialize");
 
     assert_eq!(parsed.basic.xml_id, Some("ed1".to_string()));
-    assert_eq!(parsed.internet_media.mimetype, Some("text/plain".to_string()));
+    assert_eq!(
+        parsed.internet_media.mimetype,
+        Some("text/plain".to_string())
+    );
     assert_eq!(parsed.children.len(), 1);
     match &parsed.children[0] {
         ExtDataChild::Text(t) => assert_eq!(t, "External data content"),
@@ -319,7 +322,9 @@ fn analytic_roundtrip_with_title() {
     title
         .children
         .push(TitleChild::Text("Article Title".to_string()));
-    original.children.push(AnalyticChild::Title(Box::new(title)));
+    original
+        .children
+        .push(AnalyticChild::Title(Box::new(title)));
 
     let xml = original.to_mei_string().expect("serialize");
     let parsed = Analytic::from_mei_str(&xml).expect("deserialize");
@@ -461,5 +466,221 @@ fn series_roundtrip_with_title() {
             assert_eq!(t.basic.xml_id, Some("title1".to_string()));
         }
         _ => panic!("Expected Title child"),
+    }
+}
+
+// ============================================================================
+// Catchwords Tests
+// ============================================================================
+
+#[test]
+fn catchwords_roundtrip_empty() {
+    use tusk_model::elements::Catchwords;
+
+    let original = Catchwords::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Catchwords::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn catchwords_roundtrip_with_text() {
+    use tusk_model::elements::{Catchwords, CatchwordsChild};
+
+    let mut original = Catchwords::default();
+    original.common.xml_id = Some("cw1".to_string());
+    original
+        .children
+        .push(CatchwordsChild::Text("A-B-C".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Catchwords::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("cw1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CatchwordsChild::Text(t) => assert_eq!(t, "A-B-C"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// Signatures Tests
+// ============================================================================
+
+#[test]
+fn signatures_roundtrip_empty() {
+    use tusk_model::elements::Signatures;
+
+    let original = Signatures::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Signatures::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn signatures_roundtrip_with_text() {
+    use tusk_model::elements::{Signatures, SignaturesChild};
+
+    let mut original = Signatures::default();
+    original.common.xml_id = Some("sig1".to_string());
+    original
+        .children
+        .push(SignaturesChild::Text("a-z".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Signatures::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sig1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SignaturesChild::Text(t) => assert_eq!(t, "a-z"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// SignifLet Tests
+// ============================================================================
+
+#[test]
+fn signif_let_roundtrip_empty() {
+    use tusk_model::elements::SignifLet;
+
+    let original = SignifLet::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = SignifLet::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn signif_let_roundtrip_with_text() {
+    use tusk_model::elements::{SignifLet, SignifLetChild};
+
+    let mut original = SignifLet::default();
+    original.common.xml_id = Some("sl1".to_string());
+    original
+        .children
+        .push(SignifLetChild::Text("Significant letter".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = SignifLet::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sl1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SignifLetChild::Text(t) => assert_eq!(t, "Significant letter"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// Actor Tests
+// ============================================================================
+
+#[test]
+fn actor_roundtrip_empty() {
+    use tusk_model::elements::Actor;
+
+    let original = Actor::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Actor::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn actor_roundtrip_with_text() {
+    use tusk_model::elements::{Actor, ActorChild};
+
+    let mut original = Actor::default();
+    original.common.xml_id = Some("act1".to_string());
+    original
+        .children
+        .push(ActorChild::Text("John Doe".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Actor::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("act1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ActorChild::Text(t) => assert_eq!(t, "John Doe"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// CatRel Tests
+// ============================================================================
+
+#[test]
+fn cat_rel_roundtrip_empty() {
+    use tusk_model::elements::CatRel;
+
+    let original = CatRel::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = CatRel::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.basic.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn cat_rel_roundtrip_with_type() {
+    use tusk_model::elements::CatRel;
+
+    let mut original = CatRel::default();
+    original.basic.xml_id = Some("cr1".to_string());
+    original.r#type = Some("broader".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = CatRel::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.basic.xml_id, Some("cr1".to_string()));
+    assert_eq!(parsed.r#type, Some("broader".to_string()));
+}
+
+// ============================================================================
+// Context Tests
+// ============================================================================
+
+#[test]
+fn context_roundtrip_empty() {
+    use tusk_model::elements::Context;
+
+    let original = Context::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Context::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn context_roundtrip_with_text() {
+    use tusk_model::elements::{Context, ContextChild};
+
+    let mut original = Context::default();
+    original.common.xml_id = Some("ctx1".to_string());
+    original
+        .children
+        .push(ContextChild::Text("Historical context".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Context::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("ctx1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ContextChild::Text(t) => assert_eq!(t, "Historical context"),
+        _ => panic!("Expected Text child"),
     }
 }

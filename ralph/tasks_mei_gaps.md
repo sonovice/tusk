@@ -186,5 +186,5 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 
 ### 14.1 Miscellaneous Elements
 - [x] Implement external: `ExtData`, `AvFile`, `Cutout`, folio: `Bifolium`, `Folium`, bibliographic: `Analytic`, `Monogr`, `Series`, `Desc`
-- [ ] Implement codicology: `Catchwords`, `Signatures`, `SignifLet`, other: `Actor`, `CatRel`, `Context`, `Mapping`, `Patch`, `PropName`, `PropValue`
-- [ ] Add roundtrip tests
+- [x] Implement codicology: `Catchwords`, `Signatures`, `SignifLet`, other: `Actor`, `CatRel`, `Context`, `Mapping`, `Patch`, `PropName`, `PropValue`
+- [x] Add roundtrip tests
