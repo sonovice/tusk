@@ -352,6 +352,15 @@ fn compare_elements(
     compare_children(&elem1.children, &elem2.children, &current_path, diffs);
 }
 
+/// Normalize whitespace in a string for comparison.
+///
+/// This handles XML list type semantics where leading/trailing whitespace is trimmed
+/// and internal whitespace is collapsed to single spaces. This is standard XML behavior
+/// for attributes defined as `rng:list` in RelaxNG (e.g., bezier, bulge coordinates).
+fn normalize_whitespace(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 /// Compare two attribute maps.
 ///
 /// If `skip_meiversion` is true, the `meiversion` attribute is ignored.
@@ -378,7 +387,10 @@ fn compare_attributes(
         }
         match attrs2.get(key) {
             Some(value2) => {
-                if value1 != value2 {
+                // Normalize whitespace for comparison (handles XML list type semantics)
+                let norm1 = normalize_whitespace(value1);
+                let norm2 = normalize_whitespace(value2);
+                if norm1 != norm2 {
                     diffs.push(Difference {
                         path: path.to_string(),
                         description: format!(
@@ -943,5 +955,63 @@ mod tests {
             result.is_err(),
             "extra role on non-migrated element should fail"
         );
+    }
+
+    // ============================================================================
+    // Attribute Value Whitespace Normalization Tests
+    // ============================================================================
+
+    #[test]
+    fn test_normalize_whitespace() {
+        assert_eq!(normalize_whitespace("hello world"), "hello world");
+        assert_eq!(normalize_whitespace("  hello world"), "hello world");
+        assert_eq!(normalize_whitespace("hello world  "), "hello world");
+        assert_eq!(normalize_whitespace("  hello  world  "), "hello world");
+        assert_eq!(normalize_whitespace("-7 -12"), "-7 -12");
+        assert_eq!(normalize_whitespace("  -7 -12"), "-7 -12");
+        assert_eq!(normalize_whitespace("  -7  -12  "), "-7 -12");
+    }
+
+    #[test]
+    fn test_attribute_whitespace_normalization_bezier() {
+        // XML list types (like bezier) normalize whitespace per XML Schema/RelaxNG
+        // Leading whitespace should be ignored in comparison
+        let xml1 = r#"<slur bezier="  -7 -12"/>"#;
+        let xml2 = r#"<slur bezier="-7 -12"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "leading whitespace in bezier should be normalized"
+        );
+    }
+
+    #[test]
+    fn test_attribute_whitespace_normalization_multiple_spaces() {
+        // Multiple internal spaces should be normalized to single space
+        let xml1 = r#"<slur bezier="19  45  -32  118"/>"#;
+        let xml2 = r#"<slur bezier="19 45 -32 118"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "multiple internal spaces should be normalized"
+        );
+    }
+
+    #[test]
+    fn test_attribute_whitespace_normalization_trailing() {
+        // Trailing whitespace should be ignored
+        let xml1 = r#"<slur bezier="-7 -12  "/>"#;
+        let xml2 = r#"<slur bezier="-7 -12"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "trailing whitespace should be normalized"
+        );
+    }
+
+    #[test]
+    fn test_attribute_values_differ_semantically() {
+        // Different values should still be caught
+        let xml1 = r#"<slur bezier="  -7 -12"/>"#;
+        let xml2 = r#"<slur bezier="-7 -15"/>"#;
+        let result = compare_xml(xml1, xml2);
+        assert!(result.is_err(), "different values should still be detected");
     }
 }
