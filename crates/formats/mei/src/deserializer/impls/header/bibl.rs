@@ -162,6 +162,14 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             )?;
                             bibl.children.push(BiblChild::RespStmt(Box::new(resp_stmt)));
                         }
+                        "series" => {
+                            let series = super::super::parse_series_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            bibl.children.push(BiblChild::Series(Box::new(series)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {

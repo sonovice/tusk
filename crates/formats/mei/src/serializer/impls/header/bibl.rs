@@ -803,6 +803,7 @@ impl MeiSerialize for BiblChild {
             BiblChild::Extent(elem) => elem.serialize_mei(writer),
             BiblChild::Sponsor(elem) => elem.serialize_mei(writer),
             BiblChild::Imprint(elem) => elem.serialize_mei(writer),
+            BiblChild::Series(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "BiblChild::{}",
                 other.element_name()

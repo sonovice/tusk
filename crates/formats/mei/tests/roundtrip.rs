@@ -494,3 +494,15 @@ fn test_roundtrip_chopin_mazurka_op6_no1() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_czerny_praeludium_et_fuga_op603_no6() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Czerny_Praeludium_et_Fuga_Op603_No6.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Czerny_Praeludium_et_Fuga_Op603_No6.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
