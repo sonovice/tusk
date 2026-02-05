@@ -656,3 +656,14 @@ fn test_roundtrip_hummel_concerto_for_trumpet_e_major() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_hummel_preludes_op67_no11() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Hummel_Preludes_Op67_No11.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Hummel_Preludes_Op67_No11.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

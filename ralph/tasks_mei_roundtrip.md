@@ -26,6 +26,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `line` control event parsing to Measure deserializer (source: Czerny_Praeludium_et_Fuga_Op603_No6.mei)
 - [x] [MISSING_ELEMENT] Add `annot` child element parsing to NotesStmt deserializer (source: Grieg_Butterfly_Op43_No1.mei)
 - [x] [MISSING_ATTR] Add `bezier` and `bulge` attribute parsing to AttPhraseVis deserializer (source: Hummel_Preludes_Op67_No11.mei)
+- [ ] [MISSING_ELEMENT] Add `syl` child element parsing to Note deserializer (source: Ives_TheCage.mei)
 
 ---
 
@@ -81,7 +82,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Haydn_StringQuartet_Op1_No1.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Hopkins_GatherRoundTheChristmasTree.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Hummel_Concerto_for_trumpet_E-major.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Hummel_Preludes_Op67_No11.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Hummel_Preludes_Op67_No11.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Ives_TheCage.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Joplin_Elite_Syncopations.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Joplin_Maple_leaf_Rag.mei`
