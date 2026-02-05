@@ -12,8 +12,9 @@ use tusk_model::att::{
     AttPhraseVis, AttRefrainAnl, AttRefrainGes, AttRefrainLog, AttRefrainVis,
 };
 use tusk_model::elements::{
-    Group, GroupChild, Line, LineChild, Phrase, Q, QChild, Quote, QuoteChild, Refrain,
-    RefrainChild, Stack, StackChild,
+    Byline, BylineChild, Explicit, ExplicitChild, Group, GroupChild, Line, LineChild, Phrase, Q,
+    QChild, Quote, QuoteChild, Refrain, RefrainChild, Rubric, RubricChild, Stack, StackChild,
+    Stamp, StampChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -953,4 +954,614 @@ pub(crate) fn parse_stack_from_event<R: BufRead>(
     is_empty: bool,
 ) -> DeserializeResult<Stack> {
     Stack::from_mei_event(reader, attrs, is_empty)
+}
+
+// ============================================================================
+// Rubric element implementation
+// ============================================================================
+
+impl MeiDeserialize for Rubric {
+    fn element_name() -> &'static str {
+        "rubric"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut elem = Rubric::default();
+
+        // Extract attributes
+        elem.common.extract_attributes(&mut attrs)?;
+        elem.bibl.extract_attributes(&mut attrs)?;
+        elem.facsimile.extract_attributes(&mut attrs)?;
+        elem.lang.extract_attributes(&mut attrs)?;
+
+        // Rubric-specific func attribute
+        extract_attr!(attrs, "func", string elem.func);
+
+        // Rubric has mixed content
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("rubric")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            elem.children.push(RubricChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        parse_rubric_child(reader, &mut elem, &name, child_attrs, child_empty)?;
+                    }
+                }
+            }
+        }
+
+        Ok(elem)
+    }
+}
+
+/// Parse a child element inside Rubric
+fn parse_rubric_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    elem: &mut Rubric,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<()> {
+    match name {
+        "rend" => {
+            let child = super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Rend(Box::new(child)));
+        }
+        "lb" => {
+            let child = super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Lb(Box::new(child)));
+        }
+        "seg" => {
+            let child = super::text::parse_seg_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Seg(Box::new(child)));
+        }
+        "fig" => {
+            let child = super::text::parse_fig_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Fig(Box::new(child)));
+        }
+        "annot" => {
+            let child = super::header::parse_annot_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Annot(Box::new(child)));
+        }
+        "bibl" => {
+            let child = super::header::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Bibl(Box::new(child)));
+        }
+        "ref" => {
+            let child = super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Ref(Box::new(child)));
+        }
+        "ptr" => {
+            let child = super::header::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Ptr(Box::new(child)));
+        }
+        "num" => {
+            let child = super::misc::parse_num_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Num(Box::new(child)));
+        }
+        "date" => {
+            let child = super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Date(Box::new(child)));
+        }
+        "name" => {
+            let child = super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Name(Box::new(child)));
+        }
+        "persName" => {
+            let child =
+                super::header::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::PersName(Box::new(child)));
+        }
+        "corpName" => {
+            let child =
+                super::header::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::CorpName(Box::new(child)));
+        }
+        "title" => {
+            let child = super::header::parse_title_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Title(Box::new(child)));
+        }
+        "p" => {
+            let child = super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::P(Box::new(child)));
+        }
+        "head" => {
+            let child = super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Head(Box::new(child)));
+        }
+        "q" => {
+            let child = Q::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Q(Box::new(child)));
+        }
+        "stack" => {
+            let child = Stack::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Stack(Box::new(child)));
+        }
+        "stamp" => {
+            let child = Stamp::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(RubricChild::Stamp(Box::new(child)));
+        }
+        _ => {
+            // Skip unknown children in lenient mode
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse a `<rubric>` element from within another element.
+pub(crate) fn parse_rubric_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Rubric> {
+    Rubric::from_mei_event(reader, attrs, is_empty)
+}
+
+// ============================================================================
+// Explicit element implementation
+// ============================================================================
+
+impl MeiDeserialize for Explicit {
+    fn element_name() -> &'static str {
+        "explicit"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut elem = Explicit::default();
+
+        // Extract attributes
+        elem.common.extract_attributes(&mut attrs)?;
+        elem.bibl.extract_attributes(&mut attrs)?;
+        elem.facsimile.extract_attributes(&mut attrs)?;
+        elem.lang.extract_attributes(&mut attrs)?;
+
+        // Explicit has mixed content
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("explicit")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            elem.children.push(ExplicitChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        parse_explicit_child(reader, &mut elem, &name, child_attrs, child_empty)?;
+                    }
+                }
+            }
+        }
+
+        Ok(elem)
+    }
+}
+
+/// Parse a child element inside Explicit
+fn parse_explicit_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    elem: &mut Explicit,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<()> {
+    match name {
+        "rend" => {
+            let child = super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Rend(Box::new(child)));
+        }
+        "lb" => {
+            let child = super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Lb(Box::new(child)));
+        }
+        "seg" => {
+            let child = super::text::parse_seg_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Seg(Box::new(child)));
+        }
+        "fig" => {
+            let child = super::text::parse_fig_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Fig(Box::new(child)));
+        }
+        "annot" => {
+            let child = super::header::parse_annot_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Annot(Box::new(child)));
+        }
+        "bibl" => {
+            let child = super::header::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Bibl(Box::new(child)));
+        }
+        "ref" => {
+            let child = super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Ref(Box::new(child)));
+        }
+        "ptr" => {
+            let child = super::header::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Ptr(Box::new(child)));
+        }
+        "num" => {
+            let child = super::misc::parse_num_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Num(Box::new(child)));
+        }
+        "date" => {
+            let child = super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Date(Box::new(child)));
+        }
+        "name" => {
+            let child = super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Name(Box::new(child)));
+        }
+        "persName" => {
+            let child =
+                super::header::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::PersName(Box::new(child)));
+        }
+        "corpName" => {
+            let child =
+                super::header::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::CorpName(Box::new(child)));
+        }
+        "title" => {
+            let child = super::header::parse_title_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Title(Box::new(child)));
+        }
+        "p" => {
+            let child = super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::P(Box::new(child)));
+        }
+        "head" => {
+            let child = super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Head(Box::new(child)));
+        }
+        "q" => {
+            let child = Q::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Q(Box::new(child)));
+        }
+        "stack" => {
+            let child = Stack::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Stack(Box::new(child)));
+        }
+        "stamp" => {
+            let child = Stamp::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(ExplicitChild::Stamp(Box::new(child)));
+        }
+        _ => {
+            // Skip unknown children in lenient mode
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse an `<explicit>` element from within another element.
+pub(crate) fn parse_explicit_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Explicit> {
+    Explicit::from_mei_event(reader, attrs, is_empty)
+}
+
+// ============================================================================
+// Byline element implementation
+// ============================================================================
+
+impl MeiDeserialize for Byline {
+    fn element_name() -> &'static str {
+        "byline"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut elem = Byline::default();
+
+        // Extract attributes
+        elem.common.extract_attributes(&mut attrs)?;
+        elem.bibl.extract_attributes(&mut attrs)?;
+        elem.facsimile.extract_attributes(&mut attrs)?;
+        elem.lang.extract_attributes(&mut attrs)?;
+
+        // Byline has mixed content
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("byline")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            elem.children.push(BylineChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        parse_byline_child(reader, &mut elem, &name, child_attrs, child_empty)?;
+                    }
+                }
+            }
+        }
+
+        Ok(elem)
+    }
+}
+
+/// Parse a child element inside Byline
+fn parse_byline_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    elem: &mut Byline,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<()> {
+    match name {
+        "rend" => {
+            let child = super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Rend(Box::new(child)));
+        }
+        "lb" => {
+            let child = super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Lb(Box::new(child)));
+        }
+        "seg" => {
+            let child = super::text::parse_seg_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Seg(Box::new(child)));
+        }
+        "fig" => {
+            let child = super::text::parse_fig_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Fig(Box::new(child)));
+        }
+        "annot" => {
+            let child = super::header::parse_annot_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Annot(Box::new(child)));
+        }
+        "bibl" => {
+            let child = super::header::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Bibl(Box::new(child)));
+        }
+        "ref" => {
+            let child = super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Ref(Box::new(child)));
+        }
+        "ptr" => {
+            let child = super::header::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Ptr(Box::new(child)));
+        }
+        "num" => {
+            let child = super::misc::parse_num_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Num(Box::new(child)));
+        }
+        "date" => {
+            let child = super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Date(Box::new(child)));
+        }
+        "name" => {
+            let child = super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Name(Box::new(child)));
+        }
+        "persName" => {
+            let child =
+                super::header::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::PersName(Box::new(child)));
+        }
+        "corpName" => {
+            let child =
+                super::header::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::CorpName(Box::new(child)));
+        }
+        "title" => {
+            let child = super::header::parse_title_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Title(Box::new(child)));
+        }
+        "creator" => {
+            let child = super::header::parse_creator_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Creator(Box::new(child)));
+        }
+        "editor" => {
+            let child = super::header::parse_editor_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Editor(Box::new(child)));
+        }
+        "funder" => {
+            let child = super::header::parse_funder_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Funder(Box::new(child)));
+        }
+        "sponsor" => {
+            let child = super::header::parse_sponsor_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Sponsor(Box::new(child)));
+        }
+        "contributor" => {
+            let child =
+                super::header::parse_contributor_from_event(reader, child_attrs, child_empty)?;
+            elem.children
+                .push(BylineChild::Contributor(Box::new(child)));
+        }
+        "q" => {
+            let child = Q::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Q(Box::new(child)));
+        }
+        "stack" => {
+            let child = Stack::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Stack(Box::new(child)));
+        }
+        "stamp" => {
+            let child = Stamp::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(BylineChild::Stamp(Box::new(child)));
+        }
+        _ => {
+            // Skip unknown children in lenient mode
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse a `<byline>` element from within another element.
+pub(crate) fn parse_byline_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Byline> {
+    Byline::from_mei_event(reader, attrs, is_empty)
+}
+
+// ============================================================================
+// Stamp element implementation
+// ============================================================================
+
+impl MeiDeserialize for Stamp {
+    fn element_name() -> &'static str {
+        "stamp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut elem = Stamp::default();
+
+        // Extract attributes
+        elem.common.extract_attributes(&mut attrs)?;
+        elem.bibl.extract_attributes(&mut attrs)?;
+        elem.datable.extract_attributes(&mut attrs)?;
+        elem.facsimile.extract_attributes(&mut attrs)?;
+        elem.lang.extract_attributes(&mut attrs)?;
+
+        // Stamp has mixed content
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("stamp")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            elem.children.push(StampChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        parse_stamp_child(reader, &mut elem, &name, child_attrs, child_empty)?;
+                    }
+                }
+            }
+        }
+
+        Ok(elem)
+    }
+}
+
+/// Parse a child element inside Stamp
+fn parse_stamp_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    elem: &mut Stamp,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<()> {
+    match name {
+        "rend" => {
+            let child = super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Rend(Box::new(child)));
+        }
+        "lb" => {
+            let child = super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Lb(Box::new(child)));
+        }
+        "seg" => {
+            let child = super::text::parse_seg_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Seg(Box::new(child)));
+        }
+        "fig" => {
+            let child = super::text::parse_fig_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Fig(Box::new(child)));
+        }
+        "annot" => {
+            let child = super::header::parse_annot_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Annot(Box::new(child)));
+        }
+        "bibl" => {
+            let child = super::header::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Bibl(Box::new(child)));
+        }
+        "ref" => {
+            let child = super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Ref(Box::new(child)));
+        }
+        "ptr" => {
+            let child = super::header::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Ptr(Box::new(child)));
+        }
+        "num" => {
+            let child = super::misc::parse_num_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Num(Box::new(child)));
+        }
+        "date" => {
+            let child = super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Date(Box::new(child)));
+        }
+        "name" => {
+            let child = super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Name(Box::new(child)));
+        }
+        "persName" => {
+            let child =
+                super::header::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::PersName(Box::new(child)));
+        }
+        "corpName" => {
+            let child =
+                super::header::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::CorpName(Box::new(child)));
+        }
+        "title" => {
+            let child = super::header::parse_title_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Title(Box::new(child)));
+        }
+        "p" => {
+            let child = super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::P(Box::new(child)));
+        }
+        "head" => {
+            let child = super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Head(Box::new(child)));
+        }
+        "q" => {
+            let child = Q::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Q(Box::new(child)));
+        }
+        "stack" => {
+            let child = Stack::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Stack(Box::new(child)));
+        }
+        "stamp" => {
+            let child = Stamp::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(StampChild::Stamp(Box::new(child)));
+        }
+        _ => {
+            // Skip unknown children in lenient mode
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse a `<stamp>` element from within another element.
+pub(crate) fn parse_stamp_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Stamp> {
+    Stamp::from_mei_event(reader, attrs, is_empty)
 }

@@ -464,3 +464,251 @@ fn stack_roundtrip_nested() {
         _ => panic!("Expected nested Stack"),
     }
 }
+
+// ============================================================================
+// Rubric Tests
+// ============================================================================
+
+#[test]
+fn rubric_roundtrip_empty() {
+    use tusk_model::elements::Rubric;
+
+    let original = Rubric::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rubric::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn rubric_roundtrip_with_xml_id() {
+    use tusk_model::elements::Rubric;
+
+    let mut original = Rubric::default();
+    original.common.xml_id = Some("rubric-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rubric::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("rubric-1".to_string()));
+}
+
+#[test]
+fn rubric_roundtrip_with_text() {
+    use tusk_model::elements::{Rubric, RubricChild};
+
+    let mut original = Rubric::default();
+    original.common.xml_id = Some("rubric-1".to_string());
+    original
+        .children
+        .push(RubricChild::Text("Incipit liber primus".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rubric::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        RubricChild::Text(t) => assert_eq!(t, "Incipit liber primus"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+#[test]
+fn rubric_roundtrip_with_func() {
+    use tusk_model::elements::Rubric;
+
+    let mut original = Rubric::default();
+    original.common.xml_id = Some("rubric-1".to_string());
+    original.func = Some("opening".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Rubric::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.func, Some("opening".to_string()));
+}
+
+// ============================================================================
+// Explicit Tests
+// ============================================================================
+
+#[test]
+fn explicit_roundtrip_empty() {
+    use tusk_model::elements::Explicit;
+
+    let original = Explicit::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Explicit::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn explicit_roundtrip_with_xml_id() {
+    use tusk_model::elements::Explicit;
+
+    let mut original = Explicit::default();
+    original.common.xml_id = Some("explicit-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Explicit::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("explicit-1".to_string()));
+}
+
+#[test]
+fn explicit_roundtrip_with_text() {
+    use tusk_model::elements::{Explicit, ExplicitChild};
+
+    let mut original = Explicit::default();
+    original.common.xml_id = Some("explicit-1".to_string());
+    original
+        .children
+        .push(ExplicitChild::Text("Explicit liber primus".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Explicit::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ExplicitChild::Text(t) => assert_eq!(t, "Explicit liber primus"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// Byline Tests
+// ============================================================================
+
+#[test]
+fn byline_roundtrip_empty() {
+    use tusk_model::elements::Byline;
+
+    let original = Byline::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Byline::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn byline_roundtrip_with_xml_id() {
+    use tusk_model::elements::Byline;
+
+    let mut original = Byline::default();
+    original.common.xml_id = Some("byline-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Byline::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("byline-1".to_string()));
+}
+
+#[test]
+fn byline_roundtrip_with_text() {
+    use tusk_model::elements::{Byline, BylineChild};
+
+    let mut original = Byline::default();
+    original.common.xml_id = Some("byline-1".to_string());
+    original
+        .children
+        .push(BylineChild::Text("by Johann Sebastian Bach".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Byline::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        BylineChild::Text(t) => assert_eq!(t, "by Johann Sebastian Bach"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// Stamp Tests
+// ============================================================================
+
+#[test]
+fn stamp_roundtrip_empty() {
+    use tusk_model::elements::Stamp;
+
+    let original = Stamp::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Stamp::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn stamp_roundtrip_with_xml_id() {
+    use tusk_model::elements::Stamp;
+
+    let mut original = Stamp::default();
+    original.common.xml_id = Some("stamp-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Stamp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("stamp-1".to_string()));
+}
+
+#[test]
+fn stamp_roundtrip_with_text() {
+    use tusk_model::elements::{Stamp, StampChild};
+
+    let mut original = Stamp::default();
+    original.common.xml_id = Some("stamp-1".to_string());
+    original
+        .children
+        .push(StampChild::Text("British Library".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Stamp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StampChild::Text(t) => assert_eq!(t, "British Library"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+#[test]
+fn stamp_roundtrip_with_datable() {
+    use tusk_model::elements::Stamp;
+
+    let mut original = Stamp::default();
+    original.common.xml_id = Some("stamp-1".to_string());
+    original.datable.isodate = Some("1850-01-15".parse().unwrap());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Stamp::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.datable.isodate.is_some());
+}
+
+#[test]
+fn stamp_roundtrip_nested() {
+    use tusk_model::elements::{Stamp, StampChild};
+
+    let mut original = Stamp::default();
+    original.common.xml_id = Some("stamp-outer".to_string());
+
+    let mut inner = Stamp::default();
+    inner.common.xml_id = Some("stamp-inner".to_string());
+    inner.children.push(StampChild::Text("inner".to_string()));
+    original.children.push(StampChild::Stamp(Box::new(inner)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Stamp::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StampChild::Stamp(inner) => {
+            assert_eq!(inner.common.xml_id, Some("stamp-inner".to_string()));
+        }
+        _ => panic!("Expected nested Stamp"),
+    }
+}
