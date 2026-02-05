@@ -58,16 +58,15 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 3: Harmony Module
 
 ### 3.1 Chord Definitions and Figured Bass
-- [ ] Implement `ChordTable`, `ChordDef`, `ChordMember`, `Barre`
-- [ ] Add roundtrip tests
+- [x] Implement `ChordTable`, `ChordDef`, `ChordMember`, `Barre`
+- [x] Add roundtrip tests
 
 ---
 
 ## Phase 4: Editorial Module Completion
 
 ### 4.1 Remaining Editorial Elements
-- [ ] Implement abbreviation/expansion: `Abbr`, `Expan` and original/regularized: `Orig`, `Reg`
-- [ ] Implement corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
+- [ ] Implement abbreviation/expansion: `Abbr`, `Expan` and original/regularized: `Orig`, `Reg` and corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
 - [ ] Add roundtrip tests
 
 ---

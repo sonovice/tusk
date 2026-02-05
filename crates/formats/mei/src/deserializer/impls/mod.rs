@@ -18,6 +18,7 @@ use tusk_model::att::{
     AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
 };
 
+mod chords;
 mod cmn_core;
 mod control;
 mod defs;
@@ -101,6 +102,13 @@ macro_rules! extract_attr {
             if !items.is_empty() {
                 $field = items;
             }
+        }
+    };
+    // For SpaceSeparated<String> fields
+    ($attrs:expr, $name:expr, space_separated $field:expr) => {
+        if let Some(value) = $attrs.remove($name) {
+            let items: Vec<String> = value.split_whitespace().map(|s| s.to_string()).collect();
+            $field = Some(tusk_model::generated::SpaceSeparated::new(items));
         }
     };
 }
