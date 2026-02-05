@@ -972,6 +972,7 @@ impl MeiSerialize for RendChild {
             RendChild::Ref(_) => "ref",
             RendChild::Ptr(_) => "ptr",
             RendChild::Identifier(_) => "identifier",
+            RendChild::Symbol(_) => "symbol",
             _ => "unknown",
         }
     }
@@ -981,7 +982,10 @@ impl MeiSerialize for RendChild {
     }
 
     fn has_children(&self) -> bool {
-        !matches!(self, RendChild::Text(_) | RendChild::Lb(_))
+        !matches!(
+            self,
+            RendChild::Text(_) | RendChild::Lb(_) | RendChild::Symbol(_)
+        )
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
@@ -1004,6 +1008,7 @@ impl MeiSerialize for RendChild {
             RendChild::Ref(elem) => elem.serialize_mei(writer),
             RendChild::Ptr(elem) => elem.serialize_mei(writer),
             RendChild::Identifier(elem) => elem.serialize_mei(writer),
+            RendChild::Symbol(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "RendChild::{}",
                 other.element_name()
