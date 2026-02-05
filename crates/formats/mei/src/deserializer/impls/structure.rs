@@ -14,9 +14,9 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
-    EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv, MRest,
-    MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Parts, Pb, Pedal,
+    Add, Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam,
+    Ending, EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv,
+    MRest, MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Parts, Pb, Pedal,
     Phrase, Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff,
     StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
@@ -459,6 +459,16 @@ impl MeiDeserialize for Staff {
                     "layer" => {
                         let layer = Layer::from_mei_event(reader, child_attrs, child_empty)?;
                         staff.children.push(StaffChild::Layer(Box::new(layer)));
+                    }
+                    "staffDef" => {
+                        let staff_def = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        staff
+                            .children
+                            .push(StaffChild::StaffDef(Box::new(staff_def)));
+                    }
+                    "add" => {
+                        let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
+                        staff.children.push(StaffChild::Add(Box::new(add)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
@@ -1316,5 +1326,51 @@ mod tests {
             }
             other => panic!("Expected Line, got {:?}", other),
         }
+    }
+
+    // ============================================================================
+    // Staff tests
+    // ============================================================================
+
+    #[test]
+    fn staff_deserializes_with_staff_def_child() {
+        let xml = r#"<staff n="1">
+            <staffDef n="1" lines="5" clef.shape="G" clef.line="2"/>
+            <layer n="1">
+                <note pname="c" oct="4" dur="4"/>
+            </layer>
+        </staff>"#;
+        let staff = Staff::from_mei_str(xml).expect("should deserialize");
+
+        // Should have staffDef and layer as children
+        assert_eq!(staff.children.len(), 2);
+
+        // First child should be staffDef
+        match &staff.children[0] {
+            StaffChild::StaffDef(staff_def) => {
+                assert!(staff_def.staff_def_log.lines.is_some());
+            }
+            other => panic!("Expected StaffDef, got {:?}", other),
+        }
+
+        // Second child should be layer
+        assert!(matches!(&staff.children[1], StaffChild::Layer(_)));
+    }
+
+    #[test]
+    fn staff_deserializes_with_add_child() {
+        let xml = r#"<staff n="1">
+            <layer n="1">
+                <note pname="c" oct="4" dur="4"/>
+            </layer>
+            <add/>
+        </staff>"#;
+        let staff = Staff::from_mei_str(xml).expect("should deserialize");
+
+        // Should have layer and add as children
+        assert_eq!(staff.children.len(), 2);
+
+        // Second child should be add
+        assert!(matches!(&staff.children[1], StaffChild::Add(_)));
     }
 }
