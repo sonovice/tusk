@@ -36,6 +36,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Add `StaffDef` and `Add` handling to StaffChild serializer, add `Add` handling to LayerChild serializer/deserializer - currently StaffChild returns "unknown" for non-Layer variants (source: Parker-Gillespie_ShawNuff.mei)
 - [x] [MISSING_ATTR] Add `clef.visible` attribute to StaffDef serializer (source: Parker-Gillespie_ShawNuff.mei)
 - [x] [SERIALIZER_BUG] Add `space` child element serialization/deserialization to Add element - currently Add only serializes Text children (source: Parker-Gillespie_ShawNuff.mei)
+- [ ] [SERIALIZER_BUG] Add LayerDef children serialization - currently `serialize_children` returns Ok(()) without serializing any children (InstrDef, Label, LabelAbbr, MeterSig, MeterSigGrp, Ambitus) (source: Ponchielli_LarrivoDelRe.mei)
 
 ---
 
