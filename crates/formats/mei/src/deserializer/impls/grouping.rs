@@ -11,7 +11,7 @@ use tusk_model::att::{
     AttGraceGrpVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, Chord, GraceGrp, GraceGrpChild, Note, Rest, Space, Tuplet, TupletChild,
+    App, Beam, BeamChild, Chord, GraceGrp, GraceGrpChild, Note, Rest, Space, Tuplet, TupletChild,
 };
 
 use super::{extract_attr, from_attr_string, parse_clef_from_event};
@@ -217,6 +217,10 @@ impl MeiDeserialize for Beam {
                     "clef" => {
                         let clef = parse_clef_from_event(reader, child_attrs, child_empty)?;
                         beam.children.push(BeamChild::Clef(Box::new(clef)));
+                    }
+                    "app" => {
+                        let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                        beam.children.push(BeamChild::App(Box::new(app)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

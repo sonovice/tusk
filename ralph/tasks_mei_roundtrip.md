@@ -48,7 +48,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] AnnotChild serializer incomplete - missing Ref, Ptr, and 47 other variants (only handles Text, P, Head, Rend, Name, PersName, CorpName, Date, Identifier, Lb, Title); causes annot text/ref content loss (sources: multiple_sectionsII.mei, Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
 - [x] [SERIALIZER_BUG] PgFootChild serializer incomplete - missing Table variant (and ~50 other variants); causes table to serialize as 'unknown' (source: part_element.mei)
 - [x] [SERIALIZER_BUG] SectionChild::Annot serialization incomplete - `collect_all_attributes()` returns empty, `has_children()` returns false, `serialize_children()` returns error; causes annot text content to be lost in sections (source: Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
-- [ ] [MISSING_ELEMENT] Critical apparatus support: PhysDesc deserializer missing `handList` and `titlePage` children; Measure, Beam, and Layer deserializers missing `app` child element for editorial markup (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
+- [x] [MISSING_ELEMENT] Critical apparatus support: PhysDesc deserializer missing `handList` and `titlePage` children; Measure, Beam, and Layer deserializers missing `app` child element for editorial markup (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 
 ---
 

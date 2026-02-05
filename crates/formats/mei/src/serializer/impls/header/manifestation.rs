@@ -260,6 +260,8 @@ impl MeiSerialize for PhysDescChild {
             PhysDescChild::Extent(elem) => elem.serialize_mei(writer),
             PhysDescChild::Head(elem) => elem.serialize_mei(writer),
             PhysDescChild::PlateNum(elem) => elem.serialize_mei(writer),
+            PhysDescChild::HandList(elem) => elem.serialize_mei(writer),
+            PhysDescChild::TitlePage(elem) => elem.serialize_mei(writer),
             // Elements not yet fully implemented - return error
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PhysDescChild::{}",

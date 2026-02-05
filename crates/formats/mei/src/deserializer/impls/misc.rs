@@ -7,7 +7,8 @@
 //! - Various supporting elements (Dedication, Creation, History, etc.)
 
 use super::header::{
-    parse_annot_from_event, parse_geog_name_from_event, parse_performance_from_event,
+    parse_annot_from_event, parse_geog_name_from_event, parse_hand_list_from_event,
+    parse_performance_from_event,
 };
 use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
@@ -16,6 +17,7 @@ use super::{
     parse_front_from_event, parse_gen_desc_from_event, parse_head_from_event,
     parse_identifier_from_event, parse_label_from_event, parse_lb_from_event, parse_p_from_event,
     parse_rend_from_event, parse_resp_stmt_from_event, parse_title_from_event,
+    parse_title_page_from_event,
 };
 use crate::deserializer::MixedContent;
 use std::io::BufRead;
@@ -2752,6 +2754,18 @@ pub(crate) fn parse_phys_desc_from_event<R: BufRead>(
                     phys_desc
                         .children
                         .push(PhysDescChild::Extent(Box::new(extent)));
+                }
+                "handList" => {
+                    let hand_list = parse_hand_list_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc
+                        .children
+                        .push(PhysDescChild::HandList(Box::new(hand_list)));
+                }
+                "titlePage" => {
+                    let title_page = parse_title_page_from_event(reader, child_attrs, child_empty)?;
+                    phys_desc
+                        .children
+                        .push(PhysDescChild::TitlePage(Box::new(title_page)));
                 }
                 // Other physDesc children are skipped for now
                 _ => {

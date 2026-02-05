@@ -14,11 +14,11 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Add, Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam,
-    Ending, EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv,
-    MRest, MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Parts, Pb, Pedal,
-    Phrase, Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff,
-    StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
+    Add, App, Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir,
+    Dynam, Ending, EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild,
+    Line, Lv, MRest, MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Parts,
+    Pb, Pedal, Phrase, Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur,
+    Space, Staff, StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -587,6 +587,10 @@ impl MeiDeserialize for Layer {
                         let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::Add(Box::new(add)));
                     }
+                    "app" => {
+                        let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::App(Box::new(app)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -753,6 +757,10 @@ impl MeiDeserialize for Measure {
                         measure
                             .children
                             .push(MeasureChild::StaffDef(Box::new(staff_def)));
+                    }
+                    "app" => {
+                        let app = App::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::App(Box::new(app)));
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {
