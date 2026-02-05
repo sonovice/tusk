@@ -1203,6 +1203,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Div(div) => div.collect_all_attributes(),
             SectionChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
             SectionChild::Ending(ending) => ending.collect_all_attributes(),
+            SectionChild::Annot(annot) => annot.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -1219,6 +1220,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Div(div) => div.has_children(),
             SectionChild::StaffDef(staff_def) => staff_def.has_children(),
             SectionChild::Ending(ending) => ending.has_children(),
+            SectionChild::Annot(annot) => annot.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -1235,6 +1237,7 @@ impl MeiSerialize for SectionChild {
             SectionChild::Div(div) => div.serialize_children(writer),
             SectionChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
             SectionChild::Ending(ending) => ending.serialize_children(writer),
+            SectionChild::Annot(annot) => annot.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "SectionChild::{}::serialize_children",
                 other.element_name()
