@@ -17,7 +17,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests for editorial markup
 
 ### 1.2 Header Element Deserializers
-- [ ] Add deserializers for address/geographic elements (12): `Address`, `AddrLine`, `PostBox`, `PostCode`, `Street`, `District`, `Region`, `Settlement`, `Country`, `Bloc`, `GeogFeat`, `GeogName`
+- [x] Add deserializers for address/geographic elements (12): `Address`, `AddrLine`, `PostBox`, `PostCode`, `Street`, `District`, `Region`, `Settlement`, `Country`, `Bloc`, `GeogFeat`, `GeogName`
 - [ ] Add deserializers for agent/responsibility elements (7): `Creator`, `Editor`, `Funder`, `Sponsor`, `Contributor`, `Resp`, `RespStmt`
 - [ ] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
 - [ ] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
