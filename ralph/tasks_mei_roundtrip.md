@@ -40,7 +40,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] RendChild serializer incomplete - missing Symbol variant (and many others), returns "unknown" and fails to serialize (source: Praetorius_PuerNobisNascitur.mei)
 - [x] [SERIALIZER_BUG] TupletChild serializer incomplete - missing BTrem variant (and many others: FTrem, Clef, ClefGrp, BarLine, KeySig, MeterSig, MeterSigGrp, Custos, TabDurSym, TabGrp, Pad, HandShift, HalfmRpt, BeatRpt, Supplied, Subst, App, Reg, Del, Corr, Add, Restore, Choice, Unclear, Orig, Gap, Damage, Sic) (source: Schubert_Erlkoenig.mei)
 - [x] [MISSING_ELEMENT] Add `date` child element parsing to Annot deserializer in `parse_annot_from_event` (source: Schubert_Lindenbaum.mei)
-- [ ] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
+- [x] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
 
 ---
 

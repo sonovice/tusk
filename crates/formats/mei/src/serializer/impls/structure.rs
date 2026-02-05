@@ -865,6 +865,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Line(line) => line.collect_all_attributes(),
             MeasureChild::Sb(sb) => sb.collect_all_attributes(),
             MeasureChild::Pb(pb) => pb.collect_all_attributes(),
+            MeasureChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -897,6 +898,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Line(line) => line.has_children(),
             MeasureChild::Sb(_) => false, // Sb is empty
             MeasureChild::Pb(pb) => pb.has_children(),
+            MeasureChild::StaffDef(staff_def) => staff_def.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -926,6 +928,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Line(line) => line.serialize_children(writer),
             MeasureChild::Sb(_) => Ok(()), // Sb is empty
             MeasureChild::Pb(pb) => pb.serialize_children(writer),
+            MeasureChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()
