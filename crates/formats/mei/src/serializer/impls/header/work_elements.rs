@@ -584,6 +584,7 @@ impl MeiSerialize for CreationChild {
             CreationChild::Extent(elem) => elem.serialize_mei(writer),
             CreationChild::Rend(elem) => elem.serialize_mei(writer),
             CreationChild::Annot(elem) => elem.serialize_mei(writer),
+            CreationChild::GeogName(elem) => elem.serialize_mei(writer),
             // The following children need dedicated serializers - for now write empty element
             _ => {
                 let name = self.element_name();

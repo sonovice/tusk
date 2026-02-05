@@ -506,3 +506,72 @@ fn test_roundtrip_czerny_praeludium_et_fuga_op603_no6() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_czerny_string_quartet_d_minor() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Czerny_StringQuartet_d-minor.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Czerny_StringQuartet_d-minor.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_debussy_golliwoggs_cakewalk() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Debussy_Golliwogg'sCakewalk.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Debussy_Golliwogg'sCakewalk.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_debussy_mandoline() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Debussy_Mandoline.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Debussy_Mandoline.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_echigo_jishi() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Echigo-Jishi.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Echigo-Jishi.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_gluck_che_faro_senza_euridice() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Gluck_CheFaroSenzaEuridice.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Gluck_CheFaroSenzaEuridice.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_grieg_butterfly_op43_no1() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Grieg_Butterfly_Op43_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Grieg_Butterfly_Op43_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

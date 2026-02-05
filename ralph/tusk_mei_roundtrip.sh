@@ -8,13 +8,11 @@ if [ -z "$ITERATIONS" ]; then
   exit 1
 fi
 
-TASKS_FILE="docs/tasks_mei_roundtrip.md"
+TASKS_FILE="ralph/tasks_mei_roundtrip.md"
 FIXTURES_DIR="specs/mei/sample-encodings/MEI_5.1/Music"
 
 # Build list of documentation files to include
 DOCS="@docs/plan.md @$TASKS_FILE"
-[ -f "docs/conversion-notes.md" ] && DOCS="$DOCS @docs/conversion-notes.md"
-[ -f "docs/losses.md" ] && DOCS="$DOCS @docs/losses.md"
 
 PROMPT="# ENTROPY REMINDER
 This codebase will outlive you. Every shortcut becomes someone else's burden. Every hack compounds into technical debt that slows the whole team down.
@@ -25,23 +23,37 @@ $DOCS
 You can always find detailed information in the 'docs/' folder.
 File format specifications can be found in 'specs/' for MusicXML and MEI.
 
-# WORKFLOW
+# WORKFLOW (TWO DISTINCT MODES)
 
-CRITICAL: Do ONE task per iteration. Pick the FIRST unchecked '- [ ]' task, complete it, commit, STOP.
+Read @$TASKS_FILE top-to-bottom. Find the FIRST line with '- [ ]' (unchecked task). Then follow the appropriate mode below.
 
-1. Read @$TASKS_FILE top-to-bottom. Find the FIRST line with '- [ ]' (unchecked task).
-2. Do ONLY that task:
-   - Infrastructure task → create/update the test harness
-   - [MISSING_ELEMENT/ATTR/etc] task → fix the deserializer/serializer
-   - Fixture task → run roundtrip test on that MEI file
-3. If fixture roundtrip FAILS:
-   - Add blocking issue under '## Generated Tasks': \`- [ ] [CATEGORY] Description (source: file.mei)\`
-   - Do NOT mark fixture done (it will retry after blocker is fixed)
-4. If fixture roundtrip SUCCEEDS:
+## MODE A: FIXTURE TESTING (Roundtrip test tasks)
+When the task starts with 'Roundtrip test:' - this is DISCOVERY ONLY, never fix code.
+
+1. Run the roundtrip test for that MEI file. If it does not exist, implement it first.
+2. If SUCCEEDS:
    - Mark done: '- [ ]' → '- [x]'
-5. Run \`cargo fmt\` and \`cargo clippy\`.
-6. Commit changes.
-7. STOP. Do not continue to next task. The next iteration handles the next task.
+   - Continue to next fixture (no commit yet)
+   - Keep testing until one FAILS or all done
+3. If FAILS:
+   - DO NOT FIX ANYTHING - only identify issues
+   - Check for RELATED issues: if \`<beam>\` is missing a child, check if it's missing OTHER children too based on the generated model
+   - Add ONE blocking task under '## Generated Tasks' listing ALL found issues:
+     \`- [ ] [CATEGORY] Fix element_name: missing foo, bar, baz (source: file.mei)\`
+   - Do NOT mark fixture done
+4. After testing (success batch or first failure):
+   - Run \`cargo fmt\` and \`cargo clippy\`
+   - Commit all changes
+   - STOP
+
+## MODE B: FIXING TASKS ([MISSING_*] or infrastructure tasks)
+When the task is [MISSING_ELEMENT], [MISSING_ATTR], or infrastructure - this is when you write code.
+
+1. Fix the issue(s) listed in the task
+2. Mark task done: '- [ ]' → '- [x]'
+3. Run \`cargo fmt\` and \`cargo clippy\`
+4. Commit
+5. STOP (the blocked fixture will retry next iteration)
 
 # MEI ROUNDTRIP TEST APPROACH
 
@@ -79,7 +91,8 @@ NOTE: This should almost never be needed. The MEI model is generated from the of
 - Keep commits focused and atomic.
 - Never add Claude to attribution or as a contributor.
 - Be really detailed in commit messages.
-- ONE TASK PER ITERATION. After commit, STOP immediately. Do not look for more work.
+- Fixtures: DISCOVERY ONLY - never fix code during fixture testing. Batch successes, STOP on failure.
+- [MISSING_*] tasks: This is the ONLY time you write code to fix issues.
 - When fixing deserialization/serialization issues, update @docs/conversion-notes.md if relevant.
 - This is a rather new codebase so backwards compatibility is never needed.
 

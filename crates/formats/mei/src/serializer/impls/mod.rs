@@ -34,10 +34,20 @@ mod text_containers;
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
+/// For floats that are whole numbers (e.g., 25.0), outputs them without decimal (e.g., "25").
 pub(crate) fn to_attr_string<T: Serialize>(v: &T) -> Option<String> {
-    serde_json::to_string(v)
-        .ok()
-        .map(|s| s.trim_matches('"').to_string())
+    serde_json::to_string(v).ok().map(|s| {
+        let s = s.trim_matches('"').to_string();
+        // If it looks like a float that's actually a whole number (e.g., "25.0"),
+        // strip the ".0" suffix to match MEI conventions
+        if let Some(stripped) = s.strip_suffix(".0") {
+            // Make sure the stripped part is a valid integer
+            if stripped.parse::<i64>().is_ok() {
+                return stripped.to_string();
+            }
+        }
+        s
+    })
 }
 
 /// Serialize a Vec of serde-serializable values to space-separated string.

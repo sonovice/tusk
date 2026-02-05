@@ -546,6 +546,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Clef(clef) => clef.collect_all_attributes(),
             LayerChild::BTrem(btrem) => btrem.collect_all_attributes(),
             LayerChild::FTrem(ftrem) => ftrem.collect_all_attributes(),
+            LayerChild::MSpace(mspace) => mspace.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -563,6 +564,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Dot(_) => false,
             LayerChild::Space(_) => false, // Space has no children per MEI spec
             LayerChild::MRest(_) => false, // MRest has no children per MEI spec
+            LayerChild::MSpace(_) => false, // MSpace has no children per MEI spec
             LayerChild::Clef(_) => false,  // Clef has no children per MEI spec
             LayerChild::BTrem(btrem) => btrem.has_children(),
             LayerChild::FTrem(ftrem) => ftrem.has_children(),
@@ -577,7 +579,8 @@ impl MeiSerialize for LayerChild {
             LayerChild::Chord(chord) => chord.serialize_children(writer),
             LayerChild::Beam(beam) => beam.serialize_children(writer),
             LayerChild::Tuplet(tuplet) => tuplet.serialize_children(writer),
-            LayerChild::MRest(_) => Ok(()), // MRest has no children
+            LayerChild::MRest(_) => Ok(()),  // MRest has no children
+            LayerChild::MSpace(_) => Ok(()), // MSpace has no children
             LayerChild::BTrem(btrem) => btrem.serialize_children(writer),
             LayerChild::FTrem(ftrem) => ftrem.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
@@ -844,6 +847,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::BracketSpan(bracket_span) => bracket_span.collect_all_attributes(),
             MeasureChild::Fing(fing) => fing.collect_all_attributes(),
             MeasureChild::Phrase(phrase) => phrase.collect_all_attributes(),
+            MeasureChild::Line(line) => line.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -873,6 +877,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::BracketSpan(bracket_span) => bracket_span.has_children(),
             MeasureChild::Fing(fing) => fing.has_children(),
             MeasureChild::Phrase(phrase) => phrase.has_children(),
+            MeasureChild::Line(line) => line.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -899,6 +904,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::BracketSpan(bracket_span) => bracket_span.serialize_children(writer),
             MeasureChild::Fing(fing) => fing.serialize_children(writer),
             MeasureChild::Phrase(phrase) => phrase.serialize_children(writer),
+            MeasureChild::Line(line) => line.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()

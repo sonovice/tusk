@@ -837,6 +837,9 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
             tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
                 label_abbr.collect_all_attributes()
             }
+            tusk_model::elements::StaffGrpChild::InstrDef(instr_def) => {
+                instr_def.collect_all_attributes()
+            }
             // Other children not yet fully implemented
             _ => Vec::new(),
         }
@@ -850,6 +853,7 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
             tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
                 !label_abbr.children.is_empty()
             }
+            tusk_model::elements::StaffGrpChild::InstrDef(_) => false, // InstrDef has no children
             _ => false,
         }
     }
@@ -862,6 +866,7 @@ impl MeiSerialize for tusk_model::elements::StaffGrpChild {
             tusk_model::elements::StaffGrpChild::LabelAbbr(label_abbr) => {
                 label_abbr.serialize_children(writer)
             }
+            tusk_model::elements::StaffGrpChild::InstrDef(_) => Ok(()), // InstrDef has no children
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "StaffGrpChild::{}::serialize_children",
                 other.element_name()

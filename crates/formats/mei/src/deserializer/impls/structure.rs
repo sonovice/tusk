@@ -16,8 +16,8 @@ use tusk_model::att::{
 use tusk_model::elements::{
     Arpeg, BTrem, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
     EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv, MRest,
-    Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh, Rest,
-    Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
+    MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh,
+    Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
     StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
@@ -564,6 +564,10 @@ impl MeiDeserialize for Layer {
                     "fTrem" => {
                         let f_trem = FTrem::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::FTrem(Box::new(f_trem)));
+                    }
+                    "mSpace" => {
+                        let m_space = MSpace::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::MSpace(Box::new(m_space)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

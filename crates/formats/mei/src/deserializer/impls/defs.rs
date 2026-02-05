@@ -8,9 +8,9 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::att::{
-    AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttScoreDefAnl, AttScoreDefGes,
-    AttScoreDefLog, AttScoreDefVis, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog, AttStaffDefVis,
-    AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
+    AttInstrDefGes, AttLayerDefAnl, AttLayerDefGes, AttLayerDefLog, AttLayerDefVis, AttScoreDefAnl,
+    AttScoreDefGes, AttScoreDefLog, AttScoreDefVis, AttStaffDefAnl, AttStaffDefGes, AttStaffDefLog,
+    AttStaffDefVis, AttStaffGrpAnl, AttStaffGrpGes, AttStaffGrpLog, AttStaffGrpVis,
 };
 use tusk_model::elements::{
     Clef, InstrDef, LabelAbbrChild, LabelChild, LayerDef, LayerDefChild, PgFoot, PgFootChild,
@@ -511,6 +511,29 @@ impl ExtractAttributes for AttLayerDefAnl {
 }
 
 // ============================================================================
+// InstrDef attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttInstrDefGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // MIDI attributes
+        extract_attr!(attrs, "midi.channel", self.midi_channel);
+        extract_attr!(attrs, "midi.duty", self.midi_duty);
+        extract_attr!(attrs, "midi.port", self.midi_port);
+        extract_attr!(attrs, "midi.track", self.midi_track);
+        extract_attr!(attrs, "midi.instrnum", self.midi_instrnum);
+        extract_attr!(attrs, "midi.instrname", self.midi_instrname);
+        extract_attr!(attrs, "midi.pan", self.midi_pan);
+        extract_attr!(attrs, "midi.patchname", self.midi_patchname);
+        extract_attr!(attrs, "midi.patchnum", self.midi_patchnum);
+        extract_attr!(attrs, "midi.volume", self.midi_volume);
+        extract_attr!(attrs, "azimuth", self.azimuth);
+        extract_attr!(attrs, "elevation", self.elevation);
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Element implementations
 // ============================================================================
 
@@ -660,10 +683,10 @@ fn parse_staff_grp_from_event<R: BufRead>(
                     }
                 }
                 "instrDef" => {
-                    // InstrDef element - skip for now
-                    if !child_empty {
-                        reader.skip_to_end("instrDef")?;
-                    }
+                    let instr_def = parse_instr_def_from_event(reader, child_attrs, child_empty)?;
+                    staff_grp
+                        .children
+                        .push(StaffGrpChild::InstrDef(Box::new(instr_def)));
                 }
                 _ => {
                     if !child_empty {
@@ -833,8 +856,10 @@ pub(crate) fn parse_clef_from_event<R: BufRead>(
     // Clef-specific logical attributes
     extract_attr!(attrs, "shape", clef.clef_log.shape);
     extract_attr!(attrs, "line", clef.clef_log.line);
+    extract_attr!(attrs, "oct", clef.clef_log.oct);
     extract_attr!(attrs, "dis", clef.clef_log.dis);
     extract_attr!(attrs, "dis.place", clef.clef_log.dis_place);
+    extract_attr!(attrs, "cautionary", clef.clef_log.cautionary);
 
     // Skip children if any (clef typically has no children)
     if !is_empty {
@@ -1188,6 +1213,7 @@ fn parse_instr_def_from_event<R: BufRead>(
     instr_def.basic.extract_attributes(&mut attrs)?;
     instr_def.labelled.extract_attributes(&mut attrs)?;
     instr_def.n_integer.extract_attributes(&mut attrs)?;
+    instr_def.instr_def_ges.extract_attributes(&mut attrs)?;
 
     // Skip children if any
     if !is_empty {

@@ -32,12 +32,13 @@ CRITICAL: Do ONE task per iteration. Pick the FIRST unchecked '- [ ]' task, comp
    - If implementing deserializers: follow patterns in \`crates/formats/mei/src/deserializer/impls/\`
    - If implementing serializers: follow patterns in \`crates/formats/mei/src/serializer/impls/\`
    - Always implement BOTH deserializer AND serializer for elements in the same task
+   - If it only says "implement", it usually means implementing deserializer and/or serializer.
 3. For each element:
    - Study the generated model in \`crates/core/model/src/generated/elements/\`
    - Look at attribute classes the element uses
    - Follow existing patterns for similar elements
 4. Add roundtrip tests in \`crates/formats/mei/src/roundtrip_tests/\`
-5. Check if any of the modified files exceeds 2000 lines of code via \`wc -l\`. If so, split it into multiple files.
+5. Check if any of the files (even those you did not modify, but not the generated ones) exceeds 2000 lines of code via \`wc -l\`. If so, split it into multiple files.
 6. Run \`cargo fmt\` and \`cargo clippy\`.
 7. Run \`cargo test -p tusk-mei\` to verify tests pass.
 8. Mark completed task as done: '- [ ]' → '- [x]'
