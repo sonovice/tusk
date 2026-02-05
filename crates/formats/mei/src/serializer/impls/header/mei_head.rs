@@ -275,6 +275,7 @@ impl MeiSerialize for TitleChild {
             TitleChild::Address(_) => "address",
             TitleChild::Bibl(_) => "bibl",
             TitleChild::BiblStruct(_) => "biblStruct",
+            TitleChild::Num(_) => "num",
             _ => "unknown",
         }
     }
@@ -310,6 +311,7 @@ impl MeiSerialize for TitleChild {
             TitleChild::Address(elem) => elem.serialize_mei(writer),
             TitleChild::Bibl(elem) => elem.serialize_mei(writer),
             TitleChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            TitleChild::Num(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "TitleChild::{}",
                 other.element_name()

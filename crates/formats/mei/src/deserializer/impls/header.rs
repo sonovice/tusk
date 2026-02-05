@@ -2794,6 +2794,14 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
                             let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
                             title.children.push(TitleChild::Ref(Box::new(ref_elem)));
                         }
+                        "num" => {
+                            let num = super::misc::parse_num_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            title.children.push(TitleChild::Num(Box::new(num)));
+                        }
                         // Skip unknown elements
                         _ => {
                             if !child_empty {

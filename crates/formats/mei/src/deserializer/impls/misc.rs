@@ -24,11 +24,11 @@ use tusk_model::elements::{
     ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild, Incip, IncipChild,
     IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, LangUsage, LangUsageChild, Language,
     Lg, Manifestation, ManifestationChild, ManifestationList, ManifestationListChild, Mensuration,
-    Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild,
-    PerfRes, PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild, PlateNum,
-    PlateNumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild, Score,
-    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
-    Work, WorkChild, WorkList, WorkListChild,
+    Meter, NotesStmt, NotesStmtChild, Num, NumChild, OtherChar, PerfDuration, PerfMedium,
+    PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild,
+    PlateNum, PlateNumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild,
+    Score, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList,
+    TermListChild, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -3026,6 +3026,106 @@ impl MeiDeserialize for tusk_model::elements::Music {
         }
 
         Ok(music)
+    }
+}
+
+// ============================================================================
+// Num element implementation
+// ============================================================================
+
+/// Parse a `<num>` element from within another element.
+///
+/// Num (number) contains numeric information in any form. It can contain
+/// mixed content (text and child elements like rend, lb, etc.).
+pub(crate) fn parse_num_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Num> {
+    let mut num = Num::default();
+
+    // Extract attributes
+    num.common.extract_attributes(&mut attrs)?;
+    num.facsimile.extract_attributes(&mut attrs)?;
+    num.lang.extract_attributes(&mut attrs)?;
+    // Note: AttMeasurement and AttRanging don't have ExtractAttributes implemented yet
+    // Their attributes are extracted manually below
+
+    // Element-local attribute: @value
+    if let Some(val_str) = attrs.remove("value") {
+        num.value = val_str.parse().ok();
+    }
+
+    // AttMeasurement: @unit
+    if let Some(unit_str) = attrs.remove("unit") {
+        num.measurement.unit = from_attr_string(&unit_str).ok();
+    }
+
+    // AttRanging: @atleast, @atmost, @min, @max, @confidence
+    if let Some(val) = attrs.remove("atleast") {
+        num.ranging.atleast = val.parse().ok();
+    }
+    if let Some(val) = attrs.remove("atmost") {
+        num.ranging.atmost = val.parse().ok();
+    }
+    if let Some(val) = attrs.remove("min") {
+        num.ranging.min = val.parse().ok();
+    }
+    if let Some(val) = attrs.remove("max") {
+        num.ranging.max = val.parse().ok();
+    }
+    if let Some(val) = attrs.remove("confidence") {
+        num.ranging.confidence = from_attr_string(&val).ok();
+    }
+
+    // Parse mixed content (text + child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("num")? {
+            match content {
+                MixedContent::Text(text) => {
+                    num.children.push(NumChild::Text(text));
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            num.children.push(NumChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            num.children.push(NumChild::Lb(Box::new(lb)));
+                        }
+                        // Skip unknown elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(num)
+}
+
+impl MeiDeserialize for Num {
+    fn element_name() -> &'static str {
+        "num"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_num_from_event(reader, attrs, is_empty)
     }
 }
 
