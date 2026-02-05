@@ -271,6 +271,18 @@ impl CollectAttributes for AttScoreDefVis {
             }
         }
 
+        // Music font attributes
+        if let Some(v) = &self.music_name {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("music.name", s));
+            }
+        }
+        if let Some(v) = &self.music_size {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("music.size", s));
+            }
+        }
+
         // Page attributes (commonly used)
         if let Some(v) = &self.page_height {
             if let Some(s) = to_attr_string(v) {

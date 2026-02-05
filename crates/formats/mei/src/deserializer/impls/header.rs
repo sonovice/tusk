@@ -1074,6 +1074,8 @@ pub(crate) fn parse_application_from_event<R: BufRead>(
 }
 
 /// Parse a `<name>` element from within another element.
+///
+/// Name can contain mixed content (text and many child elements).
 pub(crate) fn parse_name_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
@@ -1094,12 +1096,80 @@ pub(crate) fn parse_name_from_event<R: BufRead>(
     name_elem.n_number_like.extract_attributes(&mut attrs)?;
     name_elem.responsibility.extract_attributes(&mut attrs)?;
 
-    // Read text content if not an empty element
-    // name can contain text and many element types - for simplicity, just handle text
+    // Name has mixed content - text and various child elements
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("name")? {
-            if !text.trim().is_empty() {
-                name_elem.children.push(NameChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("name")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        name_elem.children.push(NameChild::Text(text));
+                    }
+                }
+                MixedContent::Element(elem_name, child_attrs, child_empty) => {
+                    match elem_name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            name_elem.children.push(NameChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers =
+                                parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::PersName(Box::new(pers)));
+                        }
+                        "corpName" => {
+                            let corp =
+                                parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::CorpName(Box::new(corp)));
+                        }
+                        "name" => {
+                            let nested = parse_name_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Name(Box::new(nested)));
+                        }
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::Ptr(Box::new(ptr)));
+                        }
+                        "geogName" => {
+                            let geog =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            name_elem.children.push(NameChild::GeogName(Box::new(geog)));
+                        }
+                        "identifier" => {
+                            let ident =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            name_elem
+                                .children
+                                .push(NameChild::Identifier(Box::new(ident)));
+                        }
+                        _ => {
+                            // Skip unknown child elements
+                            if !child_empty {
+                                reader.skip_to_end(&elem_name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

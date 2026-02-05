@@ -780,6 +780,14 @@ impl MeiSerialize for NameChild {
             NameChild::CorpName(_) => "corpName",
             NameChild::Name(_) => "name",
             NameChild::PersName(_) => "persName",
+            NameChild::Rend(_) => "rend",
+            NameChild::Lb(_) => "lb",
+            NameChild::Title(_) => "title",
+            NameChild::Date(_) => "date",
+            NameChild::Ref(_) => "ref",
+            NameChild::Ptr(_) => "ptr",
+            NameChild::GeogName(_) => "geogName",
+            NameChild::Identifier(_) => "identifier",
             _ => "unknown",
         }
     }
@@ -805,6 +813,14 @@ impl MeiSerialize for NameChild {
             NameChild::CorpName(elem) => elem.serialize_mei(writer),
             NameChild::Name(elem) => elem.serialize_mei(writer),
             NameChild::PersName(elem) => elem.serialize_mei(writer),
+            NameChild::Rend(elem) => elem.serialize_mei(writer),
+            NameChild::Lb(elem) => elem.serialize_mei(writer),
+            NameChild::Title(elem) => elem.serialize_mei(writer),
+            NameChild::Date(elem) => elem.serialize_mei(writer),
+            NameChild::Ref(elem) => elem.serialize_mei(writer),
+            NameChild::Ptr(elem) => elem.serialize_mei(writer),
+            NameChild::GeogName(elem) => elem.serialize_mei(writer),
+            NameChild::Identifier(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "NameChild::{}",
                 other.element_name()

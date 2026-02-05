@@ -260,3 +260,15 @@ fn test_roundtrip_bach_jc_fughette_no2() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_jc_fughette_for_brass_quartet_g_major() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JC_Fughette_for_BrassQuartet_G-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JC_Fughette_for_BrassQuartet_G-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
