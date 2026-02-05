@@ -13,8 +13,11 @@ use tusk_model::att::{
     AttHairpinLog, AttHairpinVis, AttPedalAnl, AttPedalGes, AttPedalLog, AttPedalVis, AttSlurAnl,
     AttSlurGes, AttSlurLog, AttSlurVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis,
     AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis,
+    AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
 };
-use tusk_model::elements::{Dir, Dynam, Fermata, Hairpin, Pedal, Slur, Tempo, Tie, Trill};
+use tusk_model::elements::{
+    Dir, Dynam, Fermata, Hairpin, Pedal, Slur, Tempo, Tie, Trill, TupletSpan,
+};
 
 use super::{extract_attr, from_attr_string};
 
@@ -1704,6 +1707,95 @@ impl MeiDeserialize for Pedal {
         }
 
         Ok(pedal)
+    }
+}
+
+// ============================================================================
+// TupletSpan attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttTupletSpanLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "beam.with", self.beam_with);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "num", self.num);
+        extract_attr!(attrs, "numbase", self.numbase);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletSpanVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "num.place", self.num_place);
+        extract_attr!(attrs, "num.visible", self.num_visible);
+        extract_attr!(attrs, "bracket.place", self.bracket_place);
+        extract_attr!(attrs, "bracket.visible", self.bracket_visible);
+        extract_attr!(attrs, "num.format", self.num_format);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletSpanGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTupletSpanAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTupletSpanAnl has no attributes
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for TupletSpan {
+    fn element_name() -> &'static str {
+        "tupletSpan"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut tuplet_span = TupletSpan::default();
+
+        // Extract attributes into each attribute class
+        tuplet_span.common.extract_attributes(&mut attrs)?;
+        tuplet_span.facsimile.extract_attributes(&mut attrs)?;
+        tuplet_span.tuplet_span_log.extract_attributes(&mut attrs)?;
+        tuplet_span.tuplet_span_vis.extract_attributes(&mut attrs)?;
+        tuplet_span.tuplet_span_ges.extract_attributes(&mut attrs)?;
+        tuplet_span.tuplet_span_anl.extract_attributes(&mut attrs)?;
+
+        // TupletSpan has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("tupletSpan")?;
+        }
+
+        Ok(tuplet_span)
     }
 }
 

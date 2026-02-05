@@ -824,6 +824,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Trill(trill) => trill.collect_all_attributes(),
             MeasureChild::Harm(harm) => harm.collect_all_attributes(),
             MeasureChild::Pedal(pedal) => pedal.collect_all_attributes(),
+            MeasureChild::TupletSpan(tuplet_span) => tuplet_span.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -842,6 +843,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Trill(_) => false, // Trill has no children
             MeasureChild::Harm(harm) => harm.has_children(),
             MeasureChild::Pedal(_) => false, // Pedal has no children
+            MeasureChild::TupletSpan(_) => false, // TupletSpan has no children
             // Other child types - assume no children for now
             _ => false,
         }
@@ -857,6 +859,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Trill(_) => Ok(()),   // Trill has no children
             MeasureChild::Harm(harm) => harm.serialize_children(writer),
             MeasureChild::Pedal(_) => Ok(()), // Pedal has no children
+            MeasureChild::TupletSpan(_) => Ok(()), // TupletSpan has no children
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()

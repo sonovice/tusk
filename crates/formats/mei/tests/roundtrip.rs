@@ -413,3 +413,15 @@ fn test_roundtrip_beethoven_song_op98() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_beethoven_string_quartet_op18_no1() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Beethoven_StringQuartet_Op18_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Beethoven_StringQuartet_Op18_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

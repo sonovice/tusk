@@ -16,11 +16,12 @@ use tusk_model::att::{
     AttPedalVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSymbolAnl, AttSymbolGes,
     AttSymbolLog, AttSymbolVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl,
     AttTieGes, AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis,
+    AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
 };
 use tusk_model::elements::{
     AnchoredText, AnchoredTextChild, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb, FbChild,
     Fermata, Hairpin, Harm, HarmChild, Pedal, Slur, SlurChild, Symbol, Tempo, TempoChild, Tie,
-    TieChild, Trill,
+    TieChild, Trill, TupletSpan,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -2219,6 +2220,94 @@ impl MeiSerialize for Pedal {
         attrs.extend(self.pedal_vis.collect_attributes());
         attrs.extend(self.pedal_ges.collect_attributes());
         attrs.extend(self.pedal_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// TupletSpan attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttTupletSpanLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "beam.with", self.beam_with);
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "dur", vec self.dur);
+        push_attr!(attrs, "num", self.num);
+        push_attr!(attrs, "numbase", self.numbase);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "endid", self.endid);
+        push_attr!(attrs, "tstamp2", self.tstamp2);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTupletSpanVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "num.place", self.num_place);
+        push_attr!(attrs, "num.visible", self.num_visible);
+        push_attr!(attrs, "bracket.place", self.bracket_place);
+        push_attr!(attrs, "bracket.visible", self.bracket_visible);
+        push_attr!(attrs, "num.format", self.num_format);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTupletSpanGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTupletSpanAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttTupletSpanAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for TupletSpan {
+    fn element_name(&self) -> &'static str {
+        "tupletSpan"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.tuplet_span_log.collect_attributes());
+        attrs.extend(self.tuplet_span_vis.collect_attributes());
+        attrs.extend(self.tuplet_span_ges.collect_attributes());
+        attrs.extend(self.tuplet_span_anl.collect_attributes());
         attrs
     }
 
