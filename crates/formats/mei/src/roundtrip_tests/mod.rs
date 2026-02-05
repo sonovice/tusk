@@ -23,6 +23,7 @@ mod harmony;
 mod header;
 mod midi;
 mod names;
+mod neumes;
 mod note;
 mod structure;
 mod text_containers;

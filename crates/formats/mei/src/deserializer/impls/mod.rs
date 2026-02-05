@@ -29,6 +29,7 @@ mod grouping;
 mod header;
 mod midi;
 mod misc;
+mod neumes;
 mod note;
 mod structure;
 mod text;
@@ -80,7 +81,7 @@ pub(crate) fn from_attr_string<T: for<'de> Deserialize<'de>>(s: &str) -> Result<
 macro_rules! extract_attr {
     ($attrs:expr, $name:expr, $field:expr) => {
         if let Some(value) = $attrs.remove($name) {
-            match from_attr_string(&value) {
+            match $crate::deserializer::impls::from_attr_string(&value) {
                 Ok(v) => $field = Some(v),
                 Err(_) => {
                     // In lenient mode, we can skip invalid values
@@ -100,7 +101,7 @@ macro_rules! extract_attr {
         if let Some(value) = $attrs.remove($name) {
             let mut items = Vec::new();
             for part in value.split_whitespace() {
-                if let Ok(v) = from_attr_string(part) {
+                if let Ok(v) = $crate::deserializer::impls::from_attr_string(part) {
                     items.push(v);
                 }
             }

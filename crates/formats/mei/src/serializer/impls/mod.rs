@@ -19,6 +19,7 @@ mod header;
 mod metadata_text;
 mod midi;
 mod misc;
+mod neumes;
 mod note;
 mod structure;
 mod text;
@@ -52,7 +53,7 @@ pub(crate) fn serialize_vec_serde<T: Serialize>(vec: &[T]) -> Option<String> {
 macro_rules! push_attr {
     ($attrs:expr, $name:expr, $opt_val:expr) => {
         if let Some(ref v) = $opt_val {
-            if let Some(s) = to_attr_string(v) {
+            if let Some(s) = $crate::serializer::impls::to_attr_string(v) {
                 $attrs.push(($name, s));
             }
         }
@@ -65,7 +66,7 @@ macro_rules! push_attr {
     };
     // For Vec types
     ($attrs:expr, $name:expr, vec $vec_val:expr) => {
-        if let Some(v) = serialize_vec_serde(&$vec_val) {
+        if let Some(v) = $crate::serializer::impls::serialize_vec_serde(&$vec_val) {
             $attrs.push(($name, v));
         }
     };

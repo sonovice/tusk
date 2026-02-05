@@ -20,7 +20,7 @@
 //! - Strips namespace prefixes from element/attribute names when parsing
 //! - Optionally validates namespace URIs (strict mode)
 
-mod impls;
+pub(crate) mod impls;
 
 use quick_xml::Reader;
 use quick_xml::escape::resolve_predefined_entity;

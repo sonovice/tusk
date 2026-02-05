@@ -13,7 +13,7 @@
 //! as (name, value) pairs. Elements then combine these attributes and serialize using
 //! quick-xml's events API.
 
-mod impls;
+pub(crate) mod impls;
 
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};

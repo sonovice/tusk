@@ -115,8 +115,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 8: Neumes Module
 
 ### 8.1 Neume Notation Elements
-- [ ] Implement core: `Syllable`, `Neume`, `Nc`, `NcGrp`, shapes: `Oriscus`, `Quilisma`, `Liquescent`, `Strophicus`, `Plica`, notation: `Episema`, `HispanTick`, `Ornam`, `AmbNote`
-- [ ] Add roundtrip tests
+- [x] Implement core: `Syllable`, `Neume`, `Nc`, `NcGrp`, shapes: `Oriscus`, `Quilisma`, `Liquescent`, `Strophicus`, `Plica`, notation: `Episema`, `HispanTick`, `Ornam`, `AmbNote`
+- [x] Add roundtrip tests
 
 ---
 
