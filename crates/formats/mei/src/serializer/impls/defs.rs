@@ -988,6 +988,13 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             }
         }
 
+        // Clef visible (visual)
+        if let Some(ref clef_visible) = self.staff_def_vis.clef_visible {
+            if let Some(s) = to_attr_string(clef_visible) {
+                attrs.push(("clef.visible", s));
+            }
+        }
+
         // Analytical attributes (key info)
         if let Some(v) = &self.staff_def_anl.key_accid {
             if let Some(s) = to_attr_string(v) {
