@@ -1,13 +1,18 @@
 //! Deserializer implementations for MIDI-related MEI elements.
 //!
-//! This module contains implementations for Midi and InstrGrp elements.
+//! This module contains implementations for Midi, InstrGrp, and MIDI control elements
+//! (Cc, Chan, ChanPr, Port, Prog, Vel).
 
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
 };
 use std::io::BufRead;
-use tusk_model::att::{AttMidiAnl, AttMidiGes, AttMidiLog};
-use tusk_model::elements::{InstrDef, InstrGrp, InstrGrpChild, Midi, MidiChild};
+use tusk_model::att::{
+    AttMidiAnl, AttMidiEvent, AttMidiGes, AttMidiLog, AttMidiNumber, AttMidiValue,
+};
+use tusk_model::elements::{
+    Cc, Chan, ChanPr, InstrDef, InstrGrp, InstrGrpChild, Midi, MidiChild, Port, Prog, Vel,
+};
 
 use super::{extract_attr, from_attr_string};
 
@@ -35,6 +40,33 @@ impl ExtractAttributes for AttMidiGes {
 impl ExtractAttributes for AttMidiAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttMidiAnl is empty - no attributes to extract
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMidiEvent {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec_string self.part);
+        extract_attr!(attrs, "partstaff", vec_string self.partstaff);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMidiNumber {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "num", self.num);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMidiValue {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "val", self.val);
         Ok(())
     }
 }
@@ -67,9 +99,32 @@ impl MeiDeserialize for Midi {
                 reader.read_next_child_start("midi")?
             {
                 match name.as_str() {
-                    // MIDI child elements - skip for now, will be implemented in Phase 7
-                    // "trkName" | "vel" | "chanPr" | "marker" | "prog" | "cue" | "cc" |
-                    // "chan" | "metaText" | "noteOff" | "hex" | "noteOn" | "port" | "seqNum"
+                    "cc" => {
+                        let cc = Cc::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Cc(Box::new(cc)));
+                    }
+                    "chan" => {
+                        let chan = Chan::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Chan(Box::new(chan)));
+                    }
+                    "chanPr" => {
+                        let chan_pr = ChanPr::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::ChanPr(Box::new(chan_pr)));
+                    }
+                    "port" => {
+                        let port = Port::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Port(Box::new(port)));
+                    }
+                    "prog" => {
+                        let prog = Prog::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Prog(Box::new(prog)));
+                    }
+                    "vel" => {
+                        let vel = Vel::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Vel(Box::new(vel)));
+                    }
+                    // Other MIDI child elements not yet implemented
+                    // "trkName" | "marker" | "cue" | "metaText" | "noteOff" | "hex" | "noteOn" | "seqNum"
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
@@ -125,13 +180,167 @@ impl MeiDeserialize for InstrGrp {
 }
 
 // ============================================================================
+// MIDI Control Element implementations
+// ============================================================================
+
+impl MeiDeserialize for Cc {
+    fn element_name() -> &'static str {
+        "cc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut cc = Cc::default();
+
+        cc.common.extract_attributes(&mut attrs)?;
+        cc.midi_event.extract_attributes(&mut attrs)?;
+        cc.midi_number.extract_attributes(&mut attrs)?;
+        cc.midi_value.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("cc")?;
+        }
+
+        Ok(cc)
+    }
+}
+
+impl MeiDeserialize for Chan {
+    fn element_name() -> &'static str {
+        "chan"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut chan = Chan::default();
+
+        chan.common.extract_attributes(&mut attrs)?;
+        chan.midi_event.extract_attributes(&mut attrs)?;
+        // Chan has its own `num` attribute (DataMidichannel type)
+        extract_attr!(attrs, "num", chan.num);
+
+        if !is_empty {
+            reader.skip_to_end("chan")?;
+        }
+
+        Ok(chan)
+    }
+}
+
+impl MeiDeserialize for ChanPr {
+    fn element_name() -> &'static str {
+        "chanPr"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut chan_pr = ChanPr::default();
+
+        chan_pr.common.extract_attributes(&mut attrs)?;
+        chan_pr.midi_event.extract_attributes(&mut attrs)?;
+        chan_pr.midi_number.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("chanPr")?;
+        }
+
+        Ok(chan_pr)
+    }
+}
+
+impl MeiDeserialize for Port {
+    fn element_name() -> &'static str {
+        "port"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut port = Port::default();
+
+        port.common.extract_attributes(&mut attrs)?;
+        port.midi_event.extract_attributes(&mut attrs)?;
+        port.midi_number.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("port")?;
+        }
+
+        Ok(port)
+    }
+}
+
+impl MeiDeserialize for Prog {
+    fn element_name() -> &'static str {
+        "prog"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut prog = Prog::default();
+
+        prog.common.extract_attributes(&mut attrs)?;
+        prog.midi_event.extract_attributes(&mut attrs)?;
+        prog.midi_number.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("prog")?;
+        }
+
+        Ok(prog)
+    }
+}
+
+impl MeiDeserialize for Vel {
+    fn element_name() -> &'static str {
+        "vel"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut vel = Vel::default();
+
+        vel.common.extract_attributes(&mut attrs)?;
+        vel.midi_event.extract_attributes(&mut attrs)?;
+        vel.midi_number.extract_attributes(&mut attrs)?;
+        // Vel has its own `form` attribute
+        extract_attr!(attrs, "form", string vel.form);
+
+        if !is_empty {
+            reader.skip_to_end("vel")?;
+        }
+
+        Ok(vel)
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
 #[cfg(test)]
 mod tests {
     use crate::deserializer::MeiDeserialize;
-    use tusk_model::elements::{InstrGrp, InstrGrpChild, Midi};
+    use tusk_model::elements::{
+        Cc, Chan, ChanPr, InstrGrp, InstrGrpChild, Midi, MidiChild, Port, Prog, Vel,
+    };
 
     // ============================================================================
     // Midi tests
@@ -292,5 +501,173 @@ mod tests {
 
         assert_eq!(instr_grp.common.xml_id, Some("ig1".to_string()));
         assert_eq!(instr_grp.children.len(), 1); // unknown element was skipped
+    }
+
+    // ============================================================================
+    // Cc tests
+    // ============================================================================
+
+    #[test]
+    fn cc_deserializes_from_empty_element() {
+        let xml = r#"<cc/>"#;
+        let cc = Cc::from_mei_str(xml).expect("should deserialize");
+        assert!(cc.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn cc_deserializes_with_attributes() {
+        let xml = r#"<cc xml:id="cc1" num="64" val="127" staff="1" tstamp="1"/>"#;
+        let cc = Cc::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(cc.common.xml_id, Some("cc1".to_string()));
+        assert!(cc.midi_number.num.is_some());
+        assert!(cc.midi_value.val.is_some());
+        assert_eq!(cc.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // Chan tests
+    // ============================================================================
+
+    #[test]
+    fn chan_deserializes_from_empty_element() {
+        let xml = r#"<chan/>"#;
+        let chan = Chan::from_mei_str(xml).expect("should deserialize");
+        assert!(chan.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn chan_deserializes_with_attributes() {
+        let xml = r#"<chan xml:id="chan1" num="1" staff="1"/>"#;
+        let chan = Chan::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chan.common.xml_id, Some("chan1".to_string()));
+        assert!(chan.num.is_some());
+        assert_eq!(chan.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // ChanPr tests
+    // ============================================================================
+
+    #[test]
+    fn chan_pr_deserializes_from_empty_element() {
+        let xml = r#"<chanPr/>"#;
+        let chan_pr = ChanPr::from_mei_str(xml).expect("should deserialize");
+        assert!(chan_pr.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn chan_pr_deserializes_with_attributes() {
+        let xml = r#"<chanPr xml:id="cp1" num="64" staff="1"/>"#;
+        let chan_pr = ChanPr::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chan_pr.common.xml_id, Some("cp1".to_string()));
+        assert!(chan_pr.midi_number.num.is_some());
+        assert_eq!(chan_pr.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // Port tests
+    // ============================================================================
+
+    #[test]
+    fn port_deserializes_from_empty_element() {
+        let xml = r#"<port/>"#;
+        let port = Port::from_mei_str(xml).expect("should deserialize");
+        assert!(port.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn port_deserializes_with_attributes() {
+        let xml = r#"<port xml:id="port1" num="1"/>"#;
+        let port = Port::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(port.common.xml_id, Some("port1".to_string()));
+        assert!(port.midi_number.num.is_some());
+    }
+
+    // ============================================================================
+    // Prog tests
+    // ============================================================================
+
+    #[test]
+    fn prog_deserializes_from_empty_element() {
+        let xml = r#"<prog/>"#;
+        let prog = Prog::from_mei_str(xml).expect("should deserialize");
+        assert!(prog.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn prog_deserializes_with_attributes() {
+        let xml = r#"<prog xml:id="prog1" num="1" staff="1"/>"#;
+        let prog = Prog::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(prog.common.xml_id, Some("prog1".to_string()));
+        assert!(prog.midi_number.num.is_some());
+        assert_eq!(prog.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // Vel tests
+    // ============================================================================
+
+    #[test]
+    fn vel_deserializes_from_empty_element() {
+        let xml = r#"<vel/>"#;
+        let vel = Vel::from_mei_str(xml).expect("should deserialize");
+        assert!(vel.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn vel_deserializes_with_attributes() {
+        let xml = r#"<vel xml:id="vel1" num="90" form="noteOn" staff="1"/>"#;
+        let vel = Vel::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(vel.common.xml_id, Some("vel1".to_string()));
+        assert!(vel.midi_number.num.is_some());
+        assert_eq!(vel.form, Some("noteOn".to_string()));
+        assert_eq!(vel.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // Midi with children tests
+    // ============================================================================
+
+    #[test]
+    fn midi_deserializes_with_cc_child() {
+        let xml = r#"<midi xml:id="midi1">
+            <cc xml:id="cc1" num="64" val="127"/>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.common.xml_id, Some("midi1".to_string()));
+        assert_eq!(midi.children.len(), 1);
+
+        match &midi.children[0] {
+            MidiChild::Cc(cc) => {
+                assert_eq!(cc.common.xml_id, Some("cc1".to_string()));
+            }
+            _ => panic!("Expected Cc child"),
+        }
+    }
+
+    #[test]
+    fn midi_deserializes_with_multiple_control_children() {
+        let xml = r#"<midi xml:id="midi1">
+            <prog num="1"/>
+            <chan num="1"/>
+            <cc num="7" val="100"/>
+            <vel num="64" form="noteOn"/>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 4);
+
+        // Check order and types
+        assert!(matches!(midi.children[0], MidiChild::Prog(_)));
+        assert!(matches!(midi.children[1], MidiChild::Chan(_)));
+        assert!(matches!(midi.children[2], MidiChild::Cc(_)));
+        assert!(matches!(midi.children[3], MidiChild::Vel(_)));
     }
 }

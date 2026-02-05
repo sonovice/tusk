@@ -105,7 +105,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 
 ### 7.1 MIDI Elements
 - [x] Implement container/instrument: `Midi`, `InstrGrp`
-- [ ] Implement control: `Cc`, `Chan`, `ChanPr`, `Port`, `Prog`, `Vel`
+- [x] Implement control: `Cc`, `Chan`, `ChanPr`, `Port`, `Prog`, `Vel`
 - [ ] Implement events: `NoteOn`, `NoteOff`, `Cue`, `Marker`
 - [ ] Implement meta: `MetaMark`, `MetaText`, `SeqNum`, `TrkName`, `Hex`
 - [ ] Add roundtrip tests
