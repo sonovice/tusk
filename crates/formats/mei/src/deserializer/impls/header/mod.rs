@@ -23,6 +23,7 @@ mod names;
 pub(crate) mod phys_desc;
 mod provenance;
 mod pub_stmt;
+mod recording;
 
 // Re-export all public parse functions
 pub(crate) use address::{
@@ -99,6 +100,13 @@ pub(crate) use provenance::{
     parse_exhib_hist_from_event, parse_provenance_from_event, parse_type_desc_from_event,
     parse_type_note_from_event, parse_watermark_desc_from_event, parse_watermark_from_event,
     parse_watermark_list_from_event,
+};
+
+pub(crate) use recording::{
+    parse_capture_mode_from_event, parse_carrier_form_from_event, parse_file_char_from_event,
+    parse_other_char_from_event, parse_perf_duration_from_event, parse_performance_from_event,
+    parse_playing_speed_from_event, parse_recording_from_event, parse_score_format_from_event,
+    parse_sound_chan_from_event, parse_track_config_from_event,
 };
 
 #[cfg(test)]

@@ -165,8 +165,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 13.4 Recording and Performance Metadata
-- [ ] Implement `Recording`, `Performance`, `PerfDuration`, `TrackConfig`, `CaptureMode`, `PlayingSpeed`, `SoundChan`, `CarrierForm`, `FileChar`, `OtherChar`, `ScoreFormat`
-- [ ] Add roundtrip tests
+- [x] Implement `Recording`, `Performance`, `PerfDuration`, `TrackConfig`, `CaptureMode`, `PlayingSpeed`, `SoundChan`, `CarrierForm`, `FileChar`, `OtherChar`, `ScoreFormat`
+- [x] Add roundtrip tests
 
 ### 13.5 Relations and References / Encoding and Tags
 - [ ] Implement `Relation`, `RelationList`, `RelatedItem`, `Item`, `ItemList`, `ComponentList` and `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`

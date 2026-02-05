@@ -4770,3 +4770,365 @@ fn roundtrip_seal_with_datable() {
     assert_eq!(parsed.lang.xml_lang, Some("la".to_string()));
     assert_eq!(parsed.children.len(), 2);
 }
+
+// ============================================================================
+// Recording/Performance Metadata Elements
+// ============================================================================
+
+#[test]
+fn roundtrip_recording_empty() {
+    use tusk_model::elements::Recording;
+
+    let mut original = Recording::default();
+    original.common.xml_id = Some("rec1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("recording"),
+        "xml should contain recording: {}",
+        xml
+    );
+    assert!(xml.contains("xml:id=\"rec1\""), "should have id: {}", xml);
+
+    let parsed = Recording::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("rec1".to_string()));
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_recording_with_media_bounds() {
+    use tusk_model::data::DataBetype;
+    use tusk_model::elements::Recording;
+
+    let mut original = Recording::default();
+    original.common.xml_id = Some("rec2".to_string());
+    original.media_bounds.begin = Some("00:00:30".to_string());
+    original.media_bounds.end = Some("00:05:45".to_string());
+    original.media_bounds.betype = Some(DataBetype::Time);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("begin=\"00:00:30\""),
+        "should have begin: {}",
+        xml
+    );
+    assert!(xml.contains("end=\"00:05:45\""), "should have end: {}", xml);
+    assert!(
+        xml.contains("betype=\"time\""),
+        "should have betype: {}",
+        xml
+    );
+
+    let parsed = Recording::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.media_bounds.begin, Some("00:00:30".to_string()));
+    assert_eq!(parsed.media_bounds.end, Some("00:05:45".to_string()));
+    assert_eq!(parsed.media_bounds.betype, Some(DataBetype::Time));
+}
+
+#[test]
+fn roundtrip_performance_with_recording() {
+    use tusk_model::elements::{Performance, PerformanceChild, Recording};
+
+    let mut original = Performance::default();
+    original.common.xml_id = Some("perf1".to_string());
+
+    let mut recording = Recording::default();
+    recording.common.xml_id = Some("rec1".to_string());
+    original
+        .children
+        .push(PerformanceChild::Recording(Box::new(recording)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("performance"),
+        "xml should contain performance: {}",
+        xml
+    );
+    assert!(
+        xml.contains("recording"),
+        "should have recording child: {}",
+        xml
+    );
+
+    let parsed = Performance::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("perf1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_perf_duration_with_isodur() {
+    use tusk_model::elements::{PerfDuration, PerfDurationChild};
+
+    let mut original = PerfDuration::default();
+    original.common.xml_id = Some("pd1".to_string());
+    original.isodur = Some("PT2H34M45S".to_string());
+
+    original.children.push(PerfDurationChild::Text(
+        "2 hours, 34 minutes, 45 seconds".to_string(),
+    ));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("perfDuration"),
+        "xml should contain perfDuration: {}",
+        xml
+    );
+    assert!(
+        xml.contains("isodur=\"PT2H34M45S\""),
+        "should have isodur: {}",
+        xml
+    );
+    assert!(
+        xml.contains("2 hours, 34 minutes, 45 seconds"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = PerfDuration::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pd1".to_string()));
+    assert_eq!(parsed.isodur, Some("PT2H34M45S".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_track_config_with_num() {
+    use tusk_model::elements::{TrackConfig, TrackConfigChild};
+
+    let mut original = TrackConfig::default();
+    original.common.xml_id = Some("tc1".to_string());
+    original.num = Some(8);
+
+    original
+        .children
+        .push(TrackConfigChild::Text("Eight track".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("trackConfig"),
+        "xml should contain trackConfig: {}",
+        xml
+    );
+    assert!(xml.contains("num=\"8\""), "should have num: {}", xml);
+    assert!(
+        xml.contains("Eight track"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = TrackConfig::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("tc1".to_string()));
+    assert_eq!(parsed.num, Some(8));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_capture_mode_with_text() {
+    use tusk_model::elements::{CaptureMode, CaptureModeChild};
+
+    let mut original = CaptureMode::default();
+    original.common.xml_id = Some("cm1".to_string());
+    original.authorized.auth = Some("marcCaptureMode".to_string());
+
+    original
+        .children
+        .push(CaptureModeChild::Text("Digital".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("captureMode"),
+        "xml should contain captureMode: {}",
+        xml
+    );
+    assert!(
+        xml.contains("auth=\"marcCaptureMode\""),
+        "should have auth: {}",
+        xml
+    );
+    assert!(xml.contains("Digital"), "should have text content: {}", xml);
+
+    let parsed = CaptureMode::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cm1".to_string()));
+    assert_eq!(parsed.authorized.auth, Some("marcCaptureMode".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_playing_speed_with_text() {
+    use tusk_model::elements::{PlayingSpeed, PlayingSpeedChild};
+
+    let mut original = PlayingSpeed::default();
+    original.common.xml_id = Some("ps1".to_string());
+
+    original
+        .children
+        .push(PlayingSpeedChild::Text("33 1/3 rpm".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("playingSpeed"),
+        "xml should contain playingSpeed: {}",
+        xml
+    );
+    assert!(
+        xml.contains("33 1/3 rpm"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = PlayingSpeed::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ps1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_sound_chan_with_num() {
+    use tusk_model::elements::{SoundChan, SoundChanChild};
+
+    let mut original = SoundChan::default();
+    original.common.xml_id = Some("sc1".to_string());
+    original.num = Some(2);
+
+    original
+        .children
+        .push(SoundChanChild::Text("Stereo".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("soundChan"),
+        "xml should contain soundChan: {}",
+        xml
+    );
+    assert!(xml.contains("num=\"2\""), "should have num: {}", xml);
+    assert!(xml.contains("Stereo"), "should have text content: {}", xml);
+
+    let parsed = SoundChan::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sc1".to_string()));
+    assert_eq!(parsed.num, Some(2));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_carrier_form_with_auth() {
+    use tusk_model::elements::{CarrierForm, CarrierFormChild};
+
+    let mut original = CarrierForm::default();
+    original.common.xml_id = Some("cf1".to_string());
+    original.authorized.auth = Some("marcCarrierType".to_string());
+
+    original
+        .children
+        .push(CarrierFormChild::Text("Sound disc".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("carrierForm"),
+        "xml should contain carrierForm: {}",
+        xml
+    );
+    assert!(
+        xml.contains("auth=\"marcCarrierType\""),
+        "should have auth: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Sound disc"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = CarrierForm::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cf1".to_string()));
+    assert_eq!(parsed.authorized.auth, Some("marcCarrierType".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_file_char_with_text() {
+    use tusk_model::elements::{FileChar, FileCharChild};
+
+    let mut original = FileChar::default();
+    original.common.xml_id = Some("fc1".to_string());
+
+    original
+        .children
+        .push(FileCharChild::Text("AIFF format, 44.1 kHz".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("fileChar"),
+        "xml should contain fileChar: {}",
+        xml
+    );
+    assert!(
+        xml.contains("AIFF format, 44.1 kHz"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = FileChar::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("fc1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_other_char_with_text() {
+    use tusk_model::elements::{OtherChar, OtherCharChild};
+
+    let mut original = OtherChar::default();
+    original.common.xml_id = Some("oc1".to_string());
+
+    original.children.push(OtherCharChild::Text(
+        "Remastered from original tapes".to_string(),
+    ));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("otherChar"),
+        "xml should contain otherChar: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Remastered from original tapes"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = OtherChar::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("oc1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_score_format_with_auth() {
+    use tusk_model::elements::{ScoreFormat, ScoreFormatChild};
+
+    let mut original = ScoreFormat::default();
+    original.common.xml_id = Some("sf1".to_string());
+    original.authorized.auth = Some("marcScoreFormat".to_string());
+
+    original
+        .children
+        .push(ScoreFormatChild::Text("Full score".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("scoreFormat"),
+        "xml should contain scoreFormat: {}",
+        xml
+    );
+    assert!(
+        xml.contains("auth=\"marcScoreFormat\""),
+        "should have auth: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Full score"),
+        "should have text content: {}",
+        xml
+    );
+
+    let parsed = ScoreFormat::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sf1".to_string()));
+    assert_eq!(parsed.authorized.auth, Some("marcScoreFormat".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
