@@ -20,13 +20,14 @@ use tusk_model::elements::{
     Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
     Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
     ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition, EditionStmt,
-    EditionStmtChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
-    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, IncipText,
-    IncipTextChild, Key, LangUsage, LangUsageChild, Language, Lg, Mensuration, Meter, NotesStmt,
-    NotesStmtChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild,
-    PerfResList, PerfResListChild, RelationList, RelationListChild, RevisionDesc,
-    RevisionDescChild, Score, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild,
-    TermList, TermListChild, Work, WorkChild, WorkList, WorkListChild,
+    EditionStmtChild, Event, EventChild, EventList, EventListChild, Expression, ExpressionChild,
+    ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild, Incip, IncipChild,
+    IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, LangUsage, LangUsageChild, Language,
+    Lg, Mensuration, Meter, NotesStmt, NotesStmtChild, OtherChar, PerfDuration, PerfMedium,
+    PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild, RelationList,
+    RelationListChild, RevisionDesc, RevisionDescChild, Score, ScoreFormat, SeriesStmt,
+    SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild, Work, WorkChild, WorkList,
+    WorkListChild,
 };
 
 // ============================================================================
@@ -130,6 +131,12 @@ fn parse_history_from_event<R: BufRead>(
                     let p = parse_p_from_event(reader, child_attrs, child_empty)?;
                     history.children.push(HistoryChild::P(Box::new(p)));
                 }
+                "eventList" => {
+                    let event_list = parse_event_list_from_event(reader, child_attrs, child_empty)?;
+                    history
+                        .children
+                        .push(HistoryChild::EventList(Box::new(event_list)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -140,6 +147,231 @@ fn parse_history_from_event<R: BufRead>(
     }
 
     Ok(history)
+}
+
+/// Parse an `<eventList>` element from within another element.
+fn parse_event_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<EventList> {
+    let mut event_list = EventList::default();
+
+    // Extract attributes
+    event_list.common.extract_attributes(&mut attrs)?;
+    event_list.bibl.extract_attributes(&mut attrs)?;
+    event_list.facsimile.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // eventList can contain: head*, (event | eventList | biblList | date | corpName | geogName | name | persName | address)*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("eventList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::Head(Box::new(head)));
+                }
+                "event" => {
+                    let event = parse_event_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::Event(Box::new(event)));
+                }
+                "eventList" => {
+                    let nested = parse_event_list_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::EventList(Box::new(nested)));
+                }
+                "biblList" => {
+                    let bibl_list = parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::BiblList(Box::new(bibl_list)));
+                }
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::Date(Box::new(date)));
+                }
+                "corpName" => {
+                    let corp_name = super::header::parse_corp_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event_list
+                        .children
+                        .push(EventListChild::CorpName(Box::new(corp_name)));
+                }
+                "geogName" => {
+                    let geog_name = super::header::parse_geog_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event_list
+                        .children
+                        .push(EventListChild::GeogName(Box::new(geog_name)));
+                }
+                "name" => {
+                    let name_elem =
+                        super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::Name(Box::new(name_elem)));
+                }
+                "persName" => {
+                    let pers_name = super::header::parse_pers_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event_list
+                        .children
+                        .push(EventListChild::PersName(Box::new(pers_name)));
+                }
+                "address" => {
+                    let address =
+                        super::header::parse_address_from_event(reader, child_attrs, child_empty)?;
+                    event_list
+                        .children
+                        .push(EventListChild::Address(Box::new(address)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(event_list)
+}
+
+/// Parse an `<event>` element from within another element.
+fn parse_event_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Event> {
+    let mut event = Event::default();
+
+    // Extract attributes
+    event.common.extract_attributes(&mut attrs)?;
+    event.bibl.extract_attributes(&mut attrs)?;
+    event.calendared.extract_attributes(&mut attrs)?;
+    event.datable.extract_attributes(&mut attrs)?;
+    event.edit.extract_attributes(&mut attrs)?;
+    event.facsimile.extract_attributes(&mut attrs)?;
+    event.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // event can contain: head*, (p | table | list | castList | biblList | date | desc | eventList | address | corpName | geogName | name | persName)*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("event")? {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Head(Box::new(head)));
+                }
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::P(Box::new(p)));
+                }
+                "table" => {
+                    let table =
+                        super::text::parse_table_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Table(Box::new(table)));
+                }
+                "list" => {
+                    let list =
+                        super::text::parse_list_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::List(Box::new(list)));
+                }
+                "castList" => {
+                    // TODO: implement parse_cast_list_from_event
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+                "biblList" => {
+                    let bibl_list = parse_bibl_list_from_event(reader, child_attrs, child_empty)?;
+                    event
+                        .children
+                        .push(EventChild::BiblList(Box::new(bibl_list)));
+                }
+                "date" => {
+                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Date(Box::new(date)));
+                }
+                "desc" => {
+                    let desc =
+                        super::header::parse_desc_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Desc(Box::new(desc)));
+                }
+                "eventList" => {
+                    let event_list = parse_event_list_from_event(reader, child_attrs, child_empty)?;
+                    event
+                        .children
+                        .push(EventChild::EventList(Box::new(event_list)));
+                }
+                "address" => {
+                    let address =
+                        super::header::parse_address_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Address(Box::new(address)));
+                }
+                "corpName" => {
+                    let corp_name = super::header::parse_corp_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event
+                        .children
+                        .push(EventChild::CorpName(Box::new(corp_name)));
+                }
+                "geogName" => {
+                    let geog_name = super::header::parse_geog_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event
+                        .children
+                        .push(EventChild::GeogName(Box::new(geog_name)));
+                }
+                "name" => {
+                    let name_elem =
+                        super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                    event.children.push(EventChild::Name(Box::new(name_elem)));
+                }
+                "persName" => {
+                    let pers_name = super::header::parse_pers_name_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
+                    event
+                        .children
+                        .push(EventChild::PersName(Box::new(pers_name)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(event)
 }
 
 /// Parse a `<langUsage>` element from within another element.
@@ -1881,6 +2113,48 @@ impl MeiDeserialize for Work {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_work_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for History {
+    fn element_name() -> &'static str {
+        "history"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_history_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for EventList {
+    fn element_name() -> &'static str {
+        "eventList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_event_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Event {
+    fn element_name() -> &'static str {
+        "event"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_event_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -3683,6 +3957,49 @@ mod tests {
                 }
             }
             _ => panic!("Expected PerfMedium child"),
+        }
+    }
+
+    #[test]
+    fn history_deserializes_with_event_list() {
+        use tusk_model::elements::{EventChild, EventListChild, History, HistoryChild};
+
+        let xml = r#"<history>
+            <eventList>
+                <event>
+                    <p>First performance<date isodate="1727-04-11"/><geogName>Leipzig</geogName></p>
+                </event>
+                <event>
+                    <p>First publication<date>1830</date></p>
+                </event>
+            </eventList>
+        </history>"#;
+        let history = History::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(history.children.len(), 1);
+        match &history.children[0] {
+            HistoryChild::EventList(event_list) => {
+                assert_eq!(event_list.children.len(), 2);
+                // First event
+                match &event_list.children[0] {
+                    EventListChild::Event(event) => {
+                        assert_eq!(event.children.len(), 1);
+                        match &event.children[0] {
+                            EventChild::P(_) => {} // expected
+                            _ => panic!("Expected P child in event"),
+                        }
+                    }
+                    _ => panic!("Expected Event child in eventList"),
+                }
+                // Second event
+                match &event_list.children[1] {
+                    EventListChild::Event(event) => {
+                        assert_eq!(event.children.len(), 1);
+                    }
+                    _ => panic!("Expected Event child in eventList"),
+                }
+            }
+            _ => panic!("Expected EventList child in history"),
         }
     }
 }

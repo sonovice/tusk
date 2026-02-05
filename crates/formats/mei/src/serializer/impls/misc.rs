@@ -20,9 +20,9 @@ use tusk_model::att::{
     AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, Caption, CaptionChild, GraceGrp, GraceGrpChild, L, LChild, Lg, LgChild, Li,
-    LiChild, List, ListChild, Num, Ptr, Ref, Table, TableChild, Td, TdChild, Th, ThChild, Tr,
-    TrChild, Tuplet, TupletChild,
+    Beam, BeamChild, Caption, CaptionChild, Event, EventChild, EventList, EventListChild, GraceGrp,
+    GraceGrpChild, History, HistoryChild, L, LChild, Lg, LgChild, Li, LiChild, List, ListChild,
+    Num, Ptr, Ref, Table, TableChild, Td, TdChild, Th, ThChild, Tr, TrChild, Tuplet, TupletChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -2180,6 +2180,254 @@ impl MeiSerialize for CaptionChild {
                 "CaptionChild::{}::serialize_children",
                 other.element_name()
             ))),
+        }
+    }
+}
+
+// ============================================================================
+// History element
+// ============================================================================
+
+impl MeiSerialize for History {
+    fn element_name(&self) -> &'static str {
+        "history"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for HistoryChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            HistoryChild::Head(_) => "head",
+            HistoryChild::P(_) => "p",
+            HistoryChild::EventList(_) => "eventList",
+            HistoryChild::Lg(_) => "lg",
+            HistoryChild::CastList(_) => "castList",
+            HistoryChild::TreatSched(_) => "treatSched",
+            HistoryChild::List(_) => "list",
+            HistoryChild::ExhibHist(_) => "exhibHist",
+            HistoryChild::Provenance(_) => "provenance",
+            HistoryChild::Div(_) => "div",
+            HistoryChild::Table(_) => "table",
+            HistoryChild::Quote(_) => "quote",
+            HistoryChild::Acquisition(_) => "acquisition",
+            HistoryChild::BiblList(_) => "biblList",
+            HistoryChild::TreatHist(_) => "treatHist",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            HistoryChild::Head(elem) => elem.serialize_mei(writer),
+            HistoryChild::P(elem) => elem.serialize_mei(writer),
+            HistoryChild::EventList(elem) => elem.serialize_mei(writer),
+            HistoryChild::Lg(elem) => elem.serialize_mei(writer),
+            HistoryChild::List(elem) => elem.serialize_mei(writer),
+            HistoryChild::Table(elem) => elem.serialize_mei(writer),
+            // The following children need dedicated serializers - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// EventList element
+// ============================================================================
+
+impl MeiSerialize for EventList {
+    fn element_name(&self) -> &'static str {
+        "eventList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for EventListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            EventListChild::Head(_) => "head",
+            EventListChild::Event(_) => "event",
+            EventListChild::EventList(_) => "eventList",
+            EventListChild::BiblList(_) => "biblList",
+            EventListChild::Date(_) => "date",
+            EventListChild::CorpName(_) => "corpName",
+            EventListChild::GeogName(_) => "geogName",
+            EventListChild::Name(_) => "name",
+            EventListChild::PersName(_) => "persName",
+            EventListChild::Address(_) => "address",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            EventListChild::Head(elem) => elem.serialize_mei(writer),
+            EventListChild::Event(elem) => elem.serialize_mei(writer),
+            EventListChild::EventList(elem) => elem.serialize_mei(writer),
+            EventListChild::Date(elem) => elem.serialize_mei(writer),
+            EventListChild::CorpName(elem) => elem.serialize_mei(writer),
+            EventListChild::GeogName(elem) => elem.serialize_mei(writer),
+            EventListChild::Name(elem) => elem.serialize_mei(writer),
+            EventListChild::PersName(elem) => elem.serialize_mei(writer),
+            EventListChild::Address(elem) => elem.serialize_mei(writer),
+            // BiblList needs dedicated serializer - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Event element
+// ============================================================================
+
+impl MeiSerialize for Event {
+    fn element_name(&self) -> &'static str {
+        "event"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.calendared.collect_attributes());
+        attrs.extend(self.datable.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for EventChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            EventChild::Head(_) => "head",
+            EventChild::P(_) => "p",
+            EventChild::Table(_) => "table",
+            EventChild::List(_) => "list",
+            EventChild::CastList(_) => "castList",
+            EventChild::BiblList(_) => "biblList",
+            EventChild::Date(_) => "date",
+            EventChild::Desc(_) => "desc",
+            EventChild::EventList(_) => "eventList",
+            EventChild::Address(_) => "address",
+            EventChild::CorpName(_) => "corpName",
+            EventChild::GeogName(_) => "geogName",
+            EventChild::Name(_) => "name",
+            EventChild::PersName(_) => "persName",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            EventChild::Head(elem) => elem.serialize_mei(writer),
+            EventChild::P(elem) => elem.serialize_mei(writer),
+            EventChild::Table(elem) => elem.serialize_mei(writer),
+            EventChild::List(elem) => elem.serialize_mei(writer),
+            EventChild::Date(elem) => elem.serialize_mei(writer),
+            EventChild::EventList(elem) => elem.serialize_mei(writer),
+            EventChild::Address(elem) => elem.serialize_mei(writer),
+            EventChild::CorpName(elem) => elem.serialize_mei(writer),
+            EventChild::GeogName(elem) => elem.serialize_mei(writer),
+            EventChild::Name(elem) => elem.serialize_mei(writer),
+            EventChild::PersName(elem) => elem.serialize_mei(writer),
+            // The following children need dedicated serializers - for now write empty element
+            _ => {
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
         }
     }
 }

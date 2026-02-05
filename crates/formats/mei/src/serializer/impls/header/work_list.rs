@@ -156,6 +156,7 @@ impl MeiSerialize for WorkChild {
             WorkChild::Classification(elem) => elem.serialize_mei(writer),
             WorkChild::Creator(elem) => elem.serialize_mei(writer),
             WorkChild::LangUsage(elem) => elem.serialize_mei(writer),
+            WorkChild::History(elem) => elem.serialize_mei(writer),
             // The following children need dedicated serializers - for now write empty element
             _ => {
                 let name = self.element_name();
