@@ -49,7 +49,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] PgFootChild serializer incomplete - missing Table variant (and ~50 other variants); causes table to serialize as 'unknown' (source: part_element.mei)
 - [x] [SERIALIZER_BUG] SectionChild::Annot serialization incomplete - `collect_all_attributes()` returns empty, `has_children()` returns false, `serialize_children()` returns error; causes annot text content to be lost in sections (source: Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
 - [x] [MISSING_ELEMENT] Critical apparatus support: PhysDesc deserializer missing `handList` and `titlePage` children; Measure, Beam, and Layer deserializers missing `app` child element for editorial markup (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
-- [ ] [SERIALIZER_BUG] BeamChild serializer incomplete - missing App variant (and 22 other variants: Pad, KeySig, TabDurSym, Add, Orig, Choice, BTrem, MeterSigGrp, Reg, FTrem, HalfmRpt, Corr, Del, Damage, TabGrp, Supplied, Unclear, ClefGrp, Subst, BarLine, Custos, Restore, BeatRpt, Gap, MeterSig, HandShift, Sic); causes critical apparatus elements to fail serialization (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
+- [x] [SERIALIZER_BUG] BeamChild serializer incomplete - missing App variant (and 22 other variants: Pad, KeySig, TabDurSym, Add, Orig, Choice, BTrem, MeterSigGrp, Reg, FTrem, HalfmRpt, Corr, Del, Damage, TabGrp, Supplied, Unclear, ClefGrp, Subst, BarLine, Custos, Restore, BeatRpt, Gap, MeterSig, HandShift, Sic); causes critical apparatus elements to fail serialization (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 
 ---
 
