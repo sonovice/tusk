@@ -995,6 +995,13 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             }
         }
 
+        // Visibility (from AttStaffDefVis)
+        if let Some(ref visible) = self.staff_def_vis.visible {
+            if let Some(s) = to_attr_string(visible) {
+                attrs.push(("visible", s));
+            }
+        }
+
         // Analytical attributes (key info)
         if let Some(v) = &self.staff_def_anl.key_accid {
             if let Some(s) = to_attr_string(v) {

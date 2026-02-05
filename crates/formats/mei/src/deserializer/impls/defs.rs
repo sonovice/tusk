@@ -853,6 +853,9 @@ pub(crate) fn parse_clef_from_event<R: BufRead>(
     clef.common.extract_attributes(&mut attrs)?;
     clef.facsimile.extract_attributes(&mut attrs)?;
 
+    // Extract event attributes (when, layer, staff, tstamp, etc.)
+    clef.event.extract_attributes(&mut attrs)?;
+
     // Clef-specific logical attributes
     extract_attr!(attrs, "shape", clef.clef_log.shape);
     extract_attr!(attrs, "line", clef.clef_log.line);
@@ -860,6 +863,9 @@ pub(crate) fn parse_clef_from_event<R: BufRead>(
     extract_attr!(attrs, "dis", clef.clef_log.dis);
     extract_attr!(attrs, "dis.place", clef.clef_log.dis_place);
     extract_attr!(attrs, "cautionary", clef.clef_log.cautionary);
+
+    // Extract clef visual attributes (color, visible, glyph.*, font*, etc.)
+    clef.clef_vis.extract_attributes(&mut attrs)?;
 
     // Skip children if any (clef typically has no children)
     if !is_empty {
