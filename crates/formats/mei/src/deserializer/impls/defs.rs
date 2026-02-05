@@ -1580,3 +1580,21 @@ pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
 
     Ok(pg_foot)
 }
+
+// ============================================================================
+// InstrDef implementation
+// ============================================================================
+
+impl MeiDeserialize for InstrDef {
+    fn element_name() -> &'static str {
+        "instrDef"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_instr_def_from_event(reader, attrs, is_empty)
+    }
+}

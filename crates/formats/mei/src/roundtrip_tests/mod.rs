@@ -21,6 +21,7 @@ mod editorial;
 mod facsimile;
 mod harmony;
 mod header;
+mod midi;
 mod names;
 mod note;
 mod structure;
