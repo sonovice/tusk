@@ -1191,32 +1191,170 @@ impl MeiSerialize for TempoChild {
     fn element_name(&self) -> &'static str {
         match self {
             TempoChild::Text(_) => "$text",
-            _ => "unknown", // Other children not yet fully implemented
+            TempoChild::Rend(_) => "rend",
+            TempoChild::Lb(_) => "lb",
+            TempoChild::Ref(_) => "ref",
+            TempoChild::PersName(_) => "persName",
+            TempoChild::CorpName(_) => "corpName",
+            TempoChild::Name(_) => "name",
+            TempoChild::Date(_) => "date",
+            TempoChild::Title(_) => "title",
+            TempoChild::Identifier(_) => "identifier",
+            TempoChild::Num(_) => "num",
+            TempoChild::Ptr(_) => "ptr",
+            TempoChild::Annot(_) => "annot",
+            TempoChild::AnchoredText(_) => "anchoredText",
+            TempoChild::Seg(_) => "seg",
+            TempoChild::Symbol(_) => "symbol",
+            // Other variants - return element name for error messages
+            TempoChild::Stack(_) => "stack",
+            TempoChild::RelationList(_) => "relationList",
+            TempoChild::Locus(_) => "locus",
+            TempoChild::Width(_) => "width",
+            TempoChild::Orig(_) => "orig",
+            TempoChild::Address(_) => "address",
+            TempoChild::Curve(_) => "curve",
+            TempoChild::Restore(_) => "restore",
+            TempoChild::Relation(_) => "relation",
+            TempoChild::Term(_) => "term",
+            TempoChild::Choice(_) => "choice",
+            TempoChild::PostBox(_) => "postBox",
+            TempoChild::Corr(_) => "corr",
+            TempoChild::GeogName(_) => "geogName",
+            TempoChild::Add(_) => "add",
+            TempoChild::Bloc(_) => "bloc",
+            TempoChild::Bibl(_) => "bibl",
+            TempoChild::Sic(_) => "sic",
+            TempoChild::BiblStruct(_) => "biblStruct",
+            TempoChild::Dim(_) => "dim",
+            TempoChild::Reg(_) => "reg",
+            TempoChild::PeriodName(_) => "periodName",
+            TempoChild::Subst(_) => "subst",
+            TempoChild::Unclear(_) => "unclear",
+            TempoChild::Height(_) => "height",
+            TempoChild::Street(_) => "street",
+            TempoChild::Stamp(_) => "stamp",
+            TempoChild::LocusGrp(_) => "locusGrp",
+            TempoChild::Del(_) => "del",
+            TempoChild::HandShift(_) => "handShift",
+            TempoChild::Depth(_) => "depth",
+            TempoChild::Heraldry(_) => "heraldry",
+            TempoChild::PostCode(_) => "postCode",
+            TempoChild::Catchwords(_) => "catchwords",
+            TempoChild::Line(_) => "line",
+            TempoChild::Region(_) => "region",
+            TempoChild::District(_) => "district",
+            TempoChild::Extent(_) => "extent",
+            TempoChild::Abbr(_) => "abbr",
+            TempoChild::Expan(_) => "expan",
+            TempoChild::SecFolio(_) => "secFolio",
+            TempoChild::Fig(_) => "fig",
+            TempoChild::GeogFeat(_) => "geogFeat",
+            TempoChild::Q(_) => "q",
+            TempoChild::Gap(_) => "gap",
+            TempoChild::StyleName(_) => "styleName",
+            TempoChild::Dimensions(_) => "dimensions",
+            TempoChild::Country(_) => "country",
+            TempoChild::Repository(_) => "repository",
+            TempoChild::Signatures(_) => "signatures",
+            TempoChild::Supplied(_) => "supplied",
+            TempoChild::Settlement(_) => "settlement",
+            TempoChild::Damage(_) => "damage",
         }
     }
 
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
+        match self {
+            TempoChild::Text(_) => Vec::new(),
+            TempoChild::Rend(elem) => elem.collect_all_attributes(),
+            TempoChild::Lb(elem) => elem.collect_all_attributes(),
+            TempoChild::Ref(elem) => elem.collect_all_attributes(),
+            TempoChild::PersName(elem) => elem.collect_all_attributes(),
+            TempoChild::CorpName(elem) => elem.collect_all_attributes(),
+            TempoChild::Name(elem) => elem.collect_all_attributes(),
+            TempoChild::Date(elem) => elem.collect_all_attributes(),
+            TempoChild::Title(elem) => elem.collect_all_attributes(),
+            TempoChild::Identifier(elem) => elem.collect_all_attributes(),
+            TempoChild::Num(elem) => elem.collect_all_attributes(),
+            TempoChild::Ptr(elem) => elem.collect_all_attributes(),
+            TempoChild::Annot(elem) => elem.collect_all_attributes(),
+            TempoChild::AnchoredText(elem) => elem.collect_all_attributes(),
+            TempoChild::Seg(elem) => elem.collect_all_attributes(),
+            TempoChild::Symbol(elem) => elem.collect_all_attributes(),
+            _ => Vec::new(),
+        }
     }
 
     fn has_children(&self) -> bool {
-        false
+        match self {
+            TempoChild::Text(_) => false,
+            TempoChild::Rend(elem) => elem.has_children(),
+            TempoChild::Lb(_) => false,
+            TempoChild::Ref(elem) => elem.has_children(),
+            TempoChild::PersName(elem) => elem.has_children(),
+            TempoChild::CorpName(elem) => elem.has_children(),
+            TempoChild::Name(elem) => elem.has_children(),
+            TempoChild::Date(elem) => elem.has_children(),
+            TempoChild::Title(elem) => elem.has_children(),
+            TempoChild::Identifier(elem) => elem.has_children(),
+            TempoChild::Num(elem) => elem.has_children(),
+            TempoChild::Ptr(_) => false,
+            TempoChild::Annot(elem) => elem.has_children(),
+            TempoChild::AnchoredText(elem) => elem.has_children(),
+            TempoChild::Seg(elem) => elem.has_children(),
+            TempoChild::Symbol(elem) => elem.has_children(),
+            _ => false,
+        }
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        Ok(())
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TempoChild::Text(_) => Ok(()),
+            TempoChild::Rend(elem) => elem.serialize_children(writer),
+            TempoChild::Lb(_) => Ok(()),
+            TempoChild::Ref(elem) => elem.serialize_children(writer),
+            TempoChild::PersName(elem) => elem.serialize_children(writer),
+            TempoChild::CorpName(elem) => elem.serialize_children(writer),
+            TempoChild::Name(elem) => elem.serialize_children(writer),
+            TempoChild::Date(elem) => elem.serialize_children(writer),
+            TempoChild::Title(elem) => elem.serialize_children(writer),
+            TempoChild::Identifier(elem) => elem.serialize_children(writer),
+            TempoChild::Num(elem) => elem.serialize_children(writer),
+            TempoChild::Ptr(_) => Ok(()),
+            TempoChild::Annot(elem) => elem.serialize_children(writer),
+            TempoChild::AnchoredText(elem) => elem.serialize_children(writer),
+            TempoChild::Seg(elem) => elem.serialize_children(writer),
+            TempoChild::Symbol(elem) => elem.serialize_children(writer),
+            _ => Ok(()),
+        }
     }
 
     fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             TempoChild::Text(text) => {
                 writer.write_text(text)?;
+                Ok(())
             }
-            _ => {
-                // Other children not yet fully implemented
-            }
+            TempoChild::Rend(elem) => elem.serialize_mei(writer),
+            TempoChild::Lb(elem) => elem.serialize_mei(writer),
+            TempoChild::Ref(elem) => elem.serialize_mei(writer),
+            TempoChild::PersName(elem) => elem.serialize_mei(writer),
+            TempoChild::CorpName(elem) => elem.serialize_mei(writer),
+            TempoChild::Name(elem) => elem.serialize_mei(writer),
+            TempoChild::Date(elem) => elem.serialize_mei(writer),
+            TempoChild::Title(elem) => elem.serialize_mei(writer),
+            TempoChild::Identifier(elem) => elem.serialize_mei(writer),
+            TempoChild::Num(elem) => elem.serialize_mei(writer),
+            TempoChild::Ptr(elem) => elem.serialize_mei(writer),
+            TempoChild::Annot(elem) => elem.serialize_mei(writer),
+            TempoChild::AnchoredText(elem) => elem.serialize_mei(writer),
+            TempoChild::Seg(elem) => elem.serialize_mei(writer),
+            TempoChild::Symbol(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TempoChild::{}",
+                other.element_name()
+            ))),
         }
-        Ok(())
     }
 }
 

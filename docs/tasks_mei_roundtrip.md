@@ -108,7 +108,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] PerfMedium: castList element not parsed - skipped instead of deserialized (source: Berlioz_Symphony_Op25.mei)
 - [x] [DESERIALIZER_BUG] Tempo: rend child not parsed - losing styled text like `<rend fontsize="6.9pt" fontweight="bold">A</rend>` (source: Berlioz_Symphony_Op25.mei)
 - [x] [DESERIALIZER_BUG] Measure: reh (rehearsal mark) element not parsed - missing handler in match (source: Berlioz_Symphony_Op25.mei)
-- [ ] [SERIALIZER_BUG] TempoChild::Rend not serialized - serialize_mei falls through to empty catch-all, losing rend children (source: Berlioz_Symphony_Op25.mei)
+- [x] [SERIALIZER_BUG] TempoChild::Rend not serialized - serialize_mei falls through to empty catch-all, losing rend children (source: Berlioz_Symphony_Op25.mei)
 
 ---
 
