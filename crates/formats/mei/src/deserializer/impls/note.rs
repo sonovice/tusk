@@ -15,7 +15,8 @@ use tusk_model::att::{
     AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, MRest, Note, NoteChild, Rest, RestChild, Space, Verse,
+    Accid, Artic, Chord, ChordChild, Dot, MRest, Note, NoteChild, Rest, RestChild, Space, Syl,
+    Verse,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -652,6 +653,10 @@ impl MeiDeserialize for Note {
                         let verse = Verse::from_mei_event(reader, child_attrs, child_empty)?;
                         note.children.push(NoteChild::Verse(Box::new(verse)));
                     }
+                    "syl" => {
+                        let syl = Syl::from_mei_event(reader, child_attrs, child_empty)?;
+                        note.children.push(NoteChild::Syl(Box::new(syl)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -1206,6 +1211,53 @@ mod tests {
         match &note.children[0] {
             tusk_model::elements::NoteChild::Accid(_) => {}
             other => panic!("Expected Accid, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_syl_child() {
+        // Note with syl (syllable) child element for lyrics
+        let xml = r#"<note pname="c" oct="4" dur="4"><syl>A</syl></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Syl(syl) => {
+                // Syl should have text content "A"
+                assert_eq!(syl.children.len(), 1);
+                match &syl.children[0] {
+                    tusk_model::elements::SylChild::Text(text) => {
+                        assert_eq!(text, "A");
+                    }
+                    other => panic!("Expected text content, got {:?}", other),
+                }
+            }
+            other => panic!("Expected Syl, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn note_deserializes_syl_with_attributes() {
+        // Syl with connector and word position attributes
+        let xml = r#"<note pname="c" oct="4" dur="8"><syl con="d" wordpos="i">leop</syl></note>"#;
+        let note = Note::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note.children.len(), 1);
+        match &note.children[0] {
+            tusk_model::elements::NoteChild::Syl(syl) => {
+                // Check attributes were parsed
+                assert!(syl.syl_log.con.is_some());
+                assert!(syl.syl_log.wordpos.is_some());
+                // Check text content
+                assert_eq!(syl.children.len(), 1);
+                match &syl.children[0] {
+                    tusk_model::elements::SylChild::Text(text) => {
+                        assert_eq!(text, "leop");
+                    }
+                    other => panic!("Expected text content, got {:?}", other),
+                }
+            }
+            other => panic!("Expected Syl, got {:?}", other),
         }
     }
 

@@ -691,6 +691,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Artic(artic) => artic.collect_all_attributes(),
             NoteChild::Dot(dot) => dot.collect_all_attributes(),
             NoteChild::Verse(verse) => verse.collect_all_attributes(),
+            NoteChild::Syl(syl) => syl.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -702,6 +703,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Artic(artic) => artic.has_children(),
             NoteChild::Dot(dot) => dot.has_children(),
             NoteChild::Verse(verse) => verse.has_children(),
+            NoteChild::Syl(syl) => syl.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -713,6 +715,7 @@ impl MeiSerialize for NoteChild {
             NoteChild::Artic(artic) => artic.serialize_children(writer),
             NoteChild::Dot(dot) => dot.serialize_children(writer),
             NoteChild::Verse(verse) => verse.serialize_children(writer),
+            NoteChild::Syl(syl) => syl.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "NoteChild::{}::serialize_children",
                 other.element_name()
