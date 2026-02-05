@@ -20,7 +20,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `phrase` element parsing to Measure deserializer (source: Chopin_Etude_Op10_No9.mei)
 - [x] [MISSING_ATTR] Add `lines.visible` attribute to StaffDef serializer (source: Chopin_Etude_Op10_No9.mei)
 - [x] [MISSING_ATTR] Add `rotation` attribute to Rend serializer (source: Chopin_Etude_Op10_No9.mei)
-- [ ] [MISSING_ELEMENT] Add `respStmt` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
+- [x] [MISSING_ELEMENT] Add `respStmt` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
 - [ ] [MISSING_ELEMENT] Add `series` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
 
 ---

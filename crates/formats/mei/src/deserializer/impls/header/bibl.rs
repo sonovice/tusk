@@ -154,6 +154,14 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             bibl.children
                                 .push(BiblChild::BiblStruct(Box::new(bibl_struct)));
                         }
+                        "respStmt" => {
+                            let resp_stmt = super::parse_resp_stmt_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            bibl.children.push(BiblChild::RespStmt(Box::new(resp_stmt)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {
