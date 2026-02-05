@@ -1802,7 +1802,12 @@ pub(crate) fn parse_sampling_decl_from_event<R: BufRead>(
                         .children
                         .push(SamplingDeclChild::Head(Box::new(head)));
                 }
-                // p elements are more complex - skip for now
+                "p" => {
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    sampling_decl
+                        .children
+                        .push(SamplingDeclChild::P(Box::new(p)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
