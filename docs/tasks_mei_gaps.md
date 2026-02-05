@@ -21,7 +21,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add deserializers for agent/responsibility elements (7): `Creator`, `Editor`, `Funder`, `Sponsor`, `Contributor`, `Resp`, `RespStmt`
 - [x] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
 - [x] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
-- [ ] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
+- [x] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
 - [ ] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
 - [ ] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
 - [ ] Add deserializers for remaining header elements: `PgHead`, `PgFoot`, `Clef`, `KeySig`, `MeterSig`, `InstrDef`, `LabelAbbr`, `Date`, `Name`, `Head`, `P`, `L`, `Div`, `Ref`, `Ptr`, `Symbol`, `F`, `Fb`
@@ -52,8 +52,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ### 2.5 Core Music Elements
 - [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad`
 - [ ] Implement key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym`
-- [ ] Implement parts: `Part`, `Parts`, `Ossia`
-- [ ] Implement `HarpPedal`
+- [ ] Implement parts: `Part`, `Parts`, `Ossia` and also `HarpPedal`
 - [ ] Add roundtrip tests
 
 ---
@@ -69,8 +68,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 4: Editorial Module Completion
 
 ### 4.1 Remaining Editorial Elements
-- [ ] Implement abbreviation/expansion: `Abbr`, `Expan`
-- [ ] Implement original/regularized: `Orig`, `Reg`
+- [ ] Implement abbreviation/expansion: `Abbr`, `Expan` and original/regularized: `Orig`, `Reg`
 - [ ] Implement corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
 - [ ] Add roundtrip tests
 
@@ -187,13 +185,11 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [ ] Add roundtrip tests
 
 ### 15.2 Provenance and History
-- [ ] Implement `Provenance`, `Acquisition`, `ExhibHist`, `History`
-- [ ] Implement `AccMat`, `AddDesc`
+- [ ] Implement `Provenance`, `Acquisition`, `ExhibHist`, `History`, `AccMat`, `AddDesc`
 - [ ] Add roundtrip tests
 
 ### 15.3 Watermarks and Type
-- [ ] Implement `Watermark`, `WatermarkDesc`, `WatermarkList`
-- [ ] Implement `TypeDesc`, `TypeNote`
+- [ ] Implement `Watermark`, `WatermarkDesc`, `WatermarkList`, `TypeDesc`, `TypeNote`
 - [ ] Add roundtrip tests
 
 ### 15.4 Recording and Performance Metadata
@@ -225,7 +221,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [ ] Implement `MeiCorpus`
 - [ ] Add roundtrip tests
 
-### 16.2 Miscellaneous Elements
+### 16.1 Miscellaneous Elements
 - [ ] Implement external: `ExtData`, `AvFile`, `Cutout`
 - [ ] Implement folio: `Bifolium`, `Folium`
 - [ ] Implement bibliographic: `Analytic`, `Monogr`, `Series`, `Desc`

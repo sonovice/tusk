@@ -17,8 +17,8 @@ use super::{
 use crate::deserializer::MixedContent;
 use std::io::BufRead;
 use tusk_model::elements::{
-    Audience, BiblList, BiblListChild, CastGrp, CastGrpChild, CastItem, CastItemChild, CastList,
-    CastListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild, Classification,
+    AltId, Audience, BiblList, BiblListChild, CastGrp, CastGrpChild, CastItem, CastItemChild,
+    CastList, CastListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild, Classification,
     ClassificationChild, ComponentList, ComponentListChild, ContentItem, ContentItemChild,
     Contents, ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition,
     EditionStmt, EditionStmtChild, Event, EventChild, EventList, EventListChild, Expression,
@@ -3565,6 +3565,192 @@ impl MeiDeserialize for ContentItem {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_content_item_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// Work metadata element implementations
+// ============================================================================
+
+impl MeiDeserialize for AltId {
+    fn element_name() -> &'static str {
+        "altId"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        super::header::parse_alt_id_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for ExtMeta {
+    fn element_name() -> &'static str {
+        "extMeta"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_ext_meta_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Key {
+    fn element_name() -> &'static str {
+        "key"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_key_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Meter {
+    fn element_name() -> &'static str {
+        "meter"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_meter_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Creation {
+    fn element_name() -> &'static str {
+        "creation"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_creation_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Incip {
+    fn element_name() -> &'static str {
+        "incip"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_incip_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for IncipCode {
+    fn element_name() -> &'static str {
+        "incipCode"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_incip_code_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for IncipText {
+    fn element_name() -> &'static str {
+        "incipText"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_incip_text_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for PerfMedium {
+    fn element_name() -> &'static str {
+        "perfMedium"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_perf_medium_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for PerfRes {
+    fn element_name() -> &'static str {
+        "perfRes"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_perf_res_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for PerfResList {
+    fn element_name() -> &'static str {
+        "perfResList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_perf_res_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for LangUsage {
+    fn element_name() -> &'static str {
+        "langUsage"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_lang_usage_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Language {
+    fn element_name() -> &'static str {
+        "language"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_language_from_event(reader, attrs, is_empty)
     }
 }
 

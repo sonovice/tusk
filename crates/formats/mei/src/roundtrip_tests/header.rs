@@ -1950,3 +1950,368 @@ fn roundtrip_encoding_desc_with_sampling_decl() {
         other => panic!("Expected SamplingDecl child, got {:?}", other),
     }
 }
+
+// ============================================================================
+// Work Metadata Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_key_element_empty() {
+    use tusk_model::elements::Key;
+
+    let original = Key::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<key"), "should have key: {}", xml);
+
+    let parsed = Key::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_key_element_with_attributes() {
+    use tusk_model::data::{DataMode, DataModeCmn, DataPitchname};
+    use tusk_model::elements::{Key, KeyChild};
+
+    let mut key = Key::default();
+    key.common.xml_id = Some("key1".to_string());
+    key.pitch.pname = Some(DataPitchname("c".to_string()));
+    key.key_mode.mode = Some(DataMode::DataModeCmn(DataModeCmn::Major));
+    key.children.push(KeyChild::Text("C major".to_string()));
+
+    let xml = key.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"key1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("pname=\"c\""), "should have pname: {}", xml);
+    assert!(xml.contains("mode=\"major\""), "should have mode: {}", xml);
+    assert!(xml.contains("C major"), "should have text: {}", xml);
+
+    let parsed = Key::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("key1".to_string()));
+    assert_eq!(parsed.pitch.pname, Some(DataPitchname("c".to_string())));
+    assert_eq!(
+        parsed.key_mode.mode,
+        Some(DataMode::DataModeCmn(DataModeCmn::Major))
+    );
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_meter_element() {
+    use tusk_model::elements::{Meter, MeterChild};
+
+    let mut meter = Meter::default();
+    meter.common.xml_id = Some("meter1".to_string());
+    meter.meter_sig_log.count = Some("4".to_string());
+    meter.meter_sig_log.unit = Some(4.0);
+    meter.children.push(MeterChild::Text("4/4".to_string()));
+
+    let xml = meter.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"meter1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("count=\"4\""), "should have count: {}", xml);
+    assert!(xml.contains("unit=\"4\""), "should have unit: {}", xml);
+    assert!(xml.contains("4/4"), "should have text: {}", xml);
+
+    let parsed = Meter::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("meter1".to_string()));
+    assert_eq!(parsed.meter_sig_log.count, Some("4".to_string()));
+    assert_eq!(parsed.meter_sig_log.unit, Some(4.0));
+}
+
+#[test]
+fn roundtrip_creation_element() {
+    use tusk_model::elements::{Creation, CreationChild};
+
+    let mut creation = Creation::default();
+    creation.common.xml_id = Some("creation1".to_string());
+    creation
+        .children
+        .push(CreationChild::Text("Composed in Vienna, 1800".to_string()));
+
+    let xml = creation.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"creation1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Composed in Vienna, 1800"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Creation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("creation1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CreationChild::Text(text) => assert_eq!(text, "Composed in Vienna, 1800"),
+        other => panic!("Expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_incip_element() {
+    use tusk_model::elements::{Incip, IncipChild, Key};
+
+    let mut incip = Incip::default();
+    incip.common.xml_id = Some("incip1".to_string());
+
+    // Add a key child
+    let mut key = Key::default();
+    key.common.xml_id = Some("incip-key".to_string());
+    incip.children.push(IncipChild::Key(Box::new(key)));
+
+    let xml = incip.to_mei_string().expect("serialize");
+    assert!(xml.contains("<incip"), "should have incip: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"incip1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<key"), "should have key child: {}", xml);
+
+    let parsed = Incip::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("incip1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_incip_code_element() {
+    use tusk_model::elements::{IncipCode, IncipCodeChild};
+
+    let mut incip_code = IncipCode::default();
+    incip_code.common.xml_id = Some("incipc1".to_string());
+    incip_code.form = Some("plaineAndEasie".to_string());
+    incip_code
+        .children
+        .push(IncipCodeChild::Text("4G-4G-4G/8E".to_string()));
+
+    let xml = incip_code.to_mei_string().expect("serialize");
+    assert!(xml.contains("<incipCode"), "should have incipCode: {}", xml);
+    assert!(
+        xml.contains("form=\"plaineAndEasie\""),
+        "should have form: {}",
+        xml
+    );
+    assert!(xml.contains("4G-4G-4G/8E"), "should have code: {}", xml);
+
+    let parsed = IncipCode::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("incipc1".to_string()));
+    assert_eq!(parsed.form, Some("plaineAndEasie".to_string()));
+}
+
+#[test]
+fn roundtrip_incip_text_element() {
+    use tusk_model::elements::{IncipText, IncipTextChild, Lg};
+
+    let mut incip_text = IncipText::default();
+    incip_text.common.xml_id = Some("incipt1".to_string());
+
+    let lg = Lg::default();
+    incip_text.children.push(IncipTextChild::Lg(Box::new(lg)));
+
+    let xml = incip_text.to_mei_string().expect("serialize");
+    assert!(xml.contains("<incipText"), "should have incipText: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"incipt1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<lg"), "should have lg child: {}", xml);
+
+    let parsed = IncipText::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("incipt1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_perf_medium_element() {
+    use tusk_model::elements::{PerfMedium, PerfMediumChild, PerfResList};
+
+    let mut perf_medium = PerfMedium::default();
+    perf_medium.common.xml_id = Some("pm1".to_string());
+
+    let perf_res_list = PerfResList::default();
+    perf_medium
+        .children
+        .push(PerfMediumChild::PerfResList(Box::new(perf_res_list)));
+
+    let xml = perf_medium.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<perfMedium"),
+        "should have perfMedium: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<perfResList"),
+        "should have perfResList child: {}",
+        xml
+    );
+
+    let parsed = PerfMedium::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pm1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_perf_res_list_element() {
+    use tusk_model::elements::{PerfRes, PerfResChild, PerfResList, PerfResListChild};
+
+    let mut perf_res_list = PerfResList::default();
+    perf_res_list.common.xml_id = Some("prl1".to_string());
+
+    let mut perf_res = PerfRes::default();
+    perf_res.common.xml_id = Some("pr1".to_string());
+    perf_res
+        .children
+        .push(PerfResChild::Text("Violin".to_string()));
+    perf_res_list
+        .children
+        .push(PerfResListChild::PerfRes(Box::new(perf_res)));
+
+    let xml = perf_res_list.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<perfResList"),
+        "should have perfResList: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<perfRes"),
+        "should have perfRes child: {}",
+        xml
+    );
+    assert!(xml.contains("Violin"), "should have text: {}", xml);
+
+    let parsed = PerfResList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("prl1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_perf_res_element() {
+    use tusk_model::elements::{PerfRes, PerfResChild};
+
+    let mut perf_res = PerfRes::default();
+    perf_res.common.xml_id = Some("pr1".to_string());
+    perf_res.perf_res.count = Some(2);
+    perf_res
+        .children
+        .push(PerfResChild::Text("Viola".to_string()));
+
+    let xml = perf_res.to_mei_string().expect("serialize");
+    assert!(xml.contains("<perfRes"), "should have perfRes: {}", xml);
+    assert!(xml.contains("count=\"2\""), "should have count: {}", xml);
+    assert!(xml.contains("Viola"), "should have text: {}", xml);
+
+    let parsed = PerfRes::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pr1".to_string()));
+    assert_eq!(parsed.perf_res.count, Some(2));
+}
+
+#[test]
+fn roundtrip_lang_usage_element() {
+    use tusk_model::elements::{LangUsage, LangUsageChild, Language};
+
+    let mut lang_usage = LangUsage::default();
+    lang_usage.common.xml_id = Some("lu1".to_string());
+
+    let language = Language::default();
+    lang_usage
+        .children
+        .push(LangUsageChild::Language(Box::new(language)));
+
+    let xml = lang_usage.to_mei_string().expect("serialize");
+    assert!(xml.contains("<langUsage"), "should have langUsage: {}", xml);
+    assert!(
+        xml.contains("<language"),
+        "should have language child: {}",
+        xml
+    );
+
+    let parsed = LangUsage::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("lu1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_language_element() {
+    use tusk_model::elements::{Language, LanguageChild};
+
+    let mut language = Language::default();
+    language.common.xml_id = Some("lang1".to_string());
+    language.lang.xml_lang = Some("de".to_string());
+    language
+        .children
+        .push(LanguageChild::Text("German".to_string()));
+
+    let xml = language.to_mei_string().expect("serialize");
+    assert!(xml.contains("<language"), "should have language: {}", xml);
+    assert!(
+        xml.contains("xml:lang=\"de\""),
+        "should have xml:lang: {}",
+        xml
+    );
+    assert!(xml.contains("German"), "should have text: {}", xml);
+
+    let parsed = Language::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("lang1".to_string()));
+    assert_eq!(parsed.lang.xml_lang, Some("de".to_string()));
+}
+
+#[test]
+fn roundtrip_alt_id_element() {
+    use tusk_model::elements::{AltId, AltIdChild};
+
+    let mut alt_id = AltId::default();
+    alt_id.common.xml_id = Some("altid1".to_string());
+    alt_id
+        .children
+        .push(AltIdChild::Text("ISRC-12345".to_string()));
+
+    let xml = alt_id.to_mei_string().expect("serialize");
+    assert!(xml.contains("<altId"), "should have altId: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"altid1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("ISRC-12345"), "should have text: {}", xml);
+
+    let parsed = AltId::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("altid1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_ext_meta_element() {
+    use tusk_model::elements::{ExtMeta, ExtMetaChild};
+
+    let mut ext_meta = ExtMeta::default();
+    ext_meta.common.xml_id = Some("extm1".to_string());
+    ext_meta
+        .children
+        .push(ExtMetaChild::Text("External metadata here".to_string()));
+
+    let xml = ext_meta.to_mei_string().expect("serialize");
+    assert!(xml.contains("<extMeta"), "should have extMeta: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"extm1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("External metadata here"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = ExtMeta::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("extm1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
