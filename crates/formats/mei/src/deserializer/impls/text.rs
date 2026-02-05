@@ -349,6 +349,7 @@ pub(crate) fn parse_rend_from_event<R: BufRead>(
     rend.typography.extract_attributes(&mut attrs)?;
     rend.vertical_align.extract_attributes(&mut attrs)?;
     rend.whitespace.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "rotation", rend.rotation);
 
     // Rend has mixed content - text and various child elements
     if !is_empty {

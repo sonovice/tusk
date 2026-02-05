@@ -19,7 +19,9 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `fing` element parsing to Measure deserializer (source: Chopin_Etude_Op10_No9.mei)
 - [x] [MISSING_ELEMENT] Add `phrase` element parsing to Measure deserializer (source: Chopin_Etude_Op10_No9.mei)
 - [x] [MISSING_ATTR] Add `lines.visible` attribute to StaffDef serializer (source: Chopin_Etude_Op10_No9.mei)
-- [ ] [MISSING_ATTR] Add `rotation` attribute to Rend serializer (source: Chopin_Etude_Op10_No9.mei)
+- [x] [MISSING_ATTR] Add `rotation` attribute to Rend serializer (source: Chopin_Etude_Op10_No9.mei)
+- [ ] [MISSING_ELEMENT] Add `respStmt` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
+- [ ] [MISSING_ELEMENT] Add `series` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
 
 ---
 
@@ -59,7 +61,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Borodin_StringTrio_g-minor.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Brahms_StringQuartet_Op51_No1.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Brahms_WieMelodienZiehtEsMir.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Chopin_Etude_Op10_No9.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Chopin_Etude_Op10_No9.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Chopin_Mazurka_Op6_No1.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Czerny_Praeludium_et_Fuga_Op603_No6.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Czerny_StringQuartet_d-minor.mei`

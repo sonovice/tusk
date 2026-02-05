@@ -483,3 +483,14 @@ fn test_roundtrip_chopin_etude_op10_no9() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_chopin_mazurka_op6_no1() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Chopin_Mazurka_Op6_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Chopin_Mazurka_Op6_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

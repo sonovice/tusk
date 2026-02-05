@@ -849,6 +849,9 @@ impl MeiSerialize for Rend {
         attrs.extend(self.typography.collect_attributes());
         attrs.extend(self.vertical_align.collect_attributes());
         attrs.extend(self.whitespace.collect_attributes());
+        if let Some(ref rotation) = self.rotation {
+            attrs.push(("rotation", rotation.to_string()));
+        }
         attrs
     }
 
