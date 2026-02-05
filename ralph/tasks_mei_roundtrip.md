@@ -33,7 +33,9 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `lg` child element parsing to Div deserializer (source: McFerrin_Don't_worry.mei)
 - [x] [MISSING_ELEMENT] Add `FunderChild` serializer impl, `bTrem` to Tuplet deserializer, `symbol` to Rend deserializer, `annot` to Bibl deserializer, `staffDef` to Measure deserializer, `instrDef` to LayerDef deserializer (sources: Parker-Gillespie_ShawNuff.mei, Schubert_Erlkoenig.mei, Praetorius_PuerNobisNascitur.mei, Schubert_Lindenbaum.mei, Webern_Variations_for_Piano_Op27_No2.mei, Ponchielli_LarrivoDelRe.mei)
 - [x] [MISSING_ELEMENT] Add `staffDef` and `add` child element parsing to Staff deserializer (source: Parker-Gillespie_ShawNuff.mei)
-- [ ] [SERIALIZER_BUG] Add `StaffDef` and `Add` handling to StaffChild serializer, add `Add` handling to LayerChild serializer/deserializer - currently StaffChild returns "unknown" for non-Layer variants (source: Parker-Gillespie_ShawNuff.mei)
+- [x] [SERIALIZER_BUG] Add `StaffDef` and `Add` handling to StaffChild serializer, add `Add` handling to LayerChild serializer/deserializer - currently StaffChild returns "unknown" for non-Layer variants (source: Parker-Gillespie_ShawNuff.mei)
+- [ ] [MISSING_ATTR] Add `clef.visible` attribute to StaffDef serializer (source: Parker-Gillespie_ShawNuff.mei)
+- [ ] [SERIALIZER_BUG] Add `space` child element serialization/deserialization to Add element - currently Add only serializes Text children (source: Parker-Gillespie_ShawNuff.mei)
 
 ---
 

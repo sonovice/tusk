@@ -583,6 +583,10 @@ impl MeiDeserialize for Layer {
                         let bar_line = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::BarLine(Box::new(bar_line)));
                     }
+                    "add" => {
+                        let add = Add::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::Add(Box::new(add)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {

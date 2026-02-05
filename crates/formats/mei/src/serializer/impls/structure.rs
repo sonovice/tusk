@@ -14,7 +14,7 @@ use tusk_model::att::{
     AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    BTrem, Body, BodyChild, Clef, Ending, EndingChild, FTrem, Layer, LayerChild, MRest, Mdiv,
+    Add, BTrem, Body, BodyChild, Clef, Ending, EndingChild, FTrem, Layer, LayerChild, MRest, Mdiv,
     MdivChild, Measure, MeasureChild, Pb, Sb, Score, ScoreChild, Section, SectionChild, Staff,
     StaffChild, StaffDef,
 };
@@ -436,7 +436,9 @@ impl MeiSerialize for StaffChild {
     fn element_name(&self) -> &'static str {
         match self {
             StaffChild::Layer(_) => "layer",
-            // Other child types will have their element names here
+            StaffChild::StaffDef(_) => "staffDef",
+            StaffChild::Add(_) => "add",
+            // Other child types - can be added as needed
             _ => "unknown",
         }
     }
@@ -444,6 +446,8 @@ impl MeiSerialize for StaffChild {
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         match self {
             StaffChild::Layer(layer) => layer.collect_all_attributes(),
+            StaffChild::StaffDef(staff_def) => staff_def.collect_all_attributes(),
+            StaffChild::Add(add) => add.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -452,6 +456,8 @@ impl MeiSerialize for StaffChild {
     fn has_children(&self) -> bool {
         match self {
             StaffChild::Layer(layer) => layer.has_children(),
+            StaffChild::StaffDef(staff_def) => staff_def.has_children(),
+            StaffChild::Add(add) => add.has_children(),
             _ => false,
         }
     }
@@ -459,6 +465,8 @@ impl MeiSerialize for StaffChild {
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
             StaffChild::Layer(layer) => layer.serialize_children(writer),
+            StaffChild::StaffDef(staff_def) => staff_def.serialize_children(writer),
+            StaffChild::Add(add) => add.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "StaffChild::{}::serialize_children",
                 other.element_name()
@@ -526,6 +534,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::MultiRest(_) => "multiRest",
             LayerChild::BTrem(_) => "bTrem",
             LayerChild::FTrem(_) => "fTrem",
+            LayerChild::Add(_) => "add",
             // Many other child types...
             _ => "unknown",
         }
@@ -548,6 +557,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::FTrem(ftrem) => ftrem.collect_all_attributes(),
             LayerChild::MSpace(mspace) => mspace.collect_all_attributes(),
             LayerChild::BarLine(barline) => barline.collect_all_attributes(),
+            LayerChild::Add(add) => add.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -570,6 +580,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::BTrem(btrem) => btrem.has_children(),
             LayerChild::FTrem(ftrem) => ftrem.has_children(),
             LayerChild::BarLine(_) => false, // BarLine has no children
+            LayerChild::Add(add) => add.has_children(),
             _ => false,
         }
     }
@@ -586,6 +597,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::BTrem(btrem) => btrem.serialize_children(writer),
             LayerChild::FTrem(ftrem) => ftrem.serialize_children(writer),
             LayerChild::BarLine(_) => Ok(()), // BarLine has no children
+            LayerChild::Add(add) => add.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "LayerChild::{}::serialize_children",
                 other.element_name()
