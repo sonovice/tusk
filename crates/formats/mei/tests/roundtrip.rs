@@ -355,3 +355,15 @@ fn test_roundtrip_bach_js_herzliebster_jesu_bwv244_46() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_hilf_herr_jesu_bwv344() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Bach-JS_Hilf_Herr_Jesu_BWV344.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_Hilf_Herr_Jesu_BWV344.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
