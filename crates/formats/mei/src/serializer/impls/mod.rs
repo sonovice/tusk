@@ -18,6 +18,7 @@ mod header;
 mod misc;
 mod note;
 mod structure;
+mod text;
 
 // Header module is now a directory with submodules
 

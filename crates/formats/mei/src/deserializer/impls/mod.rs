@@ -47,8 +47,11 @@ pub(crate) use misc::{
     parse_work_from_event, parse_work_list_from_event,
 };
 pub(crate) use text::{
-    parse_div_from_event, parse_fig_desc_from_event, parse_l_from_event, parse_lb_from_event,
-    parse_li_from_event, parse_list_from_event, parse_rend_from_event,
+    parse_argument_from_event, parse_back_from_event, parse_colophon_from_event,
+    parse_dedication_from_event, parse_div_from_event, parse_epigraph_from_event,
+    parse_fig_desc_from_event, parse_front_from_event, parse_imprimatur_from_event,
+    parse_l_from_event, parse_lb_from_event, parse_li_from_event, parse_list_from_event,
+    parse_rend_from_event, parse_title_page_from_event,
 };
 
 /// Parse a value using serde_json from XML attribute string.

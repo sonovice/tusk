@@ -360,7 +360,7 @@ impl MeiDeserialize for Sb {
 
 /// Parse a `<pb>` (page break) element from within another element.
 /// Pb can contain pgFoot, pgDesc, pgHead children.
-fn parse_pb_from_event<R: BufRead>(
+pub(crate) fn parse_pb_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,

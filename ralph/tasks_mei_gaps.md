@@ -82,8 +82,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 6: Text and Drama Module
 
 ### 6.1 Front/Back Matter
-- [ ] Implement `Front`, `Back`, `TitlePage`, `Argument`, `Epigraph`, `Dedication`, `Imprimatur`, `Colophon`
-- [ ] Add roundtrip tests
+- [x] Implement `Front`, `Back`, `TitlePage`, `Argument`, `Epigraph`, `Dedication`, `Imprimatur`, `Colophon`
+- [x] Add roundtrip tests
 
 ### 6.2 Drama Elements
 - [ ] Implement `Sp`, `Speaker`, `StageDir`, `Role`, `RoleName`

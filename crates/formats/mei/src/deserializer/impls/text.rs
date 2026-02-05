@@ -1,7 +1,8 @@
 //! Deserializer implementations for text and prose MEI elements.
 //!
 //! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li, Seg,
-//! Table, Tr, Td, Th, Caption and related attribute classes.
+//! Table, Tr, Td, Th, Caption, Front, Back, TitlePage, Argument, Epigraph, Dedication, Imprimatur,
+//! Colophon and related attribute classes.
 
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
@@ -14,9 +15,11 @@ use tusk_model::att::{
     AttVerseGes, AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
 use tusk_model::elements::{
-    Annot, Caption, CaptionChild, Div, DivChild, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li,
+    Annot, Argument, ArgumentChild, Back, BackChild, Caption, CaptionChild, Colophon,
+    ColophonChild, Dedication, DedicationChild, Div, DivChild, Epigraph, EpigraphChild, Fig,
+    FigChild, FigDesc, Front, FrontChild, Imprimatur, ImprimaturChild, Lb, Lg, LgChild, Li,
     LiChild, List, ListChild, Rend, Seg, SegChild, Syl, SylChild, Table, TableChild, Td, TdChild,
-    Th, ThChild, Tr, TrChild, Verse, VerseChild,
+    Th, ThChild, TitlePage, TitlePageChild, Tr, TrChild, Verse, VerseChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1895,6 +1898,1180 @@ pub(crate) fn parse_l_from_event<R: BufRead>(
 }
 
 // ============================================================================
+// Front/Back Matter element implementations
+// ============================================================================
+
+impl MeiDeserialize for Front {
+    fn element_name() -> &'static str {
+        "front"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut front = Front::default();
+
+        // Extract attributes
+        front.common.extract_attributes(&mut attrs)?;
+        front.facsimile.extract_attributes(&mut attrs)?;
+        front.lang.extract_attributes(&mut attrs)?;
+        front.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Read children
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("front")?
+            {
+                match name.as_str() {
+                    "titlePage" => {
+                        let tp = TitlePage::from_mei_event(reader, child_attrs, child_empty)?;
+                        front.children.push(FrontChild::TitlePage(Box::new(tp)));
+                    }
+                    "div" => {
+                        let div = parse_div_from_event(reader, child_attrs, child_empty)?;
+                        front.children.push(FrontChild::Div(Box::new(div)));
+                    }
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        front.children.push(FrontChild::Lb(Box::new(lb)));
+                    }
+                    "pb" => {
+                        let pb = super::structure::parse_pb_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        front.children.push(FrontChild::Pb(Box::new(pb)));
+                    }
+                    // Skip unknown children in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(front)
+    }
+}
+
+/// Parse a `<front>` element from within another element.
+pub(crate) fn parse_front_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Front> {
+    Front::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Back {
+    fn element_name() -> &'static str {
+        "back"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut back = Back::default();
+
+        // Extract attributes
+        back.common.extract_attributes(&mut attrs)?;
+        back.facsimile.extract_attributes(&mut attrs)?;
+        back.lang.extract_attributes(&mut attrs)?;
+        back.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Read children
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("back")?
+            {
+                match name.as_str() {
+                    "titlePage" => {
+                        let tp = TitlePage::from_mei_event(reader, child_attrs, child_empty)?;
+                        back.children.push(BackChild::TitlePage(Box::new(tp)));
+                    }
+                    "div" => {
+                        let div = parse_div_from_event(reader, child_attrs, child_empty)?;
+                        back.children.push(BackChild::Div(Box::new(div)));
+                    }
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        back.children.push(BackChild::Lb(Box::new(lb)));
+                    }
+                    "pb" => {
+                        let pb = super::structure::parse_pb_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        back.children.push(BackChild::Pb(Box::new(pb)));
+                    }
+                    // Skip unknown children in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(back)
+    }
+}
+
+/// Parse a `<back>` element from within another element.
+pub(crate) fn parse_back_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Back> {
+    Back::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for TitlePage {
+    fn element_name() -> &'static str {
+        "titlePage"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut title_page = TitlePage::default();
+
+        // Extract attributes
+        title_page.common.extract_attributes(&mut attrs)?;
+        title_page.bibl.extract_attributes(&mut attrs)?;
+        title_page.facsimile.extract_attributes(&mut attrs)?;
+        title_page.lang.extract_attributes(&mut attrs)?;
+
+        // Read children
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("titlePage")?
+            {
+                match name.as_str() {
+                    "head" => {
+                        let head =
+                            super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Head(Box::new(head)));
+                    }
+                    "p" => {
+                        let p =
+                            super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+                        title_page.children.push(TitlePageChild::P(Box::new(p)));
+                    }
+                    "title" => {
+                        let title = super::header::parse_title_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Title(Box::new(title)));
+                    }
+                    "date" => {
+                        let date =
+                            super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Date(Box::new(date)));
+                    }
+                    "identifier" => {
+                        let ident = super::header::parse_identifier_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Identifier(Box::new(ident)));
+                    }
+                    "argument" => {
+                        let arg = Argument::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Argument(Box::new(arg)));
+                    }
+                    "epigraph" => {
+                        let epi = Epigraph::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Epigraph(Box::new(epi)));
+                    }
+                    "dedication" => {
+                        let ded = Dedication::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Dedication(Box::new(ded)));
+                    }
+                    "imprimatur" => {
+                        let imp = Imprimatur::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Imprimatur(Box::new(imp)));
+                    }
+                    "lg" => {
+                        let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page.children.push(TitlePageChild::Lg(Box::new(lg)));
+                    }
+                    "list" => {
+                        let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::List(Box::new(list)));
+                    }
+                    "table" => {
+                        let table = parse_table_from_event(reader, child_attrs, child_empty)?;
+                        title_page
+                            .children
+                            .push(TitlePageChild::Table(Box::new(table)));
+                    }
+                    "fig" => {
+                        let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                        title_page.children.push(TitlePageChild::Fig(Box::new(fig)));
+                    }
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        title_page.children.push(TitlePageChild::Lb(Box::new(lb)));
+                    }
+                    "pb" => {
+                        let pb = super::structure::parse_pb_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        title_page.children.push(TitlePageChild::Pb(Box::new(pb)));
+                    }
+                    // Skip unknown children in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(title_page)
+    }
+}
+
+/// Parse a `<titlePage>` element from within another element.
+pub(crate) fn parse_title_page_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<TitlePage> {
+    TitlePage::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Argument {
+    fn element_name() -> &'static str {
+        "argument"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut argument = Argument::default();
+
+        // Extract attributes
+        argument.common.extract_attributes(&mut attrs)?;
+        argument.facsimile.extract_attributes(&mut attrs)?;
+        argument.lang.extract_attributes(&mut attrs)?;
+        argument.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Read children
+        if !is_empty {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("argument")?
+            {
+                match name.as_str() {
+                    "head" => {
+                        let head =
+                            super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::Head(Box::new(head)));
+                    }
+                    "p" => {
+                        let p =
+                            super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::P(Box::new(p)));
+                    }
+                    "lg" => {
+                        let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::Lg(Box::new(lg)));
+                    }
+                    "list" => {
+                        let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::List(Box::new(list)));
+                    }
+                    "table" => {
+                        let table = parse_table_from_event(reader, child_attrs, child_empty)?;
+                        argument
+                            .children
+                            .push(ArgumentChild::Table(Box::new(table)));
+                    }
+                    "fig" => {
+                        let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::Fig(Box::new(fig)));
+                    }
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        argument.children.push(ArgumentChild::Lb(Box::new(lb)));
+                    }
+                    "pb" => {
+                        let pb = super::structure::parse_pb_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        argument.children.push(ArgumentChild::Pb(Box::new(pb)));
+                    }
+                    // Skip unknown children in lenient mode
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(argument)
+    }
+}
+
+/// Parse an `<argument>` element from within another element.
+pub(crate) fn parse_argument_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Argument> {
+    Argument::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Epigraph {
+    fn element_name() -> &'static str {
+        "epigraph"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut epigraph = Epigraph::default();
+
+        // Extract attributes
+        epigraph.common.extract_attributes(&mut attrs)?;
+        epigraph.facsimile.extract_attributes(&mut attrs)?;
+        epigraph.lang.extract_attributes(&mut attrs)?;
+        epigraph.metadata_pointing.extract_attributes(&mut attrs)?;
+
+        // Epigraph has mixed content (text and elements)
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("epigraph")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            epigraph.children.push(EpigraphChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "p" => {
+                                let p = super::header::parse_p_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph.children.push(EpigraphChild::P(Box::new(p)));
+                            }
+                            "lg" => {
+                                let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Lg(Box::new(lg)));
+                            }
+                            "rend" => {
+                                let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Lb(Box::new(lb)));
+                            }
+                            "pb" => {
+                                let pb = super::structure::parse_pb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph.children.push(EpigraphChild::Pb(Box::new(pb)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Title(Box::new(title)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph.children.push(EpigraphChild::Date(Box::new(date)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Name(Box::new(name_elem)));
+                            }
+                            "persName" => {
+                                let pers = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::PersName(Box::new(pers)));
+                            }
+                            "corpName" => {
+                                let corp = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::CorpName(Box::new(corp)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Ref(Box::new(ref_elem)));
+                            }
+                            "ptr" => {
+                                let ptr = super::header::parse_ptr_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph.children.push(EpigraphChild::Ptr(Box::new(ptr)));
+                            }
+                            "identifier" => {
+                                let ident = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Identifier(Box::new(ident)));
+                            }
+                            "num" => {
+                                let num =
+                                    super::parse_num_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Num(Box::new(num)));
+                            }
+                            "seg" => {
+                                let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Seg(Box::new(seg)));
+                            }
+                            "bibl" => {
+                                let bibl =
+                                    super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Bibl(Box::new(bibl)));
+                            }
+                            "list" => {
+                                let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::List(Box::new(list)));
+                            }
+                            "table" => {
+                                let table =
+                                    parse_table_from_event(reader, child_attrs, child_empty)?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Table(Box::new(table)));
+                            }
+                            "fig" => {
+                                let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                                epigraph.children.push(EpigraphChild::Fig(Box::new(fig)));
+                            }
+                            "annot" => {
+                                let annot = super::header::parse_annot_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                epigraph
+                                    .children
+                                    .push(EpigraphChild::Annot(Box::new(annot)));
+                            }
+                            "quote" => {
+                                // Quote not yet implemented, skip
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                            // Skip unknown children in lenient mode
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(epigraph)
+    }
+}
+
+/// Parse an `<epigraph>` element from within another element.
+pub(crate) fn parse_epigraph_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Epigraph> {
+    Epigraph::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Dedication {
+    fn element_name() -> &'static str {
+        "dedication"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut dedication = Dedication::default();
+
+        // Extract attributes
+        dedication.common.extract_attributes(&mut attrs)?;
+        dedication.bibl.extract_attributes(&mut attrs)?;
+        dedication.facsimile.extract_attributes(&mut attrs)?;
+        dedication.lang.extract_attributes(&mut attrs)?;
+
+        // Dedication has mixed content (text and elements)
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("dedication")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            dedication.children.push(DedicationChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "head" => {
+                                let head = super::header::parse_head_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Head(Box::new(head)));
+                            }
+                            "p" => {
+                                let p = super::header::parse_p_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication.children.push(DedicationChild::P(Box::new(p)));
+                            }
+                            "lg" => {
+                                let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                                dedication.children.push(DedicationChild::Lg(Box::new(lg)));
+                            }
+                            "rend" => {
+                                let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                dedication.children.push(DedicationChild::Lb(Box::new(lb)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Title(Box::new(title)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Date(Box::new(date)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Name(Box::new(name_elem)));
+                            }
+                            "persName" => {
+                                let pers = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::PersName(Box::new(pers)));
+                            }
+                            "corpName" => {
+                                let corp = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::CorpName(Box::new(corp)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Ref(Box::new(ref_elem)));
+                            }
+                            "ptr" => {
+                                let ptr = super::header::parse_ptr_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Ptr(Box::new(ptr)));
+                            }
+                            "identifier" => {
+                                let ident = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Identifier(Box::new(ident)));
+                            }
+                            "num" => {
+                                let num =
+                                    super::parse_num_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Num(Box::new(num)));
+                            }
+                            "seg" => {
+                                let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Seg(Box::new(seg)));
+                            }
+                            "bibl" => {
+                                let bibl =
+                                    super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Bibl(Box::new(bibl)));
+                            }
+                            "list" => {
+                                let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::List(Box::new(list)));
+                            }
+                            "table" => {
+                                let table =
+                                    parse_table_from_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Table(Box::new(table)));
+                            }
+                            "fig" => {
+                                let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Fig(Box::new(fig)));
+                            }
+                            "annot" => {
+                                let annot = super::header::parse_annot_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                dedication
+                                    .children
+                                    .push(DedicationChild::Annot(Box::new(annot)));
+                            }
+                            // Skip unknown children in lenient mode
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(dedication)
+    }
+}
+
+/// Parse a `<dedication>` element from within another element.
+pub(crate) fn parse_dedication_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Dedication> {
+    Dedication::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Imprimatur {
+    fn element_name() -> &'static str {
+        "imprimatur"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut imprimatur = Imprimatur::default();
+
+        // Extract attributes
+        imprimatur.common.extract_attributes(&mut attrs)?;
+        imprimatur.facsimile.extract_attributes(&mut attrs)?;
+        imprimatur.lang.extract_attributes(&mut attrs)?;
+        imprimatur
+            .metadata_pointing
+            .extract_attributes(&mut attrs)?;
+
+        // Imprimatur has mixed content (text and elements)
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("imprimatur")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            imprimatur.children.push(ImprimaturChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "rend" => {
+                                let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur.children.push(ImprimaturChild::Lb(Box::new(lb)));
+                            }
+                            "pb" => {
+                                let pb = super::structure::parse_pb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur.children.push(ImprimaturChild::Pb(Box::new(pb)));
+                            }
+                            "lg" => {
+                                let lg = Lg::from_mei_event(reader, child_attrs, child_empty)?;
+                                imprimatur.children.push(ImprimaturChild::Lg(Box::new(lg)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Title(Box::new(title)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Date(Box::new(date)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Name(Box::new(name_elem)));
+                            }
+                            "persName" => {
+                                let pers = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::PersName(Box::new(pers)));
+                            }
+                            "corpName" => {
+                                let corp = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::CorpName(Box::new(corp)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Ref(Box::new(ref_elem)));
+                            }
+                            "ptr" => {
+                                let ptr = super::header::parse_ptr_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Ptr(Box::new(ptr)));
+                            }
+                            "identifier" => {
+                                let ident = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Identifier(Box::new(ident)));
+                            }
+                            "num" => {
+                                let num =
+                                    super::parse_num_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Num(Box::new(num)));
+                            }
+                            "seg" => {
+                                let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Seg(Box::new(seg)));
+                            }
+                            "bibl" => {
+                                let bibl =
+                                    super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Bibl(Box::new(bibl)));
+                            }
+                            "list" => {
+                                let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::List(Box::new(list)));
+                            }
+                            "table" => {
+                                let table =
+                                    parse_table_from_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Table(Box::new(table)));
+                            }
+                            "fig" => {
+                                let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Fig(Box::new(fig)));
+                            }
+                            "annot" => {
+                                let annot = super::header::parse_annot_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                imprimatur
+                                    .children
+                                    .push(ImprimaturChild::Annot(Box::new(annot)));
+                            }
+                            // Skip unknown children in lenient mode
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(imprimatur)
+    }
+}
+
+/// Parse an `<imprimatur>` element from within another element.
+pub(crate) fn parse_imprimatur_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Imprimatur> {
+    Imprimatur::from_mei_event(reader, attrs, is_empty)
+}
+
+impl MeiDeserialize for Colophon {
+    fn element_name() -> &'static str {
+        "colophon"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut colophon = Colophon::default();
+
+        // Extract attributes
+        colophon.common.extract_attributes(&mut attrs)?;
+        colophon.bibl.extract_attributes(&mut attrs)?;
+        colophon.facsimile.extract_attributes(&mut attrs)?;
+        colophon.lang.extract_attributes(&mut attrs)?;
+
+        // Colophon has mixed content (text and elements)
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("colophon")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            colophon.children.push(ColophonChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "head" => {
+                                let head = super::header::parse_head_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon.children.push(ColophonChild::Head(Box::new(head)));
+                            }
+                            "p" => {
+                                let p = super::header::parse_p_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon.children.push(ColophonChild::P(Box::new(p)));
+                            }
+                            "rend" => {
+                                let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Lb(Box::new(lb)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::Title(Box::new(title)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon.children.push(ColophonChild::Date(Box::new(date)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::Name(Box::new(name_elem)));
+                            }
+                            "persName" => {
+                                let pers = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::PersName(Box::new(pers)));
+                            }
+                            "corpName" => {
+                                let corp = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::CorpName(Box::new(corp)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::Ref(Box::new(ref_elem)));
+                            }
+                            "ptr" => {
+                                let ptr = super::header::parse_ptr_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon.children.push(ColophonChild::Ptr(Box::new(ptr)));
+                            }
+                            "identifier" => {
+                                let ident = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::Identifier(Box::new(ident)));
+                            }
+                            "num" => {
+                                let num =
+                                    super::parse_num_from_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Num(Box::new(num)));
+                            }
+                            "seg" => {
+                                let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Seg(Box::new(seg)));
+                            }
+                            "bibl" => {
+                                let bibl =
+                                    super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Bibl(Box::new(bibl)));
+                            }
+                            "fig" => {
+                                let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                                colophon.children.push(ColophonChild::Fig(Box::new(fig)));
+                            }
+                            "annot" => {
+                                let annot = super::header::parse_annot_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                colophon
+                                    .children
+                                    .push(ColophonChild::Annot(Box::new(annot)));
+                            }
+                            // Skip unknown children in lenient mode
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(colophon)
+    }
+}
+
+/// Parse a `<colophon>` element from within another element.
+pub(crate) fn parse_colophon_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Colophon> {
+    Colophon::from_mei_event(reader, attrs, is_empty)
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -2188,4 +3365,178 @@ mod tests {
             _ => panic!("expected List child"),
         }
     }
+
+    // ========================================================================
+    // Front/Back Matter Tests
+    // ========================================================================
+
+    #[test]
+    fn front_deserializes_empty() {
+        let xml = r#"<front/>"#;
+        let front = Front::from_mei_str(xml).expect("should deserialize");
+        assert!(front.common.xml_id.is_none());
+        assert!(front.children.is_empty());
+    }
+
+    #[test]
+    fn front_deserializes_with_xml_id() {
+        let xml = r#"<front xml:id="front1"/>"#;
+        let front = Front::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(front.common.xml_id, Some("front1".to_string()));
+    }
+
+    #[test]
+    fn front_deserializes_with_title_page() {
+        let xml = r#"<front>
+            <titlePage>
+                <p>Title here</p>
+            </titlePage>
+        </front>"#;
+        let front = Front::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(front.children.len(), 1);
+        assert!(matches!(front.children[0], FrontChild::TitlePage(_)));
+    }
+
+    #[test]
+    fn back_deserializes_empty() {
+        let xml = r#"<back/>"#;
+        let back = Back::from_mei_str(xml).expect("should deserialize");
+        assert!(back.common.xml_id.is_none());
+        assert!(back.children.is_empty());
+    }
+
+    #[test]
+    fn back_deserializes_with_div() {
+        let xml = r#"<back>
+            <div><head>Appendix</head></div>
+        </back>"#;
+        let back = Back::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(back.children.len(), 1);
+        assert!(matches!(back.children[0], BackChild::Div(_)));
+    }
+
+    #[test]
+    fn title_page_deserializes_empty() {
+        let xml = r#"<titlePage/>"#;
+        let tp = TitlePage::from_mei_str(xml).expect("should deserialize");
+        assert!(tp.common.xml_id.is_none());
+        assert!(tp.children.is_empty());
+    }
+
+    #[test]
+    fn title_page_deserializes_with_p_child() {
+        let xml = r#"<titlePage>
+            <p>A Sonata</p>
+        </titlePage>"#;
+        let tp = TitlePage::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(tp.children.len(), 1);
+        assert!(matches!(tp.children[0], TitlePageChild::P(_)));
+    }
+
+    #[test]
+    fn argument_deserializes_empty() {
+        let xml = r#"<argument/>"#;
+        let arg = Argument::from_mei_str(xml).expect("should deserialize");
+        assert!(arg.common.xml_id.is_none());
+        assert!(arg.children.is_empty());
+    }
+
+    #[test]
+    fn argument_deserializes_with_p_child() {
+        let xml = r#"<argument>
+            <p>The story begins...</p>
+        </argument>"#;
+        let arg = Argument::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(arg.children.len(), 1);
+        assert!(matches!(arg.children[0], ArgumentChild::P(_)));
+    }
+
+    #[test]
+    fn epigraph_deserializes_empty() {
+        let xml = r#"<epigraph/>"#;
+        let ep = Epigraph::from_mei_str(xml).expect("should deserialize");
+        assert!(ep.common.xml_id.is_none());
+        assert!(ep.children.is_empty());
+    }
+
+    #[test]
+    fn epigraph_deserializes_with_text() {
+        let xml = r#"<epigraph>A wise quote</epigraph>"#;
+        let ep = Epigraph::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(ep.children.len(), 1);
+        match &ep.children[0] {
+            EpigraphChild::Text(text) => assert_eq!(text, "A wise quote"),
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn epigraph_deserializes_with_lg() {
+        let xml = r#"<epigraph>
+            <lg>
+                <l>First line of poem</l>
+            </lg>
+        </epigraph>"#;
+        let ep = Epigraph::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(ep.children.len(), 1);
+        assert!(matches!(ep.children[0], EpigraphChild::Lg(_)));
+    }
+
+    #[test]
+    fn dedication_deserializes_empty() {
+        let xml = r#"<dedication/>"#;
+        let ded = Dedication::from_mei_str(xml).expect("should deserialize");
+        assert!(ded.common.xml_id.is_none());
+        assert!(ded.children.is_empty());
+    }
+
+    #[test]
+    fn dedication_deserializes_with_text() {
+        let xml = r#"<dedication>To my beloved</dedication>"#;
+        let ded = Dedication::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(ded.children.len(), 1);
+        match &ded.children[0] {
+            DedicationChild::Text(text) => assert_eq!(text, "To my beloved"),
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn imprimatur_deserializes_empty() {
+        let xml = r#"<imprimatur/>"#;
+        let imp = Imprimatur::from_mei_str(xml).expect("should deserialize");
+        assert!(imp.common.xml_id.is_none());
+        assert!(imp.children.is_empty());
+    }
+
+    #[test]
+    fn imprimatur_deserializes_with_text() {
+        let xml = r#"<imprimatur>Approved by the censor</imprimatur>"#;
+        let imp = Imprimatur::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(imp.children.len(), 1);
+        match &imp.children[0] {
+            ImprimaturChild::Text(text) => assert_eq!(text, "Approved by the censor"),
+            _ => panic!("expected Text child"),
+        }
+    }
+
+    #[test]
+    fn colophon_deserializes_empty() {
+        let xml = r#"<colophon/>"#;
+        let col = Colophon::from_mei_str(xml).expect("should deserialize");
+        assert!(col.common.xml_id.is_none());
+        assert!(col.children.is_empty());
+    }
+
+    #[test]
+    fn colophon_deserializes_with_text() {
+        let xml = r#"<colophon>Printed in Leipzig, 1850</colophon>"#;
+        let col = Colophon::from_mei_str(xml).expect("should deserialize");
+        assert_eq!(col.children.len(), 1);
+        match &col.children[0] {
+            ColophonChild::Text(text) => assert_eq!(text, "Printed in Leipzig, 1850"),
+            _ => panic!("expected Text child"),
+        }
+    }
+
 }
