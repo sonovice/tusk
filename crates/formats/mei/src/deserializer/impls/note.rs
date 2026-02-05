@@ -578,18 +578,6 @@ impl MeiDeserialize for Accid {
     }
 }
 
-/// Helper to parse Accid from raw child element data
-pub(crate) fn parse_accid_from_raw(mut attrs: AttributeMap) -> Accid {
-    let mut accid = Accid::default();
-    let _ = accid.common.extract_attributes(&mut attrs);
-    let _ = accid.facsimile.extract_attributes(&mut attrs);
-    let _ = accid.accid_log.extract_attributes(&mut attrs);
-    let _ = accid.accid_ges.extract_attributes(&mut attrs);
-    let _ = accid.accid_vis.extract_attributes(&mut attrs);
-    let _ = accid.accid_anl.extract_attributes(&mut attrs);
-    accid
-}
-
 impl MeiDeserialize for Artic {
     fn element_name() -> &'static str {
         "artic"
@@ -617,18 +605,6 @@ impl MeiDeserialize for Artic {
 
         Ok(artic)
     }
-}
-
-/// Helper to parse Artic from raw child element data
-pub(crate) fn parse_artic_from_raw(mut attrs: AttributeMap) -> Artic {
-    let mut artic = Artic::default();
-    let _ = artic.common.extract_attributes(&mut attrs);
-    let _ = artic.facsimile.extract_attributes(&mut attrs);
-    let _ = artic.artic_log.extract_attributes(&mut attrs);
-    let _ = artic.artic_ges.extract_attributes(&mut attrs);
-    let _ = artic.artic_vis.extract_attributes(&mut attrs);
-    let _ = artic.artic_anl.extract_attributes(&mut attrs);
-    artic
 }
 
 impl MeiDeserialize for Note {
@@ -800,23 +776,27 @@ impl MeiDeserialize for Chord {
         // Remaining attributes are unknown - in lenient mode we ignore them
         // In strict mode, we could warn or error
 
-        // Read children if not an empty element
+        // Read children if not an empty element - use recursive parsing for proper child handling
+        // This is necessary because notes within chords can have their own children (accid, artic, etc.)
         if !is_empty {
-            let children_raw = reader.read_children_raw("chord")?;
-            for (name, child_attrs, _child_empty, _content) in children_raw {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("chord")?
+            {
                 match name.as_str() {
                     "note" => {
-                        let note = parse_note_from_raw(child_attrs);
+                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
                         chord.children.push(ChordChild::Note(Box::new(note)));
                     }
                     "artic" => {
-                        let artic = parse_artic_from_raw(child_attrs);
+                        let artic = Artic::from_mei_event(reader, child_attrs, child_empty)?;
                         chord.children.push(ChordChild::Artic(Box::new(artic)));
                     }
                     // Other child types (verse, syl, etc.) can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        // Unknown child element - skip in lenient mode
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
                     }
                 }
             }
@@ -824,18 +804,6 @@ impl MeiDeserialize for Chord {
 
         Ok(chord)
     }
-}
-
-/// Helper to parse Note from raw child element data
-pub(crate) fn parse_note_from_raw(mut attrs: AttributeMap) -> Note {
-    let mut note = Note::default();
-    let _ = note.common.extract_attributes(&mut attrs);
-    let _ = note.facsimile.extract_attributes(&mut attrs);
-    let _ = note.note_log.extract_attributes(&mut attrs);
-    let _ = note.note_ges.extract_attributes(&mut attrs);
-    let _ = note.note_vis.extract_attributes(&mut attrs);
-    let _ = note.note_anl.extract_attributes(&mut attrs);
-    note
 }
 
 impl MeiDeserialize for Space {
@@ -1539,6 +1507,55 @@ mod tests {
         let chord = Chord::from_mei_str(xml).expect("should deserialize");
 
         assert!(chord.chord_anl.fermata.is_some());
+    }
+
+    #[test]
+    fn chord_deserializes_notes_with_accid_children() {
+        // Notes within chords can have accid children - they must be parsed recursively
+        let xml = r#"<chord dur="4" stem.dir="up">
+            <note pname="e" oct="4">
+                <accid accid="s"/>
+            </note>
+            <note pname="e" oct="5">
+                <accid accid="s"/>
+            </note>
+        </chord>"#;
+        let chord = Chord::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(chord.children.len(), 2);
+
+        // First note should have an accid child
+        match &chord.children[0] {
+            tusk_model::elements::ChordChild::Note(note) => {
+                assert_eq!(
+                    note.note_log.pname,
+                    Some(DataPitchname::from("e".to_string()))
+                );
+                assert_eq!(note.note_log.oct, Some(DataOctave(4)));
+                // The accid child should be parsed
+                assert_eq!(note.children.len(), 1);
+                match &note.children[0] {
+                    tusk_model::elements::NoteChild::Accid(accid) => {
+                        assert!(accid.accid_log.accid.is_some());
+                    }
+                    other => panic!("Expected Accid, got {:?}", other),
+                }
+            }
+            other => panic!("Expected Note, got {:?}", other),
+        }
+
+        // Second note should also have an accid child
+        match &chord.children[1] {
+            tusk_model::elements::ChordChild::Note(note) => {
+                assert_eq!(note.note_log.oct, Some(DataOctave(5)));
+                assert_eq!(note.children.len(), 1);
+                match &note.children[0] {
+                    tusk_model::elements::NoteChild::Accid(_) => {}
+                    other => panic!("Expected Accid, got {:?}", other),
+                }
+            }
+            other => panic!("Expected Note, got {:?}", other),
+        }
     }
 
     // ============================================================================

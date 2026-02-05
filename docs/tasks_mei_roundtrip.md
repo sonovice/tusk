@@ -98,7 +98,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Incip/Score: staffDef child not parsed within incip/score - scoreDef parsed but staffDef outside it skipped (source: Beethoven_Hymn_to_joy.mei)
 - [x] [DESERIALIZER_BUG] Creation element: mixed content not parsed - text and date children lost (source: Beethoven_Hymn_to_joy.mei)
 - [x] [SERIALIZER_BUG] Syl element: halign attribute not serialized - AttSylVis attributes missing from collect_all_attributes (source: Beethoven_Hymn_to_joy.mei)
-- [ ] [DESERIALIZER_BUG] Chord/Note: accid child element not parsed within chord notes (source: Beethoven_Hymn_to_joy.mei)
+- [x] [DESERIALIZER_BUG] Chord/Note: accid child element not parsed within chord notes (source: Beethoven_Hymn_to_joy.mei)
 - [x] [DESERIALIZER_BUG] Score: ending element not parsed - missing handler at score level (source: Beethoven_Hymn_to_joy.mei)
 
 ---
