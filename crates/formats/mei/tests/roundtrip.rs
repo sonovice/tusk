@@ -575,3 +575,84 @@ fn test_roundtrip_grieg_butterfly_op43_no1() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_grieg_little_bird_op43_no4() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Grieg_Little_bird_Op43_No4.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Grieg_Little_bird_Op43_No4.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_handel_arie() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Handel_Arie.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Handel_Arie.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_handel_concerto_grosso() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Handel_Concerto_grosso.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Handel_Concerto_grosso.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_handel_messias() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Handel_Messias.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Handel_Messias.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_haydn_string_quartet_op1_no1() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Haydn_StringQuartet_Op1_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Haydn_StringQuartet_Op1_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_hopkins_gather_round_the_christmas_tree() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Hopkins_GatherRoundTheChristmasTree.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Hopkins_GatherRoundTheChristmasTree.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_hummel_concerto_for_trumpet_e_major() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Hummel_Concerto_for_trumpet_E-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Hummel_Concerto_for_trumpet_E-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
