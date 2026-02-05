@@ -336,9 +336,8 @@ impl MeiSerialize for LigatureChild {
             LigatureChild::Custos(e) => e.collect_all_attributes(),
             LigatureChild::Pad(e) => e.collect_all_attributes(),
             LigatureChild::DivLine(e) => e.collect_all_attributes(),
-            // Tab elements not yet fully implemented
-            LigatureChild::TabGrp(_) => Vec::new(),
-            LigatureChild::TabDurSym(_) => Vec::new(),
+            LigatureChild::TabGrp(e) => e.collect_all_attributes(),
+            LigatureChild::TabDurSym(e) => e.collect_all_attributes(),
             // Editorial elements
             LigatureChild::Add(e) => e.collect_all_attributes(),
             LigatureChild::App(e) => e.collect_all_attributes(),
@@ -378,7 +377,7 @@ impl MeiSerialize for LigatureChild {
             LigatureChild::Custos(_) => false,
             LigatureChild::Pad(_) => false,
             LigatureChild::DivLine(_) => false,
-            LigatureChild::TabGrp(_) => false,
+            LigatureChild::TabGrp(e) => e.has_children(),
             LigatureChild::TabDurSym(_) => false,
             // Editorial elements
             LigatureChild::Add(e) => e.has_children(),
@@ -419,7 +418,7 @@ impl MeiSerialize for LigatureChild {
             LigatureChild::Custos(_) => Ok(()),
             LigatureChild::Pad(_) => Ok(()),
             LigatureChild::DivLine(_) => Ok(()),
-            LigatureChild::TabGrp(_) => Ok(()),
+            LigatureChild::TabGrp(e) => e.serialize_children(writer),
             LigatureChild::TabDurSym(_) => Ok(()),
             // Editorial elements
             LigatureChild::Add(e) => e.serialize_children(writer),

@@ -131,8 +131,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 10: Tablature Module
 
 ### 10.1 Tablature Elements
-- [ ] Implement `TabGrp`, `TabDurSym`, `Fing`, `FingGrp`, `String`, `Course`, `Tuning`
-- [ ] Add roundtrip tests
+- [x] Implement `TabGrp`, `TabDurSym`, `Fing`, `FingGrp`, `String`, `Course`, `Tuning`
+- [x] Add roundtrip tests
 
 ---
 

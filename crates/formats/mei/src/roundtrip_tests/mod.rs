@@ -27,4 +27,5 @@ mod names;
 mod neumes;
 mod note;
 mod structure;
+mod tablature;
 mod text_containers;

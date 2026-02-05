@@ -257,7 +257,7 @@ fn parse_ligature_child<R: BufRead>(
     use tusk_model::elements::{
         Add, App, BarLine, Choice, ClefGrp, Corr, Custos, Damage, Del, DivLine, Dot, Gap,
         HandShift, MeterSigGrp, Neume, Note, Orig, Pad, Reg, Rest, Restore, Sic, Space, Subst,
-        Supplied, Unclear,
+        Supplied, TabDurSym, TabGrp, Unclear,
     };
 
     match name {
@@ -322,6 +322,15 @@ fn parse_ligature_child<R: BufRead>(
         "divLine" => {
             let child = DivLine::from_mei_event(reader, child_attrs, child_empty)?;
             elem.children.push(LigatureChild::DivLine(Box::new(child)));
+        }
+        "tabGrp" => {
+            let child = TabGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children.push(LigatureChild::TabGrp(Box::new(child)));
+        }
+        "tabDurSym" => {
+            let child = TabDurSym::from_mei_event(reader, child_attrs, child_empty)?;
+            elem.children
+                .push(LigatureChild::TabDurSym(Box::new(child)));
         }
         // Editorial elements
         "add" => {
