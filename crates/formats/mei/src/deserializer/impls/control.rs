@@ -1308,6 +1308,409 @@ impl MeiDeserialize for Mordent {
 }
 
 // ============================================================================
+// Turn attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttTurnAnl, AttTurnGes, AttTurnLog, AttTurnVis};
+use tusk_model::elements::Turn;
+
+impl ExtractAttributes for AttTurnLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "accidupper.ges", self.accidupper_ges);
+        extract_attr!(attrs, "accidlower.ges", self.accidlower_ges);
+        extract_attr!(attrs, "accidupper", self.accidupper);
+        extract_attr!(attrs, "accidlower", self.accidlower);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "delayed", self.delayed);
+        extract_attr!(attrs, "form", self.form);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTurnVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTurnGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTurnGes has no attributes
+        let _ = attrs;
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTurnAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTurnAnl has no attributes
+        let _ = attrs;
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Turn {
+    fn element_name() -> &'static str {
+        "turn"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut turn = Turn::default();
+
+        // Extract attributes into each attribute class
+        turn.common.extract_attributes(&mut attrs)?;
+        turn.facsimile.extract_attributes(&mut attrs)?;
+        turn.turn_log.extract_attributes(&mut attrs)?;
+        turn.turn_vis.extract_attributes(&mut attrs)?;
+        turn.turn_ges.extract_attributes(&mut attrs)?;
+        turn.turn_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Turn has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("turn")?;
+        }
+
+        Ok(turn)
+    }
+}
+
+// ============================================================================
+// Breath attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttBreathAnl, AttBreathGes, AttBreathLog, AttBreathVis};
+use tusk_model::elements::Breath;
+
+impl ExtractAttributes for AttBreathLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBreathVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBreathGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBreathAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttBreathAnl has no attributes
+        let _ = attrs;
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Breath {
+    fn element_name() -> &'static str {
+        "breath"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut breath = Breath::default();
+
+        // Extract attributes into each attribute class
+        breath.common.extract_attributes(&mut attrs)?;
+        breath.facsimile.extract_attributes(&mut attrs)?;
+        breath.breath_log.extract_attributes(&mut attrs)?;
+        breath.breath_vis.extract_attributes(&mut attrs)?;
+        breath.breath_ges.extract_attributes(&mut attrs)?;
+        breath.breath_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Breath has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("breath")?;
+        }
+
+        Ok(breath)
+    }
+}
+
+// ============================================================================
+// Bend attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttBendAnl, AttBendGes, AttBendLog, AttBendVis};
+use tusk_model::elements::Bend;
+
+impl ExtractAttributes for AttBendLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBendVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "bezier", self.bezier);
+        extract_attr!(attrs, "bulge", self.bulge);
+        extract_attr!(attrs, "curvedir", self.curvedir);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "startvo", self.startvo);
+        extract_attr!(attrs, "endvo", self.endvo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        extract_attr!(attrs, "x2", self.x2);
+        extract_attr!(attrs, "y2", self.y2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBendGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        extract_attr!(attrs, "amount", self.amount);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttBendAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttBendAnl has no attributes
+        let _ = attrs;
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Bend {
+    fn element_name() -> &'static str {
+        "bend"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut bend = Bend::default();
+
+        // Extract attributes into each attribute class
+        bend.common.extract_attributes(&mut attrs)?;
+        bend.facsimile.extract_attributes(&mut attrs)?;
+        bend.bend_log.extract_attributes(&mut attrs)?;
+        bend.bend_vis.extract_attributes(&mut attrs)?;
+        bend.bend_ges.extract_attributes(&mut attrs)?;
+        bend.bend_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Bend has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("bend")?;
+        }
+
+        Ok(bend)
+    }
+}
+
+// ============================================================================
+// Caesura attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttCaesuraAnl, AttCaesuraGes, AttCaesuraLog, AttCaesuraVis};
+use tusk_model::elements::Caesura;
+
+impl ExtractAttributes for AttCaesuraLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttCaesuraVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttCaesuraGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", self.dur_recip);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttCaesuraAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttCaesuraAnl has no attributes
+        let _ = attrs;
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Caesura {
+    fn element_name() -> &'static str {
+        "caesura"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut caesura = Caesura::default();
+
+        // Extract attributes into each attribute class
+        caesura.common.extract_attributes(&mut attrs)?;
+        caesura.facsimile.extract_attributes(&mut attrs)?;
+        caesura.caesura_log.extract_attributes(&mut attrs)?;
+        caesura.caesura_vis.extract_attributes(&mut attrs)?;
+        caesura.caesura_ges.extract_attributes(&mut attrs)?;
+        caesura.caesura_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Caesura has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("caesura")?;
+        }
+
+        Ok(caesura)
+    }
+}
+
+// ============================================================================
 // Reh (rehearsal mark) attribute class implementations
 // ============================================================================
 

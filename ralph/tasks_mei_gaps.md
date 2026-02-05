@@ -28,32 +28,25 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests for all header elements
 - [x] Check if any serializers or deserializers for header elements are missing and if so, implement them.
 - [x] Run all tests.
+
 ---
 
 ## Phase 2: CMN Module Completion
 
 ### 2.1 Ornaments and Articulations
-- [ ] Implement `Turn`, `Breath`, `Bend`, `Caesura` (deserializer + serializer)
-- [ ] Add roundtrip tests
+- [x] Implement `Turn`, `Breath`, `Bend`, `Caesura` (deserializer + serializer)
+- [x] Add roundtrip tests
 
 ### 2.2 Repeats and Measure Structures
-- [ ] Implement repeat marks: `RepeatMark`, `Volta`
-- [ ] Implement measure repeats: `MRpt`, `MRpt2`, `BeatRpt`, `HalfmRpt`, `MultiRpt`
-- [ ] Implement `MultiRest`, `MSpace`, `MNum`
+- [ ] Implement repeat marks: `RepeatMark`, `Volta` and measure repeats: `MRpt`, `MRpt2`, `BeatRpt`, `HalfmRpt`, `MultiRpt` and `MultiRest`, `MSpace`, `MNum`
 - [ ] Add roundtrip tests
 
-### 2.3 Spanning and Continuation Elements
-- [ ] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan`
-- [ ] Add roundtrip tests
-
-### 2.4 Tremolo
-- [ ] Implement `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)
+### 2.3 Spanning and Continuation Elements etc.
+- [ ] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan` and `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)
 - [ ] Add roundtrip tests
 
 ### 2.5 Core Music Elements
-- [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad`
-- [ ] Implement key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym`
-- [ ] Implement parts: `Part`, `Parts`, `Ossia` and also `HarpPedal`
+- [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad` and key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym` and: `Part`, `Parts`, `Ossia` and also `HarpPedal`
 - [ ] Add roundtrip tests
 
 ### 2.6 Missing

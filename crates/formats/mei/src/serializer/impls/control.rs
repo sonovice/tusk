@@ -2756,3 +2756,388 @@ impl MeiSerialize for TupletSpan {
         Ok(())
     }
 }
+
+// ============================================================================
+// Turn attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttTurnAnl, AttTurnGes, AttTurnLog, AttTurnVis};
+use tusk_model::elements::Turn;
+
+impl CollectAttributes for AttTurnLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "accidupper.ges", self.accidupper_ges);
+        push_attr!(attrs, "accidlower.ges", self.accidlower_ges);
+        push_attr!(attrs, "accidupper", self.accidupper);
+        push_attr!(attrs, "accidlower", self.accidlower);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "delayed", self.delayed);
+        push_attr!(attrs, "form", self.form);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTurnVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "vgrp", self.vgrp);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttTurnGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttTurnGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttTurnAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttTurnAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Turn {
+    fn element_name(&self) -> &'static str {
+        "turn"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.turn_log.collect_attributes());
+        attrs.extend(self.turn_vis.collect_attributes());
+        attrs.extend(self.turn_ges.collect_attributes());
+        attrs.extend(self.turn_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Breath attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttBreathAnl, AttBreathGes, AttBreathLog, AttBreathVis};
+use tusk_model::elements::Breath;
+
+impl CollectAttributes for AttBreathLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBreathVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "vgrp", self.vgrp);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBreathGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBreathAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttBreathAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Breath {
+    fn element_name(&self) -> &'static str {
+        "breath"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.breath_log.collect_attributes());
+        attrs.extend(self.breath_vis.collect_attributes());
+        attrs.extend(self.breath_ges.collect_attributes());
+        attrs.extend(self.breath_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Bend attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttBendAnl, AttBendGes, AttBendLog, AttBendVis};
+use tusk_model::elements::Bend;
+
+impl CollectAttributes for AttBendLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "dur", vec self.dur);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "endid", self.endid);
+        push_attr!(attrs, "tstamp2", self.tstamp2);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBendVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "bezier", self.bezier);
+        push_attr!(attrs, "bulge", self.bulge);
+        push_attr!(attrs, "curvedir", self.curvedir);
+        push_attr!(attrs, "lform", self.lform);
+        push_attr!(attrs, "lwidth", self.lwidth);
+        push_attr!(attrs, "lsegs", self.lsegs);
+        push_attr!(attrs, "vgrp", self.vgrp);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "startho", self.startho);
+        push_attr!(attrs, "endho", self.endho);
+        push_attr!(attrs, "startto", self.startto);
+        push_attr!(attrs, "endto", self.endto);
+        push_attr!(attrs, "startvo", self.startvo);
+        push_attr!(attrs, "endvo", self.endvo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        push_attr!(attrs, "x2", self.x2);
+        push_attr!(attrs, "y2", self.y2);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBendGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
+        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
+        push_attr!(attrs, "amount", self.amount);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttBendAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttBendAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Bend {
+    fn element_name(&self) -> &'static str {
+        "bend"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.bend_log.collect_attributes());
+        attrs.extend(self.bend_vis.collect_attributes());
+        attrs.extend(self.bend_ges.collect_attributes());
+        attrs.extend(self.bend_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Caesura attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttCaesuraAnl, AttCaesuraGes, AttCaesuraLog, AttCaesuraVis};
+use tusk_model::elements::Caesura;
+
+impl CollectAttributes for AttCaesuraLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttCaesuraVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "loc", self.loc);
+        push_attr!(attrs, "ploc", self.ploc);
+        push_attr!(attrs, "oloc", self.oloc);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "vgrp", self.vgrp);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttCaesuraGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "dur.ges", self.dur_ges);
+        push_attr!(attrs, "dots.ges", self.dots_ges);
+        push_attr!(attrs, "dur.metrical", self.dur_metrical);
+        push_attr!(attrs, "dur.ppq", self.dur_ppq);
+        push_attr!(attrs, "dur.real", self.dur_real);
+        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttCaesuraAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttCaesuraAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Caesura {
+    fn element_name(&self) -> &'static str {
+        "caesura"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.caesura_log.collect_attributes());
+        attrs.extend(self.caesura_vis.collect_attributes());
+        attrs.extend(self.caesura_ges.collect_attributes());
+        attrs.extend(self.caesura_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}

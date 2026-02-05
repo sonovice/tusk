@@ -1637,3 +1637,559 @@ fn roundtrip_fermata_complete() {
     assert_eq!(parsed.fermata_vis.form, original.fermata_vis.form);
     assert_eq!(parsed.fermata_vis.shape, original.fermata_vis.shape);
 }
+
+// ============================================================================
+// Turn Parse Tests
+// ============================================================================
+
+#[test]
+fn turn_parse_empty() {
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.turn_log.form.is_none());
+}
+
+#[test]
+fn turn_parse_with_id() {
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn xml:id="turn-1"/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("turn-1".to_string()));
+}
+
+#[test]
+fn turn_parse_with_form() {
+    use tusk_model::att::AttTurnLogForm;
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn form="upper"/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.turn_log.form, Some(AttTurnLogForm::Upper));
+}
+
+#[test]
+fn turn_parse_with_delayed() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn delayed="true"/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.turn_log.delayed, Some(DataBoolean::True));
+}
+
+#[test]
+fn turn_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn staff="1" tstamp="2.5"/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.turn_log.staff, vec![1]);
+    assert_eq!(parsed.turn_log.tstamp, Some(DataBeat(2.5)));
+}
+
+#[test]
+fn turn_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Turn;
+
+    let xml = r##"<turn startid="#note1"/>"##;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.turn_log.startid, Some(DataUri("#note1".to_string())));
+}
+
+#[test]
+fn turn_parse_with_accidentals() {
+    use tusk_model::data::{DataAccidentalWritten, DataAccidentalWrittenBasic};
+    use tusk_model::elements::Turn;
+
+    let xml = r#"<turn accidupper="s" accidlower="f"/>"#;
+    let parsed = Turn::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.turn_log.accidupper,
+        Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+            DataAccidentalWrittenBasic::S
+        ))
+    );
+    assert_eq!(
+        parsed.turn_log.accidlower,
+        Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+            DataAccidentalWrittenBasic::F
+        ))
+    );
+}
+
+// ============================================================================
+// Turn Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_turn_empty() {
+    use tusk_model::elements::Turn;
+
+    let original = Turn::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Turn::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.turn_log.form.is_none());
+}
+
+#[test]
+fn roundtrip_turn_with_xml_id() {
+    use tusk_model::elements::Turn;
+
+    let mut original = Turn::default();
+    original.common.xml_id = Some("turn-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Turn::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("turn-1".to_string()));
+}
+
+#[test]
+fn roundtrip_turn_with_form() {
+    use tusk_model::att::AttTurnLogForm;
+    use tusk_model::elements::Turn;
+
+    let mut original = Turn::default();
+    original.turn_log.form = Some(AttTurnLogForm::Lower);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Turn::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.turn_log.form, Some(AttTurnLogForm::Lower));
+}
+
+#[test]
+fn roundtrip_turn_with_delayed() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::Turn;
+
+    let mut original = Turn::default();
+    original.turn_log.delayed = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Turn::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.turn_log.delayed, Some(DataBoolean::True));
+}
+
+#[test]
+fn roundtrip_turn_complete() {
+    use tusk_model::att::AttTurnLogForm;
+    use tusk_model::data::{
+        DataAccidentalWritten, DataAccidentalWrittenBasic, DataBeat, DataBoolean, DataUri,
+    };
+    use tusk_model::elements::Turn;
+
+    let mut original = Turn::default();
+    original.common.xml_id = Some("turn-complete".to_string());
+    original.turn_log.staff = vec![1];
+    original.turn_log.layer = vec![1];
+    original.turn_log.tstamp = Some(DataBeat(2.0));
+    original.turn_log.startid = Some(DataUri("#n1".to_string()));
+    original.turn_log.form = Some(AttTurnLogForm::Upper);
+    original.turn_log.delayed = Some(DataBoolean::False);
+    original.turn_log.accidupper = Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+        DataAccidentalWrittenBasic::S,
+    ));
+    original.turn_log.accidlower = Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+        DataAccidentalWrittenBasic::F,
+    ));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Turn::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.turn_log.staff, original.turn_log.staff);
+    assert_eq!(parsed.turn_log.layer, original.turn_log.layer);
+    assert_eq!(parsed.turn_log.tstamp, original.turn_log.tstamp);
+    assert_eq!(parsed.turn_log.startid, original.turn_log.startid);
+    assert_eq!(parsed.turn_log.form, original.turn_log.form);
+    assert_eq!(parsed.turn_log.delayed, original.turn_log.delayed);
+    assert_eq!(parsed.turn_log.accidupper, original.turn_log.accidupper);
+    assert_eq!(parsed.turn_log.accidlower, original.turn_log.accidlower);
+}
+
+// ============================================================================
+// Breath Parse Tests
+// ============================================================================
+
+#[test]
+fn breath_parse_empty() {
+    use tusk_model::elements::Breath;
+
+    let xml = r#"<breath/>"#;
+    let parsed = Breath::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.breath_log.startid.is_none());
+}
+
+#[test]
+fn breath_parse_with_id() {
+    use tusk_model::elements::Breath;
+
+    let xml = r#"<breath xml:id="breath-1"/>"#;
+    let parsed = Breath::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("breath-1".to_string()));
+}
+
+#[test]
+fn breath_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Breath;
+
+    let xml = r#"<breath staff="1" tstamp="4"/>"#;
+    let parsed = Breath::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.breath_log.staff, vec![1]);
+    assert_eq!(parsed.breath_log.tstamp, Some(DataBeat(4.0)));
+}
+
+#[test]
+fn breath_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Breath;
+
+    let xml = r##"<breath startid="#note1"/>"##;
+    let parsed = Breath::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.breath_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn breath_parse_with_place() {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    use tusk_model::elements::Breath;
+
+    let xml = r#"<breath place="above"/>"#;
+    let parsed = Breath::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.breath_vis.place,
+        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above))
+    );
+}
+
+// ============================================================================
+// Breath Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_breath_empty() {
+    use tusk_model::elements::Breath;
+
+    let original = Breath::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Breath::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.breath_log.startid.is_none());
+}
+
+#[test]
+fn roundtrip_breath_with_xml_id() {
+    use tusk_model::elements::Breath;
+
+    let mut original = Breath::default();
+    original.common.xml_id = Some("breath-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Breath::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("breath-1".to_string()));
+}
+
+#[test]
+fn roundtrip_breath_complete() {
+    use tusk_model::data::{DataBeat, DataStaffrel, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::Breath;
+
+    let mut original = Breath::default();
+    original.common.xml_id = Some("breath-complete".to_string());
+    original.breath_log.staff = vec![1];
+    original.breath_log.layer = vec![1];
+    original.breath_log.tstamp = Some(DataBeat(4.0));
+    original.breath_log.startid = Some(DataUri("#n4".to_string()));
+    original.breath_vis.place = Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Breath::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.breath_log.staff, original.breath_log.staff);
+    assert_eq!(parsed.breath_log.layer, original.breath_log.layer);
+    assert_eq!(parsed.breath_log.tstamp, original.breath_log.tstamp);
+    assert_eq!(parsed.breath_log.startid, original.breath_log.startid);
+    assert_eq!(parsed.breath_vis.place, original.breath_vis.place);
+}
+
+// ============================================================================
+// Bend Parse Tests
+// ============================================================================
+
+#[test]
+fn bend_parse_empty() {
+    use tusk_model::elements::Bend;
+
+    let xml = r#"<bend/>"#;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.bend_log.startid.is_none());
+}
+
+#[test]
+fn bend_parse_with_id() {
+    use tusk_model::elements::Bend;
+
+    let xml = r#"<bend xml:id="bend-1"/>"#;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("bend-1".to_string()));
+}
+
+#[test]
+fn bend_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Bend;
+
+    let xml = r#"<bend staff="1" tstamp="1"/>"#;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.bend_log.staff, vec![1]);
+    assert_eq!(parsed.bend_log.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn bend_parse_with_startid_endid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Bend;
+
+    let xml = r##"<bend startid="#note1" endid="#note2"/>"##;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.bend_log.startid, Some(DataUri("#note1".to_string())));
+    assert_eq!(parsed.bend_log.endid, Some(DataUri("#note2".to_string())));
+}
+
+#[test]
+fn bend_parse_with_amount() {
+    use tusk_model::data::DataBendAmount;
+    use tusk_model::elements::Bend;
+
+    let xml = r#"<bend amount="1"/>"#;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.bend_ges.amount,
+        Some(DataBendAmount("1".to_string()))
+    );
+}
+
+#[test]
+fn bend_parse_with_curvedir() {
+    use tusk_model::att::AttBendVisCurvedir;
+    use tusk_model::elements::Bend;
+
+    let xml = r#"<bend curvedir="above"/>"#;
+    let parsed = Bend::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.bend_vis.curvedir, Some(AttBendVisCurvedir::Above));
+}
+
+// ============================================================================
+// Bend Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_bend_empty() {
+    use tusk_model::elements::Bend;
+
+    let original = Bend::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Bend::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.bend_log.startid.is_none());
+}
+
+#[test]
+fn roundtrip_bend_with_xml_id() {
+    use tusk_model::elements::Bend;
+
+    let mut original = Bend::default();
+    original.common.xml_id = Some("bend-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Bend::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("bend-1".to_string()));
+}
+
+#[test]
+fn roundtrip_bend_complete() {
+    use tusk_model::att::AttBendVisCurvedir;
+    use tusk_model::data::{DataBeat, DataBendAmount, DataMeasurebeat, DataUri};
+    use tusk_model::elements::Bend;
+
+    let mut original = Bend::default();
+    original.common.xml_id = Some("bend-complete".to_string());
+    original.bend_log.staff = vec![1];
+    original.bend_log.layer = vec![1];
+    original.bend_log.tstamp = Some(DataBeat(1.0));
+    original.bend_log.tstamp2 = Some(DataMeasurebeat("0m+2".to_string()));
+    original.bend_log.startid = Some(DataUri("#n1".to_string()));
+    original.bend_log.endid = Some(DataUri("#n2".to_string()));
+    original.bend_ges.amount = Some(DataBendAmount("0.5".to_string()));
+    original.bend_vis.curvedir = Some(AttBendVisCurvedir::Above);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Bend::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.bend_log.staff, original.bend_log.staff);
+    assert_eq!(parsed.bend_log.layer, original.bend_log.layer);
+    assert_eq!(parsed.bend_log.tstamp, original.bend_log.tstamp);
+    assert_eq!(parsed.bend_log.tstamp2, original.bend_log.tstamp2);
+    assert_eq!(parsed.bend_log.startid, original.bend_log.startid);
+    assert_eq!(parsed.bend_log.endid, original.bend_log.endid);
+    assert_eq!(parsed.bend_ges.amount, original.bend_ges.amount);
+    assert_eq!(parsed.bend_vis.curvedir, original.bend_vis.curvedir);
+}
+
+// ============================================================================
+// Caesura Parse Tests
+// ============================================================================
+
+#[test]
+fn caesura_parse_empty() {
+    use tusk_model::elements::Caesura;
+
+    let xml = r#"<caesura/>"#;
+    let parsed = Caesura::from_mei_str(xml).expect("parse");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.caesura_log.startid.is_none());
+}
+
+#[test]
+fn caesura_parse_with_id() {
+    use tusk_model::elements::Caesura;
+
+    let xml = r#"<caesura xml:id="caesura-1"/>"#;
+    let parsed = Caesura::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.common.xml_id, Some("caesura-1".to_string()));
+}
+
+#[test]
+fn caesura_parse_with_staff_tstamp() {
+    use tusk_model::data::DataBeat;
+    use tusk_model::elements::Caesura;
+
+    let xml = r#"<caesura staff="1" tstamp="4"/>"#;
+    let parsed = Caesura::from_mei_str(xml).expect("parse");
+
+    assert_eq!(parsed.caesura_log.staff, vec![1]);
+    assert_eq!(parsed.caesura_log.tstamp, Some(DataBeat(4.0)));
+}
+
+#[test]
+fn caesura_parse_with_startid() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::Caesura;
+
+    let xml = r##"<caesura startid="#note1"/>"##;
+    let parsed = Caesura::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.caesura_log.startid,
+        Some(DataUri("#note1".to_string()))
+    );
+}
+
+#[test]
+fn caesura_parse_with_place() {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    use tusk_model::elements::Caesura;
+
+    let xml = r#"<caesura place="above"/>"#;
+    let parsed = Caesura::from_mei_str(xml).expect("parse");
+
+    assert_eq!(
+        parsed.caesura_vis.place,
+        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above))
+    );
+}
+
+// ============================================================================
+// Caesura Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_caesura_empty() {
+    use tusk_model::elements::Caesura;
+
+    let original = Caesura::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Caesura::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.caesura_log.startid.is_none());
+}
+
+#[test]
+fn roundtrip_caesura_with_xml_id() {
+    use tusk_model::elements::Caesura;
+
+    let mut original = Caesura::default();
+    original.common.xml_id = Some("caesura-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Caesura::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("caesura-1".to_string()));
+}
+
+#[test]
+fn roundtrip_caesura_complete() {
+    use tusk_model::data::{DataBeat, DataStaffrel, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::Caesura;
+
+    let mut original = Caesura::default();
+    original.common.xml_id = Some("caesura-complete".to_string());
+    original.caesura_log.staff = vec![1];
+    original.caesura_log.layer = vec![1];
+    original.caesura_log.tstamp = Some(DataBeat(4.0));
+    original.caesura_log.startid = Some(DataUri("#n4".to_string()));
+    original.caesura_vis.place = Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Caesura::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.caesura_log.staff, original.caesura_log.staff);
+    assert_eq!(parsed.caesura_log.layer, original.caesura_log.layer);
+    assert_eq!(parsed.caesura_log.tstamp, original.caesura_log.tstamp);
+    assert_eq!(parsed.caesura_log.startid, original.caesura_log.startid);
+    assert_eq!(parsed.caesura_vis.place, original.caesura_vis.place);
+}
