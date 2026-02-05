@@ -978,7 +978,24 @@ impl MeiDeserialize for Score {
                         let section = Section::from_mei_event(reader, child_attrs, child_empty)?;
                         score.children.push(ScoreChild::Section(Box::new(section)));
                     }
-                    // TODO: Add staffDef, ending, pb, sb, etc. when needed
+                    "staffDef" => {
+                        let staff_def = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        score
+                            .children
+                            .push(ScoreChild::StaffDef(Box::new(staff_def)));
+                    }
+                    "ending" => {
+                        let ending = Ending::from_mei_event(reader, child_attrs, child_empty)?;
+                        score.children.push(ScoreChild::Ending(Box::new(ending)));
+                    }
+                    "pb" => {
+                        let pb = Pb::from_mei_event(reader, child_attrs, child_empty)?;
+                        score.children.push(ScoreChild::Pb(Box::new(pb)));
+                    }
+                    "sb" => {
+                        let sb = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+                        score.children.push(ScoreChild::Sb(Box::new(sb)));
+                    }
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;

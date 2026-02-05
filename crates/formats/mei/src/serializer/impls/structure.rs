@@ -1272,6 +1272,10 @@ impl MeiSerialize for ScoreChild {
         match self {
             ScoreChild::Section(s) => s.collect_all_attributes(),
             ScoreChild::ScoreDef(s) => s.collect_all_attributes(),
+            ScoreChild::StaffDef(s) => s.collect_all_attributes(),
+            ScoreChild::Ending(e) => e.collect_all_attributes(),
+            ScoreChild::Pb(p) => p.collect_all_attributes(),
+            ScoreChild::Sb(s) => s.collect_all_attributes(),
             _ => Vec::new(),
         }
     }
@@ -1280,6 +1284,10 @@ impl MeiSerialize for ScoreChild {
         match self {
             ScoreChild::Section(s) => s.has_children(),
             ScoreChild::ScoreDef(s) => s.has_children(),
+            ScoreChild::StaffDef(s) => s.has_children(),
+            ScoreChild::Ending(e) => e.has_children(),
+            ScoreChild::Pb(p) => p.has_children(),
+            ScoreChild::Sb(s) => s.has_children(),
             _ => true,
         }
     }
@@ -1288,6 +1296,10 @@ impl MeiSerialize for ScoreChild {
         match self {
             ScoreChild::Section(s) => s.serialize_children(writer),
             ScoreChild::ScoreDef(s) => s.serialize_children(writer),
+            ScoreChild::StaffDef(s) => s.serialize_children(writer),
+            ScoreChild::Ending(e) => e.serialize_children(writer),
+            ScoreChild::Pb(p) => p.serialize_children(writer),
+            ScoreChild::Sb(s) => s.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "ScoreChild::{}::serialize_children",
                 other.element_name()

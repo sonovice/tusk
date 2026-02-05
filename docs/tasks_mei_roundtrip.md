@@ -95,11 +95,11 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] ManifestationChild: PhysDesc falls through to empty element serializer - needs proper serialization (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
 - [x] [MISSING_SERIALIZER] PhysDesc, PhysDescChild, PlateNum, PlateNumChild: missing serializers (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
 - [x] [SERIALIZER_BUG] SeriesStmtChild: Title with Num child - Num element not serialized, mixed content handling needed (source: Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei)
-- [ ] [DESERIALIZER_BUG] Incip/Score: staffDef child not parsed within incip/score - scoreDef parsed but staffDef outside it skipped (source: Beethoven_Hymn_to_joy.mei)
+- [x] [DESERIALIZER_BUG] Incip/Score: staffDef child not parsed within incip/score - scoreDef parsed but staffDef outside it skipped (source: Beethoven_Hymn_to_joy.mei)
 - [ ] [DESERIALIZER_BUG] Creation element: mixed content not parsed - text and date children lost (source: Beethoven_Hymn_to_joy.mei)
 - [ ] [SERIALIZER_BUG] Syl element: halign attribute not serialized - AttSylVis attributes missing from collect_all_attributes (source: Beethoven_Hymn_to_joy.mei)
 - [ ] [DESERIALIZER_BUG] Chord/Note: accid child element not parsed within chord notes (source: Beethoven_Hymn_to_joy.mei)
-- [ ] [DESERIALIZER_BUG] Score: ending element not parsed - missing handler at score level (source: Beethoven_Hymn_to_joy.mei)
+- [x] [DESERIALIZER_BUG] Score: ending element not parsed - missing handler at score level (source: Beethoven_Hymn_to_joy.mei)
 
 ---
 
