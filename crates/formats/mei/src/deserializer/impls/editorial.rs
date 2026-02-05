@@ -13,9 +13,11 @@ use tusk_model::att::{
     AttRdgVis, AttReasonIdent, AttTextRendition, AttTrans,
 };
 use tusk_model::elements::{
-    Abbr, Accid, Add, AddChild, App, AppChild, Artic, BarLine, Beam, Cb, Choice, ChoiceChild,
-    Chord, Corr, Damage, Del, Dot, Expan, Gap, HandShift, Lem, LemChild, MRest, Note, Orig, Pb,
-    Rdg, RdgChild, Reg, Rest, Restore, Sb, Sic, Space, Staff, Subst, Supplied, Tuplet, Unclear,
+    Abbr, Accid, Add, AddChild, App, AppChild, Arpeg, Artic, BarLine, Beam, Cb, Choice,
+    ChoiceChild, Chord, Corr, Damage, Del, Dir, Dot, Dynam, Expan, Fermata, Gap, Hairpin,
+    HandShift, Lem, LemChild, MRest, Mordent, Note, Orig, Pb, Pedal, Rdg, RdgChild, Reg, Rest,
+    Restore, Sb, Sic, Slur, Space, Staff, Subst, Supplied, Tempo, Tie, Trill, Tuplet, Turn,
+    Unclear,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -456,6 +458,55 @@ fn parse_lem_from_event<R: BufRead>(
                     let restore = Restore::from_mei_event(reader, child_attrs, child_empty)?;
                     lem.children.push(LemChild::Restore(Box::new(restore)));
                 }
+                // Control events
+                "slur" => {
+                    let slur = Slur::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Slur(Box::new(slur)));
+                }
+                "tie" => {
+                    let tie = Tie::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Tie(Box::new(tie)));
+                }
+                "hairpin" => {
+                    let hairpin = Hairpin::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Hairpin(Box::new(hairpin)));
+                }
+                "dynam" => {
+                    let dynam = Dynam::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Dynam(Box::new(dynam)));
+                }
+                "dir" => {
+                    let dir = Dir::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Dir(Box::new(dir)));
+                }
+                "tempo" => {
+                    let tempo = Tempo::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Tempo(Box::new(tempo)));
+                }
+                "fermata" => {
+                    let fermata = Fermata::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Fermata(Box::new(fermata)));
+                }
+                "trill" => {
+                    let trill = Trill::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Trill(Box::new(trill)));
+                }
+                "mordent" => {
+                    let mordent = Mordent::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Mordent(Box::new(mordent)));
+                }
+                "turn" => {
+                    let turn = Turn::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Turn(Box::new(turn)));
+                }
+                "pedal" => {
+                    let pedal = Pedal::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Pedal(Box::new(pedal)));
+                }
+                "arpeg" => {
+                    let arpeg = Arpeg::from_mei_event(reader, child_attrs, child_empty)?;
+                    lem.children.push(LemChild::Arpeg(Box::new(arpeg)));
+                }
                 // Text content is handled via MixedContent if needed
                 // Unknown children are skipped in lenient mode
                 _ => {
@@ -617,6 +668,55 @@ fn parse_rdg_from_event<R: BufRead>(
                 "restore" => {
                     let restore = Restore::from_mei_event(reader, child_attrs, child_empty)?;
                     rdg.children.push(RdgChild::Restore(Box::new(restore)));
+                }
+                // Control events
+                "slur" => {
+                    let slur = Slur::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Slur(Box::new(slur)));
+                }
+                "tie" => {
+                    let tie = Tie::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Tie(Box::new(tie)));
+                }
+                "hairpin" => {
+                    let hairpin = Hairpin::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Hairpin(Box::new(hairpin)));
+                }
+                "dynam" => {
+                    let dynam = Dynam::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Dynam(Box::new(dynam)));
+                }
+                "dir" => {
+                    let dir = Dir::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Dir(Box::new(dir)));
+                }
+                "tempo" => {
+                    let tempo = Tempo::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Tempo(Box::new(tempo)));
+                }
+                "fermata" => {
+                    let fermata = Fermata::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Fermata(Box::new(fermata)));
+                }
+                "trill" => {
+                    let trill = Trill::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Trill(Box::new(trill)));
+                }
+                "mordent" => {
+                    let mordent = Mordent::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Mordent(Box::new(mordent)));
+                }
+                "turn" => {
+                    let turn = Turn::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Turn(Box::new(turn)));
+                }
+                "pedal" => {
+                    let pedal = Pedal::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Pedal(Box::new(pedal)));
+                }
+                "arpeg" => {
+                    let arpeg = Arpeg::from_mei_event(reader, child_attrs, child_empty)?;
+                    rdg.children.push(RdgChild::Arpeg(Box::new(arpeg)));
                 }
                 // Text content is handled via MixedContent if needed
                 // Unknown children are skipped in lenient mode
