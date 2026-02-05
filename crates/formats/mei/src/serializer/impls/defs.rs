@@ -1096,11 +1096,12 @@ impl MeiSerialize for tusk_model::elements::StaffDefChild {
                     }
                 }
             }
+            LayerDef(ld) => ld.serialize_children(writer)?,
             // InstrDef has no children
             InstrDef(_) => {}
             // Other elements - no children to serialize
             ClefGrp(_) | Mensur(_) | MeterSig(_) | Proport(_) | MeterSigGrp(_) | Ambitus(_)
-            | Tuning(_) | KeySig(_) | LayerDef(_) | Clef(_) => {}
+            | Tuning(_) | KeySig(_) | Clef(_) => {}
         }
         Ok(())
     }
@@ -1278,9 +1279,61 @@ impl MeiSerialize for tusk_model::elements::LayerDef {
         !self.children.is_empty()
     }
 
-    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
-        // LayerDef children serialization not yet fully implemented
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
         Ok(())
+    }
+}
+
+impl MeiSerialize for tusk_model::elements::LayerDefChild {
+    fn element_name(&self) -> &'static str {
+        use tusk_model::elements::LayerDefChild::*;
+        match self {
+            LabelAbbr(_) => "labelAbbr",
+            MeterSigGrp(_) => "meterSigGrp",
+            InstrDef(_) => "instrDef",
+            Ambitus(_) => "ambitus",
+            Label(_) => "label",
+            MeterSig(_) => "meterSig",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        use tusk_model::elements::LayerDefChild::*;
+        match self {
+            LabelAbbr(la) => la.collect_all_attributes(),
+            MeterSigGrp(msg) => msg.collect_all_attributes(),
+            InstrDef(id) => id.collect_all_attributes(),
+            Ambitus(a) => a.collect_all_attributes(),
+            Label(l) => l.collect_all_attributes(),
+            MeterSig(ms) => ms.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        use tusk_model::elements::LayerDefChild::*;
+        match self {
+            LabelAbbr(la) => !la.children.is_empty(),
+            MeterSigGrp(msg) => !msg.children.is_empty(),
+            InstrDef(_) => false, // InstrDef has no children
+            Ambitus(a) => !a.children.is_empty(),
+            Label(l) => !l.children.is_empty(),
+            MeterSig(_) => false, // MeterSig has no children
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        use tusk_model::elements::LayerDefChild::*;
+        match self {
+            LabelAbbr(la) => la.serialize_children(writer),
+            MeterSigGrp(msg) => msg.serialize_children(writer),
+            InstrDef(_) => Ok(()), // InstrDef has no children
+            Ambitus(a) => a.serialize_children(writer),
+            Label(l) => l.serialize_children(writer),
+            MeterSig(_) => Ok(()), // MeterSig has no children
+        }
     }
 }
 
