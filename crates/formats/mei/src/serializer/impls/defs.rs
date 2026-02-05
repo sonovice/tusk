@@ -948,6 +948,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::P(_) => "p",
             PgHeadChild::List(_) => "list",
             PgHeadChild::Seg(_) => "seg",
+            PgHeadChild::Table(_) => "table",
             // Many other child types exist but are not commonly used
             _ => "unknown",
         }
@@ -968,6 +969,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::P(p) => p.collect_all_attributes(),
             PgHeadChild::List(l) => l.collect_all_attributes(),
             PgHeadChild::Seg(s) => s.collect_all_attributes(),
+            PgHeadChild::Table(t) => t.collect_all_attributes(),
             // Lg and other elements - not yet implemented
             _ => Vec::new(),
         }
@@ -989,6 +991,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::P(p) => !p.children.is_empty(),
             PgHeadChild::List(l) => !l.children.is_empty(),
             PgHeadChild::Seg(s) => !s.children.is_empty(),
+            PgHeadChild::Table(t) => !t.children.is_empty(),
             // Lg and other elements
             _ => false,
         }
@@ -1013,6 +1016,7 @@ impl MeiSerialize for PgHeadChild {
             PgHeadChild::P(p) => p.serialize_children(writer),
             PgHeadChild::List(l) => l.serialize_children(writer),
             PgHeadChild::Seg(s) => s.serialize_children(writer),
+            PgHeadChild::Table(t) => t.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PgHeadChild::{}::serialize_children",
                 other.element_name()

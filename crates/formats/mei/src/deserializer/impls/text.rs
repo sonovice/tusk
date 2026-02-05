@@ -1,7 +1,7 @@
 //! Deserializer implementations for text and prose MEI elements.
 //!
-//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li, Seg
-//! and related attribute classes.
+//! This module contains implementations for Annot, Rend, Lg, Fig, FigDesc, Verse, List, Li, Seg,
+//! Table, Tr, Td, Th, Caption and related attribute classes.
 
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
@@ -10,12 +10,13 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAnnotAnl, AttAnnotGes, AttAnnotLog, AttAnnotVis, AttAudience, AttColor, AttExtSymAuth,
     AttHorizontalAlign, AttLyricsAnl, AttLyricsGes, AttLyricsLog, AttLyricsVis, AttPlist,
-    AttSource, AttSylAnl, AttSylGes, AttSylLog, AttSylVis, AttTypography, AttVerseAnl, AttVerseGes,
-    AttVerseLog, AttVerseVis, AttVerticalAlign,
+    AttSource, AttSylAnl, AttSylGes, AttSylLog, AttSylVis, AttTabular, AttTypography, AttVerseAnl,
+    AttVerseGes, AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
 use tusk_model::elements::{
-    Annot, Div, DivChild, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild,
-    Rend, Seg, SegChild, Syl, SylChild, Verse, VerseChild,
+    Annot, Caption, CaptionChild, Div, DivChild, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li,
+    LiChild, List, ListChild, Rend, Seg, SegChild, Syl, SylChild, Table, TableChild, Td, TdChild,
+    Th, ThChild, Tr, TrChild, Verse, VerseChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -248,6 +249,14 @@ impl ExtractAttributes for AttLyricsGes {
 impl ExtractAttributes for AttLyricsAnl {
     fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
         // AttLyricsAnl has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTabular {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "colspan", self.colspan);
+        extract_attr!(attrs, "rowspan", self.rowspan);
         Ok(())
     }
 }
@@ -1141,6 +1150,561 @@ pub(crate) fn parse_div_from_event<R: BufRead>(
     }
 
     Ok(div)
+}
+
+// ============================================================================
+// Table elements (table, tr, td, th, caption)
+// ============================================================================
+
+impl MeiDeserialize for Table {
+    fn element_name() -> &'static str {
+        "table"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_table_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<table>` element from within another element.
+///
+/// Table can contain caption* and tr* elements.
+pub(crate) fn parse_table_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Table> {
+    let mut table = Table::default();
+
+    // Extract attributes
+    table.common.extract_attributes(&mut attrs)?;
+    table.facsimile.extract_attributes(&mut attrs)?;
+    table.lang.extract_attributes(&mut attrs)?;
+    table.xy.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("table")? {
+            match name.as_str() {
+                "caption" => {
+                    let caption = parse_caption_from_event(reader, child_attrs, child_empty)?;
+                    table.children.push(TableChild::Caption(Box::new(caption)));
+                }
+                "tr" => {
+                    let tr = parse_tr_from_event(reader, child_attrs, child_empty)?;
+                    table.children.push(TableChild::Tr(Box::new(tr)));
+                }
+                _ => {
+                    // Skip unknown children in lenient mode
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(table)
+}
+
+impl MeiDeserialize for Tr {
+    fn element_name() -> &'static str {
+        "tr"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_tr_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<tr>` (table row) element from within another element.
+///
+/// Tr can contain td* and th* elements.
+pub(crate) fn parse_tr_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Tr> {
+    let mut tr = Tr::default();
+
+    // Extract attributes
+    tr.common.extract_attributes(&mut attrs)?;
+    tr.facsimile.extract_attributes(&mut attrs)?;
+    tr.lang.extract_attributes(&mut attrs)?;
+    tr.xy.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("tr")? {
+            match name.as_str() {
+                "td" => {
+                    let td = parse_td_from_event(reader, child_attrs, child_empty)?;
+                    tr.children.push(TrChild::Td(Box::new(td)));
+                }
+                "th" => {
+                    let th = parse_th_from_event(reader, child_attrs, child_empty)?;
+                    tr.children.push(TrChild::Th(Box::new(th)));
+                }
+                _ => {
+                    // Skip unknown children in lenient mode
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(tr)
+}
+
+impl MeiDeserialize for Td {
+    fn element_name() -> &'static str {
+        "td"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_td_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<td>` (table data cell) element from within another element.
+///
+/// Td has mixed content with text and many possible child elements.
+pub(crate) fn parse_td_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Td> {
+    let mut td = Td::default();
+
+    // Extract attributes
+    td.common.extract_attributes(&mut attrs)?;
+    td.facsimile.extract_attributes(&mut attrs)?;
+    td.lang.extract_attributes(&mut attrs)?;
+    td.xy.extract_attributes(&mut attrs)?;
+    td.tabular.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("td")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        td.children.push(TdChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            td.children.push(TdChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            td.children.push(TdChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Ptr(Box::new(ptr)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::Identifier(Box::new(identifier)));
+                        }
+                        "seg" => {
+                            let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                            td.children.push(TdChild::Seg(Box::new(seg)));
+                        }
+                        "p" => {
+                            let p = super::header::parse_p_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            td.children.push(TdChild::P(Box::new(p)));
+                        }
+                        "list" => {
+                            let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                            td.children.push(TdChild::List(Box::new(list)));
+                        }
+                        "table" => {
+                            // Nested table
+                            let nested_table =
+                                parse_table_from_event(reader, child_attrs, child_empty)?;
+                            td.children.push(TdChild::Table(Box::new(nested_table)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(td)
+}
+
+impl MeiDeserialize for Th {
+    fn element_name() -> &'static str {
+        "th"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_th_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<th>` (table header cell) element from within another element.
+///
+/// Th has mixed content with text and many possible child elements.
+pub(crate) fn parse_th_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Th> {
+    let mut th = Th::default();
+
+    // Extract attributes
+    th.common.extract_attributes(&mut attrs)?;
+    th.facsimile.extract_attributes(&mut attrs)?;
+    th.lang.extract_attributes(&mut attrs)?;
+    th.xy.extract_attributes(&mut attrs)?;
+    th.tabular.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("th")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        th.children.push(ThChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            th.children.push(ThChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            th.children.push(ThChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Ptr(Box::new(ptr)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::Identifier(Box::new(identifier)));
+                        }
+                        "seg" => {
+                            let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                            th.children.push(ThChild::Seg(Box::new(seg)));
+                        }
+                        "p" => {
+                            let p = super::header::parse_p_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            th.children.push(ThChild::P(Box::new(p)));
+                        }
+                        "list" => {
+                            let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                            th.children.push(ThChild::List(Box::new(list)));
+                        }
+                        "table" => {
+                            // Nested table
+                            let nested_table =
+                                parse_table_from_event(reader, child_attrs, child_empty)?;
+                            th.children.push(ThChild::Table(Box::new(nested_table)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(th)
+}
+
+impl MeiDeserialize for Caption {
+    fn element_name() -> &'static str {
+        "caption"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_caption_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse a `<caption>` element from within another element.
+///
+/// Caption has mixed content with text and many possible child elements.
+pub(crate) fn parse_caption_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Caption> {
+    let mut caption = Caption::default();
+
+    // Extract attributes
+    caption.common.extract_attributes(&mut attrs)?;
+    caption.facsimile.extract_attributes(&mut attrs)?;
+    caption.lang.extract_attributes(&mut attrs)?;
+
+    // Parse mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("caption")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        caption.children.push(CaptionChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            caption.children.push(CaptionChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            caption.children.push(CaptionChild::Lb(Box::new(lb)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption
+                                .children
+                                .push(CaptionChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption
+                                .children
+                                .push(CaptionChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption
+                                .children
+                                .push(CaptionChild::Name(Box::new(name_elem)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption.children.push(CaptionChild::Title(Box::new(title)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption.children.push(CaptionChild::Date(Box::new(date)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption.children.push(CaptionChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption.children.push(CaptionChild::Ptr(Box::new(ptr)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            caption
+                                .children
+                                .push(CaptionChild::Identifier(Box::new(identifier)));
+                        }
+                        "seg" => {
+                            let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                            caption.children.push(CaptionChild::Seg(Box::new(seg)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(caption)
 }
 
 // ============================================================================

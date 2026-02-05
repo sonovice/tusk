@@ -1378,6 +1378,14 @@ pub(crate) fn parse_pg_head_from_event<R: BufRead>(
                             )?;
                             pg_head.children.push(PgHeadChild::Seg(Box::new(seg)));
                         }
+                        "table" => {
+                            let table = super::text::parse_table_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_head.children.push(PgHeadChild::Table(Box::new(table)));
+                        }
                         // Skip unknown child elements
                         _ => {
                             if !child_empty {

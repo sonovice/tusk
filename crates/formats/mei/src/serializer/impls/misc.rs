@@ -6,6 +6,7 @@
 
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
+use tusk_model::att::AttTabular;
 use tusk_model::att::{
     AttAccidental, AttAuthorized, AttBasic, AttBeamAnl, AttBeamGes, AttBeamLog, AttBeamVis,
     AttCalendared, AttClassed, AttColor, AttCommon, AttComponentType, AttDataPointing, AttDatable,
@@ -19,8 +20,9 @@ use tusk_model::att::{
     AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, GraceGrp, GraceGrpChild, L, LChild, Lg, LgChild, Li, LiChild, List, ListChild,
-    Num, Ptr, Ref, Tuplet, TupletChild,
+    Beam, BeamChild, Caption, CaptionChild, GraceGrp, GraceGrpChild, L, LChild, Lg, LgChild, Li,
+    LiChild, List, ListChild, Num, Ptr, Ref, Table, TableChild, Td, TdChild, Th, ThChild, Tr,
+    TrChild, Tuplet, TupletChild,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -1707,6 +1709,475 @@ impl MeiSerialize for DivChild {
             DivChild::Div(div) => div.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "DivChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// AttTabular attribute class implementation
+// ============================================================================
+
+impl CollectAttributes for AttTabular {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "colspan", self.colspan);
+        push_attr!(attrs, "rowspan", self.rowspan);
+        attrs
+    }
+}
+
+// ============================================================================
+// Table element implementations
+// ============================================================================
+
+impl MeiSerialize for Table {
+    fn element_name(&self) -> &'static str {
+        "table"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TableChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TableChild::Caption(_) => "caption",
+            TableChild::Tr(_) => "tr",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            TableChild::Caption(c) => c.collect_all_attributes(),
+            TableChild::Tr(tr) => tr.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            TableChild::Caption(c) => c.has_children(),
+            TableChild::Tr(tr) => tr.has_children(),
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TableChild::Caption(c) => c.serialize_children(writer),
+            TableChild::Tr(tr) => tr.serialize_children(writer),
+        }
+    }
+}
+
+impl MeiSerialize for Tr {
+    fn element_name(&self) -> &'static str {
+        "tr"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TrChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TrChild::Td(_) => "td",
+            TrChild::Th(_) => "th",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            TrChild::Td(td) => td.collect_all_attributes(),
+            TrChild::Th(th) => th.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            TrChild::Td(td) => td.has_children(),
+            TrChild::Th(th) => th.has_children(),
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TrChild::Td(td) => td.serialize_children(writer),
+            TrChild::Th(th) => th.serialize_children(writer),
+        }
+    }
+}
+
+impl MeiSerialize for Td {
+    fn element_name(&self) -> &'static str {
+        "td"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs.extend(self.tabular.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TdChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            TdChild::Text(_) => "#text",
+            TdChild::Rend(_) => "rend",
+            TdChild::Lb(_) => "lb",
+            TdChild::PersName(_) => "persName",
+            TdChild::CorpName(_) => "corpName",
+            TdChild::Name(_) => "name",
+            TdChild::Title(_) => "title",
+            TdChild::Date(_) => "date",
+            TdChild::Ref(_) => "ref",
+            TdChild::Ptr(_) => "ptr",
+            TdChild::Identifier(_) => "identifier",
+            TdChild::Seg(_) => "seg",
+            TdChild::P(_) => "p",
+            TdChild::List(_) => "list",
+            TdChild::Table(_) => "table",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            TdChild::Rend(r) => r.collect_all_attributes(),
+            TdChild::Lb(lb) => lb.collect_all_attributes(),
+            TdChild::PersName(pn) => pn.collect_all_attributes(),
+            TdChild::CorpName(cn) => cn.collect_all_attributes(),
+            TdChild::Name(n) => n.collect_all_attributes(),
+            TdChild::Title(t) => t.collect_all_attributes(),
+            TdChild::Date(d) => d.collect_all_attributes(),
+            TdChild::Ref(r) => r.collect_all_attributes(),
+            TdChild::Ptr(p) => p.collect_all_attributes(),
+            TdChild::Identifier(i) => i.collect_all_attributes(),
+            TdChild::Seg(s) => s.collect_all_attributes(),
+            TdChild::P(p) => p.collect_all_attributes(),
+            TdChild::List(l) => l.collect_all_attributes(),
+            TdChild::Table(t) => t.collect_all_attributes(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            TdChild::Text(_) => false,
+            TdChild::Rend(r) => r.has_children(),
+            TdChild::Lb(_) => false,
+            TdChild::PersName(pn) => pn.has_children(),
+            TdChild::CorpName(cn) => cn.has_children(),
+            TdChild::Name(n) => n.has_children(),
+            TdChild::Title(t) => t.has_children(),
+            TdChild::Date(d) => d.has_children(),
+            TdChild::Ref(r) => r.has_children(),
+            TdChild::Ptr(_) => false,
+            TdChild::Identifier(i) => i.has_children(),
+            TdChild::Seg(s) => s.has_children(),
+            TdChild::P(p) => p.has_children(),
+            TdChild::List(l) => l.has_children(),
+            TdChild::Table(t) => t.has_children(),
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            TdChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            TdChild::Rend(r) => r.serialize_children(writer),
+            TdChild::Lb(_) => Ok(()),
+            TdChild::PersName(pn) => pn.serialize_children(writer),
+            TdChild::CorpName(cn) => cn.serialize_children(writer),
+            TdChild::Name(n) => n.serialize_children(writer),
+            TdChild::Title(t) => t.serialize_children(writer),
+            TdChild::Date(d) => d.serialize_children(writer),
+            TdChild::Ref(r) => r.serialize_children(writer),
+            TdChild::Ptr(_) => Ok(()),
+            TdChild::Identifier(i) => i.serialize_children(writer),
+            TdChild::Seg(s) => s.serialize_children(writer),
+            TdChild::P(p) => p.serialize_children(writer),
+            TdChild::List(l) => l.serialize_children(writer),
+            TdChild::Table(t) => t.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "TdChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+impl MeiSerialize for Th {
+    fn element_name(&self) -> &'static str {
+        "th"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.xy.collect_attributes());
+        attrs.extend(self.tabular.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ThChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ThChild::Text(_) => "#text",
+            ThChild::Rend(_) => "rend",
+            ThChild::Lb(_) => "lb",
+            ThChild::PersName(_) => "persName",
+            ThChild::CorpName(_) => "corpName",
+            ThChild::Name(_) => "name",
+            ThChild::Title(_) => "title",
+            ThChild::Date(_) => "date",
+            ThChild::Ref(_) => "ref",
+            ThChild::Ptr(_) => "ptr",
+            ThChild::Identifier(_) => "identifier",
+            ThChild::Seg(_) => "seg",
+            ThChild::P(_) => "p",
+            ThChild::List(_) => "list",
+            ThChild::Table(_) => "table",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            ThChild::Rend(r) => r.collect_all_attributes(),
+            ThChild::Lb(lb) => lb.collect_all_attributes(),
+            ThChild::PersName(pn) => pn.collect_all_attributes(),
+            ThChild::CorpName(cn) => cn.collect_all_attributes(),
+            ThChild::Name(n) => n.collect_all_attributes(),
+            ThChild::Title(t) => t.collect_all_attributes(),
+            ThChild::Date(d) => d.collect_all_attributes(),
+            ThChild::Ref(r) => r.collect_all_attributes(),
+            ThChild::Ptr(p) => p.collect_all_attributes(),
+            ThChild::Identifier(i) => i.collect_all_attributes(),
+            ThChild::Seg(s) => s.collect_all_attributes(),
+            ThChild::P(p) => p.collect_all_attributes(),
+            ThChild::List(l) => l.collect_all_attributes(),
+            ThChild::Table(t) => t.collect_all_attributes(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            ThChild::Text(_) => false,
+            ThChild::Rend(r) => r.has_children(),
+            ThChild::Lb(_) => false,
+            ThChild::PersName(pn) => pn.has_children(),
+            ThChild::CorpName(cn) => cn.has_children(),
+            ThChild::Name(n) => n.has_children(),
+            ThChild::Title(t) => t.has_children(),
+            ThChild::Date(d) => d.has_children(),
+            ThChild::Ref(r) => r.has_children(),
+            ThChild::Ptr(_) => false,
+            ThChild::Identifier(i) => i.has_children(),
+            ThChild::Seg(s) => s.has_children(),
+            ThChild::P(p) => p.has_children(),
+            ThChild::List(l) => l.has_children(),
+            ThChild::Table(t) => t.has_children(),
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ThChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            ThChild::Rend(r) => r.serialize_children(writer),
+            ThChild::Lb(_) => Ok(()),
+            ThChild::PersName(pn) => pn.serialize_children(writer),
+            ThChild::CorpName(cn) => cn.serialize_children(writer),
+            ThChild::Name(n) => n.serialize_children(writer),
+            ThChild::Title(t) => t.serialize_children(writer),
+            ThChild::Date(d) => d.serialize_children(writer),
+            ThChild::Ref(r) => r.serialize_children(writer),
+            ThChild::Ptr(_) => Ok(()),
+            ThChild::Identifier(i) => i.serialize_children(writer),
+            ThChild::Seg(s) => s.serialize_children(writer),
+            ThChild::P(p) => p.serialize_children(writer),
+            ThChild::List(l) => l.serialize_children(writer),
+            ThChild::Table(t) => t.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ThChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+impl MeiSerialize for Caption {
+    fn element_name(&self) -> &'static str {
+        "caption"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for CaptionChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            CaptionChild::Text(_) => "#text",
+            CaptionChild::Rend(_) => "rend",
+            CaptionChild::Lb(_) => "lb",
+            CaptionChild::PersName(_) => "persName",
+            CaptionChild::CorpName(_) => "corpName",
+            CaptionChild::Name(_) => "name",
+            CaptionChild::Title(_) => "title",
+            CaptionChild::Date(_) => "date",
+            CaptionChild::Ref(_) => "ref",
+            CaptionChild::Ptr(_) => "ptr",
+            CaptionChild::Identifier(_) => "identifier",
+            CaptionChild::Seg(_) => "seg",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            CaptionChild::Rend(r) => r.collect_all_attributes(),
+            CaptionChild::Lb(lb) => lb.collect_all_attributes(),
+            CaptionChild::PersName(pn) => pn.collect_all_attributes(),
+            CaptionChild::CorpName(cn) => cn.collect_all_attributes(),
+            CaptionChild::Name(n) => n.collect_all_attributes(),
+            CaptionChild::Title(t) => t.collect_all_attributes(),
+            CaptionChild::Date(d) => d.collect_all_attributes(),
+            CaptionChild::Ref(r) => r.collect_all_attributes(),
+            CaptionChild::Ptr(p) => p.collect_all_attributes(),
+            CaptionChild::Identifier(i) => i.collect_all_attributes(),
+            CaptionChild::Seg(s) => s.collect_all_attributes(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            CaptionChild::Text(_) => false,
+            CaptionChild::Rend(r) => r.has_children(),
+            CaptionChild::Lb(_) => false,
+            CaptionChild::PersName(pn) => pn.has_children(),
+            CaptionChild::CorpName(cn) => cn.has_children(),
+            CaptionChild::Name(n) => n.has_children(),
+            CaptionChild::Title(t) => t.has_children(),
+            CaptionChild::Date(d) => d.has_children(),
+            CaptionChild::Ref(r) => r.has_children(),
+            CaptionChild::Ptr(_) => false,
+            CaptionChild::Identifier(i) => i.has_children(),
+            CaptionChild::Seg(s) => s.has_children(),
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            CaptionChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            CaptionChild::Rend(r) => r.serialize_children(writer),
+            CaptionChild::Lb(_) => Ok(()),
+            CaptionChild::PersName(pn) => pn.serialize_children(writer),
+            CaptionChild::CorpName(cn) => cn.serialize_children(writer),
+            CaptionChild::Name(n) => n.serialize_children(writer),
+            CaptionChild::Title(t) => t.serialize_children(writer),
+            CaptionChild::Date(d) => d.serialize_children(writer),
+            CaptionChild::Ref(r) => r.serialize_children(writer),
+            CaptionChild::Ptr(_) => Ok(()),
+            CaptionChild::Identifier(i) => i.serialize_children(writer),
+            CaptionChild::Seg(s) => s.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "CaptionChild::{}::serialize_children",
                 other.element_name()
             ))),
         }
