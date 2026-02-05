@@ -16,6 +16,7 @@
 mod address;
 mod agents;
 mod bibl;
+mod deco_binding;
 mod encoding_desc;
 mod expression;
 mod layout_hand;

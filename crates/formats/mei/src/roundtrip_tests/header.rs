@@ -4506,3 +4506,267 @@ fn roundtrip_script_note_with_p() {
     assert_eq!(parsed.lang.xml_lang, Some("la".to_string()));
     assert_eq!(parsed.children.len(), 1);
 }
+
+#[test]
+fn roundtrip_deco_desc_with_note() {
+    use tusk_model::elements::{DecoDesc, DecoDescChild, DecoNote, DecoNoteChild};
+
+    let mut original = DecoDesc::default();
+    original.common.xml_id = Some("dd1".to_string());
+
+    let mut note = DecoNote::default();
+    note.common.xml_id = Some("dn1".to_string());
+    note.children
+        .push(DecoNoteChild::Text("Illuminated initials".to_string()));
+
+    original
+        .children
+        .push(DecoDescChild::DecoNote(Box::new(note)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("decoDesc"),
+        "xml should contain decoDesc: {}",
+        xml
+    );
+    assert!(xml.contains("decoNote"), "should have decoNote: {}", xml);
+    assert!(
+        xml.contains("Illuminated initials"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = DecoDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("dd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_deco_note_with_p() {
+    use tusk_model::elements::{DecoNote, DecoNoteChild, P, PChild};
+
+    let mut original = DecoNote::default();
+    original.common.xml_id = Some("dn1".to_string());
+    original.lang.xml_lang = Some("en".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Gold leaf decoration on major initials".to_string(),
+    ));
+    original.children.push(DecoNoteChild::P(Box::new(p)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("decoNote"),
+        "xml should contain decoNote: {}",
+        xml
+    );
+    assert!(xml.contains("xml:lang=\"en\""), "should have lang: {}", xml);
+    assert!(
+        xml.contains("Gold leaf decoration"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = DecoNote::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("dn1".to_string()));
+    assert_eq!(parsed.lang.xml_lang, Some("en".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_binding_desc_with_binding() {
+    use tusk_model::elements::{Binding, BindingChild, BindingDesc, BindingDescChild, P, PChild};
+
+    let mut original = BindingDesc::default();
+    original.common.xml_id = Some("bd1".to_string());
+
+    let mut binding = Binding::default();
+    binding.common.xml_id = Some("b1".to_string());
+    binding.contemporary.contemporary = Some(tusk_model::data::DataBoolean::True);
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Contemporary leather binding".to_string()));
+    binding.children.push(BindingChild::P(Box::new(p)));
+
+    original
+        .children
+        .push(BindingDescChild::Binding(Box::new(binding)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("bindingDesc"),
+        "xml should contain bindingDesc: {}",
+        xml
+    );
+    assert!(xml.contains("binding"), "should have binding: {}", xml);
+    assert!(
+        xml.contains("contemporary=\"true\""),
+        "should have contemporary: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Contemporary leather binding"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = BindingDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_binding_with_children() {
+    use tusk_model::elements::{Binding, BindingChild, Condition, ConditionChild, P, PChild};
+
+    let mut original = Binding::default();
+    original.common.xml_id = Some("b1".to_string());
+    original.contemporary.contemporary = Some(tusk_model::data::DataBoolean::False);
+    original.datable.notbefore = Some(tusk_model::data::DataIsodate("1800".to_string()));
+    original.datable.notafter = Some(tusk_model::data::DataIsodate("1850".to_string()));
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Half-calf binding".to_string()));
+    original.children.push(BindingChild::P(Box::new(p)));
+
+    let mut condition = Condition::default();
+    condition
+        .children
+        .push(ConditionChild::Text("Good condition".to_string()));
+    original
+        .children
+        .push(BindingChild::Condition(Box::new(condition)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("binding"),
+        "xml should contain binding: {}",
+        xml
+    );
+    assert!(
+        xml.contains("contemporary=\"false\""),
+        "should have contemporary: {}",
+        xml
+    );
+    assert!(
+        xml.contains("notbefore=\"1800\""),
+        "should have notbefore: {}",
+        xml
+    );
+    assert!(
+        xml.contains("notafter=\"1850\""),
+        "should have notafter: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Half-calf binding"),
+        "should have p text: {}",
+        xml
+    );
+    assert!(xml.contains("condition"), "should have condition: {}", xml);
+
+    let parsed = Binding::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("b1".to_string()));
+    assert_eq!(
+        parsed.contemporary.contemporary,
+        Some(tusk_model::data::DataBoolean::False)
+    );
+    assert_eq!(
+        parsed.datable.notbefore,
+        Some(tusk_model::data::DataIsodate("1800".to_string()))
+    );
+    assert_eq!(parsed.children.len(), 2);
+}
+
+#[test]
+fn roundtrip_seal_desc_with_seal() {
+    use tusk_model::elements::{P, PChild, Seal, SealChild, SealDesc, SealDescChild};
+
+    let mut original = SealDesc::default();
+    original.common.xml_id = Some("sd1".to_string());
+
+    let mut seal = Seal::default();
+    seal.common.xml_id = Some("s1".to_string());
+    seal.contemporary.contemporary = Some(tusk_model::data::DataBoolean::True);
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Wax seal attached".to_string()));
+    seal.children.push(SealChild::P(Box::new(p)));
+
+    original.children.push(SealDescChild::Seal(Box::new(seal)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("sealDesc"),
+        "xml should contain sealDesc: {}",
+        xml
+    );
+    assert!(xml.contains("seal"), "should have seal: {}", xml);
+    assert!(
+        xml.contains("contemporary=\"true\""),
+        "should have contemporary: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Wax seal attached"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = SealDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_seal_with_datable() {
+    use tusk_model::elements::{Head, HeadChild, Seal, SealChild};
+
+    let mut original = Seal::default();
+    original.common.xml_id = Some("s1".to_string());
+    original.contemporary.contemporary = Some(tusk_model::data::DataBoolean::False);
+    original.datable.isodate = Some(tusk_model::data::DataIsodate("1450".to_string()));
+    original.lang.xml_lang = Some("la".to_string());
+
+    original
+        .children
+        .push(SealChild::Text("Sigillum magnum".to_string()));
+
+    let mut head = Head::default();
+    head.children
+        .push(HeadChild::Text("Royal seal".to_string()));
+    original.children.push(SealChild::Head(Box::new(head)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("seal"), "xml should contain seal: {}", xml);
+    assert!(
+        xml.contains("contemporary=\"false\""),
+        "should have contemporary: {}",
+        xml
+    );
+    assert!(
+        xml.contains("isodate=\"1450\""),
+        "should have isodate: {}",
+        xml
+    );
+    assert!(xml.contains("xml:lang=\"la\""), "should have lang: {}", xml);
+    assert!(xml.contains("Sigillum magnum"), "should have text: {}", xml);
+    assert!(xml.contains("Royal seal"), "should have head: {}", xml);
+
+    let parsed = Seal::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("s1".to_string()));
+    assert_eq!(
+        parsed.contemporary.contemporary,
+        Some(tusk_model::data::DataBoolean::False)
+    );
+    assert_eq!(
+        parsed.datable.isodate,
+        Some(tusk_model::data::DataIsodate("1450".to_string()))
+    );
+    assert_eq!(parsed.lang.xml_lang, Some("la".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+}

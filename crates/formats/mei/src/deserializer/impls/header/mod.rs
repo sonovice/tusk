@@ -14,6 +14,7 @@
 mod address;
 mod agents;
 mod bibl;
+mod deco_binding;
 mod encoding_desc;
 mod layout_hand;
 mod mei_head;
@@ -85,6 +86,11 @@ pub(crate) use layout_hand::{
     parse_col_layout_from_event, parse_hand_from_event, parse_hand_list_from_event,
     parse_layout_desc_from_event, parse_layout_from_event, parse_script_desc_from_event,
     parse_script_note_from_event,
+};
+
+pub(crate) use deco_binding::{
+    parse_binding_desc_from_event, parse_binding_from_event, parse_deco_desc_from_event,
+    parse_deco_note_from_event, parse_seal_desc_from_event, parse_seal_from_event,
 };
 
 #[cfg(test)]

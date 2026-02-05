@@ -63,7 +63,7 @@ pub(crate) use misc::{
     parse_edition_stmt_from_event, parse_expression_from_event, parse_expression_list_from_event,
     parse_extent_from_event, parse_manifestation_list_from_event, parse_notes_stmt_from_event,
     parse_num_from_event, parse_revision_desc_from_event, parse_series_stmt_from_event,
-    parse_work_from_event, parse_work_list_from_event,
+    parse_term_from_event, parse_work_from_event, parse_work_list_from_event,
 };
 pub(crate) use text::{
     parse_argument_from_event, parse_back_from_event, parse_colophon_from_event,

@@ -1380,7 +1380,7 @@ pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
 /// Term is a mixed-content element that can contain text and child elements.
 /// For simplicity, we primarily support text content with the `@class` attribute,
 /// which is the common usage pattern in classification contexts.
-fn parse_term_from_event<R: BufRead>(
+pub(crate) fn parse_term_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,
     mut attrs: AttributeMap,
     is_empty: bool,
