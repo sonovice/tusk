@@ -1,14 +1,19 @@
 //! Serializer implementations for editorial MEI elements.
 //!
-//! This module contains implementations for App, Lem, Rdg, Choice, Corr, Sic, Add, Del
+//! This module contains implementations for App, Lem, Rdg, Choice, Corr, Sic, Add, Del,
+//! Abbr, Expan, Orig, Reg, Subst, Supplied, Unclear, Damage, Gap, Restore, HandShift
 //! and related attribute classes.
 
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
-use tusk_model::att::{AttCrit, AttExtent, AttRdgAnl, AttRdgGes, AttRdgLog, AttRdgVis, AttTrans};
+use tusk_model::att::{
+    AttAgentIdent, AttCrit, AttExtent, AttHandIdent, AttMedium, AttRdgAnl, AttRdgGes, AttRdgLog,
+    AttRdgVis, AttReasonIdent, AttTrans,
+};
 use tusk_model::elements::{
-    Add, AddChild, App, AppChild, Choice, ChoiceChild, Corr, CorrChild, Del, DelChild, Lem, Rdg,
-    Sic, SicChild,
+    Abbr, Add, AddChild, App, AppChild, Choice, ChoiceChild, Corr, CorrChild, Damage, Del,
+    DelChild, Expan, Gap, HandShift, Lem, Orig, Rdg, Reg, Restore, Sic, SicChild, Subst, Supplied,
+    Unclear,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -78,6 +83,38 @@ impl CollectAttributes for AttTrans {
         push_attr!(attrs, "hand", self.hand);
         push_attr!(attrs, "decls", vec self.decls);
         push_attr!(attrs, "seq", self.seq);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttHandIdent {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "hand", self.hand);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttReasonIdent {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "reason", clone self.reason);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttAgentIdent {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "agent", clone self.agent);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMedium {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "medium", clone self.medium);
         attrs
     }
 }
@@ -362,6 +399,401 @@ impl MeiSerialize for Del {
 }
 
 // ============================================================================
+// Abbr element implementation
+// ============================================================================
+
+impl MeiSerialize for Abbr {
+    fn element_name(&self) -> &'static str {
+        "abbr"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.trans.collect_attributes());
+        push_attr!(attrs, "expan", clone self.expan);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::AbbrChild;
+            match child {
+                AbbrChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Expan element implementation
+// ============================================================================
+
+impl MeiSerialize for Expan {
+    fn element_name(&self) -> &'static str {
+        "expan"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.trans.collect_attributes());
+        push_attr!(attrs, "abbr", clone self.abbr);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::ExpanChild;
+            match child {
+                ExpanChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Orig element implementation
+// ============================================================================
+
+impl MeiSerialize for Orig {
+    fn element_name(&self) -> &'static str {
+        "orig"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::OrigChild;
+            match child {
+                OrigChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Reg element implementation
+// ============================================================================
+
+impl MeiSerialize for Reg {
+    fn element_name(&self) -> &'static str {
+        "reg"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.authorized.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::RegChild;
+            match child {
+                RegChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Subst element implementation
+// ============================================================================
+
+impl MeiSerialize for Subst {
+    fn element_name(&self) -> &'static str {
+        "subst"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.trans.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::SubstChild;
+            match child {
+                SubstChild::Add(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Del(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Gap(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Reg(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Sic(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Corr(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Damage(elem) => elem.serialize_mei(writer)?,
+                SubstChild::HandShift(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Restore(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Unclear(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Orig(elem) => elem.serialize_mei(writer)?,
+                SubstChild::Supplied(elem) => elem.serialize_mei(writer)?,
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Supplied element implementation
+// ============================================================================
+
+impl MeiSerialize for Supplied {
+    fn element_name(&self) -> &'static str {
+        "supplied"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.agent_ident.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.reason_ident.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::SuppliedChild;
+            match child {
+                SuppliedChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Unclear element implementation
+// ============================================================================
+
+impl MeiSerialize for Unclear {
+    fn element_name(&self) -> &'static str {
+        "unclear"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.agent_ident.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.hand_ident.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.reason_ident.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::UnclearChild;
+            match child {
+                UnclearChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Damage element implementation
+// ============================================================================
+
+impl MeiSerialize for Damage {
+    fn element_name(&self) -> &'static str {
+        "damage"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.agent_ident.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.hand_ident.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        push_attr!(attrs, "degree", clone self.degree);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::DamageChild;
+            match child {
+                DamageChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Gap element implementation (empty element)
+// ============================================================================
+
+impl MeiSerialize for Gap {
+    fn element_name(&self) -> &'static str {
+        "gap"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.hand_ident.collect_attributes());
+        attrs.extend(self.reason_ident.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        // Gap is an empty element
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Restore element implementation
+// ============================================================================
+
+impl MeiSerialize for Restore {
+    fn element_name(&self) -> &'static str {
+        "restore"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.extent.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.trans.collect_attributes());
+        push_attr!(attrs, "desc", clone self.desc);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            use tusk_model::elements::RestoreChild;
+            match child {
+                RestoreChild::Text(text) => writer.write_text(text)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// HandShift element implementation (empty element)
+// ============================================================================
+
+impl MeiSerialize for HandShift {
+    fn element_name(&self) -> &'static str {
+        "handShift"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.edit.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.medium.collect_attributes());
+        push_attr!(attrs, "character", clone self.character);
+        push_attr!(attrs, "new", self.new);
+        push_attr!(attrs, "old", self.old);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        // HandShift is an empty element
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Helper functions for child serialization
 // ============================================================================
 
@@ -558,5 +990,205 @@ mod tests {
         del.trans.hand = Some(tusk_model::data::DataUri("#h1".to_string()));
         let xml = del.to_mei_string().expect("should serialize");
         assert!(xml.contains(r##"hand="#h1""##));
+    }
+
+    // ========================================================================
+    // Abbr tests
+    // ========================================================================
+
+    #[test]
+    fn abbr_serializes_empty() {
+        let abbr = Abbr::default();
+        let xml = abbr.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<abbr/>");
+    }
+
+    #[test]
+    fn abbr_serializes_with_expan_attr() {
+        let mut abbr = Abbr::default();
+        abbr.expan = Some("Doctor".to_string());
+        let xml = abbr.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"expan="Doctor""#));
+    }
+
+    // ========================================================================
+    // Expan tests
+    // ========================================================================
+
+    #[test]
+    fn expan_serializes_empty() {
+        let expan = Expan::default();
+        let xml = expan.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<expan/>");
+    }
+
+    #[test]
+    fn expan_serializes_with_abbr_attr() {
+        let mut expan = Expan::default();
+        expan.abbr = Some("Dr.".to_string());
+        let xml = expan.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"abbr="Dr.""#));
+    }
+
+    // ========================================================================
+    // Orig tests
+    // ========================================================================
+
+    #[test]
+    fn orig_serializes_empty() {
+        let orig = Orig::default();
+        let xml = orig.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<orig/>");
+    }
+
+    // ========================================================================
+    // Reg tests
+    // ========================================================================
+
+    #[test]
+    fn reg_serializes_empty() {
+        let reg = Reg::default();
+        let xml = reg.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<reg/>");
+    }
+
+    // ========================================================================
+    // Subst tests
+    // ========================================================================
+
+    #[test]
+    fn subst_serializes_empty() {
+        let subst = Subst::default();
+        let xml = subst.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<subst/>");
+    }
+
+    #[test]
+    fn subst_serializes_with_add_del() {
+        use tusk_model::elements::SubstChild;
+        let mut subst = Subst::default();
+        subst
+            .children
+            .push(SubstChild::Del(Box::new(Del::default())));
+        subst
+            .children
+            .push(SubstChild::Add(Box::new(Add::default())));
+        let xml = subst.to_mei_string().expect("should serialize");
+        assert!(xml.contains("<del/>"));
+        assert!(xml.contains("<add/>"));
+    }
+
+    // ========================================================================
+    // Supplied tests
+    // ========================================================================
+
+    #[test]
+    fn supplied_serializes_empty() {
+        let supplied = Supplied::default();
+        let xml = supplied.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<supplied/>");
+    }
+
+    #[test]
+    fn supplied_serializes_with_reason() {
+        let mut supplied = Supplied::default();
+        supplied.reason_ident.reason = Some("lost".to_string());
+        let xml = supplied.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"reason="lost""#));
+    }
+
+    // ========================================================================
+    // Unclear tests
+    // ========================================================================
+
+    #[test]
+    fn unclear_serializes_empty() {
+        let unclear = Unclear::default();
+        let xml = unclear.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<unclear/>");
+    }
+
+    #[test]
+    fn unclear_serializes_with_reason() {
+        let mut unclear = Unclear::default();
+        unclear.reason_ident.reason = Some("faded".to_string());
+        let xml = unclear.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"reason="faded""#));
+    }
+
+    // ========================================================================
+    // Damage tests
+    // ========================================================================
+
+    #[test]
+    fn damage_serializes_empty() {
+        let damage = Damage::default();
+        let xml = damage.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<damage/>");
+    }
+
+    #[test]
+    fn damage_serializes_with_degree() {
+        let mut damage = Damage::default();
+        damage.degree = Some("medium".to_string());
+        let xml = damage.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"degree="medium""#));
+    }
+
+    // ========================================================================
+    // Gap tests
+    // ========================================================================
+
+    #[test]
+    fn gap_serializes_empty() {
+        let gap = Gap::default();
+        let xml = gap.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<gap/>");
+    }
+
+    #[test]
+    fn gap_serializes_with_reason() {
+        let mut gap = Gap::default();
+        gap.reason_ident.reason = Some("illegible".to_string());
+        let xml = gap.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"reason="illegible""#));
+    }
+
+    // ========================================================================
+    // Restore tests
+    // ========================================================================
+
+    #[test]
+    fn restore_serializes_empty() {
+        let restore = Restore::default();
+        let xml = restore.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<restore/>");
+    }
+
+    #[test]
+    fn restore_serializes_with_desc() {
+        let mut restore = Restore::default();
+        restore.desc = Some("deleted and restored".to_string());
+        let xml = restore.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r#"desc="deleted and restored""#));
+    }
+
+    // ========================================================================
+    // HandShift tests
+    // ========================================================================
+
+    #[test]
+    fn hand_shift_serializes_empty() {
+        let hand_shift = HandShift::default();
+        let xml = hand_shift.to_mei_string().expect("should serialize");
+        assert_eq!(xml, "<handShift/>");
+    }
+
+    #[test]
+    fn hand_shift_serializes_with_new() {
+        let mut hand_shift = HandShift::default();
+        hand_shift.new = Some(tusk_model::data::DataUri("#h2".to_string()));
+        let xml = hand_shift.to_mei_string().expect("should serialize");
+        assert!(xml.contains(r##"new="#h2""##));
     }
 }

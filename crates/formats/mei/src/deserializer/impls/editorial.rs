@@ -1,6 +1,7 @@
 //! Deserializer implementations for editorial MEI elements.
 //!
-//! This module contains implementations for App, Lem, Rdg, Choice, Corr, Sic, Add, Del
+//! This module contains implementations for App, Lem, Rdg, Choice, Corr, Sic, Add, Del,
+//! Abbr, Expan, Orig, Reg, Subst, Supplied, Unclear, Damage, Gap, Restore, HandShift
 //! and related attribute classes.
 
 use crate::deserializer::{
@@ -8,9 +9,13 @@ use crate::deserializer::{
 };
 use std::io::BufRead;
 use tusk_model::att::{
-    AttCrit, AttExtent, AttRdgAnl, AttRdgGes, AttRdgLog, AttRdgVis, AttTextRendition, AttTrans,
+    AttAgentIdent, AttCrit, AttExtent, AttHandIdent, AttMedium, AttRdgAnl, AttRdgGes, AttRdgLog,
+    AttRdgVis, AttReasonIdent, AttTextRendition, AttTrans,
 };
-use tusk_model::elements::{Add, App, AppChild, Choice, ChoiceChild, Corr, Del, Lem, Rdg, Sic};
+use tusk_model::elements::{
+    Abbr, Add, App, AppChild, Choice, ChoiceChild, Corr, Damage, Del, Expan, Gap, HandShift, Lem,
+    Orig, Rdg, Reg, Restore, Sic, Subst, Supplied, Unclear,
+};
 
 use super::{extract_attr, from_attr_string};
 
@@ -84,6 +89,34 @@ impl ExtractAttributes for AttTextRendition {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "altrend", vec_string self.altrend);
         extract_attr!(attrs, "rend", vec self.rend);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttHandIdent {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "hand", self.hand);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttReasonIdent {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "reason", string self.reason);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttAgentIdent {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "agent", string self.agent);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMedium {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "medium", string self.medium);
         Ok(())
     }
 }
@@ -427,6 +460,364 @@ fn parse_del_from_event<R: BufRead>(
     Ok(del)
 }
 
+// ============================================================================
+// Abbr element implementation
+// ============================================================================
+
+impl MeiDeserialize for Abbr {
+    fn element_name() -> &'static str {
+        "abbr"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut abbr = Abbr::default();
+
+        // Extract attributes
+        abbr.common.extract_attributes(&mut attrs)?;
+        abbr.edit.extract_attributes(&mut attrs)?;
+        abbr.facsimile.extract_attributes(&mut attrs)?;
+        abbr.lang.extract_attributes(&mut attrs)?;
+        abbr.trans.extract_attributes(&mut attrs)?;
+        extract_attr!(attrs, "expan", string abbr.expan);
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("abbr")?;
+        }
+
+        Ok(abbr)
+    }
+}
+
+// ============================================================================
+// Expan element implementation
+// ============================================================================
+
+impl MeiDeserialize for Expan {
+    fn element_name() -> &'static str {
+        "expan"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut expan = Expan::default();
+
+        // Extract attributes
+        expan.common.extract_attributes(&mut attrs)?;
+        expan.edit.extract_attributes(&mut attrs)?;
+        expan.extent.extract_attributes(&mut attrs)?;
+        expan.facsimile.extract_attributes(&mut attrs)?;
+        expan.lang.extract_attributes(&mut attrs)?;
+        expan.trans.extract_attributes(&mut attrs)?;
+        extract_attr!(attrs, "abbr", string expan.abbr);
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("expan")?;
+        }
+
+        Ok(expan)
+    }
+}
+
+// ============================================================================
+// Orig element implementation
+// ============================================================================
+
+impl MeiDeserialize for Orig {
+    fn element_name() -> &'static str {
+        "orig"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut orig = Orig::default();
+
+        // Extract attributes
+        orig.common.extract_attributes(&mut attrs)?;
+        orig.edit.extract_attributes(&mut attrs)?;
+        orig.extent.extract_attributes(&mut attrs)?;
+        orig.facsimile.extract_attributes(&mut attrs)?;
+        orig.lang.extract_attributes(&mut attrs)?;
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("orig")?;
+        }
+
+        Ok(orig)
+    }
+}
+
+// ============================================================================
+// Reg element implementation
+// ============================================================================
+
+impl MeiDeserialize for Reg {
+    fn element_name() -> &'static str {
+        "reg"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut reg = Reg::default();
+
+        // Extract attributes
+        reg.common.extract_attributes(&mut attrs)?;
+        reg.authorized.extract_attributes(&mut attrs)?;
+        reg.edit.extract_attributes(&mut attrs)?;
+        reg.extent.extract_attributes(&mut attrs)?;
+        reg.lang.extract_attributes(&mut attrs)?;
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("reg")?;
+        }
+
+        Ok(reg)
+    }
+}
+
+// ============================================================================
+// Subst element implementation
+// ============================================================================
+
+impl MeiDeserialize for Subst {
+    fn element_name() -> &'static str {
+        "subst"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut subst = Subst::default();
+
+        // Extract attributes
+        subst.common.extract_attributes(&mut attrs)?;
+        subst.edit.extract_attributes(&mut attrs)?;
+        subst.trans.extract_attributes(&mut attrs)?;
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("subst")?;
+        }
+
+        Ok(subst)
+    }
+}
+
+// ============================================================================
+// Supplied element implementation
+// ============================================================================
+
+impl MeiDeserialize for Supplied {
+    fn element_name() -> &'static str {
+        "supplied"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut supplied = Supplied::default();
+
+        // Extract attributes
+        supplied.common.extract_attributes(&mut attrs)?;
+        supplied.agent_ident.extract_attributes(&mut attrs)?;
+        supplied.edit.extract_attributes(&mut attrs)?;
+        supplied.extent.extract_attributes(&mut attrs)?;
+        supplied.facsimile.extract_attributes(&mut attrs)?;
+        supplied.lang.extract_attributes(&mut attrs)?;
+        supplied.reason_ident.extract_attributes(&mut attrs)?;
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("supplied")?;
+        }
+
+        Ok(supplied)
+    }
+}
+
+// ============================================================================
+// Unclear element implementation
+// ============================================================================
+
+impl MeiDeserialize for Unclear {
+    fn element_name() -> &'static str {
+        "unclear"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut unclear = Unclear::default();
+
+        // Extract attributes
+        unclear.common.extract_attributes(&mut attrs)?;
+        unclear.agent_ident.extract_attributes(&mut attrs)?;
+        unclear.edit.extract_attributes(&mut attrs)?;
+        unclear.extent.extract_attributes(&mut attrs)?;
+        unclear.facsimile.extract_attributes(&mut attrs)?;
+        unclear.hand_ident.extract_attributes(&mut attrs)?;
+        unclear.lang.extract_attributes(&mut attrs)?;
+        unclear.reason_ident.extract_attributes(&mut attrs)?;
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("unclear")?;
+        }
+
+        Ok(unclear)
+    }
+}
+
+// ============================================================================
+// Damage element implementation
+// ============================================================================
+
+impl MeiDeserialize for Damage {
+    fn element_name() -> &'static str {
+        "damage"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut damage = Damage::default();
+
+        // Extract attributes
+        damage.common.extract_attributes(&mut attrs)?;
+        damage.agent_ident.extract_attributes(&mut attrs)?;
+        damage.extent.extract_attributes(&mut attrs)?;
+        damage.facsimile.extract_attributes(&mut attrs)?;
+        damage.hand_ident.extract_attributes(&mut attrs)?;
+        damage.lang.extract_attributes(&mut attrs)?;
+        extract_attr!(attrs, "degree", string damage.degree);
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("damage")?;
+        }
+
+        Ok(damage)
+    }
+}
+
+// ============================================================================
+// Gap element implementation (empty element)
+// ============================================================================
+
+impl MeiDeserialize for Gap {
+    fn element_name() -> &'static str {
+        "gap"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        _reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        _is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut gap = Gap::default();
+
+        // Extract attributes
+        gap.common.extract_attributes(&mut attrs)?;
+        gap.edit.extract_attributes(&mut attrs)?;
+        gap.extent.extract_attributes(&mut attrs)?;
+        gap.hand_ident.extract_attributes(&mut attrs)?;
+        gap.reason_ident.extract_attributes(&mut attrs)?;
+
+        // Gap is an empty element, no children to parse
+
+        Ok(gap)
+    }
+}
+
+// ============================================================================
+// Restore element implementation
+// ============================================================================
+
+impl MeiDeserialize for Restore {
+    fn element_name() -> &'static str {
+        "restore"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut restore = Restore::default();
+
+        // Extract attributes
+        restore.common.extract_attributes(&mut attrs)?;
+        restore.edit.extract_attributes(&mut attrs)?;
+        restore.extent.extract_attributes(&mut attrs)?;
+        restore.facsimile.extract_attributes(&mut attrs)?;
+        restore.lang.extract_attributes(&mut attrs)?;
+        restore.trans.extract_attributes(&mut attrs)?;
+        extract_attr!(attrs, "desc", string restore.desc);
+
+        // Skip children for now
+        if !is_empty {
+            reader.skip_to_end("restore")?;
+        }
+
+        Ok(restore)
+    }
+}
+
+// ============================================================================
+// HandShift element implementation (empty element)
+// ============================================================================
+
+impl MeiDeserialize for HandShift {
+    fn element_name() -> &'static str {
+        "handShift"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        _reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        _is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut hand_shift = HandShift::default();
+
+        // Extract attributes
+        hand_shift.common.extract_attributes(&mut attrs)?;
+        hand_shift.edit.extract_attributes(&mut attrs)?;
+        hand_shift.facsimile.extract_attributes(&mut attrs)?;
+        hand_shift.medium.extract_attributes(&mut attrs)?;
+        extract_attr!(attrs, "character", string hand_shift.character);
+        extract_attr!(attrs, "new", hand_shift.new);
+        extract_attr!(attrs, "old", hand_shift.old);
+
+        // HandShift is an empty element, no children to parse
+
+        Ok(hand_shift)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -601,5 +992,201 @@ mod tests {
         let del = Del::from_mei_str(xml).expect("should deserialize");
 
         assert!(del.trans.hand.is_some());
+    }
+
+    // ========================================================================
+    // Abbr tests
+    // ========================================================================
+
+    #[test]
+    fn abbr_deserializes_empty() {
+        let xml = r#"<abbr/>"#;
+        let abbr = Abbr::from_mei_str(xml).expect("should deserialize");
+
+        assert!(abbr.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn abbr_deserializes_with_expan_attr() {
+        let xml = r#"<abbr expan="Doctor"/>"#;
+        let abbr = Abbr::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(abbr.expan, Some("Doctor".to_string()));
+    }
+
+    // ========================================================================
+    // Expan tests
+    // ========================================================================
+
+    #[test]
+    fn expan_deserializes_empty() {
+        let xml = r#"<expan/>"#;
+        let expan = Expan::from_mei_str(xml).expect("should deserialize");
+
+        assert!(expan.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn expan_deserializes_with_abbr_attr() {
+        let xml = r#"<expan abbr="Dr."/>"#;
+        let expan = Expan::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(expan.abbr, Some("Dr.".to_string()));
+    }
+
+    // ========================================================================
+    // Orig tests
+    // ========================================================================
+
+    #[test]
+    fn orig_deserializes_empty() {
+        let xml = r#"<orig/>"#;
+        let orig = Orig::from_mei_str(xml).expect("should deserialize");
+
+        assert!(orig.common.xml_id.is_none());
+    }
+
+    // ========================================================================
+    // Reg tests
+    // ========================================================================
+
+    #[test]
+    fn reg_deserializes_empty() {
+        let xml = r#"<reg/>"#;
+        let reg = Reg::from_mei_str(xml).expect("should deserialize");
+
+        assert!(reg.common.xml_id.is_none());
+    }
+
+    // ========================================================================
+    // Subst tests
+    // ========================================================================
+
+    #[test]
+    fn subst_deserializes_empty() {
+        let xml = r#"<subst/>"#;
+        let subst = Subst::from_mei_str(xml).expect("should deserialize");
+
+        assert!(subst.common.xml_id.is_none());
+    }
+
+    // ========================================================================
+    // Supplied tests
+    // ========================================================================
+
+    #[test]
+    fn supplied_deserializes_empty() {
+        let xml = r#"<supplied/>"#;
+        let supplied = Supplied::from_mei_str(xml).expect("should deserialize");
+
+        assert!(supplied.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn supplied_deserializes_with_reason() {
+        let xml = r#"<supplied reason="lost"/>"#;
+        let supplied = Supplied::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(supplied.reason_ident.reason, Some("lost".to_string()));
+    }
+
+    // ========================================================================
+    // Unclear tests
+    // ========================================================================
+
+    #[test]
+    fn unclear_deserializes_empty() {
+        let xml = r#"<unclear/>"#;
+        let unclear = Unclear::from_mei_str(xml).expect("should deserialize");
+
+        assert!(unclear.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn unclear_deserializes_with_reason() {
+        let xml = r#"<unclear reason="faded"/>"#;
+        let unclear = Unclear::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(unclear.reason_ident.reason, Some("faded".to_string()));
+    }
+
+    // ========================================================================
+    // Damage tests
+    // ========================================================================
+
+    #[test]
+    fn damage_deserializes_empty() {
+        let xml = r#"<damage/>"#;
+        let damage = Damage::from_mei_str(xml).expect("should deserialize");
+
+        assert!(damage.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn damage_deserializes_with_degree() {
+        let xml = r#"<damage degree="medium"/>"#;
+        let damage = Damage::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(damage.degree, Some("medium".to_string()));
+    }
+
+    // ========================================================================
+    // Gap tests
+    // ========================================================================
+
+    #[test]
+    fn gap_deserializes_empty() {
+        let xml = r#"<gap/>"#;
+        let gap = Gap::from_mei_str(xml).expect("should deserialize");
+
+        assert!(gap.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn gap_deserializes_with_reason() {
+        let xml = r#"<gap reason="illegible"/>"#;
+        let gap = Gap::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(gap.reason_ident.reason, Some("illegible".to_string()));
+    }
+
+    // ========================================================================
+    // Restore tests
+    // ========================================================================
+
+    #[test]
+    fn restore_deserializes_empty() {
+        let xml = r#"<restore/>"#;
+        let restore = Restore::from_mei_str(xml).expect("should deserialize");
+
+        assert!(restore.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn restore_deserializes_with_desc() {
+        let xml = r#"<restore desc="deleted and restored"/>"#;
+        let restore = Restore::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(restore.desc, Some("deleted and restored".to_string()));
+    }
+
+    // ========================================================================
+    // HandShift tests
+    // ========================================================================
+
+    #[test]
+    fn hand_shift_deserializes_empty() {
+        let xml = r#"<handShift/>"#;
+        let hand_shift = HandShift::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hand_shift.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn hand_shift_deserializes_with_new() {
+        let xml = r##"<handShift new="#h2"/>"##;
+        let hand_shift = HandShift::from_mei_str(xml).expect("should deserialize");
+
+        assert!(hand_shift.new.is_some());
     }
 }

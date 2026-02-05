@@ -605,3 +605,429 @@ fn fig_desc_serialize_with_lang() {
     let xml = original.to_mei_string().expect("serialize");
     assert!(xml.contains(r#"xml:lang="en""#));
 }
+
+// ============================================================================
+// Abbr (Abbreviation) Tests
+// ============================================================================
+
+#[test]
+fn abbr_roundtrip_empty() {
+    use tusk_model::elements::Abbr;
+
+    let original = Abbr::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Abbr::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn abbr_roundtrip_with_xml_id() {
+    use tusk_model::elements::Abbr;
+
+    let mut original = Abbr::default();
+    original.common.xml_id = Some("abbr-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Abbr::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("abbr-1".to_string()));
+}
+
+#[test]
+fn abbr_roundtrip_with_expan_attr() {
+    use tusk_model::elements::Abbr;
+
+    let mut original = Abbr::default();
+    original.expan = Some("Doctor".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Abbr::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.expan, Some("Doctor".to_string()));
+}
+
+// ============================================================================
+// Expan (Expansion) Tests
+// ============================================================================
+
+#[test]
+fn expan_roundtrip_empty() {
+    use tusk_model::elements::Expan;
+
+    let original = Expan::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Expan::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn expan_roundtrip_with_xml_id() {
+    use tusk_model::elements::Expan;
+
+    let mut original = Expan::default();
+    original.common.xml_id = Some("expan-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Expan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("expan-1".to_string()));
+}
+
+#[test]
+fn expan_roundtrip_with_abbr_attr() {
+    use tusk_model::elements::Expan;
+
+    let mut original = Expan::default();
+    original.abbr = Some("Dr.".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Expan::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.abbr, Some("Dr.".to_string()));
+}
+
+// ============================================================================
+// Orig (Original) Tests
+// ============================================================================
+
+#[test]
+fn orig_roundtrip_empty() {
+    use tusk_model::elements::Orig;
+
+    let original = Orig::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Orig::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn orig_roundtrip_with_xml_id() {
+    use tusk_model::elements::Orig;
+
+    let mut original = Orig::default();
+    original.common.xml_id = Some("orig-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Orig::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("orig-1".to_string()));
+}
+
+// ============================================================================
+// Reg (Regularization) Tests
+// ============================================================================
+
+#[test]
+fn reg_roundtrip_empty() {
+    use tusk_model::elements::Reg;
+
+    let original = Reg::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Reg::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn reg_roundtrip_with_xml_id() {
+    use tusk_model::elements::Reg;
+
+    let mut original = Reg::default();
+    original.common.xml_id = Some("reg-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Reg::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("reg-1".to_string()));
+}
+
+// ============================================================================
+// Subst (Substitution) Tests
+// ============================================================================
+
+#[test]
+fn subst_roundtrip_empty() {
+    use tusk_model::elements::Subst;
+
+    let original = Subst::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Subst::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn subst_roundtrip_with_xml_id() {
+    use tusk_model::elements::Subst;
+
+    let mut original = Subst::default();
+    original.common.xml_id = Some("subst-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Subst::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("subst-1".to_string()));
+}
+
+// ============================================================================
+// Supplied Tests
+// ============================================================================
+
+#[test]
+fn supplied_roundtrip_empty() {
+    use tusk_model::elements::Supplied;
+
+    let original = Supplied::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Supplied::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn supplied_roundtrip_with_xml_id() {
+    use tusk_model::elements::Supplied;
+
+    let mut original = Supplied::default();
+    original.common.xml_id = Some("supplied-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Supplied::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("supplied-1".to_string()));
+}
+
+#[test]
+fn supplied_roundtrip_with_reason() {
+    use tusk_model::elements::Supplied;
+
+    let mut original = Supplied::default();
+    original.reason_ident.reason = Some("lost".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Supplied::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.reason_ident.reason, Some("lost".to_string()));
+}
+
+// ============================================================================
+// Unclear Tests
+// ============================================================================
+
+#[test]
+fn unclear_roundtrip_empty() {
+    use tusk_model::elements::Unclear;
+
+    let original = Unclear::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Unclear::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn unclear_roundtrip_with_xml_id() {
+    use tusk_model::elements::Unclear;
+
+    let mut original = Unclear::default();
+    original.common.xml_id = Some("unclear-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Unclear::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("unclear-1".to_string()));
+}
+
+#[test]
+fn unclear_roundtrip_with_reason() {
+    use tusk_model::elements::Unclear;
+
+    let mut original = Unclear::default();
+    original.reason_ident.reason = Some("faded".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Unclear::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.reason_ident.reason, Some("faded".to_string()));
+}
+
+// ============================================================================
+// Damage Tests
+// ============================================================================
+
+#[test]
+fn damage_roundtrip_empty() {
+    use tusk_model::elements::Damage;
+
+    let original = Damage::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Damage::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn damage_roundtrip_with_xml_id() {
+    use tusk_model::elements::Damage;
+
+    let mut original = Damage::default();
+    original.common.xml_id = Some("damage-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Damage::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("damage-1".to_string()));
+}
+
+#[test]
+fn damage_roundtrip_with_degree() {
+    use tusk_model::elements::Damage;
+
+    let mut original = Damage::default();
+    original.degree = Some("medium".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Damage::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.degree, Some("medium".to_string()));
+}
+
+// ============================================================================
+// Gap Tests
+// ============================================================================
+
+#[test]
+fn gap_roundtrip_empty() {
+    use tusk_model::elements::Gap;
+
+    let original = Gap::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gap::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn gap_roundtrip_with_xml_id() {
+    use tusk_model::elements::Gap;
+
+    let mut original = Gap::default();
+    original.common.xml_id = Some("gap-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gap::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("gap-1".to_string()));
+}
+
+#[test]
+fn gap_roundtrip_with_reason() {
+    use tusk_model::elements::Gap;
+
+    let mut original = Gap::default();
+    original.reason_ident.reason = Some("illegible".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Gap::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.reason_ident.reason, Some("illegible".to_string()));
+}
+
+// ============================================================================
+// Restore Tests
+// ============================================================================
+
+#[test]
+fn restore_roundtrip_empty() {
+    use tusk_model::elements::Restore;
+
+    let original = Restore::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Restore::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn restore_roundtrip_with_xml_id() {
+    use tusk_model::elements::Restore;
+
+    let mut original = Restore::default();
+    original.common.xml_id = Some("restore-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Restore::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("restore-1".to_string()));
+}
+
+#[test]
+fn restore_roundtrip_with_desc() {
+    use tusk_model::elements::Restore;
+
+    let mut original = Restore::default();
+    original.desc = Some("deleted and restored".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Restore::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.desc, Some("deleted and restored".to_string()));
+}
+
+// ============================================================================
+// HandShift Tests
+// ============================================================================
+
+#[test]
+fn hand_shift_roundtrip_empty() {
+    use tusk_model::elements::HandShift;
+
+    let original = HandShift::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HandShift::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn hand_shift_roundtrip_with_xml_id() {
+    use tusk_model::elements::HandShift;
+
+    let mut original = HandShift::default();
+    original.common.xml_id = Some("handShift-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HandShift::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("handShift-1".to_string()));
+}
+
+#[test]
+fn hand_shift_roundtrip_with_new() {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::HandShift;
+
+    let mut original = HandShift::default();
+    original.new = Some(DataUri("#h2".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HandShift::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.new, Some(DataUri("#h2".to_string())));
+}
+
+#[test]
+fn hand_shift_roundtrip_with_character() {
+    use tusk_model::elements::HandShift;
+
+    let mut original = HandShift::default();
+    original.character = Some("cursive".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HandShift::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.character, Some("cursive".to_string()));
+}

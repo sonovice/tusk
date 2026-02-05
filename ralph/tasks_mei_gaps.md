@@ -66,8 +66,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 4: Editorial Module Completion
 
 ### 4.1 Remaining Editorial Elements
-- [ ] Implement abbreviation/expansion: `Abbr`, `Expan` and original/regularized: `Orig`, `Reg` and corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
-- [ ] Add roundtrip tests
+- [x] Implement abbreviation/expansion: `Abbr`, `Expan` and original/regularized: `Orig`, `Reg` and corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
+- [x] Add roundtrip tests
 
 ---
 
