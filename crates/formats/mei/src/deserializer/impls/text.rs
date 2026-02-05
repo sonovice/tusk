@@ -1174,6 +1174,10 @@ pub(crate) fn parse_div_from_event<R: BufRead>(
                         super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
                     div.children.push(DivChild::Head(Box::new(head)));
                 }
+                "lg" => {
+                    let lg = parse_lg_from_event(reader, child_attrs, child_empty)?;
+                    div.children.push(DivChild::Lg(Box::new(lg)));
+                }
                 // Other child types can be added as needed
                 _ => {
                     if !child_empty {
