@@ -44,6 +44,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `back` child element parsing to Music deserializer - currently only `body` is handled, missing `back`, `front`, `group`, `facsimile`, `genDesc`, `performance` (source: Lyrics/lyrics.mei)
 - [x] [MISSING_ATTR] StaffDef serializer missing `visible` attribute from AttStaffDefVis; Clef deserializer missing AttEvent extraction (`tstamp`, `layer`, `staff`, `when`, `tstamp.ges`, `tstamp.real`) and AttClefVis attributes (`altsym`, `color`, `enclose`, `glyph.*`, `font*`, `visible`, `ho`, `to`, `vo`) (source: Das_Veilchen_0Parameters.mei)
 - [x] [SERIALIZER_BUG] WorkChild::ComponentList not handled in serialize_mei match - falls through to default that writes empty element; Section deserializer missing `annot` child handling; Identifier deserializer missing `annot` child handling; PgFoot deserializer missing `table` child handling (sources: group_element.mei, vivaldi_multiple_mdivs.mei, multiple_sectionsII.mei, part_element.mei)
+- [ ] [MISSING_ELEMENT] Add `music` child element parsing to Group deserializer - currently skipped with comment "parser not yet available" but Music deserializer exists in misc.rs (source: group_element.mei)
 
 ---
 
