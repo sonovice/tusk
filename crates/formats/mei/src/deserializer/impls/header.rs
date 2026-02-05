@@ -2614,6 +2614,10 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
     title.n_number_like.extract_attributes(&mut attrs)?;
     title.responsibility.extract_attributes(&mut attrs)?;
 
+    // Element-local attributes
+    title.level = attrs.remove("level");
+    title.r#type = attrs.remove("type");
+
     // Remaining attributes are unknown - in lenient mode we ignore them
 
     // Title can contain mixed content (text + elements like titlePart, rend, corpName, etc.)

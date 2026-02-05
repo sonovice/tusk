@@ -1610,3 +1610,105 @@ impl MeiSerialize for LChild {
         }
     }
 }
+
+// ============================================================================
+// Div element implementation
+// ============================================================================
+
+use tusk_model::elements::{Div, DivChild};
+
+impl MeiSerialize for Div {
+    fn element_name(&self) -> &'static str {
+        "div"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.basic.collect_attributes());
+        attrs.extend(self.classed.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.labelled.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.linking.collect_attributes());
+        attrs.extend(self.metadata_pointing.collect_attributes());
+        attrs.extend(self.n_number_like.collect_attributes());
+        attrs.extend(self.responsibility.collect_attributes());
+        // Element-local attribute
+        if let Some(t) = &self.r#type {
+            attrs.push(("type", t.clone()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for DivChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            DivChild::P(_) => "p",
+            DivChild::Lg(_) => "lg",
+            DivChild::List(_) => "list",
+            DivChild::Head(_) => "head",
+            DivChild::Quote(_) => "quote",
+            DivChild::Table(_) => "table",
+            DivChild::Div(_) => "div",
+            DivChild::Fig(_) => "fig",
+            DivChild::Pb(_) => "pb",
+            DivChild::Lb(_) => "lb",
+            DivChild::Cb(_) => "cb",
+            DivChild::ColLayout(_) => "colLayout",
+            DivChild::Sp(_) => "sp",
+            DivChild::BiblList(_) => "biblList",
+            DivChild::CastList(_) => "castList",
+            DivChild::EventList(_) => "eventList",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            DivChild::P(p) => p.collect_all_attributes(),
+            DivChild::Lg(lg) => lg.collect_all_attributes(),
+            DivChild::List(list) => list.collect_all_attributes(),
+            DivChild::Head(head) => head.collect_all_attributes(),
+            DivChild::Div(div) => div.collect_all_attributes(),
+            // Other child types not yet implemented - return empty
+            _ => Vec::new(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        match self {
+            DivChild::P(p) => p.has_children(),
+            DivChild::Lg(lg) => lg.has_children(),
+            DivChild::List(list) => list.has_children(),
+            DivChild::Head(head) => head.has_children(),
+            DivChild::Div(div) => div.has_children(),
+            // Other child types - assume no children for now
+            _ => false,
+        }
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            DivChild::P(p) => p.serialize_children(writer),
+            DivChild::Lg(lg) => lg.serialize_children(writer),
+            DivChild::List(list) => list.serialize_children(writer),
+            DivChild::Head(head) => head.serialize_children(writer),
+            DivChild::Div(div) => div.serialize_children(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "DivChild::{}::serialize_children",
+                other.element_name()
+            ))),
+        }
+    }
+}

@@ -236,6 +236,13 @@ impl MeiSerialize for Title {
         attrs.extend(self.linking.collect_attributes());
         attrs.extend(self.n_number_like.collect_attributes());
         attrs.extend(self.responsibility.collect_attributes());
+        // Element-local attributes
+        if let Some(level) = &self.level {
+            attrs.push(("level", level.clone()));
+        }
+        if let Some(t) = &self.r#type {
+            attrs.push(("type", t.clone()));
+        }
         attrs
     }
 

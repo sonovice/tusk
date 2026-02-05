@@ -13,9 +13,9 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest, Mdiv,
-    MdivChild, Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
-    SectionChild, Slur, Space, Staff, StaffChild, Tempo, Tie, Tuplet,
+    Beam, Body, BodyChild, Chord, Dir, Div, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest,
+    Mdiv, MdivChild, Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
+    SectionChild, Slur, Space, Staff, StaffChild, Tempo, Tie, Trill, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -515,6 +515,10 @@ impl MeiDeserialize for Measure {
                             .children
                             .push(MeasureChild::Fermata(Box::new(fermata)));
                     }
+                    "trill" => {
+                        let trill = Trill::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Trill(Box::new(trill)));
+                    }
                     // Other child types - skip in lenient mode for now
                     _ => {
                         if !child_empty {
@@ -579,9 +583,21 @@ impl MeiDeserialize for Section {
                             .children
                             .push(SectionChild::Section(Box::new(nested_section)));
                     }
+                    "scoreDef" => {
+                        // scoreDef can appear in section for mid-piece score changes
+                        let score_def = ScoreDef::from_mei_event(reader, child_attrs, child_empty)?;
+                        section
+                            .children
+                            .push(SectionChild::ScoreDef(Box::new(score_def)));
+                    }
                     "sb" => {
                         let sb = parse_sb_from_event(reader, child_attrs, child_empty)?;
                         section.children.push(SectionChild::Sb(Box::new(sb)));
+                    }
+                    "div" => {
+                        let div =
+                            super::text::parse_div_from_event(reader, child_attrs, child_empty)?;
+                        section.children.push(SectionChild::Div(Box::new(div)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

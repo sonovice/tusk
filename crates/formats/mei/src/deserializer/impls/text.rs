@@ -14,8 +14,8 @@ use tusk_model::att::{
     AttVerseLog, AttVerseVis, AttVerticalAlign,
 };
 use tusk_model::elements::{
-    Annot, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild, Rend, Seg,
-    SegChild, Syl, SylChild, Verse, VerseChild,
+    Annot, Div, DivChild, Fig, FigChild, FigDesc, Lb, Lg, LgChild, Li, LiChild, List, ListChild,
+    Rend, Seg, SegChild, Syl, SylChild, Verse, VerseChild,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1082,6 +1082,65 @@ pub(crate) fn parse_seg_from_event<R: BufRead>(
     }
 
     Ok(seg)
+}
+
+// ============================================================================
+// Div element implementation
+// ============================================================================
+
+/// Parse a <div> element from a start event.
+/// The div element contains prose text such as libretto, editorial remarks, etc.
+pub(crate) fn parse_div_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Div> {
+    let mut div = Div::default();
+
+    // Extract attributes
+    div.basic.extract_attributes(&mut attrs)?;
+    div.classed.extract_attributes(&mut attrs)?;
+    div.facsimile.extract_attributes(&mut attrs)?;
+    div.labelled.extract_attributes(&mut attrs)?;
+    div.lang.extract_attributes(&mut attrs)?;
+    div.linking.extract_attributes(&mut attrs)?;
+    div.metadata_pointing.extract_attributes(&mut attrs)?;
+    div.n_number_like.extract_attributes(&mut attrs)?;
+    div.responsibility.extract_attributes(&mut attrs)?;
+
+    // Element-local attribute
+    div.r#type = attrs.remove("type");
+
+    // Remaining attributes are unknown - in lenient mode we ignore them
+
+    // Read children
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("div")? {
+            match name.as_str() {
+                "p" => {
+                    let p = super::header::parse_p_from_event(reader, child_attrs, child_empty)?;
+                    div.children.push(DivChild::P(Box::new(p)));
+                }
+                "list" => {
+                    let list = parse_list_from_event(reader, child_attrs, child_empty)?;
+                    div.children.push(DivChild::List(Box::new(list)));
+                }
+                "head" => {
+                    let head =
+                        super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
+                    div.children.push(DivChild::Head(Box::new(head)));
+                }
+                // Other child types can be added as needed
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(div)
 }
 
 // ============================================================================

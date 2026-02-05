@@ -11,9 +11,10 @@ use tusk_model::att::{
     AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis,
     AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttHairpinAnl, AttHairpinGes,
     AttHairpinLog, AttHairpinVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttTempoAnl,
-    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis,
+    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl,
+    AttTrillGes, AttTrillLog, AttTrillVis,
 };
-use tusk_model::elements::{Dir, Dynam, Fermata, Hairpin, Slur, Tempo, Tie};
+use tusk_model::elements::{Dir, Dynam, Fermata, Hairpin, Slur, Tempo, Tie, Trill};
 
 use super::{extract_attr, from_attr_string};
 
@@ -899,6 +900,123 @@ impl MeiDeserialize for Fermata {
         }
 
         Ok(fermata)
+    }
+}
+
+// ============================================================================
+// Trill attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttTrillLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "accidupper.ges", self.accidupper_ges);
+        extract_attr!(attrs, "accidlower.ges", self.accidlower_ges);
+        extract_attr!(attrs, "accidupper", self.accidupper);
+        extract_attr!(attrs, "accidlower", self.accidlower);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "tstamp2", self.tstamp2);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTrillVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "lform", self.lform);
+        extract_attr!(attrs, "lwidth", self.lwidth);
+        extract_attr!(attrs, "lsegs", self.lsegs);
+        extract_attr!(attrs, "lendsym", self.lendsym);
+        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
+        extract_attr!(attrs, "lstartsym", self.lstartsym);
+        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
+        extract_attr!(attrs, "extender", self.extender);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "startho", self.startho);
+        extract_attr!(attrs, "endho", self.endho);
+        extract_attr!(attrs, "startto", self.startto);
+        extract_attr!(attrs, "endto", self.endto);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTrillGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttTrillAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttTrillAnl has no attributes
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Trill {
+    fn element_name() -> &'static str {
+        "trill"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut trill = Trill::default();
+
+        // Extract attributes into each attribute class
+        trill.common.extract_attributes(&mut attrs)?;
+        trill.facsimile.extract_attributes(&mut attrs)?;
+        trill.trill_log.extract_attributes(&mut attrs)?;
+        trill.trill_vis.extract_attributes(&mut attrs)?;
+        trill.trill_ges.extract_attributes(&mut attrs)?;
+        trill.trill_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Trill has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("trill")?;
+        }
+
+        Ok(trill)
     }
 }
 

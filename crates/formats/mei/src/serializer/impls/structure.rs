@@ -646,6 +646,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Tempo(tempo) => tempo.collect_all_attributes(),
             MeasureChild::Slur(slur) => slur.collect_all_attributes(),
             MeasureChild::Tie(tie) => tie.collect_all_attributes(),
+            MeasureChild::Fermata(fermata) => fermata.collect_all_attributes(),
+            MeasureChild::Trill(trill) => trill.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -660,6 +662,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Tempo(tempo) => tempo.has_children(),
             MeasureChild::Slur(_) => false, // Slur has no children (just attributes)
             MeasureChild::Tie(_) => false,  // Tie has no children
+            MeasureChild::Fermata(_) => false, // Fermata has no children
+            MeasureChild::Trill(_) => false, // Trill has no children
             // Other child types - assume no children for now
             _ => false,
         }
@@ -671,6 +675,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Dynam(dynam) => dynam.serialize_children(writer),
             MeasureChild::Dir(dir) => dir.serialize_children(writer),
             MeasureChild::Tempo(tempo) => tempo.serialize_children(writer),
+            MeasureChild::Fermata(_) => Ok(()), // Fermata has no children
+            MeasureChild::Trill(_) => Ok(()),   // Trill has no children
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()
@@ -790,7 +796,9 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.collect_all_attributes(),
             SectionChild::Staff(staff) => staff.collect_all_attributes(),
             SectionChild::Section(section) => section.collect_all_attributes(),
+            SectionChild::ScoreDef(score_def) => score_def.collect_all_attributes(),
             SectionChild::Sb(sb) => sb.collect_all_attributes(),
+            SectionChild::Div(div) => div.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -801,7 +809,9 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.has_children(),
             SectionChild::Staff(staff) => staff.has_children(),
             SectionChild::Section(section) => section.has_children(),
+            SectionChild::ScoreDef(score_def) => score_def.has_children(),
             SectionChild::Sb(sb) => sb.has_children(),
+            SectionChild::Div(div) => div.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -812,7 +822,9 @@ impl MeiSerialize for SectionChild {
             SectionChild::Measure(measure) => measure.serialize_children(writer),
             SectionChild::Staff(staff) => staff.serialize_children(writer),
             SectionChild::Section(section) => section.serialize_children(writer),
+            SectionChild::ScoreDef(score_def) => score_def.serialize_children(writer),
             SectionChild::Sb(sb) => sb.serialize_children(writer),
+            SectionChild::Div(div) => div.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "SectionChild::{}::serialize_children",
                 other.element_name()

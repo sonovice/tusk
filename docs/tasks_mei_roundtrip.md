@@ -95,7 +95,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Aguado_Walzer_G-major.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Ahle_Jesu_meines_Herzens_Freud.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Altenburg_Concerto_C-major.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Altenburg_Concerto_C-major.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Altenburg_Ein_feste_Burg.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Altenburg_Macht_auf_die_Tor.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JC_Fughette_No2.mei`
