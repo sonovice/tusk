@@ -6,7 +6,7 @@
 //! - Expression, ExpressionList, ComponentList, RelationList
 //! - Various supporting elements (Dedication, Creation, History, etc.)
 
-use super::header::parse_annot_from_event;
+use super::header::{parse_annot_from_event, parse_geog_name_from_event};
 use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
     from_attr_string, parse_bibl_from_event, parse_bibl_struct_from_event, parse_clef_from_event,
@@ -97,6 +97,13 @@ fn parse_creation_from_event<R: BufRead>(
                     "date" => {
                         let date = parse_date_from_event(reader, child_attrs, child_empty)?;
                         creation.children.push(CreationChild::Date(Box::new(date)));
+                    }
+                    "geogName" => {
+                        let geog_name =
+                            parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                        creation
+                            .children
+                            .push(CreationChild::GeogName(Box::new(geog_name)));
                     }
                     _ => {
                         if !child_empty {
@@ -1114,6 +1121,12 @@ pub(crate) fn parse_notes_stmt_from_event<R: BufRead>(
                         .children
                         .push(NotesStmtChild::Head(Box::new(head)));
                 }
+                "annot" => {
+                    let annot = parse_annot_from_event(reader, child_attrs, child_empty)?;
+                    notes_stmt
+                        .children
+                        .push(NotesStmtChild::Annot(Box::new(annot)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;
@@ -1132,6 +1145,8 @@ pub(crate) fn parse_edition_from_event<R: BufRead>(
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Edition> {
+    use tusk_model::elements::EditionChild;
+
     let mut edition = Edition::default();
 
     // Extract attributes
@@ -1139,38 +1154,35 @@ pub(crate) fn parse_edition_from_event<R: BufRead>(
     edition.bibl.extract_attributes(&mut attrs)?;
     edition.lang.extract_attributes(&mut attrs)?;
 
-    // Read children if not an empty element
-    // edition can contain text and various child elements
+    // Edition can have mixed content: text and child elements
     if !is_empty {
-        while let Some((name, child_attrs, child_empty)) =
-            reader.read_next_child_start("edition")?
-        {
-            match name.as_str() {
-                "respStmt" => {
-                    let resp_stmt = parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
-                    edition
-                        .children
-                        .push(tusk_model::elements::EditionChild::RespStmt(Box::new(
-                            resp_stmt,
-                        )));
+        while let Some(content) = reader.read_next_mixed_content("edition")? {
+            match content {
+                MixedContent::Text(text) => {
+                    edition.children.push(EditionChild::Text(text));
                 }
-                "title" => {
-                    let title = parse_title_from_event(reader, child_attrs, child_empty)?;
-                    edition
-                        .children
-                        .push(tusk_model::elements::EditionChild::Title(Box::new(title)));
-                }
-                "date" => {
-                    let date = parse_date_from_event(reader, child_attrs, child_empty)?;
-                    edition
-                        .children
-                        .push(tusk_model::elements::EditionChild::Date(Box::new(date)));
-                }
-                _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "respStmt" => {
+                        let resp_stmt =
+                            parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                        edition
+                            .children
+                            .push(EditionChild::RespStmt(Box::new(resp_stmt)));
                     }
-                }
+                    "title" => {
+                        let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                        edition.children.push(EditionChild::Title(Box::new(title)));
+                    }
+                    "date" => {
+                        let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                        edition.children.push(EditionChild::Date(Box::new(date)));
+                    }
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
             }
         }
     }
