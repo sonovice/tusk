@@ -10,13 +10,14 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis,
     AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttHairpinAnl, AttHairpinGes,
-    AttHairpinLog, AttHairpinVis, AttPedalAnl, AttPedalGes, AttPedalLog, AttPedalVis, AttSlurAnl,
-    AttSlurGes, AttSlurLog, AttSlurVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis,
-    AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis,
-    AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
+    AttHairpinLog, AttHairpinVis, AttMordentAnl, AttMordentGes, AttMordentLog, AttMordentVis,
+    AttPedalAnl, AttPedalGes, AttPedalLog, AttPedalVis, AttSlurAnl, AttSlurGes, AttSlurLog,
+    AttSlurVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes,
+    AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis, AttTupletSpanAnl,
+    AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
 };
 use tusk_model::elements::{
-    Dir, Dynam, Fermata, Hairpin, Pedal, Slur, Tempo, Tie, Trill, TupletSpan,
+    Dir, Dynam, Fermata, Hairpin, Mordent, Pedal, Slur, Tempo, Tie, Trill, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -1020,6 +1021,104 @@ impl MeiDeserialize for Trill {
         }
 
         Ok(trill)
+    }
+}
+
+// ============================================================================
+// Mordent attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttMordentLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "plist", vec self.plist);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "evaluate", self.evaluate);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "endid", self.endid);
+        extract_attr!(attrs, "accidupper.ges", self.accidupper_ges);
+        extract_attr!(attrs, "accidlower.ges", self.accidlower_ges);
+        extract_attr!(attrs, "accidupper", self.accidupper);
+        extract_attr!(attrs, "accidlower", self.accidlower);
+        extract_attr!(attrs, "form", self.form);
+        extract_attr!(attrs, "long", self.long);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMordentVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "enclose", self.enclose);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "vgrp", self.vgrp);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMordentGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttMordentGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMordentAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttMordentAnl has no attributes
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Mordent {
+    fn element_name() -> &'static str {
+        "mordent"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut mordent = Mordent::default();
+
+        // Extract attributes into each attribute class
+        mordent.common.extract_attributes(&mut attrs)?;
+        mordent.facsimile.extract_attributes(&mut attrs)?;
+        mordent.mordent_log.extract_attributes(&mut attrs)?;
+        mordent.mordent_vis.extract_attributes(&mut attrs)?;
+        mordent.mordent_ges.extract_attributes(&mut attrs)?;
+        mordent.mordent_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Mordent has empty content, skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("mordent")?;
+        }
+
+        Ok(mordent)
     }
 }
 

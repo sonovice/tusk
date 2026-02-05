@@ -12,16 +12,17 @@ use tusk_model::att::{
     AttBibl, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDynamAnl, AttDynamGes, AttDynamLog,
     AttDynamVis, AttFAnl, AttFGes, AttFLog, AttFVis, AttFermataAnl, AttFermataGes, AttFermataLog,
     AttFermataVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttHarmAnl,
-    AttHarmGes, AttHarmLog, AttHarmVis, AttLang, AttPedalAnl, AttPedalGes, AttPedalLog,
-    AttPedalVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSymbolAnl, AttSymbolGes,
-    AttSymbolLog, AttSymbolVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl,
-    AttTieGes, AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis,
-    AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
+    AttHarmGes, AttHarmLog, AttHarmVis, AttLang, AttMordentAnl, AttMordentGes, AttMordentLog,
+    AttMordentVis, AttPedalAnl, AttPedalGes, AttPedalLog, AttPedalVis, AttSlurAnl, AttSlurGes,
+    AttSlurLog, AttSlurVis, AttSymbolAnl, AttSymbolGes, AttSymbolLog, AttSymbolVis, AttTempoAnl,
+    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl,
+    AttTrillGes, AttTrillLog, AttTrillVis, AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog,
+    AttTupletSpanVis,
 };
 use tusk_model::elements::{
     AnchoredText, AnchoredTextChild, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb, FbChild,
-    Fermata, Hairpin, Harm, HarmChild, Pedal, Slur, SlurChild, Symbol, Tempo, TempoChild, Tie,
-    TieChild, Trill, TupletSpan,
+    Fermata, Hairpin, Harm, HarmChild, Mordent, Pedal, Slur, SlurChild, Symbol, Tempo, TempoChild,
+    Tie, TieChild, Trill, TupletSpan,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -1364,6 +1365,104 @@ impl MeiSerialize for Trill {
 
     fn has_children(&self) -> bool {
         false // Trill is an empty element
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Mordent attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttMordentLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "endid", self.endid);
+        push_attr!(attrs, "accidupper.ges", self.accidupper_ges);
+        push_attr!(attrs, "accidlower.ges", self.accidlower_ges);
+        push_attr!(attrs, "accidupper", self.accidupper);
+        push_attr!(attrs, "accidlower", self.accidlower);
+        push_attr!(attrs, "form", self.form);
+        push_attr!(attrs, "long", self.long);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMordentVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        if let Some(v) = &self.glyph_name {
+            attrs.push(("glyph.name", v.clone()));
+        }
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        if let Some(v) = self.vgrp {
+            attrs.push(("vgrp", v.to_string()));
+        }
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttMordentGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttMordentGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttMordentAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttMordentAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Mordent {
+    fn element_name(&self) -> &'static str {
+        "mordent"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.mordent_log.collect_attributes());
+        attrs.extend(self.mordent_vis.collect_attributes());
+        attrs.extend(self.mordent_ges.collect_attributes());
+        attrs.extend(self.mordent_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Mordent is an empty element
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {

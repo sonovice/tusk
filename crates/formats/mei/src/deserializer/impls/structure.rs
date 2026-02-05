@@ -15,9 +15,9 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm, Layer,
-    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Note, Pb, Pedal, Rest, Sb, Score,
-    ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo,
-    Tie, Trill, Tuplet, TupletSpan,
+    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Pb, Pedal, Rest, Sb,
+    Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
+    Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -642,6 +642,12 @@ impl MeiDeserialize for Measure {
                     "trill" => {
                         let trill = Trill::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Trill(Box::new(trill)));
+                    }
+                    "mordent" => {
+                        let mordent = Mordent::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::Mordent(Box::new(mordent)));
                     }
                     "harm" => {
                         let harm = Harm::from_mei_event(reader, child_attrs, child_empty)?;
