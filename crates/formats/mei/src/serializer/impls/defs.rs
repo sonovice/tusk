@@ -638,6 +638,21 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
             }
         }
 
+        // Analytical attributes (key info)
+        if let Some(v) = &self.staff_def_anl.key_accid {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("key.accid", s));
+            }
+        }
+        if let Some(v) = &self.staff_def_anl.key_mode {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("key.mode", s));
+            }
+        }
+        if let Some(v) = &self.staff_def_anl.key_pname {
+            attrs.push(("key.pname", v.to_string()));
+        }
+
         attrs
     }
 
