@@ -3478,6 +3478,15 @@ impl MeiDeserialize for tusk_model::elements::Music {
     }
 }
 
+/// Parse a `<music>` element from within another element.
+pub(crate) fn parse_music_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<tusk_model::elements::Music> {
+    tusk_model::elements::Music::from_mei_event(reader, attrs, is_empty)
+}
+
 // ============================================================================
 // Num element implementation
 // ============================================================================

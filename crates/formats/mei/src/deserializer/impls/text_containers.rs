@@ -256,8 +256,11 @@ impl MeiDeserialize for Group {
                         let child = Group::from_mei_event(reader, child_attrs, child_empty)?;
                         elem.children.push(GroupChild::Group(Box::new(child)));
                     }
-                    // Skip "music" - parser not yet available
-                    // "music" => { ... }
+                    "music" => {
+                        let child =
+                            super::misc::parse_music_from_event(reader, child_attrs, child_empty)?;
+                        elem.children.push(GroupChild::Music(Box::new(child)));
+                    }
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
