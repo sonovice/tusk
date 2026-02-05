@@ -9,8 +9,9 @@ use tusk_model::att::{
     AttMidiAnl, AttMidiEvent, AttMidiGes, AttMidiLog, AttMidiNumber, AttMidiValue,
 };
 use tusk_model::elements::{
-    Cc, Chan, ChanPr, Cue, CueChild, InstrGrp, InstrGrpChild, Marker, MarkerChild, Midi, MidiChild,
-    NoteOff, NoteOn, Port, Prog, Vel,
+    Cc, Chan, ChanPr, Cue, CueChild, Hex, HexChild, InstrGrp, InstrGrpChild, Marker, MarkerChild,
+    MetaText, MetaTextChild, Midi, MidiChild, NoteOff, NoteOn, Port, Prog, SeqNum, TrkName,
+    TrkNameChild, Vel,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -150,8 +151,10 @@ impl MeiSerialize for MidiChild {
             MidiChild::NoteOff(v) => v.collect_all_attributes(),
             MidiChild::Cue(v) => v.collect_all_attributes(),
             MidiChild::Marker(v) => v.collect_all_attributes(),
-            // Other MIDI child elements not yet implemented
-            _ => Vec::new(),
+            MidiChild::MetaText(v) => v.collect_all_attributes(),
+            MidiChild::SeqNum(v) => v.collect_all_attributes(),
+            MidiChild::TrkName(v) => v.collect_all_attributes(),
+            MidiChild::Hex(v) => v.collect_all_attributes(),
         }
     }
 
@@ -159,6 +162,9 @@ impl MeiSerialize for MidiChild {
         match self {
             MidiChild::Cue(v) => v.has_children(),
             MidiChild::Marker(v) => v.has_children(),
+            MidiChild::MetaText(v) => v.has_children(),
+            MidiChild::TrkName(v) => v.has_children(),
+            MidiChild::Hex(v) => v.has_children(),
             // Other MIDI elements have no children
             _ => false,
         }
@@ -168,6 +174,9 @@ impl MeiSerialize for MidiChild {
         match self {
             MidiChild::Cue(v) => v.serialize_children(writer),
             MidiChild::Marker(v) => v.serialize_children(writer),
+            MidiChild::MetaText(v) => v.serialize_children(writer),
+            MidiChild::TrkName(v) => v.serialize_children(writer),
+            MidiChild::Hex(v) => v.serialize_children(writer),
             // Other MIDI elements have no children
             _ => Ok(()),
         }
@@ -414,6 +423,115 @@ impl MeiSerialize for Marker {
         for child in &self.children {
             match child {
                 MarkerChild::Text(text) => writer.write_text(text)?,
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// MIDI Meta Element implementations (MetaText, SeqNum, TrkName, Hex)
+// ============================================================================
+
+impl MeiSerialize for MetaText {
+    fn element_name(&self) -> &'static str {
+        "metaText"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.midi_event.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                MetaTextChild::Text(text) => writer.write_text(text)?,
+            }
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for SeqNum {
+    fn element_name(&self) -> &'static str {
+        "seqNum"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.midi_event.collect_attributes());
+        // SeqNum has its own `num` attribute
+        if let Some(ref v) = self.num {
+            attrs.push(("num", v.to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+impl MeiSerialize for TrkName {
+    fn element_name(&self) -> &'static str {
+        "trkName"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.midi_event.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                TrkNameChild::Text(text) => writer.write_text(text)?,
+            }
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for Hex {
+    fn element_name(&self) -> &'static str {
+        "hex"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.midi_event.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                HexChild::Text(text) => writer.write_text(text)?,
             }
         }
         Ok(())

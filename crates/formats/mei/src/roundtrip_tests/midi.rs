@@ -916,3 +916,352 @@ fn midi_roundtrip_with_mixed_event_children() {
     assert!(matches!(parsed.children[3], MidiChild::Cue(_)));
     assert!(matches!(parsed.children[4], MidiChild::Marker(_)));
 }
+
+// ============================================================================
+// MetaText Tests
+// ============================================================================
+
+#[test]
+fn meta_text_roundtrip_empty() {
+    use tusk_model::elements::MetaText;
+
+    let original = MetaText::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MetaText::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn meta_text_roundtrip_with_attributes() {
+    use tusk_model::elements::MetaText;
+
+    let mut original = MetaText::default();
+    original.common.xml_id = Some("mt1".to_string());
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MetaText::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("mt1".to_string()));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn meta_text_roundtrip_with_text_content() {
+    use tusk_model::elements::{MetaText, MetaTextChild};
+
+    let mut original = MetaText::default();
+    original.common.xml_id = Some("mt1".to_string());
+    original
+        .children
+        .push(MetaTextChild::Text("Copyright 2024".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MetaText::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("mt1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MetaTextChild::Text(text) => assert_eq!(text, "Copyright 2024"),
+    }
+}
+
+// ============================================================================
+// SeqNum Tests
+// ============================================================================
+
+#[test]
+fn seq_num_roundtrip_empty() {
+    use tusk_model::elements::SeqNum;
+
+    let original = SeqNum::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = SeqNum::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.num.is_none());
+}
+
+#[test]
+fn seq_num_roundtrip_with_attributes() {
+    use tusk_model::elements::SeqNum;
+
+    let mut original = SeqNum::default();
+    original.common.xml_id = Some("sn1".to_string());
+    original.num = Some(42);
+    original.midi_event.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = SeqNum::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("sn1".to_string()));
+    assert_eq!(parsed.num, Some(42));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+}
+
+// ============================================================================
+// TrkName Tests
+// ============================================================================
+
+#[test]
+fn trk_name_roundtrip_empty() {
+    use tusk_model::elements::TrkName;
+
+    let original = TrkName::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = TrkName::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn trk_name_roundtrip_with_attributes() {
+    use tusk_model::elements::TrkName;
+
+    let mut original = TrkName::default();
+    original.common.xml_id = Some("tn1".to_string());
+    original.midi_event.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = TrkName::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("tn1".to_string()));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+}
+
+#[test]
+fn trk_name_roundtrip_with_text_content() {
+    use tusk_model::elements::{TrkName, TrkNameChild};
+
+    let mut original = TrkName::default();
+    original.common.xml_id = Some("tn1".to_string());
+    original
+        .children
+        .push(TrkNameChild::Text("Piano Track".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = TrkName::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("tn1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TrkNameChild::Text(text) => assert_eq!(text, "Piano Track"),
+    }
+}
+
+// ============================================================================
+// Hex Tests
+// ============================================================================
+
+#[test]
+fn hex_roundtrip_empty() {
+    use tusk_model::elements::Hex;
+
+    let original = Hex::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hex::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn hex_roundtrip_with_attributes() {
+    use tusk_model::elements::Hex;
+
+    let mut original = Hex::default();
+    original.common.xml_id = Some("hx1".to_string());
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hex::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("hx1".to_string()));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn hex_roundtrip_with_text_content() {
+    use tusk_model::elements::{Hex, HexChild};
+
+    let mut original = Hex::default();
+    original.common.xml_id = Some("hx1".to_string());
+    original
+        .children
+        .push(HexChild::Text("F0 43 12 00 F7".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Hex::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("hx1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        HexChild::Text(text) => assert_eq!(text, "F0 43 12 00 F7"),
+    }
+}
+
+// ============================================================================
+// Midi with meta event children Tests
+// ============================================================================
+
+#[test]
+fn midi_roundtrip_with_meta_text_child() {
+    use tusk_model::elements::{MetaText, MetaTextChild, Midi, MidiChild};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut meta_text = MetaText::default();
+    meta_text.common.xml_id = Some("mt1".to_string());
+    meta_text
+        .children
+        .push(MetaTextChild::Text("Copyright".to_string()));
+    original
+        .children
+        .push(MidiChild::MetaText(Box::new(meta_text)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::MetaText(mt) => {
+            assert_eq!(mt.common.xml_id, Some("mt1".to_string()));
+            assert_eq!(mt.children.len(), 1);
+        }
+        _ => panic!("Expected MetaText child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_seq_num_child() {
+    use tusk_model::elements::{Midi, MidiChild, SeqNum};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut seq_num = SeqNum::default();
+    seq_num.common.xml_id = Some("sn1".to_string());
+    seq_num.num = Some(1);
+    original.children.push(MidiChild::SeqNum(Box::new(seq_num)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::SeqNum(sn) => {
+            assert_eq!(sn.common.xml_id, Some("sn1".to_string()));
+            assert_eq!(sn.num, Some(1));
+        }
+        _ => panic!("Expected SeqNum child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_trk_name_child() {
+    use tusk_model::elements::{Midi, MidiChild, TrkName, TrkNameChild};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut trk_name = TrkName::default();
+    trk_name.common.xml_id = Some("tn1".to_string());
+    trk_name
+        .children
+        .push(TrkNameChild::Text("Drums".to_string()));
+    original
+        .children
+        .push(MidiChild::TrkName(Box::new(trk_name)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::TrkName(tn) => {
+            assert_eq!(tn.common.xml_id, Some("tn1".to_string()));
+            assert_eq!(tn.children.len(), 1);
+        }
+        _ => panic!("Expected TrkName child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_hex_child() {
+    use tusk_model::elements::{Hex, HexChild, Midi, MidiChild};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut hex = Hex::default();
+    hex.common.xml_id = Some("hx1".to_string());
+    hex.children.push(HexChild::Text("F0 00 F7".to_string()));
+    original.children.push(MidiChild::Hex(Box::new(hex)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::Hex(h) => {
+            assert_eq!(h.common.xml_id, Some("hx1".to_string()));
+            assert_eq!(h.children.len(), 1);
+        }
+        _ => panic!("Expected Hex child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_all_meta_children() {
+    use tusk_model::elements::{
+        Hex, HexChild, MetaText, MetaTextChild, Midi, MidiChild, SeqNum, TrkName, TrkNameChild,
+    };
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    // Add seqNum
+    let mut seq_num = SeqNum::default();
+    seq_num.num = Some(1);
+    original.children.push(MidiChild::SeqNum(Box::new(seq_num)));
+
+    // Add trkName
+    let mut trk_name = TrkName::default();
+    trk_name
+        .children
+        .push(TrkNameChild::Text("Lead".to_string()));
+    original
+        .children
+        .push(MidiChild::TrkName(Box::new(trk_name)));
+
+    // Add metaText
+    let mut meta_text = MetaText::default();
+    meta_text
+        .children
+        .push(MetaTextChild::Text("Info".to_string()));
+    original
+        .children
+        .push(MidiChild::MetaText(Box::new(meta_text)));
+
+    // Add hex
+    let mut hex = Hex::default();
+    hex.children.push(HexChild::Text("FF".to_string()));
+    original.children.push(MidiChild::Hex(Box::new(hex)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 4);
+    assert!(matches!(parsed.children[0], MidiChild::SeqNum(_)));
+    assert!(matches!(parsed.children[1], MidiChild::TrkName(_)));
+    assert!(matches!(parsed.children[2], MidiChild::MetaText(_)));
+    assert!(matches!(parsed.children[3], MidiChild::Hex(_)));
+}

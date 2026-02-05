@@ -107,8 +107,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Implement container/instrument: `Midi`, `InstrGrp`
 - [x] Implement control: `Cc`, `Chan`, `ChanPr`, `Port`, `Prog`, `Vel`
 - [x] Implement events: `NoteOn`, `NoteOff`, `Cue`, `Marker`
-- [ ] Implement meta: `MetaMark`, `MetaText`, `SeqNum`, `TrkName`, `Hex`
-- [ ] Add roundtrip tests
+- [x] Implement meta: `MetaText`, `SeqNum`, `TrkName`, `Hex` (note: `MetaMark` is NOT a MIDI element - it's a genetic/editorial element, moved to Phase 12)
+- [x] Add roundtrip tests
 
 ---
 
@@ -147,7 +147,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 12: Analysis Module, Gestural/Performance Module and Linkage Module
 
 ### 12.1 Analytical Elements
-- [ ] Implement `Ambitus`, `OStaff`, `OLayer`, `Attacca`, `When`, `Clip`, `Expansion`, `CpMark`, `GenDesc`, `GenState`
+- [ ] Implement `Ambitus`, `OStaff`, `OLayer`, `Attacca`, `When`, `Clip`, `Expansion`, `CpMark`, `GenDesc`, `GenState`, `MetaMark`
 - [ ] Add roundtrip tests
 
 ---

@@ -11,8 +11,9 @@ use tusk_model::att::{
     AttMidiAnl, AttMidiEvent, AttMidiGes, AttMidiLog, AttMidiNumber, AttMidiValue,
 };
 use tusk_model::elements::{
-    Cc, Chan, ChanPr, Cue, CueChild, InstrDef, InstrGrp, InstrGrpChild, Marker, MarkerChild, Midi,
-    MidiChild, NoteOff, NoteOn, Port, Prog, Vel,
+    Cc, Chan, ChanPr, Cue, CueChild, Hex, HexChild, InstrDef, InstrGrp, InstrGrpChild, Marker,
+    MarkerChild, MetaText, MetaTextChild, Midi, MidiChild, NoteOff, NoteOn, Port, Prog, SeqNum,
+    TrkName, TrkNameChild, Vel,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -140,8 +141,22 @@ impl MeiDeserialize for Midi {
                         let marker = Marker::from_mei_event(reader, child_attrs, child_empty)?;
                         midi.children.push(MidiChild::Marker(Box::new(marker)));
                     }
-                    // Other MIDI child elements not yet implemented
-                    // "trkName" | "metaText" | "hex" | "seqNum"
+                    "metaText" => {
+                        let meta_text = MetaText::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::MetaText(Box::new(meta_text)));
+                    }
+                    "seqNum" => {
+                        let seq_num = SeqNum::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::SeqNum(Box::new(seq_num)));
+                    }
+                    "trkName" => {
+                        let trk_name = TrkName::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::TrkName(Box::new(trk_name)));
+                    }
+                    "hex" => {
+                        let hex = Hex::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Hex(Box::new(hex)));
+                    }
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
@@ -459,6 +474,121 @@ impl MeiDeserialize for Marker {
 }
 
 // ============================================================================
+// MIDI Meta Element implementations (MetaText, SeqNum, TrkName, Hex)
+// ============================================================================
+
+impl MeiDeserialize for MetaText {
+    fn element_name() -> &'static str {
+        "metaText"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut meta_text = MetaText::default();
+
+        meta_text.common.extract_attributes(&mut attrs)?;
+        meta_text.lang.extract_attributes(&mut attrs)?;
+        meta_text.midi_event.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            // Read text content
+            if let Some(text) = reader.read_text_until_end("metaText")?
+                && !text.is_empty()
+            {
+                meta_text.children.push(MetaTextChild::Text(text));
+            }
+        }
+
+        Ok(meta_text)
+    }
+}
+
+impl MeiDeserialize for SeqNum {
+    fn element_name() -> &'static str {
+        "seqNum"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut seq_num = SeqNum::default();
+
+        seq_num.common.extract_attributes(&mut attrs)?;
+        seq_num.midi_event.extract_attributes(&mut attrs)?;
+        // SeqNum has its own `num` attribute (u64 in range 0-65535)
+        extract_attr!(attrs, "num", seq_num.num);
+
+        if !is_empty {
+            reader.skip_to_end("seqNum")?;
+        }
+
+        Ok(seq_num)
+    }
+}
+
+impl MeiDeserialize for TrkName {
+    fn element_name() -> &'static str {
+        "trkName"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut trk_name = TrkName::default();
+
+        trk_name.common.extract_attributes(&mut attrs)?;
+        trk_name.lang.extract_attributes(&mut attrs)?;
+        trk_name.midi_event.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            // Read text content
+            if let Some(text) = reader.read_text_until_end("trkName")?
+                && !text.is_empty()
+            {
+                trk_name.children.push(TrkNameChild::Text(text));
+            }
+        }
+
+        Ok(trk_name)
+    }
+}
+
+impl MeiDeserialize for Hex {
+    fn element_name() -> &'static str {
+        "hex"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut hex = Hex::default();
+
+        hex.common.extract_attributes(&mut attrs)?;
+        hex.midi_event.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            // Read text content (hex data)
+            if let Some(text) = reader.read_text_until_end("hex")?
+                && !text.is_empty()
+            {
+                hex.children.push(HexChild::Text(text));
+            }
+        }
+
+        Ok(hex)
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -466,8 +596,9 @@ impl MeiDeserialize for Marker {
 mod tests {
     use crate::deserializer::MeiDeserialize;
     use tusk_model::elements::{
-        Cc, Chan, ChanPr, Cue, CueChild, InstrGrp, InstrGrpChild, Marker, MarkerChild, Midi,
-        MidiChild, NoteOff, NoteOn, Port, Prog, Vel,
+        Cc, Chan, ChanPr, Cue, CueChild, Hex, HexChild, InstrGrp, InstrGrpChild, Marker,
+        MarkerChild, MetaText, MetaTextChild, Midi, MidiChild, NoteOff, NoteOn, Port, Prog, SeqNum,
+        TrkName, TrkNameChild, Vel,
     };
 
     // ============================================================================
