@@ -8,14 +8,14 @@ use crate::deserializer::{
 use std::io::BufRead;
 use tusk_model::att::{
     AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMdivAnl, AttMdivGes, AttMdivLog,
-    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttSbAnl, AttSbGes,
-    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
-    AttStaffGes, AttStaffLog, AttStaffVis,
+    AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis, AttPbAnl, AttPbGes,
+    AttPbLog, AttPbVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes,
+    AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Dir, Div, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest,
-    Mdiv, MdivChild, Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
-    SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet,
+    Mdiv, MdivChild, Measure, MeasureChild, Note, Pb, Rest, Sb, Score, ScoreChild, ScoreDef,
+    Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -204,6 +204,38 @@ impl ExtractAttributes for AttSbAnl {
 }
 
 // ============================================================================
+// Pb (page break) attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttPbLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPbGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttPbGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPbVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "folium", self.folium);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttPbAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttPbAnl has no attributes
+        Ok(())
+    }
+}
+
+// ============================================================================
 // Mdiv attribute class implementations
 // ============================================================================
 
@@ -278,6 +310,54 @@ impl MeiDeserialize for Sb {
         is_empty: bool,
     ) -> DeserializeResult<Self> {
         parse_sb_from_event(reader, attrs, is_empty)
+    }
+}
+
+// ============================================================================
+// Pb (page break) implementation
+// ============================================================================
+
+/// Parse a `<pb>` (page break) element from within another element.
+/// Pb can contain pgFoot, pgDesc, pgHead children.
+fn parse_pb_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Pb> {
+    let mut pb = Pb::default();
+
+    // Extract common attributes
+    pb.common.extract_attributes(&mut attrs)?;
+    pb.facsimile.extract_attributes(&mut attrs)?;
+    pb.pointing.extract_attributes(&mut attrs)?;
+    pb.source.extract_attributes(&mut attrs)?;
+
+    // Extract Pb-specific attribute classes
+    pb.pb_log.extract_attributes(&mut attrs)?;
+    pb.pb_ges.extract_attributes(&mut attrs)?;
+    pb.pb_vis.extract_attributes(&mut attrs)?;
+    pb.pb_anl.extract_attributes(&mut attrs)?;
+
+    // Pb can have children (pgFoot, pgDesc, pgHead), but typically is empty
+    // For now, skip any children - they can be added when needed
+    if !is_empty {
+        reader.skip_to_end("pb")?;
+    }
+
+    Ok(pb)
+}
+
+impl MeiDeserialize for Pb {
+    fn element_name() -> &'static str {
+        "pb"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_pb_from_event(reader, attrs, is_empty)
     }
 }
 
@@ -593,6 +673,10 @@ impl MeiDeserialize for Section {
                     "sb" => {
                         let sb = parse_sb_from_event(reader, child_attrs, child_empty)?;
                         section.children.push(SectionChild::Sb(Box::new(sb)));
+                    }
+                    "pb" => {
+                        let pb = parse_pb_from_event(reader, child_attrs, child_empty)?;
+                        section.children.push(SectionChild::Pb(Box::new(pb)));
                     }
                     "div" => {
                         let div =

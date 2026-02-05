@@ -249,3 +249,14 @@ fn test_roundtrip_altenburg_macht_auf_die_tor() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_jc_fughette_no2() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Bach-JC_Fughette_No2.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JC_Fughette_No2.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
