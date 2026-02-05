@@ -1598,6 +1598,14 @@ pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
                                 .children
                                 .push(PgFootChild::AnchoredText(Box::new(anchored_text)));
                         }
+                        "table" => {
+                            let table = super::text::parse_table_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot.children.push(PgFootChild::Table(Box::new(table)));
+                        }
                         // Skip unknown child elements
                         _ => {
                             if !child_empty {

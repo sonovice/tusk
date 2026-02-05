@@ -851,6 +851,14 @@ impl MeiDeserialize for Section {
                             .children
                             .push(SectionChild::Ending(Box::new(ending)));
                     }
+                    "annot" => {
+                        let annot = super::header::parse_annot_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        section.children.push(SectionChild::Annot(Box::new(annot)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {

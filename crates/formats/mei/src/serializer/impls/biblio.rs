@@ -13,10 +13,11 @@ use tusk_model::att::{
     AttSignifLetVis,
 };
 use tusk_model::elements::{
-    Actor, ActorChild, Analytic, AnalyticChild, AvFile, AvFileChild, Bifolium, BifoliumChild,
-    CatRel, CatRelChild, Catchwords, CatchwordsChild, Context, ContextChild, Cutout, CutoutChild,
-    ExtData, ExtDataChild, Folium, FoliumChild, Monogr, MonogrChild, Patch, PatchChild, Series,
-    SeriesChild, Signatures, SignaturesChild, SignifLet, SignifLetChild,
+    Actor, ActorChild, Analytic, AnalyticChild, AvFile, AvFileChild, BiblList, BiblListChild,
+    Bifolium, BifoliumChild, CatRel, CatRelChild, Catchwords, CatchwordsChild, Context,
+    ContextChild, Cutout, CutoutChild, ExtData, ExtDataChild, Folium, FoliumChild, Monogr,
+    MonogrChild, Patch, PatchChild, Series, SeriesChild, Signatures, SignaturesChild, SignifLet,
+    SignifLetChild,
 };
 
 use super::push_attr;
@@ -663,6 +664,70 @@ impl MeiSerialize for SeriesChild {
 }
 
 // Note: Desc and DescChild implementations are in header/encoding_desc.rs
+
+// ============================================================================
+// BiblList element
+// ============================================================================
+
+impl MeiSerialize for BiblList {
+    fn element_name(&self) -> &'static str {
+        "biblList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for BiblListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            BiblListChild::Label(_) => "label",
+            BiblListChild::Head(_) => "head",
+            BiblListChild::BiblList(_) => "biblList",
+            BiblListChild::Bibl(_) => "bibl",
+            BiblListChild::BiblStruct(_) => "biblStruct",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            BiblListChild::Label(elem) => elem.serialize_mei(writer),
+            BiblListChild::Head(elem) => elem.serialize_mei(writer),
+            BiblListChild::BiblList(elem) => elem.serialize_mei(writer),
+            BiblListChild::Bibl(elem) => elem.serialize_mei(writer),
+            BiblListChild::BiblStruct(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
 
 // ============================================================================
 // Catchwords element

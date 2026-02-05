@@ -158,13 +158,15 @@ impl MeiSerialize for WorkChild {
             WorkChild::LangUsage(elem) => elem.serialize_mei(writer),
             WorkChild::History(elem) => elem.serialize_mei(writer),
             WorkChild::ExpressionList(elem) => elem.serialize_mei(writer),
-            // The following children need dedicated serializers - for now write empty element
-            _ => {
-                let name = self.element_name();
-                let start = writer.start_element(name)?;
-                writer.write_empty(start)?;
-                Ok(())
-            }
+            WorkChild::RelationList(elem) => elem.serialize_mei(writer),
+            WorkChild::ComponentList(elem) => elem.serialize_mei(writer),
+            WorkChild::BiblList(elem) => elem.serialize_mei(writer),
+            WorkChild::Dedication(elem) => elem.serialize_mei(writer),
+            WorkChild::Audience(elem) => elem.serialize_mei(writer),
+            WorkChild::OtherChar(elem) => elem.serialize_mei(writer),
+            WorkChild::Context(elem) => elem.serialize_mei(writer),
+            WorkChild::PerfDuration(elem) => elem.serialize_mei(writer),
+            WorkChild::Mensuration(elem) => elem.serialize_mei(writer),
         }
     }
 }

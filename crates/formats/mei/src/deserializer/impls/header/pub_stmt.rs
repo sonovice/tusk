@@ -610,6 +610,13 @@ pub(crate) fn parse_identifier_from_event<R: BufRead>(
                             )?;
                             identifier.children.push(IdentifierChild::Lb(Box::new(lb)));
                         }
+                        "annot" => {
+                            let annot =
+                                super::parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            identifier
+                                .children
+                                .push(IdentifierChild::Annot(Box::new(annot)));
+                        }
                         _ => {
                             // Skip unknown children
                             if !child_empty {
