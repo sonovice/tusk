@@ -13,9 +13,9 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, Mdiv, MdivChild,
-    Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild,
-    Slur, Space, Staff, StaffChild, Tempo, Tie, Tuplet,
+    Beam, Body, BodyChild, Chord, Dir, Dynam, Fermata, Hairpin, Layer, LayerChild, MRest, Mdiv,
+    MdivChild, Measure, MeasureChild, Note, Rest, Sb, Score, ScoreChild, ScoreDef, Section,
+    SectionChild, Slur, Space, Staff, StaffChild, Tempo, Tie, Tuplet,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -427,6 +427,10 @@ impl MeiDeserialize for Layer {
                     "tuplet" => {
                         let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::Tuplet(Box::new(tuplet)));
+                    }
+                    "mRest" => {
+                        let m_rest = MRest::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::MRest(Box::new(m_rest)));
                     }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)

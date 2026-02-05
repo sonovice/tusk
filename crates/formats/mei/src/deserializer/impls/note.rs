@@ -10,12 +10,12 @@ use std::io::BufRead;
 use tusk_model::att::{
     AttAccidAnl, AttAccidGes, AttAccidLog, AttAccidVis, AttArticAnl, AttArticGes, AttArticLog,
     AttArticVis, AttChordAnl, AttChordGes, AttChordLog, AttChordVis, AttDotAnl, AttDotGes,
-    AttDotLog, AttDotVis, AttDurationQuality, AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis,
-    AttRestAnl, AttRestGes, AttRestLog, AttRestVis, AttSpaceAnl, AttSpaceGes, AttSpaceLog,
-    AttSpaceVis,
+    AttDotLog, AttDotVis, AttDurationQuality, AttMRestAnl, AttMRestGes, AttMRestLog, AttMRestVis,
+    AttNoteAnl, AttNoteGes, AttNoteLog, AttNoteVis, AttRestAnl, AttRestGes, AttRestLog, AttRestVis,
+    AttSpaceAnl, AttSpaceGes, AttSpaceLog, AttSpaceVis,
 };
 use tusk_model::elements::{
-    Accid, Artic, Chord, ChordChild, Dot, Note, NoteChild, Rest, RestChild, Space, Verse,
+    Accid, Artic, Chord, ChordChild, Dot, MRest, Note, NoteChild, Rest, RestChild, Space, Verse,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -869,6 +869,107 @@ impl MeiDeserialize for Space {
         }
 
         Ok(space)
+    }
+}
+
+// ============================================================================
+// MRest (measure rest) attribute class implementations
+// ============================================================================
+
+impl ExtractAttributes for AttMRestLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "cue", self.cue);
+        extract_attr!(attrs, "dur", vec self.dur);
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "layer", vec self.layer);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMRestGes {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "dur.ges", self.dur_ges);
+        extract_attr!(attrs, "dots.ges", self.dots_ges);
+        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
+        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
+        extract_attr!(attrs, "dur.real", self.dur_real);
+        extract_attr!(attrs, "dur.recip", string self.dur_recip);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMRestVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "altsym", self.altsym);
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "cutout", self.cutout);
+        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
+        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
+        extract_attr!(attrs, "glyph.name", string self.glyph_name);
+        extract_attr!(attrs, "glyph.num", self.glyph_num);
+        extract_attr!(attrs, "loc", self.loc);
+        extract_attr!(attrs, "ploc", self.ploc);
+        extract_attr!(attrs, "oloc", self.oloc);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMRestAnl {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "fermata", self.fermata);
+        Ok(())
+    }
+}
+
+// ============================================================================
+// MRest (measure rest) element implementation
+// ============================================================================
+
+impl MeiDeserialize for MRest {
+    fn element_name() -> &'static str {
+        "mRest"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut m_rest = MRest::default();
+
+        // Extract attributes into each attribute class
+        m_rest.common.extract_attributes(&mut attrs)?;
+        m_rest.facsimile.extract_attributes(&mut attrs)?;
+        m_rest.m_rest_log.extract_attributes(&mut attrs)?;
+        m_rest.m_rest_ges.extract_attributes(&mut attrs)?;
+        m_rest.m_rest_vis.extract_attributes(&mut attrs)?;
+        m_rest.m_rest_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+        // In strict mode, we could warn or error
+
+        // MRest is typically an empty element, but skip to end if not empty
+        if !is_empty {
+            reader.skip_to_end("mRest")?;
+        }
+
+        Ok(m_rest)
     }
 }
 
