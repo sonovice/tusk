@@ -296,3 +296,15 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no2_ii_bwv1047() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_brandenburg_concerto_no2_iii_bwv1047() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JS_BrandenburgConcert_No2_III_BWV1047.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_BrandenburgConcert_No2_III_BWV1047.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

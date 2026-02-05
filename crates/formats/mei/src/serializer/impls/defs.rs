@@ -313,8 +313,316 @@ impl CollectAttributes for AttScoreDefVis {
             }
         }
 
-        // Note: For brevity, not all visual attributes are serialized here.
-        // Additional attributes can be added as needed.
+        // System attributes
+        if let Some(v) = &self.system_leftline {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("system.leftline", s));
+            }
+        }
+        if let Some(v) = &self.system_leftmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("system.leftmar", s));
+            }
+        }
+        if let Some(v) = &self.system_rightmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("system.rightmar", s));
+            }
+        }
+        if let Some(v) = &self.system_topmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("system.topmar", s));
+            }
+        }
+
+        // Distance attributes
+        if let Some(v) = &self.dir_dist {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("dir.dist", s));
+            }
+        }
+        if let Some(v) = &self.dynam_dist {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("dynam.dist", s));
+            }
+        }
+        if let Some(v) = &self.harm_dist {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("harm.dist", s));
+            }
+        }
+        if let Some(v) = &self.reh_dist {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("reh.dist", s));
+            }
+        }
+        if let Some(v) = &self.tempo_dist {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("tempo.dist", s));
+            }
+        }
+
+        // Ending rendering
+        if let Some(v) = &self.ending_rend {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("ending.rend", s));
+            }
+        }
+
+        // Lyric attributes
+        if let Some(v) = &self.lyric_align {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.align", s));
+            }
+        }
+        if let Some(v) = &self.lyric_fam {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.fam", s));
+            }
+        }
+        if let Some(v) = &self.lyric_name {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.name", s));
+            }
+        }
+        if let Some(v) = &self.lyric_size {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.size", s));
+            }
+        }
+        if let Some(v) = &self.lyric_style {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.style", s));
+            }
+        }
+        if let Some(v) = &self.lyric_weight {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("lyric.weight", s));
+            }
+        }
+
+        // Measure number visibility
+        if let Some(v) = &self.mnum_visible {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mnum.visible", s));
+            }
+        }
+
+        // Multi-measure number
+        if let Some(v) = &self.multi_number {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("multi.number", s));
+            }
+        }
+
+        // One-line staff placement
+        if let Some(v) = &self.ontheline {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("ontheline", s));
+            }
+        }
+
+        // Optimize (hide empty staves)
+        if let Some(v) = &self.optimize {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("optimize", s));
+            }
+        }
+
+        // Page margins
+        if let Some(v) = &self.page_topmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.topmar", s));
+            }
+        }
+        if let Some(v) = &self.page_botmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.botmar", s));
+            }
+        }
+        if let Some(v) = &self.page_leftmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.leftmar", s));
+            }
+        }
+        if let Some(v) = &self.page_rightmar {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.rightmar", s));
+            }
+        }
+        if let Some(v) = &self.page_panels {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.panels", s));
+            }
+        }
+        if let Some(v) = &self.page_scale {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("page.scale", s));
+            }
+        }
+
+        // Vertical order attributes
+        if !self.aboveorder.is_empty() {
+            let s = self
+                .aboveorder
+                .iter()
+                .filter_map(|v| to_attr_string(v))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !s.is_empty() {
+                attrs.push(("aboveorder", s));
+            }
+        }
+        if !self.beloworder.is_empty() {
+            let s = self
+                .beloworder
+                .iter()
+                .filter_map(|v| to_attr_string(v))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !s.is_empty() {
+                attrs.push(("beloworder", s));
+            }
+        }
+        if !self.betweenorder.is_empty() {
+            let s = self
+                .betweenorder
+                .iter()
+                .filter_map(|v| to_attr_string(v))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if !s.is_empty() {
+                attrs.push(("betweenorder", s));
+            }
+        }
+
+        // Text font attributes
+        if let Some(v) = &self.text_fam {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.fam", s));
+            }
+        }
+        if let Some(v) = &self.text_name {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.name", s));
+            }
+        }
+        if let Some(v) = &self.text_size {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.size", s));
+            }
+        }
+        if let Some(v) = &self.text_style {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.style", s));
+            }
+        }
+        if let Some(v) = &self.text_weight {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("text.weight", s));
+            }
+        }
+
+        // Beam attributes
+        if let Some(v) = &self.beam_color {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("beam.color", s));
+            }
+        }
+        if let Some(v) = &self.beam_rend {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("beam.rend", s));
+            }
+        }
+        if let Some(v) = &self.beam_slope {
+            attrs.push(("beam.slope", v.to_string()));
+        }
+
+        // Grid and pedal
+        if let Some(v) = &self.grid_show {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("grid.show", s));
+            }
+        }
+        if let Some(v) = &self.pedal_style {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("pedal.style", s));
+            }
+        }
+
+        // Rehearsal mark enclosure
+        if let Some(v) = &self.reh_enclose {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("reh.enclose", s));
+            }
+        }
+
+        // Slur/tie attributes
+        if let Some(v) = &self.slur_lform {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("slur.lform", s));
+            }
+        }
+        if let Some(v) = &self.slur_lwidth {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("slur.lwidth", s));
+            }
+        }
+        if let Some(v) = &self.tie_lform {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("tie.lform", s));
+            }
+        }
+        if let Some(v) = &self.tie_lwidth {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("tie.lwidth", s));
+            }
+        }
+
+        // Mensural notation attributes
+        if let Some(v) = &self.mensur_color {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.color", s));
+            }
+        }
+        if let Some(v) = &self.mensur_dot {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.dot", s));
+            }
+        }
+        if let Some(v) = &self.mensur_form {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.form", s));
+            }
+        }
+        if let Some(v) = &self.mensur_loc {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.loc", s));
+            }
+        }
+        if let Some(v) = &self.mensur_orient {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.orient", s));
+            }
+        }
+        if let Some(v) = &self.mensur_sign {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.sign", s));
+            }
+        }
+        if let Some(v) = &self.mensur_size {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("mensur.size", s));
+            }
+        }
+        if let Some(v) = &self.mensur_slash {
+            attrs.push(("mensur.slash", v.to_string()));
+        }
+
+        // Virtual unit height
+        if let Some(v) = &self.vu_height {
+            attrs.push(("vu.height", v.clone()));
+        }
 
         attrs
     }
