@@ -77,7 +77,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Text with ampersand: & character in URLs/text being lost during roundtrip (source: Altenburg_Concerto_C-major.mei)
 - [x] [MISSING_SERIALIZER] MRest element: missing MeiSerialize impl and CollectAttributes impls for AttMRestLog/Ges/Vis/Anl - element is parsed but attributes not serialized (source: Altenburg_Concerto_C-major.mei)
 - [x] [DESERIALIZER_BUG] Dynam element: rend child not parsed - uses read_text_until_end instead of mixed content parsing, losing styled text like `<rend>f</rend>` (source: Altenburg_Concerto_C-major.mei)
-- [ ] [DESERIALIZER_BUG] Title element: text containing quotes being split incorrectly - text like `"Versuch..."` is truncated at the quote character (source: Altenburg_Concerto_C-major.mei)
+- [x] [DESERIALIZER_BUG] Title element: text containing quotes being split incorrectly - text like `"Versuch..."` is truncated at the quote character (source: Altenburg_Concerto_C-major.mei)
 
 ---
 

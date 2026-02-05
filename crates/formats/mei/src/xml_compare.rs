@@ -148,12 +148,28 @@ fn get_implicit_migration_role(
 
 /// Parse XML string into a canonical tree representation.
 pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
+    use quick_xml::escape::resolve_predefined_entity;
+
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // Don't use trim_text(true) as it interferes with proper text accumulation
+    // We'll manually normalize whitespace when flushing text
 
     let mut buf = Vec::new();
     let mut stack: Vec<CanonicalElement> = Vec::new();
     let mut root: Option<CanonicalElement> = None;
+    // Accumulator for text content (handles interleaved Text and GeneralRef events)
+    let mut text_accumulator = String::new();
+
+    /// Flush accumulated text to the parent element
+    fn flush_text(text_acc: &mut String, stack: &mut [CanonicalElement]) {
+        let text = text_acc.trim().to_string();
+        if !text.is_empty()
+            && let Some(parent) = stack.last_mut()
+        {
+            parent.children.push(CanonicalNode::Text(text));
+        }
+        text_acc.clear();
+    }
 
     loop {
         let event = reader
@@ -162,6 +178,9 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
 
         match event {
             Event::Start(e) => {
+                // Flush any accumulated text before processing element
+                flush_text(&mut text_accumulator, &mut stack);
+
                 let name_bytes = e.name();
                 let name_str = std::str::from_utf8(name_bytes.as_ref())
                     .map_err(|e| CompareError::ParseError(e.to_string()))?;
@@ -193,6 +212,9 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
             }
 
             Event::Empty(e) => {
+                // Flush any accumulated text before processing element
+                flush_text(&mut text_accumulator, &mut stack);
+
                 let name_bytes = e.name();
                 let name_str = std::str::from_utf8(name_bytes.as_ref())
                     .map_err(|e| CompareError::ParseError(e.to_string()))?;
@@ -228,6 +250,9 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
             }
 
             Event::End(_) => {
+                // Flush any accumulated text before closing element
+                flush_text(&mut text_accumulator, &mut stack);
+
                 if let Some(element) = stack.pop() {
                     if let Some(parent) = stack.last_mut() {
                         parent.children.push(CanonicalNode::Element(element));
@@ -238,37 +263,40 @@ pub fn parse_canonical(xml: &str) -> Result<CanonicalElement, CompareError> {
             }
 
             Event::Text(e) => {
+                // Accumulate text content (will be flushed when element/end encountered)
                 let text =
                     std::str::from_utf8(&e).map_err(|e| CompareError::ParseError(e.to_string()))?;
-                // Normalize whitespace in text content
-                let text = text.trim().to_string();
-                if !text.is_empty()
-                    && let Some(parent) = stack.last_mut()
-                {
-                    parent.children.push(CanonicalNode::Text(text));
-                }
+                text_accumulator.push_str(text);
             }
 
             Event::CData(e) => {
-                let text = std::str::from_utf8(&e)
-                    .map_err(|e| CompareError::ParseError(e.to_string()))?
-                    .trim()
-                    .to_string();
-                if !text.is_empty()
-                    && let Some(parent) = stack.last_mut()
-                {
-                    parent.children.push(CanonicalNode::Text(text));
+                // CDATA is also text content
+                let text =
+                    std::str::from_utf8(&e).map_err(|e| CompareError::ParseError(e.to_string()))?;
+                text_accumulator.push_str(text);
+            }
+
+            Event::GeneralRef(r) => {
+                // Resolve entity references (e.g., &amp; -> &, &quot; -> ", &lt; -> <)
+                let entity_name =
+                    std::str::from_utf8(&r).map_err(|e| CompareError::ParseError(e.to_string()))?;
+                if let Some(resolved) = resolve_predefined_entity(entity_name) {
+                    text_accumulator.push_str(resolved);
+                } else if let Ok(Some(ch)) = r.resolve_char_ref() {
+                    // Character reference like &#x30; or &#49;
+                    text_accumulator.push(ch);
+                } else {
+                    // Unknown entity - preserve as-is with & and ;
+                    text_accumulator.push('&');
+                    text_accumulator.push_str(entity_name);
+                    text_accumulator.push(';');
                 }
             }
 
             Event::Eof => break,
 
-            // Skip declarations, comments, processing instructions, general references
-            Event::Decl(_)
-            | Event::Comment(_)
-            | Event::PI(_)
-            | Event::DocType(_)
-            | Event::GeneralRef(_) => {}
+            // Skip declarations, comments, processing instructions
+            Event::Decl(_) | Event::Comment(_) | Event::PI(_) | Event::DocType(_) => {}
         }
 
         buf.clear();
