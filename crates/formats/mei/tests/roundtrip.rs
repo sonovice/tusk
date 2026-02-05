@@ -678,3 +678,118 @@ fn test_roundtrip_ives_the_cage() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_joplin_elite_syncopations() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Joplin_Elite_Syncopations.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Joplin_Elite_Syncopations.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_joplin_maple_leaf_rag() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Joplin_Maple_leaf_Rag.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Joplin_Maple_leaf_Rag.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_kirnberger_fugue_for_brass_quartet_eb_major() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Kirnberger_Fugue_for_BrassQuartet_Eb-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Kirnberger_Fugue_for_BrassQuartet_Eb-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_krebs_trio_for_2_pianos_eb_major() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Krebs_Trio_for_2_pianos_Eb-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Krebs_Trio_for_2_pianos_Eb-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_krebs_trio_for_2_pianos_c_minor() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Krebs_Trio_for_2_pianos_c-minor.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Krebs_Trio_for_2_pianos_c-minor.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_liszt_four_little_pieces_no1() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Liszt_Four_little_pieces_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Liszt_Four_little_pieces_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_lully_la_descente_de_mars() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Lully_LaDescenteDeMars.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Lully_LaDescenteDeMars.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_mahler_song() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Mahler_Song.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Mahler_Song.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_marney_break_thou_the_bread_of_life() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Marney_BreakThouTheBreadOfLife.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Marney_BreakThouTheBreadOfLife.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_mcferrin_dont_worry() {
+    let path = sample_encodings_music_dir().join("Complete_examples/McFerrin_Don't_worry.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "McFerrin_Don't_worry.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

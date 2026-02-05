@@ -361,6 +361,54 @@ fn normalize_whitespace(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Check if two attribute values are semantically equivalent.
+///
+/// This handles:
+/// - Whitespace normalization (for XML list types)
+/// - Numeric equivalence (1.00 == 1, 2.5 == 2.50)
+///
+/// For numeric comparison, both values must parse as the same f64 value.
+/// This handles MEI attributes like `tstamp`, `dur`, etc. where trailing zeros
+/// may be present in the original but stripped during serialization.
+fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
+    // First try whitespace-normalized string comparison
+    let norm1 = normalize_whitespace(val1);
+    let norm2 = normalize_whitespace(val2);
+    if norm1 == norm2 {
+        return true;
+    }
+
+    // Try numeric comparison for single values
+    if let (Ok(n1), Ok(n2)) = (norm1.parse::<f64>(), norm2.parse::<f64>()) {
+        if n1 == n2 {
+            return true;
+        }
+    }
+
+    // Try numeric comparison for whitespace-separated lists (like bezier coordinates)
+    let parts1: Vec<&str> = norm1.split_whitespace().collect();
+    let parts2: Vec<&str> = norm2.split_whitespace().collect();
+    if parts1.len() == parts2.len() && parts1.len() > 1 {
+        let all_numeric_equal = parts1.iter().zip(parts2.iter()).all(|(p1, p2)| {
+            // Try string equality first
+            if p1 == p2 {
+                return true;
+            }
+            // Then try numeric equality
+            if let (Ok(n1), Ok(n2)) = (p1.parse::<f64>(), p2.parse::<f64>()) {
+                n1 == n2
+            } else {
+                false
+            }
+        });
+        if all_numeric_equal {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// Compare two attribute maps.
 ///
 /// If `skip_meiversion` is true, the `meiversion` attribute is ignored.
@@ -387,10 +435,8 @@ fn compare_attributes(
         }
         match attrs2.get(key) {
             Some(value2) => {
-                // Normalize whitespace for comparison (handles XML list type semantics)
-                let norm1 = normalize_whitespace(value1);
-                let norm2 = normalize_whitespace(value2);
-                if norm1 != norm2 {
+                // Check semantic equivalence (whitespace normalization + numeric equality)
+                if !attribute_values_equivalent(value1, value2) {
                     diffs.push(Difference {
                         path: path.to_string(),
                         description: format!(
@@ -1013,5 +1059,77 @@ mod tests {
         let xml2 = r#"<slur bezier="-7 -15"/>"#;
         let result = compare_xml(xml1, xml2);
         assert!(result.is_err(), "different values should still be detected");
+    }
+
+    // ============================================================================
+    // Numeric Value Equivalence Tests
+    // ============================================================================
+
+    #[test]
+    fn test_numeric_equivalence_trailing_zeros() {
+        // 1.00 and 1 are semantically equivalent
+        let xml1 = r#"<dir tstamp="1.00"/>"#;
+        let xml2 = r#"<dir tstamp="1"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "1.00 and 1 should be equivalent"
+        );
+    }
+
+    #[test]
+    fn test_numeric_equivalence_decimal() {
+        // 2.50 and 2.5 are semantically equivalent
+        let xml1 = r#"<note dur="2.50"/>"#;
+        let xml2 = r#"<note dur="2.5"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "2.50 and 2.5 should be equivalent"
+        );
+    }
+
+    #[test]
+    fn test_numeric_equivalence_integer_vs_float() {
+        // 4 and 4.0 are semantically equivalent
+        let xml1 = r#"<note oct="4"/>"#;
+        let xml2 = r#"<note oct="4.0"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "4 and 4.0 should be equivalent"
+        );
+    }
+
+    #[test]
+    fn test_numeric_list_equivalence() {
+        // Numeric lists with equivalent values
+        let xml1 = r#"<slur bezier="1.00 2.50 3.0"/>"#;
+        let xml2 = r#"<slur bezier="1 2.5 3"/>"#;
+        assert!(
+            compare_xml(xml1, xml2).is_ok(),
+            "numeric lists with equivalent values should match"
+        );
+    }
+
+    #[test]
+    fn test_numeric_different_values_still_fail() {
+        // Different numeric values should still fail
+        let xml1 = r#"<dir tstamp="1.5"/>"#;
+        let xml2 = r#"<dir tstamp="2"/>"#;
+        let result = compare_xml(xml1, xml2);
+        assert!(result.is_err(), "different numeric values should fail");
+    }
+
+    #[test]
+    fn test_attribute_values_equivalent_fn() {
+        // Test the helper function directly
+        assert!(attribute_values_equivalent("1.00", "1"));
+        assert!(attribute_values_equivalent("1", "1.00"));
+        assert!(attribute_values_equivalent("2.5", "2.50"));
+        assert!(attribute_values_equivalent("4", "4.0"));
+        assert!(attribute_values_equivalent("-7 -12", "-7.0 -12.00"));
+        assert!(!attribute_values_equivalent("1.5", "2"));
+        assert!(!attribute_values_equivalent("hello", "world"));
+        // Non-numeric strings should use exact match
+        assert!(attribute_values_equivalent("hello", "hello"));
+        assert!(!attribute_values_equivalent("hello", "Hello"));
     }
 }
