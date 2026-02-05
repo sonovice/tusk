@@ -12,8 +12,8 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Abbr, Add, AddChild, App, AppChild, Choice, ChoiceChild, Corr, CorrChild, Damage, Del,
-    DelChild, Expan, Gap, HandShift, Lem, Orig, Rdg, Reg, Restore, Sic, SicChild, Subst, Supplied,
-    Unclear,
+    DelChild, Expan, Gap, HandShift, Lem, Orig, Rdg, Reg, Restore, Sic, SicChild, Space, Subst,
+    Supplied, Unclear,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -353,6 +353,7 @@ impl MeiSerialize for Add {
         for child in &self.children {
             match child {
                 AddChild::Text(text) => writer.write_text(text)?,
+                AddChild::Space(elem) => elem.serialize_mei(writer)?,
                 // Other children would need their serializers
                 _ => {}
             }

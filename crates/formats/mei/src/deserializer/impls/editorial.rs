@@ -5,7 +5,7 @@
 //! and related attribute classes.
 
 use crate::deserializer::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
 use std::io::BufRead;
 use tusk_model::att::{
@@ -13,8 +13,8 @@ use tusk_model::att::{
     AttRdgVis, AttReasonIdent, AttTextRendition, AttTrans,
 };
 use tusk_model::elements::{
-    Abbr, Add, App, AppChild, Choice, ChoiceChild, Corr, Damage, Del, Expan, Gap, HandShift, Lem,
-    Orig, Rdg, Reg, Restore, Sic, Subst, Supplied, Unclear,
+    Abbr, Add, AddChild, App, AppChild, Choice, ChoiceChild, Corr, Damage, Del, Expan, Gap,
+    HandShift, Lem, Orig, Rdg, Reg, Restore, Sic, Space, Subst, Supplied, Unclear,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -424,11 +424,33 @@ fn parse_add_from_event<R: BufRead>(
     add.extent.extract_attributes(&mut attrs)?;
     add.lang.extract_attributes(&mut attrs)?;
     add.trans.extract_attributes(&mut attrs)?;
+    // place attribute
+    extract_attr!(attrs, "place", vec add.place);
 
-    // Add can contain many child elements - for now, skip to end
-    // A full implementation would parse all child types
+    // Read children if not an empty element
+    // Add can contain mixed content: text and element children
     if !is_empty {
-        reader.skip_to_end("add")?;
+        while let Some(content) = reader.read_next_mixed_content("add")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        add.children.push(AddChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "space" => {
+                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
+                        add.children.push(AddChild::Space(Box::new(space)));
+                    }
+                    _ => {
+                        // Skip unknown children
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
+                        }
+                    }
+                },
+            }
+        }
     }
 
     Ok(add)

@@ -1031,3 +1031,45 @@ fn hand_shift_roundtrip_with_character() {
 
     assert_eq!(parsed.character, Some("cursive".to_string()));
 }
+
+// ============================================================================
+// Add with Space child Tests
+// ============================================================================
+
+#[test]
+fn add_roundtrip_with_space_child() {
+    use tusk_model::data::{DataAugmentdot, DataDuration, DataDurationCmn};
+    use tusk_model::elements::{Add, AddChild, Space};
+
+    let mut original = Add::default();
+    original.common.xml_id = Some("add-1".to_string());
+
+    let mut space = Space::default();
+    space.common.xml_id = Some("space-1".to_string());
+    space.space_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    space.space_log.dots = Some(DataAugmentdot(1));
+    original.children.push(AddChild::Space(Box::new(space)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    // Verify space element is serialized
+    assert!(xml.contains("<space"));
+    assert!(xml.contains(r#"xml:id="space-1""#));
+    assert!(xml.contains(r#"dur="4""#));
+    assert!(xml.contains(r#"dots="1""#));
+
+    let parsed = Add::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("add-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        AddChild::Space(s) => {
+            assert_eq!(s.common.xml_id, Some("space-1".to_string()));
+            assert_eq!(
+                s.space_log.dur,
+                Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            );
+            assert_eq!(s.space_log.dots, Some(DataAugmentdot(1)));
+        }
+        _ => panic!("Expected Space child"),
+    }
+}
