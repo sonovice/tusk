@@ -1186,3 +1186,767 @@ fn roundtrip_bibl_with_bibl_scope() {
         .any(|c| matches!(c, BiblChild::BiblScope(_)));
     assert!(has_bibl_scope, "should have BiblScope child");
 }
+
+// ============================================================================
+// Encoding Description Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_empty_class_decls() {
+    use tusk_model::elements::ClassDecls;
+
+    let original = ClassDecls::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<classDecls"),
+        "should have classDecls: {}",
+        xml
+    );
+
+    let parsed = ClassDecls::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_class_decls_with_taxonomy() {
+    use tusk_model::elements::{ClassDecls, ClassDeclsChild, Taxonomy};
+
+    let mut class_decls = ClassDecls::default();
+    class_decls.common.xml_id = Some("cd1".to_string());
+
+    let mut taxonomy = Taxonomy::default();
+    taxonomy.common.xml_id = Some("tax1".to_string());
+    class_decls
+        .children
+        .push(ClassDeclsChild::Taxonomy(Box::new(taxonomy)));
+
+    let xml = class_decls.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"cd1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<taxonomy"), "should have taxonomy: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"tax1\""),
+        "should have taxonomy xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</classDecls>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = ClassDecls::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cd1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        ClassDeclsChild::Taxonomy(tax) => {
+            assert_eq!(tax.common.xml_id, Some("tax1".to_string()));
+        }
+        other => panic!("Expected Taxonomy child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_taxonomy() {
+    use tusk_model::elements::Taxonomy;
+
+    let original = Taxonomy::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<taxonomy"), "should have taxonomy: {}", xml);
+
+    let parsed = Taxonomy::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_taxonomy_with_category() {
+    use tusk_model::elements::{Category, Taxonomy, TaxonomyChild};
+
+    let mut taxonomy = Taxonomy::default();
+    taxonomy.common.xml_id = Some("tax1".to_string());
+
+    let mut category = Category::default();
+    category.common.xml_id = Some("cat1".to_string());
+    taxonomy
+        .children
+        .push(TaxonomyChild::Category(Box::new(category)));
+
+    let xml = taxonomy.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"tax1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<category"), "should have category: {}", xml);
+    assert!(
+        xml.contains("xml:id=\"cat1\""),
+        "should have category xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</taxonomy>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Taxonomy::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("tax1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TaxonomyChild::Category(cat) => {
+            assert_eq!(cat.common.xml_id, Some("cat1".to_string()));
+        }
+        other => panic!("Expected Category child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_nested_taxonomy() {
+    use tusk_model::elements::{Taxonomy, TaxonomyChild};
+
+    let mut taxonomy = Taxonomy::default();
+    taxonomy.common.xml_id = Some("tax1".to_string());
+
+    let mut nested_taxonomy = Taxonomy::default();
+    nested_taxonomy.common.xml_id = Some("tax2".to_string());
+    taxonomy
+        .children
+        .push(TaxonomyChild::Taxonomy(Box::new(nested_taxonomy)));
+
+    let xml = taxonomy.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"tax1\""),
+        "should have outer xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"tax2\""),
+        "should have nested xml:id: {}",
+        xml
+    );
+
+    let parsed = Taxonomy::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("tax1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        TaxonomyChild::Taxonomy(nested) => {
+            assert_eq!(nested.common.xml_id, Some("tax2".to_string()));
+        }
+        other => panic!("Expected Taxonomy child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_category() {
+    use tusk_model::elements::Category;
+
+    let original = Category::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<category"), "should have category: {}", xml);
+
+    let parsed = Category::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_nested_category() {
+    use tusk_model::elements::{Category, CategoryChild};
+
+    let mut category = Category::default();
+    category.common.xml_id = Some("cat1".to_string());
+
+    let mut nested_category = Category::default();
+    nested_category.common.xml_id = Some("cat2".to_string());
+    category
+        .children
+        .push(CategoryChild::Category(Box::new(nested_category)));
+
+    let xml = category.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"cat1\""),
+        "should have outer xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"cat2\""),
+        "should have nested xml:id: {}",
+        xml
+    );
+
+    let parsed = Category::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cat1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CategoryChild::Category(nested) => {
+            assert_eq!(nested.common.xml_id, Some("cat2".to_string()));
+        }
+        other => panic!("Expected Category child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_interpretation() {
+    use tusk_model::elements::Interpretation;
+
+    let original = Interpretation::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<interpretation"),
+        "should have interpretation: {}",
+        xml
+    );
+
+    let parsed = Interpretation::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_interpretation_with_p() {
+    use tusk_model::elements::{Interpretation, InterpretationChild, P, PChild};
+
+    let mut interpretation = Interpretation::default();
+    interpretation.common.xml_id = Some("interp1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Analysis methodology described here.".to_string(),
+    ));
+    interpretation
+        .children
+        .push(InterpretationChild::P(Box::new(p)));
+
+    let xml = interpretation.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"interp1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("Analysis methodology"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</interpretation>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Interpretation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("interp1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        InterpretationChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_normalization() {
+    use tusk_model::elements::Normalization;
+
+    let original = Normalization::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<normalization"),
+        "should have normalization: {}",
+        xml
+    );
+
+    let parsed = Normalization::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_normalization_with_p() {
+    use tusk_model::elements::{Normalization, NormalizationChild, P, PChild};
+
+    let mut normalization = Normalization::default();
+    normalization.common.xml_id = Some("norm1".to_string());
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Spelling has been modernized.".to_string()));
+    normalization
+        .children
+        .push(NormalizationChild::P(Box::new(p)));
+
+    let xml = normalization.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"norm1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("Spelling has been modernized"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</normalization>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Normalization::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("norm1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        NormalizationChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_correction() {
+    use tusk_model::elements::Correction;
+
+    let original = Correction::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<correction"),
+        "should have correction: {}",
+        xml
+    );
+
+    let parsed = Correction::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_correction_with_p() {
+    use tusk_model::elements::{Correction, CorrectionChild, P, PChild};
+
+    let mut correction = Correction::default();
+    correction.common.xml_id = Some("corr1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Obvious errors have been silently corrected.".to_string(),
+    ));
+    correction.children.push(CorrectionChild::P(Box::new(p)));
+
+    let xml = correction.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"corr1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("Obvious errors have been silently corrected"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</correction>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Correction::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("corr1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CorrectionChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_segmentation() {
+    use tusk_model::elements::Segmentation;
+
+    let original = Segmentation::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<segmentation"),
+        "should have segmentation: {}",
+        xml
+    );
+
+    let parsed = Segmentation::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_segmentation_with_p() {
+    use tusk_model::elements::{P, PChild, Segmentation, SegmentationChild};
+
+    let mut segmentation = Segmentation::default();
+    segmentation.common.xml_id = Some("seg1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "The text has been segmented by movement.".to_string(),
+    ));
+    segmentation
+        .children
+        .push(SegmentationChild::P(Box::new(p)));
+
+    let xml = segmentation.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"seg1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("The text has been segmented by movement"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</segmentation>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Segmentation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("seg1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SegmentationChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_sampling_decl() {
+    use tusk_model::elements::SamplingDecl;
+
+    let original = SamplingDecl::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<samplingDecl"),
+        "should have samplingDecl: {}",
+        xml
+    );
+
+    let parsed = SamplingDecl::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_sampling_decl_with_p() {
+    use tusk_model::elements::{P, PChild, SamplingDecl, SamplingDeclChild};
+
+    let mut sampling_decl = SamplingDecl::default();
+    sampling_decl.common.xml_id = Some("samp1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Only the first movement has been encoded.".to_string(),
+    ));
+    sampling_decl
+        .children
+        .push(SamplingDeclChild::P(Box::new(p)));
+
+    let xml = sampling_decl.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"samp1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("Only the first movement has been encoded"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</samplingDecl>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = SamplingDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("samp1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        SamplingDeclChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_std_vals() {
+    use tusk_model::elements::StdVals;
+
+    let original = StdVals::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<stdVals"), "should have stdVals: {}", xml);
+
+    let parsed = StdVals::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_std_vals_with_p() {
+    use tusk_model::elements::{P, PChild, StdVals, StdValsChild};
+
+    let mut std_vals = StdVals::default();
+    std_vals.common.xml_id = Some("sv1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Dates are given in ISO 8601 format.".to_string(),
+    ));
+    std_vals.children.push(StdValsChild::P(Box::new(p)));
+
+    let xml = std_vals.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"sv1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(
+        xml.contains("Dates are given in ISO 8601 format"),
+        "should have text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</stdVals>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = StdVals::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("sv1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        StdValsChild::P(_) => {}
+        other => panic!("Expected P child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_editorial_decl_with_encoding_elements() {
+    use tusk_model::elements::{
+        Correction, CorrectionChild, EditorialDecl, EditorialDeclChild, Interpretation,
+        InterpretationChild, Normalization, NormalizationChild, P, PChild, Segmentation,
+        SegmentationChild, StdVals, StdValsChild,
+    };
+
+    let mut editorial_decl = EditorialDecl::default();
+    editorial_decl.common.xml_id = Some("ed1".to_string());
+
+    // Add interpretation
+    let mut interpretation = Interpretation::default();
+    let mut p1 = P::default();
+    p1.children.push(PChild::Text("Analysis info".to_string()));
+    interpretation
+        .children
+        .push(InterpretationChild::P(Box::new(p1)));
+    editorial_decl
+        .children
+        .push(EditorialDeclChild::Interpretation(Box::new(interpretation)));
+
+    // Add normalization
+    let mut normalization = Normalization::default();
+    let mut p2 = P::default();
+    p2.children
+        .push(PChild::Text("Normalization info".to_string()));
+    normalization
+        .children
+        .push(NormalizationChild::P(Box::new(p2)));
+    editorial_decl
+        .children
+        .push(EditorialDeclChild::Normalization(Box::new(normalization)));
+
+    // Add correction
+    let mut correction = Correction::default();
+    let mut p3 = P::default();
+    p3.children
+        .push(PChild::Text("Correction info".to_string()));
+    correction.children.push(CorrectionChild::P(Box::new(p3)));
+    editorial_decl
+        .children
+        .push(EditorialDeclChild::Correction(Box::new(correction)));
+
+    // Add segmentation
+    let mut segmentation = Segmentation::default();
+    let mut p4 = P::default();
+    p4.children
+        .push(PChild::Text("Segmentation info".to_string()));
+    segmentation
+        .children
+        .push(SegmentationChild::P(Box::new(p4)));
+    editorial_decl
+        .children
+        .push(EditorialDeclChild::Segmentation(Box::new(segmentation)));
+
+    // Add stdVals
+    let mut std_vals = StdVals::default();
+    let mut p5 = P::default();
+    p5.children.push(PChild::Text("StdVals info".to_string()));
+    std_vals.children.push(StdValsChild::P(Box::new(p5)));
+    editorial_decl
+        .children
+        .push(EditorialDeclChild::StdVals(Box::new(std_vals)));
+
+    let xml = editorial_decl.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<editorialDecl"),
+        "should have editorialDecl: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<interpretation>"),
+        "should have interpretation: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<normalization>"),
+        "should have normalization: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<correction>"),
+        "should have correction: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<segmentation>"),
+        "should have segmentation: {}",
+        xml
+    );
+    assert!(xml.contains("<stdVals>"), "should have stdVals: {}", xml);
+
+    let parsed = EditorialDecl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ed1".to_string()));
+    assert_eq!(parsed.children.len(), 5);
+
+    // Verify each child type is present
+    let has_interpretation = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, EditorialDeclChild::Interpretation(_)));
+    assert!(has_interpretation, "should have Interpretation child");
+
+    let has_normalization = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, EditorialDeclChild::Normalization(_)));
+    assert!(has_normalization, "should have Normalization child");
+
+    let has_correction = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, EditorialDeclChild::Correction(_)));
+    assert!(has_correction, "should have Correction child");
+
+    let has_segmentation = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, EditorialDeclChild::Segmentation(_)));
+    assert!(has_segmentation, "should have Segmentation child");
+
+    let has_std_vals = parsed
+        .children
+        .iter()
+        .any(|c| matches!(c, EditorialDeclChild::StdVals(_)));
+    assert!(has_std_vals, "should have StdVals child");
+}
+
+#[test]
+fn roundtrip_encoding_desc_with_class_decls() {
+    use tusk_model::elements::{ClassDecls, EncodingDesc, EncodingDescChild};
+
+    let mut encoding_desc = EncodingDesc::default();
+    encoding_desc.common.xml_id = Some("enc1".to_string());
+
+    let mut class_decls = ClassDecls::default();
+    class_decls.common.xml_id = Some("cd1".to_string());
+    encoding_desc
+        .children
+        .push(EncodingDescChild::ClassDecls(Box::new(class_decls)));
+
+    let xml = encoding_desc.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<encodingDesc"),
+        "should have encodingDesc: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<classDecls"),
+        "should have classDecls: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"cd1\""),
+        "should have classDecls xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</encodingDesc>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = EncodingDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("enc1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        EncodingDescChild::ClassDecls(cd) => {
+            assert_eq!(cd.common.xml_id, Some("cd1".to_string()));
+        }
+        other => panic!("Expected ClassDecls child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_encoding_desc_with_sampling_decl() {
+    use tusk_model::elements::{EncodingDesc, EncodingDescChild, SamplingDecl};
+
+    let mut encoding_desc = EncodingDesc::default();
+    encoding_desc.common.xml_id = Some("enc1".to_string());
+
+    let mut sampling_decl = SamplingDecl::default();
+    sampling_decl.common.xml_id = Some("samp1".to_string());
+    encoding_desc
+        .children
+        .push(EncodingDescChild::SamplingDecl(Box::new(sampling_decl)));
+
+    let xml = encoding_desc.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<encodingDesc"),
+        "should have encodingDesc: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<samplingDecl"),
+        "should have samplingDecl: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"samp1\""),
+        "should have samplingDecl xml:id: {}",
+        xml
+    );
+
+    let parsed = EncodingDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("enc1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        EncodingDescChild::SamplingDecl(sd) => {
+            assert_eq!(sd.common.xml_id, Some("samp1".to_string()));
+        }
+        other => panic!("Expected SamplingDecl child, got {:?}", other),
+    }
+}

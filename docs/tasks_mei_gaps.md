@@ -4,7 +4,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 
 **Legend**: `[ ]` = pending, `[x]` = done
 
-**Current status**: 102 deserializers, 182 serializers implemented out of 418 elements.
+**Current status**: 111 deserializers, 182 serializers implemented out of 418 elements.
 
 ---
 
@@ -20,7 +20,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add deserializers for address/geographic elements (12): `Address`, `AddrLine`, `PostBox`, `PostCode`, `Street`, `District`, `Region`, `Settlement`, `Country`, `Bloc`, `GeogFeat`, `GeogName`
 - [x] Add deserializers for agent/responsibility elements (7): `Creator`, `Editor`, `Funder`, `Sponsor`, `Contributor`, `Resp`, `RespStmt`
 - [x] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
-- [ ] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
+- [x] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
 - [ ] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
 - [ ] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
 - [ ] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`

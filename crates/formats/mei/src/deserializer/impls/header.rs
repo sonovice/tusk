@@ -4679,6 +4679,132 @@ impl MeiDeserialize for LocusGrp {
     }
 }
 
+impl MeiDeserialize for ClassDecls {
+    fn element_name() -> &'static str {
+        "classDecls"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_class_decls_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Taxonomy {
+    fn element_name() -> &'static str {
+        "taxonomy"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_taxonomy_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Category {
+    fn element_name() -> &'static str {
+        "category"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_category_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Interpretation {
+    fn element_name() -> &'static str {
+        "interpretation"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_interpretation_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Normalization {
+    fn element_name() -> &'static str {
+        "normalization"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_normalization_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Correction {
+    fn element_name() -> &'static str {
+        "correction"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_correction_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for Segmentation {
+    fn element_name() -> &'static str {
+        "segmentation"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_segmentation_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for SamplingDecl {
+    fn element_name() -> &'static str {
+        "samplingDecl"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_sampling_decl_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for StdVals {
+    fn element_name() -> &'static str {
+        "stdVals"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_std_vals_from_event(reader, attrs, is_empty)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::deserializer::MeiDeserialize;
