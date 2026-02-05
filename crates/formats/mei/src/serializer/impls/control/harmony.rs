@@ -234,6 +234,25 @@ impl MeiSerialize for HarmChild {
             ))),
         }
     }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            // Text content should be written directly, not wrapped in an element
+            HarmChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            HarmChild::Fb(elem) => elem.serialize_mei(writer),
+            HarmChild::Rend(elem) => elem.serialize_mei(writer),
+            HarmChild::Lb(elem) => elem.serialize_mei(writer),
+            HarmChild::Ref(elem) => elem.serialize_mei(writer),
+            HarmChild::Symbol(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "HarmChild::{}",
+                other.element_name()
+            ))),
+        }
+    }
 }
 
 // ============================================================================
