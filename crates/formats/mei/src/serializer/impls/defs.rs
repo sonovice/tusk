@@ -670,24 +670,56 @@ impl MeiSerialize for tusk_model::elements::StaffDef {
 
 impl MeiSerialize for tusk_model::elements::StaffDefChild {
     fn element_name(&self) -> &'static str {
+        use tusk_model::elements::StaffDefChild::*;
         match self {
-            tusk_model::elements::StaffDefChild::Label(_) => "label",
-            tusk_model::elements::StaffDefChild::LabelAbbr(_) => "labelAbbr",
-            _ => "unknown",
+            ClefGrp(_) => "clefGrp",
+            LabelAbbr(_) => "labelAbbr",
+            InstrDef(_) => "instrDef",
+            Mensur(_) => "mensur",
+            MeterSig(_) => "meterSig",
+            Proport(_) => "proport",
+            Label(_) => "label",
+            MeterSigGrp(_) => "meterSigGrp",
+            Ambitus(_) => "ambitus",
+            Tuning(_) => "tuning",
+            KeySig(_) => "keySig",
+            LayerDef(_) => "layerDef",
+            Clef(_) => "clef",
         }
     }
 
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
+        use tusk_model::elements::StaffDefChild::*;
+        match self {
+            InstrDef(instr) => instr.collect_all_attributes(),
+            Label(label) => label.collect_all_attributes(),
+            KeySig(ks) => ks.collect_all_attributes(),
+            MeterSig(ms) => ms.collect_all_attributes(),
+            LayerDef(ld) => ld.collect_all_attributes(),
+            // Types without MeiSerialize impl yet - return empty for now
+            LabelAbbr(_) | Clef(_) | ClefGrp(_) | Mensur(_) | Proport(_) | MeterSigGrp(_)
+            | Ambitus(_) | Tuning(_) => Vec::new(),
+        }
     }
 
     fn has_children(&self) -> bool {
-        true
+        use tusk_model::elements::StaffDefChild::*;
+        match self {
+            Label(label) => !label.children.is_empty(),
+            LabelAbbr(abbr) => !abbr.children.is_empty(),
+            LayerDef(ld) => !ld.children.is_empty(),
+            // InstrDef has no children
+            InstrDef(_) => false,
+            // Other elements - may have children
+            ClefGrp(_) | Mensur(_) | MeterSig(_) | Proport(_) | MeterSigGrp(_) | Ambitus(_)
+            | Tuning(_) | KeySig(_) | Clef(_) => false,
+        }
     }
 
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        use tusk_model::elements::StaffDefChild::*;
         match self {
-            tusk_model::elements::StaffDefChild::Label(label) => {
+            Label(label) => {
                 for child in &label.children {
                     match child {
                         tusk_model::elements::LabelChild::Text(text) => {
@@ -697,7 +729,7 @@ impl MeiSerialize for tusk_model::elements::StaffDefChild {
                     }
                 }
             }
-            tusk_model::elements::StaffDefChild::LabelAbbr(abbr) => {
+            LabelAbbr(abbr) => {
                 for child in &abbr.children {
                     match child {
                         tusk_model::elements::LabelAbbrChild::Text(text) => {
@@ -707,7 +739,11 @@ impl MeiSerialize for tusk_model::elements::StaffDefChild {
                     }
                 }
             }
-            _ => {}
+            // InstrDef has no children
+            InstrDef(_) => {}
+            // Other elements - no children to serialize
+            ClefGrp(_) | Mensur(_) | MeterSig(_) | Proport(_) | MeterSigGrp(_) | Ambitus(_)
+            | Tuning(_) | KeySig(_) | LayerDef(_) | Clef(_) => {}
         }
         Ok(())
     }
@@ -1140,5 +1176,102 @@ impl MeiSerialize for PgFootChild {
                 other.element_name()
             ))),
         }
+    }
+}
+
+// ============================================================================
+// InstrDef serialization
+// ============================================================================
+
+impl MeiSerialize for tusk_model::elements::InstrDef {
+    fn element_name(&self) -> &'static str {
+        "instrDef"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+
+        // Basic attributes (xml:id)
+        if let Some(id) = &self.basic.xml_id {
+            attrs.push(("xml:id", id.clone()));
+        }
+
+        // Labelled attributes
+        if let Some(label) = &self.labelled.label {
+            attrs.push(("label", label.clone()));
+        }
+
+        // N integer
+        if let Some(n) = &self.n_integer.n {
+            attrs.push(("n", n.to_string()));
+        }
+
+        // InstrDefGes MIDI attributes
+        if let Some(v) = &self.instr_def_ges.midi_channel {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.channel", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_duty {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.duty", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_port {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.port", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_track {
+            attrs.push(("midi.track", v.to_string()));
+        }
+        if let Some(v) = &self.instr_def_ges.midi_instrnum {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.instrnum", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_instrname {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.instrname", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_pan {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.pan", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_patchname {
+            attrs.push(("midi.patchname", v.clone()));
+        }
+        if let Some(v) = &self.instr_def_ges.midi_patchnum {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.patchnum", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.midi_volume {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("midi.volume", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.azimuth {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("azimuth", s));
+            }
+        }
+        if let Some(v) = &self.instr_def_ges.elevation {
+            if let Some(s) = to_attr_string(v) {
+                attrs.push(("elevation", s));
+            }
+        }
+
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // InstrDef has no children
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
     }
 }

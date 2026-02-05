@@ -2114,3 +2114,72 @@ fn roundtrip_label_with_text_content() {
         other => panic!("Expected Text, got {:?}", other),
     }
 }
+
+// ============================================================================
+// InstrDef Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn serialize_instrdef_with_label_and_id() {
+    use tusk_model::elements::InstrDef;
+
+    let mut original = InstrDef::default();
+    original.basic.xml_id = Some("P3-I3".to_string());
+    original.labelled.label = Some("Trombone".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"P3-I3\""),
+        "xml should contain xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("label=\"Trombone\""),
+        "xml should contain label: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<instrDef"),
+        "xml should contain instrDef element: {}",
+        xml
+    );
+}
+
+#[test]
+fn roundtrip_staffdef_with_instrdef_child() {
+    use tusk_model::elements::{InstrDef, StaffDef, StaffDefChild};
+
+    let mut instrdef = InstrDef::default();
+    instrdef.basic.xml_id = Some("I1".to_string());
+    instrdef.labelled.label = Some("Piano".to_string());
+
+    let mut original = StaffDef::default();
+    original.basic.xml_id = Some("SD1".to_string());
+    original.n_integer.n = Some(1);
+    original
+        .children
+        .push(StaffDefChild::InstrDef(Box::new(instrdef)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<instrDef"),
+        "xml should contain instrDef: {}",
+        xml
+    );
+    assert!(
+        xml.contains("label=\"Piano\""),
+        "xml should contain label: {}",
+        xml
+    );
+
+    let parsed = StaffDef::from_mei_str(&xml).expect("parse");
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        StaffDefChild::InstrDef(instr) => {
+            assert_eq!(instr.basic.xml_id, Some("I1".to_string()));
+            assert_eq!(instr.labelled.label, Some("Piano".to_string()));
+        }
+        other => panic!("Expected InstrDef, got {:?}", other),
+    }
+}

@@ -80,7 +80,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Title element: text containing quotes being split incorrectly - text like `"Versuch..."` is truncated at the quote character (source: Altenburg_Concerto_C-major.mei)
 - [x] [SERIALIZER_BUG] StaffDef: key.mode attribute not serialized - AttStaffDefAnl attributes (key.accid, key.mode, key.pname) missing from collect_all_attributes (source: Bach-JC_Fughette_No2.mei)
 - [x] [DESERIALIZER_BUG] PgHead: table element not parsed - skipped instead of deserialized (source: Bach-JC_Fughette_No2.mei)
-- [ ] [SERIALIZER_BUG] StaffDefChild::InstrDef serialization incomplete - returns "unknown" element name, no attributes collected (source: Bach-JC_Fughette_No2.mei)
+- [x] [SERIALIZER_BUG] StaffDefChild::InstrDef serialization incomplete - returns "unknown" element name, no attributes collected (source: Bach-JC_Fughette_No2.mei)
 - [ ] [DESERIALIZER_BUG] Section: pb (page break) element not parsed - skipped instead of deserialized (source: Bach-JC_Fughette_No2.mei)
 
 ---
