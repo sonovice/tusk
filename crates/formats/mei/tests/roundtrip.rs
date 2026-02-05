@@ -391,3 +391,14 @@ fn test_roundtrip_bach_js_wie_bist_du_meine_seele_bwv435() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_beethoven_hymn_to_joy() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Beethoven_Hymn_to_joy.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Beethoven_Hymn_to_joy.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

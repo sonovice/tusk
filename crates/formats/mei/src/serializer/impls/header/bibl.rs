@@ -6,9 +6,9 @@ use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeRes
 use std::io::Write;
 use tusk_model::elements::{
     Annot, AnnotChild, Bibl, BiblChild, BiblScope, BiblScopeChild, BiblStruct, BiblStructChild,
-    Contents, ContentsChild, Edition, EditionChild, EditionStmt, EditionStmtChild, Extent,
-    ExtentChild, Imprint, ImprintChild, Locus, LocusChild, LocusGrp, LocusGrpChild, NotesStmt,
-    NotesStmtChild, SeriesStmt, SeriesStmtChild,
+    ContentItem, ContentItemChild, Contents, ContentsChild, Edition, EditionChild, EditionStmt,
+    EditionStmtChild, Extent, ExtentChild, Imprint, ImprintChild, Locus, LocusChild, LocusGrp,
+    LocusGrpChild, NotesStmt, NotesStmtChild, SeriesStmt, SeriesStmtChild,
 };
 
 // ============================================================================
@@ -605,10 +605,8 @@ impl MeiSerialize for ContentsChild {
         match self {
             ContentsChild::P(elem) => elem.serialize_mei(writer),
             ContentsChild::Head(elem) => elem.serialize_mei(writer),
-            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
-                "ContentsChild::{}",
-                other.element_name()
-            ))),
+            ContentsChild::ContentItem(elem) => elem.serialize_mei(writer),
+            ContentsChild::Label(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -1140,6 +1138,147 @@ impl MeiSerialize for ImprintChild {
             ImprintChild::LocusGrp(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "ImprintChild::{}",
+                other.element_name()
+            ))),
+        }
+    }
+}
+
+// ============================================================================
+// ContentItem
+// ============================================================================
+
+impl MeiSerialize for ContentItem {
+    fn element_name(&self) -> &'static str {
+        "contentItem"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for ContentItemChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            ContentItemChild::Text(_) => "#text",
+            ContentItemChild::Title(_) => "title",
+            ContentItemChild::Bibl(_) => "bibl",
+            ContentItemChild::Rend(_) => "rend",
+            ContentItemChild::Ref(_) => "ref",
+            ContentItemChild::PersName(_) => "persName",
+            ContentItemChild::CorpName(_) => "corpName",
+            ContentItemChild::GeogName(_) => "geogName",
+            ContentItemChild::Date(_) => "date",
+            ContentItemChild::Num(_) => "num",
+            ContentItemChild::Identifier(_) => "identifier",
+            ContentItemChild::Name(_) => "name",
+            ContentItemChild::Address(_) => "address",
+            ContentItemChild::Annot(_) => "annot",
+            ContentItemChild::Lb(_) => "lb",
+            ContentItemChild::Pb(_) => "pb",
+            ContentItemChild::Ptr(_) => "ptr",
+            ContentItemChild::Fig(_) => "fig",
+            ContentItemChild::Seg(_) => "seg",
+            ContentItemChild::Add(_) => "add",
+            ContentItemChild::Del(_) => "del",
+            ContentItemChild::Corr(_) => "corr",
+            ContentItemChild::Sic(_) => "sic",
+            ContentItemChild::Orig(_) => "orig",
+            ContentItemChild::Reg(_) => "reg",
+            ContentItemChild::Choice(_) => "choice",
+            ContentItemChild::Supplied(_) => "supplied",
+            ContentItemChild::Unclear(_) => "unclear",
+            ContentItemChild::Gap(_) => "gap",
+            ContentItemChild::Damage(_) => "damage",
+            ContentItemChild::Restore(_) => "restore",
+            ContentItemChild::Subst(_) => "subst",
+            ContentItemChild::Abbr(_) => "abbr",
+            ContentItemChild::Expan(_) => "expan",
+            ContentItemChild::Q(_) => "q",
+            ContentItemChild::Stack(_) => "stack",
+            ContentItemChild::Symbol(_) => "symbol",
+            ContentItemChild::BiblStruct(_) => "biblStruct",
+            ContentItemChild::Term(_) => "term",
+            ContentItemChild::Repository(_) => "repository",
+            ContentItemChild::RelationList(_) => "relationList",
+            ContentItemChild::Relation(_) => "relation",
+            ContentItemChild::Locus(_) => "locus",
+            ContentItemChild::LocusGrp(_) => "locusGrp",
+            ContentItemChild::Country(_) => "country",
+            ContentItemChild::Region(_) => "region",
+            ContentItemChild::Settlement(_) => "settlement",
+            ContentItemChild::District(_) => "district",
+            ContentItemChild::PostCode(_) => "postCode",
+            ContentItemChild::PostBox(_) => "postBox",
+            ContentItemChild::Street(_) => "street",
+            ContentItemChild::Bloc(_) => "bloc",
+            ContentItemChild::GeogFeat(_) => "geogFeat",
+            ContentItemChild::PeriodName(_) => "periodName",
+            ContentItemChild::StyleName(_) => "styleName",
+            ContentItemChild::Extent(_) => "extent",
+            ContentItemChild::Dimensions(_) => "dimensions",
+            ContentItemChild::Width(_) => "width",
+            ContentItemChild::Height(_) => "height",
+            ContentItemChild::Depth(_) => "depth",
+            ContentItemChild::Dim(_) => "dim",
+            ContentItemChild::Catchwords(_) => "catchwords",
+            ContentItemChild::Signatures(_) => "signatures",
+            ContentItemChild::SecFolio(_) => "secFolio",
+            ContentItemChild::Stamp(_) => "stamp",
+            ContentItemChild::Heraldry(_) => "heraldry",
+            ContentItemChild::HandShift(_) => "handShift",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            ContentItemChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            ContentItemChild::Title(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Bibl(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Rend(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Ref(elem) => elem.serialize_mei(writer),
+            ContentItemChild::PersName(elem) => elem.serialize_mei(writer),
+            ContentItemChild::CorpName(elem) => elem.serialize_mei(writer),
+            ContentItemChild::GeogName(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Date(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Num(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Identifier(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Name(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Lb(elem) => elem.serialize_mei(writer),
+            ContentItemChild::Pb(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "ContentItemChild::{}",
                 other.element_name()
             ))),
         }

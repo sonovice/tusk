@@ -710,11 +710,18 @@ impl MeiDeserialize for Syl {
                     MixedContent::Text(text) => {
                         syl.children.push(SylChild::Text(text));
                     }
-                    MixedContent::Element(name, _child_attrs, child_empty) => {
-                        // Syl can contain many child elements, but text is the most common
-                        // For now we skip other children in lenient mode
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "rend" => {
+                                let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                syl.children.push(SylChild::Rend(Box::new(rend)));
+                            }
+                            // Syl can contain many child elements, skip others in lenient mode
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
                         }
                     }
                 }

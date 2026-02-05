@@ -1133,16 +1133,111 @@ impl MeiSerialize for Syl {
 
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         for child in &self.children {
-            match child {
-                SylChild::Text(text) => writer.write_text(text)?,
-                other => {
-                    // For now, skip non-text children as they're rare in syl
-                    // but don't fail - just write as placeholder element
-                    let _ = other;
-                }
-            }
+            child.serialize_mei(writer)?;
         }
         Ok(())
+    }
+}
+
+impl MeiSerialize for SylChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            SylChild::Text(_) => "#text",
+            SylChild::Rend(_) => "rend",
+            SylChild::Lb(_) => "lb",
+            SylChild::Ref(_) => "ref",
+            SylChild::Ptr(_) => "ptr",
+            SylChild::Symbol(_) => "symbol",
+            SylChild::Fig(_) => "fig",
+            SylChild::Num(_) => "num",
+            SylChild::Add(_) => "add",
+            SylChild::Del(_) => "del",
+            SylChild::Corr(_) => "corr",
+            SylChild::Sic(_) => "sic",
+            SylChild::Orig(_) => "orig",
+            SylChild::Reg(_) => "reg",
+            SylChild::Choice(_) => "choice",
+            SylChild::Supplied(_) => "supplied",
+            SylChild::Unclear(_) => "unclear",
+            SylChild::Gap(_) => "gap",
+            SylChild::Damage(_) => "damage",
+            SylChild::Restore(_) => "restore",
+            SylChild::Subst(_) => "subst",
+            SylChild::Abbr(_) => "abbr",
+            SylChild::Expan(_) => "expan",
+            SylChild::Q(_) => "q",
+            SylChild::Stack(_) => "stack",
+            SylChild::Bibl(_) => "bibl",
+            SylChild::BiblStruct(_) => "biblStruct",
+            SylChild::Annot(_) => "annot",
+            SylChild::HandShift(_) => "handShift",
+            SylChild::Name(_) => "name",
+            SylChild::PersName(_) => "persName",
+            SylChild::CorpName(_) => "corpName",
+            SylChild::GeogName(_) => "geogName",
+            SylChild::Date(_) => "date",
+            SylChild::Identifier(_) => "identifier",
+            SylChild::Title(_) => "title",
+            SylChild::Term(_) => "term",
+            SylChild::Repository(_) => "repository",
+            SylChild::RelationList(_) => "relationList",
+            SylChild::Relation(_) => "relation",
+            SylChild::Country(_) => "country",
+            SylChild::Region(_) => "region",
+            SylChild::Settlement(_) => "settlement",
+            SylChild::District(_) => "district",
+            SylChild::PostCode(_) => "postCode",
+            SylChild::PostBox(_) => "postBox",
+            SylChild::Street(_) => "street",
+            SylChild::Address(_) => "address",
+            SylChild::Bloc(_) => "bloc",
+            SylChild::GeogFeat(_) => "geogFeat",
+            SylChild::PeriodName(_) => "periodName",
+            SylChild::StyleName(_) => "styleName",
+            SylChild::Extent(_) => "extent",
+            SylChild::Dimensions(_) => "dimensions",
+            SylChild::Width(_) => "width",
+            SylChild::Height(_) => "height",
+            SylChild::Depth(_) => "depth",
+            SylChild::Dim(_) => "dim",
+            SylChild::Locus(_) => "locus",
+            SylChild::LocusGrp(_) => "locusGrp",
+            SylChild::Catchwords(_) => "catchwords",
+            SylChild::Signatures(_) => "signatures",
+            SylChild::SecFolio(_) => "secFolio",
+            SylChild::Stamp(_) => "stamp",
+            SylChild::Heraldry(_) => "heraldry",
+            SylChild::Seg(_) => "seg",
+            SylChild::App(_) => "app",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            SylChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            SylChild::Rend(elem) => elem.serialize_mei(writer),
+            SylChild::Lb(elem) => elem.serialize_mei(writer),
+            SylChild::Ref(elem) => elem.serialize_mei(writer),
+            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
+                "SylChild::{}",
+                other.element_name()
+            ))),
+        }
     }
 }
 

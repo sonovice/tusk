@@ -18,17 +18,18 @@ use crate::deserializer::MixedContent;
 use std::io::BufRead;
 use tusk_model::elements::{
     Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
-    Classification, ClassificationChild, ComponentList, ComponentListChild, Contents,
-    ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition, EditionStmt,
-    EditionStmtChild, Event, EventChild, EventList, EventListChild, Expression, ExpressionChild,
-    ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild, Incip, IncipChild,
-    IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, LangUsage, LangUsageChild, Language,
-    Lg, Manifestation, ManifestationChild, ManifestationList, ManifestationListChild, Mensuration,
-    Meter, NotesStmt, NotesStmtChild, Num, NumChild, OtherChar, PerfDuration, PerfMedium,
-    PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild,
-    PlateNum, PlateNumChild, RelationList, RelationListChild, RevisionDesc, RevisionDescChild,
-    Score, ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList,
-    TermListChild, Work, WorkChild, WorkList, WorkListChild,
+    Classification, ClassificationChild, ComponentList, ComponentListChild, ContentItem,
+    ContentItemChild, Contents, ContentsChild, Context, Creation, CreationChild, Creator,
+    Dedication, Edition, EditionStmt, EditionStmtChild, Event, EventChild, EventList,
+    EventListChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
+    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, IncipText,
+    IncipTextChild, Key, LangUsage, LangUsageChild, Language, Lg, Manifestation,
+    ManifestationChild, ManifestationList, ManifestationListChild, Mensuration, Meter, NotesStmt,
+    NotesStmtChild, Num, NumChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes,
+    PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild, PlateNum, PlateNumChild,
+    RelationList, RelationListChild, RevisionDesc, RevisionDescChild, Score, ScoreFormat,
+    SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild, Work, WorkChild,
+    WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -734,6 +735,13 @@ fn parse_contents_from_event<R: BufRead>(
                     let p = parse_p_from_event(reader, child_attrs, child_empty)?;
                     contents.children.push(ContentsChild::P(Box::new(p)));
                 }
+                "contentItem" => {
+                    let content_item =
+                        parse_content_item_from_event(reader, child_attrs, child_empty)?;
+                    contents
+                        .children
+                        .push(ContentsChild::ContentItem(Box::new(content_item)));
+                }
                 "label" => {
                     let label = parse_label_from_event(reader, child_attrs, child_empty)?;
                     contents
@@ -750,6 +758,60 @@ fn parse_contents_from_event<R: BufRead>(
     }
 
     Ok(contents)
+}
+
+/// Parse a `<contentItem>` element from within another element.
+///
+/// contentItem has mixed content - text and various child elements like
+/// title, persName, corpName, rend, etc.
+fn parse_content_item_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<ContentItem> {
+    let mut content_item = ContentItem::default();
+
+    // Extract attributes
+    content_item.common.extract_attributes(&mut attrs)?;
+    content_item.bibl.extract_attributes(&mut attrs)?;
+    content_item.lang.extract_attributes(&mut attrs)?;
+
+    // contentItem has mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("contentItem")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        content_item.children.push(ContentItemChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            content_item
+                                .children
+                                .push(ContentItemChild::Title(Box::new(title)));
+                        }
+                        "bibl" => {
+                            let bibl = parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            content_item
+                                .children
+                                .push(ContentItemChild::Bibl(Box::new(bibl)));
+                        }
+                        // Skip other complex children for now - they can be added as needed
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(content_item)
 }
 
 /// Parse a `<context>` element from within another element.
@@ -2714,6 +2776,16 @@ pub(crate) fn parse_work_from_event<R: BufRead>(
                         child_empty,
                         "author",
                         tusk_model::generated::data::DataMarcrelatorsBasic::Aut,
+                    )?;
+                    work.children.push(WorkChild::Creator(Box::new(creator)));
+                }
+                "librettist" => {
+                    let creator = parse_deprecated_creator_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                        "librettist",
+                        tusk_model::generated::data::DataMarcrelatorsBasic::Lbt,
                     )?;
                     work.children.push(WorkChild::Creator(Box::new(creator)));
                 }
