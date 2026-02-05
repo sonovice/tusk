@@ -38,8 +38,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 2.2 Repeats and Measure Structures
-- [ ] Implement repeat marks: `RepeatMark`, `Volta` and measure repeats: `MRpt`, `MRpt2`, `BeatRpt`, `HalfmRpt`, `MultiRpt` and `MultiRest`, `MSpace`, `MNum`
-- [ ] Add roundtrip tests
+- [x] Implement repeat marks: `RepeatMark`, `Volta` and measure repeats: `MRpt`, `MRpt2`, `BeatRpt`, `HalfmRpt`, `MultiRpt` and `MultiRest`, `MSpace`, `MNum`
+- [x] Add roundtrip tests
 
 ### 2.3 Spanning and Continuation Elements etc.
 - [ ] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan` and `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)

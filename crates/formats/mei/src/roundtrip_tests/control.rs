@@ -2193,3 +2193,403 @@ fn roundtrip_caesura_complete() {
     assert_eq!(parsed.caesura_log.startid, original.caesura_log.startid);
     assert_eq!(parsed.caesura_vis.place, original.caesura_vis.place);
 }
+
+// ============================================================================
+// RepeatMark Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_repeat_mark_empty() {
+    use tusk_model::elements::RepeatMark;
+
+    let original = RepeatMark::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = RepeatMark::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_repeat_mark_with_func() {
+    use tusk_model::att::AttRepeatMarkLogFunc;
+    use tusk_model::elements::RepeatMark;
+
+    let mut original = RepeatMark::default();
+    original.common.xml_id = Some("rm1".to_string());
+    original.repeat_mark_log.func = Some(AttRepeatMarkLogFunc::DalSegno);
+    original.repeat_mark_log.staff = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = RepeatMark::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.repeat_mark_log.func, original.repeat_mark_log.func);
+    assert_eq!(parsed.repeat_mark_log.staff, original.repeat_mark_log.staff);
+}
+
+#[test]
+fn roundtrip_repeat_mark_with_text_child() {
+    use tusk_model::elements::{RepeatMark, RepeatMarkChild};
+
+    let mut original = RepeatMark::default();
+    original.common.xml_id = Some("rm2".to_string());
+    original
+        .children
+        .push(RepeatMarkChild::Text("D.C.".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = RepeatMark::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        RepeatMarkChild::Text(text) => assert_eq!(text, "D.C."),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+// ============================================================================
+// Volta Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_volta_empty() {
+    use tusk_model::elements::Volta;
+
+    let original = Volta::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Volta::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_volta_with_n() {
+    use tusk_model::data::DataWord;
+    use tusk_model::elements::Volta;
+
+    let mut original = Volta::default();
+    original.common.xml_id = Some("v1".to_string());
+    original.common.n = Some(DataWord("1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Volta::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.common.n, original.common.n);
+}
+
+// ============================================================================
+// MRpt Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_m_rpt_empty() {
+    use tusk_model::elements::MRpt;
+
+    let original = MRpt::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_m_rpt_with_num() {
+    use tusk_model::elements::MRpt;
+
+    let mut original = MRpt::default();
+    original.common.xml_id = Some("mr1".to_string());
+    original.m_rpt_log.num = Some(2);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.m_rpt_log.num, original.m_rpt_log.num);
+}
+
+// ============================================================================
+// MRpt2 Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_m_rpt2_empty() {
+    use tusk_model::elements::MRpt2;
+
+    let original = MRpt2::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MRpt2::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_m_rpt2_with_staff() {
+    use tusk_model::elements::MRpt2;
+
+    let mut original = MRpt2::default();
+    original.common.xml_id = Some("mr2_1".to_string());
+    original.m_rpt2_log.staff = vec![1, 2];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MRpt2::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.m_rpt2_log.staff, original.m_rpt2_log.staff);
+}
+
+// ============================================================================
+// BeatRpt Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_beat_rpt_empty() {
+    use tusk_model::elements::BeatRpt;
+
+    let original = BeatRpt::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeatRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_beat_rpt_with_beatdef() {
+    use tusk_model::elements::BeatRpt;
+
+    let mut original = BeatRpt::default();
+    original.common.xml_id = Some("br1".to_string());
+    original.beat_rpt_log.beatdef = Some(1.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeatRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.beat_rpt_log.beatdef, original.beat_rpt_log.beatdef);
+}
+
+#[test]
+fn roundtrip_beat_rpt_with_slash() {
+    use tusk_model::data::DataBeatrptRend;
+    use tusk_model::elements::BeatRpt;
+
+    let mut original = BeatRpt::default();
+    original.common.xml_id = Some("br2".to_string());
+    original.beat_rpt_vis.slash = Some(DataBeatrptRend("2".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = BeatRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.beat_rpt_vis.slash, original.beat_rpt_vis.slash);
+}
+
+// ============================================================================
+// HalfmRpt Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_halfm_rpt_empty() {
+    use tusk_model::elements::HalfmRpt;
+
+    let original = HalfmRpt::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HalfmRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_halfm_rpt_with_staff_layer() {
+    use tusk_model::elements::HalfmRpt;
+
+    let mut original = HalfmRpt::default();
+    original.common.xml_id = Some("hmr1".to_string());
+    original.halfm_rpt_log.staff = vec![1];
+    original.halfm_rpt_log.layer = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = HalfmRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.halfm_rpt_log.staff, original.halfm_rpt_log.staff);
+    assert_eq!(parsed.halfm_rpt_log.layer, original.halfm_rpt_log.layer);
+}
+
+// ============================================================================
+// MultiRpt Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_multi_rpt_empty() {
+    use tusk_model::elements::MultiRpt;
+
+    let original = MultiRpt::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MultiRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_multi_rpt_with_num() {
+    use tusk_model::elements::MultiRpt;
+
+    let mut original = MultiRpt::default();
+    original.common.xml_id = Some("mulrpt1".to_string());
+    original.multi_rpt_log.num = Some(4);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MultiRpt::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.multi_rpt_log.num, original.multi_rpt_log.num);
+}
+
+// ============================================================================
+// MultiRest Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_multi_rest_empty() {
+    use tusk_model::elements::MultiRest;
+
+    let original = MultiRest::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MultiRest::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_multi_rest_with_num() {
+    use tusk_model::elements::MultiRest;
+
+    let mut original = MultiRest::default();
+    original.common.xml_id = Some("mulrest1".to_string());
+    original.multi_rest_log.num = Some(8);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MultiRest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.multi_rest_log.num, original.multi_rest_log.num);
+}
+
+#[test]
+fn roundtrip_multi_rest_with_block() {
+    use tusk_model::data::DataBoolean;
+    use tusk_model::elements::MultiRest;
+
+    let mut original = MultiRest::default();
+    original.common.xml_id = Some("mulrest2".to_string());
+    original.multi_rest_log.num = Some(4);
+    original.multi_rest_vis.block = Some(DataBoolean::True);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MultiRest::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.multi_rest_log.num, original.multi_rest_log.num);
+    assert_eq!(parsed.multi_rest_vis.block, original.multi_rest_vis.block);
+}
+
+// ============================================================================
+// MSpace Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_m_space_empty() {
+    use tusk_model::elements::MSpace;
+
+    let original = MSpace::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MSpace::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_m_space_with_staff_layer() {
+    use tusk_model::elements::MSpace;
+
+    let mut original = MSpace::default();
+    original.common.xml_id = Some("ms1".to_string());
+    original.m_space_log.staff = vec![1];
+    original.m_space_log.layer = vec![1];
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MSpace::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.m_space_log.staff, original.m_space_log.staff);
+    assert_eq!(parsed.m_space_log.layer, original.m_space_log.layer);
+}
+
+#[test]
+fn roundtrip_m_space_with_fermata() {
+    use tusk_model::data::DataStaffrelBasic;
+    use tusk_model::elements::MSpace;
+
+    let mut original = MSpace::default();
+    original.common.xml_id = Some("ms2".to_string());
+    original.m_space_anl.fermata = Some(DataStaffrelBasic::Above);
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MSpace::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.m_space_anl.fermata, original.m_space_anl.fermata);
+}
+
+// ============================================================================
+// MNum Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_m_num_empty() {
+    use tusk_model::elements::MNum;
+
+    let original = MNum::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MNum::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_m_num_with_text() {
+    use tusk_model::elements::{MNum, MNumChild};
+
+    let mut original = MNum::default();
+    original.common.xml_id = Some("mn1".to_string());
+    original.children.push(MNumChild::Text("42".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MNum::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MNumChild::Text(text) => assert_eq!(text, "42"),
+        _ => panic!("Expected Text child"),
+    }
+}
+
+#[test]
+fn roundtrip_m_num_with_place() {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    use tusk_model::elements::{MNum, MNumChild};
+
+    let mut original = MNum::default();
+    original.common.xml_id = Some("mn2".to_string());
+    original.m_num_vis.place = Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above));
+    original.children.push(MNumChild::Text("1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = MNum::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, original.common.xml_id);
+    assert_eq!(parsed.m_num_vis.place, original.m_num_vis.place);
+}

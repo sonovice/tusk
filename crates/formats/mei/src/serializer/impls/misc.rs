@@ -14,10 +14,10 @@ use tusk_model::att::{
     AttGraceGrpAnl, AttGraceGrpGes, AttGraceGrpLog, AttGraceGrpVis, AttHorizontalAlign,
     AttInternetMedia, AttKeyMode, AttLabelled, AttLinking, AttLyricsAnl, AttLyricsGes,
     AttLyricsLog, AttLyricsVis, AttMeasurement, AttMeiVersion, AttMetadataPointing, AttMeterSigLog,
-    AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing,
-    AttRanging, AttRecordType, AttRegularMethod, AttResponsibility, AttSource, AttTargetEval,
-    AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis, AttTyped,
-    AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
+    AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPlist,
+    AttPointing, AttRanging, AttRecordType, AttRegularMethod, AttResponsibility, AttSource,
+    AttTargetEval, AttTextRendition, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
+    AttTyped, AttTypography, AttVerticalAlign, AttWhitespace, AttXy,
 };
 use tusk_model::elements::{
     Beam, BeamChild, Caption, CaptionChild, Event, EventChild, EventList, EventListChild, Fig,
@@ -89,6 +89,14 @@ impl CollectAttributes for AttTargetEval {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "evaluate", self.evaluate);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttPlist {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "plist", vec self.plist);
         attrs
     }
 }
