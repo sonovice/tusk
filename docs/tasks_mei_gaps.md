@@ -1,0 +1,247 @@
+# MEI Gap Completion Tasks
+
+Tasks for implementing missing MEI serializers and deserializers. Based on gap analysis (see [gap.md](gap.md)).
+
+**Legend**: `[ ]` = pending, `[x]` = done
+
+**Current status**: 102 deserializers, 182 serializers implemented out of 418 elements.
+
+---
+
+## Phase 1: Complete Roundtrip for Existing Implementations
+
+### 1.1 Editorial Elements Serializers
+- [x] Add serializers for editorial elements that have deserializers: `Add`, `Del`, `App`, `Lem`, `Rdg`, `Choice`, `Corr`, `Sic`
+- [ ] Add serializers for `Fig`, `FigDesc`
+- [ ] Add serializers for `Expression`, `ExpressionList`
+- [x] Add roundtrip tests for editorial markup
+
+### 1.2 Header Element Deserializers
+- [ ] Add deserializers for address/geographic elements (12): `Address`, `AddrLine`, `PostBox`, `PostCode`, `Street`, `District`, `Region`, `Settlement`, `Country`, `Bloc`, `GeogFeat`, `GeogName`
+- [ ] Add deserializers for agent/responsibility elements (7): `Creator`, `Editor`, `Funder`, `Sponsor`, `Contributor`, `Resp`, `RespStmt`
+- [ ] Add deserializers for bibliographic elements (13): `Bibl`, `BiblScope`, `BiblStruct`, `Locus`, `LocusGrp`, `Imprint`, `Edition`, `EditionStmt`, `SeriesStmt`, `NotesStmt`, `Contents`, `ContentItem`, `Extent`
+- [ ] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
+- [ ] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
+- [ ] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
+- [ ] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
+- [ ] Add deserializers for remaining header elements: `PgHead`, `PgFoot`, `Clef`, `KeySig`, `MeterSig`, `InstrDef`, `LabelAbbr`, `Date`, `Name`, `Head`, `P`, `L`, `Div`, `Ref`, `Ptr`, `Symbol`, `F`, `Fb`
+- [ ] Add roundtrip tests for all header elements
+
+---
+
+## Phase 2: CMN Module Completion
+
+### 2.1 Ornaments and Articulations
+- [ ] Implement `Turn`, `Breath`, `Bend`, `Caesura` (deserializer + serializer)
+- [ ] Add roundtrip tests
+
+### 2.2 Repeats and Measure Structures
+- [ ] Implement repeat marks: `RepeatMark`, `Volta`
+- [ ] Implement measure repeats: `MRpt`, `MRpt2`, `BeatRpt`, `HalfmRpt`, `MultiRpt`
+- [ ] Implement `MultiRest`, `MSpace`, `MNum`
+- [ ] Add roundtrip tests
+
+### 2.3 Spanning and Continuation Elements
+- [ ] Implement `BeamSpan`, `Octave`, `Gliss`, `Lv`, `BracketSpan`
+- [ ] Add roundtrip tests
+
+### 2.4 Tremolo
+- [ ] Implement `BTrem` (bowed tremolo), `FTrem` (fingered tremolo)
+- [ ] Add roundtrip tests
+
+### 2.5 Core Music Elements
+- [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad`
+- [ ] Implement key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym`
+- [ ] Implement parts: `Part`, `Parts`, `Ossia`
+- [ ] Implement `HarpPedal`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 3: Harmony Module
+
+### 3.1 Chord Definitions and Figured Bass
+- [ ] Implement `ChordTable`, `ChordDef`, `ChordMember`, `Barre`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 4: Editorial Module Completion
+
+### 4.1 Remaining Editorial Elements
+- [ ] Implement abbreviation/expansion: `Abbr`, `Expan`
+- [ ] Implement original/regularized: `Orig`, `Reg`
+- [ ] Implement corrections: `Subst`, `Supplied`, `Unclear`, `Damage`, `Gap`, `Restore`, `HandShift`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 5: Facsimile Module
+
+### 5.1 Image Linking Elements
+- [ ] Implement `Facsimile`, `Surface`, `Zone`, `Graphic`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 6: Text and Drama Module
+
+### 6.1 Front/Back Matter
+- [ ] Implement `Front`, `Back`, `TitlePage`, `Argument`, `Epigraph`, `Dedication`, `Imprimatur`, `Colophon`
+- [ ] Add roundtrip tests
+
+### 6.2 Drama Elements
+- [ ] Implement `Sp`, `Speaker`, `StageDir`, `Role`, `RoleName`
+- [ ] Add roundtrip tests
+
+### 6.3 Text Structure Elements
+- [ ] Implement text containers: `Group`, `Quote`, `Q`, `Phrase`, `Line`, `Refrain`, `Stack`
+- [ ] Implement metadata text: `Rubric`, `Explicit`, `Byline`, `Stamp`
+- [ ] Implement breaks/lines: `Cb`, `DivLine`, `Curve`
+- [ ] Add roundtrip tests
+
+### 6.4 Name Elements
+- [ ] Implement `ForeName`, `FamName`, `AddName`, `GenName`, `NameLink`, `PeriodName`, `StyleName`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 7: MIDI Module
+
+### 7.1 MIDI Elements
+- [ ] Implement container/instrument: `Midi`, `InstrGrp`
+- [ ] Implement control: `Cc`, `Chan`, `ChanPr`, `Port`, `Prog`, `Vel`
+- [ ] Implement events: `NoteOn`, `NoteOff`, `Cue`, `Marker`
+- [ ] Implement meta: `MetaMark`, `MetaText`, `SeqNum`, `TrkName`, `Hex`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 8: Neumes Module
+
+### 8.1 Neume Notation Elements
+- [ ] Implement core: `Syllable`, `Neume`, `Nc`, `NcGrp`
+- [ ] Implement shapes: `Oriscus`, `Quilisma`, `Liquescent`, `Strophicus`, `Plica`
+- [ ] Implement notation: `Episema`, `HispanTick`, `Ornam`, `AmbNote`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 9: Mensural Module
+
+### 9.1 Mensural Notation Elements
+- [ ] Implement `Mensur`, `Mensuration`, `Proport`, `Ligature`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 10: Tablature Module
+
+### 10.1 Tablature Elements
+- [ ] Implement `TabGrp`, `TabDurSym`, `Fing`, `FingGrp`, `String`, `Course`, `Tuning`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 11: Symbols Module
+
+### 11.1 Symbol Definition Elements
+- [ ] Implement `SymbolTable`, `SymbolDef`, `SymName`, `SymProp`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 12: Analysis Module
+
+### 12.1 Analytical Elements
+- [ ] Implement `Ambitus`, `OStaff`, `OLayer`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 13: Gestural/Performance Module
+
+### 13.1 Performance Elements
+- [ ] Implement `Attacca`, `When`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 14: Linkage Module
+
+### 14.1 Linking Elements
+- [ ] Implement `Clip`, `Expansion`, `CpMark`, `GenDesc`, `GenState`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 15: Advanced Header Module
+
+### 15.1 Manuscript Physical Description
+- [ ] Implement dimensions: `Dimensions`, `Height`, `Width`, `Depth`, `Dim`
+- [ ] Implement support: `Support`, `SupportDesc`, `Collation`, `Foliation`, `Condition`
+- [ ] Implement layout: `LayoutDesc`, `Layout`, `ColLayout`
+- [ ] Implement hands/scripts: `HandList`, `Hand`, `ScriptDesc`, `ScriptNote`
+- [ ] Implement decoration: `DecoDesc`, `DecoNote`
+- [ ] Implement binding: `BindingDesc`, `Binding`, `SealDesc`, `Seal`
+- [ ] Add roundtrip tests
+
+### 15.2 Provenance and History
+- [ ] Implement `Provenance`, `Acquisition`, `ExhibHist`, `History`
+- [ ] Implement `AccMat`, `AddDesc`
+- [ ] Add roundtrip tests
+
+### 15.3 Watermarks and Type
+- [ ] Implement `Watermark`, `WatermarkDesc`, `WatermarkList`
+- [ ] Implement `TypeDesc`, `TypeNote`
+- [ ] Add roundtrip tests
+
+### 15.4 Recording and Performance Metadata
+- [ ] Implement `Recording`, `Performance`, `PerfDuration`
+- [ ] Implement `TrackConfig`, `CaptureMode`, `PlayingSpeed`, `SoundChan`
+- [ ] Implement `CarrierForm`, `FileChar`, `OtherChar`, `ScoreFormat`
+- [ ] Add roundtrip tests
+
+### 15.5 Relations and References
+- [ ] Implement `Relation`, `RelationList`, `RelatedItem`
+- [ ] Implement `Item`, `ItemList`, `ComponentList`
+- [ ] Add roundtrip tests
+
+### 15.6 Encoding and Tags
+- [ ] Implement `DomainsDecl`, `Namespace`, `TagsDecl`, `TagUsage`, `AttUsage`
+- [ ] Add roundtrip tests
+
+### 15.7 Miscellaneous Header
+- [ ] Implement `Genre`, `Audience`, `TextLang`, `Heraldry`, `Inscription`
+- [ ] Implement `PhysLoc`, `Repository`, `SecFolio`, `SpecRepro`, `Recipient`, `PeriodName`
+- [ ] Implement `TreatHist`, `TreatSched`, `PgDesc`
+- [ ] Add roundtrip tests
+
+---
+
+## Phase 16: Corpus and Miscellaneous
+
+### 16.1 Corpus
+- [ ] Implement `MeiCorpus`
+- [ ] Add roundtrip tests
+
+### 16.2 Miscellaneous Elements
+- [ ] Implement external: `ExtData`, `AvFile`, `Cutout`
+- [ ] Implement folio: `Bifolium`, `Folium`
+- [ ] Implement bibliographic: `Analytic`, `Monogr`, `Series`, `Desc`
+- [ ] Implement codicology: `Catchwords`, `Signatures`, `SignifLet`
+- [ ] Implement other: `Actor`, `CatRel`, `Context`, `Mapping`, `Patch`, `PropName`, `PropValue`
+- [ ] Add roundtrip tests
+
+---
+
+## Priority Summary
+
+| Priority | Phase | Focus | ~Elements |
+|----------|-------|-------|-----------|
+| High | 1 | Complete existing implementations | 96 |
+| High | 2 | CMN completeness | 30 |
+| Medium | 3-4 | Harmony + Editorial | 16 |
+| Medium | 5-6 | Facsimile + Text/Drama | 40 |
+| Lower | 7-14 | Specialized notation (MIDI, Neumes, Mensural, Tablature, etc.) | 56 |
+| Lower | 15-16 | Advanced header + Misc | 90 |

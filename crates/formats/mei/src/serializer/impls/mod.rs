@@ -10,6 +10,7 @@ use serde::Serialize;
 
 mod control;
 mod defs;
+mod editorial;
 mod header;
 mod misc;
 mod note;
