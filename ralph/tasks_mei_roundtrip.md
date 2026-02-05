@@ -29,6 +29,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `syl` child element parsing to Note deserializer (source: Ives_TheCage.mei)
 - [x] [MISSING_ELEMENT] Add `sb` to Measure deserializer, `barLine` to Layer deserializer, `date` to CorpName deserializer (source: Ives_TheCage.mei)
 - [x] [SERIALIZER_BUG] Add custom `serialize_mei` impl for `HarmChild` to handle Text variant - currently outputs `<$text>D</$text>` instead of just text (source: Marney_BreakThouTheBreadOfLife.mei)
+- [ ] [MISSING_ELEMENT] Add `parts` child element parsing to Mdiv deserializer (source: McFerrin_Don't_worry.mei)
 
 ---
 
@@ -94,7 +95,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Liszt_Four_little_pieces_No1.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Lully_LaDescenteDeMars.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Mahler_Song.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Marney_BreakThouTheBreadOfLife.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Marney_BreakThouTheBreadOfLife.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/McFerrin_Don't_worry.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Mozart_Das_Veilchen_KV476.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Mozart_Fugue_g-minor_KV401.mei`
