@@ -15,7 +15,7 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm, Layer,
-    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Note, Pb, Rest, Sb, Score,
+    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Note, Pb, Pedal, Rest, Sb, Score,
     ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo,
     Tie, Trill, Tuplet,
 };
@@ -646,6 +646,10 @@ impl MeiDeserialize for Measure {
                     "harm" => {
                         let harm = Harm::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                    }
+                    "pedal" => {
+                        let pedal = Pedal::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Pedal(Box::new(pedal)));
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {

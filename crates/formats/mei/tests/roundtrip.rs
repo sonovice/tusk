@@ -402,3 +402,14 @@ fn test_roundtrip_beethoven_hymn_to_joy() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_beethoven_song_op98() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Beethoven_Song_Op98.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Beethoven_Song_Op98.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

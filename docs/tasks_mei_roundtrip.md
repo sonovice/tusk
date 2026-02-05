@@ -100,6 +100,9 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] Syl element: halign attribute not serialized - AttSylVis attributes missing from collect_all_attributes (source: Beethoven_Hymn_to_joy.mei)
 - [x] [DESERIALIZER_BUG] Chord/Note: accid child element not parsed within chord notes (source: Beethoven_Hymn_to_joy.mei)
 - [x] [DESERIALIZER_BUG] Score: ending element not parsed - missing handler at score level (source: Beethoven_Hymn_to_joy.mei)
+- [x] [DESERIALIZER_BUG] Measure: pedal element not parsed - missing handler in match (source: Beethoven_Song_Op98.mei)
+- [ ] [DESERIALIZER_BUG] PgHead: anchoredText element not parsed in score/scoreDef/pgHead context (source: Beethoven_Song_Op98.mei)
+- [ ] [WHITESPACE_BUG] bezier attribute: leading whitespace in value not preserved - '  -7 -12' becomes '-7 -12' (source: Beethoven_Song_Op98.mei)
 
 ---
 
