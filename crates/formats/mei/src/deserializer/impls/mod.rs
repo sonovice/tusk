@@ -22,6 +22,7 @@ mod chords;
 mod cmn_core;
 mod control;
 mod defs;
+mod drama;
 mod editorial;
 mod facsimile;
 mod grouping;
@@ -32,6 +33,10 @@ mod structure;
 mod text;
 
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
+pub(crate) use drama::{
+    parse_role_from_event, parse_role_name_from_event, parse_sp_from_event,
+    parse_speaker_from_event, parse_stage_dir_from_event,
+};
 pub(crate) use header::{
     parse_bibl_from_event, parse_bibl_scope_from_event, parse_bibl_struct_from_event,
     parse_contributor_from_event, parse_creator_from_event, parse_date_from_event,
@@ -49,9 +54,10 @@ pub(crate) use misc::{
 pub(crate) use text::{
     parse_argument_from_event, parse_back_from_event, parse_colophon_from_event,
     parse_dedication_from_event, parse_div_from_event, parse_epigraph_from_event,
-    parse_fig_desc_from_event, parse_front_from_event, parse_imprimatur_from_event,
-    parse_l_from_event, parse_lb_from_event, parse_li_from_event, parse_list_from_event,
-    parse_rend_from_event, parse_title_page_from_event,
+    parse_fig_desc_from_event, parse_fig_from_event, parse_front_from_event,
+    parse_imprimatur_from_event, parse_l_from_event, parse_lb_from_event, parse_lg_from_event,
+    parse_li_from_event, parse_list_from_event, parse_rend_from_event, parse_seg_from_event,
+    parse_title_page_from_event,
 };
 
 /// Parse a value using serde_json from XML attribute string.

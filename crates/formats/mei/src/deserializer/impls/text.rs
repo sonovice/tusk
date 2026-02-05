@@ -572,6 +572,24 @@ impl MeiDeserialize for Fig {
     }
 }
 
+/// Parse a `<fig>` element from within another element.
+pub(crate) fn parse_fig_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Fig> {
+    Fig::from_mei_event(reader, attrs, is_empty)
+}
+
+/// Parse a `<lg>` element from within another element.
+pub(crate) fn parse_lg_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<Lg> {
+    Lg::from_mei_event(reader, attrs, is_empty)
+}
+
 impl MeiDeserialize for FigDesc {
     fn element_name() -> &'static str {
         "figDesc"
@@ -3538,5 +3556,4 @@ mod tests {
             _ => panic!("expected Text child"),
         }
     }
-
 }

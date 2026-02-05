@@ -86,8 +86,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 6.2 Drama Elements
-- [ ] Implement `Sp`, `Speaker`, `StageDir`, `Role`, `RoleName`
-- [ ] Add roundtrip tests
+- [x] Implement `Sp`, `Speaker`, `StageDir`, `Role`, `RoleName`
+- [x] Add roundtrip tests
 
 ### 6.3 Text Structure Elements
 - [ ] Implement text containers: `Group`, `Quote`, `Q`, `Phrase`, `Line`, `Refrain`, `Stack`

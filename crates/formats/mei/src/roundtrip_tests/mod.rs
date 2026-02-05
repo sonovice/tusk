@@ -16,6 +16,7 @@
 mod control;
 mod defs;
 mod document;
+mod drama;
 mod editorial;
 mod facsimile;
 mod harmony;

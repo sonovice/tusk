@@ -12,6 +12,7 @@ mod chords;
 mod cmn_core;
 mod control;
 mod defs;
+mod drama;
 mod editorial;
 mod facsimile;
 mod header;
