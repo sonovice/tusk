@@ -793,3 +793,265 @@ fn test_roundtrip_mcferrin_dont_worry() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_mozart_das_veilchen_kv476() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Mozart_Das_Veilchen_KV476.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Mozart_Das_Veilchen_KV476.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_mozart_fugue_g_minor_kv401() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Mozart_Fugue_g-minor_KV401.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Mozart_Fugue_g-minor_KV401.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_mozart_quintett_kv581() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Mozart_Quintett_KV581.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Mozart_Quintett_KV581.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_pachelbel_canon_in_d() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Pachelbel_Canon_in_D.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Pachelbel_Canon_in_D.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_parker_gillespie_shawnuff() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Parker-Gillespie_ShawNuff.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Parker-Gillespie_ShawNuff.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_ponchielli_larrivo_del_re() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Ponchielli_LarrivoDelRe.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Ponchielli_LarrivoDelRe.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_praetorius_puer_nobis_nascitur() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Praetorius_PuerNobisNascitur.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Praetorius_PuerNobisNascitur.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_ravel_le_tombeau() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Ravel_Le_tombeau.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Ravel_Le_tombeau.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_rimsky_korsakov_string_quartet_b_la_f() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Rimsky-Korsakov_StringQuartet_B-LA-F.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Rimsky-Korsakov_StringQuartet_B-LA-F.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_saint_saens_le_carneval_des_animaux() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Saint-Saens_LeCarnevalDesAnimaux.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Saint-Saens_LeCarnevalDesAnimaux.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_scarlatti_sonata_in_c_major() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Scarlatti_Sonata_in_C-major.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Scarlatti_Sonata_in_C-major.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schubert_erlkoenig() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Schubert_Erlkoenig.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schubert_Erlkoenig.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schubert_lindenbaum() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Schubert_Lindenbaum.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schubert_Lindenbaum.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schuetz_domine_deus() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Schuetz_DomineDeus.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schuetz_DomineDeus.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schuetz_jubilate_deo() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Schuetz_Jubilate_Deo.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schuetz_Jubilate_Deo.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schumann_landmann_op68_no10() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Schumann_Landmann_Op68_No10.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schumann_Landmann_Op68_No10.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schumann_song_op48_no1() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Schumann_Song_Op48_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schumann_Song_Op48_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_schumann_string_quartet_op41_no1() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Schumann_StringQuartet_Op41_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Schumann_StringQuartet_Op41_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_telemann_concert() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Telemann_Concert.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Telemann_Concert.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_telemann_suite() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Telemann_Suite.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Telemann_Suite.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_vivaldi_violin_concert_op8_no2() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Vivaldi_ViolinConcert_Op8_No2.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Vivaldi_ViolinConcert_Op8_No2.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_weber_arie() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Weber_Arie.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Weber_Arie.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_webern_variations_for_piano_op27_no2() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Webern_Variations_for_Piano_Op27_No2.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Webern_Variations_for_Piano_Op27_No2.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
