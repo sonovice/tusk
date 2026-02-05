@@ -1103,3 +1103,19 @@ fn test_roundtrip_lyrics_multiple_verses() {
         result.unwrap_err()
     );
 }
+
+// ============================================================================
+// Encoding Alternatives Roundtrip Tests (Mozart's Das Veilchen)
+// ============================================================================
+
+#[test]
+fn test_roundtrip_encoding_alternatives_das_veilchen_0parameters() {
+    let path = sample_encodings_music_dir()
+        .join("Encoding_alternatives/Mozart_Veilchen/Das_Veilchen_0Parameters.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Das_Veilchen_0Parameters.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

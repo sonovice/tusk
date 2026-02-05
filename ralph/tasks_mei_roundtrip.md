@@ -42,6 +42,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `date` child element parsing to Annot deserializer in `parse_annot_from_event` (source: Schubert_Lindenbaum.mei)
 - [x] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
 - [x] [MISSING_ELEMENT] Add `back` child element parsing to Music deserializer - currently only `body` is handled, missing `back`, `front`, `group`, `facsimile`, `genDesc`, `performance` (source: Lyrics/lyrics.mei)
+- [ ] [MISSING_ATTR] StaffDef serializer missing `visible` attribute from AttStaffDefVis; Clef deserializer missing AttEvent extraction (`tstamp`, `layer`, `staff`, `when`, `tstamp.ges`, `tstamp.real`) and AttClefVis attributes (`altsym`, `color`, `enclose`, `glyph.*`, `font*`, `visible`, `ho`, `to`, `vo`) (source: Das_Veilchen_0Parameters.mei)
 
 ---
 
