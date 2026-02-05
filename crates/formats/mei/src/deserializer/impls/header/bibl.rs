@@ -148,6 +148,12 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             bibl.children
                                 .push(BiblChild::BiblScope(Box::new(bibl_scope)));
                         }
+                        "biblStruct" => {
+                            let bibl_struct =
+                                parse_bibl_struct_from_event(reader, child_attrs, child_empty)?;
+                            bibl.children
+                                .push(BiblChild::BiblStruct(Box::new(bibl_struct)));
+                        }
                         // Unknown children are skipped in lenient mode
                         _ => {
                             if !child_empty {

@@ -518,6 +518,15 @@ impl MeiSerialize for BiblScopeChild {
             BiblScopeChild::Lb(_) => "lb",
             BiblScopeChild::Title(_) => "title",
             BiblScopeChild::Address(_) => "address",
+            BiblScopeChild::GeogName(_) => "geogName",
+            BiblScopeChild::Bibl(_) => "bibl",
+            BiblScopeChild::BiblStruct(_) => "biblStruct",
+            BiblScopeChild::Locus(_) => "locus",
+            BiblScopeChild::LocusGrp(_) => "locusGrp",
+            BiblScopeChild::Annot(_) => "annot",
+            BiblScopeChild::Ptr(_) => "ptr",
+            BiblScopeChild::Ref(_) => "ref",
+            BiblScopeChild::Symbol(_) => "symbol",
             _ => "unknown",
         }
     }
@@ -549,6 +558,15 @@ impl MeiSerialize for BiblScopeChild {
             BiblScopeChild::Lb(elem) => elem.serialize_mei(writer),
             BiblScopeChild::Title(elem) => elem.serialize_mei(writer),
             BiblScopeChild::Address(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::GeogName(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Bibl(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::BiblStruct(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Locus(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::LocusGrp(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Annot(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Ptr(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Ref(elem) => elem.serialize_mei(writer),
+            BiblScopeChild::Symbol(elem) => elem.serialize_mei(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "BiblScopeChild::{}",
                 other.element_name()

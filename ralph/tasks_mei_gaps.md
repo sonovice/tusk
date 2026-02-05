@@ -25,8 +25,9 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
 - [x] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
 - [x] Add deserializers for remaining header elements: `PgHead`, `PgFoot`, `Clef`, `KeySig`, `MeterSig`, `InstrDef`, `LabelAbbr`, `Date`, `Name`, `Head`, `P`, `L`, `Div`, `Ref`, `Ptr`, `Symbol`, `F`, `Fb`
-- [ ] Add roundtrip tests for all header elements
-
+- [x] Add roundtrip tests for all header elements
+- [ ] Check if any serializers or deserializers for header elements are missing and if so, implement them.
+- [ ] Run all tests.
 ---
 
 ## Phase 2: CMN Module Completion

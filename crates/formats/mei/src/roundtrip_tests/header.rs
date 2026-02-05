@@ -3255,3 +3255,666 @@ fn roundtrip_cast_list_with_cast_grp() {
         assert_eq!(grp.children.len(), 2);
     }
 }
+
+// ============================================================================
+// Address and Geographic Elements Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_address_with_all_children() {
+    use tusk_model::elements::{
+        AddrLine, AddrLineChild, Address, AddressChild, Bloc, BlocChild, Country, CountryChild,
+        District, DistrictChild, GeogFeat, GeogFeatChild, PostBox, PostBoxChild, PostCode,
+        PostCodeChild, PubPlace, PubPlaceChild, Region, RegionChild, Settlement, SettlementChild,
+        Street, StreetChild,
+    };
+
+    let mut pub_place = PubPlace::default();
+    pub_place.common.xml_id = Some("pp-addr-test".to_string());
+
+    // Build an address with all possible children
+    let mut address = Address::default();
+    address.common.xml_id = Some("addr1".to_string());
+
+    // Add addrLine
+    let mut addr_line = AddrLine::default();
+    addr_line
+        .children
+        .push(AddrLineChild::Text("123 Music Street".to_string()));
+    address
+        .children
+        .push(AddressChild::AddrLine(Box::new(addr_line)));
+
+    // Add street
+    let mut street = Street::default();
+    street
+        .children
+        .push(StreetChild::Text("Composer Avenue".to_string()));
+    address
+        .children
+        .push(AddressChild::Street(Box::new(street)));
+
+    // Add postCode
+    let mut post_code = PostCode::default();
+    post_code
+        .children
+        .push(PostCodeChild::Text("12345".to_string()));
+    address
+        .children
+        .push(AddressChild::PostCode(Box::new(post_code)));
+
+    // Add postBox
+    let mut post_box = PostBox::default();
+    post_box
+        .children
+        .push(PostBoxChild::Text("PO Box 100".to_string()));
+    address
+        .children
+        .push(AddressChild::PostBox(Box::new(post_box)));
+
+    // Add settlement (city)
+    let mut settlement = Settlement::default();
+    settlement.common.xml_id = Some("settle1".to_string());
+    settlement
+        .children
+        .push(SettlementChild::Text("Vienna".to_string()));
+    address
+        .children
+        .push(AddressChild::Settlement(Box::new(settlement)));
+
+    // Add district
+    let mut district = District::default();
+    district
+        .children
+        .push(DistrictChild::Text("Innere Stadt".to_string()));
+    address
+        .children
+        .push(AddressChild::District(Box::new(district)));
+
+    // Add region
+    let mut region = Region::default();
+    region
+        .children
+        .push(RegionChild::Text("Lower Austria".to_string()));
+    address
+        .children
+        .push(AddressChild::Region(Box::new(region)));
+
+    // Add country
+    let mut country = Country::default();
+    country.common.xml_id = Some("country1".to_string());
+    country
+        .children
+        .push(CountryChild::Text("Austria".to_string()));
+    address
+        .children
+        .push(AddressChild::Country(Box::new(country)));
+
+    // Add bloc
+    let mut bloc = Bloc::default();
+    bloc.children.push(BlocChild::Text("EU".to_string()));
+    address.children.push(AddressChild::Bloc(Box::new(bloc)));
+
+    // Add geogFeat
+    let mut geog_feat = GeogFeat::default();
+    geog_feat
+        .children
+        .push(GeogFeatChild::Text("Danube River".to_string()));
+    address
+        .children
+        .push(AddressChild::GeogFeat(Box::new(geog_feat)));
+
+    pub_place
+        .children
+        .push(PubPlaceChild::Address(Box::new(address)));
+
+    // Serialize and deserialize
+    let xml = pub_place.to_mei_string().expect("serialize");
+    assert!(xml.contains("<address"), "should have address: {}", xml);
+    assert!(xml.contains("<addrLine"), "should have addrLine: {}", xml);
+    assert!(xml.contains("<street"), "should have street: {}", xml);
+    assert!(xml.contains("<postCode"), "should have postCode: {}", xml);
+    assert!(xml.contains("<postBox"), "should have postBox: {}", xml);
+    assert!(
+        xml.contains("<settlement"),
+        "should have settlement: {}",
+        xml
+    );
+    assert!(xml.contains("<district"), "should have district: {}", xml);
+    assert!(xml.contains("<region"), "should have region: {}", xml);
+    assert!(xml.contains("<country"), "should have country: {}", xml);
+    assert!(xml.contains("<bloc"), "should have bloc: {}", xml);
+    assert!(xml.contains("<geogFeat"), "should have geogFeat: {}", xml);
+
+    let parsed = PubPlace::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("pp-addr-test".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let PubPlaceChild::Address(addr) = &parsed.children[0] {
+        assert_eq!(addr.common.xml_id, Some("addr1".to_string()));
+        assert_eq!(addr.children.len(), 10);
+
+        // Check addrLine
+        assert!(
+            addr.children
+                .iter()
+                .any(|c| matches!(c, AddressChild::AddrLine(al) if al.children.iter().any(|c| matches!(c, AddrLineChild::Text(t) if t == "123 Music Street")))),
+            "should have addrLine with correct text"
+        );
+
+        // Check street
+        assert!(
+            addr.children
+                .iter()
+                .any(|c| matches!(c, AddressChild::Street(s) if s.children.iter().any(|c| matches!(c, StreetChild::Text(t) if t == "Composer Avenue")))),
+            "should have street with correct text"
+        );
+
+        // Check settlement
+        assert!(
+            addr.children.iter().any(
+                |c| matches!(c, AddressChild::Settlement(s) if s.common.xml_id == Some("settle1".to_string()))
+            ),
+            "should have settlement with xml_id"
+        );
+
+        // Check country
+        assert!(
+            addr.children.iter().any(
+                |c| matches!(c, AddressChild::Country(c) if c.common.xml_id == Some("country1".to_string()))
+            ),
+            "should have country with xml_id"
+        );
+    } else {
+        panic!("Expected Address child");
+    }
+}
+
+#[test]
+fn roundtrip_geog_name_with_nested_elements() {
+    use tusk_model::elements::{
+        Address, AddressChild, BiblScope, BiblScopeChild, GeogName, GeogNameChild, Settlement,
+        SettlementChild,
+    };
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs-geog".to_string());
+
+    // Create geogName with nested geogName and address
+    let mut geog_name = GeogName::default();
+    geog_name.common.xml_id = Some("geog1".to_string());
+    geog_name
+        .children
+        .push(GeogNameChild::Text("Central ".to_string()));
+
+    // Nested geogName
+    let mut nested_geog = GeogName::default();
+    nested_geog
+        .children
+        .push(GeogNameChild::Text("Europe".to_string()));
+    geog_name
+        .children
+        .push(GeogNameChild::GeogName(Box::new(nested_geog)));
+
+    // Add address inside geogName
+    let mut addr = Address::default();
+    let mut settlement = Settlement::default();
+    settlement
+        .children
+        .push(SettlementChild::Text("Prague".to_string()));
+    addr.children
+        .push(AddressChild::Settlement(Box::new(settlement)));
+    geog_name
+        .children
+        .push(GeogNameChild::Address(Box::new(addr)));
+
+    bibl_scope
+        .children
+        .push(BiblScopeChild::GeogName(Box::new(geog_name)));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(xml.contains("<geogName"), "should have geogName: {}", xml);
+    assert!(
+        xml.contains("Central "),
+        "should have 'Central ' text: {}",
+        xml
+    );
+    assert!(xml.contains("Europe"), "should have 'Europe' text: {}", xml);
+    assert!(xml.contains("Prague"), "should have 'Prague' text: {}", xml);
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bs-geog".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let BiblScopeChild::GeogName(geog) = &parsed.children[0] {
+        assert_eq!(geog.common.xml_id, Some("geog1".to_string()));
+        assert!(geog.children.len() >= 2);
+
+        // Check for nested geogName
+        assert!(
+            geog.children.iter().any(|c| matches!(c, GeogNameChild::GeogName(ng) if ng.children.iter().any(|c| matches!(c, GeogNameChild::Text(t) if t == "Europe")))),
+            "should have nested geogName with 'Europe'"
+        );
+
+        // Check for address
+        assert!(
+            geog.children
+                .iter()
+                .any(|c| matches!(c, GeogNameChild::Address(_))),
+            "should have Address child"
+        );
+    } else {
+        panic!("Expected GeogName child");
+    }
+}
+
+// ============================================================================
+// Bibliographic Elements Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_bibl_with_imprint() {
+    use tusk_model::elements::{
+        Bibl, BiblChild, Date, DateChild, Imprint, ImprintChild, PubPlace, PubPlaceChild,
+        Publisher, PublisherChild, Title, TitleChild,
+    };
+
+    let mut bibl = Bibl::default();
+    bibl.common.xml_id = Some("bibl-imprint".to_string());
+
+    // Add title
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Complete Piano Sonatas".to_string()));
+    bibl.children.push(BiblChild::Title(Box::new(title)));
+
+    // Add imprint with full details
+    let mut imprint = Imprint::default();
+    imprint.common.xml_id = Some("imp1".to_string());
+
+    // Publisher
+    let mut publisher = Publisher::default();
+    publisher
+        .children
+        .push(PublisherChild::Text("Breitkopf und Härtel".to_string()));
+    imprint
+        .children
+        .push(ImprintChild::Publisher(Box::new(publisher)));
+
+    // PubPlace
+    let mut pub_place = PubPlace::default();
+    pub_place
+        .children
+        .push(PubPlaceChild::Text("Leipzig".to_string()));
+    imprint
+        .children
+        .push(ImprintChild::PubPlace(Box::new(pub_place)));
+
+    // Date
+    let mut date = Date::default();
+    date.children.push(DateChild::Text("1862".to_string()));
+    imprint.children.push(ImprintChild::Date(Box::new(date)));
+
+    bibl.children.push(BiblChild::Imprint(Box::new(imprint)));
+
+    let xml = bibl.to_mei_string().expect("serialize");
+    assert!(xml.contains("<bibl"), "should have bibl: {}", xml);
+    assert!(xml.contains("<imprint"), "should have imprint: {}", xml);
+    assert!(xml.contains("<publisher"), "should have publisher: {}", xml);
+    assert!(xml.contains("<pubPlace"), "should have pubPlace: {}", xml);
+    assert!(xml.contains("<date"), "should have date: {}", xml);
+    assert!(
+        xml.contains("Breitkopf und Härtel"),
+        "should have publisher name: {}",
+        xml
+    );
+    assert!(xml.contains("Leipzig"), "should have pub place: {}", xml);
+    assert!(xml.contains("1862"), "should have date: {}", xml);
+
+    let parsed = Bibl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bibl-imprint".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+
+    // Check for imprint
+    assert!(
+        parsed
+            .children
+            .iter()
+            .any(|c| matches!(c, BiblChild::Imprint(imp) if imp.common.xml_id == Some("imp1".to_string()))),
+        "should have Imprint child with xml_id"
+    );
+}
+
+#[test]
+fn roundtrip_bibl_scope_with_locus() {
+    use tusk_model::elements::{BiblScope, BiblScopeChild, Locus, LocusChild};
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs-locus".to_string());
+    bibl_scope.from = Some("1".to_string());
+    bibl_scope.to = Some("50".to_string());
+
+    // Add locus
+    let mut locus = Locus::default();
+    locus.common.xml_id = Some("loc1".to_string());
+    locus
+        .children
+        .push(LocusChild::Text("ff. 1-50".to_string()));
+    bibl_scope
+        .children
+        .push(BiblScopeChild::Locus(Box::new(locus)));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+    assert!(xml.contains("<locus"), "should have locus: {}", xml);
+    assert!(
+        xml.contains("from=\"1\""),
+        "should have from attribute: {}",
+        xml
+    );
+    assert!(
+        xml.contains("to=\"50\""),
+        "should have to attribute: {}",
+        xml
+    );
+    assert!(xml.contains("ff. 1-50"), "should have locus text: {}", xml);
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bs-locus".to_string()));
+    assert_eq!(parsed.from, Some("1".to_string()));
+    assert_eq!(parsed.to, Some("50".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let BiblScopeChild::Locus(loc) = &parsed.children[0] {
+        assert_eq!(loc.common.xml_id, Some("loc1".to_string()));
+        assert!(
+            loc.children
+                .iter()
+                .any(|c| matches!(c, LocusChild::Text(t) if t == "ff. 1-50")),
+            "should have locus text"
+        );
+    } else {
+        panic!("Expected Locus child");
+    }
+}
+
+#[test]
+fn roundtrip_bibl_scope_with_locus_grp() {
+    use tusk_model::elements::{
+        BiblScope, BiblScopeChild, Locus, LocusChild, LocusGrp, LocusGrpChild,
+    };
+
+    let mut bibl_scope = BiblScope::default();
+    bibl_scope.common.xml_id = Some("bs-locusgrp".to_string());
+
+    // Add locusGrp with multiple locus elements
+    let mut locus_grp = LocusGrp::default();
+    locus_grp.common.xml_id = Some("locgrp1".to_string());
+
+    let mut locus1 = Locus::default();
+    locus1
+        .children
+        .push(LocusChild::Text("ff. 1-10".to_string()));
+    locus_grp
+        .children
+        .push(LocusGrpChild::Locus(Box::new(locus1)));
+
+    let mut locus2 = Locus::default();
+    locus2
+        .children
+        .push(LocusChild::Text("ff. 20-30".to_string()));
+    locus_grp
+        .children
+        .push(LocusGrpChild::Locus(Box::new(locus2)));
+
+    bibl_scope
+        .children
+        .push(BiblScopeChild::LocusGrp(Box::new(locus_grp)));
+
+    let xml = bibl_scope.to_mei_string().expect("serialize");
+    assert!(xml.contains("<biblScope"), "should have biblScope: {}", xml);
+    assert!(xml.contains("<locusGrp"), "should have locusGrp: {}", xml);
+    assert!(
+        xml.contains("ff. 1-10"),
+        "should have first locus text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("ff. 20-30"),
+        "should have second locus text: {}",
+        xml
+    );
+
+    let parsed = BiblScope::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bs-locusgrp".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let BiblScopeChild::LocusGrp(lg) = &parsed.children[0] {
+        assert_eq!(lg.common.xml_id, Some("locgrp1".to_string()));
+        assert_eq!(lg.children.len(), 2);
+        assert!(
+            lg.children
+                .iter()
+                .all(|c| matches!(c, LocusGrpChild::Locus(_))),
+            "all children should be Locus"
+        );
+    } else {
+        panic!("Expected LocusGrp child");
+    }
+}
+
+#[test]
+fn roundtrip_bibl_with_bibl_struct() {
+    use tusk_model::elements::{Bibl, BiblChild, BiblStruct};
+
+    let mut bibl = Bibl::default();
+    bibl.common.xml_id = Some("bibl-struct".to_string());
+
+    // Add biblStruct
+    let mut bibl_struct = BiblStruct::default();
+    bibl_struct.common.xml_id = Some("bstruct1".to_string());
+
+    bibl.children
+        .push(BiblChild::BiblStruct(Box::new(bibl_struct)));
+
+    let xml = bibl.to_mei_string().expect("serialize");
+    assert!(xml.contains("<bibl"), "should have bibl: {}", xml);
+    assert!(
+        xml.contains("<biblStruct"),
+        "should have biblStruct: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"bstruct1\""),
+        "should have biblStruct xml:id: {}",
+        xml
+    );
+
+    let parsed = Bibl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bibl-struct".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let BiblChild::BiblStruct(bs) = &parsed.children[0] {
+        assert_eq!(bs.common.xml_id, Some("bstruct1".to_string()));
+    } else {
+        panic!("Expected BiblStruct child");
+    }
+}
+
+#[test]
+fn roundtrip_imprint_with_all_children() {
+    use tusk_model::elements::{
+        Address, AddressChild, Availability, Bibl, BiblChild, Date, DateChild, Distributor,
+        DistributorChild, Imprint, ImprintChild, PersName, PersNameChild, PubPlace, PubPlaceChild,
+        Publisher, PublisherChild, RespStmt, RespStmtChild, Settlement, SettlementChild, Title,
+        TitleChild,
+    };
+
+    let mut bibl = Bibl::default();
+    bibl.common.xml_id = Some("bibl-imp-full".to_string());
+
+    let mut imprint = Imprint::default();
+    imprint.common.xml_id = Some("imp-full".to_string());
+
+    // Publisher
+    let mut publisher = Publisher::default();
+    publisher
+        .children
+        .push(PublisherChild::Text("Peters Edition".to_string()));
+    imprint
+        .children
+        .push(ImprintChild::Publisher(Box::new(publisher)));
+
+    // Distributor
+    let mut distributor = Distributor::default();
+    distributor.children.push(DistributorChild::Text(
+        "Music Distributors Inc.".to_string(),
+    ));
+    imprint
+        .children
+        .push(ImprintChild::Distributor(Box::new(distributor)));
+
+    // PubPlace with address
+    let mut pub_place = PubPlace::default();
+    let mut addr = Address::default();
+    let mut settlement = Settlement::default();
+    settlement
+        .children
+        .push(SettlementChild::Text("Frankfurt".to_string()));
+    addr.children
+        .push(AddressChild::Settlement(Box::new(settlement)));
+    pub_place
+        .children
+        .push(PubPlaceChild::Address(Box::new(addr)));
+    imprint
+        .children
+        .push(ImprintChild::PubPlace(Box::new(pub_place)));
+
+    // Date
+    let mut date = Date::default();
+    date.children.push(DateChild::Text("1905".to_string()));
+    imprint.children.push(ImprintChild::Date(Box::new(date)));
+
+    // RespStmt
+    let mut resp_stmt = RespStmt::default();
+    let mut pers_name = PersName::default();
+    pers_name
+        .children
+        .push(PersNameChild::Text("Max Reger".to_string()));
+    resp_stmt
+        .children
+        .push(RespStmtChild::PersName(Box::new(pers_name)));
+    imprint
+        .children
+        .push(ImprintChild::RespStmt(Box::new(resp_stmt)));
+
+    // Availability
+    let availability = Availability::default();
+    imprint
+        .children
+        .push(ImprintChild::Availability(Box::new(availability)));
+
+    // Title
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Organ Works".to_string()));
+    imprint.children.push(ImprintChild::Title(Box::new(title)));
+
+    // Address directly
+    let mut direct_addr = Address::default();
+    let mut settle2 = Settlement::default();
+    settle2
+        .children
+        .push(SettlementChild::Text("Berlin".to_string()));
+    direct_addr
+        .children
+        .push(AddressChild::Settlement(Box::new(settle2)));
+    imprint
+        .children
+        .push(ImprintChild::Address(Box::new(direct_addr)));
+
+    bibl.children.push(BiblChild::Imprint(Box::new(imprint)));
+
+    let xml = bibl.to_mei_string().expect("serialize");
+    assert!(xml.contains("<imprint"), "should have imprint: {}", xml);
+    assert!(xml.contains("<publisher"), "should have publisher: {}", xml);
+    assert!(
+        xml.contains("<distributor"),
+        "should have distributor: {}",
+        xml
+    );
+    assert!(xml.contains("<pubPlace"), "should have pubPlace: {}", xml);
+    assert!(xml.contains("<date"), "should have date: {}", xml);
+    assert!(xml.contains("<respStmt"), "should have respStmt: {}", xml);
+    assert!(
+        xml.contains("<availability"),
+        "should have availability: {}",
+        xml
+    );
+    assert!(xml.contains("<title"), "should have title: {}", xml);
+    assert!(xml.contains("<address"), "should have address: {}", xml);
+    assert!(
+        xml.contains("Peters Edition"),
+        "should have publisher text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Max Reger"),
+        "should have respStmt text: {}",
+        xml
+    );
+    assert!(xml.contains("Frankfurt"), "should have Frankfurt: {}", xml);
+    assert!(xml.contains("Berlin"), "should have Berlin: {}", xml);
+
+    let parsed = Bibl::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("bibl-imp-full".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let BiblChild::Imprint(imp) = &parsed.children[0] {
+        assert_eq!(imp.common.xml_id, Some("imp-full".to_string()));
+        // Imprint should have 8 children
+        assert_eq!(imp.children.len(), 8);
+
+        // Check for various child types
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::Publisher(_))),
+            "should have Publisher"
+        );
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::Distributor(_))),
+            "should have Distributor"
+        );
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::PubPlace(_))),
+            "should have PubPlace"
+        );
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::Date(_))),
+            "should have Date"
+        );
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::RespStmt(_))),
+            "should have RespStmt"
+        );
+        assert!(
+            imp.children
+                .iter()
+                .any(|c| matches!(c, ImprintChild::Address(_))),
+            "should have Address"
+        );
+    } else {
+        panic!("Expected Imprint child");
+    }
+}
