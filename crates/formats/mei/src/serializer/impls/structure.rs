@@ -6,15 +6,16 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::att::{
-    AttLayerAnl, AttLayerGes, AttLayerLog, AttLayerVis, AttMRestAnl, AttMRestGes, AttMRestLog,
-    AttMRestVis, AttMdivAnl, AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes,
-    AttMeasureLog, AttMeasureVis, AttPbAnl, AttPbGes, AttPbLog, AttPbVis, AttSbAnl, AttSbGes,
-    AttSbLog, AttSbVis, AttSectionAnl, AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl,
-    AttStaffGes, AttStaffLog, AttStaffVis,
+    AttClefAnl, AttClefGes, AttClefLog, AttClefVis, AttEvent, AttLayerAnl, AttLayerGes,
+    AttLayerLog, AttLayerVis, AttMRestAnl, AttMRestGes, AttMRestLog, AttMRestVis, AttMdivAnl,
+    AttMdivGes, AttMdivLog, AttMdivVis, AttMeasureAnl, AttMeasureGes, AttMeasureLog, AttMeasureVis,
+    AttPbAnl, AttPbGes, AttPbLog, AttPbVis, AttSbAnl, AttSbGes, AttSbLog, AttSbVis, AttSectionAnl,
+    AttSectionGes, AttSectionLog, AttSectionVis, AttStaffAnl, AttStaffGes, AttStaffLog,
+    AttStaffVis,
 };
 use tusk_model::elements::{
-    Body, BodyChild, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Pb, Sb,
-    Score, ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
+    Body, BodyChild, Clef, Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Pb,
+    Sb, Score, ScoreChild, Section, SectionChild, Staff, StaffChild, StaffDef,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -499,6 +500,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Artic(artic) => artic.collect_all_attributes(),
             LayerChild::Dot(dot) => dot.collect_all_attributes(),
             LayerChild::MRest(mrest) => mrest.collect_all_attributes(),
+            LayerChild::Clef(clef) => clef.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -516,6 +518,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Dot(_) => false,
             LayerChild::Space(_) => false, // Space has no children per MEI spec
             LayerChild::MRest(_) => false, // MRest has no children per MEI spec
+            LayerChild::Clef(_) => false,  // Clef has no children per MEI spec
             _ => false,
         }
     }
@@ -558,6 +561,103 @@ impl MeiSerialize for MRest {
 
     fn has_children(&self) -> bool {
         false // MRest has no children per MEI spec
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Clef attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttClefLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "shape", self.shape);
+        push_attr!(attrs, "line", self.line);
+        push_attr!(attrs, "oct", self.oct);
+        push_attr!(attrs, "dis", self.dis);
+        push_attr!(attrs, "dis.place", self.dis_place);
+        push_attr!(attrs, "cautionary", self.cautionary);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttClefGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new() // AttClefGes has no attributes
+    }
+}
+
+impl CollectAttributes for AttClefVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "visible", self.visible);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttClefAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new() // AttClefAnl has no attributes
+    }
+}
+
+impl CollectAttributes for AttEvent {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        attrs
+    }
+}
+
+// ============================================================================
+// Clef element implementation
+// ============================================================================
+
+impl MeiSerialize for Clef {
+    fn element_name(&self) -> &'static str {
+        "clef"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.event.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.clef_log.collect_attributes());
+        attrs.extend(self.clef_ges.collect_attributes());
+        attrs.extend(self.clef_vis.collect_attributes());
+        attrs.extend(self.clef_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false // Clef has no children per MEI spec
     }
 
     fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {

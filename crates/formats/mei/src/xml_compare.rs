@@ -102,12 +102,13 @@ const ELEMENT_MIGRATIONS: &[(&str, &str, &str)] = &[
     ("lyricist", "creator", "lyr"),
     ("arranger", "creator", "arr"),
     ("author", "creator", "aut"),
+    ("librettist", "creator", "lbt"),
 ];
 
 /// Check if two element names are equivalent considering MEI version migrations.
 ///
 /// MEI 5.1 deprecated several elements that were renamed in MEI 6.0:
-/// - composer, lyricist, arranger, author → creator
+/// - composer, lyricist, arranger, author, librettist → creator
 ///
 /// When comparing roundtrip output, we need to treat these as equivalent since
 /// import converts deprecated elements to their replacements, and export always

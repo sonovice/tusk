@@ -88,7 +88,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] Bibl element: librettist child not parsed - deprecated element skipped instead of migrated (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [x] [DESERIALIZER_BUG] Application element: p child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [x] [DESERIALIZER_BUG] History element: eventList child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
-- [ ] [DESERIALIZER_BUG] Layer element: clef child not parsed - skipped instead of deserialized, causing element ordering issues (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
+- [x] [DESERIALIZER_BUG] Layer element: clef child not parsed - skipped instead of deserialized, causing element ordering issues (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 
 ---
 
@@ -117,7 +117,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_BrandenburgConcert_No4_II_BWV1049.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Ein_feste_Burg.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Herzliebster_Jesu_BWV244-46.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Herzliebster_Jesu_BWV244-46.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Hilf_Herr_Jesu_BWV344.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Musikalisches_Opfer_Trio_BWV1079.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei`
