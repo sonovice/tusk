@@ -18,6 +18,7 @@ use tusk_model::att::{
     AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
 };
 
+mod analysis;
 mod chords;
 mod cmn_core;
 mod control;
@@ -38,6 +39,12 @@ mod tablature;
 mod text;
 mod text_containers;
 
+pub(crate) use analysis::{
+    parse_ambitus_from_event, parse_attacca_from_event, parse_clip_from_event,
+    parse_cp_mark_from_event, parse_expansion_from_event, parse_gen_desc_from_event,
+    parse_gen_state_from_event, parse_meta_mark_from_event, parse_o_layer_from_event,
+    parse_o_staff_from_event, parse_when_from_event,
+};
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
 pub(crate) use drama::{
     parse_role_from_event, parse_role_name_from_event, parse_sp_from_event,

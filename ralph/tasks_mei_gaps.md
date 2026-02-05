@@ -147,8 +147,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 12: Analysis Module, Gestural/Performance Module and Linkage Module
 
 ### 12.1 Analytical Elements
-- [ ] Implement `Ambitus`, `OStaff`, `OLayer`, `Attacca`, `When`, `Clip`, `Expansion`, `CpMark`, `GenDesc`, `GenState`, `MetaMark`
-- [ ] Add roundtrip tests
+- [x] Implement `Ambitus`, `OStaff`, `OLayer`, `Attacca`, `When`, `Clip`, `Expansion`, `CpMark`, `GenDesc`, `GenState`, `MetaMark`
+- [x] Add roundtrip tests
 
 ---
 
