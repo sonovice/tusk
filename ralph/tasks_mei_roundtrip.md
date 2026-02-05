@@ -45,8 +45,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ATTR] StaffDef serializer missing `visible` attribute from AttStaffDefVis; Clef deserializer missing AttEvent extraction (`tstamp`, `layer`, `staff`, `when`, `tstamp.ges`, `tstamp.real`) and AttClefVis attributes (`altsym`, `color`, `enclose`, `glyph.*`, `font*`, `visible`, `ho`, `to`, `vo`) (source: Das_Veilchen_0Parameters.mei)
 - [x] [SERIALIZER_BUG] WorkChild::ComponentList not handled in serialize_mei match - falls through to default that writes empty element; Section deserializer missing `annot` child handling; Identifier deserializer missing `annot` child handling; PgFoot deserializer missing `table` child handling (sources: group_element.mei, vivaldi_multiple_mdivs.mei, multiple_sectionsII.mei, part_element.mei)
 - [x] [MISSING_ELEMENT] Add `music` child element parsing to Group deserializer - currently skipped with comment "parser not yet available" but Music deserializer exists in misc.rs (source: group_element.mei)
-- [ ] [SERIALIZER_BUG] AnnotChild serializer incomplete - missing Ref, Ptr, and 47 other variants (only handles Text, P, Head, Rend, Name, PersName, CorpName, Date, Identifier, Lb, Title); causes annot text/ref content loss (sources: multiple_sectionsII.mei, Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
-- [ ] [SERIALIZER_BUG] PgFootChild serializer incomplete - missing Table variant (and ~50 other variants); causes table to serialize as 'unknown' (source: part_element.mei)
+- [x] [SERIALIZER_BUG] AnnotChild serializer incomplete - missing Ref, Ptr, and 47 other variants (only handles Text, P, Head, Rend, Name, PersName, CorpName, Date, Identifier, Lb, Title); causes annot text/ref content loss (sources: multiple_sectionsII.mei, Vivaldi_ViolinConcert_Op8_No1_multiple_mdivs.mei)
+- [x] [SERIALIZER_BUG] PgFootChild serializer incomplete - missing Table variant (and ~50 other variants); causes table to serialize as 'unknown' (source: part_element.mei)
 
 ---
 
