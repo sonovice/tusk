@@ -41,6 +41,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] TupletChild serializer incomplete - missing BTrem variant (and many others: FTrem, Clef, ClefGrp, BarLine, KeySig, MeterSig, MeterSigGrp, Custos, TabDurSym, TabGrp, Pad, HandShift, HalfmRpt, BeatRpt, Supplied, Subst, App, Reg, Del, Corr, Add, Restore, Choice, Unclear, Orig, Gap, Damage, Sic) (source: Schubert_Erlkoenig.mei)
 - [x] [MISSING_ELEMENT] Add `date` child element parsing to Annot deserializer in `parse_annot_from_event` (source: Schubert_Lindenbaum.mei)
 - [x] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
+- [ ] [MISSING_ELEMENT] Add `back` child element parsing to Music deserializer - currently only `body` is handled, missing `back`, `front`, `group`, `facsimile`, `genDesc`, `performance` (source: Lyrics/lyrics.mei)
 
 ---
 
@@ -130,16 +131,16 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Telemann_Suite.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Vivaldi_ViolinConcert_Op8_No2.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Weber_Arie.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Webern_Variations_for_Piano_Op27_No2.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Webern_Variations_for_Piano_Op27_No2.mei`
 
 ### Lyrics (4 files)
 
 Testing syllable and verse encoding.
 
-- [ ] Roundtrip test: `Lyrics/attribute_syl.mei`
-- [ ] Roundtrip test: `Lyrics/element_syl.mei`
+- [x] Roundtrip test: `Lyrics/attribute_syl.mei`
+- [x] Roundtrip test: `Lyrics/element_syl.mei`
 - [ ] Roundtrip test: `Lyrics/lyrics.mei`
-- [ ] Roundtrip test: `Lyrics/multiple_verses.mei`
+- [x] Roundtrip test: `Lyrics/multiple_verses.mei`
 
 ### Encoding Alternatives (6 files)
 

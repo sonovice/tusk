@@ -1055,3 +1055,51 @@ fn test_roundtrip_webern_variations_for_piano_op27_no2() {
         result.unwrap_err()
     );
 }
+
+// ============================================================================
+// Lyrics Roundtrip Tests
+// ============================================================================
+
+#[test]
+fn test_roundtrip_lyrics_attribute_syl() {
+    let path = sample_encodings_music_dir().join("Lyrics/attribute_syl.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Lyrics/attribute_syl.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_lyrics_element_syl() {
+    let path = sample_encodings_music_dir().join("Lyrics/element_syl.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Lyrics/element_syl.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_lyrics_lyrics() {
+    let path = sample_encodings_music_dir().join("Lyrics/lyrics.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Lyrics/lyrics.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+#[test]
+fn test_roundtrip_lyrics_multiple_verses() {
+    let path = sample_encodings_music_dir().join("Lyrics/multiple_verses.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Lyrics/multiple_verses.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
