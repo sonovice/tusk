@@ -19,6 +19,7 @@ mod encoding_desc;
 mod expression;
 mod manifestation;
 mod mei_head;
+mod names;
 mod pub_stmt;
 mod revision_desc;
 mod work_elements;

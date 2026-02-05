@@ -15,6 +15,7 @@ mod bibl;
 mod encoding_desc;
 mod mei_head;
 mod misc;
+mod names;
 mod pub_stmt;
 
 // Re-export all public parse functions
@@ -54,6 +55,12 @@ pub(crate) use mei_head::{
 
 pub(crate) use misc::{
     parse_annot_from_event, parse_p_from_event, parse_ptr_from_event, parse_ref_from_event,
+};
+
+pub(crate) use names::{
+    parse_add_name_from_event, parse_fam_name_from_event, parse_fore_name_from_event,
+    parse_gen_name_from_event, parse_name_link_from_event, parse_period_name_from_event,
+    parse_style_name_from_event,
 };
 
 pub(crate) use pub_stmt::{

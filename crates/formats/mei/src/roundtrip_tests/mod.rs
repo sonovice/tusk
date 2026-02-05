@@ -21,6 +21,7 @@ mod editorial;
 mod facsimile;
 mod harmony;
 mod header;
+mod names;
 mod note;
 mod structure;
 mod text_containers;

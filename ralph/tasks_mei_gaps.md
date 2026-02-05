@@ -96,8 +96,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 6.4 Name Elements
-- [ ] Implement `ForeName`, `FamName`, `AddName`, `GenName`, `NameLink`, `PeriodName`, `StyleName`
-- [ ] Add roundtrip tests
+- [x] Implement `ForeName`, `FamName`, `AddName`, `GenName`, `NameLink`, `PeriodName`, `StyleName`
+- [x] Add roundtrip tests
 
 ---
 
