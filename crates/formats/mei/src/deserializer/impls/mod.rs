@@ -18,6 +18,7 @@ use tusk_model::att::{
     AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
 };
 
+mod cmn_core;
 mod control;
 mod defs;
 mod editorial;

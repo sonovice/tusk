@@ -8,6 +8,7 @@
 
 use serde::Serialize;
 
+mod cmn_core;
 mod control;
 mod defs;
 mod editorial;

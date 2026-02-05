@@ -46,8 +46,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 2.5 Core Music Elements
-- [ ] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad` and key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym` and: `Part`, `Parts`, `Ossia` and also `HarpPedal`
-- [ ] Add roundtrip tests
+- [x] Implement structural: `BarLine`, `Stem`, `ClefGrp`, `Custos`, `Pad` and key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym` and: `Part`, `Parts`, `Ossia` and also `HarpPedal`
+- [x] Add roundtrip tests
 
 ### 2.6 Missing
 - [ ] Check if any serializers or deserializers are missing for the CMN module. If so, please implement them.
