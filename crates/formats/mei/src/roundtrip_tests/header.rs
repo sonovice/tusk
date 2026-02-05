@@ -3918,3 +3918,320 @@ fn roundtrip_imprint_with_all_children() {
         panic!("Expected Imprint child");
     }
 }
+
+// ============================================================================
+// Physical Description Element Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_dimensions_empty() {
+    use tusk_model::elements::Dimensions;
+
+    let original = Dimensions::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("dimensions"), "xml should contain dimensions");
+
+    let parsed = Dimensions::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_dimensions_with_attrs() {
+    use tusk_model::att::AttMeasurementUnit;
+    use tusk_model::elements::Dimensions;
+
+    let mut original = Dimensions::default();
+    original.common.xml_id = Some("dims1".to_string());
+    original.measurement.unit = Some(AttMeasurementUnit::Mm);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("xml:id=\"dims1\""), "should have id: {}", xml);
+    assert!(xml.contains("unit=\"mm\""), "should have unit: {}", xml);
+
+    let parsed = Dimensions::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("dims1".to_string()));
+    assert_eq!(parsed.measurement.unit, Some(AttMeasurementUnit::Mm));
+}
+
+#[test]
+fn roundtrip_dimensions_with_children() {
+    use tusk_model::elements::{Depth, Dimensions, DimensionsChild, Height, Width};
+
+    let mut original = Dimensions::default();
+    original.common.xml_id = Some("dims2".to_string());
+
+    let mut height = Height::default();
+    height.common.xml_id = Some("h1".to_string());
+    original
+        .children
+        .push(DimensionsChild::Height(Box::new(height)));
+
+    let mut width = Width::default();
+    width.common.xml_id = Some("w1".to_string());
+    original
+        .children
+        .push(DimensionsChild::Width(Box::new(width)));
+
+    let mut depth = Depth::default();
+    depth.common.xml_id = Some("d1".to_string());
+    original
+        .children
+        .push(DimensionsChild::Depth(Box::new(depth)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("height"), "should have height: {}", xml);
+    assert!(xml.contains("width"), "should have width: {}", xml);
+    assert!(xml.contains("depth"), "should have depth: {}", xml);
+
+    let parsed = Dimensions::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 3);
+}
+
+#[test]
+fn roundtrip_height_with_quantity() {
+    use tusk_model::att::AttQuantityUnit;
+    use tusk_model::elements::Height;
+
+    let mut original = Height::default();
+    original.common.xml_id = Some("height1".to_string());
+    original.quantity.quantity = Some(250.0);
+    original.quantity.unit = Some(AttQuantityUnit::Mm);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("quantity=\"250\""),
+        "should have quantity: {}",
+        xml
+    );
+    assert!(xml.contains("unit=\"mm\""), "should have unit: {}", xml);
+
+    let parsed = Height::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("height1".to_string()));
+    assert_eq!(parsed.quantity.quantity, Some(250.0));
+    assert_eq!(parsed.quantity.unit, Some(AttQuantityUnit::Mm));
+}
+
+#[test]
+fn roundtrip_width_with_quantity() {
+    use tusk_model::elements::Width;
+
+    let mut original = Width::default();
+    original.common.xml_id = Some("width1".to_string());
+    original.quantity.quantity = Some(180.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("quantity=\"180\""),
+        "should have quantity: {}",
+        xml
+    );
+
+    let parsed = Width::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.quantity.quantity, Some(180.0));
+}
+
+#[test]
+fn roundtrip_depth_with_quantity() {
+    use tusk_model::elements::Depth;
+
+    let mut original = Depth::default();
+    original.common.xml_id = Some("depth1".to_string());
+    original.quantity.quantity = Some(50.0);
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("quantity=\"50\""),
+        "should have quantity: {}",
+        xml
+    );
+
+    let parsed = Depth::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.quantity.quantity, Some(50.0));
+}
+
+#[test]
+fn roundtrip_dim_with_text() {
+    use tusk_model::elements::{Dim, DimChild};
+
+    let mut original = Dim::default();
+    original.common.xml_id = Some("dim1".to_string());
+    original.form = Some("folio".to_string());
+    original
+        .children
+        .push(DimChild::Text("12 folios".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("form=\"folio\""), "should have form: {}", xml);
+    assert!(xml.contains("12 folios"), "should have text: {}", xml);
+
+    let parsed = Dim::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.form, Some("folio".to_string()));
+    assert!(
+        parsed
+            .children
+            .iter()
+            .any(|c| matches!(c, DimChild::Text(t) if t.contains("12 folios")))
+    );
+}
+
+#[test]
+fn roundtrip_support_empty() {
+    use tusk_model::elements::Support;
+
+    let original = Support::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("support"), "xml should contain support");
+
+    let parsed = Support::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+}
+
+#[test]
+fn roundtrip_support_with_children() {
+    use tusk_model::elements::{Condition, Dimensions, P, PChild, Support, SupportChild};
+
+    let mut original = Support::default();
+    original.common.xml_id = Some("sup1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text("Parchment".to_string()));
+    original.children.push(SupportChild::P(Box::new(p)));
+
+    let dims = Dimensions::default();
+    original
+        .children
+        .push(SupportChild::Dimensions(Box::new(dims)));
+
+    let cond = Condition::default();
+    original
+        .children
+        .push(SupportChild::Condition(Box::new(cond)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("<p>"), "should have p: {}", xml);
+    assert!(xml.contains("Parchment"), "should have text: {}", xml);
+    assert!(
+        xml.contains("dimensions"),
+        "should have dimensions: {}",
+        xml
+    );
+    assert!(xml.contains("condition"), "should have condition: {}", xml);
+
+    let parsed = Support::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 3);
+}
+
+#[test]
+fn roundtrip_support_desc_with_material() {
+    use tusk_model::elements::{Support, SupportDesc, SupportDescChild};
+
+    let mut original = SupportDesc::default();
+    original.common.xml_id = Some("supdesc1".to_string());
+    original.material = Some("parchment".to_string());
+
+    let support = Support::default();
+    original
+        .children
+        .push(SupportDescChild::Support(Box::new(support)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("supportDesc"),
+        "xml should contain supportDesc: {}",
+        xml
+    );
+    assert!(
+        xml.contains("material=\"parchment\""),
+        "should have material: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<support"),
+        "should have support child: {}",
+        xml
+    );
+
+    let parsed = SupportDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.material, Some("parchment".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_collation_with_text() {
+    use tusk_model::elements::{Collation, CollationChild, P, PChild};
+
+    let mut original = Collation::default();
+    original.common.xml_id = Some("coll1".to_string());
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("8 quires of 8 leaves".to_string()));
+    original.children.push(CollationChild::P(Box::new(p)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("collation"),
+        "xml should contain collation: {}",
+        xml
+    );
+    assert!(xml.contains("8 quires"), "should have text: {}", xml);
+
+    let parsed = Collation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("coll1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_foliation_with_text() {
+    use tusk_model::elements::{Foliation, FoliationChild, P, PChild};
+
+    let mut original = Foliation::default();
+    original.common.xml_id = Some("fol1".to_string());
+
+    let mut p = P::default();
+    p.children
+        .push(PChild::Text("Modern foliation 1-64".to_string()));
+    original.children.push(FoliationChild::P(Box::new(p)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("foliation"),
+        "xml should contain foliation: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Modern foliation"),
+        "should have text: {}",
+        xml
+    );
+
+    let parsed = Foliation::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("fol1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}
+
+#[test]
+fn roundtrip_condition_with_text() {
+    use tusk_model::elements::{Condition, ConditionChild, P, PChild};
+
+    let mut original = Condition::default();
+    original.common.xml_id = Some("cond1".to_string());
+
+    let mut p = P::default();
+    p.children.push(PChild::Text(
+        "Good condition with minor water damage".to_string(),
+    ));
+    original.children.push(ConditionChild::P(Box::new(p)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("condition"),
+        "xml should contain condition: {}",
+        xml
+    );
+    assert!(xml.contains("water damage"), "should have text: {}", xml);
+
+    let parsed = Condition::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cond1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+}

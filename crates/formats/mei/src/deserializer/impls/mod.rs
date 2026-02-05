@@ -13,9 +13,10 @@ use tusk_model::att::{
     AttAccidental, AttAuthorized, AttBasic, AttBibl, AttCalendared, AttClassed, AttCommon,
     AttComponentType, AttDataPointing, AttDatable, AttEdit, AttEvidence, AttFacsimile, AttFiling,
     AttFoliationScheme, AttFormework, AttInternetMedia, AttKeyMode, AttLabelled, AttLang,
-    AttLinking, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing, AttMeterSigLog,
-    AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch, AttPointing,
-    AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped, AttWhitespace, AttXy,
+    AttLinking, AttMeasurement, AttMeiVersion, AttMensurLog, AttMensurVis, AttMetadataPointing,
+    AttMeterSigLog, AttNInteger, AttNNumberLike, AttName, AttPerfRes, AttPerfResBasic, AttPitch,
+    AttPointing, AttQuantity, AttRecordType, AttResponsibility, AttTargetEval, AttTyped,
+    AttWhitespace, AttXy,
 };
 
 mod analysis;
@@ -406,6 +407,13 @@ impl ExtractAttributes for AttQuantity {
         extract_attr!(attrs, "max", self.max);
         extract_attr!(attrs, "confidence", self.confidence);
         extract_attr!(attrs, "quantity", self.quantity);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttMeasurement {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "unit", self.unit);
         Ok(())
     }
 }

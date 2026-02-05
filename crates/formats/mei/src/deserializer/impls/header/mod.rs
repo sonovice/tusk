@@ -8,6 +8,7 @@
 //! - `agents`: Agent/contributor elements (Creator, Editor, RespStmt, PersName, CorpName, etc.)
 //! - `address`: Address-related elements (Address, AddrLine, GeogName, etc.)
 //! - `misc`: Shared mixed-content elements (P, Ptr, Ref, Annot)
+//! - `phys_desc`: Physical description elements (Dimensions, Height, Width, etc.)
 
 mod address;
 mod agents;
@@ -16,6 +17,7 @@ mod encoding_desc;
 mod mei_head;
 mod misc;
 mod names;
+mod phys_desc;
 mod pub_stmt;
 
 // Re-export all public parse functions
@@ -68,6 +70,13 @@ pub(crate) use pub_stmt::{
     parse_distributor_from_event, parse_identifier_from_event, parse_price_from_event,
     parse_pub_place_from_event, parse_pub_stmt_from_event, parse_publisher_from_event,
     parse_sys_req_from_event, parse_unpub_from_event, parse_use_restrict_from_event,
+};
+
+pub(crate) use phys_desc::{
+    parse_collation_from_event, parse_condition_from_event, parse_depth_from_event,
+    parse_dim_from_event, parse_dimensions_from_event, parse_foliation_from_event,
+    parse_height_from_event, parse_support_desc_from_event, parse_support_from_event,
+    parse_width_from_event,
 };
 
 #[cfg(test)]
