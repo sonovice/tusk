@@ -106,7 +106,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] PgHeadChild::AnchoredText not serialized - element_name returns "unknown" instead of "anchoredText", missing from match arms (source: Beethoven_Song_Op98.mei)
 - [x] [DESERIALIZER_BUG] Measure: mordent element not parsed - missing handler in match, mordent control events skipped instead of deserialized (source: Beethoven_StringQuartet_Op18_No1.mei)
 - [x] [DESERIALIZER_BUG] PerfMedium: castList element not parsed - skipped instead of deserialized (source: Berlioz_Symphony_Op25.mei)
-- [ ] [DESERIALIZER_BUG] Tempo: rend child not parsed - losing styled text like `<rend fontsize="6.9pt" fontweight="bold">A</rend>` (source: Berlioz_Symphony_Op25.mei)
+- [x] [DESERIALIZER_BUG] Tempo: rend child not parsed - losing styled text like `<rend fontsize="6.9pt" fontweight="bold">A</rend>` (source: Berlioz_Symphony_Op25.mei)
 - [ ] [DESERIALIZER_BUG] Measure: reh (rehearsal mark) element not parsed - missing handler in match (source: Berlioz_Symphony_Op25.mei)
 
 ---

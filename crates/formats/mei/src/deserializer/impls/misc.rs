@@ -11,8 +11,8 @@ use super::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, extract_attr,
     from_attr_string, parse_bibl_from_event, parse_bibl_struct_from_event, parse_clef_from_event,
     parse_date_from_event, parse_deprecated_creator_from_event, parse_head_from_event,
-    parse_identifier_from_event, parse_label_from_event, parse_p_from_event,
-    parse_resp_stmt_from_event, parse_title_from_event,
+    parse_identifier_from_event, parse_label_from_event, parse_lb_from_event, parse_p_from_event,
+    parse_rend_from_event, parse_resp_stmt_from_event, parse_title_from_event,
 };
 use crate::deserializer::MixedContent;
 use std::io::BufRead;
@@ -29,8 +29,8 @@ use tusk_model::elements::{
     OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
     PerfResListChild, PhysDesc, PhysDescChild, PlateNum, PlateNumChild, RelationList,
     RelationListChild, RevisionDesc, RevisionDescChild, RoleDesc, RoleDescChild, Score,
-    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
-    Work, WorkChild, WorkList, WorkListChild,
+    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, TempoChild, Term, TermChild, TermList,
+    TermListChild, Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -2076,13 +2076,84 @@ fn parse_tempo_from_event<R: BufRead>(
     tempo.tempo_log.extract_attributes(&mut attrs)?;
     tempo.tempo_vis.extract_attributes(&mut attrs)?;
 
-    // Parse text content if not empty
+    // Parse mixed content (text and child elements)
     if !is_empty {
-        if let Some(text) = reader.read_text_until_end("tempo")? {
-            if !text.trim().is_empty() {
-                tempo
-                    .children
-                    .push(tusk_model::elements::TempoChild::Text(text));
+        while let Some(content) = reader.read_next_mixed_content("tempo")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        tempo.children.push(TempoChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            tempo.children.push(TempoChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            tempo.children.push(TempoChild::Lb(Box::new(lb)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            tempo.children.push(TempoChild::Ref(Box::new(ref_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            tempo
+                                .children
+                                .push(TempoChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            tempo
+                                .children
+                                .push(TempoChild::CorpName(Box::new(corp_name)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            tempo.children.push(TempoChild::Name(Box::new(name_elem)));
+                        }
+                        "date" => {
+                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                            tempo.children.push(TempoChild::Date(Box::new(date)));
+                        }
+                        "title" => {
+                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                            tempo.children.push(TempoChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier =
+                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            tempo
+                                .children
+                                .push(TempoChild::Identifier(Box::new(identifier)));
+                        }
+                        // Skip unknown child elements
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

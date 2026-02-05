@@ -845,6 +845,8 @@ impl MeiDeserialize for Tempo {
         mut attrs: AttributeMap,
         is_empty: bool,
     ) -> DeserializeResult<Self> {
+        use tusk_model::elements::TempoChild;
+
         let mut tempo = Tempo::default();
 
         // Extract attributes into each attribute class
@@ -859,15 +861,97 @@ impl MeiDeserialize for Tempo {
 
         // Remaining attributes are unknown - in lenient mode we ignore them
 
-        // Parse text content if not empty
+        // Parse mixed content (text and child elements)
         if !is_empty {
-            // tempo can contain text and various child elements
-            // For now, we collect text content as TempoChild::Text
-            if let Some(text) = reader.read_text_until_end("tempo")? {
-                if !text.trim().is_empty() {
-                    tempo
-                        .children
-                        .push(tusk_model::elements::TempoChild::Text(text));
+            while let Some(content) = reader.read_next_mixed_content("tempo")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        if !text.is_empty() {
+                            tempo.children.push(TempoChild::Text(text));
+                        }
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => {
+                        match name.as_str() {
+                            "rend" => {
+                                let rend =
+                                    super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                tempo.children.push(TempoChild::Rend(Box::new(rend)));
+                            }
+                            "lb" => {
+                                let lb =
+                                    super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                tempo.children.push(TempoChild::Lb(Box::new(lb)));
+                            }
+                            "ref" => {
+                                let ref_elem = super::header::parse_ref_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo.children.push(TempoChild::Ref(Box::new(ref_elem)));
+                            }
+                            "persName" => {
+                                let pers_name = super::header::parse_pers_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo
+                                    .children
+                                    .push(TempoChild::PersName(Box::new(pers_name)));
+                            }
+                            "corpName" => {
+                                let corp_name = super::header::parse_corp_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo
+                                    .children
+                                    .push(TempoChild::CorpName(Box::new(corp_name)));
+                            }
+                            "name" => {
+                                let name_elem = super::header::parse_name_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo.children.push(TempoChild::Name(Box::new(name_elem)));
+                            }
+                            "date" => {
+                                let date = super::header::parse_date_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo.children.push(TempoChild::Date(Box::new(date)));
+                            }
+                            "title" => {
+                                let title = super::header::parse_title_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo.children.push(TempoChild::Title(Box::new(title)));
+                            }
+                            "identifier" => {
+                                let identifier = super::header::parse_identifier_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
+                                tempo
+                                    .children
+                                    .push(TempoChild::Identifier(Box::new(identifier)));
+                            }
+                            // Skip unknown child elements
+                            _ => {
+                                if !child_empty {
+                                    reader.skip_to_end(&name)?;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -3286,6 +3370,61 @@ mod tests {
 
         assert!(tempo.tempo_vis.lform.is_some());
         assert!(tempo.tempo_vis.lwidth.is_some());
+    }
+
+    #[test]
+    fn tempo_deserializes_rend_child() {
+        use tusk_model::elements::{Tempo, TempoChild};
+
+        let xml = r#"<tempo><rend fontsize="6.9pt" fontweight="bold">A</rend></tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.children.len(), 1);
+        match &tempo.children[0] {
+            TempoChild::Rend(rend) => {
+                assert!(rend.typography.fontsize.is_some());
+                assert!(rend.typography.fontweight.is_some());
+                assert_eq!(rend.children.len(), 1);
+            }
+            _ => panic!("Expected Rend child, got {:?}", tempo.children[0]),
+        }
+    }
+
+    #[test]
+    fn tempo_deserializes_mixed_text_and_rend_children() {
+        use tusk_model::elements::{Tempo, TempoChild};
+
+        let xml = r#"<tempo>Text before <rend fontweight="bold">bold</rend> text after</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(tempo.children.len(), 3);
+        match &tempo.children[0] {
+            TempoChild::Text(text) => assert_eq!(text.trim(), "Text before"),
+            _ => panic!("Expected Text child"),
+        }
+        match &tempo.children[1] {
+            TempoChild::Rend(_) => {}
+            _ => panic!("Expected Rend child"),
+        }
+        match &tempo.children[2] {
+            TempoChild::Text(text) => assert_eq!(text.trim(), "text after"),
+            _ => panic!("Expected Text child"),
+        }
+    }
+
+    #[test]
+    fn tempo_deserializes_lb_child() {
+        use tusk_model::elements::{Tempo, TempoChild};
+
+        let xml = r#"<tempo>Tempo<lb/>marking</tempo>"#;
+        let tempo = Tempo::from_mei_str(xml).expect("should deserialize");
+
+        assert!(tempo.children.len() >= 2);
+        let has_lb = tempo
+            .children
+            .iter()
+            .any(|c| matches!(c, TempoChild::Lb(_)));
+        assert!(has_lb, "Expected Lb child element");
     }
 
     // ============================================================================
