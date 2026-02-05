@@ -218,7 +218,6 @@ impl MeiSerialize for Fermata {
 // Breath attribute class implementations
 // ============================================================================
 
-
 impl CollectAttributes for AttBreathLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
@@ -307,7 +306,6 @@ impl MeiSerialize for Breath {
 // ============================================================================
 // Caesura attribute class implementations
 // ============================================================================
-
 
 impl CollectAttributes for AttCaesuraLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
@@ -398,4 +396,3 @@ impl MeiSerialize for Caesura {
         Ok(())
     }
 }
-

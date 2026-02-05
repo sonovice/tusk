@@ -237,7 +237,6 @@ impl MeiSerialize for Mordent {
 // Turn attribute class implementations
 // ============================================================================
 
-
 impl CollectAttributes for AttTurnLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
@@ -328,4 +327,3 @@ impl MeiSerialize for Turn {
         Ok(())
     }
 }
-

@@ -37,11 +37,12 @@ CRITICAL: Do ONE task per iteration. Pick the FIRST unchecked '- [ ]' task, comp
    - Look at attribute classes the element uses
    - Follow existing patterns for similar elements
 4. Add roundtrip tests in \`crates/formats/mei/src/roundtrip_tests/\`
-5. Run \`cargo fmt\` and \`cargo clippy\`.
-6. Run \`cargo test -p tusk-mei\` to verify tests pass.
-7. Mark completed task as done: '- [ ]' → '- [x]'
-8. Commit changes with detailed message.
-9. STOP. Do not continue to next task. The next iteration handles the next task.
+5. Check if any of the modified files exceeds 2000 lines of code via \`wc -l\`. If so, split it into multiple files.
+6. Run \`cargo fmt\` and \`cargo clippy\`.
+7. Run \`cargo test -p tusk-mei\` to verify tests pass.
+8. Mark completed task as done: '- [ ]' → '- [x]'
+9. Commit changes with detailed message.
+10. STOP. Do not continue to next task. The next iteration handles the next task.
 
 # IMPLEMENTATION PATTERNS
 

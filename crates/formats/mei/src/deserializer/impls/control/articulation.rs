@@ -218,7 +218,6 @@ impl MeiDeserialize for Fermata {
 // Breath attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttBreathLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -311,7 +310,6 @@ impl MeiDeserialize for Breath {
 // ============================================================================
 // Caesura attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttCaesuraLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -406,4 +404,3 @@ impl MeiDeserialize for Caesura {
         Ok(caesura)
     }
 }
-

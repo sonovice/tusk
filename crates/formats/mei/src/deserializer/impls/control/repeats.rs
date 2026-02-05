@@ -9,13 +9,13 @@ use tusk_model::att::{
     AttBeatRptAnl, AttBeatRptGes, AttBeatRptLog, AttBeatRptVis, AttHalfmRptAnl, AttHalfmRptGes,
     AttHalfmRptLog, AttHalfmRptVis, AttMNumAnl, AttMNumGes, AttMNumLog, AttMNumVis, AttMRpt2Anl,
     AttMRpt2Ges, AttMRpt2Log, AttMRpt2Vis, AttMRptAnl, AttMRptGes, AttMRptLog, AttMRptVis,
-    AttMSpaceAnl, AttMSpaceGes, AttMSpaceLog, AttMSpaceVis, AttMultiRptAnl, AttMultiRptGes,
-    AttMultiRptLog, AttMultiRptVis, AttMultiRestAnl, AttMultiRestGes, AttMultiRestLog,
-    AttMultiRestVis, AttRepeatMarkAnl, AttRepeatMarkGes, AttRepeatMarkLog,
-    AttRepeatMarkVis, AttVoltaAnl, AttVoltaGes, AttVoltaLog, AttVoltaVis,
+    AttMSpaceAnl, AttMSpaceGes, AttMSpaceLog, AttMSpaceVis, AttMultiRestAnl, AttMultiRestGes,
+    AttMultiRestLog, AttMultiRestVis, AttMultiRptAnl, AttMultiRptGes, AttMultiRptLog,
+    AttMultiRptVis, AttRepeatMarkAnl, AttRepeatMarkGes, AttRepeatMarkLog, AttRepeatMarkVis,
+    AttVoltaAnl, AttVoltaGes, AttVoltaLog, AttVoltaVis,
 };
 use tusk_model::elements::{
-    BeatRpt, HalfmRpt, MNum, MNumChild, MRpt, MRpt2, MSpace, MultiRpt, MultiRest, RepeatMark,
+    BeatRpt, HalfmRpt, MNum, MNumChild, MRpt, MRpt2, MSpace, MultiRest, MultiRpt, RepeatMark,
     RepeatMarkChild, Volta, VoltaChild,
 };
 
@@ -24,7 +24,6 @@ use super::super::{extract_attr, from_attr_string};
 // ============================================================================
 // RepeatMark attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttRepeatMarkLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -139,8 +138,11 @@ impl MeiDeserialize for RepeatMark {
                                 .push(RepeatMarkChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb =
-                                super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::text::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             repeat_mark.children.push(RepeatMarkChild::Lb(Box::new(lb)));
                         }
                         _ => {
@@ -161,7 +163,6 @@ impl MeiDeserialize for RepeatMark {
 // ============================================================================
 // Volta attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttVoltaLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -233,8 +234,11 @@ impl MeiDeserialize for Volta {
             {
                 match name.as_str() {
                     "lb" => {
-                        let lb =
-                            super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        let lb = super::super::text::parse_lb_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
                         volta.children.push(VoltaChild::Lb(Box::new(lb)));
                     }
                     _ => {
@@ -254,7 +258,6 @@ impl MeiDeserialize for Volta {
 // ============================================================================
 // MRpt attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttMRptLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -340,7 +343,6 @@ impl MeiDeserialize for MRpt {
 // MRpt2 attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttMRpt2Log {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -421,7 +423,6 @@ impl MeiDeserialize for MRpt2 {
 // ============================================================================
 // BeatRpt attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttBeatRptLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -507,7 +508,6 @@ impl MeiDeserialize for BeatRpt {
 // ============================================================================
 // HalfmRpt attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttHalfmRptLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -598,7 +598,6 @@ impl MeiDeserialize for HalfmRpt {
 // MultiRpt attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttMultiRptLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -680,7 +679,6 @@ impl MeiDeserialize for MultiRpt {
 // ============================================================================
 // MultiRest attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttMultiRestLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -775,7 +773,6 @@ impl MeiDeserialize for MultiRest {
 // MSpace attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttMSpaceLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "dur", vec self.dur);
@@ -850,7 +847,6 @@ impl MeiDeserialize for MSpace {
 // ============================================================================
 // MNum attribute class implementations
 // ============================================================================
-
 
 impl ExtractAttributes for AttMNumLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
@@ -934,8 +930,11 @@ impl MeiDeserialize for MNum {
                             m_num.children.push(MNumChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb =
-                                super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::text::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             m_num.children.push(MNumChild::Lb(Box::new(lb)));
                         }
                         _ => {
@@ -952,4 +951,3 @@ impl MeiDeserialize for MNum {
         Ok(m_num)
     }
 }
-

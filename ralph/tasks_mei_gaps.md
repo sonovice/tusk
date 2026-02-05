@@ -50,8 +50,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 2.6 Missing
-- [ ] Check if any serializers or deserializers are missing for the CMN module. If so, please implement them.
-- [ ] Make sure all tests pass.
+- [x] Check if any serializers or deserializers are missing for the CMN module. If so, please implement them.
+- [x] Make sure all tests pass.
 
 ---
 

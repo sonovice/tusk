@@ -16,7 +16,6 @@ use super::super::{extract_attr, from_attr_string};
 // Reh (rehearsal mark) attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttRehLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -105,8 +104,11 @@ impl MeiDeserialize for Reh {
                             reh.children.push(RehChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb =
-                                super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::text::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             reh.children.push(RehChild::Lb(Box::new(lb)));
                         }
                         _ => {
@@ -204,15 +206,21 @@ impl MeiDeserialize for AnchoredText {
                     MixedContent::Element(name, child_attrs, child_empty) => {
                         match name.as_str() {
                             "rend" => {
-                                let rend =
-                                    super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                let rend = super::super::parse_rend_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 anchored_text
                                     .children
                                     .push(AnchoredTextChild::Rend(Box::new(rend)));
                             }
                             "lb" => {
-                                let lb =
-                                    super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                let lb = super::super::parse_lb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 anchored_text
                                     .children
                                     .push(AnchoredTextChild::Lb(Box::new(lb)));
@@ -322,4 +330,3 @@ impl MeiDeserialize for AnchoredText {
         Ok(anchored_text)
     }
 }
-

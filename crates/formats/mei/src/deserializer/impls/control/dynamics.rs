@@ -200,13 +200,19 @@ impl MeiDeserialize for Dynam {
                     MixedContent::Element(name, child_attrs, child_empty) => {
                         match name.as_str() {
                             "rend" => {
-                                let rend =
-                                    super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                let rend = super::super::parse_rend_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 dynam.children.push(DynamChild::Rend(Box::new(rend)));
                             }
                             "lb" => {
-                                let lb =
-                                    super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                let lb = super::super::parse_lb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 dynam.children.push(DynamChild::Lb(Box::new(lb)));
                             }
                             "ref" => {

@@ -16,7 +16,6 @@ use super::super::{extract_attr, from_attr_string};
 // Harm (Harmony) element deserialization
 // ============================================================================
 
-
 impl ExtractAttributes for AttHarmLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -123,13 +122,19 @@ impl MeiDeserialize for Harm {
                                 harm.children.push(HarmChild::Fb(Box::new(fb)));
                             }
                             "rend" => {
-                                let rend =
-                                    super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                let rend = super::super::parse_rend_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 harm.children.push(HarmChild::Rend(Box::new(rend)));
                             }
                             "lb" => {
-                                let lb =
-                                    super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                let lb = super::super::parse_lb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 harm.children.push(HarmChild::Lb(Box::new(lb)));
                             }
                             "ref" => {
@@ -291,11 +296,13 @@ pub fn parse_f_from_event<R: BufRead>(
                         f.children.push(FChild::Symbol(Box::new(symbol)));
                     }
                     "rend" => {
-                        let rend = super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        let rend =
+                            super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
                         f.children.push(FChild::Rend(Box::new(rend)));
                     }
                     "lb" => {
-                        let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        let lb =
+                            super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
                         f.children.push(FChild::Lb(Box::new(lb)));
                     }
                     _ => {
@@ -385,4 +392,3 @@ pub fn parse_symbol_from_event<R: BufRead>(
 
     Ok(symbol)
 }
-

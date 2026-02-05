@@ -7,13 +7,13 @@ use tusk_model::att::{
     AttBeatRptAnl, AttBeatRptGes, AttBeatRptLog, AttBeatRptVis, AttHalfmRptAnl, AttHalfmRptGes,
     AttHalfmRptLog, AttHalfmRptVis, AttMNumAnl, AttMNumGes, AttMNumLog, AttMNumVis, AttMRpt2Anl,
     AttMRpt2Ges, AttMRpt2Log, AttMRpt2Vis, AttMRptAnl, AttMRptGes, AttMRptLog, AttMRptVis,
-    AttMSpaceAnl, AttMSpaceGes, AttMSpaceLog, AttMSpaceVis, AttMultiRptAnl, AttMultiRptGes,
-    AttMultiRptLog, AttMultiRptVis, AttMultiRestAnl, AttMultiRestGes, AttMultiRestLog,
-    AttMultiRestVis, AttRepeatMarkAnl, AttRepeatMarkGes, AttRepeatMarkLog, AttRepeatMarkVis,
+    AttMSpaceAnl, AttMSpaceGes, AttMSpaceLog, AttMSpaceVis, AttMultiRestAnl, AttMultiRestGes,
+    AttMultiRestLog, AttMultiRestVis, AttMultiRptAnl, AttMultiRptGes, AttMultiRptLog,
+    AttMultiRptVis, AttRepeatMarkAnl, AttRepeatMarkGes, AttRepeatMarkLog, AttRepeatMarkVis,
     AttVoltaAnl, AttVoltaGes, AttVoltaLog, AttVoltaVis,
 };
 use tusk_model::elements::{
-    BeatRpt, HalfmRpt, MNum, MNumChild, MRpt, MRpt2, MSpace, MultiRpt, MultiRest, RepeatMark,
+    BeatRpt, HalfmRpt, MNum, MNumChild, MRpt, MRpt2, MSpace, MultiRest, MultiRpt, RepeatMark,
     RepeatMarkChild, Volta, VoltaChild,
 };
 

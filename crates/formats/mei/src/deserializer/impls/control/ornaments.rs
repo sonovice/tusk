@@ -231,7 +231,6 @@ impl MeiDeserialize for Mordent {
 // Turn attribute class implementations
 // ============================================================================
 
-
 impl ExtractAttributes for AttTurnLog {
     fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
         extract_attr!(attrs, "when", self.when);
@@ -328,4 +327,3 @@ impl MeiDeserialize for Turn {
         Ok(turn)
     }
 }
-

@@ -207,4 +207,3 @@ impl MeiSerialize for TupletSpan {
         Ok(())
     }
 }
-

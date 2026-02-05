@@ -184,13 +184,19 @@ impl MeiDeserialize for Dir {
                     MixedContent::Element(name, child_attrs, child_empty) => {
                         match name.as_str() {
                             "rend" => {
-                                let rend =
-                                    super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                let rend = super::super::parse_rend_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 dir.children.push(DirChild::Rend(Box::new(rend)));
                             }
                             "lb" => {
-                                let lb =
-                                    super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                let lb = super::super::parse_lb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 dir.children.push(DirChild::Lb(Box::new(lb)));
                             }
                             "ref" => {
@@ -304,13 +310,19 @@ impl MeiDeserialize for Tempo {
                     MixedContent::Element(name, child_attrs, child_empty) => {
                         match name.as_str() {
                             "rend" => {
-                                let rend =
-                                    super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                                let rend = super::super::parse_rend_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 tempo.children.push(TempoChild::Rend(Box::new(rend)));
                             }
                             "lb" => {
-                                let lb =
-                                    super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                                let lb = super::super::parse_lb_from_event(
+                                    reader,
+                                    child_attrs,
+                                    child_empty,
+                                )?;
                                 tempo.children.push(TempoChild::Lb(Box::new(lb)));
                             }
                             "ref" => {

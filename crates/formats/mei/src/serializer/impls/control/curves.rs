@@ -278,7 +278,6 @@ impl MeiSerialize for TieChild {
 // Bend attribute class implementations
 // ============================================================================
 
-
 impl CollectAttributes for AttBendLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
@@ -369,4 +368,3 @@ impl MeiSerialize for Bend {
         Ok(())
     }
 }
-
