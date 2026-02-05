@@ -460,3 +460,15 @@ fn test_roundtrip_brahms_string_quartet_op51_no1() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_brahms_wie_melodien_zieht_es_mir() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Brahms_WieMelodienZiehtEsMir.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Brahms_WieMelodienZiehtEsMir.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
