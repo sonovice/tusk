@@ -22,6 +22,7 @@ mod expression;
 mod layout_hand;
 mod manifestation;
 mod mei_head;
+mod misc_header;
 mod names;
 mod phys_desc;
 mod provenance;

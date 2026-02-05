@@ -19,6 +19,7 @@ mod encoding_desc;
 mod layout_hand;
 mod mei_head;
 mod misc;
+mod misc_header;
 mod names;
 pub(crate) mod phys_desc;
 mod provenance;
@@ -116,6 +117,13 @@ pub(crate) use relations::{
     parse_component_list_from_event, parse_item_from_event, parse_item_list_from_event,
     parse_phys_loc_from_event, parse_related_item_from_event, parse_relation_from_event,
     parse_relation_list_from_event, parse_repository_from_event,
+};
+
+pub(crate) use misc_header::{
+    parse_audience_from_event, parse_genre_from_event, parse_heraldry_from_event,
+    parse_inscription_from_event, parse_pg_desc_from_event, parse_recipient_from_event,
+    parse_sec_folio_from_event, parse_spec_repro_from_event, parse_text_lang_from_event,
+    parse_treat_hist_from_event, parse_treat_sched_from_event,
 };
 
 #[cfg(test)]

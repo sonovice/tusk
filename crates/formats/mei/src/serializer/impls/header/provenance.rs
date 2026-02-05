@@ -108,8 +108,8 @@ impl MeiSerialize for ProvenanceChild {
             ProvenanceChild::PostCode(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Street(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Repository(elem) => elem.serialize_mei(writer),
-            ProvenanceChild::Heraldry(_) => Ok(()), // Not yet implemented
-            ProvenanceChild::SecFolio(_) => Ok(()), // Not yet implemented
+            ProvenanceChild::Heraldry(elem) => elem.serialize_mei(writer),
+            ProvenanceChild::SecFolio(elem) => elem.serialize_mei(writer),
             ProvenanceChild::Catchwords(_) => Ok(()), // Not yet implemented
             ProvenanceChild::Signatures(_) => Ok(()), // Not yet implemented
             ProvenanceChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -216,8 +216,8 @@ impl MeiSerialize for AcquisitionChild {
             AcquisitionChild::PostCode(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Street(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Repository(elem) => elem.serialize_mei(writer),
-            AcquisitionChild::Heraldry(_) => Ok(()), // Not yet implemented
-            AcquisitionChild::SecFolio(_) => Ok(()), // Not yet implemented
+            AcquisitionChild::Heraldry(elem) => elem.serialize_mei(writer),
+            AcquisitionChild::SecFolio(elem) => elem.serialize_mei(writer),
             AcquisitionChild::Catchwords(_) => Ok(()), // Not yet implemented
             AcquisitionChild::Signatures(_) => Ok(()), // Not yet implemented
             AcquisitionChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -324,8 +324,8 @@ impl MeiSerialize for ExhibHistChild {
             ExhibHistChild::PostCode(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Street(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Repository(elem) => elem.serialize_mei(writer),
-            ExhibHistChild::Heraldry(_) => Ok(()), // Not yet implemented
-            ExhibHistChild::SecFolio(_) => Ok(()), // Not yet implemented
+            ExhibHistChild::Heraldry(elem) => elem.serialize_mei(writer),
+            ExhibHistChild::SecFolio(elem) => elem.serialize_mei(writer),
             ExhibHistChild::Catchwords(_) => Ok(()), // Not yet implemented
             ExhibHistChild::Signatures(_) => Ok(()), // Not yet implemented
             ExhibHistChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -430,8 +430,8 @@ impl MeiSerialize for AccMatChild {
             AccMatChild::PostCode(elem) => elem.serialize_mei(writer),
             AccMatChild::Street(elem) => elem.serialize_mei(writer),
             AccMatChild::Repository(elem) => elem.serialize_mei(writer),
-            AccMatChild::Heraldry(_) => Ok(()), // Not yet implemented
-            AccMatChild::SecFolio(_) => Ok(()), // Not yet implemented
+            AccMatChild::Heraldry(elem) => elem.serialize_mei(writer),
+            AccMatChild::SecFolio(elem) => elem.serialize_mei(writer),
             AccMatChild::Catchwords(_) => Ok(()), // Not yet implemented
             AccMatChild::Signatures(_) => Ok(()), // Not yet implemented
             AccMatChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -536,8 +536,8 @@ impl MeiSerialize for AddDescChild {
             AddDescChild::PostCode(elem) => elem.serialize_mei(writer),
             AddDescChild::Street(elem) => elem.serialize_mei(writer),
             AddDescChild::Repository(elem) => elem.serialize_mei(writer),
-            AddDescChild::Heraldry(_) => Ok(()), // Not yet implemented
-            AddDescChild::SecFolio(_) => Ok(()), // Not yet implemented
+            AddDescChild::Heraldry(elem) => elem.serialize_mei(writer),
+            AddDescChild::SecFolio(elem) => elem.serialize_mei(writer),
             AddDescChild::Catchwords(_) => Ok(()), // Not yet implemented
             AddDescChild::Signatures(_) => Ok(()), // Not yet implemented
             AddDescChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -627,7 +627,7 @@ impl MeiSerialize for WatermarkChild {
             WatermarkChild::Extent(elem) => elem.serialize_mei(writer),
             WatermarkChild::RelationList(elem) => elem.serialize_mei(writer),
             WatermarkChild::Relation(elem) => elem.serialize_mei(writer),
-            WatermarkChild::Heraldry(_) => Ok(()), // Not yet implemented
+            WatermarkChild::Heraldry(elem) => elem.serialize_mei(writer),
             WatermarkChild::Stack(elem) => elem.serialize_mei(writer),
         }
     }
@@ -853,8 +853,8 @@ impl MeiSerialize for TypeDescChild {
             TypeDescChild::PostCode(elem) => elem.serialize_mei(writer),
             TypeDescChild::Street(elem) => elem.serialize_mei(writer),
             TypeDescChild::Repository(elem) => elem.serialize_mei(writer),
-            TypeDescChild::Heraldry(_) => Ok(()), // Not yet implemented
-            TypeDescChild::SecFolio(_) => Ok(()), // Not yet implemented
+            TypeDescChild::Heraldry(elem) => elem.serialize_mei(writer),
+            TypeDescChild::SecFolio(elem) => elem.serialize_mei(writer),
             TypeDescChild::Catchwords(_) => Ok(()), // Not yet implemented
             TypeDescChild::Signatures(_) => Ok(()), // Not yet implemented
             TypeDescChild::Stamp(elem) => elem.serialize_mei(writer),
@@ -958,9 +958,9 @@ impl MeiSerialize for TypeNoteChild {
             TypeNoteChild::PostBox(elem) => elem.serialize_mei(writer),
             TypeNoteChild::PostCode(elem) => elem.serialize_mei(writer),
             TypeNoteChild::Street(elem) => elem.serialize_mei(writer),
-            TypeNoteChild::Repository(_) => Ok(()), // Not yet implemented
-            TypeNoteChild::Heraldry(_) => Ok(()),   // Not yet implemented
-            TypeNoteChild::SecFolio(_) => Ok(()),   // Not yet implemented
+            TypeNoteChild::Repository(elem) => elem.serialize_mei(writer),
+            TypeNoteChild::Heraldry(elem) => elem.serialize_mei(writer),
+            TypeNoteChild::SecFolio(elem) => elem.serialize_mei(writer),
             TypeNoteChild::Catchwords(_) => Ok(()), // Not yet implemented
             TypeNoteChild::Signatures(_) => Ok(()), // Not yet implemented
             TypeNoteChild::Stamp(elem) => elem.serialize_mei(writer),

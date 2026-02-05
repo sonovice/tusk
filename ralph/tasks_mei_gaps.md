@@ -173,8 +173,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add roundtrip tests
 
 ### 13.7 Miscellaneous Header
-- [ ] Implement `Genre`, `Audience`, `TextLang`, `Heraldry`, `Inscription`, `PhysLoc`, `Repository`, `SecFolio`, `SpecRepro`, `Recipient`, `PeriodName`, `TreatHist`, `TreatSched`, `PgDesc`
-- [ ] Add roundtrip tests
+- [x] Implement `Genre`, `Audience`, `TextLang`, `Heraldry`, `Inscription`, `PhysLoc`, `Repository`, `SecFolio`, `SpecRepro`, `Recipient`, `PeriodName`, `TreatHist`, `TreatSched`, `PgDesc`
+- [x] Add roundtrip tests
 
 ---
 

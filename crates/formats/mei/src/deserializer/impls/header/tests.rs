@@ -1316,3 +1316,314 @@ fn add_desc_deserializes_empty_element() {
     assert!(add_desc.common.xml_id.is_none());
     assert!(add_desc.children.is_empty());
 }
+
+// ============================================================================
+// Phase 13.7 Miscellaneous Header Elements
+// ============================================================================
+
+// ========== Genre element tests ==========
+
+#[test]
+fn genre_deserializes_empty_element() {
+    use tusk_model::elements::Genre;
+
+    let xml = r#"<genre/>"#;
+    let genre = Genre::from_mei_str(xml).expect("should deserialize");
+    assert!(genre.common.xml_id.is_none());
+    assert!(genre.children.is_empty());
+}
+
+#[test]
+fn genre_deserializes_text_content() {
+    use tusk_model::elements::{Genre, GenreChild};
+
+    let xml = r#"<genre>Sonata</genre>"#;
+    let genre = Genre::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(genre.children.len(), 1);
+    match &genre.children[0] {
+        GenreChild::Text(text) => {
+            assert_eq!(text.trim(), "Sonata");
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+#[test]
+fn genre_deserializes_with_attributes() {
+    use tusk_model::elements::Genre;
+
+    let xml = r#"<genre xml:id="g1" auth="LCGFT">Sonatas</genre>"#;
+    let genre = Genre::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(genre.common.xml_id, Some("g1".to_string()));
+    assert_eq!(genre.authorized.auth, Some("LCGFT".to_string()));
+}
+
+// ========== Audience element tests ==========
+
+#[test]
+fn audience_deserializes_empty_element() {
+    use tusk_model::elements::Audience;
+
+    let xml = r#"<audience/>"#;
+    let audience = Audience::from_mei_str(xml).expect("should deserialize");
+    assert!(audience.common.xml_id.is_none());
+    assert!(audience.children.is_empty());
+}
+
+#[test]
+fn audience_deserializes_text_content() {
+    use tusk_model::elements::{Audience, AudienceChild};
+
+    let xml = r#"<audience>Students and educators</audience>"#;
+    let audience = Audience::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(audience.children.len(), 1);
+    match &audience.children[0] {
+        AudienceChild::Text(text) => {
+            assert!(text.contains("Students"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== TextLang element tests ==========
+
+#[test]
+fn text_lang_deserializes_empty_element() {
+    use tusk_model::elements::TextLang;
+
+    let xml = r#"<textLang/>"#;
+    let text_lang = TextLang::from_mei_str(xml).expect("should deserialize");
+    assert!(text_lang.common.xml_id.is_none());
+    assert!(text_lang.children.is_empty());
+    assert!(text_lang.lang_main.is_none());
+    assert!(text_lang.lang_other.is_empty());
+}
+
+#[test]
+fn text_lang_deserializes_with_lang_attributes() {
+    use tusk_model::elements::TextLang;
+
+    let xml = r#"<textLang lang.main="deu" lang.other="ita lat">German with Italian and Latin passages</textLang>"#;
+    let text_lang = TextLang::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(text_lang.lang_main, Some("deu".to_string()));
+    assert_eq!(text_lang.lang_other.len(), 2);
+    assert!(text_lang.lang_other.contains(&"ita".to_string()));
+    assert!(text_lang.lang_other.contains(&"lat".to_string()));
+}
+
+// ========== Heraldry element tests ==========
+
+#[test]
+fn heraldry_deserializes_empty_element() {
+    use tusk_model::elements::Heraldry;
+
+    let xml = r#"<heraldry/>"#;
+    let heraldry = Heraldry::from_mei_str(xml).expect("should deserialize");
+    assert!(heraldry.common.xml_id.is_none());
+    assert!(heraldry.children.is_empty());
+}
+
+#[test]
+fn heraldry_deserializes_text_content() {
+    use tusk_model::elements::{Heraldry, HeraldryChild};
+
+    let xml = r#"<heraldry>Argent, a cross gules</heraldry>"#;
+    let heraldry = Heraldry::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(heraldry.children.len(), 1);
+    match &heraldry.children[0] {
+        HeraldryChild::Text(text) => {
+            assert!(text.contains("Argent"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== Inscription element tests ==========
+
+#[test]
+fn inscription_deserializes_empty_element() {
+    use tusk_model::elements::Inscription;
+
+    let xml = r#"<inscription/>"#;
+    let inscription = Inscription::from_mei_str(xml).expect("should deserialize");
+    assert!(inscription.common.xml_id.is_none());
+    assert!(inscription.children.is_empty());
+}
+
+#[test]
+fn inscription_deserializes_text_content() {
+    use tusk_model::elements::{Inscription, InscriptionChild};
+
+    let xml = r#"<inscription>Ex libris John Smith</inscription>"#;
+    let inscription = Inscription::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(inscription.children.len(), 1);
+    match &inscription.children[0] {
+        InscriptionChild::Text(text) => {
+            assert!(text.contains("Ex libris"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== SecFolio element tests ==========
+
+#[test]
+fn sec_folio_deserializes_empty_element() {
+    use tusk_model::elements::SecFolio;
+
+    let xml = r#"<secFolio/>"#;
+    let sec_folio = SecFolio::from_mei_str(xml).expect("should deserialize");
+    assert!(sec_folio.common.xml_id.is_none());
+    assert!(sec_folio.children.is_empty());
+}
+
+#[test]
+fn sec_folio_deserializes_text_content() {
+    use tusk_model::elements::{SecFolio, SecFolioChild};
+
+    let xml = r#"<secFolio>dominus vobiscum</secFolio>"#;
+    let sec_folio = SecFolio::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(sec_folio.children.len(), 1);
+    match &sec_folio.children[0] {
+        SecFolioChild::Text(text) => {
+            assert!(text.contains("dominus"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== SpecRepro element tests ==========
+
+#[test]
+fn spec_repro_deserializes_empty_element() {
+    use tusk_model::elements::SpecRepro;
+
+    let xml = r#"<specRepro/>"#;
+    let spec_repro = SpecRepro::from_mei_str(xml).expect("should deserialize");
+    assert!(spec_repro.common.xml_id.is_none());
+    assert!(spec_repro.children.is_empty());
+}
+
+#[test]
+fn spec_repro_deserializes_text_content() {
+    use tusk_model::elements::{SpecRepro, SpecReproChild};
+
+    let xml = r#"<specRepro>Dolby B noise reduction</specRepro>"#;
+    let spec_repro = SpecRepro::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(spec_repro.children.len(), 1);
+    match &spec_repro.children[0] {
+        SpecReproChild::Text(text) => {
+            assert!(text.contains("Dolby"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== Recipient element tests ==========
+
+#[test]
+fn recipient_deserializes_empty_element() {
+    use tusk_model::elements::Recipient;
+
+    let xml = r#"<recipient/>"#;
+    let recipient = Recipient::from_mei_str(xml).expect("should deserialize");
+    assert!(recipient.common.xml_id.is_none());
+    assert!(recipient.children.is_empty());
+}
+
+#[test]
+fn recipient_deserializes_text_content() {
+    use tusk_model::elements::{Recipient, RecipientChild};
+
+    let xml = r#"<recipient>Johann Wolfgang von Goethe</recipient>"#;
+    let recipient = Recipient::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(recipient.children.len(), 1);
+    match &recipient.children[0] {
+        RecipientChild::Text(text) => {
+            assert!(text.contains("Goethe"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== TreatHist element tests ==========
+
+#[test]
+fn treat_hist_deserializes_empty_element() {
+    use tusk_model::elements::TreatHist;
+
+    let xml = r#"<treatHist/>"#;
+    let treat_hist = TreatHist::from_mei_str(xml).expect("should deserialize");
+    assert!(treat_hist.common.xml_id.is_none());
+    assert!(treat_hist.children.is_empty());
+}
+
+#[test]
+fn treat_hist_deserializes_text_content() {
+    use tusk_model::elements::{TreatHist, TreatHistChild};
+
+    let xml = r#"<treatHist>De-acidification treatment in 1995</treatHist>"#;
+    let treat_hist = TreatHist::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(treat_hist.children.len(), 1);
+    match &treat_hist.children[0] {
+        TreatHistChild::Text(text) => {
+            assert!(text.contains("De-acidification"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== TreatSched element tests ==========
+
+#[test]
+fn treat_sched_deserializes_empty_element() {
+    use tusk_model::elements::TreatSched;
+
+    let xml = r#"<treatSched/>"#;
+    let treat_sched = TreatSched::from_mei_str(xml).expect("should deserialize");
+    assert!(treat_sched.common.xml_id.is_none());
+    assert!(treat_sched.children.is_empty());
+}
+
+#[test]
+fn treat_sched_deserializes_text_content() {
+    use tusk_model::elements::{TreatSched, TreatSchedChild};
+
+    let xml = r#"<treatSched>Scheduled for rebinding in 2025</treatSched>"#;
+    let treat_sched = TreatSched::from_mei_str(xml).expect("should deserialize");
+    assert_eq!(treat_sched.children.len(), 1);
+    match &treat_sched.children[0] {
+        TreatSchedChild::Text(text) => {
+            assert!(text.contains("rebinding"));
+        }
+        other => panic!("expected Text child, got {:?}", other),
+    }
+}
+
+// ========== PgDesc element tests ==========
+
+#[test]
+fn pg_desc_deserializes_empty_element() {
+    use tusk_model::elements::PgDesc;
+
+    let xml = r#"<pgDesc/>"#;
+    let pg_desc = PgDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(pg_desc.common.xml_id.is_none());
+    assert!(pg_desc.children.is_empty());
+}
+
+#[test]
+fn pg_desc_deserializes_with_p_child() {
+    use tusk_model::elements::{PgDesc, PgDescChild};
+
+    let xml = r#"<pgDesc>
+        <p>This page contains the title and dedication.</p>
+    </pgDesc>"#;
+    let pg_desc = PgDesc::from_mei_str(xml).expect("should deserialize");
+    assert!(
+        pg_desc
+            .children
+            .iter()
+            .any(|c| matches!(c, PgDescChild::P(_)))
+    );
+}
