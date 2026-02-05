@@ -16,9 +16,9 @@ use tusk_model::att::{
 use tusk_model::elements::{
     Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
     EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv, MRest,
-    MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh,
-    Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
-    StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
+    MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Parts, Pb, Pedal,
+    Phrase, Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff,
+    StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -965,7 +965,10 @@ impl MeiDeserialize for Mdiv {
                         let score = Score::from_mei_event(reader, child_attrs, child_empty)?;
                         mdiv.children.push(MdivChild::Score(Box::new(score)));
                     }
-                    // TODO: Add parts support when needed
+                    "parts" => {
+                        let parts = Parts::from_mei_event(reader, child_attrs, child_empty)?;
+                        mdiv.children.push(MdivChild::Parts(Box::new(parts)));
+                    }
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;

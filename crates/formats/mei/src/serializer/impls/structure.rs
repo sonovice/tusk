@@ -1414,7 +1414,7 @@ impl MeiSerialize for MdivChild {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.collect_all_attributes(),
             MdivChild::Score(score) => score.collect_all_attributes(),
-            MdivChild::Parts(_) => Vec::new(), // Parts not yet fully implemented
+            MdivChild::Parts(parts) => parts.collect_all_attributes(),
         }
     }
 
@@ -1422,7 +1422,7 @@ impl MeiSerialize for MdivChild {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.has_children(),
             MdivChild::Score(score) => score.has_children(),
-            MdivChild::Parts(_) => true,
+            MdivChild::Parts(parts) => parts.has_children(),
         }
     }
 
@@ -1430,7 +1430,7 @@ impl MeiSerialize for MdivChild {
         match self {
             MdivChild::Mdiv(mdiv) => mdiv.serialize_children(writer),
             MdivChild::Score(score) => score.serialize_children(writer),
-            MdivChild::Parts(_) => Ok(()), // Parts not yet fully implemented
+            MdivChild::Parts(parts) => parts.serialize_children(writer),
         }
     }
 }

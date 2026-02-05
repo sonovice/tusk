@@ -29,7 +29,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `syl` child element parsing to Note deserializer (source: Ives_TheCage.mei)
 - [x] [MISSING_ELEMENT] Add `sb` to Measure deserializer, `barLine` to Layer deserializer, `date` to CorpName deserializer (source: Ives_TheCage.mei)
 - [x] [SERIALIZER_BUG] Add custom `serialize_mei` impl for `HarmChild` to handle Text variant - currently outputs `<$text>D</$text>` instead of just text (source: Marney_BreakThouTheBreadOfLife.mei)
-- [ ] [MISSING_ELEMENT] Add `parts` child element parsing to Mdiv deserializer (source: McFerrin_Don't_worry.mei)
+- [x] [MISSING_ELEMENT] Add `parts` child element parsing to Mdiv deserializer (source: McFerrin_Don't_worry.mei)
 
 ---
 
