@@ -3441,6 +3441,13 @@ pub(crate) fn parse_corp_name_from_event<R: BufRead>(
                                 .children
                                 .push(CorpNameChild::Address(Box::new(addr)));
                         }
+                        "geogName" => {
+                            let geog =
+                                parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            corp_name
+                                .children
+                                .push(CorpNameChild::GeogName(Box::new(geog)));
+                        }
                         _ => {
                             // Skip unknown children in lenient mode
                             if !child_empty {

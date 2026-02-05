@@ -343,3 +343,15 @@ fn test_roundtrip_bach_js_ein_feste_burg() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_herzliebster_jesu_bwv244_46() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JS_Herzliebster_Jesu_BWV244-46.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_Herzliebster_Jesu_BWV244-46.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
