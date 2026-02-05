@@ -4,7 +4,7 @@
 
 use crate::deserializer::MeiDeserialize;
 use crate::serializer::MeiSerialize;
-use tusk_model::generated::data::{DataMidichannel, DataMidivalue};
+use tusk_model::generated::data::{DataBeat, DataMidichannel, DataMidivalue};
 
 // ============================================================================
 // Midi Tests
@@ -568,4 +568,351 @@ fn midi_roundtrip_with_multiple_control_children() {
         }
         _ => panic!("Expected Vel"),
     }
+}
+
+// ============================================================================
+// NoteOn Tests
+// ============================================================================
+
+#[test]
+fn note_on_roundtrip_empty() {
+    use tusk_model::elements::NoteOn;
+
+    let original = NoteOn::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = NoteOn::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.midi_number.num.is_none());
+}
+
+#[test]
+fn note_on_roundtrip_with_attributes() {
+    use tusk_model::elements::NoteOn;
+
+    let mut original = NoteOn::default();
+    original.common.xml_id = Some("non1".to_string());
+    original.midi_number.num = Some(DataMidivalue("60".to_string()));
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = NoteOn::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("non1".to_string()));
+    assert_eq!(
+        parsed.midi_number.num,
+        Some(DataMidivalue("60".to_string()))
+    );
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(1.0)));
+}
+
+// ============================================================================
+// NoteOff Tests
+// ============================================================================
+
+#[test]
+fn note_off_roundtrip_empty() {
+    use tusk_model::elements::NoteOff;
+
+    let original = NoteOff::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = NoteOff::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.midi_number.num.is_none());
+}
+
+#[test]
+fn note_off_roundtrip_with_attributes() {
+    use tusk_model::elements::NoteOff;
+
+    let mut original = NoteOff::default();
+    original.common.xml_id = Some("nof1".to_string());
+    original.midi_number.num = Some(DataMidivalue("60".to_string()));
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(2.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = NoteOff::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("nof1".to_string()));
+    assert_eq!(
+        parsed.midi_number.num,
+        Some(DataMidivalue("60".to_string()))
+    );
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(2.0)));
+}
+
+// ============================================================================
+// Cue Tests
+// ============================================================================
+
+#[test]
+fn cue_roundtrip_empty() {
+    use tusk_model::elements::Cue;
+
+    let original = Cue::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cue::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn cue_roundtrip_with_attributes() {
+    use tusk_model::elements::Cue;
+
+    let mut original = Cue::default();
+    original.common.xml_id = Some("cue1".to_string());
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cue::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("cue1".to_string()));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn cue_roundtrip_with_text_content() {
+    use tusk_model::elements::{Cue, CueChild};
+
+    let mut original = Cue::default();
+    original.common.xml_id = Some("cue1".to_string());
+    original
+        .children
+        .push(CueChild::Text("Verse 1".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Cue::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("cue1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        CueChild::Text(text) => assert_eq!(text, "Verse 1"),
+    }
+}
+
+// ============================================================================
+// Marker Tests
+// ============================================================================
+
+#[test]
+fn marker_roundtrip_empty() {
+    use tusk_model::elements::Marker;
+
+    let original = Marker::default();
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Marker::from_mei_str(&xml).expect("deserialize");
+
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn marker_roundtrip_with_attributes() {
+    use tusk_model::elements::Marker;
+
+    let mut original = Marker::default();
+    original.common.xml_id = Some("mrk1".to_string());
+    original.midi_event.staff = vec![1];
+    original.midi_event.tstamp = Some(DataBeat(1.0));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Marker::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("mrk1".to_string()));
+    assert_eq!(parsed.midi_event.staff, vec![1]);
+    assert_eq!(parsed.midi_event.tstamp, Some(DataBeat(1.0)));
+}
+
+#[test]
+fn marker_roundtrip_with_text_content() {
+    use tusk_model::elements::{Marker, MarkerChild};
+
+    let mut original = Marker::default();
+    original.common.xml_id = Some("mrk1".to_string());
+    original
+        .children
+        .push(MarkerChild::Text("Chorus".to_string()));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Marker::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.common.xml_id, Some("mrk1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MarkerChild::Text(text) => assert_eq!(text, "Chorus"),
+    }
+}
+
+// ============================================================================
+// Midi with new event children Tests
+// ============================================================================
+
+#[test]
+fn midi_roundtrip_with_note_on_child() {
+    use tusk_model::elements::{Midi, MidiChild, NoteOn};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut note_on = NoteOn::default();
+    note_on.common.xml_id = Some("non1".to_string());
+    note_on.midi_number.num = Some(DataMidivalue("60".to_string()));
+    original.children.push(MidiChild::NoteOn(Box::new(note_on)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::NoteOn(n) => {
+            assert_eq!(n.common.xml_id, Some("non1".to_string()));
+            assert_eq!(n.midi_number.num, Some(DataMidivalue("60".to_string())));
+        }
+        _ => panic!("Expected NoteOn child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_note_off_child() {
+    use tusk_model::elements::{Midi, MidiChild, NoteOff};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut note_off = NoteOff::default();
+    note_off.common.xml_id = Some("nof1".to_string());
+    note_off.midi_number.num = Some(DataMidivalue("60".to_string()));
+    original
+        .children
+        .push(MidiChild::NoteOff(Box::new(note_off)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::NoteOff(n) => {
+            assert_eq!(n.common.xml_id, Some("nof1".to_string()));
+            assert_eq!(n.midi_number.num, Some(DataMidivalue("60".to_string())));
+        }
+        _ => panic!("Expected NoteOff child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_cue_child() {
+    use tusk_model::elements::{Cue, CueChild, Midi, MidiChild};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut cue = Cue::default();
+    cue.common.xml_id = Some("cue1".to_string());
+    cue.children.push(CueChild::Text("Intro".to_string()));
+    original.children.push(MidiChild::Cue(Box::new(cue)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::Cue(c) => {
+            assert_eq!(c.common.xml_id, Some("cue1".to_string()));
+            assert_eq!(c.children.len(), 1);
+            match &c.children[0] {
+                CueChild::Text(text) => assert_eq!(text, "Intro"),
+            }
+        }
+        _ => panic!("Expected Cue child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_marker_child() {
+    use tusk_model::elements::{Marker, MarkerChild, Midi, MidiChild};
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    let mut marker = Marker::default();
+    marker.common.xml_id = Some("mrk1".to_string());
+    marker
+        .children
+        .push(MarkerChild::Text("Bridge".to_string()));
+    original.children.push(MidiChild::Marker(Box::new(marker)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 1);
+    match &parsed.children[0] {
+        MidiChild::Marker(m) => {
+            assert_eq!(m.common.xml_id, Some("mrk1".to_string()));
+            assert_eq!(m.children.len(), 1);
+            match &m.children[0] {
+                MarkerChild::Text(text) => assert_eq!(text, "Bridge"),
+            }
+        }
+        _ => panic!("Expected Marker child"),
+    }
+}
+
+#[test]
+fn midi_roundtrip_with_mixed_event_children() {
+    use tusk_model::elements::{
+        Cue, CueChild, Marker, MarkerChild, Midi, MidiChild, NoteOff, NoteOn, Prog,
+    };
+
+    let mut original = Midi::default();
+    original.common.xml_id = Some("midi1".to_string());
+
+    // Add prog
+    let mut prog = Prog::default();
+    prog.midi_number.num = Some(DataMidivalue("1".to_string()));
+    original.children.push(MidiChild::Prog(Box::new(prog)));
+
+    // Add noteOn
+    let mut note_on = NoteOn::default();
+    note_on.midi_number.num = Some(DataMidivalue("60".to_string()));
+    note_on.midi_event.tstamp = Some(DataBeat(1.0));
+    original.children.push(MidiChild::NoteOn(Box::new(note_on)));
+
+    // Add noteOff
+    let mut note_off = NoteOff::default();
+    note_off.midi_number.num = Some(DataMidivalue("60".to_string()));
+    note_off.midi_event.tstamp = Some(DataBeat(2.0));
+    original
+        .children
+        .push(MidiChild::NoteOff(Box::new(note_off)));
+
+    // Add cue
+    let mut cue = Cue::default();
+    cue.children.push(CueChild::Text("Verse".to_string()));
+    original.children.push(MidiChild::Cue(Box::new(cue)));
+
+    // Add marker
+    let mut marker = Marker::default();
+    marker
+        .children
+        .push(MarkerChild::Text("Chorus".to_string()));
+    original.children.push(MidiChild::Marker(Box::new(marker)));
+
+    let xml = original.to_mei_string().expect("serialize");
+    let parsed = Midi::from_mei_str(&xml).expect("deserialize");
+
+    assert_eq!(parsed.children.len(), 5);
+    assert!(matches!(parsed.children[0], MidiChild::Prog(_)));
+    assert!(matches!(parsed.children[1], MidiChild::NoteOn(_)));
+    assert!(matches!(parsed.children[2], MidiChild::NoteOff(_)));
+    assert!(matches!(parsed.children[3], MidiChild::Cue(_)));
+    assert!(matches!(parsed.children[4], MidiChild::Marker(_)));
 }

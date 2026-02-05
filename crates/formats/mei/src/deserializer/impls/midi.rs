@@ -11,7 +11,8 @@ use tusk_model::att::{
     AttMidiAnl, AttMidiEvent, AttMidiGes, AttMidiLog, AttMidiNumber, AttMidiValue,
 };
 use tusk_model::elements::{
-    Cc, Chan, ChanPr, InstrDef, InstrGrp, InstrGrpChild, Midi, MidiChild, Port, Prog, Vel,
+    Cc, Chan, ChanPr, Cue, CueChild, InstrDef, InstrGrp, InstrGrpChild, Marker, MarkerChild, Midi,
+    MidiChild, NoteOff, NoteOn, Port, Prog, Vel,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -123,8 +124,24 @@ impl MeiDeserialize for Midi {
                         let vel = Vel::from_mei_event(reader, child_attrs, child_empty)?;
                         midi.children.push(MidiChild::Vel(Box::new(vel)));
                     }
+                    "noteOn" => {
+                        let note_on = NoteOn::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::NoteOn(Box::new(note_on)));
+                    }
+                    "noteOff" => {
+                        let note_off = NoteOff::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::NoteOff(Box::new(note_off)));
+                    }
+                    "cue" => {
+                        let cue = Cue::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Cue(Box::new(cue)));
+                    }
+                    "marker" => {
+                        let marker = Marker::from_mei_event(reader, child_attrs, child_empty)?;
+                        midi.children.push(MidiChild::Marker(Box::new(marker)));
+                    }
                     // Other MIDI child elements not yet implemented
-                    // "trkName" | "marker" | "cue" | "metaText" | "noteOff" | "hex" | "noteOn" | "seqNum"
+                    // "trkName" | "metaText" | "hex" | "seqNum"
                     _ => {
                         if !child_empty {
                             reader.skip_to_end(&name)?;
@@ -332,6 +349,116 @@ impl MeiDeserialize for Vel {
 }
 
 // ============================================================================
+// MIDI Event Element implementations (NoteOn, NoteOff, Cue, Marker)
+// ============================================================================
+
+impl MeiDeserialize for NoteOn {
+    fn element_name() -> &'static str {
+        "noteOn"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut note_on = NoteOn::default();
+
+        note_on.common.extract_attributes(&mut attrs)?;
+        note_on.midi_event.extract_attributes(&mut attrs)?;
+        note_on.midi_number.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("noteOn")?;
+        }
+
+        Ok(note_on)
+    }
+}
+
+impl MeiDeserialize for NoteOff {
+    fn element_name() -> &'static str {
+        "noteOff"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut note_off = NoteOff::default();
+
+        note_off.common.extract_attributes(&mut attrs)?;
+        note_off.midi_event.extract_attributes(&mut attrs)?;
+        note_off.midi_number.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            reader.skip_to_end("noteOff")?;
+        }
+
+        Ok(note_off)
+    }
+}
+
+impl MeiDeserialize for Cue {
+    fn element_name() -> &'static str {
+        "cue"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut cue = Cue::default();
+
+        cue.common.extract_attributes(&mut attrs)?;
+        cue.lang.extract_attributes(&mut attrs)?;
+        cue.midi_event.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            // Read text content
+            if let Some(text) = reader.read_text_until_end("cue")?
+                && !text.is_empty()
+            {
+                cue.children.push(CueChild::Text(text));
+            }
+        }
+
+        Ok(cue)
+    }
+}
+
+impl MeiDeserialize for Marker {
+    fn element_name() -> &'static str {
+        "marker"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut marker = Marker::default();
+
+        marker.common.extract_attributes(&mut attrs)?;
+        marker.lang.extract_attributes(&mut attrs)?;
+        marker.midi_event.extract_attributes(&mut attrs)?;
+
+        if !is_empty {
+            // Read text content
+            if let Some(text) = reader.read_text_until_end("marker")?
+                && !text.is_empty()
+            {
+                marker.children.push(MarkerChild::Text(text));
+            }
+        }
+
+        Ok(marker)
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -339,7 +466,8 @@ impl MeiDeserialize for Vel {
 mod tests {
     use crate::deserializer::MeiDeserialize;
     use tusk_model::elements::{
-        Cc, Chan, ChanPr, InstrGrp, InstrGrpChild, Midi, MidiChild, Port, Prog, Vel,
+        Cc, Chan, ChanPr, Cue, CueChild, InstrGrp, InstrGrpChild, Marker, MarkerChild, Midi,
+        MidiChild, NoteOff, NoteOn, Port, Prog, Vel,
     };
 
     // ============================================================================
@@ -669,5 +797,200 @@ mod tests {
         assert!(matches!(midi.children[1], MidiChild::Chan(_)));
         assert!(matches!(midi.children[2], MidiChild::Cc(_)));
         assert!(matches!(midi.children[3], MidiChild::Vel(_)));
+    }
+
+    // ============================================================================
+    // NoteOn tests
+    // ============================================================================
+
+    #[test]
+    fn note_on_deserializes_from_empty_element() {
+        let xml = r#"<noteOn/>"#;
+        let note_on = NoteOn::from_mei_str(xml).expect("should deserialize");
+        assert!(note_on.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn note_on_deserializes_with_attributes() {
+        let xml = r#"<noteOn xml:id="non1" num="60" staff="1" tstamp="1"/>"#;
+        let note_on = NoteOn::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note_on.common.xml_id, Some("non1".to_string()));
+        assert!(note_on.midi_number.num.is_some());
+        assert_eq!(note_on.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // NoteOff tests
+    // ============================================================================
+
+    #[test]
+    fn note_off_deserializes_from_empty_element() {
+        let xml = r#"<noteOff/>"#;
+        let note_off = NoteOff::from_mei_str(xml).expect("should deserialize");
+        assert!(note_off.common.xml_id.is_none());
+    }
+
+    #[test]
+    fn note_off_deserializes_with_attributes() {
+        let xml = r#"<noteOff xml:id="nof1" num="60" staff="1" tstamp="2"/>"#;
+        let note_off = NoteOff::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(note_off.common.xml_id, Some("nof1".to_string()));
+        assert!(note_off.midi_number.num.is_some());
+        assert_eq!(note_off.midi_event.staff, vec![1]);
+    }
+
+    // ============================================================================
+    // Cue tests
+    // ============================================================================
+
+    #[test]
+    fn cue_deserializes_from_empty_element() {
+        let xml = r#"<cue/>"#;
+        let cue = Cue::from_mei_str(xml).expect("should deserialize");
+        assert!(cue.common.xml_id.is_none());
+        assert!(cue.children.is_empty());
+    }
+
+    #[test]
+    fn cue_deserializes_with_attributes() {
+        let xml = r#"<cue xml:id="cue1" staff="1" tstamp="1"/>"#;
+        let cue = Cue::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(cue.common.xml_id, Some("cue1".to_string()));
+        assert_eq!(cue.midi_event.staff, vec![1]);
+    }
+
+    #[test]
+    fn cue_deserializes_with_text_content() {
+        let xml = r#"<cue xml:id="cue1">Verse 1</cue>"#;
+        let cue = Cue::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(cue.common.xml_id, Some("cue1".to_string()));
+        assert_eq!(cue.children.len(), 1);
+        match &cue.children[0] {
+            CueChild::Text(text) => assert_eq!(text, "Verse 1"),
+        }
+    }
+
+    // ============================================================================
+    // Marker tests
+    // ============================================================================
+
+    #[test]
+    fn marker_deserializes_from_empty_element() {
+        let xml = r#"<marker/>"#;
+        let marker = Marker::from_mei_str(xml).expect("should deserialize");
+        assert!(marker.common.xml_id.is_none());
+        assert!(marker.children.is_empty());
+    }
+
+    #[test]
+    fn marker_deserializes_with_attributes() {
+        let xml = r#"<marker xml:id="mrk1" staff="1" tstamp="1"/>"#;
+        let marker = Marker::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(marker.common.xml_id, Some("mrk1".to_string()));
+        assert_eq!(marker.midi_event.staff, vec![1]);
+    }
+
+    #[test]
+    fn marker_deserializes_with_text_content() {
+        let xml = r#"<marker xml:id="mrk1">Chorus</marker>"#;
+        let marker = Marker::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(marker.common.xml_id, Some("mrk1".to_string()));
+        assert_eq!(marker.children.len(), 1);
+        match &marker.children[0] {
+            MarkerChild::Text(text) => assert_eq!(text, "Chorus"),
+        }
+    }
+
+    // ============================================================================
+    // Midi with new event children tests
+    // ============================================================================
+
+    #[test]
+    fn midi_deserializes_with_note_on_child() {
+        let xml = r#"<midi xml:id="midi1">
+            <noteOn xml:id="non1" num="60"/>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 1);
+        match &midi.children[0] {
+            MidiChild::NoteOn(note_on) => {
+                assert_eq!(note_on.common.xml_id, Some("non1".to_string()));
+            }
+            _ => panic!("Expected NoteOn child"),
+        }
+    }
+
+    #[test]
+    fn midi_deserializes_with_note_off_child() {
+        let xml = r#"<midi xml:id="midi1">
+            <noteOff xml:id="nof1" num="60"/>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 1);
+        match &midi.children[0] {
+            MidiChild::NoteOff(note_off) => {
+                assert_eq!(note_off.common.xml_id, Some("nof1".to_string()));
+            }
+            _ => panic!("Expected NoteOff child"),
+        }
+    }
+
+    #[test]
+    fn midi_deserializes_with_cue_child() {
+        let xml = r#"<midi xml:id="midi1">
+            <cue xml:id="cue1">Intro</cue>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 1);
+        match &midi.children[0] {
+            MidiChild::Cue(cue) => {
+                assert_eq!(cue.common.xml_id, Some("cue1".to_string()));
+            }
+            _ => panic!("Expected Cue child"),
+        }
+    }
+
+    #[test]
+    fn midi_deserializes_with_marker_child() {
+        let xml = r#"<midi xml:id="midi1">
+            <marker xml:id="mrk1">Bridge</marker>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 1);
+        match &midi.children[0] {
+            MidiChild::Marker(marker) => {
+                assert_eq!(marker.common.xml_id, Some("mrk1".to_string()));
+            }
+            _ => panic!("Expected Marker child"),
+        }
+    }
+
+    #[test]
+    fn midi_deserializes_with_mixed_event_children() {
+        let xml = r#"<midi xml:id="midi1">
+            <prog num="1"/>
+            <noteOn num="60" tstamp="1"/>
+            <noteOff num="60" tstamp="2"/>
+            <cue>Verse</cue>
+            <marker>Chorus</marker>
+        </midi>"#;
+        let midi = Midi::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(midi.children.len(), 5);
+        assert!(matches!(midi.children[0], MidiChild::Prog(_)));
+        assert!(matches!(midi.children[1], MidiChild::NoteOn(_)));
+        assert!(matches!(midi.children[2], MidiChild::NoteOff(_)));
+        assert!(matches!(midi.children[3], MidiChild::Cue(_)));
+        assert!(matches!(midi.children[4], MidiChild::Marker(_)));
     }
 }
