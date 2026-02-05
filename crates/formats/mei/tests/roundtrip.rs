@@ -1263,3 +1263,34 @@ fn test_roundtrip_music_structure_part_element() {
         result.unwrap_err()
     );
 }
+
+// ============================================================================
+// Editorial Markup Roundtrip Tests
+// ============================================================================
+
+#[test]
+fn test_roundtrip_editorial_markup_weber_op73() {
+    let path =
+        sample_encodings_music_dir().join("Editorial_markup/Weber_op73/Editorial_markup.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Editorial_markup/Weber_op73/Editorial_markup.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
+
+// ============================================================================
+// Layout Information Roundtrip Tests
+// ============================================================================
+
+#[test]
+fn test_roundtrip_layout_information() {
+    let path = sample_encodings_music_dir().join("Layout_information/Layout_information.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Layout_information/Layout_information.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
