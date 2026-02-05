@@ -1,6 +1,6 @@
 //! Tusk CLI - MusicXML <-> MEI converter command-line tool.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -95,10 +95,16 @@ fn main() -> Result<()> {
             tusk_musicxml::serialize(&score).with_context(|| "Failed to serialize MusicXML")?
         }
         (Format::MusicXml, Format::MusicXml) => {
-            bail!("Input and output are both MusicXML - no conversion needed")
+            // MusicXML -> MusicXML (roundtrip for testing/normalization)
+            let score = tusk_musicxml::parser::parse_score_partwise(&input_xml)
+                .or_else(|_| tusk_musicxml::parser::parse_score_timewise(&input_xml))
+                .with_context(|| "Failed to parse MusicXML")?;
+            tusk_musicxml::serialize(&score).with_context(|| "Failed to serialize MusicXML")?
         }
         (Format::Mei, Format::Mei) => {
-            bail!("Input and output are both MEI - no conversion needed")
+            // MEI -> MEI (roundtrip for testing/normalization)
+            let mei = tusk_mei::import(&input_xml).with_context(|| "Failed to parse MEI")?;
+            tusk_mei::export(&mei).with_context(|| "Failed to export MEI")?
         }
     };
 
