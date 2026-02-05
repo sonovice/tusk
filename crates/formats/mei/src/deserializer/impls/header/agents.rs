@@ -1,5 +1,6 @@
 //! Agent/responsibility elements (Creator, Editor, RespStmt, PersName, CorpName, etc.).
 
+use super::super::extract_attr;
 use crate::deserializer::{
     AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
 };
@@ -720,6 +721,7 @@ pub(crate) fn parse_name_from_event<R: BufRead>(
     name_elem.name.extract_attributes(&mut attrs)?;
     name_elem.n_number_like.extract_attributes(&mut attrs)?;
     name_elem.responsibility.extract_attributes(&mut attrs)?;
+    extract_attr!(attrs, "type", name_elem.r#type);
 
     // Name has mixed content - text and various child elements
     if !is_empty {

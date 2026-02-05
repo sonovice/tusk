@@ -52,7 +52,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] BeamChild serializer incomplete - missing App variant (and 22 other variants: Pad, KeySig, TabDurSym, Add, Orig, Choice, BTrem, MeterSigGrp, Reg, FTrem, HalfmRpt, Corr, Del, Damage, TabGrp, Supplied, Unclear, ClefGrp, Subst, BarLine, Custos, Restore, BeatRpt, Gap, MeterSig, HandShift, Sic); causes critical apparatus elements to fail serialization (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 - [x] [DESERIALIZER_BUG] Critical apparatus Rdg/Lem children: deserializers skipped all children (reader.skip_to_end); now parses Staff, Note, Rest, Chord, Space, MRest, Beam, Tuplet, Accid, Artic, Dot, BarLine, Pb, Sb, Cb, and editorial elements (Add, Del, Corr, Sic, Orig, Reg, Supplied, Unclear, Gap, Damage, App, Choice, Subst, HandShift, Restore); serializers already handled all 170+ variants
 - [x] [MISSING_DESERIALIZER] Control event deserializers missing: Slur, Tie, Hairpin, Dynam, Dir, Tempo, Fermata, Trill, Mordent, Turn, Pedal, Arpeg - needed for full critical apparatus rdg support and other test fixtures (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
-- [ ] [MISSING_ATTR] Name element missing `type` attribute serialization (source: Layout_information/Layout_information.mei)
+- [x] [MISSING_ATTR] Name element missing `type` attribute serialization (source: Layout_information/Layout_information.mei)
 
 ---
 
@@ -186,6 +186,6 @@ Testing critical edition elements: app, lem, rdg.
 
 Testing layout and rendering hints.
 
-- [ ] Roundtrip test: `Layout_information/Layout_information.mei`
+- [x] Roundtrip test: `Layout_information/Layout_information.mei`
 
 ---

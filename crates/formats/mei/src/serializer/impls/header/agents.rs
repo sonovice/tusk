@@ -849,6 +849,9 @@ impl MeiSerialize for Name {
         attrs.extend(self.name.collect_attributes());
         attrs.extend(self.n_number_like.collect_attributes());
         attrs.extend(self.responsibility.collect_attributes());
+        if let Some(ref type_val) = self.r#type {
+            attrs.push(("type", type_val.clone()));
+        }
         attrs
     }
 
