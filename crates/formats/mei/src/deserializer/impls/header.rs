@@ -606,6 +606,16 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             )?;
                             bibl.children.push(BiblChild::Creator(Box::new(creator)));
                         }
+                        "librettist" => {
+                            let creator = parse_deprecated_creator_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                                "librettist",
+                                tusk_model::generated::data::DataMarcrelatorsBasic::Lbt,
+                            )?;
+                            bibl.children.push(BiblChild::Creator(Box::new(creator)));
+                        }
                         "imprint" => {
                             let imprint =
                                 parse_imprint_from_event(reader, child_attrs, child_empty)?;
@@ -3149,9 +3159,9 @@ pub(crate) fn parse_creator_from_event<R: BufRead>(
     Ok(creator)
 }
 
-/// Parse a deprecated MEI element (composer, lyricist, arranger, author) as a Creator.
+/// Parse a deprecated MEI element (composer, lyricist, arranger, author, librettist) as a Creator.
 ///
-/// MEI 5.1 deprecated composer, lyricist, arranger, and author in favor of creator.
+/// MEI 5.1 deprecated composer, lyricist, arranger, author, and librettist in favor of creator.
 /// This function parses these deprecated elements and converts them to Creator with
 /// the appropriate role attribute set.
 pub(crate) fn parse_deprecated_creator_from_event<R: BufRead>(
@@ -5275,6 +5285,69 @@ mod tests {
                 }));
             }
             other => panic!("expected Editor child, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn bibl_deserializes_deprecated_librettist_as_creator() {
+        use tusk_model::elements::BiblChild;
+
+        // bibl with deprecated librettist element (MEI 5.x)
+        let xml = r#"<source>
+          <bibl>
+            <title>Test Work</title>
+            <librettist>
+              <persName role="librettist">John Doe</persName>
+            </librettist>
+          </bibl>
+        </source>"#;
+
+        let source = Source::from_mei_str(xml).expect("should deserialize");
+
+        let bibl = source
+            .children
+            .iter()
+            .find_map(|c| {
+                if let SourceChild::Bibl(b) = c {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .expect("should have bibl child");
+
+        // Should have title and creator (migrated from librettist)
+        assert_eq!(bibl.children.len(), 2);
+
+        // First child should be Title
+        assert!(matches!(&bibl.children[0], BiblChild::Title(_)));
+
+        // Second child should be Creator (migrated from librettist)
+        match &bibl.children[1] {
+            BiblChild::Creator(creator) => {
+                // Verify the role was set to librettist (Lbt)
+                assert_eq!(creator.name.role.len(), 1);
+                match &creator.name.role[0] {
+                    tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role) => {
+                        assert_eq!(
+                            *role,
+                            tusk_model::generated::data::DataMarcrelatorsBasic::Lbt
+                        );
+                    }
+                    _ => panic!("expected DataMarcrelatorsBasic role"),
+                }
+                // Verify persName child was parsed
+                assert!(
+                    creator
+                        .children
+                        .iter()
+                        .any(|c| { matches!(c, tusk_model::elements::CreatorChild::PersName(_)) })
+                );
+            }
+            other => panic!(
+                "expected Creator child (migrated from librettist), got {:?}",
+                other
+            ),
         }
     }
 

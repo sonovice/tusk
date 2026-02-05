@@ -85,7 +85,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] PgFoot: anchoredText element not parsed - skipped instead of deserialized (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
 - [x] [SERIALIZER_BUG] StaffDef: trans.diat and trans.semi attributes not serialized - missing from collect_all_attributes (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
 - [x] [DESERIALIZER_BUG] CorpName element: mixed content not parsed - geogName child elements lost (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
-- [ ] [DESERIALIZER_BUG] Bibl element: librettist child not parsed - deprecated element skipped instead of migrated (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
+- [x] [DESERIALIZER_BUG] Bibl element: librettist child not parsed - deprecated element skipped instead of migrated (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [ ] [DESERIALIZER_BUG] Application element: p child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [ ] [DESERIALIZER_BUG] History element: eventList child not parsed - skipped instead of deserialized (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
 - [ ] [DESERIALIZER_BUG] Layer element: clef child not parsed - skipped instead of deserialized, causing element ordering issues (source: Bach-JS_Herzliebster_Jesu_BWV244-46.mei)
