@@ -3754,6 +3754,62 @@ impl MeiDeserialize for Language {
     }
 }
 
+impl MeiDeserialize for CastList {
+    fn element_name() -> &'static str {
+        "castList"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_cast_list_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for CastGrp {
+    fn element_name() -> &'static str {
+        "castGrp"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_cast_grp_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for CastItem {
+    fn element_name() -> &'static str {
+        "castItem"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_cast_item_from_event(reader, attrs, is_empty)
+    }
+}
+
+impl MeiDeserialize for RoleDesc {
+    fn element_name() -> &'static str {
+        "roleDesc"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_role_desc_from_event(reader, attrs, is_empty)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

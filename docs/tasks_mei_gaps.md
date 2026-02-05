@@ -23,7 +23,7 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add deserializers for encoding description elements (9): `ClassDecls`, `Taxonomy`, `Category`, `Interpretation`, `Normalization`, `Correction`, `Segmentation`, `SamplingDecl`, `StdVals`
 - [x] Add deserializers for work metadata elements (13): `Creation`, `Incip`, `IncipCode`, `IncipText`, `Key`, `Meter`, `PerfMedium`, `PerfRes`, `PerfResList`, `LangUsage`, `Language`, `AltId`, `ExtMeta`
 - [x] Add deserializers for publication elements (8): `PubPlace`, `Distributor`, `Availability`, `AccessRestrict`, `UseRestrict`, `SysReq`, `Price`, `Unpub`
-- [ ] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
+- [x] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
 - [ ] Add deserializers for remaining header elements: `PgHead`, `PgFoot`, `Clef`, `KeySig`, `MeterSig`, `InstrDef`, `LabelAbbr`, `Date`, `Name`, `Head`, `P`, `L`, `Div`, `Ref`, `Ptr`, `Symbol`, `F`, `Fb`
 - [ ] Add roundtrip tests for all header elements
 

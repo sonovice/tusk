@@ -2848,3 +2848,410 @@ fn roundtrip_availability_with_all_publication_elements() {
     assert!(found_price, "should have price child");
     assert!(found_distributor, "should have distributor child");
 }
+
+// ============================================================================
+// CastList, CastGrp, CastItem, RoleDesc Round-Trip Tests
+// ============================================================================
+
+#[test]
+fn roundtrip_cast_list_empty() {
+    use tusk_model::elements::CastList;
+
+    let original = CastList::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("castList"), "should contain castList: {}", xml);
+
+    let parsed = CastList::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_cast_list_with_xml_id() {
+    use tusk_model::elements::CastList;
+
+    let mut original = CastList::default();
+    original.common.xml_id = Some("cast-1".to_string());
+
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"cast-1\""),
+        "should contain id: {}",
+        xml
+    );
+
+    let parsed = CastList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cast-1".to_string()));
+}
+
+#[test]
+fn roundtrip_cast_list_with_head_and_cast_items() {
+    use tusk_model::elements::{CastItem, CastItemChild, CastList, CastListChild, Head, HeadChild};
+
+    let mut cast_list = CastList::default();
+    cast_list.common.xml_id = Some("cast-list-1".to_string());
+
+    // Add head
+    let mut head = Head::default();
+    head.children
+        .push(HeadChild::Text("Dramatis Personae".to_string()));
+    cast_list.children.push(CastListChild::Head(Box::new(head)));
+
+    // Add first cast item
+    let mut cast_item1 = CastItem::default();
+    cast_item1.common.xml_id = Some("cast-item-1".to_string());
+    cast_item1
+        .children
+        .push(CastItemChild::Text("Don Giovanni".to_string()));
+    cast_list
+        .children
+        .push(CastListChild::CastItem(Box::new(cast_item1)));
+
+    // Add second cast item
+    let mut cast_item2 = CastItem::default();
+    cast_item2.common.xml_id = Some("cast-item-2".to_string());
+    cast_item2
+        .children
+        .push(CastItemChild::Text("Donna Anna".to_string()));
+    cast_list
+        .children
+        .push(CastListChild::CastItem(Box::new(cast_item2)));
+
+    let xml = cast_list.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("Dramatis Personae"),
+        "should contain head text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Don Giovanni"),
+        "should contain first cast item: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Donna Anna"),
+        "should contain second cast item: {}",
+        xml
+    );
+
+    let parsed = CastList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cast-list-1".to_string()));
+    assert_eq!(parsed.children.len(), 3);
+    assert!(matches!(parsed.children[0], CastListChild::Head(_)));
+    assert!(matches!(parsed.children[1], CastListChild::CastItem(_)));
+    assert!(matches!(parsed.children[2], CastListChild::CastItem(_)));
+}
+
+#[test]
+fn roundtrip_cast_grp_empty() {
+    use tusk_model::elements::CastGrp;
+
+    let original = CastGrp::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("castGrp"), "should contain castGrp: {}", xml);
+
+    let parsed = CastGrp::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_cast_grp_with_cast_items() {
+    use tusk_model::elements::{CastGrp, CastGrpChild, CastItem, CastItemChild};
+
+    let mut cast_grp = CastGrp::default();
+    cast_grp.common.xml_id = Some("grp-1".to_string());
+
+    // Add cast item
+    let mut cast_item = CastItem::default();
+    cast_item.common.xml_id = Some("item-1".to_string());
+    cast_item
+        .children
+        .push(CastItemChild::Text("Leporello".to_string()));
+    cast_grp
+        .children
+        .push(CastGrpChild::CastItem(Box::new(cast_item)));
+
+    let xml = cast_grp.to_mei_string().expect("serialize");
+    assert!(xml.contains("castGrp"), "should contain castGrp: {}", xml);
+    assert!(xml.contains("castItem"), "should contain castItem: {}", xml);
+    assert!(xml.contains("Leporello"), "should contain text: {}", xml);
+
+    let parsed = CastGrp::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("grp-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], CastGrpChild::CastItem(_)));
+}
+
+#[test]
+fn roundtrip_cast_grp_with_role_desc() {
+    use tusk_model::elements::{CastGrp, CastGrpChild, RoleDesc, RoleDescChild};
+
+    let mut cast_grp = CastGrp::default();
+    cast_grp.common.xml_id = Some("grp-2".to_string());
+
+    // Add role description
+    let mut role_desc = RoleDesc::default();
+    role_desc
+        .children
+        .push(RoleDescChild::Text("a young nobleman".to_string()));
+    cast_grp
+        .children
+        .push(CastGrpChild::RoleDesc(Box::new(role_desc)));
+
+    let xml = cast_grp.to_mei_string().expect("serialize");
+    assert!(xml.contains("roleDesc"), "should contain roleDesc: {}", xml);
+    assert!(
+        xml.contains("a young nobleman"),
+        "should contain text: {}",
+        xml
+    );
+
+    let parsed = CastGrp::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], CastGrpChild::RoleDesc(_)));
+
+    // Verify text content in role desc
+    if let CastGrpChild::RoleDesc(rd) = &parsed.children[0] {
+        assert_eq!(rd.children.len(), 1);
+        if let RoleDescChild::Text(text) = &rd.children[0] {
+            assert_eq!(text, "a young nobleman");
+        } else {
+            panic!("expected text child");
+        }
+    }
+}
+
+#[test]
+fn roundtrip_cast_grp_nested() {
+    use tusk_model::elements::{CastGrp, CastGrpChild, CastItem, CastItemChild};
+
+    let mut outer_grp = CastGrp::default();
+    outer_grp.common.xml_id = Some("outer".to_string());
+
+    // Create inner group
+    let mut inner_grp = CastGrp::default();
+    inner_grp.common.xml_id = Some("inner".to_string());
+
+    // Add cast item to inner group
+    let mut cast_item = CastItem::default();
+    cast_item
+        .children
+        .push(CastItemChild::Text("Zerlina".to_string()));
+    inner_grp
+        .children
+        .push(CastGrpChild::CastItem(Box::new(cast_item)));
+
+    // Add inner group to outer
+    outer_grp
+        .children
+        .push(CastGrpChild::CastGrp(Box::new(inner_grp)));
+
+    let xml = outer_grp.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"outer\""),
+        "should contain outer id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"inner\""),
+        "should contain inner id: {}",
+        xml
+    );
+
+    let parsed = CastGrp::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("outer".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let CastGrpChild::CastGrp(inner) = &parsed.children[0] {
+        assert_eq!(inner.common.xml_id, Some("inner".to_string()));
+        assert_eq!(inner.children.len(), 1);
+    } else {
+        panic!("expected nested CastGrp");
+    }
+}
+
+#[test]
+fn roundtrip_cast_item_empty() {
+    use tusk_model::elements::CastItem;
+
+    let original = CastItem::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("castItem"), "should contain castItem: {}", xml);
+
+    let parsed = CastItem::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_cast_item_with_text() {
+    use tusk_model::elements::{CastItem, CastItemChild};
+
+    let mut cast_item = CastItem::default();
+    cast_item.common.xml_id = Some("ci-1".to_string());
+    cast_item
+        .children
+        .push(CastItemChild::Text("Il Commendatore".to_string()));
+
+    let xml = cast_item.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("Il Commendatore"),
+        "should contain text: {}",
+        xml
+    );
+
+    let parsed = CastItem::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("ci-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let CastItemChild::Text(text) = &parsed.children[0] {
+        assert_eq!(text, "Il Commendatore");
+    } else {
+        panic!("expected text child");
+    }
+}
+
+#[test]
+fn roundtrip_cast_item_with_role_desc() {
+    use tusk_model::elements::{CastItem, CastItemChild, RoleDesc, RoleDescChild};
+
+    let mut cast_item = CastItem::default();
+    cast_item.common.xml_id = Some("ci-2".to_string());
+
+    // Add text
+    cast_item
+        .children
+        .push(CastItemChild::Text("Masetto".to_string()));
+
+    // Add role description
+    let mut role_desc = RoleDesc::default();
+    role_desc
+        .children
+        .push(RoleDescChild::Text("a peasant".to_string()));
+    cast_item
+        .children
+        .push(CastItemChild::RoleDesc(Box::new(role_desc)));
+
+    let xml = cast_item.to_mei_string().expect("serialize");
+    assert!(xml.contains("Masetto"), "should contain text: {}", xml);
+    assert!(xml.contains("roleDesc"), "should contain roleDesc: {}", xml);
+    assert!(
+        xml.contains("a peasant"),
+        "should contain role text: {}",
+        xml
+    );
+
+    let parsed = CastItem::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.children.len(), 2);
+
+    let mut found_text = false;
+    let mut found_role_desc = false;
+    for child in &parsed.children {
+        match child {
+            CastItemChild::Text(t) => {
+                found_text = true;
+                assert_eq!(t, "Masetto");
+            }
+            CastItemChild::RoleDesc(rd) => {
+                found_role_desc = true;
+                assert_eq!(rd.children.len(), 1);
+            }
+            _ => {}
+        }
+    }
+    assert!(found_text, "should have text child");
+    assert!(found_role_desc, "should have roleDesc child");
+}
+
+#[test]
+fn roundtrip_role_desc_empty() {
+    use tusk_model::elements::RoleDesc;
+
+    let original = RoleDesc::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(xml.contains("roleDesc"), "should contain roleDesc: {}", xml);
+
+    let parsed = RoleDesc::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_role_desc_with_text() {
+    use tusk_model::elements::{RoleDesc, RoleDescChild};
+
+    let mut role_desc = RoleDesc::default();
+    role_desc.common.xml_id = Some("rd-1".to_string());
+    role_desc
+        .children
+        .push(RoleDescChild::Text("a servant of Don Giovanni".to_string()));
+
+    let xml = role_desc.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("a servant of Don Giovanni"),
+        "should contain text: {}",
+        xml
+    );
+
+    let parsed = RoleDesc::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("rd-1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    if let RoleDescChild::Text(text) = &parsed.children[0] {
+        assert_eq!(text, "a servant of Don Giovanni");
+    } else {
+        panic!("expected text child");
+    }
+}
+
+#[test]
+fn roundtrip_cast_list_with_cast_grp() {
+    use tusk_model::elements::{
+        CastGrp, CastGrpChild, CastItem, CastItemChild, CastList, CastListChild, RoleDesc,
+        RoleDescChild,
+    };
+
+    let mut cast_list = CastList::default();
+    cast_list.common.xml_id = Some("cast-full".to_string());
+
+    // Create a cast group for "Principal Characters"
+    let mut cast_grp = CastGrp::default();
+    cast_grp.common.xml_id = Some("principals".to_string());
+
+    // Add role desc for the group
+    let mut group_role = RoleDesc::default();
+    group_role
+        .children
+        .push(RoleDescChild::Text("Principal Characters".to_string()));
+    cast_grp
+        .children
+        .push(CastGrpChild::RoleDesc(Box::new(group_role)));
+
+    // Add cast item
+    let mut ci = CastItem::default();
+    ci.children
+        .push(CastItemChild::Text("Don Giovanni".to_string()));
+    cast_grp.children.push(CastGrpChild::CastItem(Box::new(ci)));
+
+    cast_list
+        .children
+        .push(CastListChild::CastGrp(Box::new(cast_grp)));
+
+    let xml = cast_list.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("Principal Characters"),
+        "should contain group desc: {}",
+        xml
+    );
+
+    let parsed = CastList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("cast-full".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+    assert!(matches!(parsed.children[0], CastListChild::CastGrp(_)));
+
+    if let CastListChild::CastGrp(grp) = &parsed.children[0] {
+        assert_eq!(grp.common.xml_id, Some("principals".to_string()));
+        assert_eq!(grp.children.len(), 2);
+    }
+}
