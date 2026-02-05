@@ -16,6 +16,7 @@ mod address;
 mod agents;
 mod bibl;
 mod encoding_desc;
+mod expression;
 mod manifestation;
 mod mei_head;
 mod pub_stmt;

@@ -380,3 +380,258 @@ fn roundtrip_work_with_tempo_text() {
         other => panic!("Expected Tempo child, got {:?}", other),
     }
 }
+
+#[test]
+fn roundtrip_empty_expression() {
+    use tusk_model::elements::Expression;
+
+    let original = Expression::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<expression"),
+        "should have expression: {}",
+        xml
+    );
+
+    let parsed = Expression::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_expression_with_attributes() {
+    use tusk_model::elements::Expression;
+
+    let mut expression = Expression::default();
+    expression.common.xml_id = Some("expr1".to_string());
+    expression.bibl.analog = Some("analog-value".to_string());
+
+    let xml = expression.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("xml:id=\"expr1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("analog=\"analog-value\""),
+        "should have analog: {}",
+        xml
+    );
+
+    let parsed = Expression::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("expr1".to_string()));
+    assert_eq!(parsed.bibl.analog, Some("analog-value".to_string()));
+}
+
+#[test]
+fn roundtrip_expression_with_title_child() {
+    use tusk_model::elements::{Expression, ExpressionChild, Title, TitleChild};
+
+    let mut expression = Expression::default();
+    expression.common.xml_id = Some("expr1".to_string());
+
+    // Add title child
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Test Expression".to_string()));
+    expression
+        .children
+        .push(ExpressionChild::Title(Box::new(title)));
+
+    let xml = expression.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<expression"),
+        "should have expression: {}",
+        xml
+    );
+    assert!(xml.contains("<title>"), "should have title: {}", xml);
+    assert!(
+        xml.contains("Test Expression"),
+        "should have title text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</expression>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = Expression::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("expr1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        ExpressionChild::Title(title) => {
+            assert_eq!(title.children.len(), 1);
+            match &title.children[0] {
+                TitleChild::Text(text) => assert_eq!(text, "Test Expression"),
+                other => panic!("Expected Text child, got {:?}", other),
+            }
+        }
+        other => panic!("Expected Title child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_empty_expression_list() {
+    use tusk_model::elements::ExpressionList;
+
+    let original = ExpressionList::default();
+    let xml = original.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<expressionList"),
+        "should have expressionList: {}",
+        xml
+    );
+
+    let parsed = ExpressionList::from_mei_str(&xml).expect("deserialize");
+    assert!(parsed.common.xml_id.is_none());
+    assert!(parsed.children.is_empty());
+}
+
+#[test]
+fn roundtrip_expression_list_with_expressions() {
+    use tusk_model::elements::{
+        Expression, ExpressionChild, ExpressionList, ExpressionListChild, Title, TitleChild,
+    };
+
+    let mut expression_list = ExpressionList::default();
+    expression_list.common.xml_id = Some("explist1".to_string());
+
+    // Add first expression
+    let mut expr1 = Expression::default();
+    expr1.common.xml_id = Some("expr1".to_string());
+    let mut title1 = Title::default();
+    title1
+        .children
+        .push(TitleChild::Text("First Expression".to_string()));
+    expr1
+        .children
+        .push(ExpressionChild::Title(Box::new(title1)));
+    expression_list
+        .children
+        .push(ExpressionListChild::Expression(Box::new(expr1)));
+
+    // Add second expression
+    let mut expr2 = Expression::default();
+    expr2.common.xml_id = Some("expr2".to_string());
+    let mut title2 = Title::default();
+    title2
+        .children
+        .push(TitleChild::Text("Second Expression".to_string()));
+    expr2
+        .children
+        .push(ExpressionChild::Title(Box::new(title2)));
+    expression_list
+        .children
+        .push(ExpressionListChild::Expression(Box::new(expr2)));
+
+    let xml = expression_list.to_mei_string().expect("serialize");
+    assert!(
+        xml.contains("<expressionList"),
+        "should have expressionList: {}",
+        xml
+    );
+    assert!(
+        xml.contains("xml:id=\"explist1\""),
+        "should have xml:id: {}",
+        xml
+    );
+    assert!(
+        xml.contains("First Expression"),
+        "should have first expression text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Second Expression"),
+        "should have second expression text: {}",
+        xml
+    );
+    assert!(
+        xml.contains("</expressionList>"),
+        "should have closing tag: {}",
+        xml
+    );
+
+    let parsed = ExpressionList::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("explist1".to_string()));
+    assert_eq!(parsed.children.len(), 2);
+
+    // Check first expression
+    match &parsed.children[0] {
+        ExpressionListChild::Expression(expr) => {
+            assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+        }
+        other => panic!("Expected Expression child, got {:?}", other),
+    }
+
+    // Check second expression
+    match &parsed.children[1] {
+        ExpressionListChild::Expression(expr) => {
+            assert_eq!(expr.common.xml_id, Some("expr2".to_string()));
+        }
+        other => panic!("Expected Expression child, got {:?}", other),
+    }
+}
+
+#[test]
+fn roundtrip_work_with_expression_list() {
+    use tusk_model::elements::{
+        Expression, ExpressionChild, ExpressionList, ExpressionListChild, Title, TitleChild, Work,
+        WorkChild,
+    };
+
+    let mut work = Work::default();
+    work.common.xml_id = Some("work1".to_string());
+
+    // Add expressionList with one expression
+    let mut expression_list = ExpressionList::default();
+    let mut expr = Expression::default();
+    expr.common.xml_id = Some("expr1".to_string());
+    let mut title = Title::default();
+    title
+        .children
+        .push(TitleChild::Text("Work Expression".to_string()));
+    expr.children.push(ExpressionChild::Title(Box::new(title)));
+    expression_list
+        .children
+        .push(ExpressionListChild::Expression(Box::new(expr)));
+    work.children
+        .push(WorkChild::ExpressionList(Box::new(expression_list)));
+
+    let xml = work.to_mei_string().expect("serialize");
+    assert!(xml.contains("<work"), "should have work: {}", xml);
+    assert!(
+        xml.contains("<expressionList>"),
+        "should have expressionList: {}",
+        xml
+    );
+    assert!(
+        xml.contains("<expression"),
+        "should have expression: {}",
+        xml
+    );
+    assert!(
+        xml.contains("Work Expression"),
+        "should have title text: {}",
+        xml
+    );
+
+    let parsed = Work::from_mei_str(&xml).expect("deserialize");
+    assert_eq!(parsed.common.xml_id, Some("work1".to_string()));
+    assert_eq!(parsed.children.len(), 1);
+
+    match &parsed.children[0] {
+        WorkChild::ExpressionList(expr_list) => {
+            assert_eq!(expr_list.children.len(), 1);
+            match &expr_list.children[0] {
+                ExpressionListChild::Expression(expr) => {
+                    assert_eq!(expr.common.xml_id, Some("expr1".to_string()));
+                }
+                other => panic!("Expected Expression child, got {:?}", other),
+            }
+        }
+        other => panic!("Expected ExpressionList child, got {:?}", other),
+    }
+}
