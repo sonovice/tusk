@@ -842,6 +842,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Gliss(gliss) => gliss.collect_all_attributes(),
             MeasureChild::Lv(lv) => lv.collect_all_attributes(),
             MeasureChild::BracketSpan(bracket_span) => bracket_span.collect_all_attributes(),
+            MeasureChild::Fing(fing) => fing.collect_all_attributes(),
+            MeasureChild::Phrase(phrase) => phrase.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -869,6 +871,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Gliss(gliss) => gliss.has_children(),
             MeasureChild::Lv(lv) => lv.has_children(),
             MeasureChild::BracketSpan(bracket_span) => bracket_span.has_children(),
+            MeasureChild::Fing(fing) => fing.has_children(),
+            MeasureChild::Phrase(phrase) => phrase.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -893,6 +897,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Gliss(gliss) => gliss.serialize_children(writer),
             MeasureChild::Lv(lv) => lv.serialize_children(writer),
             MeasureChild::BracketSpan(bracket_span) => bracket_span.serialize_children(writer),
+            MeasureChild::Fing(fing) => fing.serialize_children(writer),
+            MeasureChild::Phrase(phrase) => phrase.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()

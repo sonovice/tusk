@@ -15,10 +15,10 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Arpeg, BTrem, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
-    EndingChild, FTrem, Fermata, Gliss, Hairpin, Harm, Layer, LayerChild, Lv, MRest, Mdiv,
-    MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Reh, Rest, Sb, Score,
-    ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef, Tempo,
-    Tie, Trill, Tuplet, TupletSpan,
+    EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Lv, MRest, Mdiv,
+    MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh, Rest, Sb,
+    Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
+    Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -707,6 +707,16 @@ impl MeiDeserialize for Measure {
                         measure
                             .children
                             .push(MeasureChild::BracketSpan(Box::new(bracket_span)));
+                    }
+                    "fing" => {
+                        let fing = Fing::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Fing(Box::new(fing)));
+                    }
+                    "phrase" => {
+                        let phrase = Phrase::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure
+                            .children
+                            .push(MeasureChild::Phrase(Box::new(phrase)));
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {
