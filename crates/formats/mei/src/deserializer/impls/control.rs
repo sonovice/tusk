@@ -1207,6 +1207,120 @@ impl MeiDeserialize for Mordent {
 }
 
 // ============================================================================
+// Reh (rehearsal mark) attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttRehAnl, AttRehGes, AttRehLog, AttRehVis};
+use tusk_model::elements::{Reh, RehChild};
+
+impl ExtractAttributes for AttRehLog {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "when", self.when);
+        extract_attr!(attrs, "part", vec self.part);
+        extract_attr!(attrs, "partstaff", vec self.partstaff);
+        extract_attr!(attrs, "staff", vec self.staff);
+        extract_attr!(attrs, "startid", self.startid);
+        extract_attr!(attrs, "tstamp", self.tstamp);
+        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRehVis {
+    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        extract_attr!(attrs, "color", self.color);
+        extract_attr!(attrs, "place", self.place);
+        extract_attr!(attrs, "fontfam", self.fontfam);
+        extract_attr!(attrs, "fontname", self.fontname);
+        extract_attr!(attrs, "fontsize", self.fontsize);
+        extract_attr!(attrs, "fontstyle", self.fontstyle);
+        extract_attr!(attrs, "fontweight", self.fontweight);
+        extract_attr!(attrs, "letterspacing", self.letterspacing);
+        extract_attr!(attrs, "lineheight", self.lineheight);
+        extract_attr!(attrs, "ho", self.ho);
+        extract_attr!(attrs, "to", self.to);
+        extract_attr!(attrs, "vo", self.vo);
+        extract_attr!(attrs, "x", self.x);
+        extract_attr!(attrs, "y", self.y);
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRehGes {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttRehGes has no attributes
+        Ok(())
+    }
+}
+
+impl ExtractAttributes for AttRehAnl {
+    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
+        // AttRehAnl has no attributes
+        Ok(())
+    }
+}
+
+impl MeiDeserialize for Reh {
+    fn element_name() -> &'static str {
+        "reh"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        mut attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        let mut reh = Reh::default();
+
+        // Extract attributes into each attribute class
+        reh.common.extract_attributes(&mut attrs)?;
+        reh.facsimile.extract_attributes(&mut attrs)?;
+        reh.lang.extract_attributes(&mut attrs)?;
+        reh.reh_log.extract_attributes(&mut attrs)?;
+        reh.reh_vis.extract_attributes(&mut attrs)?;
+        reh.reh_ges.extract_attributes(&mut attrs)?;
+        reh.reh_anl.extract_attributes(&mut attrs)?;
+
+        // Remaining attributes are unknown - in lenient mode we ignore them
+
+        // Reh can contain mixed content (text, rend, stack, lb)
+        if !is_empty {
+            while let Some(content) = reader.read_next_mixed_content("reh")? {
+                match content {
+                    MixedContent::Text(text) => {
+                        reh.children.push(RehChild::Text(text));
+                    }
+                    MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            reh.children.push(RehChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            reh.children.push(RehChild::Lb(Box::new(lb)));
+                        }
+                        _ => {
+                            // Unknown/unsupported element (including stack) - skip it
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    },
+                }
+            }
+        }
+
+        Ok(reh)
+    }
+}
+
+// ============================================================================
 // AnchoredText attribute class implementations
 // ============================================================================
 
@@ -3658,5 +3772,64 @@ mod tests {
         let fermata = Fermata::from_mei_str(xml).expect("should deserialize");
 
         assert_eq!(fermata.common.xml_id, Some("f1".to_string()));
+    }
+
+    // ============================================================================
+    // Reh (rehearsal mark) tests
+    // ============================================================================
+
+    #[test]
+    fn reh_deserializes_basic_text() {
+        use tusk_model::elements::{Reh, RehChild};
+
+        let xml = r#"<reh xml:id="r1">A</reh>"#;
+        let reh = Reh::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(reh.common.xml_id, Some("r1".to_string()));
+        assert_eq!(reh.children.len(), 1);
+        match &reh.children[0] {
+            RehChild::Text(text) => assert_eq!(text, "A"),
+            _ => panic!("Expected text child"),
+        }
+    }
+
+    #[test]
+    fn reh_deserializes_with_attributes() {
+        use tusk_model::elements::Reh;
+
+        let xml = r##"<reh xml:id="r1" staff="1" tstamp="1" place="above">1</reh>"##;
+        let reh = Reh::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(reh.common.xml_id, Some("r1".to_string()));
+        assert_eq!(reh.reh_log.staff, vec![1]);
+        assert!(reh.reh_log.tstamp.is_some());
+        assert!(reh.reh_vis.place.is_some());
+    }
+
+    #[test]
+    fn reh_deserializes_with_rend_child() {
+        use tusk_model::elements::{Reh, RehChild};
+
+        let xml = r#"<reh xml:id="r1"><rend fontweight="bold">A</rend></reh>"#;
+        let reh = Reh::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(reh.children.len(), 1);
+        match &reh.children[0] {
+            RehChild::Rend(rend) => {
+                assert!(rend.typography.fontweight.is_some());
+            }
+            _ => panic!("Expected rend child"),
+        }
+    }
+
+    #[test]
+    fn reh_deserializes_empty_element() {
+        use tusk_model::elements::Reh;
+
+        let xml = r#"<reh xml:id="r1"/>"#;
+        let reh = Reh::from_mei_str(xml).expect("should deserialize");
+
+        assert_eq!(reh.common.xml_id, Some("r1".to_string()));
+        assert!(reh.children.is_empty());
     }
 }

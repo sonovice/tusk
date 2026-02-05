@@ -1471,6 +1471,110 @@ impl MeiSerialize for Mordent {
 }
 
 // ============================================================================
+// Reh (rehearsal mark) attribute class implementations
+// ============================================================================
+
+use tusk_model::att::{AttRehAnl, AttRehGes, AttRehLog, AttRehVis};
+use tusk_model::elements::{Reh, RehChild};
+
+impl CollectAttributes for AttRehLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRehVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "place", self.place);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        if let Some(v) = &self.x {
+            attrs.push(("x", v.to_string()));
+        }
+        if let Some(v) = &self.y {
+            attrs.push(("y", v.to_string()));
+        }
+        attrs
+    }
+}
+
+impl CollectAttributes for AttRehGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttRehGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttRehAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttRehAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Reh {
+    fn element_name(&self) -> &'static str {
+        "reh"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs.extend(self.reh_log.collect_attributes());
+        attrs.extend(self.reh_vis.collect_attributes());
+        attrs.extend(self.reh_ges.collect_attributes());
+        attrs.extend(self.reh_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            match child {
+                RehChild::Text(text) => {
+                    writer.write_text(text)?;
+                }
+                RehChild::Rend(rend) => {
+                    rend.serialize_mei(writer)?;
+                }
+                RehChild::Stack(_) => {
+                    // Stack serialization not yet implemented - skipping
+                    // This is rare in practice for reh elements
+                }
+                RehChild::Lb(lb) => {
+                    lb.serialize_mei(writer)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
 // AnchoredText attribute class implementations
 // ============================================================================
 
