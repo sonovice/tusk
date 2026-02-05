@@ -504,9 +504,11 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Title> {
+    use super::super::extract_attr;
+
     let mut title = Title::default();
 
-    // Extract attributes
+    // Extract attributes from attribute classes
     title.authorized.extract_attributes(&mut attrs)?;
     title.basic.extract_attributes(&mut attrs)?;
     title.bibl.extract_attributes(&mut attrs)?;
@@ -517,6 +519,11 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
     title.lang.extract_attributes(&mut attrs)?;
     title.linking.extract_attributes(&mut attrs)?;
     title.n_number_like.extract_attributes(&mut attrs)?;
+    title.responsibility.extract_attributes(&mut attrs)?;
+
+    // Extract element-local attributes
+    extract_attr!(attrs, "level", string title.level);
+    extract_attr!(attrs, "type", string title.r#type);
 
     // title can contain mixed content (text and child elements)
     if !is_empty {
@@ -615,6 +622,14 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
                                 super::parse_annot_from_event(reader, child_attrs, child_empty)?;
                             title.children.push(TitleChild::Annot(Box::new(annot)));
                         }
+                        "num" => {
+                            let num = super::super::parse_num_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            title.children.push(TitleChild::Num(Box::new(num)));
+                        }
                         _ => {
                             // Skip unknown children
                             if !child_empty {
@@ -636,9 +651,11 @@ pub(crate) fn parse_title_part_from_event<R: BufRead>(
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<TitlePart> {
+    use super::super::extract_attr;
+
     let mut title_part = TitlePart::default();
 
-    // Extract attributes
+    // Extract attributes from attribute classes
     title_part.authorized.extract_attributes(&mut attrs)?;
     title_part.basic.extract_attributes(&mut attrs)?;
     title_part.bibl.extract_attributes(&mut attrs)?;
@@ -649,6 +666,10 @@ pub(crate) fn parse_title_part_from_event<R: BufRead>(
     title_part.lang.extract_attributes(&mut attrs)?;
     title_part.linking.extract_attributes(&mut attrs)?;
     title_part.n_integer.extract_attributes(&mut attrs)?;
+    title_part.responsibility.extract_attributes(&mut attrs)?;
+
+    // Extract element-local attributes
+    extract_attr!(attrs, "type", string title_part.r#type);
 
     // titlePart can contain mixed content (text and child elements)
     if !is_empty {

@@ -873,6 +873,12 @@ pub(crate) fn parse_category_from_event<R: BufRead>(
                         .children
                         .push(CategoryChild::Label(Box::new(label)));
                 }
+                "altId" => {
+                    let alt_id = parse_alt_id_from_event(reader, child_attrs, child_empty)?;
+                    category
+                        .children
+                        .push(CategoryChild::AltId(Box::new(alt_id)));
+                }
                 _ => {
                     if !child_empty {
                         reader.skip_to_end(&name)?;

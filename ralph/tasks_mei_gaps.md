@@ -26,8 +26,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [x] Add deserializers for cast/performance elements (4): `CastList`, `CastGrp`, `CastItem`, `RoleDesc`
 - [x] Add deserializers for remaining header elements: `PgHead`, `PgFoot`, `Clef`, `KeySig`, `MeterSig`, `InstrDef`, `LabelAbbr`, `Date`, `Name`, `Head`, `P`, `L`, `Div`, `Ref`, `Ptr`, `Symbol`, `F`, `Fb`
 - [x] Add roundtrip tests for all header elements
-- [ ] Check if any serializers or deserializers for header elements are missing and if so, implement them.
-- [ ] Run all tests.
+- [x] Check if any serializers or deserializers for header elements are missing and if so, implement them.
+- [x] Run all tests.
 ---
 
 ## Phase 2: CMN Module Completion
@@ -55,6 +55,10 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 - [ ] Implement key/meter: `KeyAccid`, `MeterSigGrp`, `GrpSym`
 - [ ] Implement parts: `Part`, `Parts`, `Ossia` and also `HarpPedal`
 - [ ] Add roundtrip tests
+
+### 2.6 Missing
+- [ ] Check if any serializers or deserializers are missing for the CMN module. If so, please implement them.
+- [ ] Make sure all tests pass.
 
 ---
 
