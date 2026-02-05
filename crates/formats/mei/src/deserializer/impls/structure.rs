@@ -14,10 +14,10 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm, Layer,
-    LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Pb, Pedal, Reh, Rest,
-    Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
-    StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
+    Arpeg, Beam, Body, BodyChild, Chord, Dir, Dynam, Ending, EndingChild, Fermata, Hairpin, Harm,
+    Layer, LayerChild, MRest, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Pb, Pedal,
+    Reh, Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff,
+    StaffChild, StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -648,6 +648,10 @@ impl MeiDeserialize for Measure {
                         measure
                             .children
                             .push(MeasureChild::Mordent(Box::new(mordent)));
+                    }
+                    "arpeg" => {
+                        let arpeg = Arpeg::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Arpeg(Box::new(arpeg)));
                     }
                     "harm" => {
                         let harm = Harm::from_mei_event(reader, child_attrs, child_empty)?;

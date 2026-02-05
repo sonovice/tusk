@@ -146,7 +146,7 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Beethoven_StringQuartet_Op18_No1.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Berlioz_Symphony_Op25.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Borodin_StringTrio_g-minor.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Brahms_StringQuartet_Op51_No1.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Brahms_StringQuartet_Op51_No1.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Brahms_WieMelodienZiehtEsMir.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Chopin_Etude_Op10_No9.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Chopin_Mazurka_Op6_No1.mei`

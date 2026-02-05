@@ -9,20 +9,20 @@ use tusk_model::att::{
     AttAnchoredTextAnl, AttAnchoredTextGes, AttAnchoredTextLog, AttAnchoredTextVis,
 };
 use tusk_model::att::{
-    AttBibl, AttDirAnl, AttDirGes, AttDirLog, AttDirVis, AttDynamAnl, AttDynamGes, AttDynamLog,
-    AttDynamVis, AttFAnl, AttFGes, AttFLog, AttFVis, AttFermataAnl, AttFermataGes, AttFermataLog,
-    AttFermataVis, AttHairpinAnl, AttHairpinGes, AttHairpinLog, AttHairpinVis, AttHarmAnl,
-    AttHarmGes, AttHarmLog, AttHarmVis, AttLang, AttMordentAnl, AttMordentGes, AttMordentLog,
-    AttMordentVis, AttPedalAnl, AttPedalGes, AttPedalLog, AttPedalVis, AttSlurAnl, AttSlurGes,
-    AttSlurLog, AttSlurVis, AttSymbolAnl, AttSymbolGes, AttSymbolLog, AttSymbolVis, AttTempoAnl,
-    AttTempoGes, AttTempoLog, AttTempoVis, AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl,
-    AttTrillGes, AttTrillLog, AttTrillVis, AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog,
-    AttTupletSpanVis,
+    AttArpegAnl, AttArpegGes, AttArpegLog, AttArpegVis, AttBibl, AttDirAnl, AttDirGes, AttDirLog,
+    AttDirVis, AttDynamAnl, AttDynamGes, AttDynamLog, AttDynamVis, AttFAnl, AttFGes, AttFLog,
+    AttFVis, AttFermataAnl, AttFermataGes, AttFermataLog, AttFermataVis, AttHairpinAnl,
+    AttHairpinGes, AttHairpinLog, AttHairpinVis, AttHarmAnl, AttHarmGes, AttHarmLog, AttHarmVis,
+    AttLang, AttMordentAnl, AttMordentGes, AttMordentLog, AttMordentVis, AttPedalAnl, AttPedalGes,
+    AttPedalLog, AttPedalVis, AttSlurAnl, AttSlurGes, AttSlurLog, AttSlurVis, AttSymbolAnl,
+    AttSymbolGes, AttSymbolLog, AttSymbolVis, AttTempoAnl, AttTempoGes, AttTempoLog, AttTempoVis,
+    AttTieAnl, AttTieGes, AttTieLog, AttTieVis, AttTrillAnl, AttTrillGes, AttTrillLog, AttTrillVis,
+    AttTupletSpanAnl, AttTupletSpanGes, AttTupletSpanLog, AttTupletSpanVis,
 };
 use tusk_model::elements::{
-    AnchoredText, AnchoredTextChild, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb, FbChild,
-    Fermata, Hairpin, Harm, HarmChild, Mordent, Pedal, Slur, SlurChild, Symbol, Tempo, TempoChild,
-    Tie, TieChild, Trill, TupletSpan,
+    AnchoredText, AnchoredTextChild, Arpeg, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb,
+    FbChild, Fermata, Hairpin, Harm, HarmChild, Mordent, Pedal, Slur, SlurChild, Symbol, Tempo,
+    TempoChild, Tie, TieChild, Trill, TupletSpan,
 };
 
 use super::{push_attr, serialize_vec_serde, to_attr_string};
@@ -45,6 +45,102 @@ impl CollectAttributes for AttBibl {
         let mut attrs = Vec::new();
         push_attr!(attrs, "analog", clone self.analog);
         attrs
+    }
+}
+
+// ============================================================================
+// Arpeg attribute class implementations
+// ============================================================================
+
+impl CollectAttributes for AttArpegLog {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "when", self.when);
+        push_attr!(attrs, "layer", vec self.layer);
+        push_attr!(attrs, "part", vec self.part);
+        push_attr!(attrs, "partstaff", vec self.partstaff);
+        push_attr!(attrs, "plist", vec self.plist);
+        push_attr!(attrs, "staff", vec self.staff);
+        push_attr!(attrs, "evaluate", self.evaluate);
+        push_attr!(attrs, "tstamp", self.tstamp);
+        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
+        push_attr!(attrs, "tstamp.real", self.tstamp_real);
+        push_attr!(attrs, "startid", self.startid);
+        push_attr!(attrs, "order", self.order);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttArpegVis {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_attr!(attrs, "altsym", self.altsym);
+        push_attr!(attrs, "color", self.color);
+        push_attr!(attrs, "enclose", self.enclose);
+        push_attr!(attrs, "glyph.auth", self.glyph_auth);
+        push_attr!(attrs, "glyph.uri", self.glyph_uri);
+        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.num", self.glyph_num);
+        push_attr!(attrs, "lform", self.lform);
+        push_attr!(attrs, "lwidth", self.lwidth);
+        push_attr!(attrs, "lsegs", self.lsegs);
+        push_attr!(attrs, "fontfam", self.fontfam);
+        push_attr!(attrs, "fontname", self.fontname);
+        push_attr!(attrs, "fontsize", self.fontsize);
+        push_attr!(attrs, "fontstyle", self.fontstyle);
+        push_attr!(attrs, "fontweight", self.fontweight);
+        push_attr!(attrs, "letterspacing", self.letterspacing);
+        push_attr!(attrs, "lineheight", self.lineheight);
+        push_attr!(attrs, "ho", self.ho);
+        push_attr!(attrs, "to", self.to);
+        push_attr!(attrs, "vo", self.vo);
+        push_attr!(attrs, "x", self.x);
+        push_attr!(attrs, "y", self.y);
+        push_attr!(attrs, "arrow", self.arrow);
+        push_attr!(attrs, "arrow.shape", self.arrow_shape);
+        push_attr!(attrs, "arrow.size", self.arrow_size);
+        push_attr!(attrs, "arrow.color", self.arrow_color);
+        push_attr!(attrs, "arrow.fillcolor", self.arrow_fillcolor);
+        attrs
+    }
+}
+
+impl CollectAttributes for AttArpegGes {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttArpegGes has no attributes
+        Vec::new()
+    }
+}
+
+impl CollectAttributes for AttArpegAnl {
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        // AttArpegAnl has no attributes
+        Vec::new()
+    }
+}
+
+impl MeiSerialize for Arpeg {
+    fn element_name(&self) -> &'static str {
+        "arpeg"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.arpeg_log.collect_attributes());
+        attrs.extend(self.arpeg_vis.collect_attributes());
+        attrs.extend(self.arpeg_ges.collect_attributes());
+        attrs.extend(self.arpeg_anl.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
     }
 }
 

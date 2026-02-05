@@ -448,3 +448,15 @@ fn test_roundtrip_borodin_string_trio_g_minor() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_brahms_string_quartet_op51_no1() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Brahms_StringQuartet_Op51_No1.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Brahms_StringQuartet_Op51_No1.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

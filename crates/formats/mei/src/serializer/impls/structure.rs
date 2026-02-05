@@ -825,6 +825,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Mordent(mordent) => mordent.collect_all_attributes(),
             MeasureChild::Harm(harm) => harm.collect_all_attributes(),
             MeasureChild::Pedal(pedal) => pedal.collect_all_attributes(),
+            MeasureChild::Arpeg(arpeg) => arpeg.collect_all_attributes(),
             MeasureChild::TupletSpan(tuplet_span) => tuplet_span.collect_all_attributes(),
             MeasureChild::Reh(reh) => reh.collect_all_attributes(),
             // Other child types not yet implemented - return empty
@@ -846,6 +847,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Mordent(_) => false, // Mordent has no children
             MeasureChild::Harm(harm) => harm.has_children(),
             MeasureChild::Pedal(_) => false, // Pedal has no children
+            MeasureChild::Arpeg(_) => false, // Arpeg has no children
             MeasureChild::TupletSpan(_) => false, // TupletSpan has no children
             MeasureChild::Reh(reh) => reh.has_children(),
             // Other child types - assume no children for now
@@ -864,6 +866,7 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Mordent(_) => Ok(()), // Mordent has no children
             MeasureChild::Harm(harm) => harm.serialize_children(writer),
             MeasureChild::Pedal(_) => Ok(()), // Pedal has no children
+            MeasureChild::Arpeg(_) => Ok(()), // Arpeg has no children
             MeasureChild::TupletSpan(_) => Ok(()), // TupletSpan has no children
             MeasureChild::Reh(reh) => reh.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
