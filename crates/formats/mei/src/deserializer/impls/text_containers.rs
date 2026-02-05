@@ -132,9 +132,26 @@ impl ExtractAttributes for AttPhraseVis {
         extract_attr!(attrs, "y", self.y);
         extract_attr!(attrs, "x2", self.x2);
         extract_attr!(attrs, "y2", self.y2);
-        // Skip bezier and bulge - they require special parsing for f64/DataPercent types
-        // extract_attr!(attrs, "bezier", space_separated self.bezier);
-        // extract_attr!(attrs, "bulge", space_separated self.bulge);
+        // bezier is space-separated f64 values
+        if let Some(value) = attrs.remove("bezier") {
+            let items: Vec<f64> = value
+                .split_whitespace()
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            if !items.is_empty() {
+                self.bezier = Some(tusk_model::generated::SpaceSeparated::new(items));
+            }
+        }
+        // bulge is space-separated DataPercent values
+        if let Some(value) = attrs.remove("bulge") {
+            let items: Vec<tusk_model::generated::data::DataPercent> = value
+                .split_whitespace()
+                .filter_map(|s| from_attr_string(s).ok())
+                .collect();
+            if !items.is_empty() {
+                self.bulge = Some(tusk_model::generated::SpaceSeparated::new(items));
+            }
+        }
         extract_attr!(attrs, "curvedir", self.curvedir);
         extract_attr!(attrs, "lform", self.lform);
         extract_attr!(attrs, "lwidth", self.lwidth);
