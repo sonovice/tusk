@@ -31,6 +31,7 @@ mod misc;
 mod note;
 mod structure;
 mod text;
+mod text_containers;
 
 pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
 pub(crate) use drama::{

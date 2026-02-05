@@ -20,6 +20,7 @@ mod misc;
 mod note;
 mod structure;
 mod text;
+mod text_containers;
 
 // Header module is now a directory with submodules
 

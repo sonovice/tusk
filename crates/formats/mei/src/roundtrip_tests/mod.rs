@@ -23,3 +23,4 @@ mod harmony;
 mod header;
 mod note;
 mod structure;
+mod text_containers;
