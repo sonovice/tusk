@@ -472,3 +472,14 @@ fn test_roundtrip_brahms_wie_melodien_zieht_es_mir() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_chopin_etude_op10_no9() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Chopin_Etude_Op10_No9.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Chopin_Etude_Op10_No9.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
