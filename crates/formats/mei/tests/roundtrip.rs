@@ -332,3 +332,14 @@ fn test_roundtrip_bach_js_brandenburg_concerto_no4_ii_bwv1049() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_ein_feste_burg() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Bach-JS_Ein_feste_Burg.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_Ein_feste_Burg.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
