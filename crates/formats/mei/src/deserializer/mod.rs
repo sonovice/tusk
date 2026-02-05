@@ -23,6 +23,7 @@
 mod impls;
 
 use quick_xml::Reader;
+use quick_xml::escape::resolve_predefined_entity;
 use quick_xml::events::{BytesStart, Event};
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -129,18 +130,28 @@ pub struct MeiReader<R: BufRead> {
     reader: Reader<R>,
     config: DeserializeConfig,
     buf: Vec<u8>,
+    /// Pending mixed content event to return on next read_next_mixed_content call.
+    pending_mixed_content_event: Option<MixedContent>,
+    /// Flag indicating that mixed content reading hit the end tag.
+    mixed_content_ended: bool,
 }
 
 impl MeiReader<&[u8]> {
     /// Create a new MEI reader from a string slice.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> MeiReader<&[u8]> {
-        let mut reader = Reader::from_str(s);
-        reader.config_mut().trim_text(true);
+        let reader = Reader::from_str(s);
+        // Note: We don't use trim_text(true) because it interferes with proper
+        // handling of entity references like &amp;. The text "Test &amp; Value"
+        // would be split into ["Test ", "amp", " Value"] and trim_text would
+        // strip the spaces, resulting in "Test&Value" instead of "Test & Value".
+        // Instead, we manually skip whitespace-only text nodes where appropriate.
         MeiReader {
             reader,
             config: DeserializeConfig::default(),
             buf: Vec::new(),
+            pending_mixed_content_event: None,
+            mixed_content_ended: false,
         }
     }
 }
@@ -148,12 +159,14 @@ impl MeiReader<&[u8]> {
 impl<R: BufRead> MeiReader<R> {
     /// Create a new MEI reader from a BufRead source.
     pub fn new(inner: R, config: DeserializeConfig) -> Self {
-        let mut reader = Reader::from_reader(inner);
-        reader.config_mut().trim_text(true);
+        let reader = Reader::from_reader(inner);
+        // Note: We don't use trim_text(true) - see from_str for explanation.
         Self {
             reader,
             config,
             buf: Vec::new(),
+            pending_mixed_content_event: None,
+            mixed_content_ended: false,
         }
     }
 
@@ -331,6 +344,21 @@ impl<R: BufRead> MeiReader<R> {
                 Event::CData(t) => {
                     text_content.push_str(std::str::from_utf8(&t)?);
                 }
+                Event::GeneralRef(r) => {
+                    // Resolve entity references (e.g., &amp; -> &, &lt; -> <)
+                    let entity_name = std::str::from_utf8(&r)?;
+                    if let Some(resolved) = resolve_predefined_entity(entity_name) {
+                        text_content.push_str(resolved);
+                    } else if let Ok(Some(ch)) = r.resolve_char_ref() {
+                        // Character reference like &#x30; or &#49;
+                        text_content.push(ch);
+                    } else {
+                        // Unknown entity - preserve as-is with & and ;
+                        text_content.push('&');
+                        text_content.push_str(entity_name);
+                        text_content.push(';');
+                    }
+                }
                 Event::Eof => {
                     return Err(DeserializeError::UnexpectedEof);
                 }
@@ -425,26 +453,60 @@ impl<R: BufRead> MeiReader<R> {
     ///
     /// This is used for elements like `<publisher>` that can contain both text
     /// and child elements like `<corpName>`.
+    ///
+    /// Note: This collects consecutive text nodes and entity references into a single
+    /// Text result. Entity references like `&amp;` are resolved to their character values.
     pub fn read_next_mixed_content(
         &mut self,
         parent_name: &str,
     ) -> DeserializeResult<Option<MixedContent>> {
+        // Check if we previously hit the end tag after returning text
+        if self.mixed_content_ended {
+            self.mixed_content_ended = false;
+            return Ok(None);
+        }
+
+        // Check if we have a pending event from a previous call
+        if let Some(pending) = self.pending_mixed_content_event.take() {
+            return Ok(Some(pending));
+        }
+
+        let mut text_accumulator = String::new();
+
         loop {
             match self.read_event()? {
                 Event::Start(start) => {
                     let name = std::str::from_utf8(start.name().as_ref())?.to_string();
                     let attrs = self.extract_attributes(&start)?;
+                    // If we have accumulated text, return it first and save element for next call
+                    if !text_accumulator.trim().is_empty() {
+                        self.pending_mixed_content_event =
+                            Some(MixedContent::Element(name, attrs, false));
+                        return Ok(Some(MixedContent::Text(text_accumulator)));
+                    }
                     return Ok(Some(MixedContent::Element(name, attrs, false)));
                 }
                 Event::Empty(start) => {
                     let name = std::str::from_utf8(start.name().as_ref())?.to_string();
                     let attrs = self.extract_attributes(&start)?;
+                    // If we have accumulated text, return it first and save element for next call
+                    if !text_accumulator.trim().is_empty() {
+                        self.pending_mixed_content_event =
+                            Some(MixedContent::Element(name, attrs, true));
+                        return Ok(Some(MixedContent::Text(text_accumulator)));
+                    }
                     return Ok(Some(MixedContent::Element(name, attrs, true)));
                 }
                 Event::End(end) => {
                     let name_bytes = end.name();
                     let name = std::str::from_utf8(name_bytes.as_ref())?;
                     if name == parent_name {
+                        // Return any accumulated text before signaling end
+                        if !text_accumulator.trim().is_empty() {
+                            // Mark that we've hit the end so next call returns None
+                            self.mixed_content_ended = true;
+                            return Ok(Some(MixedContent::Text(text_accumulator)));
+                        }
                         return Ok(None);
                     }
                     // Unexpected end tag - in lenient mode we might ignore this
@@ -455,17 +517,27 @@ impl<R: BufRead> MeiReader<R> {
                 }
                 Event::Text(t) => {
                     let text = std::str::from_utf8(&t)?.to_string();
-                    // Only return non-whitespace text
-                    if !text.trim().is_empty() {
-                        return Ok(Some(MixedContent::Text(text)));
-                    }
-                    // Skip whitespace-only text
+                    text_accumulator.push_str(&text);
+                    // Continue to collect more text/entity refs
                     continue;
                 }
                 Event::CData(t) => {
                     let text = std::str::from_utf8(&t)?.to_string();
-                    if !text.trim().is_empty() {
-                        return Ok(Some(MixedContent::Text(text)));
+                    text_accumulator.push_str(&text);
+                    continue;
+                }
+                Event::GeneralRef(r) => {
+                    // Resolve entity references (e.g., &amp; -> &, &lt; -> <)
+                    let entity_name = std::str::from_utf8(&r)?;
+                    if let Some(resolved) = resolve_predefined_entity(entity_name) {
+                        text_accumulator.push_str(resolved);
+                    } else if let Ok(Some(ch)) = r.resolve_char_ref() {
+                        text_accumulator.push(ch);
+                    } else {
+                        // Unknown entity - preserve as-is
+                        text_accumulator.push('&');
+                        text_accumulator.push_str(entity_name);
+                        text_accumulator.push(';');
                     }
                     continue;
                 }
@@ -475,10 +547,17 @@ impl<R: BufRead> MeiReader<R> {
                 Event::Eof => {
                     return Err(DeserializeError::UnexpectedEof);
                 }
-                Event::GeneralRef(_) => {
-                    continue;
-                }
             }
+        }
+    }
+
+    /// Check if mixed content reading has ended (used after returning final text).
+    pub fn mixed_content_has_ended(&mut self) -> bool {
+        if self.mixed_content_ended {
+            self.mixed_content_ended = false;
+            true
+        } else {
+            false
         }
     }
 }
@@ -937,6 +1016,21 @@ mod tests {
                 assert_eq!(attrs.get("label"), Some(&"Test & Value".to_string()));
             }
             other => panic!("Expected Empty event, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn mei_reader_handles_ampersand_in_text_content() {
+        let xml = r#"<title>Test &amp; Value</title>"#;
+        let mut reader = MeiReader::from_str(xml);
+
+        match reader.read_event().unwrap() {
+            Event::Start(_) => {
+                // Read text content
+                let text = reader.read_text_until_end("title").unwrap();
+                assert_eq!(text, Some("Test & Value".to_string()));
+            }
+            other => panic!("Expected Start event, got {:?}", other),
         }
     }
 }
