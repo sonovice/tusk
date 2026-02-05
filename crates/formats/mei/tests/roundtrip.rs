@@ -379,3 +379,15 @@ fn test_roundtrip_bach_js_musikalisches_opfer_trio_bwv1079() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_bach_js_wie_bist_du_meine_seele_bwv435() {
+    let path = sample_encodings_music_dir()
+        .join("Complete_examples/Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Bach-JS_Wie_bist_du_meine_Seele_BWV435.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
