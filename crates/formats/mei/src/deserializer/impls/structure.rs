@@ -15,10 +15,10 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{
     Arpeg, BTrem, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
-    EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Lv, MRest, Mdiv,
-    MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh, Rest, Sb,
-    Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild, StaffDef,
-    Tempo, Tie, Trill, Tuplet, TupletSpan,
+    EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv, MRest,
+    Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh, Rest,
+    Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
+    StaffDef, Tempo, Tie, Trill, Tuplet, TupletSpan,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -718,6 +718,10 @@ impl MeiDeserialize for Measure {
                             .children
                             .push(MeasureChild::Phrase(Box::new(phrase)));
                     }
+                    "line" => {
+                        let line = Line::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Line(Box::new(line)));
+                    }
                     // Other child types - skip in lenient mode for now
                     _ => {
                         if !child_empty {
@@ -1260,6 +1264,36 @@ mod tests {
                 assert_eq!(score_def.children.len(), 1);
             }
             other => panic!("Expected ScoreDef, got {:?}", other),
+        }
+    }
+
+    // ============================================================================
+    // Measure tests
+    // ============================================================================
+
+    #[test]
+    fn measure_deserializes_line_control_event() {
+        let xml = r##"<measure n="1">
+            <staff n="1">
+                <layer n="1">
+                    <note pname="c" oct="4" dur="4"/>
+                </layer>
+            </staff>
+            <line startid="#n1" endid="#n2" form="dashed"/>
+        </measure>"##;
+        let measure = Measure::from_mei_str(xml).expect("should deserialize");
+
+        // Should have staff and line as children
+        assert_eq!(measure.children.len(), 2);
+
+        // Second child should be line
+        match &measure.children[1] {
+            MeasureChild::Line(line) => {
+                // Line should have startid and endid
+                assert!(line.line_log.startid.is_some());
+                assert!(line.line_log.endid.is_some());
+            }
+            other => panic!("Expected Line, got {:?}", other),
         }
     }
 }

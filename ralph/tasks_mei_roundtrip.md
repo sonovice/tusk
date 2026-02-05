@@ -23,7 +23,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_ELEMENT] Add `respStmt` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
 - [x] [MISSING_ELEMENT] Add `series` child element serialization to Bibl (source: Chopin_Mazurka_Op6_No1.mei)
 - [x] [MISSING_ELEMENT] Add `clef` child element parsing to Beam deserializer (source: Czerny_Praeludium_et_Fuga_Op603_No6.mei)
-- [ ] [MISSING_ELEMENT] Add `line` control event parsing to Measure deserializer (source: Czerny_Praeludium_et_Fuga_Op603_No6.mei)
+- [x] [MISSING_ELEMENT] Add `line` control event parsing to Measure deserializer (source: Czerny_Praeludium_et_Fuga_Op603_No6.mei)
 
 ---
 
