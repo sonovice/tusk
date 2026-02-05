@@ -14,7 +14,7 @@ use tusk_model::att::{
     AttStaffGes, AttStaffLog, AttStaffVis,
 };
 use tusk_model::elements::{
-    Arpeg, BTrem, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
+    Arpeg, BTrem, BarLine, Beam, BeamSpan, Body, BodyChild, BracketSpan, Chord, Dir, Dynam, Ending,
     EndingChild, FTrem, Fermata, Fing, Gliss, Hairpin, Harm, Layer, LayerChild, Line, Lv, MRest,
     MSpace, Mdiv, MdivChild, Measure, MeasureChild, Mordent, Note, Octave, Pb, Pedal, Phrase, Reh,
     Rest, Sb, Score, ScoreChild, ScoreDef, Section, SectionChild, Slur, Space, Staff, StaffChild,
@@ -569,6 +569,10 @@ impl MeiDeserialize for Layer {
                         let m_space = MSpace::from_mei_event(reader, child_attrs, child_empty)?;
                         layer.children.push(LayerChild::MSpace(Box::new(m_space)));
                     }
+                    "barLine" => {
+                        let bar_line = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
+                        layer.children.push(LayerChild::BarLine(Box::new(bar_line)));
+                    }
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
@@ -725,6 +729,10 @@ impl MeiDeserialize for Measure {
                     "line" => {
                         let line = Line::from_mei_event(reader, child_attrs, child_empty)?;
                         measure.children.push(MeasureChild::Line(Box::new(line)));
+                    }
+                    "sb" => {
+                        let sb = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+                        measure.children.push(MeasureChild::Sb(Box::new(sb)));
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {

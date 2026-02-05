@@ -547,6 +547,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::BTrem(btrem) => btrem.collect_all_attributes(),
             LayerChild::FTrem(ftrem) => ftrem.collect_all_attributes(),
             LayerChild::MSpace(mspace) => mspace.collect_all_attributes(),
+            LayerChild::BarLine(barline) => barline.collect_all_attributes(),
             // Other child types - not yet implemented
             _ => Vec::new(),
         }
@@ -568,6 +569,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::Clef(_) => false,  // Clef has no children per MEI spec
             LayerChild::BTrem(btrem) => btrem.has_children(),
             LayerChild::FTrem(ftrem) => ftrem.has_children(),
+            LayerChild::BarLine(_) => false, // BarLine has no children
             _ => false,
         }
     }
@@ -583,6 +585,7 @@ impl MeiSerialize for LayerChild {
             LayerChild::MSpace(_) => Ok(()), // MSpace has no children
             LayerChild::BTrem(btrem) => btrem.serialize_children(writer),
             LayerChild::FTrem(ftrem) => ftrem.serialize_children(writer),
+            LayerChild::BarLine(_) => Ok(()), // BarLine has no children
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "LayerChild::{}::serialize_children",
                 other.element_name()
@@ -848,6 +851,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Fing(fing) => fing.collect_all_attributes(),
             MeasureChild::Phrase(phrase) => phrase.collect_all_attributes(),
             MeasureChild::Line(line) => line.collect_all_attributes(),
+            MeasureChild::Sb(sb) => sb.collect_all_attributes(),
+            MeasureChild::Pb(pb) => pb.collect_all_attributes(),
             // Other child types not yet implemented - return empty
             _ => Vec::new(),
         }
@@ -878,6 +883,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Fing(fing) => fing.has_children(),
             MeasureChild::Phrase(phrase) => phrase.has_children(),
             MeasureChild::Line(line) => line.has_children(),
+            MeasureChild::Sb(_) => false, // Sb is empty
+            MeasureChild::Pb(pb) => pb.has_children(),
             // Other child types - assume no children for now
             _ => false,
         }
@@ -905,6 +912,8 @@ impl MeiSerialize for MeasureChild {
             MeasureChild::Fing(fing) => fing.serialize_children(writer),
             MeasureChild::Phrase(phrase) => phrase.serialize_children(writer),
             MeasureChild::Line(line) => line.serialize_children(writer),
+            MeasureChild::Sb(_) => Ok(()), // Sb is empty
+            MeasureChild::Pb(pb) => pb.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "MeasureChild::{}::serialize_children",
                 other.element_name()
