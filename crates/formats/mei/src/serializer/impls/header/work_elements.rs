@@ -5,10 +5,11 @@
 use crate::serializer::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
 use std::io::Write;
 use tusk_model::elements::{
-    AltId, AltIdChild, Classification, ClassificationChild, Creation, CreationChild, ExtMeta,
-    ExtMetaChild, Incip, IncipChild, IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key,
-    KeyChild, Meter, MeterChild, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
-    PerfResListChild, Term, TermChild, TermList, TermListChild,
+    AltId, AltIdChild, CastGrp, CastGrpChild, CastItem, CastItemChild, CastList, CastListChild,
+    Classification, ClassificationChild, Creation, CreationChild, ExtMeta, ExtMetaChild, Incip,
+    IncipChild, IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, KeyChild, Meter,
+    MeterChild, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList, PerfResListChild,
+    RoleDesc, RoleDescChild, Term, TermChild, TermList, TermListChild,
 };
 
 // ============================================================================
@@ -650,13 +651,7 @@ impl MeiSerialize for PerfMediumChild {
             PerfMediumChild::Head(elem) => elem.serialize_mei(writer),
             PerfMediumChild::Annot(elem) => elem.serialize_mei(writer),
             PerfMediumChild::PerfResList(elem) => elem.serialize_mei(writer),
-            PerfMediumChild::CastList(_) => {
-                // CastList needs its own serializer - for now write empty element
-                let name = self.element_name();
-                let start = writer.start_element(name)?;
-                writer.write_empty(start)?;
-                Ok(())
-            }
+            PerfMediumChild::CastList(elem) => elem.serialize_mei(writer),
         }
     }
 }
@@ -1277,6 +1272,271 @@ impl MeiSerialize for tusk_model::elements::LanguageChild {
                 "LanguageChild::{}",
                 self.element_name()
             ))),
+        }
+    }
+}
+
+// ============================================================================
+// CastList
+// ============================================================================
+
+impl MeiSerialize for CastList {
+    fn element_name(&self) -> &'static str {
+        "castList"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for CastListChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            CastListChild::Head(_) => "head",
+            CastListChild::CastItem(_) => "castItem",
+            CastListChild::CastGrp(_) => "castGrp",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            CastListChild::Head(elem) => elem.collect_all_attributes(),
+            CastListChild::CastItem(elem) => elem.collect_all_attributes(),
+            CastListChild::CastGrp(elem) => elem.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            CastListChild::Head(elem) => elem.serialize_mei(writer),
+            CastListChild::CastItem(elem) => elem.serialize_mei(writer),
+            CastListChild::CastGrp(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// CastItem
+// ============================================================================
+
+impl MeiSerialize for CastItem {
+    fn element_name(&self) -> &'static str {
+        "castItem"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.bibl.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for CastItemChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            CastItemChild::Text(_) => "$text",
+            CastItemChild::Actor(_) => "actor",
+            CastItemChild::RoleDesc(_) => "roleDesc",
+            CastItemChild::PerfRes(_) => "perfRes",
+            CastItemChild::Role(_) => "role",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            CastItemChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            CastItemChild::RoleDesc(elem) => elem.serialize_mei(writer),
+            CastItemChild::PerfRes(elem) => elem.serialize_mei(writer),
+            CastItemChild::Actor(_) | CastItemChild::Role(_) => {
+                // Not fully implemented yet - write empty element
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
+        }
+    }
+}
+
+// ============================================================================
+// CastGrp
+// ============================================================================
+
+impl MeiSerialize for CastGrp {
+    fn element_name(&self) -> &'static str {
+        "castGrp"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for CastGrpChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            CastGrpChild::CastGrp(_) => "castGrp",
+            CastGrpChild::RoleDesc(_) => "roleDesc",
+            CastGrpChild::CastItem(_) => "castItem",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        match self {
+            CastGrpChild::CastGrp(elem) => elem.collect_all_attributes(),
+            CastGrpChild::RoleDesc(elem) => elem.collect_all_attributes(),
+            CastGrpChild::CastItem(elem) => elem.collect_all_attributes(),
+        }
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            CastGrpChild::CastGrp(elem) => elem.serialize_mei(writer),
+            CastGrpChild::RoleDesc(elem) => elem.serialize_mei(writer),
+            CastGrpChild::CastItem(elem) => elem.serialize_mei(writer),
+        }
+    }
+}
+
+// ============================================================================
+// RoleDesc
+// ============================================================================
+
+impl MeiSerialize for RoleDesc {
+    fn element_name(&self) -> &'static str {
+        "roleDesc"
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.extend(self.common.collect_attributes());
+        attrs.extend(self.facsimile.collect_attributes());
+        attrs.extend(self.lang.collect_attributes());
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
+
+    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        for child in &self.children {
+            child.serialize_mei(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl MeiSerialize for RoleDescChild {
+    fn element_name(&self) -> &'static str {
+        match self {
+            RoleDescChild::Text(_) => "$text",
+            _ => "unknown",
+        }
+    }
+
+    fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, _writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+
+    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+        match self {
+            RoleDescChild::Text(text) => {
+                writer.write_text(text)?;
+                Ok(())
+            }
+            _ => {
+                // Not fully implemented yet - write empty element
+                let name = self.element_name();
+                let start = writer.start_element(name)?;
+                writer.write_empty(start)?;
+                Ok(())
+            }
         }
     }
 }

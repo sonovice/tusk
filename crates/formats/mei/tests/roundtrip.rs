@@ -425,3 +425,14 @@ fn test_roundtrip_beethoven_string_quartet_op18_no1() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_berlioz_symphony_op25() {
+    let path = sample_encodings_music_dir().join("Complete_examples/Berlioz_Symphony_Op25.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Berlioz_Symphony_Op25.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}

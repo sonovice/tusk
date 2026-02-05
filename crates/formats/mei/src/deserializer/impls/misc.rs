@@ -17,19 +17,20 @@ use super::{
 use crate::deserializer::MixedContent;
 use std::io::BufRead;
 use tusk_model::elements::{
-    Audience, BiblList, BiblListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild,
-    Classification, ClassificationChild, ComponentList, ComponentListChild, ContentItem,
-    ContentItemChild, Contents, ContentsChild, Context, Creation, CreationChild, Creator,
-    Dedication, Edition, EditionStmt, EditionStmtChild, Event, EventChild, EventList,
-    EventListChild, Expression, ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta,
-    Extent, History, HistoryChild, Incip, IncipChild, IncipCode, IncipCodeChild, IncipText,
-    IncipTextChild, Key, LangUsage, LangUsageChild, Language, Lg, Manifestation,
-    ManifestationChild, ManifestationList, ManifestationListChild, Mensuration, Meter, NotesStmt,
-    NotesStmtChild, Num, NumChild, OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes,
-    PerfResChild, PerfResList, PerfResListChild, PhysDesc, PhysDescChild, PlateNum, PlateNumChild,
-    RelationList, RelationListChild, RevisionDesc, RevisionDescChild, Score, ScoreFormat,
-    SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild, Work, WorkChild,
-    WorkList, WorkListChild,
+    Audience, BiblList, BiblListChild, CastGrp, CastGrpChild, CastItem, CastItemChild, CastList,
+    CastListChild, Change, ChangeChild, ChangeDesc, ChangeDescChild, Classification,
+    ClassificationChild, ComponentList, ComponentListChild, ContentItem, ContentItemChild,
+    Contents, ContentsChild, Context, Creation, CreationChild, Creator, Dedication, Edition,
+    EditionStmt, EditionStmtChild, Event, EventChild, EventList, EventListChild, Expression,
+    ExpressionChild, ExpressionList, ExpressionListChild, ExtMeta, Extent, History, HistoryChild,
+    Incip, IncipChild, IncipCode, IncipCodeChild, IncipText, IncipTextChild, Key, LangUsage,
+    LangUsageChild, Language, Lg, Manifestation, ManifestationChild, ManifestationList,
+    ManifestationListChild, Mensuration, Meter, NotesStmt, NotesStmtChild, Num, NumChild,
+    OtherChar, PerfDuration, PerfMedium, PerfMediumChild, PerfRes, PerfResChild, PerfResList,
+    PerfResListChild, PhysDesc, PhysDescChild, PlateNum, PlateNumChild, RelationList,
+    RelationListChild, RevisionDesc, RevisionDescChild, RoleDesc, RoleDescChild, Score,
+    ScoreFormat, SeriesStmt, SeriesStmtChild, Tempo, Term, TermChild, TermList, TermListChild,
+    Work, WorkChild, WorkList, WorkListChild,
 };
 
 // ============================================================================
@@ -492,11 +493,10 @@ fn parse_perf_medium_from_event<R: BufRead>(
                         .push(PerfMediumChild::PerfResList(Box::new(perf_res_list)));
                 }
                 "castList" => {
-                    // castList needs its own parser - for now skip
-                    // TODO: implement parse_cast_list_from_event
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    let cast_list = parse_cast_list_from_event(reader, child_attrs, child_empty)?;
+                    perf_medium
+                        .children
+                        .push(PerfMediumChild::CastList(Box::new(cast_list)));
                 }
                 _ => {
                     if !child_empty {
@@ -508,6 +508,194 @@ fn parse_perf_medium_from_event<R: BufRead>(
     }
 
     Ok(perf_medium)
+}
+
+/// Parse a `<castList>` element from within another element.
+fn parse_cast_list_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CastList> {
+    let mut cast_list = CastList::default();
+
+    // Extract attributes
+    cast_list.common.extract_attributes(&mut attrs)?;
+    cast_list.bibl.extract_attributes(&mut attrs)?;
+    cast_list.facsimile.extract_attributes(&mut attrs)?;
+    cast_list.lang.extract_attributes(&mut attrs)?;
+
+    // Read children if not an empty element
+    // castList can contain: head*, castItem*, castGrp*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("castList")?
+        {
+            match name.as_str() {
+                "head" => {
+                    let head = parse_head_from_event(reader, child_attrs, child_empty)?;
+                    cast_list.children.push(CastListChild::Head(Box::new(head)));
+                }
+                "castItem" => {
+                    let cast_item = parse_cast_item_from_event(reader, child_attrs, child_empty)?;
+                    cast_list
+                        .children
+                        .push(CastListChild::CastItem(Box::new(cast_item)));
+                }
+                "castGrp" => {
+                    let cast_grp = parse_cast_grp_from_event(reader, child_attrs, child_empty)?;
+                    cast_list
+                        .children
+                        .push(CastListChild::CastGrp(Box::new(cast_grp)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(cast_list)
+}
+
+/// Parse a `<castItem>` element from within another element.
+fn parse_cast_item_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CastItem> {
+    let mut cast_item = CastItem::default();
+
+    // Extract attributes
+    cast_item.common.extract_attributes(&mut attrs)?;
+    cast_item.bibl.extract_attributes(&mut attrs)?;
+    cast_item.facsimile.extract_attributes(&mut attrs)?;
+    cast_item.lang.extract_attributes(&mut attrs)?;
+
+    // castItem has mixed content - text and child elements (actor, roleDesc, perfRes, role)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("castItem")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        cast_item.children.push(CastItemChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "perfRes" => {
+                            let perf_res =
+                                parse_perf_res_from_event(reader, child_attrs, child_empty)?;
+                            cast_item
+                                .children
+                                .push(CastItemChild::PerfRes(Box::new(perf_res)));
+                        }
+                        "roleDesc" => {
+                            let role_desc =
+                                parse_role_desc_from_event(reader, child_attrs, child_empty)?;
+                            cast_item
+                                .children
+                                .push(CastItemChild::RoleDesc(Box::new(role_desc)));
+                        }
+                        // actor and role elements are skipped for now - can be added later
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(cast_item)
+}
+
+/// Parse a `<castGrp>` element from within another element.
+fn parse_cast_grp_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<CastGrp> {
+    let mut cast_grp = CastGrp::default();
+
+    // Extract attributes
+    cast_grp.common.extract_attributes(&mut attrs)?;
+    cast_grp.facsimile.extract_attributes(&mut attrs)?;
+    cast_grp.lang.extract_attributes(&mut attrs)?;
+
+    // castGrp can contain: castGrp* (recursive), roleDesc*, castItem*
+    if !is_empty {
+        while let Some((name, child_attrs, child_empty)) =
+            reader.read_next_child_start("castGrp")?
+        {
+            match name.as_str() {
+                "castGrp" => {
+                    // Recursive call for nested castGrp
+                    let nested = parse_cast_grp_from_event(reader, child_attrs, child_empty)?;
+                    cast_grp
+                        .children
+                        .push(CastGrpChild::CastGrp(Box::new(nested)));
+                }
+                "roleDesc" => {
+                    let role_desc = parse_role_desc_from_event(reader, child_attrs, child_empty)?;
+                    cast_grp
+                        .children
+                        .push(CastGrpChild::RoleDesc(Box::new(role_desc)));
+                }
+                "castItem" => {
+                    let cast_item = parse_cast_item_from_event(reader, child_attrs, child_empty)?;
+                    cast_grp
+                        .children
+                        .push(CastGrpChild::CastItem(Box::new(cast_item)));
+                }
+                _ => {
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(cast_grp)
+}
+
+/// Parse a `<roleDesc>` element from within another element.
+fn parse_role_desc_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<RoleDesc> {
+    let mut role_desc = RoleDesc::default();
+
+    // Extract attributes
+    role_desc.common.extract_attributes(&mut attrs)?;
+    role_desc.facsimile.extract_attributes(&mut attrs)?;
+    role_desc.lang.extract_attributes(&mut attrs)?;
+
+    // roleDesc has mixed content
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("roleDesc")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.trim().is_empty() {
+                        role_desc.children.push(RoleDescChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, _child_attrs, child_empty) => {
+                    // Skip unknown child elements for now
+                    if !child_empty {
+                        reader.skip_to_end(&name)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(role_desc)
 }
 
 /// Parse a `<perfResList>` element from within another element.
