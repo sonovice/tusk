@@ -40,6 +40,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [SERIALIZER_BUG] RendChild serializer incomplete - missing Symbol variant (and many others), returns "unknown" and fails to serialize (source: Praetorius_PuerNobisNascitur.mei)
 - [x] [SERIALIZER_BUG] TupletChild serializer incomplete - missing BTrem variant (and many others: FTrem, Clef, ClefGrp, BarLine, KeySig, MeterSig, MeterSigGrp, Custos, TabDurSym, TabGrp, Pad, HandShift, HalfmRpt, BeatRpt, Supplied, Subst, App, Reg, Del, Corr, Add, Restore, Choice, Unclear, Orig, Gap, Damage, Sic) (source: Schubert_Erlkoenig.mei)
 - [x] [MISSING_ELEMENT] Add `date` child element parsing to Annot deserializer in `parse_annot_from_event` (source: Schubert_Lindenbaum.mei)
+- [ ] [SERIALIZER_BUG] MeasureChild::StaffDef serializer incomplete - `collect_all_attributes()` returns empty Vec, `has_children()` returns false, `serialize_children()` returns error - attributes like `n`, `clef.shape`, `clef.line` are lost (source: Webern_Variations_for_Piano_Op27_No2.mei)
 
 ---
 
@@ -119,16 +120,16 @@ Large-scale complete musical works testing comprehensive MEI support.
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Saint-Saens_LeCarnevalDesAnimaux.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Scarlatti_Sonata_in_C-major.mei`
 - [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schubert_Erlkoenig.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schubert_Lindenbaum.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schuetz_DomineDeus.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schuetz_Jubilate_Deo.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_Landmann_Op68_No10.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_Song_Op48_No1.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_StringQuartet_Op41_No1.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Telemann_Concert.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Telemann_Suite.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Vivaldi_ViolinConcert_Op8_No2.mei`
-- [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Weber_Arie.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schubert_Lindenbaum.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schuetz_DomineDeus.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schuetz_Jubilate_Deo.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_Landmann_Op68_No10.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_Song_Op48_No1.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Schumann_StringQuartet_Op41_No1.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Telemann_Concert.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Telemann_Suite.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Vivaldi_ViolinConcert_Op8_No2.mei`
+- [x] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Weber_Arie.mei`
 - [ ] Roundtrip test: `specs/mei/sample-encodings/MEI_5.1/Music/Complete_examples/Webern_Variations_for_Piano_Op27_No2.mei`
 
 ### Lyrics (4 files)
