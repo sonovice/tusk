@@ -139,8 +139,8 @@ Tasks for implementing missing MEI serializers and deserializers. Based on gap a
 ## Phase 11: Symbols Module
 
 ### 11.1 Symbol Definition Elements
-- [ ] Implement `SymbolTable`, `SymbolDef`, `SymName`, `SymProp`
-- [ ] Add roundtrip tests
+- [x] Implement `SymbolTable`, `SymbolDef`, `SymName`, `SymProp`
+- [x] Add roundtrip tests
 
 ---
 

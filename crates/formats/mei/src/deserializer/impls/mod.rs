@@ -33,6 +33,7 @@ mod misc;
 mod neumes;
 mod note;
 mod structure;
+mod symbols;
 mod tablature;
 mod text;
 mod text_containers;
