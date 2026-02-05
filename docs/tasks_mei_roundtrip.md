@@ -82,6 +82,8 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [DESERIALIZER_BUG] PgHead: table element not parsed - skipped instead of deserialized (source: Bach-JC_Fughette_No2.mei)
 - [x] [SERIALIZER_BUG] StaffDefChild::InstrDef serialization incomplete - returns "unknown" element name, no attributes collected (source: Bach-JC_Fughette_No2.mei)
 - [x] [DESERIALIZER_BUG] Section: pb (page break) element not parsed - skipped instead of deserialized (source: Bach-JC_Fughette_No2.mei)
+- [x] [DESERIALIZER_BUG] PgFoot: anchoredText element not parsed - skipped instead of deserialized (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
+- [ ] [SERIALIZER_BUG] StaffDef: trans.diat and trans.semi attributes not serialized - missing from collect_all_attributes (source: Bach-JS_BrandenburgConcert_No4_I_BWV1049.mei)
 
 ---
 

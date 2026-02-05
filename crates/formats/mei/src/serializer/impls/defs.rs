@@ -1426,6 +1426,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::P(_) => "p",
             PgFootChild::List(_) => "list",
             PgFootChild::Seg(_) => "seg",
+            PgFootChild::AnchoredText(_) => "anchoredText",
             // Many other child types exist but are not commonly used
             _ => "unknown",
         }
@@ -1446,6 +1447,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::P(p) => p.collect_all_attributes(),
             PgFootChild::List(l) => l.collect_all_attributes(),
             PgFootChild::Seg(s) => s.collect_all_attributes(),
+            PgFootChild::AnchoredText(at) => at.collect_all_attributes(),
             // Lg and other elements - not yet implemented
             _ => Vec::new(),
         }
@@ -1467,6 +1469,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::P(p) => !p.children.is_empty(),
             PgFootChild::List(l) => !l.children.is_empty(),
             PgFootChild::Seg(s) => !s.children.is_empty(),
+            PgFootChild::AnchoredText(at) => !at.children.is_empty(),
             // Lg and other elements
             _ => false,
         }
@@ -1491,6 +1494,7 @@ impl MeiSerialize for PgFootChild {
             PgFootChild::P(p) => p.serialize_children(writer),
             PgFootChild::List(l) => l.serialize_children(writer),
             PgFootChild::Seg(s) => s.serialize_children(writer),
+            PgFootChild::AnchoredText(at) => at.serialize_children(writer),
             other => Err(crate::serializer::SerializeError::NotImplemented(format!(
                 "PgFootChild::{}::serialize_children",
                 other.element_name()

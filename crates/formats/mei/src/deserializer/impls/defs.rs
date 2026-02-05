@@ -1546,6 +1546,16 @@ pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
                             )?;
                             pg_foot.children.push(PgFootChild::Seg(Box::new(seg)));
                         }
+                        "anchoredText" => {
+                            let anchored_text = tusk_model::elements::AnchoredText::from_mei_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            pg_foot
+                                .children
+                                .push(PgFootChild::AnchoredText(Box::new(anchored_text)));
+                        }
                         // Skip unknown child elements
                         _ => {
                             if !child_empty {
