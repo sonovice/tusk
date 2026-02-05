@@ -1,10 +1,10 @@
 //! Address-related elements (Address, AddrLine, GeogName, Street, etc.).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiReader, MixedContent};
-use std::io::BufRead;
-use tusk_model::elements::{
-    AddrLine, AddrLineChild, GeogName, GeogNameChild,
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiReader, MixedContent,
 };
+use std::io::BufRead;
+use tusk_model::elements::{AddrLine, AddrLineChild, GeogName, GeogNameChild};
 
 /// Parse an `<address>` element from within another element.
 pub(crate) fn parse_address_from_event<R: BufRead>(
@@ -128,15 +128,21 @@ pub(crate) fn parse_addr_line_from_event<R: BufRead>(
                                 .push(AddrLineChild::GeogName(Box::new(geog_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             addr_line
                                 .children
                                 .push(AddrLineChild::CorpName(Box::new(corp_name)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             addr_line
                                 .children
                                 .push(AddrLineChild::PersName(Box::new(pers_name)));
@@ -224,15 +230,21 @@ pub(crate) fn parse_geog_name_from_event<R: BufRead>(
                                 .push(GeogNameChild::GeogName(Box::new(nested)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             geog_name
                                 .children
                                 .push(GeogNameChild::CorpName(Box::new(corp_name)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             geog_name
                                 .children
                                 .push(GeogNameChild::PersName(Box::new(pers_name)));

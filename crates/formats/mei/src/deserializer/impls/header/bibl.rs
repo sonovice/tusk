@@ -1,23 +1,35 @@
 //! Bibliographic elements (Bibl, BiblStruct, BiblScope, Imprint, Locus, LocusGrp).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent};
-use std::io::BufRead;
-use tusk_model::elements::{
-    Bibl, BiblScope, BiblStruct, Imprint, Locus, LocusGrp,
-};
 use super::super::{extract_attr, from_attr_string};
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
+};
+use std::io::BufRead;
+use tusk_model::elements::{Bibl, BiblScope, BiblStruct, Imprint, Locus, LocusGrp};
 
 // MeiDeserialize trait implementations
 impl MeiDeserialize for Bibl {
-    fn element_name() -> &'static str { "bibl" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "bibl"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_bibl_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for BiblScope {
-    fn element_name() -> &'static str { "biblScope" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "biblScope"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_bibl_scope_from_event(reader, attrs, is_empty)
     }
 }
@@ -51,12 +63,16 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             bibl.children.push(BiblChild::Title(Box::new(title)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl.children
                                 .push(BiblChild::Identifier(Box::new(identifier)));
                         }
@@ -122,7 +138,8 @@ pub(crate) fn parse_bibl_from_event<R: BufRead>(
                             bibl.children.push(BiblChild::Imprint(Box::new(imprint)));
                         }
                         "editor" => {
-                            let editor = super::parse_editor_from_event(reader, child_attrs, child_empty)?;
+                            let editor =
+                                super::parse_editor_from_event(reader, child_attrs, child_empty)?;
                             bibl.children.push(BiblChild::Editor(Box::new(editor)));
                         }
                         "biblScope" => {
@@ -173,58 +190,81 @@ pub(crate) fn parse_imprint_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "publisher" => {
-                            let publisher =
-                                super::parse_publisher_from_event(reader, child_attrs, child_empty)?;
+                            let publisher = super::parse_publisher_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::Publisher(Box::new(publisher)));
                         }
                         "pubPlace" => {
-                            let pub_place =
-                                super::parse_pub_place_from_event(reader, child_attrs, child_empty)?;
+                            let pub_place = super::parse_pub_place_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::PubPlace(Box::new(pub_place)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             imprint.children.push(ImprintChild::Date(Box::new(date)));
                         }
                         "distributor" => {
-                            let distributor =
-                                super::parse_distributor_from_event(reader, child_attrs, child_empty)?;
+                            let distributor = super::parse_distributor_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::Distributor(Box::new(distributor)));
                         }
                         "respStmt" => {
-                            let resp_stmt =
-                                super::parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                            let resp_stmt = super::parse_resp_stmt_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::RespStmt(Box::new(resp_stmt)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::Identifier(Box::new(identifier)));
                         }
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             imprint.children.push(ImprintChild::Title(Box::new(title)));
                         }
                         "availability" => {
-                            let availability =
-                                super::parse_availability_from_event(reader, child_attrs, child_empty)?;
+                            let availability = super::parse_availability_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::Availability(Box::new(availability)));
                         }
                         "extent" => {
-                            let extent =
-                                super::super::parse_extent_from_event(reader, child_attrs, child_empty)?;
+                            let extent = super::super::parse_extent_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::Extent(Box::new(extent)));
@@ -248,15 +288,21 @@ pub(crate) fn parse_imprint_from_event<R: BufRead>(
                                 .push(ImprintChild::BiblStruct(Box::new(bibl_struct)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::CorpName(Box::new(corp_name)));
@@ -269,31 +315,44 @@ pub(crate) fn parse_imprint_from_event<R: BufRead>(
                                 .push(ImprintChild::Name(Box::new(name_elem)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint
                                 .children
                                 .push(ImprintChild::GeogName(Box::new(geog_name)));
                         }
                         "annot" => {
-                            let annot = super::parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            let annot =
+                                super::parse_annot_from_event(reader, child_attrs, child_empty)?;
                             imprint.children.push(ImprintChild::Annot(Box::new(annot)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint.children.push(ImprintChild::Lb(Box::new(lb)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             imprint.children.push(ImprintChild::Ptr(Box::new(ptr)));
                         }
                         "ref" => {
-                            let ref_elem = super::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            let ref_elem =
+                                super::parse_ref_from_event(reader, child_attrs, child_empty)?;
                             imprint.children.push(ImprintChild::Ref(Box::new(ref_elem)));
                         }
                         "rend" => {
-                            let rend =
-                                super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            let rend = super::super::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             imprint.children.push(ImprintChild::Rend(Box::new(rend)));
                         }
                         // Skip unknown children in lenient mode
@@ -447,34 +506,45 @@ pub(crate) fn parse_bibl_scope_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Title(Box::new(title)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Identifier(Box::new(identifier)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Date(Box::new(date)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::CorpName(Box::new(corp_name)));
@@ -487,8 +557,11 @@ pub(crate) fn parse_bibl_scope_from_event<R: BufRead>(
                                 .push(BiblScopeChild::Name(Box::new(name_elem)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::GeogName(Box::new(geog_name)));
@@ -527,28 +600,38 @@ pub(crate) fn parse_bibl_scope_from_event<R: BufRead>(
                                 .push(BiblScopeChild::LocusGrp(Box::new(locus_grp)));
                         }
                         "rend" => {
-                            let rend =
-                                super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            let rend = super::super::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             bibl_scope.children.push(BiblScopeChild::Lb(Box::new(lb)));
                         }
                         "annot" => {
-                            let annot = super::parse_annot_from_event(reader, child_attrs, child_empty)?;
+                            let annot =
+                                super::parse_annot_from_event(reader, child_attrs, child_empty)?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Annot(Box::new(annot)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             bibl_scope.children.push(BiblScopeChild::Ptr(Box::new(ptr)));
                         }
                         "ref" => {
-                            let ref_elem = super::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            let ref_elem =
+                                super::parse_ref_from_event(reader, child_attrs, child_empty)?;
                             bibl_scope
                                 .children
                                 .push(BiblScopeChild::Ref(Box::new(ref_elem)));

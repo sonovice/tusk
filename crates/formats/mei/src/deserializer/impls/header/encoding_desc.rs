@@ -1,6 +1,9 @@
 //! Encoding description elements (EncodingDesc, AppInfo, EditorialDecl, etc.).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent};
+use super::super::{extract_attr, from_attr_string};
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
+};
 use std::io::BufRead;
 use tusk_model::elements::{
     AltId, AltIdChild, AppInfo, AppInfoChild, Application, ApplicationChild, CatRel, CatRelChild,
@@ -10,96 +13,173 @@ use tusk_model::elements::{
     SamplingDecl, SamplingDeclChild, Segmentation, SegmentationChild, StdVals, StdValsChild,
     Taxonomy, TaxonomyChild,
 };
-use super::super::{extract_attr, from_attr_string};
 
 // MeiDeserialize trait implementations
 impl MeiDeserialize for EncodingDesc {
-    fn element_name() -> &'static str { "encodingDesc" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "encodingDesc"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_encoding_desc_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for AppInfo {
-    fn element_name() -> &'static str { "appInfo" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "appInfo"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_app_info_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for EditorialDecl {
-    fn element_name() -> &'static str { "editorialDecl" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "editorialDecl"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_editorial_decl_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Correction {
-    fn element_name() -> &'static str { "correction" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "correction"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_correction_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Interpretation {
-    fn element_name() -> &'static str { "interpretation" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "interpretation"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_interpretation_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Normalization {
-    fn element_name() -> &'static str { "normalization" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "normalization"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_normalization_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Segmentation {
-    fn element_name() -> &'static str { "segmentation" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "segmentation"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_segmentation_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for StdVals {
-    fn element_name() -> &'static str { "stdVals" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "stdVals"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_std_vals_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for ProjectDesc {
-    fn element_name() -> &'static str { "projectDesc" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "projectDesc"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_project_desc_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for SamplingDecl {
-    fn element_name() -> &'static str { "samplingDecl" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "samplingDecl"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_sampling_decl_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for ClassDecls {
-    fn element_name() -> &'static str { "classDecls" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "classDecls"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_class_decls_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Taxonomy {
-    fn element_name() -> &'static str { "taxonomy" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "taxonomy"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_taxonomy_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Category {
-    fn element_name() -> &'static str { "category" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "category"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_category_from_event(reader, attrs, is_empty)
     }
 }
@@ -739,8 +819,11 @@ pub(crate) fn parse_taxonomy_from_event<R: BufRead>(
                     taxonomy.children.push(TaxonomyChild::Desc(Box::new(desc)));
                 }
                 "taxonomy" => {
-                    let nested_taxonomy = parse_taxonomy_from_event(reader, child_attrs, child_empty)?;
-                    taxonomy.children.push(TaxonomyChild::Taxonomy(Box::new(nested_taxonomy)));
+                    let nested_taxonomy =
+                        parse_taxonomy_from_event(reader, child_attrs, child_empty)?;
+                    taxonomy
+                        .children
+                        .push(TaxonomyChild::Taxonomy(Box::new(nested_taxonomy)));
                 }
                 _ => {
                     if !child_empty {
@@ -784,7 +867,8 @@ pub(crate) fn parse_category_from_event<R: BufRead>(
                         .push(CategoryChild::Category(Box::new(nested)));
                 }
                 "label" => {
-                    let label = super::super::parse_label_from_event(reader, child_attrs, child_empty)?;
+                    let label =
+                        super::super::parse_label_from_event(reader, child_attrs, child_empty)?;
                     category
                         .children
                         .push(CategoryChild::Label(Box::new(label)));
@@ -847,12 +931,11 @@ pub(crate) fn parse_cat_rel_from_event<R: BufRead>(
 
     // catRel can contain label and desc children
     if !is_empty {
-        while let Some((name, child_attrs, child_empty)) =
-            reader.read_next_child_start("catRel")?
-        {
+        while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("catRel")? {
             match name.as_str() {
                 "label" => {
-                    let label = super::super::parse_label_from_event(reader, child_attrs, child_empty)?;
+                    let label =
+                        super::super::parse_label_from_event(reader, child_attrs, child_empty)?;
                     cat_rel.children.push(CatRelChild::Label(Box::new(label)));
                 }
                 "desc" => {

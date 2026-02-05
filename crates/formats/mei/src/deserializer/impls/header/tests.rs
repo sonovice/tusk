@@ -1,10 +1,9 @@
 use crate::deserializer::MeiDeserialize;
 use tusk_model::elements::{
-    AppInfo, AppInfoChild, Application, ApplicationChild, CreatorChild, EditorChild,
-    EditorialDecl, EditorialDeclChild, EncodingDesc, EncodingDescChild, FileDesc,
-    FileDescChild, MeiHead, MeiHeadChild, PChild, ProjectDesc, ProjectDescChild, PubStmt,
-    PubStmtChild, Source, SourceChild, SourceDesc, SourceDescChild, TitleChild, TitleStmt,
-    TitleStmtChild,
+    AppInfo, AppInfoChild, Application, ApplicationChild, CreatorChild, EditorChild, EditorialDecl,
+    EditorialDeclChild, EncodingDesc, EncodingDescChild, FileDesc, FileDescChild, MeiHead,
+    MeiHeadChild, PChild, ProjectDesc, ProjectDescChild, PubStmt, PubStmtChild, Source,
+    SourceChild, SourceDesc, SourceDescChild, TitleChild, TitleStmt, TitleStmtChild,
 };
 
 // ============================================================================
@@ -204,8 +203,7 @@ fn publisher_deserializes_with_corp_name_child() {
 fn publisher_deserializes_with_mixed_content() {
     use tusk_model::elements::{Publisher, PublisherChild};
 
-    let xml =
-        r#"<publisher>Some text before <corpName>My Corp</corpName> and after</publisher>"#;
+    let xml = r#"<publisher>Some text before <corpName>My Corp</corpName> and after</publisher>"#;
     let publisher = Publisher::from_mei_str(xml).expect("should deserialize");
     assert_eq!(publisher.children.len(), 3);
     match &publisher.children[0] {
@@ -498,8 +496,7 @@ fn title_deserializes_with_title_part_child() {
 
     // Note: @type attribute on titlePart is a local attribute not yet generated in the model
     // (tracked as CODEGEN_BUG in tasks_mei_roundtrip.md)
-    let xml =
-        r#"<title>Walzer G-Dur<titlePart>an electronic transcription</titlePart></title>"#;
+    let xml = r#"<title>Walzer G-Dur<titlePart>an electronic transcription</titlePart></title>"#;
     let title = Title::from_mei_str(xml).expect("should deserialize");
 
     // Should have 2 children: text "Walzer G-Dur" and titlePart element

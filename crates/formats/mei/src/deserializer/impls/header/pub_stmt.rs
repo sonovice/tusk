@@ -1,6 +1,9 @@
 //! Publication statement elements (PubStmt, Publisher, Availability, etc.).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent};
+use super::super::{extract_attr, from_attr_string};
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
+};
 use std::io::BufRead;
 use tusk_model::elements::{
     AccessRestrict, AccessRestrictChild, Availability, AvailabilityChild, Date, DateChild,
@@ -8,75 +11,134 @@ use tusk_model::elements::{
     PubPlaceChild, PubStmt, PubStmtChild, Publisher, PublisherChild, SysReq, SysReqChild, Unpub,
     UnpubChild, UseRestrict, UseRestrictChild,
 };
-use super::super::{extract_attr, from_attr_string};
 
 // MeiDeserialize trait implementations
 impl MeiDeserialize for PubStmt {
-    fn element_name() -> &'static str { "pubStmt" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "pubStmt"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_pub_stmt_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Publisher {
-    fn element_name() -> &'static str { "publisher" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "publisher"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_publisher_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for PubPlace {
-    fn element_name() -> &'static str { "pubPlace" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "pubPlace"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_pub_place_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Availability {
-    fn element_name() -> &'static str { "availability" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "availability"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_availability_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Distributor {
-    fn element_name() -> &'static str { "distributor" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "distributor"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_distributor_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for UseRestrict {
-    fn element_name() -> &'static str { "useRestrict" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "useRestrict"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_use_restrict_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for AccessRestrict {
-    fn element_name() -> &'static str { "accessRestrict" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "accessRestrict"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_access_restrict_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for SysReq {
-    fn element_name() -> &'static str { "sysReq" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "sysReq"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_sys_req_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Price {
-    fn element_name() -> &'static str { "price" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "price"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_price_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Unpub {
-    fn element_name() -> &'static str { "unpub" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "unpub"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_unpub_from_event(reader, attrs, is_empty)
     }
 }
@@ -144,13 +206,15 @@ pub(crate) fn parse_pub_stmt_from_event<R: BufRead>(
                         .push(PubStmtChild::Distributor(Box::new(distributor)));
                 }
                 "respStmt" => {
-                    let resp_stmt = super::parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let resp_stmt =
+                        super::parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
                     pub_stmt
                         .children
                         .push(PubStmtChild::RespStmt(Box::new(resp_stmt)));
                 }
                 "address" => {
-                    let address = super::parse_address_from_event(reader, child_attrs, child_empty)?;
+                    let address =
+                        super::parse_address_from_event(reader, child_attrs, child_empty)?;
                     pub_stmt
                         .children
                         .push(PubStmtChild::Address(Box::new(address)));
@@ -217,15 +281,21 @@ pub(crate) fn parse_publisher_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             publisher
                                 .children
                                 .push(PublisherChild::CorpName(Box::new(corp_name)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             publisher
                                 .children
                                 .push(PublisherChild::PersName(Box::new(pers_name)));
@@ -258,7 +328,8 @@ pub(crate) fn parse_publisher_from_event<R: BufRead>(
                                 .push(PublisherChild::Date(Box::new(date)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             publisher.children.push(PublisherChild::Ptr(Box::new(ptr)));
                         }
                         "rend" => {
@@ -318,8 +389,11 @@ pub(crate) fn parse_pub_place_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             pub_place
                                 .children
                                 .push(PubPlaceChild::GeogName(Box::new(geog_name)));
@@ -339,28 +413,33 @@ pub(crate) fn parse_pub_place_from_event<R: BufRead>(
                                 .push(PubPlaceChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             pub_place.children.push(PubPlaceChild::Ptr(Box::new(ptr)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             pub_place
                                 .children
                                 .push(PubPlaceChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             pub_place
                                 .children
                                 .push(PubPlaceChild::CorpName(Box::new(corp_name)));
                         }
                         "date" => {
                             let date = parse_date_from_event(reader, child_attrs, child_empty)?;
-                            pub_place
-                                .children
-                                .push(PubPlaceChild::Date(Box::new(date)));
+                            pub_place.children.push(PubPlaceChild::Date(Box::new(date)));
                         }
                         "identifier" => {
                             let identifier =
@@ -397,9 +476,7 @@ pub(crate) fn parse_pub_place_from_event<R: BufRead>(
                                 child_attrs,
                                 child_empty,
                             )?;
-                            pub_place
-                                .children
-                                .push(PubPlaceChild::Rend(Box::new(rend)));
+                            pub_place.children.push(PubPlaceChild::Rend(Box::new(rend)));
                         }
                         _ => {
                             // Skip unknown children
@@ -476,7 +553,8 @@ pub(crate) fn parse_identifier_from_event<R: BufRead>(
                                 .push(IdentifierChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             identifier
                                 .children
                                 .push(IdentifierChild::Ptr(Box::new(ptr)));
@@ -499,15 +577,21 @@ pub(crate) fn parse_identifier_from_event<R: BufRead>(
                                 .push(IdentifierChild::Name(Box::new(name_elem)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             identifier
                                 .children
                                 .push(IdentifierChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             identifier
                                 .children
                                 .push(IdentifierChild::CorpName(Box::new(corp_name)));
@@ -561,74 +645,72 @@ pub(crate) fn parse_availability_from_event<R: BufRead>(
                 MixedContent::Text(text) => {
                     availability.children.push(AvailabilityChild::Text(text));
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "head" => {
-                            let head = super::parse_head_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Head(Box::new(head)));
-                        }
-                        "identifier" => {
-                            let identifier =
-                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Identifier(Box::new(identifier)));
-                        }
-                        "distributor" => {
-                            let distributor =
-                                parse_distributor_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Distributor(Box::new(distributor)));
-                        }
-                        "useRestrict" => {
-                            let use_restrict =
-                                parse_use_restrict_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::UseRestrict(Box::new(use_restrict)));
-                        }
-                        "date" => {
-                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Date(Box::new(date)));
-                        }
-                        "accessRestrict" => {
-                            let access_restrict =
-                                parse_access_restrict_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::AccessRestrict(Box::new(access_restrict)));
-                        }
-                        "price" => {
-                            let price = parse_price_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Price(Box::new(price)));
-                        }
-                        "address" => {
-                            let address =
-                                super::parse_address_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::Address(Box::new(address)));
-                        }
-                        "sysReq" => {
-                            let sys_req = parse_sys_req_from_event(reader, child_attrs, child_empty)?;
-                            availability
-                                .children
-                                .push(AvailabilityChild::SysReq(Box::new(sys_req)));
-                        }
-                        _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "head" => {
+                        let head = super::parse_head_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Head(Box::new(head)));
+                    }
+                    "identifier" => {
+                        let identifier =
+                            parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Identifier(Box::new(identifier)));
+                    }
+                    "distributor" => {
+                        let distributor =
+                            parse_distributor_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Distributor(Box::new(distributor)));
+                    }
+                    "useRestrict" => {
+                        let use_restrict =
+                            parse_use_restrict_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::UseRestrict(Box::new(use_restrict)));
+                    }
+                    "date" => {
+                        let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Date(Box::new(date)));
+                    }
+                    "accessRestrict" => {
+                        let access_restrict =
+                            parse_access_restrict_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::AccessRestrict(Box::new(access_restrict)));
+                    }
+                    "price" => {
+                        let price = parse_price_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Price(Box::new(price)));
+                    }
+                    "address" => {
+                        let address =
+                            super::parse_address_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::Address(Box::new(address)));
+                    }
+                    "sysReq" => {
+                        let sys_req = parse_sys_req_from_event(reader, child_attrs, child_empty)?;
+                        availability
+                            .children
+                            .push(AvailabilityChild::SysReq(Box::new(sys_req)));
+                    }
+                    _ => {
+                        if !child_empty {
+                            reader.skip_to_end(&name)?;
                         }
                     }
-                }
+                },
             }
         }
     }
@@ -660,15 +742,21 @@ pub(crate) fn parse_distributor_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             distributor
                                 .children
                                 .push(DistributorChild::CorpName(Box::new(corp_name)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             distributor
                                 .children
                                 .push(DistributorChild::PersName(Box::new(pers_name)));
@@ -701,7 +789,8 @@ pub(crate) fn parse_distributor_from_event<R: BufRead>(
                                 .push(DistributorChild::Date(Box::new(date)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             distributor
                                 .children
                                 .push(DistributorChild::Ptr(Box::new(ptr)));
@@ -783,7 +872,8 @@ pub(crate) fn parse_use_restrict_from_event<R: BufRead>(
                                 .push(UseRestrictChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             use_restrict
                                 .children
                                 .push(UseRestrictChild::Ptr(Box::new(ptr)));
@@ -869,7 +959,8 @@ pub(crate) fn parse_access_restrict_from_event<R: BufRead>(
                                 .push(AccessRestrictChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             access_restrict
                                 .children
                                 .push(AccessRestrictChild::Ptr(Box::new(ptr)));
@@ -946,7 +1037,8 @@ pub(crate) fn parse_sys_req_from_event<R: BufRead>(
                             sys_req.children.push(SysReqChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             sys_req.children.push(SysReqChild::Ptr(Box::new(ptr)));
                         }
                         "rend" => {

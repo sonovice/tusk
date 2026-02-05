@@ -1,6 +1,8 @@
 //! Core header elements (MeiHead, FileDesc, TitleStmt, SourceDesc, Source, Title, Head).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent};
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
+};
 use std::io::BufRead;
 use tusk_model::elements::{
     FileDesc, FileDescChild, Head, HeadChild, MeiHead, MeiHeadChild, Source, SourceChild,
@@ -46,15 +48,21 @@ impl MeiDeserialize for MeiHead {
                             .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
                     }
                     "encodingDesc" => {
-                        let encoding_desc =
-                            super::parse_encoding_desc_from_event(reader, child_attrs, child_empty)?;
+                        let encoding_desc = super::parse_encoding_desc_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
                         mei_head
                             .children
                             .push(MeiHeadChild::EncodingDesc(Box::new(encoding_desc)));
                     }
                     "workList" => {
-                        let work_list =
-                            super::super::parse_work_list_from_event(reader, child_attrs, child_empty)?;
+                        let work_list = super::super::parse_work_list_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
                         mei_head
                             .children
                             .push(MeiHeadChild::WorkList(Box::new(work_list)));
@@ -191,7 +199,8 @@ pub(crate) fn parse_file_desc_from_event<R: BufRead>(
                         .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
                 }
                 "pubStmt" => {
-                    let pub_stmt = super::parse_pub_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let pub_stmt =
+                        super::parse_pub_stmt_from_event(reader, child_attrs, child_empty)?;
                     file_desc
                         .children
                         .push(FileDescChild::PubStmt(Box::new(pub_stmt)));
@@ -204,28 +213,38 @@ pub(crate) fn parse_file_desc_from_event<R: BufRead>(
                         .push(FileDescChild::SourceDesc(Box::new(source_desc)));
                 }
                 "seriesStmt" => {
-                    let series_stmt =
-                        super::super::parse_series_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let series_stmt = super::super::parse_series_stmt_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
                     file_desc
                         .children
                         .push(FileDescChild::SeriesStmt(Box::new(series_stmt)));
                 }
                 "editionStmt" => {
-                    let edition_stmt =
-                        super::super::parse_edition_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let edition_stmt = super::super::parse_edition_stmt_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
                     file_desc
                         .children
                         .push(FileDescChild::EditionStmt(Box::new(edition_stmt)));
                 }
                 "notesStmt" => {
-                    let notes_stmt =
-                        super::super::parse_notes_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let notes_stmt = super::super::parse_notes_stmt_from_event(
+                        reader,
+                        child_attrs,
+                        child_empty,
+                    )?;
                     file_desc
                         .children
                         .push(FileDescChild::NotesStmt(Box::new(notes_stmt)));
                 }
                 "extent" => {
-                    let extent = super::super::parse_extent_from_event(reader, child_attrs, child_empty)?;
+                    let extent =
+                        super::super::parse_extent_from_event(reader, child_attrs, child_empty)?;
                     file_desc
                         .children
                         .push(FileDescChild::Extent(Box::new(extent)));
@@ -275,7 +294,8 @@ pub(crate) fn parse_title_stmt_from_event<R: BufRead>(
                         .push(TitleStmtChild::Head(Box::new(head)));
                 }
                 "respStmt" => {
-                    let resp_stmt = super::parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
+                    let resp_stmt =
+                        super::parse_resp_stmt_from_event(reader, child_attrs, child_empty)?;
                     title_stmt
                         .children
                         .push(TitleStmtChild::RespStmt(Box::new(resp_stmt)));
@@ -287,7 +307,8 @@ pub(crate) fn parse_title_stmt_from_event<R: BufRead>(
                         .push(TitleStmtChild::Editor(Box::new(editor)));
                 }
                 "creator" => {
-                    let creator = super::parse_creator_from_event(reader, child_attrs, child_empty)?;
+                    let creator =
+                        super::parse_creator_from_event(reader, child_attrs, child_empty)?;
                     title_stmt
                         .children
                         .push(TitleStmtChild::Creator(Box::new(creator)));
@@ -299,7 +320,8 @@ pub(crate) fn parse_title_stmt_from_event<R: BufRead>(
                         .push(TitleStmtChild::Funder(Box::new(funder)));
                 }
                 "sponsor" => {
-                    let sponsor = super::parse_sponsor_from_event(reader, child_attrs, child_empty)?;
+                    let sponsor =
+                        super::parse_sponsor_from_event(reader, child_attrs, child_empty)?;
                     title_stmt
                         .children
                         .push(TitleStmtChild::Sponsor(Box::new(sponsor)));
@@ -446,7 +468,8 @@ pub(crate) fn parse_source_from_event<R: BufRead>(
                     source.children.push(SourceChild::Locus(Box::new(locus)));
                 }
                 "locusGrp" => {
-                    let locus_grp = super::parse_locus_grp_from_event(reader, child_attrs, child_empty)?;
+                    let locus_grp =
+                        super::parse_locus_grp_from_event(reader, child_attrs, child_empty)?;
                     source
                         .children
                         .push(SourceChild::LocusGrp(Box::new(locus_grp)));
@@ -533,7 +556,8 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
                             title.children.push(TitleChild::Name(Box::new(name_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             title.children.push(TitleChild::Ptr(Box::new(ptr)));
                         }
                         "ref" => {
@@ -542,29 +566,41 @@ pub(crate) fn parse_title_from_event<R: BufRead>(
                             title.children.push(TitleChild::Ref(Box::new(ref_elem)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title
                                 .children
                                 .push(TitleChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title
                                 .children
                                 .push(TitleChild::CorpName(Box::new(corp_name)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title
                                 .children
                                 .push(TitleChild::GeogName(Box::new(geog_name)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title
                                 .children
                                 .push(TitleChild::Identifier(Box::new(identifier)));
@@ -649,7 +685,8 @@ pub(crate) fn parse_title_part_from_event<R: BufRead>(
                                 .push(TitlePartChild::Name(Box::new(name_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             title_part.children.push(TitlePartChild::Ptr(Box::new(ptr)));
                         }
                         "ref" => {
@@ -660,29 +697,41 @@ pub(crate) fn parse_title_part_from_event<R: BufRead>(
                                 .push(TitlePartChild::Ref(Box::new(ref_elem)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title_part
                                 .children
                                 .push(TitlePartChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title_part
                                 .children
                                 .push(TitlePartChild::CorpName(Box::new(corp_name)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title_part
                                 .children
                                 .push(TitlePartChild::GeogName(Box::new(geog_name)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             title_part
                                 .children
                                 .push(TitlePartChild::Identifier(Box::new(identifier)));
@@ -760,7 +809,8 @@ pub(crate) fn parse_head_from_event<R: BufRead>(
                             head.children.push(HeadChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             head.children.push(HeadChild::Ptr(Box::new(ptr)));
                         }
                         _ => {

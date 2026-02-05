@@ -498,6 +498,10 @@ impl MeiDeserialize for Lg {
         if !is_empty {
             while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("lg")? {
                 match name.as_str() {
+                    "l" => {
+                        let l = parse_l_from_event(reader, child_attrs, child_empty)?;
+                        lg.children.push(LgChild::L(Box::new(l)));
+                    }
                     "head" => {
                         let head =
                             super::header::parse_head_from_event(reader, child_attrs, child_empty)?;
@@ -1714,6 +1718,180 @@ pub(crate) fn parse_caption_from_event<R: BufRead>(
     }
 
     Ok(caption)
+}
+
+// ============================================================================
+// L (line of text) element implementation
+// ============================================================================
+
+impl MeiDeserialize for tusk_model::elements::L {
+    fn element_name() -> &'static str {
+        "l"
+    }
+
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
+        parse_l_from_event(reader, attrs, is_empty)
+    }
+}
+
+/// Parse an `<l>` (line of text) element from within another element.
+///
+/// L (line) is used within lg elements to mark individual lines of verse.
+/// It can contain mixed content (text and various child elements).
+pub(crate) fn parse_l_from_event<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    mut attrs: AttributeMap,
+    is_empty: bool,
+) -> DeserializeResult<tusk_model::elements::L> {
+    use tusk_model::elements::{L, LChild};
+
+    let mut l = L::default();
+
+    // Extract attributes
+    l.common.extract_attributes(&mut attrs)?;
+    l.facsimile.extract_attributes(&mut attrs)?;
+    l.lang.extract_attributes(&mut attrs)?;
+
+    // Element-local attribute
+    l.rhythm = attrs.remove("rhythm");
+
+    // Parse mixed content (text and child elements)
+    if !is_empty {
+        while let Some(content) = reader.read_next_mixed_content("l")? {
+            match content {
+                MixedContent::Text(text) => {
+                    // Preserve text content
+                    if !text.is_empty() {
+                        l.children.push(LChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    match name.as_str() {
+                        "syl" => {
+                            let syl = Syl::from_mei_event(reader, child_attrs, child_empty)?;
+                            l.children.push(LChild::Syl(Box::new(syl)));
+                        }
+                        "rend" => {
+                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            l.children.push(LChild::Rend(Box::new(rend)));
+                        }
+                        "lb" => {
+                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            l.children.push(LChild::Lb(Box::new(lb)));
+                        }
+                        "seg" => {
+                            let seg = parse_seg_from_event(reader, child_attrs, child_empty)?;
+                            l.children.push(LChild::Seg(Box::new(seg)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Ref(Box::new(ref_elem)));
+                        }
+                        "ptr" => {
+                            let ptr = super::header::parse_ptr_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Ptr(Box::new(ptr)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::PersName(Box::new(pers_name)));
+                        }
+                        "corpName" => {
+                            let corp_name = super::header::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::CorpName(Box::new(corp_name)));
+                        }
+                        "geogName" => {
+                            let geog_name = super::header::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::GeogName(Box::new(geog_name)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Date(Box::new(date)));
+                        }
+                        "title" => {
+                            let title = super::header::parse_title_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Title(Box::new(title)));
+                        }
+                        "identifier" => {
+                            let identifier = super::header::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Identifier(Box::new(identifier)));
+                        }
+                        "annot" => {
+                            let annot = super::header::parse_annot_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Annot(Box::new(annot)));
+                        }
+                        "bibl" => {
+                            let bibl = super::header::parse_bibl_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            l.children.push(LChild::Bibl(Box::new(bibl)));
+                        }
+                        "fig" => {
+                            let fig = Fig::from_mei_event(reader, child_attrs, child_empty)?;
+                            l.children.push(LChild::Fig(Box::new(fig)));
+                        }
+                        // Other child elements not yet implemented - skip
+                        _ => {
+                            if !child_empty {
+                                reader.skip_to_end(&name)?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(l)
 }
 
 // ============================================================================

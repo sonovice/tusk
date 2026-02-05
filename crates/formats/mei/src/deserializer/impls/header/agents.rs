@@ -1,6 +1,8 @@
 //! Agent/responsibility elements (Creator, Editor, RespStmt, PersName, CorpName, etc.).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent};
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader, MixedContent,
+};
 use std::io::BufRead;
 use tusk_model::elements::{
     Contributor, ContributorChild, CorpName, CorpNameChild, Creator, CreatorChild, Editor,
@@ -10,50 +12,92 @@ use tusk_model::elements::{
 
 // MeiDeserialize trait implementations
 impl MeiDeserialize for RespStmt {
-    fn element_name() -> &'static str { "respStmt" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "respStmt"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_resp_stmt_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Resp {
-    fn element_name() -> &'static str { "resp" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "resp"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_resp_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Creator {
-    fn element_name() -> &'static str { "creator" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "creator"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_creator_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Editor {
-    fn element_name() -> &'static str { "editor" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "editor"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_editor_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Funder {
-    fn element_name() -> &'static str { "funder" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "funder"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_funder_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Sponsor {
-    fn element_name() -> &'static str { "sponsor" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "sponsor"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_sponsor_from_event(reader, attrs, is_empty)
     }
 }
 
 impl MeiDeserialize for Contributor {
-    fn element_name() -> &'static str { "contributor" }
-    fn from_mei_event<R: BufRead>(reader: &mut MeiReader<R>, attrs: AttributeMap, is_empty: bool) -> DeserializeResult<Self> {
+    fn element_name() -> &'static str {
+        "contributor"
+    }
+    fn from_mei_event<R: BufRead>(
+        reader: &mut MeiReader<R>,
+        attrs: AttributeMap,
+        is_empty: bool,
+    ) -> DeserializeResult<Self> {
         parse_contributor_from_event(reader, attrs, is_empty)
     }
 }
@@ -217,7 +261,8 @@ pub(crate) fn parse_deprecated_creator_from_event<R: BufRead>(
     creator.name.extract_attributes(&mut attrs)?;
 
     // Set the role based on the deprecated element type
-    creator.name.role = vec![tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role)];
+    creator.name.role =
+        vec![tusk_model::generated::data::DataRelators::DataMarcrelatorsBasic(role)];
 
     // Parse mixed content (same as creator)
     if !is_empty {
@@ -305,9 +350,7 @@ pub(crate) fn parse_editor_from_event<R: BufRead>(
                         "name" => {
                             let name_elem =
                                 parse_name_from_event(reader, child_attrs, child_empty)?;
-                            editor
-                                .children
-                                .push(EditorChild::Name(Box::new(name_elem)));
+                            editor.children.push(EditorChild::Name(Box::new(name_elem)));
                         }
                         _ => {
                             // Skip unknown children
@@ -370,12 +413,16 @@ pub(crate) fn parse_funder_from_event<R: BufRead>(
                                 .push(FunderChild::Address(Box::new(address)));
                         }
                         "ref" => {
-                            let ref_elem = super::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            let ref_elem =
+                                super::parse_ref_from_event(reader, child_attrs, child_empty)?;
                             funder.children.push(FunderChild::Ref(Box::new(ref_elem)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             funder
                                 .children
                                 .push(FunderChild::Identifier(Box::new(identifier)));
@@ -386,7 +433,8 @@ pub(crate) fn parse_funder_from_event<R: BufRead>(
                             funder.children.push(FunderChild::Date(Box::new(date)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             funder.children.push(FunderChild::Ptr(Box::new(ptr)));
                         }
                         "rend" => {
@@ -398,7 +446,11 @@ pub(crate) fn parse_funder_from_event<R: BufRead>(
                             funder.children.push(FunderChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             funder.children.push(FunderChild::Lb(Box::new(lb)));
                         }
                         _ => {
@@ -518,14 +570,18 @@ pub(crate) fn parse_corp_name_from_event<R: BufRead>(
                                 .push(CorpNameChild::Name(Box::new(name_elem)));
                         }
                         "address" => {
-                            let addr = super::parse_address_from_event(reader, child_attrs, child_empty)?;
+                            let addr =
+                                super::parse_address_from_event(reader, child_attrs, child_empty)?;
                             corp_name
                                 .children
                                 .push(CorpNameChild::Address(Box::new(addr)));
                         }
                         "geogName" => {
-                            let geog =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             corp_name
                                 .children
                                 .push(CorpNameChild::GeogName(Box::new(geog)));
@@ -600,17 +656,24 @@ pub(crate) fn parse_pers_name_from_event<R: BufRead>(
                             pers_name.children.push(PersNameChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb =
-                                super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::text::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             pers_name.children.push(PersNameChild::Lb(Box::new(lb)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             pers_name.children.push(PersNameChild::Date(Box::new(date)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             pers_name
                                 .children
                                 .push(PersNameChild::Identifier(Box::new(identifier)));
@@ -673,8 +736,11 @@ pub(crate) fn parse_name_from_event<R: BufRead>(
                             name_elem.children.push(NameChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb =
-                                super::super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::text::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             name_elem.children.push(NameChild::Lb(Box::new(lb)));
                         }
                         "persName" => {
@@ -692,29 +758,39 @@ pub(crate) fn parse_name_from_event<R: BufRead>(
                             name_elem.children.push(NameChild::Name(Box::new(nested)));
                         }
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             name_elem.children.push(NameChild::Title(Box::new(title)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             name_elem.children.push(NameChild::Date(Box::new(date)));
                         }
                         "ref" => {
-                            let ref_elem = super::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                            let ref_elem =
+                                super::parse_ref_from_event(reader, child_attrs, child_empty)?;
                             name_elem.children.push(NameChild::Ref(Box::new(ref_elem)));
                         }
                         "ptr" => {
-                            let ptr = super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                            let ptr =
+                                super::parse_ptr_from_event(reader, child_attrs, child_empty)?;
                             name_elem.children.push(NameChild::Ptr(Box::new(ptr)));
                         }
                         "geogName" => {
-                            let geog =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             name_elem.children.push(NameChild::GeogName(Box::new(geog)));
                         }
                         "identifier" => {
-                            let ident =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let ident = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             name_elem
                                 .children
                                 .push(NameChild::Identifier(Box::new(ident)));

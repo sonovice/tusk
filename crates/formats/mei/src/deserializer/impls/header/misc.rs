@@ -1,10 +1,10 @@
 //! Shared mixed-content elements (P, Ptr, Ref, Annot).
 
-use crate::deserializer::{AttributeMap, DeserializeResult, ExtractAttributes, MeiReader, MixedContent};
-use std::io::BufRead;
-use tusk_model::elements::{
-    Annot, AnnotChild, P, PChild, Ptr, Ref, RefChild,
+use crate::deserializer::{
+    AttributeMap, DeserializeResult, ExtractAttributes, MeiReader, MixedContent,
 };
+use std::io::BufRead;
+use tusk_model::elements::{Annot, AnnotChild, P, PChild, Ptr, Ref, RefChild};
 
 /// Parse a `<p>` (paragraph) element from within another element.
 ///
@@ -44,23 +44,35 @@ pub(crate) fn parse_p_from_event<R: BufRead>(
                             p.children.push(PChild::Ptr(Box::new(ptr)));
                         }
                         "rend" => {
-                            let rend =
-                                super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            let rend = super::super::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::Rend(Box::new(rend)));
                         }
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::CorpName(Box::new(corp_name)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::GeogName(Box::new(geog_name)));
                         }
                         "name" => {
@@ -69,11 +81,13 @@ pub(crate) fn parse_p_from_event<R: BufRead>(
                             p.children.push(PChild::Name(Box::new(name_elem)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             p.children.push(PChild::Date(Box::new(date)));
                         }
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             p.children.push(PChild::Title(Box::new(title)));
                         }
                         "annot" => {
@@ -81,21 +95,32 @@ pub(crate) fn parse_p_from_event<R: BufRead>(
                             p.children.push(PChild::Annot(Box::new(annot)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::Lb(Box::new(lb)));
                         }
                         "bibl" => {
-                            let bibl = super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
+                            let bibl =
+                                super::parse_bibl_from_event(reader, child_attrs, child_empty)?;
                             p.children.push(PChild::Bibl(Box::new(bibl)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::Identifier(Box::new(identifier)));
                         }
                         "list" => {
-                            let list =
-                                super::super::parse_list_from_event(reader, child_attrs, child_empty)?;
+                            let list = super::super::parse_list_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             p.children.push(PChild::List(Box::new(list)));
                         }
                         // Other child elements not yet implemented - skip
@@ -167,22 +192,31 @@ pub(crate) fn parse_ref_from_event<R: BufRead>(
                 MixedContent::Element(name, child_attrs, child_empty) => {
                     match name.as_str() {
                         "persName" => {
-                            let pers_name =
-                                super::parse_pers_name_from_event(reader, child_attrs, child_empty)?;
+                            let pers_name = super::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem
                                 .children
                                 .push(RefChild::PersName(Box::new(pers_name)));
                         }
                         "corpName" => {
-                            let corp_name =
-                                super::parse_corp_name_from_event(reader, child_attrs, child_empty)?;
+                            let corp_name = super::parse_corp_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem
                                 .children
                                 .push(RefChild::CorpName(Box::new(corp_name)));
                         }
                         "geogName" => {
-                            let geog_name =
-                                super::parse_geog_name_from_event(reader, child_attrs, child_empty)?;
+                            let geog_name = super::parse_geog_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem
                                 .children
                                 .push(RefChild::GeogName(Box::new(geog_name)));
@@ -193,18 +227,23 @@ pub(crate) fn parse_ref_from_event<R: BufRead>(
                             ref_elem.children.push(RefChild::Name(Box::new(name_elem)));
                         }
                         "date" => {
-                            let date = super::parse_date_from_event(reader, child_attrs, child_empty)?;
+                            let date =
+                                super::parse_date_from_event(reader, child_attrs, child_empty)?;
                             ref_elem.children.push(RefChild::Date(Box::new(date)));
                         }
                         "identifier" => {
-                            let identifier =
-                                super::parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                            let identifier = super::parse_identifier_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem
                                 .children
                                 .push(RefChild::Identifier(Box::new(identifier)));
                         }
                         "title" => {
-                            let title = super::parse_title_from_event(reader, child_attrs, child_empty)?;
+                            let title =
+                                super::parse_title_from_event(reader, child_attrs, child_empty)?;
                             ref_elem.children.push(RefChild::Title(Box::new(title)));
                         }
                         "annot" => {
@@ -212,8 +251,11 @@ pub(crate) fn parse_ref_from_event<R: BufRead>(
                             ref_elem.children.push(RefChild::Annot(Box::new(annot)));
                         }
                         "rend" => {
-                            let rend =
-                                super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            let rend = super::super::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem.children.push(RefChild::Rend(Box::new(rend)));
                         }
                         "ptr" => {
@@ -221,7 +263,11 @@ pub(crate) fn parse_ref_from_event<R: BufRead>(
                             ref_elem.children.push(RefChild::Ptr(Box::new(ptr)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             ref_elem.children.push(RefChild::Lb(Box::new(lb)));
                         }
                         // Other child elements not yet implemented - skip
@@ -284,12 +330,19 @@ pub(crate) fn parse_annot_from_event<R: BufRead>(
                             annot.children.push(AnnotChild::Ptr(Box::new(ptr)));
                         }
                         "rend" => {
-                            let rend =
-                                super::super::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                            let rend = super::super::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             annot.children.push(AnnotChild::Rend(Box::new(rend)));
                         }
                         "lb" => {
-                            let lb = super::super::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            let lb = super::super::parse_lb_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
                             annot.children.push(AnnotChild::Lb(Box::new(lb)));
                         }
                         // Skip unknown children

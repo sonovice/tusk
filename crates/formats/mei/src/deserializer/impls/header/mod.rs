@@ -52,7 +52,9 @@ pub(crate) use mei_head::{
     parse_title_stmt_from_event,
 };
 
-pub(crate) use misc::{parse_annot_from_event, parse_p_from_event, parse_ptr_from_event, parse_ref_from_event};
+pub(crate) use misc::{
+    parse_annot_from_event, parse_p_from_event, parse_ptr_from_event, parse_ref_from_event,
+};
 
 pub(crate) use pub_stmt::{
     parse_access_restrict_from_event, parse_availability_from_event, parse_date_from_event,
