@@ -436,3 +436,15 @@ fn test_roundtrip_berlioz_symphony_op25() {
         result.unwrap_err()
     );
 }
+
+#[test]
+fn test_roundtrip_borodin_string_trio_g_minor() {
+    let path =
+        sample_encodings_music_dir().join("Complete_examples/Borodin_StringTrio_g-minor.mei");
+    let result = roundtrip_mei_file(&path);
+    assert!(
+        result.is_ok(),
+        "Borodin_StringTrio_g-minor.mei roundtrip failed: {}",
+        result.unwrap_err()
+    );
+}
