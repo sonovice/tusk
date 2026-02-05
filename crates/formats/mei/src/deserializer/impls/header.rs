@@ -1060,16 +1060,14 @@ pub(crate) fn parse_application_from_event<R: BufRead>(
                         .push(ApplicationChild::Ptr(Box::new(ptr)));
                 }
                 "ref" => {
-                    // ref is more complex - for now just skip it
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    let ref_elem = parse_ref_from_event(reader, child_attrs, child_empty)?;
+                    application
+                        .children
+                        .push(ApplicationChild::Ref(Box::new(ref_elem)));
                 }
                 "p" => {
-                    // p is complex - for now just skip it
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    let p = parse_p_from_event(reader, child_attrs, child_empty)?;
+                    application.children.push(ApplicationChild::P(Box::new(p)));
                 }
                 _ => {
                     if !child_empty {
