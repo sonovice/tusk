@@ -77,8 +77,9 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: export convert_mei_gestural_accid_to_alter maps extended gestural accidentals back to fractional alter values
   - Fixed: import convert_accidental_value maps MusicXML quarter-tone AccidentalValues to MEI DataAccidentalWrittenExtended (Nd/Nu/Su/Fd etc.)
   - Fixed: export convert_mei_written_accid_to_mxml maps MEI extended written accidentals back to MusicXML AccidentalValues
-- [ ] [BUGFIX] Chord note duration/type wrong when divisions change mid-score (source: chord_element_multiple_stop.musicxml)
-  - Measure 5 chord notes: duration 4→8, type Quarter→Half — likely divisions context not updated correctly
+- [x] [BUGFIX] Chord note duration/type wrong when divisions change mid-score (source: chord_element_multiple_stop.musicxml)
+  - Fixed: export now checks individual chord note dur_ppq/dur against chord-level values
+  - "Multiple stop" chords (notes with different written durations) now preserve per-note duration and type
 - [ ] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
   - Part ID P8 roundtripped to P1 — import generates sequential IDs instead of preserving originals
 - [ ] [MISSING_EXPORT] Metronome range and per-minute text not roundtripped as tempo element (source: metronome_element.musicxml, per_minute_element.musicxml)
@@ -144,14 +145,14 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 Fragment examples extracted from spec docs, wrapped in complete MusicXML structure.
 
 - [x] Roundtrip batch 1: `accent_element`, `accidental_element`, `accidental_mark_element_notation`, `accidental_mark_element_ornament`, `accordion_high_element`
-- [ ] Roundtrip batch 2: `accordion_low_element`, `accordion_middle_element`, `accordion_registration_element`, `alter_element_microtones`, `alter_element_semitones`
+- [x] Roundtrip batch 2: `accordion_low_element`, `accordion_middle_element`, `accordion_registration_element`, `alter_element_microtones`, `alter_element_semitones`
 - [x] Roundtrip batch 3: `alto_clef`, `arpeggiate_element`, `arrow_element`, `arrowhead_element`, `articulations_element`
 - [x] Roundtrip batch 4: `artificial_element`, `attributes_element`, `backup_element`, `baritone_c_clef`, `baritone_f_clef`
 - [x] Roundtrip batch 5: `barline_element`, `barre_element`, `bass_alter_element`, `bass_clef`, `bass_clef_down_octave`
 - [x] Roundtrip batch 6: `bass_separator_element`, `bass_step_element`, `beam_element`, `beat_repeat_element`, `beat_type_element`
 - [x] Roundtrip batch 7: `beat_unit_dot_element`, `beat_unit_element`, `beat_unit_tied_element`, `beater_element`, `beats_element`
 - [x] Roundtrip batch 8: `bend_element`, `bookmark_element`, `bracket_element`, `brass_bend_element`, `breath_mark_element`
-- [ ] Roundtrip batch 9: `caesura_element`, `cancel_element`, `capo_element`, `chord_element`, `chord_element_multiple_stop`
+- [x] Roundtrip batch 9: `caesura_element`, `cancel_element`, `capo_element`, `chord_element`, `chord_element_multiple_stop`
 - [x] Roundtrip batch 10: `circular_arrow_element`, `coda_element`, `cue_element`, `damp_all_element`, `damp_element`
 - [x] Roundtrip batch 11: `dashes_element`, `degree_alter_element`, `degree_type_element`, `degree_value_element`, `delayed_inverted_turn_element`
 - [x] Roundtrip batch 12: `delayed_turn_element`, `detached_legato_element`, `divisions_and_duration_elements`, `doit_element`, `dot_element`

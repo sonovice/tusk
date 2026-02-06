@@ -963,6 +963,17 @@ pub fn convert_mei_chord(
         // Check if this note is unpitched (no pname = percussion)
         let is_unpitched = mei_note.note_log.pname.is_none();
 
+        // Check if this note has its own duration that differs from the chord level
+        // (MusicXML "multiple stop" notation: chord notes with different written durations)
+        let note_has_own_duration = mei_note.note_ges.dur_ppq.is_some()
+            && mei_note.note_ges.dur_ppq != mei_chord.chord_ges.dur_ppq;
+
+        let note_duration = if note_has_own_duration {
+            Some(calculate_mei_note_duration(mei_note, ctx))
+        } else {
+            chord_duration
+        };
+
         // Create the MusicXML note
         let mut mxml_note = if is_unpitched {
             // Unpitched note in chord
@@ -971,7 +982,7 @@ pub fn convert_mei_chord(
                 let grace = convert_mei_grace_chord(mei_chord);
                 MxmlNote::unpitched_grace(unpitched, grace)
             } else {
-                MxmlNote::unpitched(unpitched, chord_duration.unwrap())
+                MxmlNote::unpitched(unpitched, note_duration.unwrap())
             }
         } else {
             // Pitched note in chord
@@ -980,7 +991,7 @@ pub fn convert_mei_chord(
                 let grace = convert_mei_grace_chord(mei_chord);
                 MxmlNote::grace_note(pitch, grace)
             } else {
-                MxmlNote::pitched(pitch, chord_duration.unwrap())
+                MxmlNote::pitched(pitch, note_duration.unwrap())
             }
         };
 
@@ -989,14 +1000,28 @@ pub fn convert_mei_chord(
             mxml_note.chord = Some(Empty);
         }
 
-        // Set note type from chord level
-        if let Some(ref note_type) = chord_note_type {
-            mxml_note.note_type = Some(NoteType::new(*note_type));
-        }
-
-        // Set dots from chord level
-        for _ in 0..chord_dot_count {
-            mxml_note.dots.push(Dot::default());
+        // Set note type and dots: use individual note's values if it has its own duration,
+        // otherwise use chord-level values
+        if note_has_own_duration {
+            if let Some(ref dur) = mei_note.note_log.dur {
+                mxml_note.note_type = Some(NoteType::new(convert_mei_duration_to_note_type(dur)));
+            }
+            let note_dot_count = mei_note
+                .note_log
+                .dots
+                .as_ref()
+                .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
+                .unwrap_or(0);
+            for _ in 0..note_dot_count {
+                mxml_note.dots.push(Dot::default());
+            }
+        } else {
+            if let Some(ref note_type) = chord_note_type {
+                mxml_note.note_type = Some(NoteType::new(*note_type));
+            }
+            for _ in 0..chord_dot_count {
+                mxml_note.dots.push(Dot::default());
+            }
         }
 
         // Set cue if chord is cue
