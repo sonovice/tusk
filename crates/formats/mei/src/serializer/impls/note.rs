@@ -687,39 +687,85 @@ impl MeiSerialize for NoteChild {
 
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         match self {
-            NoteChild::Accid(accid) => accid.collect_all_attributes(),
-            NoteChild::Artic(artic) => artic.collect_all_attributes(),
-            NoteChild::Dot(dot) => dot.collect_all_attributes(),
-            NoteChild::Verse(verse) => verse.collect_all_attributes(),
-            NoteChild::Syl(syl) => syl.collect_all_attributes(),
-            // Other child types not yet implemented - return empty
-            _ => Vec::new(),
+            NoteChild::Accid(elem) => elem.collect_all_attributes(),
+            NoteChild::Artic(elem) => elem.collect_all_attributes(),
+            NoteChild::Dot(elem) => elem.collect_all_attributes(),
+            NoteChild::Verse(elem) => elem.collect_all_attributes(),
+            NoteChild::Syl(elem) => elem.collect_all_attributes(),
+            NoteChild::App(elem) => elem.collect_all_attributes(),
+            NoteChild::Add(elem) => elem.collect_all_attributes(),
+            NoteChild::Del(elem) => elem.collect_all_attributes(),
+            NoteChild::Choice(elem) => elem.collect_all_attributes(),
+            NoteChild::Corr(elem) => elem.collect_all_attributes(),
+            NoteChild::Sic(elem) => elem.collect_all_attributes(),
+            NoteChild::Orig(elem) => elem.collect_all_attributes(),
+            NoteChild::Reg(elem) => elem.collect_all_attributes(),
+            NoteChild::Subst(elem) => elem.collect_all_attributes(),
+            NoteChild::Supplied(elem) => elem.collect_all_attributes(),
+            NoteChild::Unclear(elem) => elem.collect_all_attributes(),
+            NoteChild::Damage(elem) => elem.collect_all_attributes(),
+            NoteChild::Gap(elem) => elem.collect_all_attributes(),
+            NoteChild::Restore(elem) => elem.collect_all_attributes(),
+            NoteChild::HandShift(elem) => elem.collect_all_attributes(),
+            NoteChild::Refrain(elem) => elem.collect_all_attributes(),
+            NoteChild::Plica(elem) => elem.collect_all_attributes(),
+            NoteChild::Stem(elem) => elem.collect_all_attributes(),
         }
     }
 
     fn has_children(&self) -> bool {
         match self {
-            NoteChild::Accid(accid) => accid.has_children(),
-            NoteChild::Artic(artic) => artic.has_children(),
-            NoteChild::Dot(dot) => dot.has_children(),
-            NoteChild::Verse(verse) => verse.has_children(),
-            NoteChild::Syl(syl) => syl.has_children(),
-            // Other child types - assume no children for now
-            _ => false,
+            NoteChild::Accid(elem) => elem.has_children(),
+            NoteChild::Artic(elem) => elem.has_children(),
+            NoteChild::Dot(elem) => elem.has_children(),
+            NoteChild::Verse(elem) => elem.has_children(),
+            NoteChild::Syl(elem) => elem.has_children(),
+            NoteChild::App(elem) => elem.has_children(),
+            NoteChild::Add(elem) => elem.has_children(),
+            NoteChild::Del(elem) => elem.has_children(),
+            NoteChild::Choice(elem) => elem.has_children(),
+            NoteChild::Corr(elem) => elem.has_children(),
+            NoteChild::Sic(elem) => elem.has_children(),
+            NoteChild::Orig(elem) => elem.has_children(),
+            NoteChild::Reg(elem) => elem.has_children(),
+            NoteChild::Subst(elem) => elem.has_children(),
+            NoteChild::Supplied(elem) => elem.has_children(),
+            NoteChild::Unclear(elem) => elem.has_children(),
+            NoteChild::Damage(elem) => elem.has_children(),
+            NoteChild::Gap(elem) => elem.has_children(),
+            NoteChild::Restore(elem) => elem.has_children(),
+            NoteChild::HandShift(elem) => elem.has_children(),
+            NoteChild::Refrain(elem) => elem.has_children(),
+            NoteChild::Plica(elem) => elem.has_children(),
+            NoteChild::Stem(elem) => elem.has_children(),
         }
     }
 
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
         match self {
-            NoteChild::Accid(accid) => accid.serialize_children(writer),
-            NoteChild::Artic(artic) => artic.serialize_children(writer),
-            NoteChild::Dot(dot) => dot.serialize_children(writer),
-            NoteChild::Verse(verse) => verse.serialize_children(writer),
-            NoteChild::Syl(syl) => syl.serialize_children(writer),
-            other => Err(crate::serializer::SerializeError::NotImplemented(format!(
-                "NoteChild::{}::serialize_children",
-                other.element_name()
-            ))),
+            NoteChild::Accid(elem) => elem.serialize_children(writer),
+            NoteChild::Artic(elem) => elem.serialize_children(writer),
+            NoteChild::Dot(elem) => elem.serialize_children(writer),
+            NoteChild::Verse(elem) => elem.serialize_children(writer),
+            NoteChild::Syl(elem) => elem.serialize_children(writer),
+            NoteChild::App(elem) => elem.serialize_children(writer),
+            NoteChild::Add(elem) => elem.serialize_children(writer),
+            NoteChild::Del(elem) => elem.serialize_children(writer),
+            NoteChild::Choice(elem) => elem.serialize_children(writer),
+            NoteChild::Corr(elem) => elem.serialize_children(writer),
+            NoteChild::Sic(elem) => elem.serialize_children(writer),
+            NoteChild::Orig(elem) => elem.serialize_children(writer),
+            NoteChild::Reg(elem) => elem.serialize_children(writer),
+            NoteChild::Subst(elem) => elem.serialize_children(writer),
+            NoteChild::Supplied(elem) => elem.serialize_children(writer),
+            NoteChild::Unclear(elem) => elem.serialize_children(writer),
+            NoteChild::Damage(elem) => elem.serialize_children(writer),
+            NoteChild::Gap(elem) => elem.serialize_children(writer),
+            NoteChild::Restore(elem) => elem.serialize_children(writer),
+            NoteChild::HandShift(elem) => elem.serialize_children(writer),
+            NoteChild::Refrain(elem) => elem.serialize_children(writer),
+            NoteChild::Plica(elem) => elem.serialize_children(writer),
+            NoteChild::Stem(elem) => elem.serialize_children(writer),
         }
     }
 }

@@ -13,11 +13,14 @@ use tusk_model::att::{
     AttRdgVis, AttReasonIdent, AttTextRendition, AttTrans,
 };
 use tusk_model::elements::{
-    Abbr, Accid, Add, AddChild, App, AppChild, Arpeg, Artic, BarLine, Beam, Cb, Choice,
-    ChoiceChild, Chord, Corr, Damage, Del, Dir, Dot, Dynam, Expan, Fermata, Gap, Hairpin,
-    HandShift, Lem, LemChild, MRest, Mordent, Note, Orig, Pb, Pedal, Rdg, RdgChild, Reg, Rest,
-    Restore, Sb, Sic, Slur, Space, Staff, Subst, Supplied, Tempo, Tie, Trill, Tuplet, Turn,
-    Unclear,
+    Abbr, Accid, Add, AddChild, AnchoredText, Annot, App, AppChild, Arpeg, Artic, BTrem, BarLine,
+    Beam, BeatRpt, Bend, Bibl, Breath, Cb, Choice, ChoiceChild, Chord, ClefGrp, Corr, Curve,
+    Custos, Damage, Del, DelChild, Dim, Dir, Dot, Dynam, Ending, Expan, FTrem, Fermata, Fing,
+    FingGrp, Gap, Gliss, GraceGrp, Hairpin, HalfmRpt, HandShift, Harm, HarpPedal, Layer, Lem,
+    LemChild, Ligature, Line, Lv, MRest, MRpt, MRpt2, MSpace, Measure, MeterSigGrp, Midi, Mordent,
+    MultiRest, MultiRpt, Neume, Note, Octave, Orig, Pad, Pb, Pedal, Phrase, Rdg, RdgChild, Reg,
+    Reh, RepeatMark, Rest, Restore, Sb, Section, Sic, Slur, Space, Staff, StaffDef, Subst,
+    Supplied, Syl, Syllable, Tempo, Tie, Trill, Tuplet, TupletSpan, Turn, Unclear, Volta,
 };
 
 use super::{extract_attr, from_attr_string};
@@ -808,23 +811,460 @@ fn parse_add_from_event<R: BufRead>(
                         add.children.push(AddChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
-                    "space" => {
-                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
-                        add.children.push(AddChild::Space(Box::new(space)));
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    if let Some(child) = parse_add_child(reader, &name, child_attrs, child_empty)? {
+                        add.children.push(child);
                     }
-                    _ => {
-                        // Skip unknown children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
-                    }
-                },
+                }
             }
         }
     }
 
     Ok(add)
+}
+
+/// Parse a child element of `<add>` by name.
+fn parse_add_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<Option<AddChild>> {
+    let child = match name {
+        // Event elements
+        "note" => {
+            let elem = Note::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Note(Box::new(elem)))
+        }
+        "rest" => {
+            let elem = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Rest(Box::new(elem)))
+        }
+        "chord" => {
+            let elem = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Chord(Box::new(elem)))
+        }
+        "space" => {
+            let elem = Space::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Space(Box::new(elem)))
+        }
+        "mRest" => {
+            let elem = MRest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MRest(Box::new(elem)))
+        }
+        "mSpace" => {
+            let elem = MSpace::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MSpace(Box::new(elem)))
+        }
+        // Grouping elements
+        "beam" => {
+            let elem = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Beam(Box::new(elem)))
+        }
+        "tuplet" => {
+            let elem = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Tuplet(Box::new(elem)))
+        }
+        "layer" => {
+            let elem = Layer::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Layer(Box::new(elem)))
+        }
+        "staff" => {
+            let elem = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Staff(Box::new(elem)))
+        }
+        "section" => {
+            let elem = Section::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Section(Box::new(elem)))
+        }
+        "measure" => {
+            let elem = Measure::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Measure(Box::new(elem)))
+        }
+        // Control events
+        "slur" => {
+            let elem = Slur::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Slur(Box::new(elem)))
+        }
+        "tie" => {
+            let elem = Tie::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Tie(Box::new(elem)))
+        }
+        "hairpin" => {
+            let elem = Hairpin::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Hairpin(Box::new(elem)))
+        }
+        "dynam" => {
+            let elem = Dynam::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Dynam(Box::new(elem)))
+        }
+        "dir" => {
+            let elem = Dir::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Dir(Box::new(elem)))
+        }
+        "tempo" => {
+            let elem = Tempo::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Tempo(Box::new(elem)))
+        }
+        "fermata" => {
+            let elem = Fermata::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Fermata(Box::new(elem)))
+        }
+        "trill" => {
+            let elem = Trill::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Trill(Box::new(elem)))
+        }
+        "mordent" => {
+            let elem = Mordent::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Mordent(Box::new(elem)))
+        }
+        "turn" => {
+            let elem = Turn::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Turn(Box::new(elem)))
+        }
+        "pedal" => {
+            let elem = Pedal::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Pedal(Box::new(elem)))
+        }
+        "arpeg" => {
+            let elem = Arpeg::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Arpeg(Box::new(elem)))
+        }
+        // Auxiliary elements
+        "accid" => {
+            let elem = Accid::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Accid(Box::new(elem)))
+        }
+        "artic" => {
+            let elem = Artic::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Artic(Box::new(elem)))
+        }
+        "dot" => {
+            let elem = Dot::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Dot(Box::new(elem)))
+        }
+        "barLine" => {
+            let elem = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::BarLine(Box::new(elem)))
+        }
+        // Note: clef, keySig, meterSig don't have deserializers yet - skip them
+        "clef" | "keySig" | "meterSig" => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+        // Page/system breaks
+        "pb" => {
+            let elem = Pb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Pb(Box::new(elem)))
+        }
+        "sb" => {
+            let elem = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Sb(Box::new(elem)))
+        }
+        "cb" => {
+            let elem = Cb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Cb(Box::new(elem)))
+        }
+        // Editorial elements
+        "add" => {
+            let elem = Add::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Add(Box::new(elem)))
+        }
+        "del" => {
+            let elem = Del::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Del(Box::new(elem)))
+        }
+        "corr" => {
+            let elem = parse_corr_from_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Corr(Box::new(elem)))
+        }
+        "sic" => {
+            let elem = parse_sic_from_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Sic(Box::new(elem)))
+        }
+        "orig" => {
+            let elem = Orig::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Orig(Box::new(elem)))
+        }
+        "reg" => {
+            let elem = Reg::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Reg(Box::new(elem)))
+        }
+        "supplied" => {
+            let elem = Supplied::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Supplied(Box::new(elem)))
+        }
+        "unclear" => {
+            let elem = Unclear::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Unclear(Box::new(elem)))
+        }
+        "gap" => {
+            let elem = Gap::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Gap(Box::new(elem)))
+        }
+        "damage" => {
+            let elem = Damage::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Damage(Box::new(elem)))
+        }
+        "app" => {
+            let elem = App::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Choice(Box::new(
+                tusk_model::elements::Choice::default(),
+            )))
+        }
+        "choice" => {
+            let elem = Choice::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Choice(Box::new(elem)))
+        }
+        "subst" => {
+            let elem = Subst::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Subst(Box::new(elem)))
+        }
+        "handShift" => {
+            let elem = HandShift::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::HandShift(Box::new(elem)))
+        }
+        "restore" => {
+            let elem = Restore::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Restore(Box::new(elem)))
+        }
+        // Other common elements
+        "phrase" => {
+            let elem = Phrase::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Phrase(Box::new(elem)))
+        }
+        "syl" => {
+            let elem = Syl::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Syl(Box::new(elem)))
+        }
+        "annot" => {
+            let elem = Annot::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Annot(Box::new(elem)))
+        }
+        "anchoredText" => {
+            let elem = AnchoredText::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::AnchoredText(Box::new(elem)))
+        }
+        "staffDef" => {
+            let elem = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::StaffDef(Box::new(elem)))
+        }
+        "line" => {
+            let elem = Line::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Line(Box::new(elem)))
+        }
+        "harm" => {
+            let elem = Harm::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Harm(Box::new(elem)))
+        }
+        "fing" => {
+            let elem = Fing::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Fing(Box::new(elem)))
+        }
+        "breath" => {
+            let elem = Breath::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Breath(Box::new(elem)))
+        }
+        // Note: ornam doesn't have a deserializer yet - skip it
+        "ornam" => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+        "gliss" => {
+            let elem = Gliss::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Gliss(Box::new(elem)))
+        }
+        "octave" => {
+            let elem = Octave::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Octave(Box::new(elem)))
+        }
+        "lv" => {
+            let elem = Lv::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Lv(Box::new(elem)))
+        }
+        "bend" => {
+            let elem = Bend::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Bend(Box::new(elem)))
+        }
+        "curve" => {
+            let elem = Curve::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Curve(Box::new(elem)))
+        }
+        "reh" => {
+            let elem = Reh::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Reh(Box::new(elem)))
+        }
+        "volta" => {
+            let elem = Volta::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Volta(Box::new(elem)))
+        }
+        "ending" => {
+            let elem = Ending::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Ending(Box::new(elem)))
+        }
+        // Repeat elements
+        "beatRpt" => {
+            let elem = BeatRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::BeatRpt(Box::new(elem)))
+        }
+        "halfmRpt" => {
+            let elem = HalfmRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::HalfmRpt(Box::new(elem)))
+        }
+        "mRpt" => {
+            let elem = MRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MRpt(Box::new(elem)))
+        }
+        "mRpt2" => {
+            let elem = MRpt2::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MRpt2(Box::new(elem)))
+        }
+        "multiRpt" => {
+            let elem = MultiRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MultiRpt(Box::new(elem)))
+        }
+        "multiRest" => {
+            let elem = MultiRest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MultiRest(Box::new(elem)))
+        }
+        // Tremolos
+        "bTrem" => {
+            let elem = BTrem::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::BTrem(Box::new(elem)))
+        }
+        "fTrem" => {
+            let elem = FTrem::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::FTrem(Box::new(elem)))
+        }
+        // Grace notes
+        "graceGrp" => {
+            let elem = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::GraceGrp(Box::new(elem)))
+        }
+        // Other
+        "custos" => {
+            let elem = Custos::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Custos(Box::new(elem)))
+        }
+        "pad" => {
+            let elem = Pad::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Pad(Box::new(elem)))
+        }
+        "caesura" => {
+            let elem =
+                tusk_model::elements::Caesura::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Caesura(Box::new(elem)))
+        }
+        "repeatMark" => {
+            let elem = RepeatMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::RepeatMark(Box::new(elem)))
+        }
+        "harpPedal" => {
+            let elem = HarpPedal::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::HarpPedal(Box::new(elem)))
+        }
+        "dim" => {
+            let elem = Dim::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Dim(Box::new(elem)))
+        }
+        "clefGrp" => {
+            let elem = ClefGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::ClefGrp(Box::new(elem)))
+        }
+        "meterSigGrp" => {
+            let elem = MeterSigGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MeterSigGrp(Box::new(elem)))
+        }
+        "midi" => {
+            let elem = Midi::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Midi(Box::new(elem)))
+        }
+        "ligature" => {
+            let elem = Ligature::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Ligature(Box::new(elem)))
+        }
+        "neume" => {
+            let elem = Neume::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Neume(Box::new(elem)))
+        }
+        "syllable" => {
+            let elem = Syllable::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Syllable(Box::new(elem)))
+        }
+        "tupletSpan" => {
+            let elem = TupletSpan::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::TupletSpan(Box::new(elem)))
+        }
+        "beamSpan" => {
+            let elem =
+                tusk_model::elements::BeamSpan::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::BeamSpan(Box::new(elem)))
+        }
+        "bracketSpan" => {
+            let elem = tusk_model::elements::BracketSpan::from_mei_event(
+                reader,
+                child_attrs,
+                child_empty,
+            )?;
+            Some(AddChild::BracketSpan(Box::new(elem)))
+        }
+        "cpMark" => {
+            let elem =
+                tusk_model::elements::CpMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::CpMark(Box::new(elem)))
+        }
+        "attacca" => {
+            let elem =
+                tusk_model::elements::Attacca::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Attacca(Box::new(elem)))
+        }
+        "metaMark" => {
+            let elem =
+                tusk_model::elements::MetaMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::MetaMark(Box::new(elem)))
+        }
+        "fingGrp" => {
+            let elem = FingGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::FingGrp(Box::new(elem)))
+        }
+        "scoreDef" => {
+            let elem =
+                tusk_model::elements::ScoreDef::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::ScoreDef(Box::new(elem)))
+        }
+        "staffGrp" => {
+            let elem =
+                tusk_model::elements::StaffGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::StaffGrp(Box::new(elem)))
+        }
+        "bibl" => {
+            let elem = Bibl::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Bibl(Box::new(elem)))
+        }
+        "verse" => {
+            let elem =
+                tusk_model::elements::Verse::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Verse(Box::new(elem)))
+        }
+        "refrain" => {
+            let elem =
+                tusk_model::elements::Refrain::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(AddChild::Refrain(Box::new(elem)))
+        }
+        // Unknown elements are skipped
+        _ => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+    };
+
+    Ok(child)
 }
 
 /// Parse a `<del>` element from within another element.
@@ -833,6 +1273,8 @@ fn parse_del_from_event<R: BufRead>(
     mut attrs: AttributeMap,
     is_empty: bool,
 ) -> DeserializeResult<Del> {
+    use tusk_model::elements::DelChild;
+
     let mut del = Del::default();
 
     // Extract attributes
@@ -844,13 +1286,479 @@ fn parse_del_from_event<R: BufRead>(
     del.text_rendition.extract_attributes(&mut attrs)?;
     del.trans.extract_attributes(&mut attrs)?;
 
-    // Del can contain many child elements - for now, skip to end
-    // A full implementation would parse all child types
+    // Del can contain mixed content: text and element children
     if !is_empty {
-        reader.skip_to_end("del")?;
+        while let Some(content) = reader.read_next_mixed_content("del")? {
+            match content {
+                MixedContent::Text(text) => {
+                    if !text.is_empty() {
+                        del.children.push(DelChild::Text(text));
+                    }
+                }
+                MixedContent::Element(name, child_attrs, child_empty) => {
+                    if let Some(child) = parse_del_child(reader, &name, child_attrs, child_empty)? {
+                        del.children.push(child);
+                    }
+                }
+            }
+        }
     }
 
     Ok(del)
+}
+
+/// Parse a child element of `<del>` by name.
+fn parse_del_child<R: BufRead>(
+    reader: &mut MeiReader<R>,
+    name: &str,
+    child_attrs: AttributeMap,
+    child_empty: bool,
+) -> DeserializeResult<Option<tusk_model::elements::DelChild>> {
+    use tusk_model::elements::{
+        Accid, AnchoredText, Annot, Arpeg, Artic, BTrem, BarLine, Beam, BeatRpt, Bend, Bibl,
+        Breath, Cb, Chord, Clef, ClefGrp, CpMark, Curve, Custos, DelChild, Dim, Dir, Dot, Dynam,
+        Ending, FTrem, Fermata, Fing, FingGrp, Gap, Gliss, GraceGrp, Hairpin, HalfmRpt, Harm,
+        HarpPedal, KeySig, Layer, Ligature, Line, Lv, MRest, MRpt, MRpt2, MSpace, Measure,
+        MeterSig, MeterSigGrp, Midi, MultiRest, MultiRpt, Neume, Note, Octave, Orig, Ornam, Pad,
+        Pb, Pedal, Phrase, Proport, Reh, RepeatMark, Rest, Sb, Section, Slur, Space, Staff,
+        StaffDef, Supplied, Syl, Syllable, Tempo, Tie, Trill, Tuplet, TupletSpan, Turn, Unclear,
+        Volta,
+    };
+
+    let child = match name {
+        // Event elements
+        "note" => {
+            let elem = Note::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Note(Box::new(elem)))
+        }
+        "rest" => {
+            let elem = Rest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Rest(Box::new(elem)))
+        }
+        "chord" => {
+            let elem = Chord::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Chord(Box::new(elem)))
+        }
+        "space" => {
+            let elem = Space::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Space(Box::new(elem)))
+        }
+        "mRest" => {
+            let elem = MRest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MRest(Box::new(elem)))
+        }
+        "mSpace" => {
+            let elem = MSpace::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MSpace(Box::new(elem)))
+        }
+        // Grouping elements
+        "beam" => {
+            let elem = Beam::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Beam(Box::new(elem)))
+        }
+        "tuplet" => {
+            let elem = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Tuplet(Box::new(elem)))
+        }
+        "layer" => {
+            let elem = Layer::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Layer(Box::new(elem)))
+        }
+        "staff" => {
+            let elem = Staff::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Staff(Box::new(elem)))
+        }
+        "section" => {
+            let elem = Section::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Section(Box::new(elem)))
+        }
+        "measure" => {
+            let elem = Measure::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Measure(Box::new(elem)))
+        }
+        // Control events
+        "slur" => {
+            let elem = Slur::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Slur(Box::new(elem)))
+        }
+        "tie" => {
+            let elem = Tie::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Tie(Box::new(elem)))
+        }
+        "hairpin" => {
+            let elem = Hairpin::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Hairpin(Box::new(elem)))
+        }
+        "dynam" => {
+            let elem = Dynam::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Dynam(Box::new(elem)))
+        }
+        "dir" => {
+            let elem = Dir::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Dir(Box::new(elem)))
+        }
+        "tempo" => {
+            let elem = Tempo::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Tempo(Box::new(elem)))
+        }
+        "fermata" => {
+            let elem = Fermata::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Fermata(Box::new(elem)))
+        }
+        "trill" => {
+            let elem = Trill::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Trill(Box::new(elem)))
+        }
+        "mordent" => {
+            let elem = Mordent::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Mordent(Box::new(elem)))
+        }
+        "turn" => {
+            let elem = Turn::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Turn(Box::new(elem)))
+        }
+        "pedal" => {
+            let elem = Pedal::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Pedal(Box::new(elem)))
+        }
+        "arpeg" => {
+            let elem = Arpeg::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Arpeg(Box::new(elem)))
+        }
+        // Auxiliary elements
+        "accid" => {
+            let elem = Accid::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Accid(Box::new(elem)))
+        }
+        "artic" => {
+            let elem = Artic::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Artic(Box::new(elem)))
+        }
+        "dot" => {
+            let elem = Dot::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Dot(Box::new(elem)))
+        }
+        "barLine" => {
+            let elem = BarLine::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::BarLine(Box::new(elem)))
+        }
+        // Note: clef, keySig, meterSig don't have deserializers yet - skip them
+        "clef" | "keySig" | "meterSig" => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+        // Page/system breaks
+        "pb" => {
+            let elem = Pb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Pb(Box::new(elem)))
+        }
+        "sb" => {
+            let elem = Sb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Sb(Box::new(elem)))
+        }
+        "cb" => {
+            let elem = Cb::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Cb(Box::new(elem)))
+        }
+        // Editorial elements
+        "add" => {
+            let elem = Add::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Add(Box::new(elem)))
+        }
+        "del" => {
+            let elem = Del::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Del(Box::new(elem)))
+        }
+        "corr" => {
+            let elem = parse_corr_from_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Corr(Box::new(elem)))
+        }
+        "sic" => {
+            let elem = parse_sic_from_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Sic(Box::new(elem)))
+        }
+        "orig" => {
+            let elem = Orig::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Orig(Box::new(elem)))
+        }
+        "reg" => {
+            let elem = Reg::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Reg(Box::new(elem)))
+        }
+        "supplied" => {
+            let elem = Supplied::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Supplied(Box::new(elem)))
+        }
+        "unclear" => {
+            let elem = Unclear::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Unclear(Box::new(elem)))
+        }
+        "gap" => {
+            let elem = Gap::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Gap(Box::new(elem)))
+        }
+        "damage" => {
+            let elem = Damage::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Damage(Box::new(elem)))
+        }
+        "choice" => {
+            let elem = Choice::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Choice(Box::new(elem)))
+        }
+        "subst" => {
+            let elem = Subst::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Subst(Box::new(elem)))
+        }
+        "handShift" => {
+            let elem = HandShift::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::HandShift(Box::new(elem)))
+        }
+        "restore" => {
+            let elem = Restore::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Restore(Box::new(elem)))
+        }
+        // Other common elements
+        "phrase" => {
+            let elem = Phrase::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Phrase(Box::new(elem)))
+        }
+        "syl" => {
+            let elem = Syl::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Syl(Box::new(elem)))
+        }
+        "annot" => {
+            let elem = Annot::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Annot(Box::new(elem)))
+        }
+        "anchoredText" => {
+            let elem = AnchoredText::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::AnchoredText(Box::new(elem)))
+        }
+        "staffDef" => {
+            let elem = StaffDef::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::StaffDef(Box::new(elem)))
+        }
+        "line" => {
+            let elem = Line::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Line(Box::new(elem)))
+        }
+        "harm" => {
+            let elem = Harm::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Harm(Box::new(elem)))
+        }
+        "fing" => {
+            let elem = Fing::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Fing(Box::new(elem)))
+        }
+        "breath" => {
+            let elem = Breath::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Breath(Box::new(elem)))
+        }
+        // Note: ornam doesn't have a deserializer yet - skip it
+        "ornam" => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+        "gliss" => {
+            let elem = Gliss::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Gliss(Box::new(elem)))
+        }
+        "octave" => {
+            let elem = Octave::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Octave(Box::new(elem)))
+        }
+        "lv" => {
+            let elem = Lv::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Lv(Box::new(elem)))
+        }
+        "bend" => {
+            let elem = Bend::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Bend(Box::new(elem)))
+        }
+        "curve" => {
+            let elem = Curve::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Curve(Box::new(elem)))
+        }
+        "reh" => {
+            let elem = Reh::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Reh(Box::new(elem)))
+        }
+        "volta" => {
+            let elem = Volta::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Volta(Box::new(elem)))
+        }
+        "ending" => {
+            let elem = Ending::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Ending(Box::new(elem)))
+        }
+        // Repeat elements
+        "beatRpt" => {
+            let elem = BeatRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::BeatRpt(Box::new(elem)))
+        }
+        "halfmRpt" => {
+            let elem = HalfmRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::HalfmRpt(Box::new(elem)))
+        }
+        "mRpt" => {
+            let elem = MRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MRpt(Box::new(elem)))
+        }
+        "mRpt2" => {
+            let elem = MRpt2::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MRpt2(Box::new(elem)))
+        }
+        "multiRpt" => {
+            let elem = MultiRpt::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MultiRpt(Box::new(elem)))
+        }
+        "multiRest" => {
+            let elem = MultiRest::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MultiRest(Box::new(elem)))
+        }
+        // Tremolos
+        "bTrem" => {
+            let elem = BTrem::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::BTrem(Box::new(elem)))
+        }
+        "fTrem" => {
+            let elem = FTrem::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::FTrem(Box::new(elem)))
+        }
+        // Grace notes
+        "graceGrp" => {
+            let elem = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::GraceGrp(Box::new(elem)))
+        }
+        // Other
+        "custos" => {
+            let elem = Custos::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Custos(Box::new(elem)))
+        }
+        "pad" => {
+            let elem = Pad::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Pad(Box::new(elem)))
+        }
+        "caesura" => {
+            let elem =
+                tusk_model::elements::Caesura::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Caesura(Box::new(elem)))
+        }
+        "repeatMark" => {
+            let elem = RepeatMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::RepeatMark(Box::new(elem)))
+        }
+        "harpPedal" => {
+            let elem = HarpPedal::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::HarpPedal(Box::new(elem)))
+        }
+        "dim" => {
+            let elem = Dim::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Dim(Box::new(elem)))
+        }
+        "clefGrp" => {
+            let elem = ClefGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::ClefGrp(Box::new(elem)))
+        }
+        "meterSigGrp" => {
+            let elem = MeterSigGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MeterSigGrp(Box::new(elem)))
+        }
+        "midi" => {
+            let elem = Midi::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Midi(Box::new(elem)))
+        }
+        "ligature" => {
+            let elem = Ligature::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Ligature(Box::new(elem)))
+        }
+        "neume" => {
+            let elem = Neume::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Neume(Box::new(elem)))
+        }
+        "syllable" => {
+            let elem = Syllable::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Syllable(Box::new(elem)))
+        }
+        "tupletSpan" => {
+            let elem = TupletSpan::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::TupletSpan(Box::new(elem)))
+        }
+        "beamSpan" => {
+            let elem =
+                tusk_model::elements::BeamSpan::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::BeamSpan(Box::new(elem)))
+        }
+        "bracketSpan" => {
+            let elem = tusk_model::elements::BracketSpan::from_mei_event(
+                reader,
+                child_attrs,
+                child_empty,
+            )?;
+            Some(DelChild::BracketSpan(Box::new(elem)))
+        }
+        "cpMark" => {
+            let elem =
+                tusk_model::elements::CpMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::CpMark(Box::new(elem)))
+        }
+        "attacca" => {
+            let elem =
+                tusk_model::elements::Attacca::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Attacca(Box::new(elem)))
+        }
+        "metaMark" => {
+            let elem =
+                tusk_model::elements::MetaMark::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::MetaMark(Box::new(elem)))
+        }
+        "fingGrp" => {
+            let elem = FingGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::FingGrp(Box::new(elem)))
+        }
+        "scoreDef" => {
+            let elem =
+                tusk_model::elements::ScoreDef::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::ScoreDef(Box::new(elem)))
+        }
+        "staffGrp" => {
+            let elem =
+                tusk_model::elements::StaffGrp::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::StaffGrp(Box::new(elem)))
+        }
+        "bibl" => {
+            let elem = Bibl::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Bibl(Box::new(elem)))
+        }
+        "verse" => {
+            let elem =
+                tusk_model::elements::Verse::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Verse(Box::new(elem)))
+        }
+        "refrain" => {
+            let elem =
+                tusk_model::elements::Refrain::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Refrain(Box::new(elem)))
+        }
+        "rend" => {
+            let elem =
+                tusk_model::elements::Rend::from_mei_event(reader, child_attrs, child_empty)?;
+            Some(DelChild::Rend(Box::new(elem)))
+        }
+        // Unknown elements are skipped
+        _ => {
+            if !child_empty {
+                reader.skip_to_end(name)?;
+            }
+            None
+        }
+    };
+
+    Ok(child)
 }
 
 // ============================================================================

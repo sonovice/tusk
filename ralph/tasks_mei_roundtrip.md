@@ -54,7 +54,7 @@ Tasks for MEI → Internal → MEI roundtrip tests. When a fixture test fails, b
 - [x] [MISSING_DESERIALIZER] Control event deserializers missing: Slur, Tie, Hairpin, Dynam, Dir, Tempo, Fermata, Trill, Mordent, Turn, Pedal, Arpeg - needed for full critical apparatus rdg support and other test fixtures (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 - [x] [MISSING_ATTR] Name element missing `type` attribute serialization (source: Layout_information/Layout_information.mei)
 - [x] [MISSING_ELEMENT] Editorial markup: Measure deserializer missing `add` child; Note deserializer missing `app` child - both needed for critical apparatus roundtrip (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
-- [ ] [SERIALIZER_BUG] Add/Del incomplete for editorial roundtrip: (1) Add deserializer only handles `space`, missing `dir` and ~140 other child types; (2) Add serializer only handles `Text`/`Space`, missing `dir` and ~140 variants; (3) Del deserializer uses `skip_to_end`, missing all children; (4) Del serializer only handles `Text`, missing `dir` and ~180 variants; (5) NoteChild serializer incomplete - `App`/`Add`/`Del`/`Choice` etc. return empty attrs, false for has_children, error for serialize_children (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
+- [x] [SERIALIZER_BUG] Add/Del incomplete for editorial roundtrip: (1) Add deserializer only handles `space`, missing `dir` and ~140 other child types; (2) Add serializer only handles `Text`/`Space`, missing `dir` and ~140 variants; (3) Del deserializer uses `skip_to_end`, missing all children; (4) Del serializer only handles `Text`, missing `dir` and ~180 variants; (5) NoteChild serializer incomplete - `App`/`Add`/`Del`/`Choice` etc. return empty attrs, false for has_children, error for serialize_children (source: Editorial_markup/Weber_op73/Editorial_markup.mei)
 
 ---
 
@@ -182,7 +182,7 @@ Testing document structure: mdiv, section, group elements.
 
 Testing critical edition elements: app, lem, rdg.
 
-- [ ] Roundtrip test: `Editorial_markup/Weber_op73/Editorial_markup.mei`
+- [x] Roundtrip test: `Editorial_markup/Weber_op73/Editorial_markup.mei`
 
 ### Layout Information (1 file)
 
