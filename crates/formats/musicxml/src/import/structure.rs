@@ -161,6 +161,20 @@ fn convert_measure_directions(
 ) -> ConversionResult<()> {
     use crate::model::elements::MeasureContent;
 
+    // Restore per-part divisions from cache. Phase 1 processes all parts
+    // sequentially, so ctx.divisions() may be stale from a different part.
+    // Divisions persist across measures, so we use the cached value.
+    ctx.restore_part_divisions();
+
+    // Also check this measure for new divisions (mid-piece division changes)
+    for content in &musicxml_measure.content {
+        if let MeasureContent::Attributes(attrs) = content {
+            if let Some(divs) = attrs.divisions {
+                ctx.set_divisions(divs);
+            }
+        }
+    }
+
     // Reset beat position so directions get correct tstamp
     ctx.reset_beat_position();
 

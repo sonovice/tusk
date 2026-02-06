@@ -260,6 +260,20 @@ pub fn convert_score_content(
         for (staff_idx, part) in parts.iter_mut().enumerate() {
             let staff_n = staff_idx + 1; // Staff numbers are 1-based
 
+            // Set per-part divisions from the staffDef so that direction offset
+            // calculations use the correct value for this part.
+            if let Some(staff_def) = staff_defs.get(staff_idx) {
+                let divs = staff_def
+                    .staff_def_ges
+                    .ppq
+                    .map(|ppq| ppq as f64)
+                    .unwrap_or_else(|| {
+                        let ctx_divs = ctx.divisions();
+                        if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
+                    });
+                ctx.set_divisions(divs);
+            }
+
             // Create a new measure for this part
             let mut mxml_measure = MxmlMeasure {
                 number: mxml_measure_base.number.clone(),

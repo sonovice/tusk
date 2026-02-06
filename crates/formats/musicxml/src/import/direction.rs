@@ -63,7 +63,9 @@ pub fn convert_direction(
 
     // Calculate timestamp for control events
     let tstamp = calculate_tstamp(direction, ctx);
-    let staff = direction.staff.unwrap_or(ctx.current_staff());
+    // Use global MEI staff number from context, not within-part MusicXML staff.
+    // MusicXML <staff> is within-part (e.g., piano staff 1), but MEI @staff is global.
+    let staff = ctx.current_staff();
     let place = convert_placement(direction.placement.as_ref());
 
     for direction_type in &direction.direction_types {

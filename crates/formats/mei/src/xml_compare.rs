@@ -397,13 +397,24 @@ fn normalize_whitespace(s: &str) -> String {
 
 /// Check if two attribute values are semantically equivalent.
 ///
+/// Compare two f64 values with epsilon tolerance for rounding differences.
+/// Uses relative epsilon for large values, absolute epsilon for small values.
+fn floats_equivalent(a: f64, b: f64) -> bool {
+    let diff = (a - b).abs();
+    if diff == 0.0 {
+        return true;
+    }
+    let max_abs = a.abs().max(b.abs());
+    // Relative tolerance of ~1e-12, or absolute tolerance of 1e-10 for small values
+    diff <= max_abs * 1e-12 || diff < 1e-10
+}
+
 /// This handles:
 /// - Whitespace normalization (for XML list types)
 /// - Numeric equivalence (1.00 == 1, 2.5 == 2.50)
 ///
-/// For numeric comparison, both values must parse as the same f64 value.
-/// This handles MEI attributes like `tstamp`, `dur`, etc. where trailing zeros
-/// may be present in the original but stripped during serialization.
+/// For numeric comparison, values are compared with epsilon tolerance
+/// to handle f64 rounding differences (e.g., tstamp 2.4166666666666665 vs 2.416666666666667).
 fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
     // First try whitespace-normalized string comparison
     let norm1 = normalize_whitespace(val1);
@@ -412,9 +423,9 @@ fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
         return true;
     }
 
-    // Try numeric comparison for single values
+    // Try numeric comparison for single values (with epsilon for float precision)
     if let (Ok(n1), Ok(n2)) = (norm1.parse::<f64>(), norm2.parse::<f64>()) {
-        if n1 == n2 {
+        if floats_equivalent(n1, n2) {
             return true;
         }
     }
@@ -428,9 +439,9 @@ fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
             if p1 == p2 {
                 return true;
             }
-            // Then try numeric equality
+            // Then try numeric equality (with epsilon)
             if let (Ok(n1), Ok(n2)) = (p1.parse::<f64>(), p2.parse::<f64>()) {
-                n1 == n2
+                floats_equivalent(n1, n2)
             } else {
                 false
             }
@@ -641,7 +652,30 @@ fn get_element_key(elem: &CanonicalElement) -> String {
             if let (Some(staff), Some(tstamp)) =
                 (elem.attributes.get("staff"), elem.attributes.get("tstamp"))
             {
-                return format!("{}[staff={},tstamp={}]", name, staff, tstamp);
+                // Normalize tstamp float to consistent precision for key matching
+                let tstamp_key = if let Ok(ts) = tstamp.parse::<f64>() {
+                    format!("{:.10}", ts)
+                } else {
+                    tstamp.clone()
+                };
+                // Include text content for text-bearing elements to disambiguate
+                // multiple dirs/dynams at the same staff+tstamp
+                let text = collect_deep_text(elem);
+                let text_key = if !text.is_empty() {
+                    format!(",text={}", text.chars().take(30).collect::<String>())
+                } else {
+                    String::new()
+                };
+                // Include @place to disambiguate above/below at same position
+                let place_key = if let Some(place) = elem.attributes.get("place") {
+                    format!(",place={}", place)
+                } else {
+                    String::new()
+                };
+                return format!(
+                    "{}[staff={},tstamp={}{}{}]",
+                    name, staff, tstamp_key, place_key, text_key
+                );
             }
             elem.attributes.get("staff")
         }

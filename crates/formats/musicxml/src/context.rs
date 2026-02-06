@@ -185,6 +185,11 @@ pub struct ConversionContext {
     /// Keyed by (startid, endid) pair, value is the assigned MusicXML slur number.
     /// Computed in a pre-pass to ensure cross-measure slurs get unique numbers.
     slur_number_map: HashMap<(String, String), u8>,
+
+    /// Per-part divisions cache. Keyed by part ID.
+    /// MusicXML divisions persist across measures, so we cache the last-seen value
+    /// per part to restore in Phase 2 direction processing.
+    part_divisions: HashMap<String, f64>,
 }
 
 impl Default for ConversionContext {
@@ -213,6 +218,7 @@ impl ConversionContext {
             key_mode: None,
             measure_accidentals: HashMap::new(),
             slur_number_map: HashMap::new(),
+            part_divisions: HashMap::new(),
         }
     }
 
@@ -253,8 +259,24 @@ impl ConversionContext {
     /// Set the divisions per quarter note.
     ///
     /// Call this when encountering a MusicXML `<divisions>` element.
+    /// Also caches the value for the current part.
     pub fn set_divisions(&mut self, divisions: f64) {
         self.duration_ctx.set_divisions(divisions);
+        if let Some(ref part_id) = self.position.part_id {
+            self.part_divisions.insert(part_id.clone(), divisions);
+        }
+    }
+
+    /// Restore divisions for the current part from the cache.
+    /// Returns true if divisions were restored.
+    pub fn restore_part_divisions(&mut self) -> bool {
+        if let Some(ref part_id) = self.position.part_id {
+            if let Some(&divs) = self.part_divisions.get(part_id) {
+                self.duration_ctx.set_divisions(divs);
+                return true;
+            }
+        }
+        false
     }
 
     /// Get a reference to the duration context for advanced calculations.

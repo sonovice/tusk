@@ -65,9 +65,10 @@ pub fn convert_mei_dynam(
 
     let mut direction = Direction::new(vec![direction_type]);
 
-    // Set staff from MEI @staff attribute
-    if let Some(&staff) = dynam.dynam_log.staff.first() {
-        direction.staff = Some(staff as u32);
+    // Set staff: MEI @staff is global, MusicXML <staff> is within-part.
+    // With 1:1 part→staff mapping, within-part staff is always 1.
+    if !dynam.dynam_log.staff.is_empty() {
+        direction.staff = Some(1);
     }
 
     // Set placement from MEI @place (no default — only emit if explicitly set)
@@ -181,9 +182,9 @@ pub fn convert_mei_hairpin(
 
     let mut direction = Direction::new(vec![direction_type]);
 
-    // Set staff
-    if let Some(&staff) = hairpin.hairpin_log.staff.first() {
-        direction.staff = Some(staff as u32);
+    // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
+    if !hairpin.hairpin_log.staff.is_empty() {
+        direction.staff = Some(1);
     }
 
     // Set placement from MEI @place (no default — only emit if explicitly set)
@@ -246,9 +247,9 @@ pub fn convert_mei_dir(
 
     let mut direction = Direction::new(vec![direction_type]);
 
-    // Set staff
-    if let Some(&staff) = dir.dir_log.staff.first() {
-        direction.staff = Some(staff as u32);
+    // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
+    if !dir.dir_log.staff.is_empty() {
+        direction.staff = Some(1);
     }
 
     // Set placement from MEI @place (no default — only emit if explicitly set)
@@ -364,9 +365,9 @@ pub fn convert_mei_tempo(
 
     let mut direction = Direction::new(direction_types);
 
-    // Set staff
-    if let Some(&staff) = tempo.tempo_log.staff.first() {
-        direction.staff = Some(staff as u32);
+    // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
+    if !tempo.tempo_log.staff.is_empty() {
+        direction.staff = Some(1);
     }
 
     // Set placement from MEI @place (no default — only emit if explicitly set)
@@ -464,7 +465,7 @@ mod tests {
 
         assert!(direction.is_some());
         let dir = direction.unwrap();
-        assert_eq!(dir.staff, Some(2));
+        assert_eq!(dir.staff, Some(1)); // within-part staff is always 1 for 1:1 mapping
     }
 
     #[test]
@@ -552,7 +553,7 @@ mod tests {
         } else {
             panic!("Expected wedge direction type");
         }
-        assert_eq!(directions[0].staff, Some(2));
+        assert_eq!(directions[0].staff, Some(1)); // within-part staff is always 1
     }
 
     #[test]
