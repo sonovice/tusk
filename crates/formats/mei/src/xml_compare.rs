@@ -581,6 +581,27 @@ fn collect_deep_text(elem: &CanonicalElement) -> String {
     text
 }
 
+/// Get element-specific key suffix for control events that need extra disambiguation.
+///
+/// Some control events can share the same staff+tstamp but differ in type-specific
+/// attributes (e.g., two hairpins at same position with different @form, or two
+/// pedals with different @dir).
+fn control_event_type_key(name: &str, elem: &CanonicalElement) -> String {
+    match name {
+        "hairpin" => elem
+            .attributes
+            .get("form")
+            .map(|f| format!(",form={}", f))
+            .unwrap_or_default(),
+        "pedal" => elem
+            .attributes
+            .get("dir")
+            .map(|d| format!(",dir={}", d))
+            .unwrap_or_default(),
+        _ => String::new(),
+    }
+}
+
 /// Get a key for matching elements in unordered comparison.
 ///
 /// Elements are matched by (name, key_attribute) where key_attribute depends
@@ -656,7 +677,28 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     .get("staff")
                     .map(|s| format!(",staff={}", s))
                     .unwrap_or_default();
-                return format!("{}[startid={}{}]", name, startid, staff_key);
+                // Include @endid to disambiguate spanners with same start but different end
+                let endid_key = elem
+                    .attributes
+                    .get("endid")
+                    .map(|e| format!(",endid={}", e))
+                    .unwrap_or_default();
+                // Include @curvedir for slurs/ties with same start/end but different curve direction
+                let curvedir_key = elem
+                    .attributes
+                    .get("curvedir")
+                    .map(|c| format!(",curvedir={}", c))
+                    .unwrap_or_default();
+                // Include @lform to disambiguate solid vs dashed slurs
+                let lform_key = elem
+                    .attributes
+                    .get("lform")
+                    .map(|l| format!(",lform={}", l))
+                    .unwrap_or_default();
+                return format!(
+                    "{}[startid={}{}{}{}{}]",
+                    name, startid, staff_key, endid_key, curvedir_key, lform_key
+                );
             }
             if let (Some(staff), Some(tstamp)) =
                 (elem.attributes.get("staff"), elem.attributes.get("tstamp"))
@@ -681,9 +723,11 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 } else {
                     String::new()
                 };
+                // Include element-specific attributes for disambiguation
+                let type_key = control_event_type_key(name, elem);
                 return format!(
-                    "{}[staff={},tstamp={}{}{}]",
-                    name, staff, tstamp_key, place_key, text_key
+                    "{}[staff={},tstamp={}{}{}{}]",
+                    name, staff, tstamp_key, place_key, text_key, type_key
                 );
             }
             elem.attributes.get("staff")
@@ -775,31 +819,17 @@ fn get_element_key(elem: &CanonicalElement) -> String {
         }
 
         "source" => {
+            // Key sources by bibl deep text to distinguish sources with same identifiers
+            // but different content (e.g., one with full metadata, one with just URI)
             for child in &elem.children {
                 if let CanonicalNode::Element(child_elem) = child {
                     if child_elem.name == "bibl" {
-                        for bibl_child in &child_elem.children {
-                            if let CanonicalNode::Element(bc) = bibl_child {
-                                if bc.name == "identifier" {
-                                    let id_text: String = bc
-                                        .children
-                                        .iter()
-                                        .filter_map(|c| {
-                                            if let CanonicalNode::Text(t) = c {
-                                                Some(t.as_str())
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .collect();
-                                    if !id_text.is_empty() {
-                                        return format!(
-                                            "source[id={}]",
-                                            id_text.chars().take(200).collect::<String>()
-                                        );
-                                    }
-                                }
-                            }
+                        let bibl_text = collect_deep_text(child_elem);
+                        if !bibl_text.is_empty() {
+                            return format!(
+                                "source[bibl={}]",
+                                bibl_text.chars().take(200).collect::<String>()
+                            );
                         }
                     }
                 }
@@ -837,15 +867,10 @@ fn get_element_key(elem: &CanonicalElement) -> String {
     if let Some(attr) = key_attr {
         format!("{}[@={}]", name, attr)
     } else {
-        // Fall back to text content for elements without key attributes
-        let text: String = elem
-            .children
-            .iter()
-            .filter_map(|c| match c {
-                CanonicalNode::Text(t) => Some(t.as_str()),
-                _ => None,
-            })
-            .collect();
+        // Fall back to deep text content for elements without key attributes
+        // Uses recursive text collection to handle elements whose text is in children
+        // (e.g., <respStmt><corpName>text</corpName></respStmt>)
+        let text = collect_deep_text(elem);
         if !text.is_empty() {
             format!(
                 "{}[text={}]",
