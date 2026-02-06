@@ -232,19 +232,29 @@ fn convert_mei_pname_to_step(
 fn convert_mei_gestural_accid_to_alter(
     accid_ges: &Option<tusk_model::data::DataAccidentalGestural>,
 ) -> Option<f64> {
-    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+    use tusk_model::data::{
+        DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
+    };
 
     accid_ges.as_ref().map(|ges| match ges {
         DataAccidentalGestural::DataAccidentalGesturalBasic(basic) => match basic {
-            DataAccidentalGesturalBasic::Tf => -3.0, // Triple flat
-            DataAccidentalGesturalBasic::Ff => -2.0, // Double flat
-            DataAccidentalGesturalBasic::F => -1.0,  // Flat
-            DataAccidentalGesturalBasic::N => 0.0,   // Natural
-            DataAccidentalGesturalBasic::S => 1.0,   // Sharp
-            DataAccidentalGesturalBasic::Ss => 2.0,  // Double sharp
-            DataAccidentalGesturalBasic::Ts => 3.0,  // Triple sharp
+            DataAccidentalGesturalBasic::Tf => -3.0,
+            DataAccidentalGesturalBasic::Ff => -2.0,
+            DataAccidentalGesturalBasic::F => -1.0,
+            DataAccidentalGesturalBasic::N => 0.0,
+            DataAccidentalGesturalBasic::S => 1.0,
+            DataAccidentalGesturalBasic::Ss => 2.0,
+            DataAccidentalGesturalBasic::Ts => 3.0,
         },
-        // For extended gestural accidentals, return 0 as fallback
+        DataAccidentalGestural::DataAccidentalGesturalExtended(ext) => match ext {
+            DataAccidentalGesturalExtended::Fu => -0.5, // Quarter-tone flat
+            DataAccidentalGesturalExtended::Sd => 0.5,  // Quarter-tone sharp
+            DataAccidentalGesturalExtended::Fd => -1.5, // Three quarter-tones flat
+            DataAccidentalGesturalExtended::Su => 1.5,  // Three quarter-tones sharp
+            DataAccidentalGesturalExtended::Ffd => -2.5, // Five quarter-tones flat
+            DataAccidentalGesturalExtended::Xu => 2.5,  // Five quarter-tones sharp
+        },
+        // AEU/Persian accidentals — approximate to nearest semitone
         _ => 0.0,
     })
 }
@@ -364,7 +374,9 @@ fn convert_mei_written_accid_to_mxml(
     accid: &tusk_model::data::DataAccidentalWritten,
 ) -> crate::model::note::AccidentalValue {
     use crate::model::note::AccidentalValue;
-    use tusk_model::data::{DataAccidentalWritten, DataAccidentalWrittenBasic};
+    use tusk_model::data::{
+        DataAccidentalWritten, DataAccidentalWrittenBasic, DataAccidentalWrittenExtended,
+    };
 
     match accid {
         DataAccidentalWritten::DataAccidentalWrittenBasic(basic) => match basic {
@@ -382,7 +394,23 @@ fn convert_mei_written_accid_to_mxml(
             DataAccidentalWrittenBasic::Nf => AccidentalValue::NaturalFlat,
             DataAccidentalWrittenBasic::Ns => AccidentalValue::NaturalSharp,
         },
-        // For extended accidentals, return natural as fallback
+        DataAccidentalWritten::DataAccidentalWrittenExtended(ext) => match ext {
+            DataAccidentalWrittenExtended::Nu => AccidentalValue::QuarterSharp,
+            DataAccidentalWrittenExtended::Nd => AccidentalValue::QuarterFlat,
+            DataAccidentalWrittenExtended::Su => AccidentalValue::ThreeQuartersSharp,
+            DataAccidentalWrittenExtended::Sd => AccidentalValue::SharpDown,
+            DataAccidentalWrittenExtended::Fu => AccidentalValue::FlatUp,
+            DataAccidentalWrittenExtended::Fd => AccidentalValue::ThreeQuartersFlat,
+            DataAccidentalWrittenExtended::Xu => AccidentalValue::DoubleSharpUp,
+            DataAccidentalWrittenExtended::Xd => AccidentalValue::DoubleSharpDown,
+            DataAccidentalWrittenExtended::Ffu => AccidentalValue::FlatFlatUp,
+            DataAccidentalWrittenExtended::Ffd => AccidentalValue::FlatFlatDown,
+            DataAccidentalWrittenExtended::N1qf => AccidentalValue::QuarterFlat,
+            DataAccidentalWrittenExtended::N3qf => AccidentalValue::ThreeQuartersFlat,
+            DataAccidentalWrittenExtended::N1qs => AccidentalValue::QuarterSharp,
+            DataAccidentalWrittenExtended::N3qs => AccidentalValue::ThreeQuartersSharp,
+        },
+        // AEU/Persian — closest MusicXML equivalents
         _ => AccidentalValue::Natural,
     }
 }

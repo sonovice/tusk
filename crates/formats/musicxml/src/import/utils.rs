@@ -10,9 +10,9 @@
 
 use crate::model::note::{AccidentalValue, NoteTypeValue, StemValue};
 use tusk_model::data::{
-    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataDuration, DataDurationCmn, DataGrace, DataPitchname,
-    DataStemdirection, DataStemdirectionBasic,
+    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
+    DataAccidentalWritten, DataAccidentalWrittenBasic, DataAccidentalWrittenExtended, DataDuration,
+    DataDurationCmn, DataGrace, DataPitchname, DataStemdirection, DataStemdirectionBasic,
 };
 
 // ============================================================================
@@ -36,72 +36,106 @@ pub(crate) fn convert_pitch_name(step: crate::model::data::Step) -> DataPitchnam
 }
 
 /// Convert MusicXML alter value to MEI gestural accidental.
+///
+/// Handles both standard semitone alterations and quarter-tone microtonal values.
+/// MusicXML alter is in semitones (e.g., -0.5 = quarter-tone flat, 1.5 = three quarter-tones sharp).
 pub(crate) fn convert_alter_to_gestural_accid(alter: f64) -> DataAccidentalGestural {
-    // Map common alterations to gestural accidentals
-    match alter as i32 {
-        -2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ff),
-        -1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::F),
-        0 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N),
-        1 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::S),
-        2 => DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::Ss), // Double sharp
-        _ => {
-            // For microtones or other alterations, use natural as fallback
-            DataAccidentalGestural::DataAccidentalGesturalBasic(DataAccidentalGesturalBasic::N)
-        }
+    use DataAccidentalGestural::{
+        DataAccidentalGesturalBasic as Basic, DataAccidentalGesturalExtended as Ext,
+    };
+
+    // Use epsilon comparison for floating point
+    let eps = 1e-9;
+    if (alter - (-3.0)).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::Tf)
+    } else if (alter - (-2.5)).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Ffd) // Five quarter-tones flat
+    } else if (alter - (-2.0)).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::Ff)
+    } else if (alter - (-1.5)).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Fd) // Three quarter-tones flat
+    } else if (alter - (-1.0)).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::F)
+    } else if (alter - (-0.5)).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Fu) // Quarter-tone flat
+    } else if alter.abs() < eps {
+        Basic(DataAccidentalGesturalBasic::N)
+    } else if (alter - 0.5).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Sd) // Quarter-tone sharp
+    } else if (alter - 1.0).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::S)
+    } else if (alter - 1.5).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Su) // Three quarter-tones sharp
+    } else if (alter - 2.0).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::Ss)
+    } else if (alter - 2.5).abs() < eps {
+        Ext(DataAccidentalGesturalExtended::Xu) // Five quarter-tones sharp
+    } else if (alter - 3.0).abs() < eps {
+        Basic(DataAccidentalGesturalBasic::Ts)
+    } else {
+        // For unsupported microtone values, use natural as fallback
+        Basic(DataAccidentalGesturalBasic::N)
     }
 }
 
 /// Convert MusicXML AccidentalValue to MEI DataAccidentalWritten.
 pub(crate) fn convert_accidental_value(value: AccidentalValue) -> DataAccidentalWritten {
-    let basic = match value {
-        AccidentalValue::Sharp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::Natural => DataAccidentalWrittenBasic::N,
-        AccidentalValue::Flat => DataAccidentalWrittenBasic::F,
-        AccidentalValue::DoubleSharp | AccidentalValue::SharpSharp => DataAccidentalWrittenBasic::X,
-        AccidentalValue::FlatFlat => DataAccidentalWrittenBasic::Ff,
-        AccidentalValue::NaturalSharp => DataAccidentalWrittenBasic::Ns,
-        AccidentalValue::NaturalFlat => DataAccidentalWrittenBasic::Nf,
-        AccidentalValue::TripleSharp => DataAccidentalWrittenBasic::Ts,
-        AccidentalValue::TripleFlat => DataAccidentalWrittenBasic::Tf,
-        // For extended accidentals (quarter tones, etc.), use the closest basic equivalent
-        AccidentalValue::QuarterFlat => DataAccidentalWrittenBasic::F,
-        AccidentalValue::QuarterSharp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::ThreeQuartersFlat => DataAccidentalWrittenBasic::Ff,
-        AccidentalValue::ThreeQuartersSharp => DataAccidentalWrittenBasic::Ss,
-        // Arrow variants map to basic equivalents
-        AccidentalValue::SharpDown | AccidentalValue::SharpUp => DataAccidentalWrittenBasic::S,
-        AccidentalValue::NaturalDown | AccidentalValue::NaturalUp => DataAccidentalWrittenBasic::N,
-        AccidentalValue::FlatDown | AccidentalValue::FlatUp => DataAccidentalWrittenBasic::F,
-        AccidentalValue::DoubleSharpDown | AccidentalValue::DoubleSharpUp => {
-            DataAccidentalWrittenBasic::X
+    use DataAccidentalWritten::{
+        DataAccidentalWrittenBasic as Basic, DataAccidentalWrittenExtended as Ext,
+    };
+
+    match value {
+        AccidentalValue::Sharp => Basic(DataAccidentalWrittenBasic::S),
+        AccidentalValue::Natural => Basic(DataAccidentalWrittenBasic::N),
+        AccidentalValue::Flat => Basic(DataAccidentalWrittenBasic::F),
+        AccidentalValue::DoubleSharp | AccidentalValue::SharpSharp => {
+            Basic(DataAccidentalWrittenBasic::X)
         }
-        AccidentalValue::FlatFlatDown | AccidentalValue::FlatFlatUp => {
-            DataAccidentalWrittenBasic::Ff
-        }
-        AccidentalValue::ArrowDown | AccidentalValue::ArrowUp => DataAccidentalWrittenBasic::N,
-        // Slash variants
+        AccidentalValue::FlatFlat => Basic(DataAccidentalWrittenBasic::Ff),
+        AccidentalValue::NaturalSharp => Basic(DataAccidentalWrittenBasic::Ns),
+        AccidentalValue::NaturalFlat => Basic(DataAccidentalWrittenBasic::Nf),
+        AccidentalValue::TripleSharp => Basic(DataAccidentalWrittenBasic::Ts),
+        AccidentalValue::TripleFlat => Basic(DataAccidentalWrittenBasic::Tf),
+        // Quarter-tone accidentals → MEI extended written accidentals
+        AccidentalValue::QuarterFlat => Ext(DataAccidentalWrittenExtended::Nd), // natural lowered by quarter-tone
+        AccidentalValue::QuarterSharp => Ext(DataAccidentalWrittenExtended::Nu), // natural raised by quarter-tone
+        AccidentalValue::ThreeQuartersFlat => Ext(DataAccidentalWrittenExtended::Fd), // flat lowered by quarter-tone
+        AccidentalValue::ThreeQuartersSharp => Ext(DataAccidentalWrittenExtended::Su), // sharp raised by quarter-tone
+        // Arrow variants → MEI extended written accidentals
+        AccidentalValue::SharpDown => Ext(DataAccidentalWrittenExtended::Sd),
+        AccidentalValue::SharpUp => Ext(DataAccidentalWrittenExtended::Su),
+        AccidentalValue::NaturalDown => Ext(DataAccidentalWrittenExtended::Nd),
+        AccidentalValue::NaturalUp => Ext(DataAccidentalWrittenExtended::Nu),
+        AccidentalValue::FlatDown => Ext(DataAccidentalWrittenExtended::Fd),
+        AccidentalValue::FlatUp => Ext(DataAccidentalWrittenExtended::Fu),
+        AccidentalValue::DoubleSharpDown => Ext(DataAccidentalWrittenExtended::Xd),
+        AccidentalValue::DoubleSharpUp => Ext(DataAccidentalWrittenExtended::Xu),
+        AccidentalValue::FlatFlatDown => Ext(DataAccidentalWrittenExtended::Ffd),
+        AccidentalValue::FlatFlatUp => Ext(DataAccidentalWrittenExtended::Ffu),
+        AccidentalValue::ArrowDown => Ext(DataAccidentalWrittenExtended::Nd),
+        AccidentalValue::ArrowUp => Ext(DataAccidentalWrittenExtended::Nu),
+        // Slash variants — closest basic equivalents (no MEI extended match)
         AccidentalValue::SlashQuarterSharp | AccidentalValue::SlashSharp => {
-            DataAccidentalWrittenBasic::S
+            Basic(DataAccidentalWrittenBasic::S)
         }
         AccidentalValue::SlashFlat | AccidentalValue::DoubleSlashFlat => {
-            DataAccidentalWrittenBasic::F
+            Basic(DataAccidentalWrittenBasic::F)
         }
-        // Numbered sharps/flats (Stein-Zimmermann notation)
+        // Numbered sharps/flats (Stein-Zimmermann notation) — closest basic equivalents
         AccidentalValue::Sharp1
         | AccidentalValue::Sharp2
         | AccidentalValue::Sharp3
-        | AccidentalValue::Sharp5 => DataAccidentalWrittenBasic::S,
+        | AccidentalValue::Sharp5 => Basic(DataAccidentalWrittenBasic::S),
         AccidentalValue::Flat1
         | AccidentalValue::Flat2
         | AccidentalValue::Flat3
-        | AccidentalValue::Flat4 => DataAccidentalWrittenBasic::F,
+        | AccidentalValue::Flat4 => Basic(DataAccidentalWrittenBasic::F),
         // Persian accidentals
-        AccidentalValue::Sori => DataAccidentalWrittenBasic::S, // Quarter-tone sharp
-        AccidentalValue::Koron => DataAccidentalWrittenBasic::F, // Quarter-tone flat
+        AccidentalValue::Sori => Ext(DataAccidentalWrittenExtended::Nu), // quarter-tone sharp
+        AccidentalValue::Koron => Ext(DataAccidentalWrittenExtended::Nd), // quarter-tone flat
         // Other
-        AccidentalValue::Other => DataAccidentalWrittenBasic::N,
-    };
-    DataAccidentalWritten::DataAccidentalWrittenBasic(basic)
+        AccidentalValue::Other => Basic(DataAccidentalWrittenBasic::N),
+    }
 }
 
 // ============================================================================

@@ -71,9 +71,12 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: import always sets ppq on staffDef (defaults to 1 when no divisions in MusicXML), so both imports in triangle roundtrip produce identical MEI
   - Fixed: divisions comparison treats None as equivalent to Some(1.0) since MusicXML defaults divisions to 1
   - Fixed: clef comparison accepts default treble clef (G line 2) when original omits clef entirely
-  - 267/275 fragment tests now pass, 8 remaining failures below
-- [ ] [MISSING_ATTR] Microtone alter values not preserved in roundtrip (source: alter_element_microtones.musicxml)
-  - alter=-0.5 (quarter-tone flat) roundtripped to 0 — fractional alter values lost during MEI import/export
+  - 268/275 fragment tests now pass, 7 remaining failures below
+- [x] [MISSING_ATTR] Microtone alter values not preserved in roundtrip (source: alter_element_microtones.musicxml)
+  - Fixed: import convert_alter_to_gestural_accid now handles quarter-tone values (±0.5, ±1.5, ±2.5) using DataAccidentalGesturalExtended (Fu/Sd/Fd/Su/Ffd/Xu)
+  - Fixed: export convert_mei_gestural_accid_to_alter maps extended gestural accidentals back to fractional alter values
+  - Fixed: import convert_accidental_value maps MusicXML quarter-tone AccidentalValues to MEI DataAccidentalWrittenExtended (Nd/Nu/Su/Fd etc.)
+  - Fixed: export convert_mei_written_accid_to_mxml maps MEI extended written accidentals back to MusicXML AccidentalValues
 - [ ] [BUGFIX] Chord note duration/type wrong when divisions change mid-score (source: chord_element_multiple_stop.musicxml)
   - Measure 5 chord notes: duration 4→8, type Quarter→Half — likely divisions context not updated correctly
 - [ ] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
