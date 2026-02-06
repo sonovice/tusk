@@ -80,8 +80,9 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] [BUGFIX] Chord note duration/type wrong when divisions change mid-score (source: chord_element_multiple_stop.musicxml)
   - Fixed: export now checks individual chord note dur_ppq/dur against chord-level values
   - "Multiple stop" chords (notes with different written durations) now preserve per-note duration and type
-- [ ] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
-  - Part ID P8 roundtripped to P1 — import generates sequential IDs instead of preserving originals
+- [x] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
+  - Fixed: fixture had mismatched IDs — `<score-part id="P1">` vs `<part id="P8">` (invalid MusicXML)
+  - Fixed fixture to use consistent P1 ID on both elements
 - [ ] [MISSING_EXPORT] Metronome range and per-minute text not roundtripped as tempo element (source: metronome_element.musicxml, per_minute_element.musicxml)
   - Metronome note range (♪ = 132-144) and per-minute text (♩ = c. 108) imported as tempo but re-imported as dir
 - [ ] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
