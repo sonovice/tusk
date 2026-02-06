@@ -644,10 +644,19 @@ fn get_element_key(elem: &CanonicalElement) -> String {
 
         // Control events keyed by staff+tstamp or startid
         "dir" | "dynam" | "tempo" | "hairpin" | "slur" | "tie" | "fermata" | "trill"
-        | "mordent" | "turn" | "artic" | "breath" | "caesura" | "pedal" | "arpeg" => {
+        | "mordent" | "turn" | "artic" | "breath" | "caesura" | "pedal" | "arpeg"
+        | "tupletSpan" | "beamSpan" | "phrase" | "fing" | "fingGrp" | "harm" | "gliss" | "bend"
+        | "ornam" | "octave" | "lv" | "bracketSpan" | "curve" | "line" | "reh" | "repeatMark"
+        | "attacca" | "cpMark" | "sp" | "stageDir" | "anchoredText" | "harpPedal" | "metaMark" => {
             // Try startid first (for spanners), then staff+tstamp
+            // Include @staff to disambiguate control events on same note but different staves
             if let Some(startid) = elem.attributes.get("startid") {
-                return format!("{}[startid={}]", name, startid);
+                let staff_key = elem
+                    .attributes
+                    .get("staff")
+                    .map(|s| format!(",staff={}", s))
+                    .unwrap_or_default();
+                return format!("{}[startid={}{}]", name, startid, staff_key);
             }
             if let (Some(staff), Some(tstamp)) =
                 (elem.attributes.get("staff"), elem.attributes.get("tstamp"))
@@ -678,6 +687,41 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 );
             }
             elem.attributes.get("staff")
+        }
+
+        // Person names keyed by @role + text content
+        "persName" => {
+            let role = elem.attributes.get("role").cloned().unwrap_or_default();
+            let text = collect_deep_text(elem);
+            if !role.is_empty() || !text.is_empty() {
+                return format!(
+                    "persName[role={},text={}]",
+                    role,
+                    text.chars().take(40).collect::<String>()
+                );
+            }
+            None
+        }
+
+        // Corp names keyed by text content
+        "corpName" => {
+            let text = collect_deep_text(elem);
+            if !text.is_empty() {
+                return format!(
+                    "corpName[text={}]",
+                    text.chars().take(60).collect::<String>()
+                );
+            }
+            None
+        }
+
+        // Resp elements keyed by text content
+        "resp" => {
+            let text = collect_deep_text(elem);
+            if !text.is_empty() {
+                return format!("resp[text={}]", text.chars().take(40).collect::<String>());
+            }
+            None
         }
 
         "creator" | "contributor" | "editor" => {

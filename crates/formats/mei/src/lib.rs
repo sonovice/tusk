@@ -1,3 +1,22 @@
+// Allow clippy lints in generated serializer/deserializer impls
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    clippy::box_default,
+    clippy::collapsible_if,
+    clippy::collapsible_match,
+    clippy::doc_lazy_continuation,
+    clippy::derivable_impls,
+    clippy::for_kv_map,
+    clippy::manual_map,
+    clippy::unnecessary_map_or,
+    clippy::match_single_binding,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_pattern_char_comparison
+)]
+
 //! MEI parsing and serialization for Tusk.
 //!
 //! This crate handles reading and writing MEI (Music Encoding Initiative) files.

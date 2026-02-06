@@ -1,3 +1,15 @@
+// Allow clippy lints that are widespread in this tool (to be cleaned up separately)
+#![allow(
+    unused_imports,
+    clippy::cmp_owned,
+    clippy::collapsible_if,
+    clippy::collapsible_else_if,
+    clippy::type_complexity,
+    clippy::manual_pattern_char_comparison,
+    clippy::unnecessary_map_or,
+    clippy::for_kv_map
+)]
+
 //! MEI ODD → Rust Code Generator
 //!
 //! Parses MEI ODD specification files and generates Rust model types

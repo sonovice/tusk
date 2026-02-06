@@ -99,7 +99,7 @@ fn pre_assign_slur_numbers(
 
     // For each staff, sort by start_measure and use greedy interval coloring
     let mut result: HashMap<(String, String), u8> = HashMap::new();
-    for (_staff, slurs) in &mut by_staff {
+    for slurs in by_staff.values_mut() {
         // Sort by start_measure, then stop_measure
         slurs.sort_by_key(|s| (s.start_measure, s.stop_measure));
 

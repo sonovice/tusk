@@ -1,3 +1,6 @@
+// Allow clippy lints in generated code (regenerate with mei-codegen to fix properly)
+#![allow(clippy::empty_docs, clippy::unnecessary_cast, unused_variables)]
+
 //! MEI-based internal model for Tusk (MusicXML ↔ MEI converter).
 //!
 //! This crate contains the internal representation of music notation, modeled

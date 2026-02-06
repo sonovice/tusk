@@ -1,3 +1,11 @@
+// Allow clippy lints that are widespread in generated/mechanical code
+#![allow(
+    clippy::collapsible_if,
+    clippy::doc_lazy_continuation,
+    clippy::derivable_impls,
+    clippy::unnecessary_map_or
+)]
+
 //! MusicXML parsing, serialization, and conversion for Tusk.
 //!
 //! This crate handles reading and writing MusicXML files, as well as
