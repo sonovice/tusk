@@ -180,6 +180,11 @@ pub struct ConversionContext {
     /// Active accidentals in current measure, keyed by (staff, step, octave).
     /// Value is the alteration in semitones.
     measure_accidentals: HashMap<(u32, char, u8), f64>,
+
+    /// Pre-assigned slur numbers for MEI→MusicXML export.
+    /// Keyed by (startid, endid) pair, value is the assigned MusicXML slur number.
+    /// Computed in a pre-pass to ensure cross-measure slurs get unique numbers.
+    slur_number_map: HashMap<(String, String), u8>,
 }
 
 impl Default for ConversionContext {
@@ -207,6 +212,7 @@ impl ConversionContext {
             key_fifths: 0,
             key_mode: None,
             measure_accidentals: HashMap::new(),
+            slur_number_map: HashMap::new(),
         }
     }
 
@@ -400,6 +406,22 @@ impl ConversionContext {
     /// Drain all deferred slur stops.
     pub fn drain_deferred_slur_stops(&mut self) -> Vec<DeferredSlurStop> {
         std::mem::take(&mut self.deferred_slur_stops)
+    }
+
+    // ========================================================================
+    // Slur Number Map (MEI→MusicXML export)
+    // ========================================================================
+
+    /// Set the pre-assigned slur number map.
+    pub fn set_slur_number_map(&mut self, map: HashMap<(String, String), u8>) {
+        self.slur_number_map = map;
+    }
+
+    /// Look up a pre-assigned slur number by (startid, endid).
+    pub fn get_slur_number(&self, start_id: &str, end_id: &str) -> Option<u8> {
+        self.slur_number_map
+            .get(&(start_id.to_string(), end_id.to_string()))
+            .copied()
     }
 
     // ========================================================================

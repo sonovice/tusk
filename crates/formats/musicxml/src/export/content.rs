@@ -6,6 +6,8 @@
 //! MEI structure: Score → Section → Measure → Staff(@n) → Layer → Note/Rest/Chord
 //! MusicXML structure: Part → Measure → Note/Rest (forward/backup for voices)
 
+use std::collections::HashMap;
+
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
 use crate::model::elements::{Measure as MxmlMeasure, MeasureContent, Part};
@@ -22,6 +24,195 @@ use super::note::{convert_mei_chord, convert_mei_mrest, convert_mei_note, conver
 use super::structure::convert_mei_measure;
 use super::utils::find_score_def;
 
+/// Pre-assign MusicXML slur numbers using interval graph coloring.
+///
+/// MEI slurs can reference notes in any measure via startid/endid. On MusicXML
+/// reimport, slurs are matched by (part_id, staff, number). If two slurs on the
+/// same staff have pending starts at the same time, they MUST have different
+/// numbers. This function assigns numbers by:
+///
+/// 1. Building a note-id → measure-index map from all notes/rests/chords
+/// 2. Determining each slur's "lifetime" as [start_measure, stop_measure]
+/// 3. Per staff, sorting by start_measure and using greedy interval coloring
+fn pre_assign_slur_numbers(
+    mei_measures: &[&tusk_model::elements::Measure],
+) -> HashMap<(String, String), u8> {
+    // Build note-id → measure-index map
+    let mut note_to_measure: HashMap<String, usize> = HashMap::new();
+    for (m_idx, measure) in mei_measures.iter().enumerate() {
+        for child in &measure.children {
+            if let MeasureChild::Staff(staff) = child {
+                for sc in &staff.children {
+                    if let StaffChild::Layer(layer) = sc {
+                        collect_note_ids_from_layer(&layer.children, m_idx, &mut note_to_measure);
+                    }
+                }
+            }
+        }
+    }
+
+    // Collect slurs with their staff and lifetime (start_measure, stop_measure)
+    struct SlurInfo {
+        start_id: String,
+        end_id: String,
+        staff: usize,
+        start_measure: usize,
+        stop_measure: usize,
+    }
+
+    let mut slur_infos: Vec<SlurInfo> = Vec::new();
+    for (m_idx, measure) in mei_measures.iter().enumerate() {
+        for child in &measure.children {
+            if let MeasureChild::Slur(slur) = child {
+                let staff = slur.slur_log.staff.first().copied().unwrap_or(0) as usize;
+                let start_id = slur
+                    .slur_log
+                    .startid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+                let end_id = slur
+                    .slur_log
+                    .endid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+
+                if let (Some(sid), Some(eid)) = (start_id, end_id) {
+                    let start_m = note_to_measure.get(&sid).copied().unwrap_or(m_idx);
+                    let stop_m = note_to_measure.get(&eid).copied().unwrap_or(m_idx);
+                    slur_infos.push(SlurInfo {
+                        start_id: sid,
+                        end_id: eid,
+                        staff,
+                        start_measure: start_m,
+                        stop_measure: stop_m,
+                    });
+                }
+            }
+        }
+    }
+
+    // Group by staff
+    let mut by_staff: HashMap<usize, Vec<&SlurInfo>> = HashMap::new();
+    for info in &slur_infos {
+        by_staff.entry(info.staff).or_default().push(info);
+    }
+
+    // For each staff, sort by start_measure and use greedy interval coloring
+    let mut result: HashMap<(String, String), u8> = HashMap::new();
+    for (_staff, slurs) in &mut by_staff {
+        // Sort by start_measure, then stop_measure
+        slurs.sort_by_key(|s| (s.start_measure, s.stop_measure));
+
+        // Greedy coloring: track when each number becomes free
+        // number_free_at[i] = first measure index where number i+1 is free
+        let mut number_free_at: Vec<usize> = Vec::new();
+
+        for s in slurs.iter() {
+            // Find lowest number that's free at start_measure
+            let mut assigned = None;
+            for (i, free_at) in number_free_at.iter_mut().enumerate() {
+                if *free_at <= s.start_measure {
+                    *free_at = s.stop_measure + 1;
+                    assigned = Some((i + 1) as u8);
+                    break;
+                }
+            }
+            let number = assigned.unwrap_or_else(|| {
+                number_free_at.push(s.stop_measure + 1);
+                number_free_at.len() as u8
+            });
+
+            result.insert((s.start_id.clone(), s.end_id.clone()), number);
+        }
+    }
+
+    result
+}
+
+/// Collect note/rest/chord xml:ids from layer children (recursing into beams).
+fn collect_note_ids_from_layer(
+    children: &[LayerChild],
+    measure_idx: usize,
+    map: &mut HashMap<String, usize>,
+) {
+    for child in children {
+        match child {
+            LayerChild::Note(note) => {
+                if let Some(ref id) = note.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            LayerChild::Rest(rest) => {
+                if let Some(ref id) = rest.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            LayerChild::Chord(chord) => {
+                if let Some(ref id) = chord.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+                // Also collect IDs from notes within the chord
+                for note in &chord.children {
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
+                    }
+                }
+            }
+            LayerChild::Beam(beam) => {
+                collect_note_ids_from_beam(&beam.children, measure_idx, map);
+            }
+            LayerChild::MRest(mrest) => {
+                if let Some(ref id) = mrest.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Collect note/rest/chord xml:ids from beam children (recursing into nested beams).
+fn collect_note_ids_from_beam(
+    children: &[tusk_model::elements::BeamChild],
+    measure_idx: usize,
+    map: &mut HashMap<String, usize>,
+) {
+    use tusk_model::elements::BeamChild;
+
+    for child in children {
+        match child {
+            BeamChild::Note(note) => {
+                if let Some(ref id) = note.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            BeamChild::Rest(rest) => {
+                if let Some(ref id) = rest.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            BeamChild::Chord(chord) => {
+                if let Some(ref id) = chord.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+                for note in &chord.children {
+                    if let tusk_model::elements::ChordChild::Note(n) = note {
+                        if let Some(ref id) = n.common.xml_id {
+                            map.insert(id.clone(), measure_idx);
+                        }
+                    }
+                }
+            }
+            BeamChild::Beam(nested) => {
+                collect_note_ids_from_beam(&nested.children, measure_idx, map);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Convert MEI score content to MusicXML parts.
 ///
 /// This collects all measures from MEI sections and reorganizes them into
@@ -34,6 +225,11 @@ pub fn convert_score_content(
 ) -> ConversionResult<Vec<Part>> {
     // Collect all MEI measures from sections
     let mei_measures = collect_measures_from_score(mei_score);
+
+    // Pre-assign slur numbers using interval graph coloring so that
+    // cross-measure slurs get unique numbers on reimport.
+    let slur_numbers = pre_assign_slur_numbers(&mei_measures);
+    ctx.set_slur_number_map(slur_numbers);
 
     // Collect staffDefs from scoreDef for initial attributes
     let staff_defs = collect_staff_defs_from_score(mei_score);
@@ -366,22 +562,10 @@ fn convert_mei_slur_to_notations(
         .as_ref()
         .map(|uri| uri.to_string().trim_start_matches('#').to_string());
 
-    // Determine slur number: count existing slur-starts on the start note + 1
-    let number = if let Some(ref sid) = start_id {
-        // Check current measure first, then previous measures
-        let count = count_existing_slur_starts(mxml_measure, sid);
-        if count > 0 {
-            count + 1
-        } else {
-            // Check previous measures for existing starts on this note
-            let prev_count = prev_measures
-                .iter()
-                .map(|m| count_existing_slur_starts(m, sid))
-                .sum::<u8>();
-            prev_count + 1
-        }
-    } else {
-        1
+    // Look up pre-assigned slur number (computed by interval graph coloring)
+    let number = match (&start_id, &end_id) {
+        (Some(sid), Some(eid)) => ctx.get_slur_number(sid, eid).unwrap_or(1),
+        _ => 1,
     };
 
     // Add slur start notation to the start note
@@ -421,26 +605,6 @@ fn convert_mei_slur_to_notations(
             });
         }
     }
-}
-
-/// Count how many slur starts already exist on a note (for assigning unique numbers).
-fn count_existing_slur_starts(mxml_measure: &MxmlMeasure, note_id: &str) -> u8 {
-    use crate::model::data::StartStopContinue;
-
-    for content in &mxml_measure.content {
-        if let MeasureContent::Note(note) = content
-            && note.id.as_deref() == Some(note_id)
-        {
-            if let Some(ref notations) = note.notations {
-                return notations
-                    .slurs
-                    .iter()
-                    .filter(|s| s.slur_type == StartStopContinue::Start)
-                    .count() as u8;
-            }
-        }
-    }
-    0
 }
 
 /// Find a MusicXML note in the measure by its ID (mutable).

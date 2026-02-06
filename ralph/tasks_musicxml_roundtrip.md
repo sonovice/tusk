@@ -55,9 +55,13 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: part-group only emitted when staffGrp has explicit grouping attributes (symbol, bar_thru, label)
   - Fixed: tstamp calculation now divides beat_position by divisions; directions track beat position during import; export emits offset for correct repositioning
 
-- [ ] [BUGFIX] Fix slur startid/endid instability and dir/dynam ordering in MEI triangle roundtrip (source: BeetAnGeSample, BrahWiMeSample, DebuMandSample, Dichterliebe01, MahlFaGe4Sample, MozaVeilSample)
-  - Slurs shift to wrong start/end notes across roundtrip (all 6 files)
-  - dir text content ordering swapped (BeetAnGe: "Ziemlich langsam..." vs "No. 1", MahlFaGe4: "Alla Marcia" vs longer text)
+- [x] [BUGFIX] Fix slur startid/endid instability in MEI triangle roundtrip (source: BeetAnGeSample, BrahWiMeSample, DebuMandSample, Dichterliebe01, MahlFaGe4Sample, MozaVeilSample)
+  - Fixed: slur numbers now pre-assigned via interval graph coloring over all measures
+  - Cross-measure slurs that span past other slurs get unique numbers, preventing import mismatch
+  - BeetAnGeSample, Dichterliebe01, MozaVeilSample now fully pass
+  - BrahWiMeSample, DebuMandSample, MahlFaGe4Sample: slur issues fixed, remaining failures are dir/dynam ordering
+- [ ] [BUGFIX] Fix dir/dynam ordering and tstamp precision in MEI triangle roundtrip (source: BrahWiMeSample, DebuMandSample, MahlFaGe4Sample)
+  - dir text content ordering swapped when multiple dirs share same staff+tstamp (BrahWiMe, MahlFaGe4)
   - dynam @place above/below swapped (DebuMand, MahlFaGe4)
   - tempo/hairpin @tstamp mismatch (DebuMand: tstamp=19 vs 109, hairpin 2.125 vs 7.75)
   - dynam @tstamp floating-point rounding (MahlFaGe4: 2.4166666666666665 vs 2.416666666666667)
@@ -85,18 +89,18 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `specs/musicxml/examples/Binchois.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/MozartPianoSonata.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/ActorPreludeSample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/BeetAnGeSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/BeetAnGeSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/BrahWiMeSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/BrookeWestSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/Chant.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/DebuMandSample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/Dichterliebe01.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/Dichterliebe01.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/Echigo-Jishi.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/FaurReveSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/MahlFaGe4Sample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/MozaChloSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/MozartTrio.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/MozaVeilSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/MozaVeilSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/Saltarello.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/SchbAvMaSample.musicxml`
 
