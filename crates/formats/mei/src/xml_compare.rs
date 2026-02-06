@@ -695,9 +695,33 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     .get("lform")
                     .map(|l| format!(",lform={}", l))
                     .unwrap_or_default();
+                // Include @place to disambiguate above/below at same startid
+                let place_key = elem
+                    .attributes
+                    .get("place")
+                    .map(|p| format!(",place={}", p))
+                    .unwrap_or_default();
+                // Include element-specific attributes (e.g., @dir for pedal, @form for hairpin)
+                // Multiple control events can share the same startid (e.g., pedal down/up)
+                let type_key = control_event_type_key(name, elem);
+                // Include text content for text-bearing elements (dir, dynam)
+                let text = collect_deep_text(elem);
+                let text_key = if !text.is_empty() {
+                    format!(",text={}", text.chars().take(30).collect::<String>())
+                } else {
+                    String::new()
+                };
                 return format!(
-                    "{}[startid={}{}{}{}{}]",
-                    name, startid, staff_key, endid_key, curvedir_key, lform_key
+                    "{}[startid={}{}{}{}{}{}{}{}]",
+                    name,
+                    startid,
+                    staff_key,
+                    endid_key,
+                    curvedir_key,
+                    lform_key,
+                    place_key,
+                    type_key,
+                    text_key
                 );
             }
             if let (Some(staff), Some(tstamp)) =
