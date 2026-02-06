@@ -87,8 +87,9 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: export now emits metronome when mm_unit is present, even without numeric mm value
   - Non-numeric per-minute strings (e.g., "132-144", "c. 108") extracted from tempo text content
   - Previously, export required both mm and mm_unit, so non-numeric per-minute fell back to Words → reimported as dir
-- [ ] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
-  - Rest with no type gets Breve type added after roundtrip — export adds type for whole-measure rests
+- [x] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
+  - Fixed: import no longer infers @dur from duration for rests without explicit <type>
+  - dur_ppq (gestural duration) already captures the duration for export; @dur should only reflect explicit <type>
 - [ ] [MISSING_EXPORT] Dynamic sfzp/pf not exported from MEI to MusicXML (source: sfzp_element.musicxml, pf_element.musicxml)
   - dynam element with sfzp/pf text missing after triangle roundtrip — dynamic not exported and thus not reimported
 

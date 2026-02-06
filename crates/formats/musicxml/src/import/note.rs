@@ -255,16 +255,12 @@ pub fn convert_rest(
         ctx.map_id(orig_id, rest_id);
     }
 
-    // Convert duration
+    // Convert duration — only set @dur when MusicXML has an explicit <type>,
+    // not when inferred from <duration>. Whole-measure rests intentionally omit
+    // <type> and rely on <duration> alone; dur_ppq captures this below.
     if let Some(ref note_type) = note.note_type {
         let dur = convert_note_type_to_duration_cmn(note_type.value);
         mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(dur));
-    } else if let Some(duration) = note.duration {
-        // Try to infer note type from duration value
-        if let Some((inferred_type, _dots)) = ctx.duration_context().infer_note_type(duration) {
-            let dur = convert_note_type_to_duration_cmn(inferred_type);
-            mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(dur));
-        }
     }
 
     // Convert dots
