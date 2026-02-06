@@ -83,8 +83,10 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
   - Fixed: fixture had mismatched IDs — `<score-part id="P1">` vs `<part id="P8">` (invalid MusicXML)
   - Fixed fixture to use consistent P1 ID on both elements
-- [ ] [MISSING_EXPORT] Metronome range and per-minute text not roundtripped as tempo element (source: metronome_element.musicxml, per_minute_element.musicxml)
-  - Metronome note range (♪ = 132-144) and per-minute text (♩ = c. 108) imported as tempo but re-imported as dir
+- [x] [MISSING_EXPORT] Metronome range and per-minute text not roundtripped as tempo element (source: metronome_element.musicxml, per_minute_element.musicxml)
+  - Fixed: export now emits metronome when mm_unit is present, even without numeric mm value
+  - Non-numeric per-minute strings (e.g., "132-144", "c. 108") extracted from tempo text content
+  - Previously, export required both mm and mm_unit, so non-numeric per-minute fell back to Words → reimported as dir
 - [ ] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
   - Rest with no type gets Breve type added after roundtrip — export adds type for whole-measure rests
 - [ ] [MISSING_EXPORT] Dynamic sfzp/pf not exported from MEI to MusicXML (source: sfzp_element.musicxml, pf_element.musicxml)
@@ -165,14 +167,14 @@ Fragment examples extracted from spec docs, wrapped in complete MusicXML structu
 - [x] Roundtrip batch 18: `flip_element`, `footnote_element`, `forward_element`, `fp_element`, `fret_element_frame`
 - [x] Roundtrip batch 19: `fz_element`, `glass_element`, `glissando_element_multiple`, `glissando_element_single`, `glyph_element`
 - [x] Roundtrip batch 20: `golpe_element`, `grace_element`, `grace_element_appoggiatura`, `group_abbreviation_display_element`, `group_abbreviation_element`
-- [ ] Roundtrip batch 21: `group_barline_element`, `group_name_display_element`, `group_time_element`, `grouping_element`, `half_muted_element`
+- [x] Roundtrip batch 21: `group_barline_element`, `group_name_display_element`, `group_time_element`, `grouping_element`, `half_muted_element`
 - [x] Roundtrip batch 22: `handbell_element`, `harmon_mute_element`, `harp_pedals_element`, `haydn_element`, `heel_element`
 - [x] Roundtrip batch 23: `heel_toe_substitution`, `hole_element`, `hole_type_element`, `humming_element`, `image_element`
 - [x] Roundtrip batch 24: `instrument_link_element`, `interchangeable_element`, `inversion_element`, `inverted_mordent_element`, `inverted_turn_element`
 - [x] Roundtrip batch 25: `inverted_vertical_turn_element`, `ipa_element`, `key_element_non_traditional`, `key_element_traditional`, `key_octave_element`
 - [x] Roundtrip batch 26: `kind_element`, `laughing_element`, `level_element`, `line_detail_element`, `line_element`
 - [x] Roundtrip batch 27: `link_element`, `lyric_element`, `measure_distance_element`, `measure_numbering_element`, `measure_repeat_element`
-- [ ] Roundtrip batch 28: `membrane_element`, `metal_element`, `metronome_arrows_element`, `metronome_element`, `metronome_note_element`
+- [x] Roundtrip batch 28: `membrane_element`, `metal_element`, `metronome_arrows_element`, `metronome_element`, `metronome_note_element`
 - [x] Roundtrip batch 29: `metronome_tied_element`, `mezzo_soprano_clef`, `mf_element`, `midi_device_element`, `midi_instrument_element`
 - [ ] Roundtrip batch 30: `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `mordent_element`, `mp_element`, `multiple_rest_element`
 - [x] Roundtrip batch 31: `n_element`, `natural_element`, `non_arpeggiate_element`, `normal_dot_element`, `notehead_text_element`

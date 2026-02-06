@@ -308,7 +308,9 @@ pub fn convert_mei_tempo(
         .collect::<Vec<_>>()
         .join("");
 
-    let has_metronome = tempo.tempo_log.mm.is_some() && tempo.tempo_log.mm_unit.is_some();
+    // Metronome is present if mm_unit is set — mm may be None for non-numeric
+    // per-minute values like "132-144" or "c. 108"
+    let has_metronome = tempo.tempo_log.mm_unit.is_some();
 
     // Add text content as words ONLY if no metronome is present.
     // When both exist, the metronome is sufficient — the import reconstructs
@@ -322,10 +324,21 @@ pub fn convert_mei_tempo(
         });
     }
 
-    // Add metronome marking if mm and mm.unit are present
-    if let (Some(mm), Some(mm_unit)) = (&tempo.tempo_log.mm, &tempo.tempo_log.mm_unit) {
+    // Add metronome marking if mm.unit is present
+    if let Some(mm_unit) = &tempo.tempo_log.mm_unit {
         let beat_unit = convert_mei_duration_to_beat_unit(mm_unit);
-        let per_minute = format!("{}", mm.0 as u32);
+        // Use numeric mm if available, otherwise extract per-minute from text
+        // content (handles non-numeric values like "132-144", "c. 108")
+        let per_minute = if let Some(mm) = &tempo.tempo_log.mm {
+            format!("{}", mm.0 as u32)
+        } else {
+            // Extract from text: format is "{symbol}{dots} = {per_minute}"
+            text_content
+                .split(" = ")
+                .nth(1)
+                .unwrap_or(&text_content)
+                .to_string()
+        };
         let beat_unit_dots = if let Some(ref dots) = tempo.tempo_log.mm_dots {
             vec![(); dots.0 as usize]
         } else {
