@@ -724,15 +724,18 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     text_key
                 );
             }
-            if let (Some(staff), Some(tstamp)) =
-                (elem.attributes.get("staff"), elem.attributes.get("tstamp"))
-            {
+            if let Some(tstamp) = elem.attributes.get("tstamp") {
                 // Normalize tstamp float to consistent precision for key matching
                 let tstamp_key = if let Ok(ts) = tstamp.parse::<f64>() {
                     format!("{:.10}", ts)
                 } else {
                     tstamp.clone()
                 };
+                let staff_key = elem
+                    .attributes
+                    .get("staff")
+                    .map(|s| format!("staff={},", s))
+                    .unwrap_or_default();
                 // Include text content for text-bearing elements to disambiguate
                 // multiple dirs/dynams at the same staff+tstamp
                 let text = collect_deep_text(elem);
@@ -747,11 +750,39 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 } else {
                     String::new()
                 };
+                // Include @tstamp2 for spanners (hairpin, slur, etc.) that start at
+                // the same beat but end at different points
+                let tstamp2_key = elem
+                    .attributes
+                    .get("tstamp2")
+                    .map(|t| format!(",tstamp2={}", t))
+                    .unwrap_or_default();
+                // Include visual positioning attributes to disambiguate
+                // otherwise-identical control events at the same position.
+                // Normalize float values for consistent comparison.
+                let mut vis_keys = String::new();
+                for attr in &["vo", "ho", "startto", "endto", "opening", "vgrp"] {
+                    if let Some(val) = elem.attributes.get(*attr) {
+                        let normalized = if let Ok(f) = val.parse::<f64>() {
+                            format!("{:.10}", f)
+                        } else {
+                            val.clone()
+                        };
+                        vis_keys.push_str(&format!(",{}={}", attr, normalized));
+                    }
+                }
                 // Include element-specific attributes for disambiguation
                 let type_key = control_event_type_key(name, elem);
                 return format!(
-                    "{}[staff={},tstamp={}{}{}{}]",
-                    name, staff, tstamp_key, place_key, text_key, type_key
+                    "{}[{}tstamp={}{}{}{}{}{}]",
+                    name,
+                    staff_key,
+                    tstamp_key,
+                    place_key,
+                    text_key,
+                    tstamp2_key,
+                    vis_keys,
+                    type_key
                 );
             }
             elem.attributes.get("staff")
