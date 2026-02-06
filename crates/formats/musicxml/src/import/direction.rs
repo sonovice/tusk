@@ -105,14 +105,25 @@ fn convert_placement(placement: Option<&AboveBelow>) -> Option<DataStaffrel> {
 
 /// Calculate the timestamp (beat position) for a direction.
 ///
-/// Uses the current beat position from the context, optionally adjusted
-/// by the direction's offset value.
+/// beat_position is in divisions (raw MusicXML duration units).
+/// Convert to beats by dividing by divisions, then add offset (also in divisions),
+/// then shift to 1-based MEI tstamp.
 fn calculate_tstamp(direction: &Direction, ctx: &ConversionContext) -> DataBeat {
-    let mut beat_position = ctx.beat_position();
+    let divisions = ctx.divisions();
+    // Convert beat_position from divisions to beats
+    let mut beat_position = if divisions > 0.0 {
+        ctx.beat_position() / divisions
+    } else {
+        ctx.beat_position()
+    };
 
     // Apply offset if present (offset is in divisions)
     if let Some(ref offset) = direction.offset {
-        let offset_beats = offset.value / ctx.divisions();
+        let offset_beats = if divisions > 0.0 {
+            offset.value / divisions
+        } else {
+            offset.value
+        };
         beat_position += offset_beats;
     }
 

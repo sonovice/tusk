@@ -634,14 +634,9 @@ fn assert_triangle_mei_roundtrip(fixture_name: &str) {
         .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
 
     if mei1 != mei2 {
-        let mei1_str = format!("{:#?}", mei1);
-        let mei2_str = format!("{:#?}", mei2);
-        fs::write("/tmp/mei1_debug.txt", &mei1_str).unwrap();
-        fs::write("/tmp/mei2_debug.txt", &mei2_str).unwrap();
         panic!(
             "Triangle MEI roundtrip failed for {} (import inconsistency): MEI₁ ≠ MEI₂\n\
-             Import produces different MEI from the same logical content.\n\
-             Debug output written to /tmp/mei1_debug.txt and /tmp/mei2_debug.txt",
+             Import produces different MEI from the same logical content.",
             fixture_name
         );
     }

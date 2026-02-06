@@ -82,18 +82,19 @@ When the task starts with 'Roundtrip test:' - this is DISCOVERY ONLY, never fix 
 When the task is [MISSING_ELEMENT], [MISSING_ATTR], [MISMATCH], [ERROR], [MISSING_SERDE], or infrastructure - this is when you write code.
 
 1. Fix the issue(s) listed in the task
-2. If you encounter BLOCKING issues while fixing (pre-existing or new):
+2. If you encounter BLOCKING issues while fixing:
+   a. PRE-EXISTING (task already in file): Fix it immediately and mark done
+   b. NEW (no task exists): Add task at TOP of '## Generated Tasks', then fix immediately
    - Missing serializer/deserializer: \\\`- [ ] [MISSING_SERDE] <type> serializer/deserializer missing\\\`
    - Any other blocker: add appropriate [MISSING_*] task
-   - Place blocking tasks at the TOP of '## Generated Tasks'
-   - Fix the blocker IMMEDIATELY (don't defer), then continue with original task
+   - After fixing blockers, continue with original task
 3. Mark task done: '- [ ]' → '- [x]'
 4. Run \`cargo fmt\` and \`cargo clippy\`
 5. Commit
 6. STOP (the blocked fixture will retry next iteration)"
   TASK_RULE="- Fixtures: DISCOVERY ONLY - never fix code during fixture testing. Batch successes, STOP on failure.
 - [MISSING_*] tasks: This is the ONLY time you write code to fix issues.
-- Blockers (pre-existing or new): Add task AND fix immediately, don't defer."
+- Blockers: Fix immediately. Pre-existing? Mark done. New? Add task first, then fix."
 fi
 
 PROMPT="# ENTROPY REMINDER

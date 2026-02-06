@@ -79,8 +79,8 @@ pub fn convert_mei_dynam(
         ctx.map_id(xml_id, xml_id.clone());
     }
 
-    // Note: MEI @tstamp is not directly convertible to MusicXML offset without knowing
-    // divisions and beat position. The caller should handle positioning.
+    // Convert tstamp to offset for proper repositioning on reimport
+    direction.offset = convert_tstamp_to_offset(&dynam.dynam_log.tstamp, ctx);
 
     Some(direction)
 }
@@ -189,6 +189,9 @@ pub fn convert_mei_hairpin(
     // Set placement from MEI @place (no default — only emit if explicitly set)
     direction.placement = convert_place_to_placement(&hairpin.hairpin_vis.place);
 
+    // Convert tstamp to offset for proper repositioning on reimport
+    direction.offset = convert_tstamp_to_offset(&hairpin.hairpin_log.tstamp, ctx);
+
     directions.push(direction);
 
     // If hairpin has tstamp2 (ending timestamp), we need to create a stop wedge
@@ -261,6 +264,9 @@ pub fn convert_mei_dir(
         direction.id = Some(xml_id.clone());
         ctx.map_id(xml_id, xml_id.clone());
     }
+
+    // Convert tstamp to offset for proper repositioning on reimport
+    direction.offset = convert_tstamp_to_offset(&dir.dir_log.tstamp, ctx);
 
     Some(direction)
 }
@@ -382,7 +388,26 @@ pub fn convert_mei_tempo(
         ctx.map_id(xml_id, xml_id.clone());
     }
 
+    // Convert tstamp to offset for proper repositioning on reimport
+    direction.offset = convert_tstamp_to_offset(&tempo.tempo_log.tstamp, ctx);
+
     Some(direction)
+}
+
+/// Convert MEI tstamp to MusicXML offset.
+///
+/// MEI tstamp is 1-based beat position. MusicXML offset is in divisions from
+/// the current position. When control events are placed before notes in the
+/// measure, the offset represents the absolute position from measure start.
+fn convert_tstamp_to_offset(
+    tstamp: &Option<tusk_model::generated::data::DataBeat>,
+    ctx: &ConversionContext,
+) -> Option<crate::model::direction::Offset> {
+    tstamp.as_ref().map(|ts| {
+        let beat_position = ts.0 - 1.0; // Convert 1-based to 0-based
+        let offset_divisions = beat_position * ctx.divisions();
+        crate::model::direction::Offset::new(offset_divisions)
+    })
 }
 
 /// Convert MEI placement (DataStaffrel) to MusicXML AboveBelow.

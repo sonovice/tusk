@@ -52,12 +52,15 @@ pub fn convert_staff_grp_to_part_list(
     use crate::model::elements::PartGroup;
 
     let mut current_group_num = group_num;
-    let has_children = !staff_grp.children.is_empty();
 
-    // Check if this staffGrp has multiple children that need grouping
-    let needs_group = has_children && staff_grp.children.len() > 1
-        || staff_grp.staff_grp_vis.symbol.is_some()
-        || staff_grp.staff_grp_vis.bar_thru.is_some();
+    // Only emit a part-group if this staffGrp has explicit grouping attributes
+    // (symbol, bar_thru, or a label). A plain staffGrp with multiple children
+    // does NOT need a part-group wrapper — it's just the root container.
+    let has_group_attrs = staff_grp.staff_grp_vis.symbol.is_some()
+        || staff_grp.staff_grp_vis.bar_thru.is_some()
+        || extract_label_text(staff_grp).is_some()
+        || extract_label_abbr_text(staff_grp).is_some();
+    let needs_group = has_group_attrs;
 
     // Emit part-group start if needed
     if needs_group {
@@ -328,8 +331,8 @@ mod tests {
         assert!(result.is_ok());
 
         let part_list = result.unwrap();
-        // Should have: group-start, part1, part2, group-stop (because 2 children)
-        assert_eq!(part_list.items.len(), 4);
+        // No symbol/bar_thru/label on staffGrp, so no part-group wrapper — just 2 parts
+        assert_eq!(part_list.items.len(), 2);
 
         // Check that we have the two score-parts
         let parts: Vec<_> = part_list

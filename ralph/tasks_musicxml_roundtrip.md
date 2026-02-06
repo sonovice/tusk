@@ -33,11 +33,11 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - When a part-group stop was encountered, any groups pushed after it (still on stack) were not moved inside the closing group
   - Example: `<part-group 2 start> P14 <part-group 1 start> P15 P16 <part-group 2 stop>` - group 1 should be nested inside group 2
   - Fixed import/parts.rs to move inner groups into the closing outer group before closing
-- [ ] [MISSING_ELEMENT] Export beams, slurs from MEI to MusicXML; fix spurious part-group and dir tstamp on reimport (source: Telemann.musicxml)
-  - Missing beam export: 55 MEI `<beam>` containers not converted to MusicXML `<beam>` notation on notes (beams traversed but beam attributes not emitted)
-  - Missing slur export: 26 MEI `<slur>` control events not converted to MusicXML `<slur>` notations
-  - Spurious part-group: export emits `<part-group>` around root staffGrp with >1 children even when original had none; reimport wraps in extra staffGrp (2 → 4 staffGrp tags)
-  - Dir tstamp mismatch: "Bc. (u. Cemb.)" direction on staff 2 has tstamp=13 in MEI₁ but tstamp=37 in MEI₂ after reimport
+- [x] [MISSING_ELEMENT] Export beams, slurs from MEI to MusicXML; fix spurious part-group and dir tstamp on reimport (source: Telemann.musicxml)
+  - Fixed: beam export assigns BeamValue::Begin/Continue/End to notes within MEI beam containers
+  - Fixed: slur export converts MEI slur control events to MusicXML notations on referenced notes
+  - Fixed: part-group only emitted when staffGrp has explicit grouping attributes (symbol, bar_thru, label)
+  - Fixed: tstamp calculation now divides beat_position by divisions; directions track beat position during import; export emits offset for correct repositioning
 
 ---
 

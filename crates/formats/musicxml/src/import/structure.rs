@@ -141,8 +141,9 @@ pub fn convert_measure(
 
 /// Convert MusicXML directions in a measure to MEI control events.
 ///
-/// Processes all Direction elements in the measure content and converts them
-/// to the appropriate MEI control events (dynam, hairpin, tempo, dir).
+/// Iterates all measure content to track beat position correctly.
+/// Notes/rests advance beat_position, backup/forward adjust it,
+/// so directions get the correct tstamp based on their position in the stream.
 fn convert_measure_directions(
     musicxml_measure: &crate::model::elements::Measure,
     mei_measure: &mut tusk_model::elements::Measure,
@@ -150,32 +151,53 @@ fn convert_measure_directions(
 ) -> ConversionResult<()> {
     use crate::model::elements::MeasureContent;
 
-    for content in &musicxml_measure.content {
-        if let MeasureContent::Direction(direction) = content {
-            let results = convert_direction(direction, ctx)?;
+    // Reset beat position so directions get correct tstamp
+    ctx.reset_beat_position();
 
-            for result in results {
-                match result {
-                    DirectionConversionResult::Dynam(dynam) => {
-                        mei_measure
-                            .children
-                            .push(MeasureChild::Dynam(Box::new(dynam)));
-                    }
-                    DirectionConversionResult::Hairpin(hairpin) => {
-                        mei_measure
-                            .children
-                            .push(MeasureChild::Hairpin(Box::new(hairpin)));
-                    }
-                    DirectionConversionResult::Tempo(tempo) => {
-                        mei_measure
-                            .children
-                            .push(MeasureChild::Tempo(Box::new(tempo)));
-                    }
-                    DirectionConversionResult::Dir(dir) => {
-                        mei_measure.children.push(MeasureChild::Dir(Box::new(dir)));
+    for content in &musicxml_measure.content {
+        match content {
+            MeasureContent::Direction(direction) => {
+                let results = convert_direction(direction, ctx)?;
+
+                for result in results {
+                    match result {
+                        DirectionConversionResult::Dynam(dynam) => {
+                            mei_measure
+                                .children
+                                .push(MeasureChild::Dynam(Box::new(dynam)));
+                        }
+                        DirectionConversionResult::Hairpin(hairpin) => {
+                            mei_measure
+                                .children
+                                .push(MeasureChild::Hairpin(Box::new(hairpin)));
+                        }
+                        DirectionConversionResult::Tempo(tempo) => {
+                            mei_measure
+                                .children
+                                .push(MeasureChild::Tempo(Box::new(tempo)));
+                        }
+                        DirectionConversionResult::Dir(dir) => {
+                            mei_measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
                     }
                 }
             }
+            MeasureContent::Note(note) => {
+                // Advance beat position for non-chord, non-grace notes
+                if !note.is_chord()
+                    && !note.is_grace()
+                    && let Some(duration) = note.duration
+                {
+                    ctx.advance_beat_position(duration);
+                }
+            }
+            MeasureContent::Backup(backup) => {
+                ctx.advance_beat_position(-backup.duration);
+            }
+            MeasureContent::Forward(forward) => {
+                ctx.advance_beat_position(forward.duration);
+            }
+            _ => {}
         }
     }
 

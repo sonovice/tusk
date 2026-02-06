@@ -41,6 +41,20 @@ pub fn convert_score_content(
     // Create a part for each part ID
     let mut parts: Vec<Part> = part_ids.iter().map(|id| Part::new(id)).collect();
 
+    // Set divisions from first staffDef's ppq before processing measures,
+    // so that direction offset calculations have the correct value.
+    if let Some(staff_def) = staff_defs.first() {
+        let divs = staff_def
+            .staff_def_ges
+            .ppq
+            .map(|ppq| ppq as f64)
+            .unwrap_or_else(|| {
+                let ctx_divs = ctx.divisions();
+                if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
+            });
+        ctx.set_divisions(divs);
+    }
+
     // For each MEI measure, extract staff content and add to corresponding part
     for (measure_idx, mei_measure) in mei_measures.iter().enumerate() {
         // Convert measure attributes
@@ -60,14 +74,18 @@ pub fn convert_score_content(
                 content: vec![],
             };
 
+            // Convert direction events BEFORE notes so that on reimport,
+            // beat_position=0 and the offset-based tstamp calculation is correct.
+            convert_direction_events(mei_measure, staff_n, &mut mxml_measure, ctx)?;
+
             // Find the staff with matching @n in this MEI measure
             if let Some(staff) = find_staff_in_measure(mei_measure, staff_n) {
                 // Convert the staff's layer content to MusicXML
                 convert_staff_content(staff, &mut mxml_measure, ctx)?;
             }
 
-            // Convert control events targeting this staff
-            convert_control_events(mei_measure, staff_n, &mut mxml_measure, ctx)?;
+            // Convert slur events AFTER notes (need note IDs to attach notations)
+            convert_slur_events(mei_measure, staff_n, &mut mxml_measure)?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
@@ -193,12 +211,15 @@ fn find_staff_in_measure(
     None
 }
 
-/// Convert MEI control events (dynam, hairpin, dir, tempo) to MusicXML directions.
+/// Convert MEI direction events (dynam, hairpin, dir, tempo) to MusicXML directions.
 ///
-/// Control events in MEI are children of `<measure>`, not `<staff>`. Each control event
+/// Direction events in MEI are children of `<measure>`, not `<staff>`. Each event
 /// has a `@staff` attribute indicating which staff/part it belongs to.
 /// Events without `@staff` default to staff 1.
-fn convert_control_events(
+///
+/// Must be called BEFORE note conversion so that on reimport, beat_position=0
+/// and offset-based tstamp reconstruction is correct.
+fn convert_direction_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
@@ -250,6 +271,84 @@ fn convert_control_events(
         }
     }
     Ok(())
+}
+
+/// Convert MEI slur events to MusicXML notations on the referenced notes.
+///
+/// Must be called AFTER note conversion so that referenced notes exist in the measure.
+fn convert_slur_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+) -> ConversionResult<()> {
+    for child in &mei_measure.children {
+        if let MeasureChild::Slur(slur) = child {
+            let event_staff = slur.slur_log.staff.first().copied().unwrap_or(1) as usize;
+            if event_staff == staff_n {
+                convert_mei_slur_to_notations(slur, mxml_measure);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Convert an MEI slur control event to MusicXML slur notations on the referenced notes.
+///
+/// MEI slurs use `@startid`/`@endid` to reference the notes they connect.
+/// MusicXML slurs are `<notations><slur>` elements on individual notes.
+fn convert_mei_slur_to_notations(
+    slur: &tusk_model::elements::Slur,
+    mxml_measure: &mut MxmlMeasure,
+) {
+    use crate::model::data::StartStopContinue;
+    use crate::model::notations::{Notations, Slur as MxmlSlur};
+
+    // Extract start and end note IDs (strip leading '#' from URI references)
+    let start_id = slur
+        .slur_log
+        .startid
+        .as_ref()
+        .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+    let end_id = slur
+        .slur_log
+        .endid
+        .as_ref()
+        .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+
+    // Add slur start notation to the start note
+    if let Some(ref sid) = start_id
+        && let Some(note) = find_note_by_id_mut(mxml_measure, sid)
+    {
+        let mut mxml_slur = MxmlSlur::new(StartStopContinue::Start);
+        mxml_slur.number = Some(1);
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        notations.slurs.push(mxml_slur);
+    }
+
+    // Add slur stop notation to the end note
+    if let Some(ref eid) = end_id
+        && let Some(note) = find_note_by_id_mut(mxml_measure, eid)
+    {
+        let mut mxml_slur = MxmlSlur::new(StartStopContinue::Stop);
+        mxml_slur.number = Some(1);
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        notations.slurs.push(mxml_slur);
+    }
+}
+
+/// Find a MusicXML note in the measure by its ID (mutable).
+fn find_note_by_id_mut<'a>(
+    mxml_measure: &'a mut MxmlMeasure,
+    id: &str,
+) -> Option<&'a mut crate::model::note::Note> {
+    for content in &mut mxml_measure.content {
+        if let MeasureContent::Note(note) = content
+            && note.id.as_deref() == Some(id)
+        {
+            return Some(note);
+        }
+    }
+    None
 }
 
 /// Convert an MEI staff's content to MusicXML measure content.
@@ -306,45 +405,99 @@ fn convert_staff_content(
 }
 
 /// Convert beam content (beams can contain notes, chords, rests).
+///
+/// Assigns MusicXML beam attributes (begin/continue/end) to notes within the beam group.
+/// Rests inside beams do not get beam attributes. Nested beams are flattened.
 fn convert_beam_content(
     beam: &tusk_model::elements::Beam,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
+    // Collect all beamable events (notes/chords) at this level, tracking indices
+    let events = collect_beam_events(beam, mxml_measure, ctx)?;
+
+    // Count beamable events (non-rest)
+    let beamable_count = events.iter().filter(|(_, is_rest)| !is_rest).count();
+
+    if beamable_count >= 2 {
+        // Assign beam level 1: begin on first, continue on middle, end on last
+        let mut beam_idx = 0;
+        for (note_idx, is_rest) in &events {
+            if *is_rest {
+                continue;
+            }
+            let beam_value = if beam_idx == 0 {
+                crate::model::note::BeamValue::Begin
+            } else if beam_idx == beamable_count - 1 {
+                crate::model::note::BeamValue::End
+            } else {
+                crate::model::note::BeamValue::Continue
+            };
+            // Apply beam to the note at this measure content index
+            if let MeasureContent::Note(ref mut note) = mxml_measure.content[*note_idx] {
+                note.beams
+                    .push(crate::model::note::Beam::with_number(beam_value, 1));
+            }
+            beam_idx += 1;
+        }
+    }
+
+    Ok(())
+}
+
+/// Collect beam events by converting beam children and pushing them to the measure.
+///
+/// Returns a vec of (measure_content_index, is_rest) for each event pushed.
+fn collect_beam_events(
+    beam: &tusk_model::elements::Beam,
+    mxml_measure: &mut MxmlMeasure,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<Vec<(usize, bool)>> {
     use tusk_model::elements::BeamChild;
+
+    let mut events = Vec::new();
 
     for child in &beam.children {
         match child {
             BeamChild::Note(note) => {
                 let mxml_note = convert_mei_note(note, ctx)?;
+                let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
                     .push(MeasureContent::Note(Box::new(mxml_note)));
+                events.push((idx, false));
             }
             BeamChild::Rest(rest) => {
                 let mxml_note = convert_mei_rest(rest, ctx)?;
+                let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
                     .push(MeasureContent::Note(Box::new(mxml_note)));
+                events.push((idx, true));
             }
             BeamChild::Chord(chord) => {
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
+                let first_idx = mxml_measure.content.len();
                 for note in mxml_notes {
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(note)));
                 }
+                // The chord's first note carries the beam; all chord notes
+                // share the same beam grouping in MusicXML
+                events.push((first_idx, false));
             }
             BeamChild::Beam(nested_beam) => {
-                // Recursively process nested beams
-                convert_beam_content(nested_beam, mxml_measure, ctx)?;
+                // Flatten nested beams into the same beam group
+                let nested = collect_beam_events(nested_beam, mxml_measure, ctx)?;
+                events.extend(nested);
             }
             _ => {
                 // Other beam children not handled yet
             }
         }
     }
-    Ok(())
+    Ok(events)
 }
 
 /// Create initial attributes for the first measure (divisions, etc.).
