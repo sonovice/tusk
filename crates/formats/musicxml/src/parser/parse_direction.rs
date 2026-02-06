@@ -227,6 +227,8 @@ fn parse_dynamics_element(name: &[u8]) -> Option<DynamicsValue> {
         b"sfp" => Some(DynamicsValue::Sfp),
         b"sfpp" => Some(DynamicsValue::Sfpp),
         b"sffz" => Some(DynamicsValue::Sffz),
+        b"sfzp" => Some(DynamicsValue::Sfzp),
+        b"pf" => Some(DynamicsValue::Pf),
         b"rf" => Some(DynamicsValue::Rf),
         b"rfz" => Some(DynamicsValue::Rfz),
         b"fz" => Some(DynamicsValue::Fz),

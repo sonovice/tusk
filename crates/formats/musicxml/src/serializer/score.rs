@@ -1834,6 +1834,7 @@ fn serialize_dynamics_value<W: Write>(
         DynamicsValue::Sfp => "sfp",
         DynamicsValue::Sfpp => "sfpp",
         DynamicsValue::Fp => "fp",
+        DynamicsValue::Pf => "pf",
         DynamicsValue::Rf => "rf",
         DynamicsValue::Rfz => "rfz",
         DynamicsValue::Sfz => "sfz",

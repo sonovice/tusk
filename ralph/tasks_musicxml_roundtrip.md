@@ -90,8 +90,10 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
   - Fixed: import no longer infers @dur from duration for rests without explicit <type>
   - dur_ppq (gestural duration) already captures the duration for export; @dur should only reflect explicit <type>
-- [ ] [MISSING_EXPORT] Dynamic sfzp/pf not exported from MEI to MusicXML (source: sfzp_element.musicxml, pf_element.musicxml)
-  - dynam element with sfzp/pf text missing after triangle roundtrip — dynamic not exported and thus not reimported
+- [x] [MISSING_EXPORT] Dynamic sfzp/pf not exported from MEI to MusicXML (source: sfzp_element.musicxml, pf_element.musicxml)
+  - Fixed: added missing Pf variant to DynamicsValue enum (was never defined)
+  - Fixed: added sfzp and pf to MusicXML parser's parse_dynamics_element (both were missing, causing silent drops)
+  - Fixed: added Pf to serializer, import utils (dynamics_value_to_string), and export (parse_dynamics_text)
 
 ---
 
@@ -177,18 +179,18 @@ Fragment examples extracted from spec docs, wrapped in complete MusicXML structu
 - [x] Roundtrip batch 27: `link_element`, `lyric_element`, `measure_distance_element`, `measure_numbering_element`, `measure_repeat_element`
 - [x] Roundtrip batch 28: `membrane_element`, `metal_element`, `metronome_arrows_element`, `metronome_element`, `metronome_note_element`
 - [x] Roundtrip batch 29: `metronome_tied_element`, `mezzo_soprano_clef`, `mf_element`, `midi_device_element`, `midi_instrument_element`
-- [ ] Roundtrip batch 30: `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `mordent_element`, `mp_element`, `multiple_rest_element`
+- [x] Roundtrip batch 30: `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `mordent_element`, `mp_element`, `multiple_rest_element`
 - [x] Roundtrip batch 31: `n_element`, `natural_element`, `non_arpeggiate_element`, `normal_dot_element`, `notehead_text_element`
 - [x] Roundtrip batch 32: `numeral_alter_element`, `numeral_key_element`, `numeral_root_element`, `octave_change_element`, `octave_element`
 - [x] Roundtrip batch 33: `octave_shift_element`, `open_element`, `open_string_element`, `p_element`, `pan_and_elevation_elements`
 - [x] Roundtrip batch 34: `part_abbreviation_display_element`, `part_link_element`, `part_name_display_element`, `part_symbol_element`, `pedal_element_lines`
-- [ ] Roundtrip batch 35: `pedal_element_symbols`, `per_minute_element`, `percussion_clef`, `pf_element`, `pitch_element`
+- [x] Roundtrip batch 35: `pedal_element_symbols`, `per_minute_element`, `percussion_clef`, `pf_element`, `pitch_element`
 - [x] Roundtrip batch 36: `pitched_element`, `plop_element`, `pluck_element`, `pp_element`, `ppp_element`
 - [x] Roundtrip batch 37: `pppp_element`, `ppppp_element`, `pppppp_element`, `pre_bend_element`, `prefix_element`
 - [x] Roundtrip batch 38: `principal_voice_element`, `rehearsal_element`, `release_element`, `repeat_element`, `rest_element`
 - [x] Roundtrip batch 39: `rf_element`, `rfz_element`, `root_alter_element`, `root_step_element`, `schleifer_element`
 - [x] Roundtrip batch 40: `scoop_element`, `scordatura_element`, `segno_element`, `senza_misura_element`, `sf_element`
-- [ ] Roundtrip batch 41: `sffz_element`, `sfp_element`, `sfpp_element`, `sfz_element`, `sfzp_element`
+- [x] Roundtrip batch 41: `sffz_element`, `sfp_element`, `sfpp_element`, `sfz_element`, `sfzp_element`
 - [x] Roundtrip batch 42: `shake_element`, `slash_element`, `slash_type_and_slash_dot_elements`, `slide_element`, `slur_element`
 - [x] Roundtrip batch 43: `smear_element`, `snap_pizzicato_element`, `soft_accent_element`, `soprano_clef`, `spiccato_element`
 - [x] Roundtrip batch 44: `staccatissimo_element`, `staccato_element`, `staff_distance_element`, `staff_divide_element`, `staff_element`

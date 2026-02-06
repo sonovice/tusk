@@ -106,6 +106,7 @@ fn parse_dynamics_text(text: &str) -> crate::model::direction::DynamicsValue {
         "fffff" => DynamicsValue::Fffff,
         "ffffff" => DynamicsValue::Ffffff,
         "fp" => DynamicsValue::Fp,
+        "pf" => DynamicsValue::Pf,
         "sf" => DynamicsValue::Sf,
         "sfz" => DynamicsValue::Sfz,
         "sfp" => DynamicsValue::Sfp,

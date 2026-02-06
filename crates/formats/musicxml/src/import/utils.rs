@@ -257,6 +257,7 @@ pub(crate) fn dynamics_value_to_string(value: &crate::model::direction::Dynamics
         DynamicsValue::Ff => "ff".to_string(),
         DynamicsValue::Fff => "fff".to_string(),
         DynamicsValue::Fp => "fp".to_string(),
+        DynamicsValue::Pf => "pf".to_string(),
         DynamicsValue::Sf => "sf".to_string(),
         DynamicsValue::Sfz => "sfz".to_string(),
         DynamicsValue::Sfp => "sfp".to_string(),

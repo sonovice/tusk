@@ -32,6 +32,8 @@ pub enum DynamicsValue {
     Fff,
     /// Forte-piano (fp)
     Fp,
+    /// Piano-forte (pf)
+    Pf,
     /// Sforzando (sf)
     Sf,
     /// Sforzando-forte (sfz)
