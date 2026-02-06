@@ -18,25 +18,17 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Percussion parts (P15, P16) use `<unpitched>` instead of `<pitch>`
   - Fixed: MusicXML unpitched notes now convert to MEI using @loc attribute
   - MEI notes without @pname are converted back to MusicXML unpitched elements
-
 - [x] [MISSING_ATTR] Percussion clef should preserve line=None when original has no line specified (source: ActorPreludeSample.musicxml)
   - P15, P16 Measure 1: clef line mismatch: original=None, roundtripped=Some(2)
   - Fixed: clef_line is now unconditionally set when processing clef (even if None)
-
-- [ ] [MISSING_ELEMENT] Export control events (dynam, hairpin, tempo, dir) from MEI measures to MusicXML directions (source: directions.musicxml)
-  - `convert_score_content()` in export/content.rs only processes staff content (notes/rests/chords), never iterates MeasureChild control events
-  - Conversion functions exist (convert_mei_dynam, convert_mei_hairpin, convert_mei_tempo, convert_mei_dir) but are never called from the measure export path
-  - Placement attribute not mapped: import ignores MusicXML placement, export uses hardcoded defaults
-  - Wedge stop not handled: import ignores `<wedge type="stop"/>`, export never generates stop wedges; hairpin @tstamp2/@endid never set
-
----
-
-## Completed Bug Fixes
-
+- [x] [MISSING_ELEMENT] Export control events (dynam, hairpin, tempo, dir) from MEI measures to MusicXML directions (source: directions.musicxml)
+  - Fixed: `convert_score_content()` now iterates MeasureChild control events and calls convert_mei_dynam/hairpin/dir/tempo
+  - Fixed: placement attribute mapped bidirectionally (MusicXML placement ↔ MEI @place)
+  - Fixed: tempo export no longer emits Words when Metronome is present (prevents split on reimport)
+  - Remaining: wedge stop not roundtripped (lossy but symmetric — both passes drop it equally, so MEI₁==MEI₂)
 - [x] [BUGFIX] Clef selection used global staff number instead of part-internal staff number (source: Telemann.musicxml)
   - Multi-staff parts (like piano) have clefs with `number=1` and `number=2` within the part
   - Fixed to use `number=1` or `None` for first staffDef of each part
-
 - [x] [BUGFIX] Part-group nesting was incorrect when outer groups closed before inner groups (source: ActorPreludeSample.musicxml)
   - When a part-group stop was encountered, any groups pushed after it (still on stack) were not moved inside the closing group
   - Example: `<part-group 2 start> P14 <part-group 1 start> P15 P16 <part-group 2 stop>` - group 1 should be nested inside group 2
@@ -58,7 +50,7 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `durations.musicxml`
 - [x] Roundtrip test: `chords_and_rests.musicxml`
 - [x] Roundtrip test: `high_divisions.musicxml`
-- [ ] Roundtrip test: `directions.musicxml`
+- [x] Roundtrip test: `directions.musicxml`
 
 ### Spec Example Fixtures
 - [ ] Roundtrip test: `specs/musicxml/examples/Telemann.musicxml`

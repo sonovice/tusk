@@ -5,6 +5,8 @@
 
 use super::utils::convert_mei_duration_to_beat_unit;
 use crate::context::ConversionContext;
+use crate::model::data::AboveBelow;
+use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
 
 /// Convert an MEI dynam element to a MusicXML direction with dynamics.
 ///
@@ -27,7 +29,6 @@ pub fn convert_mei_dynam(
     dynam: &tusk_model::elements::Dynam,
     ctx: &mut ConversionContext,
 ) -> Option<crate::model::direction::Direction> {
-    use crate::model::data::AboveBelow;
     use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Dynamics};
     use tusk_model::elements::DynamChild;
 
@@ -69,8 +70,8 @@ pub fn convert_mei_dynam(
         direction.staff = Some(staff as u32);
     }
 
-    // Set placement (default below for dynamics)
-    direction.placement = Some(AboveBelow::Below);
+    // Set placement from MEI @place (no default — only emit if explicitly set)
+    direction.placement = convert_place_to_placement(&dynam.dynam_vis.place);
 
     // Preserve ID if present
     if let Some(ref xml_id) = dynam.common.xml_id {
@@ -138,7 +139,7 @@ pub fn convert_mei_hairpin(
     hairpin: &tusk_model::elements::Hairpin,
     ctx: &mut ConversionContext,
 ) -> Vec<crate::model::direction::Direction> {
-    use crate::model::data::{AboveBelow, YesNo};
+    use crate::model::data::YesNo;
     use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Wedge, WedgeType,
     };
@@ -185,8 +186,8 @@ pub fn convert_mei_hairpin(
         direction.staff = Some(staff as u32);
     }
 
-    // Hairpins are typically below the staff
-    direction.placement = Some(AboveBelow::Below);
+    // Set placement from MEI @place (no default — only emit if explicitly set)
+    direction.placement = convert_place_to_placement(&hairpin.hairpin_vis.place);
 
     directions.push(direction);
 
@@ -216,7 +217,6 @@ pub fn convert_mei_dir(
     dir: &tusk_model::elements::Dir,
     ctx: &mut ConversionContext,
 ) -> Option<crate::model::direction::Direction> {
-    use crate::model::data::AboveBelow;
     use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Words};
     use tusk_model::elements::DirChild;
 
@@ -253,8 +253,8 @@ pub fn convert_mei_dir(
         direction.staff = Some(staff as u32);
     }
 
-    // Directives are typically above the staff
-    direction.placement = Some(AboveBelow::Above);
+    // Set placement from MEI @place (no default — only emit if explicitly set)
+    direction.placement = convert_place_to_placement(&dir.dir_vis.place);
 
     // Preserve ID
     if let Some(ref xml_id) = dir.common.xml_id {
@@ -285,7 +285,6 @@ pub fn convert_mei_tempo(
     tempo: &tusk_model::elements::Tempo,
     ctx: &mut ConversionContext,
 ) -> Option<crate::model::direction::Direction> {
-    use crate::model::data::AboveBelow;
     use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Metronome, MetronomeContent, Sound, Words,
     };
@@ -307,8 +306,13 @@ pub fn convert_mei_tempo(
         .collect::<Vec<_>>()
         .join("");
 
-    // Add text content as words if present
-    if !text_content.is_empty() {
+    let has_metronome = tempo.tempo_log.mm.is_some() && tempo.tempo_log.mm_unit.is_some();
+
+    // Add text content as words ONLY if no metronome is present.
+    // When both exist, the metronome is sufficient — the import reconstructs
+    // display text from the metronome, so emitting both would create a spurious
+    // Dir element on re-import.
+    if !text_content.is_empty() && !has_metronome {
         let words = Words::new(&text_content);
         direction_types.push(DirectionType {
             content: DirectionTypeContent::Words(vec![words]),
@@ -364,8 +368,8 @@ pub fn convert_mei_tempo(
         direction.staff = Some(staff as u32);
     }
 
-    // Tempo is typically above the staff
-    direction.placement = Some(AboveBelow::Above);
+    // Set placement from MEI @place (no default — only emit if explicitly set)
+    direction.placement = convert_place_to_placement(&tempo.tempo_vis.place);
 
     // Add sound element with tempo if mm is present
     if let Some(mm) = &tempo.tempo_log.mm {
@@ -379,6 +383,15 @@ pub fn convert_mei_tempo(
     }
 
     Some(direction)
+}
+
+/// Convert MEI placement (DataStaffrel) to MusicXML AboveBelow.
+fn convert_place_to_placement(place: &Option<DataStaffrel>) -> Option<AboveBelow> {
+    match place {
+        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above)) => Some(AboveBelow::Above),
+        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Below)) => Some(AboveBelow::Below),
+        _ => None,
+    }
 }
 
 // ============================================================================

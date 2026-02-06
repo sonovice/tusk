@@ -15,6 +15,9 @@ use tusk_model::elements::{
 };
 
 use super::attributes::convert_staff_def_to_attributes;
+use super::direction::{
+    convert_mei_dir, convert_mei_dynam, convert_mei_hairpin, convert_mei_tempo,
+};
 use super::note::{convert_mei_chord, convert_mei_mrest, convert_mei_note, convert_mei_rest};
 use super::structure::convert_mei_measure;
 use super::utils::find_score_def;
@@ -62,6 +65,9 @@ pub fn convert_score_content(
                 // Convert the staff's layer content to MusicXML
                 convert_staff_content(staff, &mut mxml_measure, ctx)?;
             }
+
+            // Convert control events targeting this staff
+            convert_control_events(mei_measure, staff_n, &mut mxml_measure, ctx)?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
@@ -185,6 +191,65 @@ fn find_staff_in_measure(
         }
     }
     None
+}
+
+/// Convert MEI control events (dynam, hairpin, dir, tempo) to MusicXML directions.
+///
+/// Control events in MEI are children of `<measure>`, not `<staff>`. Each control event
+/// has a `@staff` attribute indicating which staff/part it belongs to.
+/// Events without `@staff` default to staff 1.
+fn convert_control_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    for child in &mei_measure.children {
+        match child {
+            MeasureChild::Dynam(dynam) => {
+                let event_staff = dynam.dynam_log.staff.first().copied().unwrap_or(1) as usize;
+                if event_staff == staff_n
+                    && let Some(direction) = convert_mei_dynam(dynam, ctx)
+                {
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Direction(Box::new(direction)));
+                }
+            }
+            MeasureChild::Hairpin(hairpin) => {
+                let event_staff = hairpin.hairpin_log.staff.first().copied().unwrap_or(1) as usize;
+                if event_staff == staff_n {
+                    for direction in convert_mei_hairpin(hairpin, ctx) {
+                        mxml_measure
+                            .content
+                            .push(MeasureContent::Direction(Box::new(direction)));
+                    }
+                }
+            }
+            MeasureChild::Dir(dir) => {
+                let event_staff = dir.dir_log.staff.first().copied().unwrap_or(1) as usize;
+                if event_staff == staff_n
+                    && let Some(direction) = convert_mei_dir(dir, ctx)
+                {
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Direction(Box::new(direction)));
+                }
+            }
+            MeasureChild::Tempo(tempo) => {
+                let event_staff = tempo.tempo_log.staff.first().copied().unwrap_or(1) as usize;
+                if event_staff == staff_n
+                    && let Some(direction) = convert_mei_tempo(tempo, ctx)
+                {
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Direction(Box::new(direction)));
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Convert an MEI staff's content to MusicXML measure content.

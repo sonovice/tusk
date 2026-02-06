@@ -11,9 +11,12 @@ use crate::convert_error::ConversionResult;
 use crate::import::utils::{
     beat_unit_string_to_duration, dynamics_value_to_string, format_metronome_text,
 };
+use crate::model::data::AboveBelow;
 use crate::model::direction::{Direction, DirectionTypeContent, MetronomeContent, WedgeType};
 use tusk_model::att::{AttHairpinLogForm, AttTempoLogFunc};
-use tusk_model::data::{DataAugmentdot, DataBeat, DataBoolean, DataTempovalue};
+use tusk_model::data::{
+    DataAugmentdot, DataBeat, DataBoolean, DataStaffrel, DataStaffrelBasic, DataTempovalue,
+};
 use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
 
 // ============================================================================
@@ -61,24 +64,27 @@ pub fn convert_direction(
     // Calculate timestamp for control events
     let tstamp = calculate_tstamp(direction, ctx);
     let staff = direction.staff.unwrap_or(ctx.current_staff());
+    let place = convert_placement(direction.placement.as_ref());
 
     for direction_type in &direction.direction_types {
         match &direction_type.content {
             DirectionTypeContent::Dynamics(dynamics) => {
-                let dynam = convert_dynamics(dynamics, tstamp.clone(), staff, ctx);
+                let dynam = convert_dynamics(dynamics, tstamp.clone(), staff, place.clone(), ctx);
                 results.push(DirectionConversionResult::Dynam(dynam));
             }
             DirectionTypeContent::Wedge(wedge) => {
-                if let Some(hairpin) = convert_wedge(wedge, tstamp.clone(), staff, ctx) {
+                if let Some(hairpin) =
+                    convert_wedge(wedge, tstamp.clone(), staff, place.clone(), ctx)
+                {
                     results.push(DirectionConversionResult::Hairpin(hairpin));
                 }
             }
             DirectionTypeContent::Metronome(metronome) => {
-                let tempo = convert_metronome(metronome, tstamp.clone(), staff, ctx);
+                let tempo = convert_metronome(metronome, tstamp.clone(), staff, place.clone(), ctx);
                 results.push(DirectionConversionResult::Tempo(tempo));
             }
             DirectionTypeContent::Words(words) => {
-                let dir = convert_words(words, tstamp.clone(), staff, ctx);
+                let dir = convert_words(words, tstamp.clone(), staff, place.clone(), ctx);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             // Other direction types can be added in future phases
@@ -87,6 +93,14 @@ pub fn convert_direction(
     }
 
     Ok(results)
+}
+
+/// Convert MusicXML placement (above/below) to MEI DataStaffrel.
+fn convert_placement(placement: Option<&AboveBelow>) -> Option<DataStaffrel> {
+    placement.map(|p| match p {
+        AboveBelow::Above => DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above),
+        AboveBelow::Below => DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Below),
+    })
 }
 
 /// Calculate the timestamp (beat position) for a direction.
@@ -115,6 +129,7 @@ fn convert_dynamics(
     dynamics: &crate::model::direction::Dynamics,
     tstamp: DataBeat,
     staff: u32,
+    place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Dynam {
     let mut dynam = Dynam::default();
@@ -126,6 +141,9 @@ fn convert_dynamics(
     // Set timestamp and staff
     dynam.dynam_log.tstamp = Some(tstamp);
     dynam.dynam_log.staff = vec![staff as u64];
+
+    // Set placement
+    dynam.dynam_vis.place = place;
 
     // Convert dynamics values to text content
     let text_content = dynamics
@@ -153,6 +171,7 @@ fn convert_wedge(
     wedge: &crate::model::direction::Wedge,
     tstamp: DataBeat,
     staff: u32,
+    place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Option<Hairpin> {
     use crate::model::data::YesNo;
@@ -186,10 +205,8 @@ fn convert_wedge(
             hairpin.hairpin_log.tstamp = Some(tstamp);
             hairpin.hairpin_log.staff = vec![staff as u64];
 
-            // Store the wedge number for matching with stop
-            // The stop wedge will need to set tstamp2 or endid
-            // For now, we create the hairpin without end information
-            // Full spanning support would require tracking open wedges in context
+            // Set placement
+            hairpin.hairpin_vis.place = place;
 
             Some(hairpin)
         }
@@ -210,6 +227,7 @@ fn convert_metronome(
     metronome: &crate::model::direction::Metronome,
     tstamp: DataBeat,
     staff: u32,
+    place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Tempo {
     let mut tempo = Tempo::default();
@@ -221,6 +239,9 @@ fn convert_metronome(
     // Set timestamp and staff
     tempo.tempo_log.tstamp = Some(tstamp);
     tempo.tempo_log.staff = vec![staff as u64];
+
+    // Set placement
+    tempo.tempo_vis.place = place;
 
     // Set function to instantaneous (static tempo)
     tempo.tempo_log.func = Some(AttTempoLogFunc::Instantaneous);
@@ -272,6 +293,7 @@ fn convert_words(
     words: &[crate::model::direction::Words],
     tstamp: DataBeat,
     staff: u32,
+    place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Dir {
     let mut dir = Dir::default();
@@ -283,6 +305,9 @@ fn convert_words(
     // Set timestamp and staff
     dir.dir_log.tstamp = Some(tstamp);
     dir.dir_log.staff = vec![staff as u64];
+
+    // Set placement
+    dir.dir_vis.place = place;
 
     // Combine all words text into dir content
     for word in words {

@@ -45,6 +45,7 @@ if [ "$DISCOVER_ONLY" = true ]; then
    - Value mismatch: \`- [ ] [MISMATCH] <element> value differs: expected X, got Y (source: file.musicxml)\`
    - Conversion error: \`- [ ] [ERROR] Description of error (source: file.musicxml)\`
    - Structural issue: \`- [ ] [STRUCTURE] Description (source: file.musicxml)\`
+   - Missing serializer/deserializer: \`- [ ] [MISSING_SERDE] <type> serializer/deserializer missing\`
 4. Add NEW tasks to @$TASKS_FILE under the '## Generated Tasks' section (near the TOP of the file).
    - Do NOT duplicate tasks that already exist in the file.
    - Group similar issues together if multiple files have the same problem.
@@ -78,15 +79,21 @@ When the task starts with 'Roundtrip test:' - this is DISCOVERY ONLY, never fix 
    - STOP
 
 ## MODE B: FIXING TASKS ([MISSING_*] or infrastructure tasks)
-When the task is [MISSING_ELEMENT], [MISSING_ATTR], [MISMATCH], [ERROR], or infrastructure - this is when you write code.
+When the task is [MISSING_ELEMENT], [MISSING_ATTR], [MISMATCH], [ERROR], [MISSING_SERDE], or infrastructure - this is when you write code.
 
 1. Fix the issue(s) listed in the task
-2. Mark task done: '- [ ]' → '- [x]'
-3. Run \`cargo fmt\` and \`cargo clippy\`
-4. Commit
-5. STOP (the blocked fixture will retry next iteration)"
+2. If you encounter BLOCKING issues while fixing (pre-existing or new):
+   - Missing serializer/deserializer: \\\`- [ ] [MISSING_SERDE] <type> serializer/deserializer missing\\\`
+   - Any other blocker: add appropriate [MISSING_*] task
+   - Place blocking tasks at the TOP of '## Generated Tasks'
+   - Fix the blocker IMMEDIATELY (don't defer), then continue with original task
+3. Mark task done: '- [ ]' → '- [x]'
+4. Run \`cargo fmt\` and \`cargo clippy\`
+5. Commit
+6. STOP (the blocked fixture will retry next iteration)"
   TASK_RULE="- Fixtures: DISCOVERY ONLY - never fix code during fixture testing. Batch successes, STOP on failure.
-- [MISSING_*] tasks: This is the ONLY time you write code to fix issues."
+- [MISSING_*] tasks: This is the ONLY time you write code to fix issues.
+- Blockers (pre-existing or new): Add task AND fix immediately, don't defer."
 fi
 
 PROMPT="# ENTROPY REMINDER
