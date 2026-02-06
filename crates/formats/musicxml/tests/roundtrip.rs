@@ -1,13 +1,35 @@
 //! Roundtrip tests for MusicXML → MEI → MusicXML conversion.
 //!
-//! These tests verify that MusicXML files can be:
-//! 1. Parsed into MusicXML model types
-//! 2. Converted to MEI (internal model)
-//! 3. Converted back to MusicXML
-//! 4. Compared for semantic equivalence with the original
+//! Three levels of testing:
+//!
+//! 1. **Conversion roundtrip** (import/export only):
+//!    XML → parse → ScorePartwise₁ → import → Mei → export → ScorePartwise₂
+//!    Compares ScorePartwise₁ vs ScorePartwise₂ directly.
+//!    Tests: import + export logic, isolated from serializer.
+//!
+//! 2. **Full roundtrip** (includes serializer/parser):
+//!    XML → parse → ScorePartwise₁ → import → Mei → export → serialize → XML₂ → parse → ScorePartwise₃
+//!    Compares ScorePartwise₁ vs ScorePartwise₃.
+//!    Tests: entire pipeline including MusicXML serializer.
+//!
+//! 3. **Triangle MEI roundtrip** (catches symmetric import bugs):
+//!    MusicXML₀ → import → MEI₁ → export → MusicXML₁ → import → MEI₂
+//!    Compares MEI₁ vs MEI₂.
+//!    Tests: if import has inconsistent behavior, MEI₁ ≠ MEI₂.
+//!
+//! 4. **Triangle MusicXML roundtrip** (catches symmetric export bugs):
+//!    MEI₁ → export → MusicXML₁ → import → MEI₂ → export → MusicXML₂
+//!    Compares MusicXML₁ vs MusicXML₂.
+//!    Tests: if export has inconsistent behavior, MusicXML₁ ≠ MusicXML₂.
+//!
+//! If conversion roundtrip passes but full roundtrip fails → serializer bug.
+//! If conversion roundtrip fails → import/export bug.
+//! If triangle MEI fails → import has inconsistent/lossy behavior.
+//! If triangle MusicXML fails → export has inconsistent/lossy behavior.
 
 use std::fs;
 
+use tusk_model::elements::Mei;
 use tusk_musicxml::model::attributes::{KeyContent, TimeContent};
 use tusk_musicxml::model::elements::{MeasureContent, ScorePartwise};
 use tusk_musicxml::model::note::FullNoteContent;
@@ -54,43 +76,97 @@ fn is_timewise(xml: &str) -> bool {
     xml.contains("<score-timewise")
 }
 
-/// Perform a full roundtrip: MusicXML → MEI → MusicXML → XML → MusicXML
-/// Returns the original parsed score and the final roundtripped score (after serialization and re-parsing).
-/// Automatically detects score-partwise vs score-timewise format.
-fn roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    // Step 1: Parse original MusicXML (detect format)
-    let original = if is_timewise(xml) {
-        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+/// Parse MusicXML, auto-detecting partwise vs timewise format.
+fn parse_musicxml(xml: &str) -> Result<ScorePartwise, String> {
+    if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))
     } else {
-        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
-    };
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))
+    }
+}
 
-    // Step 2: Convert to MEI
+/// Conversion roundtrip: MusicXML → MEI → MusicXML (no serialization).
+/// Tests import/export logic only, isolated from serializer bugs.
+/// Returns (original, exported) for direct model comparison.
+fn conversion_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let original = parse_musicxml(xml)?;
     let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
-
-    // Step 3: Convert back to MusicXML struct
     let exported = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    Ok((original, exported))
+}
 
-    // Step 4: TRUE ROUNDTRIP - serialize to XML string
+/// Full roundtrip: MusicXML → MEI → MusicXML → XML string → MusicXML.
+/// Tests entire pipeline including MusicXML serializer/parser.
+/// Returns (original, roundtripped) after serialize→parse cycle.
+fn full_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let original = parse_musicxml(xml)?;
+    let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
+    let exported = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
     let xml2 = serialize(&exported).map_err(|e| format!("Serialize error: {}", e))?;
-
-    // Step 5: Parse the re-serialized XML
     let roundtripped = parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
-
     Ok((original, roundtripped))
 }
 
-/// Load a fixture file and perform roundtrip test.
-fn roundtrip_fixture(fixture_name: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    // Build path relative to the crate manifest directory
+/// Triangle roundtrip A: MusicXML → MEI₁ → MusicXML → MEI₂.
+/// Catches import bugs where second import reveals inconsistency.
+/// Returns (mei1, mei2) for direct comparison.
+fn triangle_mei_roundtrip(xml: &str) -> Result<(Mei, Mei), String> {
+    let original = parse_musicxml(xml)?;
+    let mei1 = import(&original).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let mxml1 = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let mei2 = import(&mxml1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    Ok((mei1, mei2))
+}
+
+/// Triangle roundtrip B: MEI₁ → MusicXML₁ → MEI₂ → MusicXML₂.
+/// Catches export bugs where second export reveals inconsistency.
+/// Returns (mxml1, mxml2) for comparison.
+fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let original = parse_musicxml(xml)?;
+    let mei1 = import(&original).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let mxml1 = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let mei2 = import(&mxml1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let mxml2 = export(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
+    Ok((mxml1, mxml2))
+}
+
+/// Load a fixture file from tests/fixtures/musicxml/.
+fn load_fixture(fixture_name: &str) -> Result<String, String> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let fixture_path = format!(
         "{}/../../../tests/fixtures/musicxml/{}",
         manifest_dir, fixture_name
     );
-    let xml = fs::read_to_string(&fixture_path)
-        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))?;
-    roundtrip(&xml)
+    fs::read_to_string(&fixture_path)
+        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))
+}
+
+/// Load a fixture and perform conversion roundtrip (no serialization).
+fn conversion_roundtrip_fixture(
+    fixture_name: &str,
+) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let xml = load_fixture(fixture_name)?;
+    conversion_roundtrip(&xml)
+}
+
+/// Load a fixture and perform full roundtrip (with serialization).
+fn full_roundtrip_fixture(fixture_name: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let xml = load_fixture(fixture_name)?;
+    full_roundtrip(&xml)
+}
+
+/// Load a fixture and perform triangle MEI roundtrip.
+fn triangle_mei_roundtrip_fixture(fixture_name: &str) -> Result<(Mei, Mei), String> {
+    let xml = load_fixture(fixture_name)?;
+    triangle_mei_roundtrip(&xml)
+}
+
+/// Load a fixture and perform triangle MusicXML roundtrip.
+fn triangle_mxml_roundtrip_fixture(
+    fixture_name: &str,
+) -> Result<(ScorePartwise, ScorePartwise), String> {
+    let xml = load_fixture(fixture_name)?;
+    triangle_mxml_roundtrip(&xml)
 }
 
 // ============================================================================
@@ -521,19 +597,79 @@ fn compare_attributes(
     }
 }
 
-/// Assert that a roundtrip test passes with no differences.
-fn assert_roundtrip(fixture_name: &str) {
-    let (original, roundtripped) = roundtrip_fixture(fixture_name)
-        .unwrap_or_else(|e| panic!("Roundtrip failed for {}: {}", fixture_name, e));
+/// Assert conversion roundtrip passes (import/export only, no serialization).
+fn assert_conversion_roundtrip(fixture_name: &str) {
+    let (original, exported) = conversion_roundtrip_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
 
-    let diffs = compare_scores(&original, &roundtripped);
+    let diffs = compare_scores(&original, &exported);
     if !diffs.is_empty() {
         panic!(
-            "Roundtrip differences found for {}:\n{}",
+            "Conversion roundtrip differences for {} (import/export bug):\n{}",
             fixture_name,
             diffs.report()
         );
     }
+}
+
+/// Assert full roundtrip passes (includes serialization).
+fn assert_full_roundtrip(fixture_name: &str) {
+    let (original, roundtripped) = full_roundtrip_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
+
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Full roundtrip differences for {} (serializer bug if conversion passed):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+}
+
+/// Assert triangle MEI roundtrip passes (MEI₁ == MEI₂).
+/// Catches inconsistent import behavior.
+fn assert_triangle_mei_roundtrip(fixture_name: &str) {
+    let (mei1, mei2) = triangle_mei_roundtrip_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
+
+    if mei1 != mei2 {
+        panic!(
+            "Triangle MEI roundtrip failed for {} (import inconsistency): MEI₁ ≠ MEI₂\n\
+             Import produces different MEI from the same logical content.",
+            fixture_name
+        );
+    }
+}
+
+/// Assert triangle MusicXML roundtrip passes (MusicXML₁ == MusicXML₂).
+/// Catches inconsistent export behavior.
+fn assert_triangle_mxml_roundtrip(fixture_name: &str) {
+    let (mxml1, mxml2) = triangle_mxml_roundtrip_fixture(fixture_name).unwrap_or_else(|e| {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {}: {}",
+            fixture_name, e
+        )
+    });
+
+    let diffs = compare_scores(&mxml1, &mxml2);
+    if !diffs.is_empty() {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n\
+             Export produces different MusicXML from the same logical content.\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+}
+
+/// Assert all four roundtrip tests pass.
+/// Runs: conversion, full, triangle MEI, triangle MusicXML.
+fn assert_roundtrip(fixture_name: &str) {
+    assert_conversion_roundtrip(fixture_name);
+    assert_full_roundtrip(fixture_name);
+    assert_triangle_mei_roundtrip(fixture_name);
+    assert_triangle_mxml_roundtrip(fixture_name);
 }
 
 // ============================================================================
@@ -578,8 +714,8 @@ fn test_roundtrip_directions() {
 #[ignore] // Run with --ignored to debug
 fn debug_roundtrip_output() {
     let fixture_name = "hello_world.musicxml";
-    let (original, roundtripped) =
-        roundtrip_fixture(fixture_name).unwrap_or_else(|e| panic!("Roundtrip failed: {}", e));
+    let (original, exported) = conversion_roundtrip_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Conversion roundtrip failed: {}", e));
 
     println!("=== Original ===");
     println!("Parts: {}", original.parts.len());
@@ -587,9 +723,9 @@ fn debug_roundtrip_output() {
         println!("  Part '{}': {} measures", part.id, part.measures.len());
     }
 
-    println!("\n=== Roundtripped ===");
-    println!("Parts: {}", roundtripped.parts.len());
-    for part in &roundtripped.parts {
+    println!("\n=== After MEI conversion (no serialization) ===");
+    println!("Parts: {}", exported.parts.len());
+    for part in &exported.parts {
         println!("  Part '{}': {} measures", part.id, part.measures.len());
     }
 }
@@ -598,456 +734,284 @@ fn debug_roundtrip_output() {
 // Spec Examples Tests (from specs/musicxml/examples/)
 // ============================================================================
 
-/// Load a spec example file and perform roundtrip test.
-fn roundtrip_spec_example(example_name: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    // Build path relative to the crate manifest directory
+/// Load a spec example file.
+fn load_spec_example(example_name: &str) -> Result<String, String> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let fixture_path = format!(
         "{}/../../../specs/musicxml/examples/{}",
         manifest_dir, example_name
     );
-    let xml = read_xml_file(&fixture_path)?;
-    roundtrip(&xml)
+    read_xml_file(&fixture_path)
+}
+
+/// Assert all three roundtrip tests pass for a spec example.
+fn assert_spec_example_roundtrip(example_name: &str) {
+    let xml = load_spec_example(example_name)
+        .unwrap_or_else(|e| panic!("Failed to load {}: {}", example_name, e));
+
+    // Test conversion roundtrip (import/export only)
+    let (original, exported) = conversion_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", example_name, e));
+    let diffs = compare_scores(&original, &exported);
+    if !diffs.is_empty() {
+        panic!(
+            "Conversion roundtrip differences for {} (import/export bug):\n{}",
+            example_name,
+            diffs.report()
+        );
+    }
+
+    // Test full roundtrip (includes serialization)
+    let (original, roundtripped) = full_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", example_name, e));
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Full roundtrip differences for {} (serializer bug):\n{}",
+            example_name,
+            diffs.report()
+        );
+    }
+
+    // Test triangle MEI roundtrip (catches import inconsistency)
+    let (mei1, mei2) = triangle_mei_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", example_name, e));
+    if mei1 != mei2 {
+        panic!(
+            "Triangle MEI roundtrip failed for {} (import inconsistency): MEI₁ ≠ MEI₂",
+            example_name
+        );
+    }
+
+    // Test triangle MusicXML roundtrip (catches export inconsistency)
+    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {}: {}",
+            example_name, e
+        )
+    });
+    let diffs = compare_scores(&mxml1, &mxml2);
+    if !diffs.is_empty() {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            example_name,
+            diffs.report()
+        );
+    }
 }
 
 #[test]
 fn test_roundtrip_spec_telemann() {
-    let (original, roundtripped) = roundtrip_spec_example("Telemann.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Telemann: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Telemann.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Telemann.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_binchois() {
-    let (original, roundtripped) = roundtrip_spec_example("Binchois.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Binchois: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Binchois.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Binchois.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_mozart_piano_sonata() {
-    let (original, roundtripped) = roundtrip_spec_example("MozartPianoSonata.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for MozartPianoSonata: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for MozartPianoSonata.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("MozartPianoSonata.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_actor_prelude_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("ActorPreludeSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for ActorPreludeSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for ActorPreludeSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("ActorPreludeSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_beet_an_ge_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("BeetAnGeSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for BeetAnGeSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for BeetAnGeSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("BeetAnGeSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_brah_wi_me_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("BrahWiMeSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for BrahWiMeSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for BrahWiMeSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("BrahWiMeSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_brooke_west_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("BrookeWestSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for BrookeWestSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for BrookeWestSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("BrookeWestSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_chant() {
-    let (original, roundtripped) = roundtrip_spec_example("Chant.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Chant: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Chant.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Chant.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_debu_mand_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("DebuMandSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for DebuMandSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for DebuMandSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("DebuMandSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_dichterliebe01() {
-    let (original, roundtripped) = roundtrip_spec_example("Dichterliebe01.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Dichterliebe01: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Dichterliebe01.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Dichterliebe01.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_echigo_jishi() {
-    let (original, roundtripped) = roundtrip_spec_example("Echigo-Jishi.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Echigo-Jishi: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Echigo-Jishi.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Echigo-Jishi.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_faur_reve_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("FaurReveSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for FaurReveSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for FaurReveSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("FaurReveSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_mahl_fa_ge4_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("MahlFaGe4Sample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for MahlFaGe4Sample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for MahlFaGe4Sample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("MahlFaGe4Sample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_moza_chlo_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("MozaChloSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for MozaChloSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for MozaChloSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("MozaChloSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_mozart_trio() {
-    let (original, roundtripped) = roundtrip_spec_example("MozartTrio.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for MozartTrio: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for MozartTrio.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("MozartTrio.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_moza_veil_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("MozaVeilSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for MozaVeilSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for MozaVeilSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("MozaVeilSample.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_saltarello() {
-    let (original, roundtripped) = roundtrip_spec_example("Saltarello.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for Saltarello: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for Saltarello.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("Saltarello.musicxml");
 }
 
 #[test]
 fn test_roundtrip_spec_schb_av_ma_sample() {
-    let (original, roundtripped) = roundtrip_spec_example("SchbAvMaSample.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for SchbAvMaSample: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for SchbAvMaSample.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_example_roundtrip("SchbAvMaSample.musicxml");
 }
 
 // ============================================================================
 // Spec Doc Example Tests (from tests/fixtures/musicxml/spec_examples/)
 // ============================================================================
 
-/// Load a spec_examples fixture file and perform roundtrip test.
-fn roundtrip_spec_examples_fixture(
-    fixture_name: &str,
-) -> Result<(ScorePartwise, ScorePartwise), String> {
+/// Load a spec_examples fixture file.
+fn load_spec_examples_fixture(fixture_name: &str) -> Result<String, String> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let fixture_path = format!(
         "{}/../../../tests/fixtures/musicxml/spec_examples/{}",
         manifest_dir, fixture_name
     );
-    let xml = fs::read_to_string(&fixture_path)
-        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))?;
-    roundtrip(&xml)
+    fs::read_to_string(&fixture_path)
+        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))
+}
+
+/// Assert all three roundtrip tests pass for a spec_examples fixture.
+fn assert_spec_examples_roundtrip(fixture_name: &str) {
+    let xml = load_spec_examples_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Failed to load {}: {}", fixture_name, e));
+
+    // Test conversion roundtrip (import/export only)
+    let (original, exported) = conversion_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
+    let diffs = compare_scores(&original, &exported);
+    if !diffs.is_empty() {
+        panic!(
+            "Conversion roundtrip differences for {} (import/export bug):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+
+    // Test full roundtrip (includes serialization)
+    let (original, roundtripped) = full_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Full roundtrip differences for {} (serializer bug):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+
+    // Test triangle MEI roundtrip (catches import inconsistency)
+    let (mei1, mei2) = triangle_mei_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
+    if mei1 != mei2 {
+        panic!(
+            "Triangle MEI roundtrip failed for {} (import inconsistency): MEI₁ ≠ MEI₂",
+            fixture_name
+        );
+    }
+
+    // Test triangle MusicXML roundtrip (catches export inconsistency)
+    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {}: {}",
+            fixture_name, e
+        )
+    });
+    let diffs = compare_scores(&mxml1, &mxml2);
+    if !diffs.is_empty() {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
 }
 
 #[test]
 fn test_roundtrip_assess_and_player_elements() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("assess_and_player_elements.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for assess_and_player_elements: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for assess_and_player_elements.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("assess_and_player_elements.musicxml");
 }
 
 #[test]
 fn test_roundtrip_concert_score_and_for_part_elements() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("concert_score_and_for_part_elements.musicxml")
-            .unwrap_or_else(|e| {
-                panic!(
-                    "Roundtrip failed for concert_score_and_for_part_elements: {}",
-                    e
-                )
-            });
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for concert_score_and_for_part_elements.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("concert_score_and_for_part_elements.musicxml");
 }
 
 #[test]
 fn test_roundtrip_instrument_change_element() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("instrument_change_element.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for instrument_change_element: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for instrument_change_element.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("instrument_change_element.musicxml");
 }
 
 #[test]
 fn test_roundtrip_movement_number_and_movement_title_elements() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("movement_number_and_movement_title_elements.musicxml")
-            .unwrap_or_else(|e| {
-                panic!(
-                    "Roundtrip failed for movement_number_and_movement_title_elements: {}",
-                    e
-                )
-            });
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for movement_number_and_movement_title_elements.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("movement_number_and_movement_title_elements.musicxml");
 }
 
 #[test]
 fn test_roundtrip_score_timewise_element() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("score_timewise_element.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for score_timewise_element: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for score_timewise_element.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("score_timewise_element.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_apres_un_reve() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("tutorial_apres_un_reve.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_apres_un_reve: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_apres_un_reve.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_apres_un_reve.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_chopin_prelude() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("tutorial_chopin_prelude.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_chopin_prelude: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_chopin_prelude.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_chopin_prelude.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_chord_symbols() {
-    let (original, roundtripped) =
-        roundtrip_spec_examples_fixture("tutorial_chord_symbols.musicxml")
-            .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_chord_symbols: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_chord_symbols.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_chord_symbols.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_hello_world() {
-    let (original, roundtripped) = roundtrip_spec_examples_fixture("tutorial_hello_world.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_hello_world: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_hello_world.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_hello_world.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_percussion() {
-    let (original, roundtripped) = roundtrip_spec_examples_fixture("tutorial_percussion.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_percussion: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_percussion.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_percussion.musicxml");
 }
 
 #[test]
 fn test_roundtrip_tutorial_tablature() {
-    let (original, roundtripped) = roundtrip_spec_examples_fixture("tutorial_tablature.musicxml")
-        .unwrap_or_else(|e| panic!("Roundtrip failed for tutorial_tablature: {}", e));
-
-    let diffs = compare_scores(&original, &roundtripped);
-    if !diffs.is_empty() {
-        panic!(
-            "Roundtrip differences found for tutorial_tablature.musicxml:\n{}",
-            diffs.report()
-        );
-    }
+    assert_spec_examples_roundtrip("tutorial_tablature.musicxml");
 }
