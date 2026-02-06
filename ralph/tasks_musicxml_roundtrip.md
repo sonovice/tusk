@@ -55,6 +55,13 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: part-group only emitted when staffGrp has explicit grouping attributes (symbol, bar_thru, label)
   - Fixed: tstamp calculation now divides beat_position by divisions; directions track beat position during import; export emits offset for correct repositioning
 
+- [ ] [BUGFIX] Fix slur startid/endid instability and dir/dynam ordering in MEI triangle roundtrip (source: BeetAnGeSample, BrahWiMeSample, DebuMandSample, Dichterliebe01, MahlFaGe4Sample, MozaVeilSample)
+  - Slurs shift to wrong start/end notes across roundtrip (all 6 files)
+  - dir text content ordering swapped (BeetAnGe: "Ziemlich langsam..." vs "No. 1", MahlFaGe4: "Alla Marcia" vs longer text)
+  - dynam @place above/below swapped (DebuMand, MahlFaGe4)
+  - tempo/hairpin @tstamp mismatch (DebuMand: tstamp=19 vs 109, hairpin 2.125 vs 7.75)
+  - dynam @tstamp floating-point rounding (MahlFaGe4: 2.4166666666666665 vs 2.416666666666667)
+
 ---
 
 ## Roundtrip Fixture Tests
@@ -80,31 +87,31 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 - [x] Roundtrip test: `specs/musicxml/examples/ActorPreludeSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/BeetAnGeSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/BrahWiMeSample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/BrookeWestSample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/Chant.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/BrookeWestSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/Chant.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/DebuMandSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/Dichterliebe01.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/Echigo-Jishi.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/FaurReveSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/FaurReveSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/MahlFaGe4Sample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/MozaChloSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/MozaChloSample.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/MozartTrio.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/MozaVeilSample.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/Saltarello.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/SchbAvMaSample.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/Saltarello.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/SchbAvMaSample.musicxml`
 
 ### Extracted Spec Doc Examples (Complete Files)
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/assess_and_player_elements.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/concert_score_and_for_part_elements.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/instrument_change_element.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/movement_number_and_movement_title_elements.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/score_timewise_element.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_apres_un_reve.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chopin_prelude.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chord_symbols.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_hello_world.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_percussion.musicxml`
-- [ ] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_tablature.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/assess_and_player_elements.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/concert_score_and_for_part_elements.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/instrument_change_element.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/movement_number_and_movement_title_elements.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/score_timewise_element.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_apres_un_reve.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chopin_prelude.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_chord_symbols.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_hello_world.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_percussion.musicxml`
+- [x] Roundtrip test: `tests/fixtures/musicxml/spec_examples/tutorial_tablature.musicxml`
 
 ### Fragment Examples (275 files, grouped by 5)
 

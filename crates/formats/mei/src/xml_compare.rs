@@ -118,9 +118,12 @@ const UNORDERED_CONTAINERS: &[&str] = &[
     "pubStmt",
     "respStmt",
     "sourceDesc",
+    "bibl",
     "encodingDesc",
     "workList",
     "manifestationList",
+    "manifestation",
+    "physDesc",
     // Part/staff groupings (staffDef order doesn't matter)
     "staffGrp",
     // Score definition containers
@@ -555,6 +558,18 @@ fn normalize_element_name(name: &str) -> &str {
     name
 }
 
+/// Recursively collect all text content from an element and its descendants.
+fn collect_deep_text(elem: &CanonicalElement) -> String {
+    let mut text = String::new();
+    for child in &elem.children {
+        match child {
+            CanonicalNode::Text(t) => text.push_str(t),
+            CanonicalNode::Element(e) => text.push_str(&collect_deep_text(e)),
+        }
+    }
+    text
+}
+
 /// Get a key for matching elements in unordered comparison.
 ///
 /// Elements are matched by (name, key_attribute) where key_attribute depends
@@ -631,7 +646,113 @@ fn get_element_key(elem: &CanonicalElement) -> String {
             elem.attributes.get("staff")
         }
 
-        "creator" | "contributor" | "editor" => elem.attributes.get("role"),
+        "creator" | "contributor" | "editor" => {
+            // Get role from explicit attribute or implicit migration
+            let role =
+                elem.attributes.get("role").cloned().or_else(|| {
+                    get_implicit_migration_role(&elem.name, name).map(|r| r.to_string())
+                });
+            // Extract deep text content for disambiguation (from persName etc.)
+            let text = collect_deep_text(elem);
+            if let Some(r) = role {
+                if !text.is_empty() {
+                    return format!(
+                        "{}[@={},text={}]",
+                        name,
+                        r,
+                        text.chars().take(40).collect::<String>()
+                    );
+                }
+                return format!("{}[@={}]", name, r);
+            }
+            None
+        }
+
+        // Source/manifestation keyed by first identifier text (within bibl for source)
+        "manifestation" => {
+            for child in &elem.children {
+                if let CanonicalNode::Element(child_elem) = child {
+                    if child_elem.name == "identifier" {
+                        let id_text: String = child_elem
+                            .children
+                            .iter()
+                            .filter_map(|c| {
+                                if let CanonicalNode::Text(t) = c {
+                                    Some(t.as_str())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        if !id_text.is_empty() {
+                            return format!(
+                                "manifestation[id={}]",
+                                id_text.chars().take(200).collect::<String>()
+                            );
+                        }
+                    }
+                }
+            }
+            None
+        }
+
+        "source" => {
+            for child in &elem.children {
+                if let CanonicalNode::Element(child_elem) = child {
+                    if child_elem.name == "bibl" {
+                        for bibl_child in &child_elem.children {
+                            if let CanonicalNode::Element(bc) = bibl_child {
+                                if bc.name == "identifier" {
+                                    let id_text: String = bc
+                                        .children
+                                        .iter()
+                                        .filter_map(|c| {
+                                            if let CanonicalNode::Text(t) = c {
+                                                Some(t.as_str())
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect();
+                                    if !id_text.is_empty() {
+                                        return format!(
+                                            "source[id={}]",
+                                            id_text.chars().take(200).collect::<String>()
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            None
+        }
+
+        // Identifier elements keyed by @type + text content
+        "identifier" => {
+            let type_val = elem.attributes.get("type").cloned().unwrap_or_default();
+            let text: String = elem
+                .children
+                .iter()
+                .filter_map(|c| {
+                    if let CanonicalNode::Text(t) = c {
+                        Some(t.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if !type_val.is_empty() || !text.is_empty() {
+                return format!(
+                    "identifier[type={},text={}]",
+                    type_val,
+                    text.chars().take(200).collect::<String>()
+                );
+            }
+            None
+        }
+
         _ => elem.attributes.get("n"),
     };
 
@@ -651,7 +772,7 @@ fn get_element_key(elem: &CanonicalElement) -> String {
             format!(
                 "{}[text={}]",
                 name,
-                text.chars().take(20).collect::<String>()
+                text.chars().take(120).collect::<String>()
             )
         } else {
             name.to_string()
