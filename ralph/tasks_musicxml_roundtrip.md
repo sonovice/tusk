@@ -14,10 +14,11 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 <!-- Format: - [ ] [CATEGORY] Description (source: filename.musicxml) -->
 <!-- IMPORTANT: Complete these BEFORE fixture tasks - they block fixture completion -->
 
-- [ ] [MISSING_EXPORT] Fix stem.dir, ties, and slur references in MEI→MusicXML roundtrip (source: Telemann.musicxml)
-  - stem.dir: import stores on individual note_vis.stem_dir in chords, but export only reads chord_vis.stem_dir — chord notes lose stem direction
-  - ties: import correctly sets note_anl.tie (i/m/t) but export has NO code to convert @tie back to MusicXML `<tie>` elements — complete data loss
-  - slur startid: each import() creates fresh ConversionContext with id_counter=0, so slur startid references shift on reimport (systematic ID offset)
+- [x] [MISSING_EXPORT] Fix stem.dir, ties, and slur references in MEI→MusicXML roundtrip (source: Telemann.musicxml)
+  - Fixed: import moves stem.dir from individual chord notes to chord_vis level; export falls back to note_vis.stem_dir
+  - Fixed: export converts @tie (i/m/t) back to MusicXML `<tie>` and `<tied>` elements
+  - Fixed: slur export routes by startid lookup instead of @staff (display vs content staff mismatch)
+  - Fixed: import separates staff/direction phases for canonical MEI ordering, eliminating ID offset
 - [x] [MISSING_ELEMENT] Add support for unpitched notes in MusicXML import/export (source: ActorPreludeSample.musicxml)
   - Percussion parts (P15, P16) use `<unpitched>` instead of `<pitch>`
   - Fixed: MusicXML unpitched notes now convert to MEI using @loc attribute
