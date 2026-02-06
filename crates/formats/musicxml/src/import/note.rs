@@ -491,7 +491,10 @@ fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote) {
 /// when a stop is found by adding to the context's completed slurs list.
 fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
     if let Some(ref notations) = note.notations {
+        // MusicXML staff within the part (for matching start/stop pairs)
         let staff = note.staff.unwrap_or(1);
+        // MEI global staff number (for the @staff attribute on the slur)
+        let mei_staff = ctx.staff().unwrap_or(1);
 
         for slur in &notations.slurs {
             let number = slur.number.unwrap_or(1);
@@ -502,6 +505,7 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
                         start_id: note_id.to_string(),
                         staff,
                         number,
+                        mei_staff,
                     });
                 }
                 StartStopContinue::Stop => {
@@ -510,7 +514,7 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
                         ctx.add_completed_slur(
                             pending.start_id,
                             note_id.to_string(),
-                            pending.staff,
+                            pending.mei_staff,
                         );
                     }
                 }

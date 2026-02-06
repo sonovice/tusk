@@ -229,8 +229,8 @@ fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut Convers
         slur.slur_log.startid = Some(DataUri::from(format!("#{}", completed.start_id)));
         slur.slur_log.endid = Some(DataUri::from(format!("#{}", completed.end_id)));
 
-        // Set staff
-        slur.slur_log.staff.push(completed.staff as u64);
+        // Set MEI staff (global staff number, not MusicXML within-part staff)
+        slur.slur_log.staff.push(completed.mei_staff as u64);
 
         mei_measure
             .children

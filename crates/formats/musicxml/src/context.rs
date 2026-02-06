@@ -63,10 +63,12 @@ pub struct PendingTie {
 pub struct PendingSlur {
     /// The xml:id of the note where the slur starts.
     pub start_id: String,
-    /// The staff number (1-based).
+    /// The MusicXML staff number within the part (for matching start/stop pairs).
     pub staff: u32,
     /// Slur number (for distinguishing multiple concurrent slurs).
     pub number: u8,
+    /// The MEI staff number (global, for the @staff attribute on the slur element).
+    pub mei_staff: u32,
 }
 
 /// A completed slur with both start and end IDs.
@@ -79,8 +81,8 @@ pub struct CompletedSlur {
     pub start_id: String,
     /// The xml:id of the note where the slur ends.
     pub end_id: String,
-    /// The staff number (1-based).
-    pub staff: u32,
+    /// The MEI staff number (global, for the @staff attribute).
+    pub mei_staff: u32,
 }
 
 /// Warnings generated during conversion for lossy MEI → MusicXML conversion.
@@ -352,11 +354,11 @@ impl ConversionContext {
     }
 
     /// Add a completed slur (both start and end IDs resolved).
-    pub fn add_completed_slur(&mut self, start_id: String, end_id: String, staff: u32) {
+    pub fn add_completed_slur(&mut self, start_id: String, end_id: String, mei_staff: u32) {
         self.completed_slurs.push(CompletedSlur {
             start_id,
             end_id,
-            staff,
+            mei_staff,
         });
     }
 
@@ -416,6 +418,11 @@ impl ConversionContext {
         self.position.measure_number = Some(measure_number.into());
         // Clear measure-local accidentals when entering a new measure
         self.measure_accidentals.clear();
+    }
+
+    /// Get the current MEI staff number.
+    pub fn staff(&self) -> Option<u32> {
+        self.position.staff
     }
 
     /// Set the current staff number.
@@ -744,6 +751,7 @@ mod tests {
             start_id: "note-1".to_string(),
             staff: 1,
             number: 1,
+            mei_staff: 1,
         };
         ctx.add_pending_slur(slur);
 
@@ -763,11 +771,13 @@ mod tests {
             start_id: "n1".to_string(),
             staff: 1,
             number: 1,
+            mei_staff: 1,
         });
         ctx.add_pending_slur(PendingSlur {
             start_id: "n2".to_string(),
             staff: 1,
             number: 2,
+            mei_staff: 1,
         });
 
         // Resolve slur #2 first

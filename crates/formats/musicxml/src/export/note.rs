@@ -121,6 +121,9 @@ pub fn convert_mei_note(
         mxml_note.cue = Some(Empty);
     }
 
+    // Convert articulations from MEI @artic to MusicXML <articulations>
+    convert_mei_artic(&mei_note.note_anl.artic, &mut mxml_note);
+
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
 
@@ -381,6 +384,89 @@ fn convert_mei_written_accid_to_mxml(
         },
         // For extended accidentals, return natural as fallback
         _ => AccidentalValue::Natural,
+    }
+}
+
+/// Convert MEI @artic values to MusicXML articulations in notations.
+///
+/// Maps MEI DataArticulation values back to MusicXML articulation elements.
+/// Handles the special case of tenuto+staccato → detached-legato.
+fn convert_mei_artic(
+    artic: &[tusk_model::data::DataArticulation],
+    mxml_note: &mut crate::model::note::Note,
+) {
+    use crate::model::notations::{Articulations, EmptyPlacement, Notations, StrongAccent};
+    use tusk_model::data::DataArticulation;
+
+    if artic.is_empty() {
+        return;
+    }
+
+    let mut mxml_artic = Articulations::default();
+
+    // Check for detached-legato (tenuto + staccato combined)
+    let has_ten = artic.contains(&DataArticulation::Ten);
+    let has_stacc = artic.contains(&DataArticulation::Stacc);
+    let is_detached_legato = has_ten && has_stacc;
+
+    for a in artic {
+        match a {
+            DataArticulation::Acc => {
+                mxml_artic.accent = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Marc => {
+                mxml_artic.strong_accent = Some(StrongAccent::default());
+            }
+            DataArticulation::Stacc => {
+                if is_detached_legato {
+                    mxml_artic.detached_legato = Some(EmptyPlacement::default());
+                } else {
+                    mxml_artic.staccato = Some(EmptyPlacement::default());
+                }
+            }
+            DataArticulation::Ten => {
+                if !is_detached_legato {
+                    mxml_artic.tenuto = Some(EmptyPlacement::default());
+                }
+                // When detached-legato, tenuto is consumed by the detached_legato field
+            }
+            DataArticulation::Stacciss => {
+                mxml_artic.staccatissimo = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Spicc => {
+                mxml_artic.spiccato = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Scoop => {
+                mxml_artic.scoop = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Plop => {
+                mxml_artic.plop = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Doit => {
+                mxml_artic.doit = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Fall => {
+                mxml_artic.falloff = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Stress => {
+                mxml_artic.stress = Some(EmptyPlacement::default());
+            }
+            DataArticulation::Unstress => {
+                mxml_artic.unstress = Some(EmptyPlacement::default());
+            }
+            DataArticulation::AccSoft => {
+                mxml_artic.soft_accent = Some(EmptyPlacement::default());
+            }
+            _ => {
+                // Other MEI articulations have no direct MusicXML equivalent
+            }
+        }
+    }
+
+    // Only add articulations if at least one was mapped
+    if mxml_artic != Articulations::default() {
+        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+        notations.articulations = Some(mxml_artic);
     }
 }
 
@@ -914,6 +1000,14 @@ pub fn convert_mei_chord(
             }
         }
 
+        // Convert articulations from MEI @artic on individual notes
+        convert_mei_artic(&mei_note.note_anl.artic, &mut mxml_note);
+
+        // Apply chord-level articulations to the first note
+        if i == 0 {
+            convert_mei_artic(&mei_chord.chord_log.artic, &mut mxml_note);
+        }
+
         // Convert ties from MEI @tie attribute to MusicXML <tie> elements
         convert_mei_ties(mei_note, &mut mxml_note);
 
@@ -1038,13 +1132,7 @@ fn add_chord_conversion_warnings(
         );
     }
 
-    // Warn about articulation attributes at chord level
-    if !mei_chord.chord_log.artic.is_empty() {
-        ctx.add_warning(
-            "chord",
-            "MEI @artic on chord is not directly converted; articulations should be on individual notes",
-        );
-    }
+    // (chord-level artic is now exported on the first note)
 
     // Warn about editorial children
     for child in &mei_chord.children {
@@ -1063,11 +1151,9 @@ fn add_chord_conversion_warnings(
                 break; // Only warn once
             }
             ChordChild::Artic(_) => {
-                ctx.add_warning(
-                    "chord",
-                    "MEI <artic> child elements are not converted; articulations should be on individual notes in MusicXML",
-                );
-                break;
+                // <artic> children are MEI elements; @artic attribute is handled
+                // in convert_mei_chord via convert_mei_artic.
+                // Child elements are not yet converted.
             }
             ChordChild::Verse(_) | ChordChild::Syl(_) | ChordChild::Refrain(_) => {
                 ctx.add_warning(

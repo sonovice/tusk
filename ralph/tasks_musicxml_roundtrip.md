@@ -14,9 +14,11 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 <!-- Format: - [ ] [CATEGORY] Description (source: filename.musicxml) -->
 <!-- IMPORTANT: Complete these BEFORE fixture tasks - they block fixture completion -->
 
-- [ ] [MISSING_EXPORT] Export articulations from MEI to MusicXML and fix slur @staff for multi-staff parts (source: MozartPianoSonata.musicxml)
-  - MEI @artic (stacc, acc, marc, ten, etc.) is imported correctly but never exported back to MusicXML <articulations>
-  - Slur @staff value changes between imports (2→1) because staff info is lost during export; in multi-staff piano parts slurs crossing staves lose their original staff assignment on re-import
+- [x] [MISSING_EXPORT] Export articulations from MEI to MusicXML and fix slur @staff for multi-staff parts (source: MozartPianoSonata.musicxml)
+  - Fixed: MEI @artic exported back to MusicXML <articulations> (acc, marc, stacc, ten, stacciss, spicc, detached-legato, etc.)
+  - Fixed: Added MusicXmlSerialize impls for Notations, Slur, Tied, Articulations
+  - Fixed: Slur @staff now uses MEI global staff (ctx.staff()) instead of MusicXML within-part staff number
+  - Fixed: Notes set staff number during export so slur matching works on reimport
 - [x] [MISSING_EXPORT] Fix stem.dir, ties, and slur references in MEI→MusicXML roundtrip (source: Telemann.musicxml)
   - Fixed: import moves stem.dir from individual chord notes to chord_vis level; export falls back to note_vis.stem_dir
   - Fixed: export converts @tie (i/m/t) back to MusicXML `<tie>` and `<tied>` elements
@@ -68,7 +70,7 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 ### Spec Example Fixtures
 - [x] Roundtrip test: `specs/musicxml/examples/Telemann.musicxml`
 - [x] Roundtrip test: `specs/musicxml/examples/Binchois.musicxml`
-- [ ] Roundtrip test: `specs/musicxml/examples/MozartPianoSonata.musicxml`
+- [x] Roundtrip test: `specs/musicxml/examples/MozartPianoSonata.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/ActorPreludeSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/BeetAnGeSample.musicxml`
 - [ ] Roundtrip test: `specs/musicxml/examples/BrahWiMeSample.musicxml`

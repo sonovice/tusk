@@ -81,7 +81,7 @@ pub fn convert_score_content(
             // Find the staff with matching @n in this MEI measure
             if let Some(staff) = find_staff_in_measure(mei_measure, staff_n) {
                 // Convert the staff's layer content to MusicXML
-                convert_staff_content(staff, &mut mxml_measure, ctx)?;
+                convert_staff_content(staff, staff_n, &mut mxml_measure, ctx)?;
             }
 
             // Convert slur events AFTER notes (need note IDs to attach notations)
@@ -355,8 +355,12 @@ fn find_note_by_id_mut<'a>(
 }
 
 /// Convert an MEI staff's content to MusicXML measure content.
+///
+/// The `staff_n` parameter is the 1-based staff number, used to set the
+/// `<staff>` element on notes for multi-staff part roundtrip fidelity.
 fn convert_staff_content(
     staff: &Staff,
+    staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
@@ -367,20 +371,23 @@ fn convert_staff_content(
             for layer_child in &layer.children {
                 match layer_child {
                     LayerChild::Note(note) => {
-                        let mxml_note = convert_mei_note(note, ctx)?;
+                        let mut mxml_note = convert_mei_note(note, ctx)?;
+                        mxml_note.staff = Some(staff_n as u32);
                         mxml_measure
                             .content
                             .push(MeasureContent::Note(Box::new(mxml_note)));
                     }
                     LayerChild::Rest(rest) => {
-                        let mxml_note = convert_mei_rest(rest, ctx)?;
+                        let mut mxml_note = convert_mei_rest(rest, ctx)?;
+                        mxml_note.staff = Some(staff_n as u32);
                         mxml_measure
                             .content
                             .push(MeasureContent::Note(Box::new(mxml_note)));
                     }
                     LayerChild::Chord(chord) => {
                         let mxml_notes = convert_mei_chord(chord, ctx)?;
-                        for note in mxml_notes {
+                        for mut note in mxml_notes {
+                            note.staff = Some(staff_n as u32);
                             mxml_measure
                                 .content
                                 .push(MeasureContent::Note(Box::new(note)));
@@ -388,11 +395,12 @@ fn convert_staff_content(
                     }
                     LayerChild::Beam(beam) => {
                         // Recursively process beam content
-                        convert_beam_content(beam, mxml_measure, ctx)?;
+                        convert_beam_content(beam, staff_n, mxml_measure, ctx)?;
                     }
                     LayerChild::MRest(mrest) => {
                         // Measure rest
-                        let mxml_note = convert_mei_mrest(mrest, ctx)?;
+                        let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
+                        mxml_note.staff = Some(staff_n as u32);
                         mxml_measure
                             .content
                             .push(MeasureContent::Note(Box::new(mxml_note)));
@@ -413,11 +421,12 @@ fn convert_staff_content(
 /// Rests inside beams do not get beam attributes. Nested beams are flattened.
 fn convert_beam_content(
     beam: &tusk_model::elements::Beam,
+    staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     // Collect all beamable events (notes/chords) at this level, tracking indices
-    let events = collect_beam_events(beam, mxml_measure, ctx)?;
+    let events = collect_beam_events(beam, staff_n, mxml_measure, ctx)?;
 
     // Count beamable events (non-rest)
     let beamable_count = events.iter().filter(|(_, is_rest)| !is_rest).count();
@@ -453,6 +462,7 @@ fn convert_beam_content(
 /// Returns a vec of (measure_content_index, is_rest) for each event pushed.
 fn collect_beam_events(
     beam: &tusk_model::elements::Beam,
+    staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<Vec<(usize, bool)>> {
@@ -463,7 +473,8 @@ fn collect_beam_events(
     for child in &beam.children {
         match child {
             BeamChild::Note(note) => {
-                let mxml_note = convert_mei_note(note, ctx)?;
+                let mut mxml_note = convert_mei_note(note, ctx)?;
+                mxml_note.staff = Some(staff_n as u32);
                 let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
@@ -471,7 +482,8 @@ fn collect_beam_events(
                 events.push((idx, false));
             }
             BeamChild::Rest(rest) => {
-                let mxml_note = convert_mei_rest(rest, ctx)?;
+                let mut mxml_note = convert_mei_rest(rest, ctx)?;
+                mxml_note.staff = Some(staff_n as u32);
                 let idx = mxml_measure.content.len();
                 mxml_measure
                     .content
@@ -481,7 +493,8 @@ fn collect_beam_events(
             BeamChild::Chord(chord) => {
                 let mxml_notes = convert_mei_chord(chord, ctx)?;
                 let first_idx = mxml_measure.content.len();
-                for note in mxml_notes {
+                for mut note in mxml_notes {
+                    note.staff = Some(staff_n as u32);
                     mxml_measure
                         .content
                         .push(MeasureContent::Note(Box::new(note)));
@@ -492,7 +505,7 @@ fn collect_beam_events(
             }
             BeamChild::Beam(nested_beam) => {
                 // Flatten nested beams into the same beam group
-                let nested = collect_beam_events(nested_beam, mxml_measure, ctx)?;
+                let nested = collect_beam_events(nested_beam, staff_n, mxml_measure, ctx)?;
                 events.extend(nested);
             }
             _ => {

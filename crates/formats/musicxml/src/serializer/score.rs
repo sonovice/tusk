@@ -972,6 +972,11 @@ impl MusicXmlSerialize for Note {
             beam.serialize(w)?;
         }
 
+        // Notations
+        if let Some(ref notations) = self.notations {
+            notations.serialize(w)?;
+        }
+
         Ok(())
     }
 }
@@ -1296,6 +1301,215 @@ impl MusicXmlSerialize for Beam {
         w.write_text(beam_value_str(&self.value))?;
         Ok(())
     }
+}
+
+// ============================================================================
+// Notations
+// ============================================================================
+
+impl MusicXmlSerialize for notations::Notations {
+    fn element_name(&self) -> &'static str {
+        "notations"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        for tied in &self.tied {
+            tied.serialize(w)?;
+        }
+        for slur in &self.slurs {
+            slur.serialize(w)?;
+        }
+        if let Some(ref artics) = self.articulations {
+            artics.serialize(w)?;
+        }
+        Ok(())
+    }
+}
+
+impl MusicXmlSerialize for notations::Slur {
+    fn element_name(&self) -> &'static str {
+        "slur"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.push(("type", start_stop_continue_str(&self.slur_type).to_string()));
+        if let Some(n) = self.number {
+            attrs.push(("number", n.to_string()));
+        }
+        if let Some(ref p) = self.placement {
+            attrs.push(("placement", above_below_str(p).to_string()));
+        }
+        if let Some(ref o) = self.orientation {
+            attrs.push(("orientation", over_under_str(o).to_string()));
+        }
+        push_opt_attr!(attrs, "default-x", self.default_x);
+        push_opt_attr!(attrs, "default-y", self.default_y);
+        push_opt_attr!(attrs, "bezier-x", self.bezier_x);
+        push_opt_attr!(attrs, "bezier-y", self.bezier_y);
+        push_opt_attr!(attrs, "bezier-x2", self.bezier_x2);
+        push_opt_attr!(attrs, "bezier-y2", self.bezier_y2);
+        push_opt_str_attr!(attrs, "color", self.color);
+        push_opt_str_attr!(attrs, "id", self.id);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+impl MusicXmlSerialize for notations::Tied {
+    fn element_name(&self) -> &'static str {
+        "tied"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.push(("type", tied_type_str(&self.tied_type).to_string()));
+        if let Some(n) = self.number {
+            attrs.push(("number", n.to_string()));
+        }
+        if let Some(ref o) = self.orientation {
+            attrs.push(("orientation", over_under_str(o).to_string()));
+        }
+        push_opt_attr!(attrs, "default-x", self.default_x);
+        push_opt_attr!(attrs, "default-y", self.default_y);
+        push_opt_attr!(attrs, "bezier-x", self.bezier_x);
+        push_opt_attr!(attrs, "bezier-y", self.bezier_y);
+        push_opt_str_attr!(attrs, "color", self.color);
+        push_opt_str_attr!(attrs, "id", self.id);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        false
+    }
+
+    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        Ok(())
+    }
+}
+
+impl MusicXmlSerialize for notations::Articulations {
+    fn element_name(&self) -> &'static str {
+        "articulations"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        Vec::new()
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        if let Some(ref a) = self.accent {
+            serialize_empty_placement(w, "accent", a)?;
+        }
+        if let Some(ref a) = self.strong_accent {
+            serialize_strong_accent(w, a)?;
+        }
+        if let Some(ref a) = self.staccato {
+            serialize_empty_placement(w, "staccato", a)?;
+        }
+        if let Some(ref a) = self.tenuto {
+            serialize_empty_placement(w, "tenuto", a)?;
+        }
+        if let Some(ref a) = self.detached_legato {
+            serialize_empty_placement(w, "detached-legato", a)?;
+        }
+        if let Some(ref a) = self.staccatissimo {
+            serialize_empty_placement(w, "staccatissimo", a)?;
+        }
+        if let Some(ref a) = self.spiccato {
+            serialize_empty_placement(w, "spiccato", a)?;
+        }
+        if let Some(ref a) = self.scoop {
+            serialize_empty_placement(w, "scoop", a)?;
+        }
+        if let Some(ref a) = self.plop {
+            serialize_empty_placement(w, "plop", a)?;
+        }
+        if let Some(ref a) = self.doit {
+            serialize_empty_placement(w, "doit", a)?;
+        }
+        if let Some(ref a) = self.falloff {
+            serialize_empty_placement(w, "falloff", a)?;
+        }
+        if let Some(ref a) = self.stress {
+            serialize_empty_placement(w, "stress", a)?;
+        }
+        if let Some(ref a) = self.unstress {
+            serialize_empty_placement(w, "unstress", a)?;
+        }
+        if let Some(ref a) = self.soft_accent {
+            serialize_empty_placement(w, "soft-accent", a)?;
+        }
+        Ok(())
+    }
+}
+
+/// Serialize an empty-placement articulation element.
+fn serialize_empty_placement<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    name: &str,
+    ep: &notations::EmptyPlacement,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element(name);
+    if let Some(ref p) = ep.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    if let Some(dx) = ep.default_x {
+        let s = dx.to_string();
+        elem.push_attribute(("default-x", s.as_str()));
+    }
+    if let Some(dy) = ep.default_y {
+        let s = dy.to_string();
+        elem.push_attribute(("default-y", s.as_str()));
+    }
+    if let Some(ref c) = ep.color {
+        elem.push_attribute(("color", c.as_str()));
+    }
+    w.write_empty(elem)?;
+    Ok(())
+}
+
+/// Serialize a strong-accent element.
+fn serialize_strong_accent<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    sa: &notations::StrongAccent,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("strong-accent");
+    if let Some(ref t) = sa.accent_type {
+        elem.push_attribute(("type", up_down_str(t)));
+    }
+    if let Some(ref p) = sa.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    if let Some(dx) = sa.default_x {
+        let s = dx.to_string();
+        elem.push_attribute(("default-x", s.as_str()));
+    }
+    if let Some(dy) = sa.default_y {
+        let s = dy.to_string();
+        elem.push_attribute(("default-y", s.as_str()));
+    }
+    w.write_empty(elem)?;
+    Ok(())
 }
 
 // ============================================================================
@@ -1754,6 +1968,37 @@ fn start_stop_str(ss: &StartStop) -> &'static str {
     match ss {
         StartStop::Start => "start",
         StartStop::Stop => "stop",
+    }
+}
+
+fn start_stop_continue_str(ssc: &StartStopContinue) -> &'static str {
+    match ssc {
+        StartStopContinue::Start => "start",
+        StartStopContinue::Stop => "stop",
+        StartStopContinue::Continue => "continue",
+    }
+}
+
+fn tied_type_str(tt: &notations::TiedType) -> &'static str {
+    match tt {
+        notations::TiedType::Start => "start",
+        notations::TiedType::Stop => "stop",
+        notations::TiedType::Continue => "continue",
+        notations::TiedType::LetRing => "let-ring",
+    }
+}
+
+fn over_under_str(ou: &OverUnder) -> &'static str {
+    match ou {
+        OverUnder::Over => "over",
+        OverUnder::Under => "under",
+    }
+}
+
+fn up_down_str(ud: &UpDown) -> &'static str {
+    match ud {
+        UpDown::Up => "up",
+        UpDown::Down => "down",
     }
 }
 
