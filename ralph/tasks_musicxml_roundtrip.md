@@ -14,6 +14,11 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 <!-- Format: - [ ] [CATEGORY] Description (source: filename.musicxml) -->
 <!-- IMPORTANT: Complete these BEFORE fixture tasks - they block fixture completion -->
 
+- [ ] [BUGFIX] Fix part-group nesting and slur ID stability for orchestral scores (source: ActorPreludeSample.musicxml)
+  - Part-group/staffGrp nesting incorrect on re-import: staffDef/label/labelAbbr elements appear at wrong depth, symbol (brace/bracket) and bar.thru values swapped between groups
+  - Slur startid/endid mismatch between MEI₁ and MEI₂ (344 slurs have different note IDs, 20 have different endid refs) — caused by re-import assigning different note IDs
+  - Slur @staff values off-by-one or off-by-two on re-import (12 instances, e.g. '18' vs '19', '9' vs '11')
+  - 3 dir elements lost on roundtrip (staff=2, tstamp=1.25)
 - [x] [MISSING_EXPORT] Export articulations from MEI to MusicXML and fix slur @staff for multi-staff parts (source: MozartPianoSonata.musicxml)
   - Fixed: MEI @artic exported back to MusicXML <articulations> (acc, marc, stacc, ten, stacciss, spicc, detached-legato, etc.)
   - Fixed: Added MusicXmlSerialize impls for Notations, Slur, Tied, Articulations
