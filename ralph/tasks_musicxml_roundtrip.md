@@ -67,6 +67,24 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
   - Fixed: xml_compare float epsilon for tstamp comparison (floats_equivalent with relative tolerance)
   - Fixed: xml_compare keying includes @place and text content to disambiguate same-position elements
 
+- [x] [BUGFIX] Fix ppq/divisions/clef triangle roundtrip inconsistencies for fragment examples (source: 275 fragment_examples)
+  - Fixed: import always sets ppq on staffDef (defaults to 1 when no divisions in MusicXML), so both imports in triangle roundtrip produce identical MEI
+  - Fixed: divisions comparison treats None as equivalent to Some(1.0) since MusicXML defaults divisions to 1
+  - Fixed: clef comparison accepts default treble clef (G line 2) when original omits clef entirely
+  - 267/275 fragment tests now pass, 8 remaining failures below
+- [ ] [MISSING_ATTR] Microtone alter values not preserved in roundtrip (source: alter_element_microtones.musicxml)
+  - alter=-0.5 (quarter-tone flat) roundtripped to 0 — fractional alter values lost during MEI import/export
+- [ ] [BUGFIX] Chord note duration/type wrong when divisions change mid-score (source: chord_element_multiple_stop.musicxml)
+  - Measure 5 chord notes: duration 4→8, type Quarter→Half — likely divisions context not updated correctly
+- [ ] [BUGFIX] Part ID not preserved when original uses non-sequential IDs (source: grouping_element.musicxml)
+  - Part ID P8 roundtripped to P1 — import generates sequential IDs instead of preserving originals
+- [ ] [MISSING_EXPORT] Metronome range and per-minute text not roundtripped as tempo element (source: metronome_element.musicxml, per_minute_element.musicxml)
+  - Metronome note range (♪ = 132-144) and per-minute text (♩ = c. 108) imported as tempo but re-imported as dir
+- [ ] [MISSING_ATTR] Whole-measure rest gains note type on roundtrip (source: multiple_rest_element.musicxml)
+  - Rest with no type gets Breve type added after roundtrip — export adds type for whole-measure rests
+- [ ] [MISSING_EXPORT] Dynamic sfzp/pf not exported from MEI to MusicXML (source: sfzp_element.musicxml, pf_element.musicxml)
+  - dynam element with sfzp/pf text missing after triangle roundtrip — dynamic not exported and thus not reimported
+
 ---
 
 ## Roundtrip Fixture Tests
@@ -122,60 +140,60 @@ Tasks generated from MusicXML → MEI → MusicXML roundtrip tests. Each task do
 
 Fragment examples extracted from spec docs, wrapped in complete MusicXML structure.
 
-- [ ] Roundtrip batch 1: `accent_element`, `accidental_element`, `accidental_mark_element_notation`, `accidental_mark_element_ornament`, `accordion_high_element`
+- [x] Roundtrip batch 1: `accent_element`, `accidental_element`, `accidental_mark_element_notation`, `accidental_mark_element_ornament`, `accordion_high_element`
 - [ ] Roundtrip batch 2: `accordion_low_element`, `accordion_middle_element`, `accordion_registration_element`, `alter_element_microtones`, `alter_element_semitones`
-- [ ] Roundtrip batch 3: `alto_clef`, `arpeggiate_element`, `arrow_element`, `arrowhead_element`, `articulations_element`
-- [ ] Roundtrip batch 4: `artificial_element`, `attributes_element`, `backup_element`, `baritone_c_clef`, `baritone_f_clef`
-- [ ] Roundtrip batch 5: `barline_element`, `barre_element`, `bass_alter_element`, `bass_clef`, `bass_clef_down_octave`
-- [ ] Roundtrip batch 6: `bass_separator_element`, `bass_step_element`, `beam_element`, `beat_repeat_element`, `beat_type_element`
-- [ ] Roundtrip batch 7: `beat_unit_dot_element`, `beat_unit_element`, `beat_unit_tied_element`, `beater_element`, `beats_element`
-- [ ] Roundtrip batch 8: `bend_element`, `bookmark_element`, `bracket_element`, `brass_bend_element`, `breath_mark_element`
+- [x] Roundtrip batch 3: `alto_clef`, `arpeggiate_element`, `arrow_element`, `arrowhead_element`, `articulations_element`
+- [x] Roundtrip batch 4: `artificial_element`, `attributes_element`, `backup_element`, `baritone_c_clef`, `baritone_f_clef`
+- [x] Roundtrip batch 5: `barline_element`, `barre_element`, `bass_alter_element`, `bass_clef`, `bass_clef_down_octave`
+- [x] Roundtrip batch 6: `bass_separator_element`, `bass_step_element`, `beam_element`, `beat_repeat_element`, `beat_type_element`
+- [x] Roundtrip batch 7: `beat_unit_dot_element`, `beat_unit_element`, `beat_unit_tied_element`, `beater_element`, `beats_element`
+- [x] Roundtrip batch 8: `bend_element`, `bookmark_element`, `bracket_element`, `brass_bend_element`, `breath_mark_element`
 - [ ] Roundtrip batch 9: `caesura_element`, `cancel_element`, `capo_element`, `chord_element`, `chord_element_multiple_stop`
-- [ ] Roundtrip batch 10: `circular_arrow_element`, `coda_element`, `cue_element`, `damp_all_element`, `damp_element`
-- [ ] Roundtrip batch 11: `dashes_element`, `degree_alter_element`, `degree_type_element`, `degree_value_element`, `delayed_inverted_turn_element`
-- [ ] Roundtrip batch 12: `delayed_turn_element`, `detached_legato_element`, `divisions_and_duration_elements`, `doit_element`, `dot_element`
-- [ ] Roundtrip batch 13: `double_element`, `double_tongue_element`, `down_bow_element`, `effect_element`, `elision_element`
-- [ ] Roundtrip batch 14: `end_line_element`, `end_paragraph_element`, `ending_element`, `ensemble_element`, `except_voice_element`
-- [ ] Roundtrip batch 15: `extend_element_figure`, `extend_element_lyric`, `eyeglasses_element`, `f_element`, `falloff_element`
-- [ ] Roundtrip batch 16: `fermata_element`, `ff_element`, `fff_element`, `ffff_element`, `fffff_element`
-- [ ] Roundtrip batch 17: `ffffff_element`, `figure_number_element`, `fingering_element_frame`, `fingering_element_notation`, `fingernails_element`
-- [ ] Roundtrip batch 18: `flip_element`, `footnote_element`, `forward_element`, `fp_element`, `fret_element_frame`
-- [ ] Roundtrip batch 19: `fz_element`, `glass_element`, `glissando_element_multiple`, `glissando_element_single`, `glyph_element`
-- [ ] Roundtrip batch 20: `golpe_element`, `grace_element`, `grace_element_appoggiatura`, `group_abbreviation_display_element`, `group_abbreviation_element`
+- [x] Roundtrip batch 10: `circular_arrow_element`, `coda_element`, `cue_element`, `damp_all_element`, `damp_element`
+- [x] Roundtrip batch 11: `dashes_element`, `degree_alter_element`, `degree_type_element`, `degree_value_element`, `delayed_inverted_turn_element`
+- [x] Roundtrip batch 12: `delayed_turn_element`, `detached_legato_element`, `divisions_and_duration_elements`, `doit_element`, `dot_element`
+- [x] Roundtrip batch 13: `double_element`, `double_tongue_element`, `down_bow_element`, `effect_element`, `elision_element`
+- [x] Roundtrip batch 14: `end_line_element`, `end_paragraph_element`, `ending_element`, `ensemble_element`, `except_voice_element`
+- [x] Roundtrip batch 15: `extend_element_figure`, `extend_element_lyric`, `eyeglasses_element`, `f_element`, `falloff_element`
+- [x] Roundtrip batch 16: `fermata_element`, `ff_element`, `fff_element`, `ffff_element`, `fffff_element`
+- [x] Roundtrip batch 17: `ffffff_element`, `figure_number_element`, `fingering_element_frame`, `fingering_element_notation`, `fingernails_element`
+- [x] Roundtrip batch 18: `flip_element`, `footnote_element`, `forward_element`, `fp_element`, `fret_element_frame`
+- [x] Roundtrip batch 19: `fz_element`, `glass_element`, `glissando_element_multiple`, `glissando_element_single`, `glyph_element`
+- [x] Roundtrip batch 20: `golpe_element`, `grace_element`, `grace_element_appoggiatura`, `group_abbreviation_display_element`, `group_abbreviation_element`
 - [ ] Roundtrip batch 21: `group_barline_element`, `group_name_display_element`, `group_time_element`, `grouping_element`, `half_muted_element`
-- [ ] Roundtrip batch 22: `handbell_element`, `harmon_mute_element`, `harp_pedals_element`, `haydn_element`, `heel_element`
-- [ ] Roundtrip batch 23: `heel_toe_substitution`, `hole_element`, `hole_type_element`, `humming_element`, `image_element`
-- [ ] Roundtrip batch 24: `instrument_link_element`, `interchangeable_element`, `inversion_element`, `inverted_mordent_element`, `inverted_turn_element`
-- [ ] Roundtrip batch 25: `inverted_vertical_turn_element`, `ipa_element`, `key_element_non_traditional`, `key_element_traditional`, `key_octave_element`
-- [ ] Roundtrip batch 26: `kind_element`, `laughing_element`, `level_element`, `line_detail_element`, `line_element`
-- [ ] Roundtrip batch 27: `link_element`, `lyric_element`, `measure_distance_element`, `measure_numbering_element`, `measure_repeat_element`
+- [x] Roundtrip batch 22: `handbell_element`, `harmon_mute_element`, `harp_pedals_element`, `haydn_element`, `heel_element`
+- [x] Roundtrip batch 23: `heel_toe_substitution`, `hole_element`, `hole_type_element`, `humming_element`, `image_element`
+- [x] Roundtrip batch 24: `instrument_link_element`, `interchangeable_element`, `inversion_element`, `inverted_mordent_element`, `inverted_turn_element`
+- [x] Roundtrip batch 25: `inverted_vertical_turn_element`, `ipa_element`, `key_element_non_traditional`, `key_element_traditional`, `key_octave_element`
+- [x] Roundtrip batch 26: `kind_element`, `laughing_element`, `level_element`, `line_detail_element`, `line_element`
+- [x] Roundtrip batch 27: `link_element`, `lyric_element`, `measure_distance_element`, `measure_numbering_element`, `measure_repeat_element`
 - [ ] Roundtrip batch 28: `membrane_element`, `metal_element`, `metronome_arrows_element`, `metronome_element`, `metronome_note_element`
-- [ ] Roundtrip batch 29: `metronome_tied_element`, `mezzo_soprano_clef`, `mf_element`, `midi_device_element`, `midi_instrument_element`
+- [x] Roundtrip batch 29: `metronome_tied_element`, `mezzo_soprano_clef`, `mf_element`, `midi_device_element`, `midi_instrument_element`
 - [ ] Roundtrip batch 30: `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `mordent_element`, `mp_element`, `multiple_rest_element`
-- [ ] Roundtrip batch 31: `n_element`, `natural_element`, `non_arpeggiate_element`, `normal_dot_element`, `notehead_text_element`
-- [ ] Roundtrip batch 32: `numeral_alter_element`, `numeral_key_element`, `numeral_root_element`, `octave_change_element`, `octave_element`
-- [ ] Roundtrip batch 33: `octave_shift_element`, `open_element`, `open_string_element`, `p_element`, `pan_and_elevation_elements`
-- [ ] Roundtrip batch 34: `part_abbreviation_display_element`, `part_link_element`, `part_name_display_element`, `part_symbol_element`, `pedal_element_lines`
+- [x] Roundtrip batch 31: `n_element`, `natural_element`, `non_arpeggiate_element`, `normal_dot_element`, `notehead_text_element`
+- [x] Roundtrip batch 32: `numeral_alter_element`, `numeral_key_element`, `numeral_root_element`, `octave_change_element`, `octave_element`
+- [x] Roundtrip batch 33: `octave_shift_element`, `open_element`, `open_string_element`, `p_element`, `pan_and_elevation_elements`
+- [x] Roundtrip batch 34: `part_abbreviation_display_element`, `part_link_element`, `part_name_display_element`, `part_symbol_element`, `pedal_element_lines`
 - [ ] Roundtrip batch 35: `pedal_element_symbols`, `per_minute_element`, `percussion_clef`, `pf_element`, `pitch_element`
-- [ ] Roundtrip batch 36: `pitched_element`, `plop_element`, `pluck_element`, `pp_element`, `ppp_element`
-- [ ] Roundtrip batch 37: `pppp_element`, `ppppp_element`, `pppppp_element`, `pre_bend_element`, `prefix_element`
-- [ ] Roundtrip batch 38: `principal_voice_element`, `rehearsal_element`, `release_element`, `repeat_element`, `rest_element`
-- [ ] Roundtrip batch 39: `rf_element`, `rfz_element`, `root_alter_element`, `root_step_element`, `schleifer_element`
-- [ ] Roundtrip batch 40: `scoop_element`, `scordatura_element`, `segno_element`, `senza_misura_element`, `sf_element`
+- [x] Roundtrip batch 36: `pitched_element`, `plop_element`, `pluck_element`, `pp_element`, `ppp_element`
+- [x] Roundtrip batch 37: `pppp_element`, `ppppp_element`, `pppppp_element`, `pre_bend_element`, `prefix_element`
+- [x] Roundtrip batch 38: `principal_voice_element`, `rehearsal_element`, `release_element`, `repeat_element`, `rest_element`
+- [x] Roundtrip batch 39: `rf_element`, `rfz_element`, `root_alter_element`, `root_step_element`, `schleifer_element`
+- [x] Roundtrip batch 40: `scoop_element`, `scordatura_element`, `segno_element`, `senza_misura_element`, `sf_element`
 - [ ] Roundtrip batch 41: `sffz_element`, `sfp_element`, `sfpp_element`, `sfz_element`, `sfzp_element`
-- [ ] Roundtrip batch 42: `shake_element`, `slash_element`, `slash_type_and_slash_dot_elements`, `slide_element`, `slur_element`
-- [ ] Roundtrip batch 43: `smear_element`, `snap_pizzicato_element`, `soft_accent_element`, `soprano_clef`, `spiccato_element`
-- [ ] Roundtrip batch 44: `staccatissimo_element`, `staccato_element`, `staff_distance_element`, `staff_divide_element`, `staff_element`
-- [ ] Roundtrip batch 45: `staff_lines_element`, `staff_size_element`, `staff_tuning_element`, `staff_type_element`, `staves_element`
-- [ ] Roundtrip batch 46: `step_element`, `stick_element`, `stick_location_element`, `stopped_element`, `straight_element`
-- [ ] Roundtrip batch 47: `stress_element`, `string_mute_element_off`, `string_mute_element_on`, `strong_accent_element`, `suffix_element`
-- [ ] Roundtrip batch 48: `swing_element`, `syllabic_element`, `symbol_element`, `sync_element`, `system_attribute_also_top`
-- [ ] Roundtrip batch 49: `system_attribute_only_top`, `system_distance_element`, `system_dividers_element`, `tab_clef`, `tap_element`
-- [ ] Roundtrip batch 50: `technical_element_tablature`, `tenor_clef`, `tenuto_element`, `thumb_position_element`, `tied_element`
-- [ ] Roundtrip batch 51: `time_modification_element`, `timpani_element`, `toe_element`, `transpose_element`, `treble_clef`
-- [ ] Roundtrip batch 52: `tremolo_element_double`, `tremolo_element_single`, `trill_mark_element`, `triple_tongue_element`, `tuplet_dot_element`
-- [ ] Roundtrip batch 53: `tuplet_element_nested`, `tuplet_element_regular`, `turn_element`, `unpitched_element`, `unstress_element`
-- [ ] Roundtrip batch 54: `up_bow_element`, `vertical_turn_element`, `virtual_instrument_element`, `vocal_tenor_clef`, `voice_element`
-- [ ] Roundtrip batch 55: `wait_element`, `wavy_line_element`, `wedge_element`, `with_bar_element`, `wood_element`
+- [x] Roundtrip batch 42: `shake_element`, `slash_element`, `slash_type_and_slash_dot_elements`, `slide_element`, `slur_element`
+- [x] Roundtrip batch 43: `smear_element`, `snap_pizzicato_element`, `soft_accent_element`, `soprano_clef`, `spiccato_element`
+- [x] Roundtrip batch 44: `staccatissimo_element`, `staccato_element`, `staff_distance_element`, `staff_divide_element`, `staff_element`
+- [x] Roundtrip batch 45: `staff_lines_element`, `staff_size_element`, `staff_tuning_element`, `staff_type_element`, `staves_element`
+- [x] Roundtrip batch 46: `step_element`, `stick_element`, `stick_location_element`, `stopped_element`, `straight_element`
+- [x] Roundtrip batch 47: `stress_element`, `string_mute_element_off`, `string_mute_element_on`, `strong_accent_element`, `suffix_element`
+- [x] Roundtrip batch 48: `swing_element`, `syllabic_element`, `symbol_element`, `sync_element`, `system_attribute_also_top`
+- [x] Roundtrip batch 49: `system_attribute_only_top`, `system_distance_element`, `system_dividers_element`, `tab_clef`, `tap_element`
+- [x] Roundtrip batch 50: `technical_element_tablature`, `tenor_clef`, `tenuto_element`, `thumb_position_element`, `tied_element`
+- [x] Roundtrip batch 51: `time_modification_element`, `timpani_element`, `toe_element`, `transpose_element`, `treble_clef`
+- [x] Roundtrip batch 52: `tremolo_element_double`, `tremolo_element_single`, `trill_mark_element`, `triple_tongue_element`, `tuplet_dot_element`
+- [x] Roundtrip batch 53: `tuplet_element_nested`, `tuplet_element_regular`, `turn_element`, `unpitched_element`, `unstress_element`
+- [x] Roundtrip batch 54: `up_bow_element`, `vertical_turn_element`, `virtual_instrument_element`, `vocal_tenor_clef`, `voice_element`
+- [x] Roundtrip batch 55: `wait_element`, `wavy_line_element`, `wedge_element`, `with_bar_element`, `wood_element`
 
 ---

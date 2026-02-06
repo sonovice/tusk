@@ -31,7 +31,7 @@ use std::fs;
 
 use tusk_mei::xml_compare;
 use tusk_model::elements::Mei;
-use tusk_musicxml::model::attributes::{KeyContent, TimeContent};
+use tusk_musicxml::model::attributes::{ClefSign, KeyContent, TimeContent};
 use tusk_musicxml::model::elements::{MeasureContent, ScorePartwise};
 use tusk_musicxml::model::note::FullNoteContent;
 use tusk_musicxml::parser::{parse_score_partwise, parse_score_timewise};
@@ -504,8 +504,10 @@ fn compare_attributes(
     if let (Some(orig), Some(rt)) = (orig_attrs.first(), rt_attrs.first()) {
         let ctx = format!("Part '{}', Measure '{}'", part_id, measure_num);
 
-        // Compare divisions
-        if orig.divisions != rt.divisions {
+        // Compare divisions (MusicXML defaults to 1 when absent)
+        let orig_divs = orig.divisions.unwrap_or(1.0);
+        let rt_divs = rt.divisions.unwrap_or(1.0);
+        if orig_divs != rt_divs {
             diffs.add(format!(
                 "{}: divisions mismatch: original={:?}, roundtripped={:?}",
                 ctx, orig.divisions, rt.divisions
@@ -573,7 +575,9 @@ fn compare_attributes(
             ));
         }
 
-        // Compare clefs
+        // Compare clefs.
+        // When original omits clef and roundtripped has the default treble clef
+        // (G line 2), that's not a real difference — our import adds a default clef.
         if let (Some(orig_clef), Some(rt_clef)) = (orig.clefs.first(), rt.clefs.first()) {
             if orig_clef.sign != rt_clef.sign {
                 diffs.add(format!(
@@ -585,6 +589,16 @@ fn compare_attributes(
                 diffs.add(format!(
                     "{}: clef line mismatch: original={:?}, roundtripped={:?}",
                     ctx, orig_clef.line, rt_clef.line
+                ));
+            }
+        } else if orig.clefs.is_empty() && rt.clefs.len() == 1 {
+            // Roundtrip added a default clef — acceptable if it's treble (G line 2)
+            let rt_clef = &rt.clefs[0];
+            let is_default = rt_clef.sign == ClefSign::G && rt_clef.line == Some(2);
+            if !is_default {
+                diffs.add(format!(
+                    "{}: roundtrip added non-default clef: {:?} line {:?}",
+                    ctx, rt_clef.sign, rt_clef.line
                 ));
             }
         } else if orig.clefs.len() != rt.clefs.len() {
@@ -1047,3 +1061,410 @@ fn test_roundtrip_tutorial_percussion() {
 fn test_roundtrip_tutorial_tablature() {
     assert_spec_examples_roundtrip("tutorial_tablature.musicxml");
 }
+
+// ============================================================================
+// Fragment Example Tests (from tests/fixtures/musicxml/fragment_examples/)
+// ============================================================================
+
+/// Load a fragment example fixture file.
+fn load_fragment_fixture(fixture_name: &str) -> Result<String, String> {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let fixture_path = format!(
+        "{}/../../../tests/fixtures/musicxml/fragment_examples/{}",
+        manifest_dir, fixture_name
+    );
+    fs::read_to_string(&fixture_path)
+        .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))
+}
+
+/// Assert all four roundtrip tests pass for a fragment example.
+fn assert_fragment_roundtrip(fixture_name: &str) {
+    let xml = load_fragment_fixture(fixture_name)
+        .unwrap_or_else(|e| panic!("Failed to load {}: {}", fixture_name, e));
+
+    // Test conversion roundtrip (import/export only)
+    let (original, exported) = conversion_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
+    let diffs = compare_scores(&original, &exported);
+    if !diffs.is_empty() {
+        panic!(
+            "Conversion roundtrip differences for {} (import/export bug):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+
+    // Test full roundtrip (includes serialization)
+    let (original, roundtripped) = full_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
+    let diffs = compare_scores(&original, &roundtripped);
+    if !diffs.is_empty() {
+        panic!(
+            "Full roundtrip differences for {} (serializer bug):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+
+    // Test triangle MEI roundtrip (catches import inconsistency)
+    let (mei1, mei2) = triangle_mei_roundtrip(&xml)
+        .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
+    assert_mei_equal(&mei1, &mei2, fixture_name);
+
+    // Test triangle MusicXML roundtrip (catches export inconsistency)
+    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {}: {}",
+            fixture_name, e
+        )
+    });
+    let diffs = compare_scores(&mxml1, &mxml2);
+    if !diffs.is_empty() {
+        panic!(
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+}
+
+/// Generate a fragment roundtrip test function.
+macro_rules! fragment_roundtrip_test {
+    ($name:ident) => {
+        #[test]
+        fn $name() {
+            assert_fragment_roundtrip(concat!(stringify!($name), ".musicxml"));
+        }
+    };
+}
+
+// Batch 1
+fragment_roundtrip_test!(accent_element);
+fragment_roundtrip_test!(accidental_element);
+fragment_roundtrip_test!(accidental_mark_element_notation);
+fragment_roundtrip_test!(accidental_mark_element_ornament);
+fragment_roundtrip_test!(accordion_high_element);
+// Batch 2
+fragment_roundtrip_test!(accordion_low_element);
+fragment_roundtrip_test!(accordion_middle_element);
+fragment_roundtrip_test!(accordion_registration_element);
+fragment_roundtrip_test!(alter_element_microtones);
+fragment_roundtrip_test!(alter_element_semitones);
+// Batch 3
+fragment_roundtrip_test!(alto_clef);
+fragment_roundtrip_test!(arpeggiate_element);
+fragment_roundtrip_test!(arrow_element);
+fragment_roundtrip_test!(arrowhead_element);
+fragment_roundtrip_test!(articulations_element);
+// Batch 4
+fragment_roundtrip_test!(artificial_element);
+fragment_roundtrip_test!(attributes_element);
+fragment_roundtrip_test!(backup_element);
+fragment_roundtrip_test!(baritone_c_clef);
+fragment_roundtrip_test!(baritone_f_clef);
+// Batch 5
+fragment_roundtrip_test!(barline_element);
+fragment_roundtrip_test!(barre_element);
+fragment_roundtrip_test!(bass_alter_element);
+fragment_roundtrip_test!(bass_clef);
+fragment_roundtrip_test!(bass_clef_down_octave);
+// Batch 6
+fragment_roundtrip_test!(bass_separator_element);
+fragment_roundtrip_test!(bass_step_element);
+fragment_roundtrip_test!(beam_element);
+fragment_roundtrip_test!(beat_repeat_element);
+fragment_roundtrip_test!(beat_type_element);
+// Batch 7
+fragment_roundtrip_test!(beat_unit_dot_element);
+fragment_roundtrip_test!(beat_unit_element);
+fragment_roundtrip_test!(beat_unit_tied_element);
+fragment_roundtrip_test!(beater_element);
+fragment_roundtrip_test!(beats_element);
+// Batch 8
+fragment_roundtrip_test!(bend_element);
+fragment_roundtrip_test!(bookmark_element);
+fragment_roundtrip_test!(bracket_element);
+fragment_roundtrip_test!(brass_bend_element);
+fragment_roundtrip_test!(breath_mark_element);
+// Batch 9
+fragment_roundtrip_test!(caesura_element);
+fragment_roundtrip_test!(cancel_element);
+fragment_roundtrip_test!(capo_element);
+fragment_roundtrip_test!(chord_element);
+fragment_roundtrip_test!(chord_element_multiple_stop);
+// Batch 10
+fragment_roundtrip_test!(circular_arrow_element);
+fragment_roundtrip_test!(coda_element);
+fragment_roundtrip_test!(cue_element);
+fragment_roundtrip_test!(damp_all_element);
+fragment_roundtrip_test!(damp_element);
+// Batch 11
+fragment_roundtrip_test!(dashes_element);
+fragment_roundtrip_test!(degree_alter_element);
+fragment_roundtrip_test!(degree_type_element);
+fragment_roundtrip_test!(degree_value_element);
+fragment_roundtrip_test!(delayed_inverted_turn_element);
+// Batch 12
+fragment_roundtrip_test!(delayed_turn_element);
+fragment_roundtrip_test!(detached_legato_element);
+fragment_roundtrip_test!(divisions_and_duration_elements);
+fragment_roundtrip_test!(doit_element);
+fragment_roundtrip_test!(dot_element);
+// Batch 13
+fragment_roundtrip_test!(double_element);
+fragment_roundtrip_test!(double_tongue_element);
+fragment_roundtrip_test!(down_bow_element);
+fragment_roundtrip_test!(effect_element);
+fragment_roundtrip_test!(elision_element);
+// Batch 14
+fragment_roundtrip_test!(end_line_element);
+fragment_roundtrip_test!(end_paragraph_element);
+fragment_roundtrip_test!(ending_element);
+fragment_roundtrip_test!(ensemble_element);
+fragment_roundtrip_test!(except_voice_element);
+// Batch 15
+fragment_roundtrip_test!(extend_element_figure);
+fragment_roundtrip_test!(extend_element_lyric);
+fragment_roundtrip_test!(eyeglasses_element);
+fragment_roundtrip_test!(f_element);
+fragment_roundtrip_test!(falloff_element);
+// Batch 16
+fragment_roundtrip_test!(fermata_element);
+fragment_roundtrip_test!(ff_element);
+fragment_roundtrip_test!(fff_element);
+fragment_roundtrip_test!(ffff_element);
+fragment_roundtrip_test!(fffff_element);
+// Batch 17
+fragment_roundtrip_test!(ffffff_element);
+fragment_roundtrip_test!(figure_number_element);
+fragment_roundtrip_test!(fingering_element_frame);
+fragment_roundtrip_test!(fingering_element_notation);
+fragment_roundtrip_test!(fingernails_element);
+// Batch 18
+fragment_roundtrip_test!(flip_element);
+fragment_roundtrip_test!(footnote_element);
+fragment_roundtrip_test!(forward_element);
+fragment_roundtrip_test!(fp_element);
+fragment_roundtrip_test!(fret_element_frame);
+// Batch 19
+fragment_roundtrip_test!(fz_element);
+fragment_roundtrip_test!(glass_element);
+fragment_roundtrip_test!(glissando_element_multiple);
+fragment_roundtrip_test!(glissando_element_single);
+fragment_roundtrip_test!(glyph_element);
+// Batch 20
+fragment_roundtrip_test!(golpe_element);
+fragment_roundtrip_test!(grace_element);
+fragment_roundtrip_test!(grace_element_appoggiatura);
+fragment_roundtrip_test!(group_abbreviation_display_element);
+fragment_roundtrip_test!(group_abbreviation_element);
+// Batch 21
+fragment_roundtrip_test!(group_barline_element);
+fragment_roundtrip_test!(group_name_display_element);
+fragment_roundtrip_test!(group_time_element);
+fragment_roundtrip_test!(grouping_element);
+fragment_roundtrip_test!(half_muted_element);
+// Batch 22
+fragment_roundtrip_test!(handbell_element);
+fragment_roundtrip_test!(harmon_mute_element);
+fragment_roundtrip_test!(harp_pedals_element);
+fragment_roundtrip_test!(haydn_element);
+fragment_roundtrip_test!(heel_element);
+// Batch 23
+fragment_roundtrip_test!(heel_toe_substitution);
+fragment_roundtrip_test!(hole_element);
+fragment_roundtrip_test!(hole_type_element);
+fragment_roundtrip_test!(humming_element);
+fragment_roundtrip_test!(image_element);
+// Batch 24
+fragment_roundtrip_test!(instrument_link_element);
+fragment_roundtrip_test!(interchangeable_element);
+fragment_roundtrip_test!(inversion_element);
+fragment_roundtrip_test!(inverted_mordent_element);
+fragment_roundtrip_test!(inverted_turn_element);
+// Batch 25
+fragment_roundtrip_test!(inverted_vertical_turn_element);
+fragment_roundtrip_test!(ipa_element);
+fragment_roundtrip_test!(key_element_non_traditional);
+fragment_roundtrip_test!(key_element_traditional);
+fragment_roundtrip_test!(key_octave_element);
+// Batch 26
+fragment_roundtrip_test!(kind_element);
+fragment_roundtrip_test!(laughing_element);
+fragment_roundtrip_test!(level_element);
+fragment_roundtrip_test!(line_detail_element);
+fragment_roundtrip_test!(line_element);
+// Batch 27
+fragment_roundtrip_test!(link_element);
+fragment_roundtrip_test!(lyric_element);
+fragment_roundtrip_test!(measure_distance_element);
+fragment_roundtrip_test!(measure_numbering_element);
+fragment_roundtrip_test!(measure_repeat_element);
+// Batch 28
+fragment_roundtrip_test!(membrane_element);
+fragment_roundtrip_test!(metal_element);
+fragment_roundtrip_test!(metronome_arrows_element);
+fragment_roundtrip_test!(metronome_element);
+fragment_roundtrip_test!(metronome_note_element);
+// Batch 29
+fragment_roundtrip_test!(metronome_tied_element);
+fragment_roundtrip_test!(mezzo_soprano_clef);
+fragment_roundtrip_test!(mf_element);
+fragment_roundtrip_test!(midi_device_element);
+fragment_roundtrip_test!(midi_instrument_element);
+// Batch 30
+fragment_roundtrip_test!(midi_name_and_midi_bank_elements);
+fragment_roundtrip_test!(midi_unpitched_element);
+fragment_roundtrip_test!(mordent_element);
+fragment_roundtrip_test!(mp_element);
+fragment_roundtrip_test!(multiple_rest_element);
+// Batch 31
+fragment_roundtrip_test!(n_element);
+fragment_roundtrip_test!(natural_element);
+fragment_roundtrip_test!(non_arpeggiate_element);
+fragment_roundtrip_test!(normal_dot_element);
+fragment_roundtrip_test!(notehead_text_element);
+// Batch 32
+fragment_roundtrip_test!(numeral_alter_element);
+fragment_roundtrip_test!(numeral_key_element);
+fragment_roundtrip_test!(numeral_root_element);
+fragment_roundtrip_test!(octave_change_element);
+fragment_roundtrip_test!(octave_element);
+// Batch 33
+fragment_roundtrip_test!(octave_shift_element);
+fragment_roundtrip_test!(open_element);
+fragment_roundtrip_test!(open_string_element);
+fragment_roundtrip_test!(p_element);
+fragment_roundtrip_test!(pan_and_elevation_elements);
+// Batch 34
+fragment_roundtrip_test!(part_abbreviation_display_element);
+fragment_roundtrip_test!(part_link_element);
+fragment_roundtrip_test!(part_name_display_element);
+fragment_roundtrip_test!(part_symbol_element);
+fragment_roundtrip_test!(pedal_element_lines);
+// Batch 35
+fragment_roundtrip_test!(pedal_element_symbols);
+fragment_roundtrip_test!(per_minute_element);
+fragment_roundtrip_test!(percussion_clef);
+fragment_roundtrip_test!(pf_element);
+fragment_roundtrip_test!(pitch_element);
+// Batch 36
+fragment_roundtrip_test!(pitched_element);
+fragment_roundtrip_test!(plop_element);
+fragment_roundtrip_test!(pluck_element);
+fragment_roundtrip_test!(pp_element);
+fragment_roundtrip_test!(ppp_element);
+// Batch 37
+fragment_roundtrip_test!(pppp_element);
+fragment_roundtrip_test!(ppppp_element);
+fragment_roundtrip_test!(pppppp_element);
+fragment_roundtrip_test!(pre_bend_element);
+fragment_roundtrip_test!(prefix_element);
+// Batch 38
+fragment_roundtrip_test!(principal_voice_element);
+fragment_roundtrip_test!(rehearsal_element);
+fragment_roundtrip_test!(release_element);
+fragment_roundtrip_test!(repeat_element);
+fragment_roundtrip_test!(rest_element);
+// Batch 39
+fragment_roundtrip_test!(rf_element);
+fragment_roundtrip_test!(rfz_element);
+fragment_roundtrip_test!(root_alter_element);
+fragment_roundtrip_test!(root_step_element);
+fragment_roundtrip_test!(schleifer_element);
+// Batch 40
+fragment_roundtrip_test!(scoop_element);
+fragment_roundtrip_test!(scordatura_element);
+fragment_roundtrip_test!(segno_element);
+fragment_roundtrip_test!(senza_misura_element);
+fragment_roundtrip_test!(sf_element);
+// Batch 41
+fragment_roundtrip_test!(sffz_element);
+fragment_roundtrip_test!(sfp_element);
+fragment_roundtrip_test!(sfpp_element);
+fragment_roundtrip_test!(sfz_element);
+fragment_roundtrip_test!(sfzp_element);
+// Batch 42
+fragment_roundtrip_test!(shake_element);
+fragment_roundtrip_test!(slash_element);
+fragment_roundtrip_test!(slash_type_and_slash_dot_elements);
+fragment_roundtrip_test!(slide_element);
+fragment_roundtrip_test!(slur_element);
+// Batch 43
+fragment_roundtrip_test!(smear_element);
+fragment_roundtrip_test!(snap_pizzicato_element);
+fragment_roundtrip_test!(soft_accent_element);
+fragment_roundtrip_test!(soprano_clef);
+fragment_roundtrip_test!(spiccato_element);
+// Batch 44
+fragment_roundtrip_test!(staccatissimo_element);
+fragment_roundtrip_test!(staccato_element);
+fragment_roundtrip_test!(staff_distance_element);
+fragment_roundtrip_test!(staff_divide_element);
+fragment_roundtrip_test!(staff_element);
+// Batch 45
+fragment_roundtrip_test!(staff_lines_element);
+fragment_roundtrip_test!(staff_size_element);
+fragment_roundtrip_test!(staff_tuning_element);
+fragment_roundtrip_test!(staff_type_element);
+fragment_roundtrip_test!(staves_element);
+// Batch 46
+fragment_roundtrip_test!(step_element);
+fragment_roundtrip_test!(stick_element);
+fragment_roundtrip_test!(stick_location_element);
+fragment_roundtrip_test!(stopped_element);
+fragment_roundtrip_test!(straight_element);
+// Batch 47
+fragment_roundtrip_test!(stress_element);
+fragment_roundtrip_test!(string_mute_element_off);
+fragment_roundtrip_test!(string_mute_element_on);
+fragment_roundtrip_test!(strong_accent_element);
+fragment_roundtrip_test!(suffix_element);
+// Batch 48
+fragment_roundtrip_test!(swing_element);
+fragment_roundtrip_test!(syllabic_element);
+fragment_roundtrip_test!(symbol_element);
+fragment_roundtrip_test!(sync_element);
+fragment_roundtrip_test!(system_attribute_also_top);
+// Batch 49
+fragment_roundtrip_test!(system_attribute_only_top);
+fragment_roundtrip_test!(system_distance_element);
+fragment_roundtrip_test!(system_dividers_element);
+fragment_roundtrip_test!(tab_clef);
+fragment_roundtrip_test!(tap_element);
+// Batch 50
+fragment_roundtrip_test!(technical_element_tablature);
+fragment_roundtrip_test!(tenor_clef);
+fragment_roundtrip_test!(tenuto_element);
+fragment_roundtrip_test!(thumb_position_element);
+fragment_roundtrip_test!(tied_element);
+// Batch 51
+fragment_roundtrip_test!(time_modification_element);
+fragment_roundtrip_test!(timpani_element);
+fragment_roundtrip_test!(toe_element);
+fragment_roundtrip_test!(transpose_element);
+fragment_roundtrip_test!(treble_clef);
+// Batch 52
+fragment_roundtrip_test!(tremolo_element_double);
+fragment_roundtrip_test!(tremolo_element_single);
+fragment_roundtrip_test!(trill_mark_element);
+fragment_roundtrip_test!(triple_tongue_element);
+fragment_roundtrip_test!(tuplet_dot_element);
+// Batch 53
+fragment_roundtrip_test!(tuplet_element_nested);
+fragment_roundtrip_test!(tuplet_element_regular);
+fragment_roundtrip_test!(turn_element);
+fragment_roundtrip_test!(unpitched_element);
+fragment_roundtrip_test!(unstress_element);
+// Batch 54
+fragment_roundtrip_test!(up_bow_element);
+fragment_roundtrip_test!(vertical_turn_element);
+fragment_roundtrip_test!(virtual_instrument_element);
+fragment_roundtrip_test!(vocal_tenor_clef);
+fragment_roundtrip_test!(voice_element);
+// Batch 55
+fragment_roundtrip_test!(wait_element);
+fragment_roundtrip_test!(wavy_line_element);
+fragment_roundtrip_test!(wedge_element);
+fragment_roundtrip_test!(with_bar_element);
+fragment_roundtrip_test!(wood_element);

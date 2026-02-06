@@ -273,15 +273,14 @@ pub fn convert_staff_def_from_score_part(
     staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
     staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
 
+    // Set divisions/ppq — MusicXML defaults divisions to 1 when absent.
+    // Always store ppq on staffDef so triangle roundtrips are consistent.
+    let divs = initial_attrs.and_then(|a| a.divisions).unwrap_or(1.0);
+    ctx.set_divisions(divs);
+    staff_def.staff_def_ges.ppq = Some(divs as u64);
+
     // Apply initial attributes from the first measure (key, time, clef)
     if let Some(attrs) = initial_attrs {
-        // Process divisions to set context state and store in staffDef
-        if let Some(divs) = attrs.divisions {
-            ctx.set_divisions(divs);
-            // Store divisions as ppq (pulses per quarter note) in staffDef
-            staff_def.staff_def_ges.ppq = Some(divs as u64);
-        }
-
         // Apply key signature
         if let Some(key) = attrs.keys.first() {
             convert_key_to_context(key, ctx);
