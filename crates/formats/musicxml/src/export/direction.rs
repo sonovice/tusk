@@ -237,11 +237,6 @@ pub fn convert_mei_dir(
         .collect::<Vec<_>>()
         .join("");
 
-    if text_content.is_empty() {
-        ctx.add_warning("dir", "Empty dir element - skipping");
-        return None;
-    }
-
     let words = Words::new(&text_content);
 
     let direction_type = DirectionType {

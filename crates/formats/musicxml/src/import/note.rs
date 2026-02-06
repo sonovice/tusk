@@ -495,6 +495,8 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
         let staff = note.staff.unwrap_or(1);
         // MEI global staff number (for the @staff attribute on the slur)
         let mei_staff = ctx.staff().unwrap_or(1);
+        // Part ID to scope slur matching within a single part
+        let part_id = ctx.position().part_id.clone().unwrap_or_default();
 
         for slur in &notations.slurs {
             let number = slur.number.unwrap_or(1);
@@ -503,6 +505,7 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
                 StartStopContinue::Start => {
                     ctx.add_pending_slur(PendingSlur {
                         start_id: note_id.to_string(),
+                        part_id: part_id.clone(),
                         staff,
                         number,
                         mei_staff,
@@ -510,7 +513,7 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
                 }
                 StartStopContinue::Stop => {
                     // Try to resolve a matching pending slur
-                    if let Some(pending) = ctx.resolve_slur(staff, number) {
+                    if let Some(pending) = ctx.resolve_slur(&part_id, staff, number) {
                         ctx.add_completed_slur(
                             pending.start_id,
                             note_id.to_string(),

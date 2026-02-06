@@ -572,6 +572,50 @@ fn get_element_key(elem: &CanonicalElement) -> String {
         // Staff-like elements keyed by @n
         "staffDef" | "layerDef" | "instrDef" | "staff" => elem.attributes.get("n"),
 
+        // staffGrp keyed by @symbol + child <label> text + contained staffDef @n values
+        // to distinguish multiple staffGrp siblings
+        "staffGrp" => {
+            let mut parts = Vec::new();
+            if let Some(sym) = elem.attributes.get("symbol") {
+                parts.push(format!("sym={}", sym));
+            }
+            if let Some(bar) = elem.attributes.get("bar.thru") {
+                parts.push(format!("bar={}", bar));
+            }
+            // Collect child label text and staffDef @n values for disambiguation
+            for child in &elem.children {
+                if let CanonicalNode::Element(child_elem) = child {
+                    if child_elem.name == "label" {
+                        let label_text: String = child_elem
+                            .children
+                            .iter()
+                            .filter_map(|c| {
+                                if let CanonicalNode::Text(t) = c {
+                                    Some(t.as_str())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        if !label_text.is_empty() {
+                            parts.push(format!(
+                                "label={}",
+                                label_text.chars().take(20).collect::<String>()
+                            ));
+                        }
+                    } else if child_elem.name == "staffDef" {
+                        if let Some(n) = child_elem.attributes.get("n") {
+                            parts.push(format!("n={}", n));
+                        }
+                    }
+                }
+            }
+            if !parts.is_empty() {
+                return format!("staffGrp[{}]", parts.join(","));
+            }
+            return name.to_string();
+        }
+
         // Control events keyed by staff+tstamp or startid
         "dir" | "dynam" | "tempo" | "hairpin" | "slur" | "tie" | "fermata" | "trill"
         | "mordent" | "turn" | "artic" | "breath" | "caesura" | "pedal" | "arpeg" => {

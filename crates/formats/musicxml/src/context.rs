@@ -63,6 +63,8 @@ pub struct PendingTie {
 pub struct PendingSlur {
     /// The xml:id of the note where the slur starts.
     pub start_id: String,
+    /// The MusicXML part ID (to scope matching within a single part).
+    pub part_id: String,
     /// The MusicXML staff number within the part (for matching start/stop pairs).
     pub staff: u32,
     /// Slur number (for distinguishing multiple concurrent slurs).
@@ -83,6 +85,21 @@ pub struct CompletedSlur {
     pub end_id: String,
     /// The MEI staff number (global, for the @staff attribute).
     pub mei_staff: u32,
+}
+
+/// A deferred slur stop that needs to be attached to a note in a future measure.
+///
+/// When exporting MEI → MusicXML, a slur may span measures. The start notation
+/// is attached in the current measure, but the stop notation must be deferred
+/// until the measure containing the end note is processed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeferredSlurStop {
+    /// The xml:id of the note where the slur ends.
+    pub end_id: String,
+    /// Slur number for MusicXML notation.
+    pub number: u8,
+    /// The MEI staff number this slur belongs to.
+    pub staff: usize,
 }
 
 /// Warnings generated during conversion for lossy MEI → MusicXML conversion.
@@ -144,6 +161,9 @@ pub struct ConversionContext {
     /// Completed slurs ready to be emitted as MEI control events.
     completed_slurs: Vec<CompletedSlur>,
 
+    /// Deferred slur stops for cross-measure slurs (MEI → MusicXML export).
+    deferred_slur_stops: Vec<DeferredSlurStop>,
+
     /// Warnings generated during lossy conversion.
     warnings: Vec<ConversionWarning>,
 
@@ -181,6 +201,7 @@ impl ConversionContext {
             pending_ties: Vec::new(),
             pending_slurs: Vec::new(),
             completed_slurs: Vec::new(),
+            deferred_slur_stops: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
             key_fifths: 0,
@@ -332,14 +353,14 @@ impl ConversionContext {
         self.pending_slurs.push(slur);
     }
 
-    /// Find and remove a pending slur that matches the given staff and number.
+    /// Find and remove a pending slur that matches the given part, staff, and number.
     ///
     /// Returns the matching slur if found.
-    pub fn resolve_slur(&mut self, staff: u32, number: u8) -> Option<PendingSlur> {
+    pub fn resolve_slur(&mut self, part_id: &str, staff: u32, number: u8) -> Option<PendingSlur> {
         let idx = self
             .pending_slurs
             .iter()
-            .position(|s| s.staff == staff && s.number == number)?;
+            .position(|s| s.part_id == part_id && s.staff == staff && s.number == number)?;
         Some(self.pending_slurs.remove(idx))
     }
 
@@ -365,6 +386,20 @@ impl ConversionContext {
     /// Drain all completed slurs, returning them for emission as MEI control events.
     pub fn drain_completed_slurs(&mut self) -> Vec<CompletedSlur> {
         std::mem::take(&mut self.completed_slurs)
+    }
+
+    // ========================================================================
+    // Deferred Slur Stops (for cross-measure slur export)
+    // ========================================================================
+
+    /// Add a deferred slur stop for a cross-measure slur.
+    pub fn add_deferred_slur_stop(&mut self, stop: DeferredSlurStop) {
+        self.deferred_slur_stops.push(stop);
+    }
+
+    /// Drain all deferred slur stops.
+    pub fn drain_deferred_slur_stops(&mut self) -> Vec<DeferredSlurStop> {
+        std::mem::take(&mut self.deferred_slur_stops)
     }
 
     // ========================================================================
@@ -749,6 +784,7 @@ mod tests {
 
         let slur = PendingSlur {
             start_id: "note-1".to_string(),
+            part_id: "P1".to_string(),
             staff: 1,
             number: 1,
             mei_staff: 1,
@@ -757,7 +793,7 @@ mod tests {
 
         assert_eq!(ctx.pending_slurs().len(), 1);
 
-        let resolved = ctx.resolve_slur(1, 1);
+        let resolved = ctx.resolve_slur("P1", 1, 1);
         assert!(resolved.is_some());
         assert_eq!(resolved.unwrap().start_id, "note-1");
         assert_eq!(ctx.pending_slurs().len(), 0);
@@ -769,23 +805,54 @@ mod tests {
 
         ctx.add_pending_slur(PendingSlur {
             start_id: "n1".to_string(),
+            part_id: "P1".to_string(),
             staff: 1,
             number: 1,
             mei_staff: 1,
         });
         ctx.add_pending_slur(PendingSlur {
             start_id: "n2".to_string(),
+            part_id: "P1".to_string(),
             staff: 1,
             number: 2,
             mei_staff: 1,
         });
 
         // Resolve slur #2 first
-        let resolved = ctx.resolve_slur(1, 2);
+        let resolved = ctx.resolve_slur("P1", 1, 2);
         assert_eq!(resolved.unwrap().start_id, "n2");
 
         // Resolve slur #1
-        let resolved = ctx.resolve_slur(1, 1);
+        let resolved = ctx.resolve_slur("P1", 1, 1);
+        assert_eq!(resolved.unwrap().start_id, "n1");
+    }
+
+    #[test]
+    fn test_slur_scoped_by_part() {
+        let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
+
+        ctx.add_pending_slur(PendingSlur {
+            start_id: "n1".to_string(),
+            part_id: "P1".to_string(),
+            staff: 1,
+            number: 1,
+            mei_staff: 1,
+        });
+        ctx.add_pending_slur(PendingSlur {
+            start_id: "n2".to_string(),
+            part_id: "P2".to_string(),
+            staff: 1,
+            number: 1,
+            mei_staff: 2,
+        });
+
+        // P2's stop should not match P1's start
+        let resolved = ctx.resolve_slur("P2", 1, 1);
+        assert_eq!(resolved.unwrap().start_id, "n2");
+
+        // P1's start should still be pending
+        assert_eq!(ctx.pending_slurs().len(), 1);
+        let resolved = ctx.resolve_slur("P1", 1, 1);
         assert_eq!(resolved.unwrap().start_id, "n1");
     }
 

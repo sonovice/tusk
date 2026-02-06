@@ -85,7 +85,13 @@ pub fn convert_score_content(
             }
 
             // Convert slur events AFTER notes (need note IDs to attach notations)
-            convert_slur_events(mei_measure, staff_n, &mut mxml_measure)?;
+            convert_slur_events(
+                mei_measure,
+                staff_n,
+                &mut mxml_measure,
+                &mut part.measures,
+                ctx,
+            )?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
@@ -279,29 +285,71 @@ fn convert_direction_events(
 /// Slurs are matched by startid/endid note references, not by @staff attribute,
 /// because MEI @staff on control events indicates display staff, not the staff
 /// containing the referenced notes.
+///
+/// For cross-measure slurs (endid references a note in a future measure),
+/// the stop notation is deferred to the context and applied when the target
+/// measure is processed.
 fn convert_slur_events(
     mei_measure: &tusk_model::elements::Measure,
-    _staff_n: usize,
+    staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
+    prev_measures: &mut [MxmlMeasure],
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
+    // First, resolve any deferred slur stops from previous measures
+    resolve_deferred_slur_stops(staff_n, mxml_measure, ctx);
+
     for child in &mei_measure.children {
         if let MeasureChild::Slur(slur) = child {
-            // Try to attach slur notations to notes in this part's measure.
-            // If the referenced notes aren't in this measure, they belong to
-            // another part and will be handled when that part is processed.
-            convert_mei_slur_to_notations(slur, mxml_measure);
+            // Only process slurs belonging to this staff
+            let slur_staff = slur.slur_log.staff.first().copied().unwrap_or(0) as usize;
+            if slur_staff == staff_n {
+                convert_mei_slur_to_notations(slur, staff_n, mxml_measure, prev_measures, ctx);
+            }
         }
     }
     Ok(())
+}
+
+/// Resolve deferred slur stops from cross-measure slurs in previous measures.
+fn resolve_deferred_slur_stops(
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    ctx: &mut ConversionContext,
+) {
+    use crate::model::data::StartStopContinue;
+    use crate::model::notations::{Notations, Slur as MxmlSlur};
+
+    let deferred = ctx.drain_deferred_slur_stops();
+    for stop in deferred {
+        if stop.staff != staff_n {
+            // Not for this staff — re-defer
+            ctx.add_deferred_slur_stop(stop);
+            continue;
+        }
+        if let Some(note) = find_note_by_id_mut(mxml_measure, &stop.end_id) {
+            let mut mxml_slur = MxmlSlur::new(StartStopContinue::Stop);
+            mxml_slur.number = Some(stop.number);
+            let notations = note.notations.get_or_insert_with(Notations::default);
+            notations.slurs.push(mxml_slur);
+        } else {
+            // Still not found — re-defer to next measure
+            ctx.add_deferred_slur_stop(stop);
+        }
+    }
 }
 
 /// Convert an MEI slur control event to MusicXML slur notations on the referenced notes.
 ///
 /// MEI slurs use `@startid`/`@endid` to reference the notes they connect.
 /// MusicXML slurs are `<notations><slur>` elements on individual notes.
+/// For cross-measure slurs, the stop is deferred via the context.
 fn convert_mei_slur_to_notations(
     slur: &tusk_model::elements::Slur,
+    staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
+    prev_measures: &mut [MxmlMeasure],
+    ctx: &mut ConversionContext,
 ) {
     use crate::model::data::StartStopContinue;
     use crate::model::notations::{Notations, Slur as MxmlSlur};
@@ -318,25 +366,81 @@ fn convert_mei_slur_to_notations(
         .as_ref()
         .map(|uri| uri.to_string().trim_start_matches('#').to_string());
 
+    // Determine slur number: count existing slur-starts on the start note + 1
+    let number = if let Some(ref sid) = start_id {
+        // Check current measure first, then previous measures
+        let count = count_existing_slur_starts(mxml_measure, sid);
+        if count > 0 {
+            count + 1
+        } else {
+            // Check previous measures for existing starts on this note
+            let prev_count = prev_measures
+                .iter()
+                .map(|m| count_existing_slur_starts(m, sid))
+                .sum::<u8>();
+            prev_count + 1
+        }
+    } else {
+        1
+    };
+
     // Add slur start notation to the start note
-    if let Some(ref sid) = start_id
-        && let Some(note) = find_note_by_id_mut(mxml_measure, sid)
-    {
-        let mut mxml_slur = MxmlSlur::new(StartStopContinue::Start);
-        mxml_slur.number = Some(1);
-        let notations = note.notations.get_or_insert_with(Notations::default);
-        notations.slurs.push(mxml_slur);
+    if let Some(ref sid) = start_id {
+        if let Some(note) = find_note_by_id_mut(mxml_measure, sid) {
+            let mut mxml_slur = MxmlSlur::new(StartStopContinue::Start);
+            mxml_slur.number = Some(number);
+            let notations = note.notations.get_or_insert_with(Notations::default);
+            notations.slurs.push(mxml_slur);
+        } else {
+            // Start note in a previous measure (cross-measure slur)
+            for prev in prev_measures.iter_mut().rev() {
+                if let Some(note) = find_note_by_id_mut(prev, sid) {
+                    let mut mxml_slur = MxmlSlur::new(StartStopContinue::Start);
+                    mxml_slur.number = Some(number);
+                    let notations = note.notations.get_or_insert_with(Notations::default);
+                    notations.slurs.push(mxml_slur);
+                    break;
+                }
+            }
+        }
     }
 
-    // Add slur stop notation to the end note
-    if let Some(ref eid) = end_id
-        && let Some(note) = find_note_by_id_mut(mxml_measure, eid)
-    {
-        let mut mxml_slur = MxmlSlur::new(StartStopContinue::Stop);
-        mxml_slur.number = Some(1);
-        let notations = note.notations.get_or_insert_with(Notations::default);
-        notations.slurs.push(mxml_slur);
+    // Add slur stop notation to the end note (may be in this or a future measure)
+    if let Some(ref eid) = end_id {
+        if let Some(note) = find_note_by_id_mut(mxml_measure, eid) {
+            let mut mxml_slur = MxmlSlur::new(StartStopContinue::Stop);
+            mxml_slur.number = Some(number);
+            let notations = note.notations.get_or_insert_with(Notations::default);
+            notations.slurs.push(mxml_slur);
+        } else {
+            // End note not in this measure — defer to future measure
+            ctx.add_deferred_slur_stop(crate::context::DeferredSlurStop {
+                end_id: eid.clone(),
+                number,
+                staff: staff_n,
+            });
+        }
     }
+}
+
+/// Count how many slur starts already exist on a note (for assigning unique numbers).
+fn count_existing_slur_starts(mxml_measure: &MxmlMeasure, note_id: &str) -> u8 {
+    use crate::model::data::StartStopContinue;
+
+    for content in &mxml_measure.content {
+        if let MeasureContent::Note(note) = content
+            && note.id.as_deref() == Some(note_id)
+        {
+            if let Some(ref notations) = note.notations {
+                return notations
+                    .slurs
+                    .iter()
+                    .filter(|s| s.slur_type == StartStopContinue::Start)
+                    .count() as u8;
+            }
+        }
+    }
+    0
 }
 
 /// Find a MusicXML note in the measure by its ID (mutable).
