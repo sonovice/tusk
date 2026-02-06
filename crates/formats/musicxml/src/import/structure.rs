@@ -116,7 +116,7 @@ pub fn convert_measure(
         ctx.set_measure(&musicxml_measure.number);
     }
 
-    // Create a staff element for each part
+    // Phase 1: Create staff elements for each part (notes, rests, chords)
     for (part_idx, part) in score.parts.iter().enumerate() {
         let staff_number = (part_idx + 1) as u32;
         ctx.set_part(&part.id);
@@ -127,8 +127,18 @@ pub fn convert_measure(
             mei_measure
                 .children
                 .push(MeasureChild::Staff(Box::new(staff)));
+        }
+    }
 
-            // Convert directions to control events
+    // Phase 2: Convert directions to control events (after all staves).
+    // Separate from staff creation to ensure canonical MEI ordering:
+    // all <staff> children first, then all control events.
+    for (part_idx, part) in score.parts.iter().enumerate() {
+        let staff_number = (part_idx + 1) as u32;
+        ctx.set_part(&part.id);
+        ctx.set_staff(staff_number);
+
+        if let Some(musicxml_measure) = part.measures.get(measure_idx) {
             convert_measure_directions(musicxml_measure, &mut mei_measure, ctx)?;
         }
     }

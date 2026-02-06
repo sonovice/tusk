@@ -121,6 +121,9 @@ pub fn convert_mei_note(
         mxml_note.cue = Some(Empty);
     }
 
+    // Convert ties from MEI @tie attribute to MusicXML <tie> elements
+    convert_mei_ties(mei_note, &mut mxml_note);
+
     // Add warnings for lossy attributes
     add_note_conversion_warnings(mei_note, ctx);
 
@@ -381,17 +384,75 @@ fn convert_mei_written_accid_to_mxml(
     }
 }
 
+/// Convert MEI @tie attribute to MusicXML <tie> and <tied> elements.
+///
+/// MEI uses `@tie` with values "i" (initial), "m" (medial), "t" (terminal).
+/// MusicXML uses `<tie type="start|stop">` elements on the note, plus
+/// `<tied type="start|stop">` in notations for visual representation.
+fn convert_mei_ties(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+) {
+    use crate::model::StartStop;
+    use crate::model::notations::{Notations, Tied, TiedType};
+    use crate::model::note::Tie;
+
+    for tie_val in &mei_note.note_anl.tie {
+        let val = tie_val.0.as_str();
+        match val {
+            "i" => {
+                // Initial: tie starts here
+                mxml_note.ties.push(Tie {
+                    tie_type: StartStop::Start,
+                    time_only: None,
+                });
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                notations.tied.push(Tied::new(TiedType::Start));
+            }
+            "m" => {
+                // Medial: tie continues (both stop from previous and start to next)
+                mxml_note.ties.push(Tie {
+                    tie_type: StartStop::Stop,
+                    time_only: None,
+                });
+                mxml_note.ties.push(Tie {
+                    tie_type: StartStop::Start,
+                    time_only: None,
+                });
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                notations.tied.push(Tied::new(TiedType::Stop));
+                notations.tied.push(Tied::new(TiedType::Start));
+            }
+            "t" => {
+                // Terminal: tie ends here
+                mxml_note.ties.push(Tie {
+                    tie_type: StartStop::Stop,
+                    time_only: None,
+                });
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                notations.tied.push(Tied::new(TiedType::Stop));
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Add warnings for MEI attributes that are lost in conversion.
 fn add_note_conversion_warnings(
     mei_note: &tusk_model::elements::Note,
     ctx: &mut ConversionContext,
 ) {
-    // Warn about analytical attributes (100% loss)
-    if mei_note.note_anl != tusk_model::att::AttNoteAnl::default() {
-        ctx.add_warning(
-            "note",
-            "MEI analytical attributes (@pclass, @deg, etc.) have no MusicXML equivalent",
-        );
+    // Warn about analytical attributes (100% loss), but skip tie and artic (handled above)
+    {
+        let mut check_anl = mei_note.note_anl.clone();
+        check_anl.tie.clear(); // tie is converted, not lost
+        check_anl.artic.clear(); // artic is not an analytical loss warning
+        if check_anl != tusk_model::att::AttNoteAnl::default() {
+            ctx.add_warning(
+                "note",
+                "MEI analytical attributes (@pclass, @deg, etc.) have no MusicXML equivalent",
+            );
+        }
     }
 
     // Warn about gestural attributes that aren't mapped
@@ -830,9 +891,20 @@ pub fn convert_mei_chord(
         }
 
         // Set stem direction on first note only (chord stem applies to all notes visually)
-        if i == 0 && mei_chord.chord_vis.stem_dir.is_some() {
-            let stem_dir = mei_chord.chord_vis.stem_dir.as_ref().unwrap();
-            mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
+        // Check chord-level stem_dir first, then fall back to individual note's stem_dir
+        // (import stores stem on individual notes within chords via note_vis.stem_dir)
+        if i == 0 {
+            if let Some(ref stem_dir) = mei_chord.chord_vis.stem_dir {
+                mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
+            } else if let Some(ref stem_dir) = mei_note.note_vis.stem_dir {
+                mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
+            }
+        }
+
+        // Set ID from individual note's xml:id (needed for tie/slur references)
+        if let Some(ref xml_id) = mei_note.common.xml_id {
+            mxml_note.id = Some(xml_id.clone());
+            ctx.map_id(xml_id, xml_id.clone());
         }
 
         // Handle individual note's written accidental
@@ -841,6 +913,9 @@ pub fn convert_mei_chord(
                 mxml_note.accidental = Some(convert_mei_accid_to_mxml(accid, ctx)?);
             }
         }
+
+        // Convert ties from MEI @tie attribute to MusicXML <tie> elements
+        convert_mei_ties(mei_note, &mut mxml_note);
 
         mxml_notes.push(mxml_note);
     }

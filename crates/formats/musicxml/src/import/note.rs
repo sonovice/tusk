@@ -405,7 +405,17 @@ pub fn convert_chord(
 
     // Convert each note in the chord and add as children
     for note in notes {
-        let mei_note = convert_note(note, ctx)?;
+        let mut mei_note = convert_note(note, ctx)?;
+        // Move stem direction from individual notes to chord level:
+        // MusicXML puts stem on the first note only, but MEI convention stores
+        // it on chord_vis.stem_dir. Clear from individual notes to avoid duplication.
+        if mei_chord.chord_vis.stem_dir.is_none() {
+            if let Some(stem_dir) = mei_note.note_vis.stem_dir.take() {
+                mei_chord.chord_vis.stem_dir = Some(stem_dir);
+            }
+        } else {
+            mei_note.note_vis.stem_dir = None;
+        }
         mei_chord
             .children
             .push(ChordChild::Note(Box::new(mei_note)));

@@ -265,6 +265,11 @@ impl ConversionContext {
         self.mei_to_musicxml_ids.get(mei_id).map(|s| s.as_str())
     }
 
+    /// Get the current ID counter value (for debugging/testing).
+    pub fn id_counter(&self) -> u64 {
+        self.id_counter
+    }
+
     /// Generate a unique ID with the configured prefix.
     ///
     /// Returns a new unique ID like "tusk-1", "tusk-2", etc.

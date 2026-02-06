@@ -276,17 +276,20 @@ fn convert_direction_events(
 /// Convert MEI slur events to MusicXML notations on the referenced notes.
 ///
 /// Must be called AFTER note conversion so that referenced notes exist in the measure.
+/// Slurs are matched by startid/endid note references, not by @staff attribute,
+/// because MEI @staff on control events indicates display staff, not the staff
+/// containing the referenced notes.
 fn convert_slur_events(
     mei_measure: &tusk_model::elements::Measure,
-    staff_n: usize,
+    _staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
 ) -> ConversionResult<()> {
     for child in &mei_measure.children {
         if let MeasureChild::Slur(slur) = child {
-            let event_staff = slur.slur_log.staff.first().copied().unwrap_or(1) as usize;
-            if event_staff == staff_n {
-                convert_mei_slur_to_notations(slur, mxml_measure);
-            }
+            // Try to attach slur notations to notes in this part's measure.
+            // If the referenced notes aren't in this measure, they belong to
+            // another part and will be handled when that part is processed.
+            convert_mei_slur_to_notations(slur, mxml_measure);
         }
     }
     Ok(())

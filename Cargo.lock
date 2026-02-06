@@ -622,6 +622,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tracing",
+ "tusk-mei",
  "tusk-model",
 ]
 

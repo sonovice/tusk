@@ -94,7 +94,8 @@ When the task is [MISSING_ELEMENT], [MISSING_ATTR], [MISMATCH], [ERROR], [MISSIN
 6. STOP (the blocked fixture will retry next iteration)"
   TASK_RULE="- Fixtures: DISCOVERY ONLY - never fix code during fixture testing. Batch successes, STOP on failure.
 - [MISSING_*] tasks: This is the ONLY time you write code to fix issues.
-- Blockers: Fix immediately. Pre-existing? Mark done. New? Add task first, then fix."
+- Blockers: Fix immediately. Pre-existing? Mark done. New? Add task first, then fix.
+- NEVER ignore an error because it 'already existed'. All encountered errors must be fixed."
 fi
 
 PROMPT="# ENTROPY REMINDER
@@ -136,11 +137,29 @@ Use \`assert_roundtrip(fixture_name)\` to run all four levels.
 
 Note: Perfectly symmetric bugs (import bug X compensated by export bug X⁻¹) cannot be caught without reference files.
 
+## Detailed MEI Diff Output
+
+When triangle MEI tests fail, detailed diff output shows EXACTLY where documents differ:
+\`\`\`
+mei/music/body/mdiv/score/section/measure/staff/layer/note: attribute 'stem.dir' missing in output (was 'down')
+mei/music/body/mdiv/score/section/measure/staff/layer/note: attribute 'tie' missing in output (was 'i')
+mei/music/body/mdiv/score/section/measure: element 'slur' missing in output (key: slur[startid=#tusk-note-2])
+\`\`\`
+
+The diff uses \`tusk_mei::xml_compare\` which:
+- Shows full path to each difference (e.g., \`mei/music/.../measure/staff/layer/note\`)
+- Ignores xml:id differences (generated IDs change between imports)
+- Uses order-insensitive comparison for metadata containers and measure children
+- Handles MEI version migrations (composer→creator, etc.)
+
+Debug XML is written to \`/tmp/mei1_debug.xml\` and \`/tmp/mei2_debug.xml\` for manual inspection.
+
 Acceptable differences (don't report as issues):
 - Whitespace/formatting differences
 - Attribute ordering
+- Element ordering within measures (staff/control events can be in any order)
 - Default values explicitly stated vs. omitted
-- xml:id generation differences
+- xml:id generation differences (ignored automatically)
 - MEI-specific extensions not in MusicXML
 
 # CODEGEN (RARE)
@@ -162,6 +181,7 @@ NOTE: This should almost never be needed. The MEI model is generated from the of
 - Keep commits focused and atomic.
 - Never add Claude to attribution or as a contributor.
 - Be really detailed in commit messages.
+- CRITICAL: Never ignore errors because they 'pre-existed' or 'were already there'. If you encounter ANY error or issue, fix it.
 $TASK_RULE
 - This is a rather new codebase so backwards compatibility is never needed.
 
