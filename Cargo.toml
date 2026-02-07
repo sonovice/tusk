@@ -28,6 +28,8 @@ tusk-musicxml = { path = "crates/formats/musicxml" }
 # External dependencies
 derive_more = { version = "2.1.1", features = ["full"] }
 indexmap = "2.13.0"
+regex = "1.12.3"
+serde = { version = "1.0.228", features = ["derive"] }
 smallvec = "1.15.1"
 thiserror = "2.0.18"
 tracing = "0.1.44"

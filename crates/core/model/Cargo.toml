@@ -10,8 +10,8 @@ repository.workspace = true
 [dependencies]
 derive_more = { workspace = true }
 indexmap = { workspace = true }
-regex = "1.12.3"
-serde = { version = "1.0.228", features = ["derive"] }
+regex = { workspace = true }
+serde = { workspace = true }
 smallvec = { workspace = true }
 thiserror = { workspace = true }
 

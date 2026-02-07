@@ -12,7 +12,7 @@ tusk-model = { workspace = true }
 quick-xml = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { workspace = true }
 
 [dev-dependencies]
 tusk-mei.workspace = true
