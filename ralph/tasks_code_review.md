@@ -56,10 +56,11 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - Fixed parent names that were incorrectly propagated from unrelated parsers in the same file
   - Added `clippy::needless_borrow` to tusk-mei allow list (consistent with other suppressed lints)
 
-- [ ] [DRY] Extract beat position calculation into ConversionContext method
-  - `import/structure.rs` and `import/direction.rs` both compute `beat_position / divisions` identically
-  - Add `ctx.beat_position_in_beats() -> f64` method that does the division
-  - Replace both inline calculations with the method call
+- [x] [DRY] Extract beat position calculation into ConversionContext method
+  - Added `divisions_to_beats(value: f64) -> f64` on ConversionContext (handles zero-division guard)
+  - Added `beat_position_in_beats() -> f64` convenience wrapper
+  - Replaced inline `if divisions > 0.0 { x / divisions } else { x }` pattern in `import/direction.rs`
+  - Simplified `calculate_tstamp` from 14 lines to 6 lines
 
 - [ ] [CONSISTENCY] Align `extract_attr!` / `push_attr!` macro variant naming
   - `extract_attr!` uses: default, `string`, `vec`, `vec_string`, `space_separated`

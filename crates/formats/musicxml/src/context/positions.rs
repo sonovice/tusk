@@ -82,6 +82,26 @@ impl super::ConversionContext {
         self.position.beat_position
     }
 
+    /// Convert a value from MusicXML divisions to beats (quarter notes).
+    ///
+    /// Divides by the current divisions-per-quarter-note value.
+    /// Returns the raw value if divisions is zero.
+    pub fn divisions_to_beats(&self, value: f64) -> f64 {
+        let divisions = self.divisions();
+        if divisions > 0.0 {
+            value / divisions
+        } else {
+            value
+        }
+    }
+
+    /// Get the current beat position converted to beats (quarter notes).
+    ///
+    /// Convenience wrapper around `divisions_to_beats(beat_position())`.
+    pub fn beat_position_in_beats(&self) -> f64 {
+        self.divisions_to_beats(self.position.beat_position)
+    }
+
     /// Set the beat position in divisions.
     pub fn set_beat_position(&mut self, position: f64) {
         self.position.beat_position = position;
