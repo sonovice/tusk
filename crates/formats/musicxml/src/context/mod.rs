@@ -62,8 +62,13 @@ pub struct ConversionContext {
     /// Mapping from MEI xml:id values to MusicXML IDs.
     pub(super) mei_to_musicxml_ids: HashMap<String, String>,
 
-    /// Counter for generating unique IDs when none exist.
+    /// Counter for generating unique IDs when none exist (used by `generate_id`).
     pub(super) id_counter: u64,
+
+    /// Per-suffix counters for `generate_id_with_suffix`.
+    /// Each suffix type (note, rest, chord, slur, etc.) has its own counter,
+    /// so adding/removing elements of one type doesn't shift IDs of other types.
+    pub(super) suffix_counters: HashMap<String, u64>,
 
     /// Prefix for generated IDs.
     pub(super) id_prefix: String,
@@ -123,6 +128,7 @@ impl ConversionContext {
             musicxml_to_mei_ids: HashMap::new(),
             mei_to_musicxml_ids: HashMap::new(),
             id_counter: 0,
+            suffix_counters: HashMap::new(),
             id_prefix: "tusk".to_string(),
             pending_ties: Vec::new(),
             pending_slurs: Vec::new(),
@@ -217,6 +223,7 @@ impl ConversionContext {
         self.musicxml_to_mei_ids.clear();
         self.mei_to_musicxml_ids.clear();
         self.id_counter = 0;
+        self.suffix_counters.clear();
         self.pending_ties.clear();
         self.pending_slurs.clear();
         self.warnings.clear();
@@ -323,6 +330,9 @@ mod tests {
     fn test_generate_id_with_suffix() {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         assert_eq!(ctx.generate_id_with_suffix("note"), "tusk-note-1");
+        // Each suffix type has its own counter
+        assert_eq!(ctx.generate_id_with_suffix("measure"), "tusk-measure-1");
+        assert_eq!(ctx.generate_id_with_suffix("note"), "tusk-note-2");
         assert_eq!(ctx.generate_id_with_suffix("measure"), "tusk-measure-2");
     }
 
@@ -682,6 +692,7 @@ mod tests {
         ctx.set_divisions(96.0);
         ctx.map_id("P1", "staff-1");
         ctx.generate_id();
+        ctx.generate_id_with_suffix("note");
         ctx.add_pending_tie(PendingTie {
             start_id: "n1".to_string(),
             staff: 1,
@@ -701,6 +712,7 @@ mod tests {
         assert_eq!(ctx.divisions(), 1.0);
         assert!(ctx.get_mei_id("P1").is_none());
         assert_eq!(ctx.generate_id(), "tusk-1"); // Counter reset
+        assert_eq!(ctx.generate_id_with_suffix("note"), "tusk-note-1"); // Suffix counters reset
         assert!(ctx.pending_ties().is_empty());
         assert!(!ctx.has_warnings());
         assert!(ctx.position().part_id.is_none());

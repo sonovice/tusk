@@ -38,9 +38,12 @@ impl super::ConversionContext {
 
     /// Generate a unique ID with a custom suffix.
     ///
-    /// Returns IDs like "tusk-note-1", "tusk-measure-2", etc.
+    /// Each suffix type has its own independent counter, so IDs like
+    /// "tusk-note-1", "tusk-note-2" are stable regardless of how many
+    /// elements of other types (accid, rest, slur, etc.) are generated.
     pub fn generate_id_with_suffix(&mut self, suffix: &str) -> String {
-        self.id_counter += 1;
-        format!("{}-{}-{}", self.id_prefix, suffix, self.id_counter)
+        let counter = self.suffix_counters.entry(suffix.to_string()).or_insert(0);
+        *counter += 1;
+        format!("{}-{}-{}", self.id_prefix, suffix, *counter)
     }
 }

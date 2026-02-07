@@ -264,26 +264,38 @@ pub fn convert_mei_score_content(
 
     // Track previous measures per part for cross-measure slur resolution.
     // Key: part index, Value: accumulated measures for that part.
+    //
+    // IMPORTANT: We build the timewise output from these accumulated measures
+    // AFTER all measures are processed, not inside the loop. This is because
+    // cross-measure slurs retroactively attach start notations to notes in
+    // previous measures. If we consumed measure content eagerly, those
+    // retroactive modifications would be lost.
     let mut part_prev_measures: Vec<Vec<MxmlMeasure>> =
         part_ids.iter().map(|_| Vec::new()).collect();
 
-    let mut timewise_measures = Vec::new();
+    // Collect measure metadata (number, implicit, etc.) for building output later
+    struct MeasureMeta {
+        number: String,
+        implicit: Option<crate::model::data::YesNo>,
+        non_controlling: Option<crate::model::data::YesNo>,
+        width: Option<f64>,
+    }
+    let mut measure_metas: Vec<MeasureMeta> = Vec::new();
 
-    // For each MEI measure, build a TimewiseMeasure with per-part content
+    // For each MEI measure, convert content and accumulate in part_prev_measures
     for (measure_idx, mei_measure) in mei_measures.iter().enumerate() {
         // Convert measure attributes (number, implicit, width, etc.)
         let mxml_measure_base = convert_mei_measure(mei_measure, "", ctx)?;
 
-        let mut tw_measure = TimewiseMeasure {
+        measure_metas.push(MeasureMeta {
             number: mxml_measure_base.number.clone(),
             implicit: mxml_measure_base.implicit,
             non_controlling: mxml_measure_base.non_controlling,
             width: mxml_measure_base.width,
-            parts: Vec::new(),
-        };
+        });
 
         // For each part/staff, extract that staff's content
-        for (staff_idx, part_id) in part_ids.iter().enumerate() {
+        for (staff_idx, _part_id) in part_ids.iter().enumerate() {
             let global_staff_n = staff_idx + 1; // MEI staff numbers are 1-based global
             let local_staff_n = 1_usize; // MusicXML: part-local staff number
 
@@ -295,8 +307,8 @@ pub fn convert_mei_score_content(
                 }
             }
 
-            // Build a temporary MxmlMeasure to collect content (reusing existing converters)
-            let mut mxml_measure = MxmlMeasure::new(&tw_measure.number);
+            // Build a MxmlMeasure to collect content
+            let mut mxml_measure = MxmlMeasure::new(&measure_metas[measure_idx].number);
 
             // Convert direction events BEFORE notes
             convert_direction_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
@@ -307,7 +319,9 @@ pub fn convert_mei_score_content(
                 convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
             }
 
-            // Convert slur events AFTER notes (need note IDs to attach notations)
+            // Convert slur events AFTER notes (need note IDs to attach notations).
+            // This may retroactively modify notes in part_prev_measures to attach
+            // cross-measure slur start notations.
             convert_slur_events(
                 mei_measure,
                 global_staff_n,
@@ -329,12 +343,28 @@ pub fn convert_mei_score_content(
             }
 
             // Store the measure for future cross-measure slur resolution
-            part_prev_measures[staff_idx].push(mxml_measure.clone());
+            part_prev_measures[staff_idx].push(mxml_measure);
+        }
+    }
 
-            // Add part content to the timewise measure
+    // Build the timewise output from the accumulated measures.
+    // At this point, all cross-measure slur notations have been retroactively
+    // attached, so the measure content is complete.
+    let mut timewise_measures = Vec::new();
+    for (measure_idx, meta) in measure_metas.iter().enumerate() {
+        let mut tw_measure = TimewiseMeasure {
+            number: meta.number.clone(),
+            implicit: meta.implicit,
+            non_controlling: meta.non_controlling,
+            width: meta.width,
+            parts: Vec::new(),
+        };
+
+        for (staff_idx, part_id) in part_ids.iter().enumerate() {
+            let content = std::mem::take(&mut part_prev_measures[staff_idx][measure_idx].content);
             tw_measure.parts.push(TimewisePart {
                 id: part_id.clone(),
-                content: mxml_measure.content,
+                content,
             });
         }
 

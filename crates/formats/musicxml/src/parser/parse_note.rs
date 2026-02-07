@@ -18,6 +18,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let default_y = get_attr(start, "default-y")?.and_then(|s| s.parse().ok());
     let dynamics = get_attr(start, "dynamics")?.and_then(|s| s.parse().ok());
     let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    let note_id = get_attr(start, "id")?;
 
     let mut grace: Option<Grace> = None;
     let mut cue: Option<Empty> = None;
@@ -139,7 +140,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         release: None,
         pizzicato: None,
         color: None,
-        id: None,
+        id: note_id,
     })
 }
 
