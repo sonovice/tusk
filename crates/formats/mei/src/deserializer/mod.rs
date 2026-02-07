@@ -24,7 +24,7 @@ pub(crate) mod impls;
 
 use quick_xml::Reader;
 use quick_xml::escape::resolve_predefined_entity;
-use quick_xml::events::{BytesStart, Event};
+use quick_xml::events::{BytesRef, BytesStart, Event};
 use std::collections::HashMap;
 use std::io::BufRead;
 use thiserror::Error;
@@ -345,19 +345,7 @@ impl<R: BufRead> MeiReader<R> {
                     text_content.push_str(std::str::from_utf8(&t)?);
                 }
                 Event::GeneralRef(r) => {
-                    // Resolve entity references (e.g., &amp; -> &, &lt; -> <)
-                    let entity_name = std::str::from_utf8(&r)?;
-                    if let Some(resolved) = resolve_predefined_entity(entity_name) {
-                        text_content.push_str(resolved);
-                    } else if let Ok(Some(ch)) = r.resolve_char_ref() {
-                        // Character reference like &#x30; or &#49;
-                        text_content.push(ch);
-                    } else {
-                        // Unknown entity - preserve as-is with & and ;
-                        text_content.push('&');
-                        text_content.push_str(entity_name);
-                        text_content.push(';');
-                    }
+                    resolve_xml_entity(&r, &mut text_content)?;
                 }
                 Event::Eof => {
                     return Err(DeserializeError::UnexpectedEof);
@@ -527,18 +515,7 @@ impl<R: BufRead> MeiReader<R> {
                     continue;
                 }
                 Event::GeneralRef(r) => {
-                    // Resolve entity references (e.g., &amp; -> &, &lt; -> <)
-                    let entity_name = std::str::from_utf8(&r)?;
-                    if let Some(resolved) = resolve_predefined_entity(entity_name) {
-                        text_accumulator.push_str(resolved);
-                    } else if let Ok(Some(ch)) = r.resolve_char_ref() {
-                        text_accumulator.push(ch);
-                    } else {
-                        // Unknown entity - preserve as-is
-                        text_accumulator.push('&');
-                        text_accumulator.push_str(entity_name);
-                        text_accumulator.push(';');
-                    }
+                    resolve_xml_entity(&r, &mut text_accumulator)?;
                     continue;
                 }
                 Event::Comment(_) | Event::PI(_) | Event::Decl(_) | Event::DocType(_) => {
@@ -635,6 +612,24 @@ pub fn parse_string(attrs: &mut AttributeMap, key: &str) -> Option<String> {
 /// Helper function to parse a string attribute as-is (identity parser).
 pub fn identity_parser(s: &str) -> Result<String, String> {
     Ok(s.to_string())
+}
+
+/// Resolve an XML entity reference and append the result to a string buffer.
+///
+/// Handles predefined entities (`&amp;`, `&lt;`, etc.), character references
+/// (`&#x30;`, `&#49;`), and unknown entities (preserved as-is).
+pub fn resolve_xml_entity(r: &BytesRef<'_>, buf: &mut String) -> Result<(), std::str::Utf8Error> {
+    let entity_name = std::str::from_utf8(r)?;
+    if let Some(resolved) = resolve_predefined_entity(entity_name) {
+        buf.push_str(resolved);
+    } else if let Ok(Some(ch)) = r.resolve_char_ref() {
+        buf.push(ch);
+    } else {
+        buf.push('&');
+        buf.push_str(entity_name);
+        buf.push(';');
+    }
+    Ok(())
 }
 
 /// Strip namespace prefix from an element or attribute name.

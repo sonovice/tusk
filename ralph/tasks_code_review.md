@@ -26,12 +26,11 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - xml_compare now correctly preserves both `xml:` and `xlink:` prefixes
   - Added `xlink:href` test case to xml_compare tests
 
-- [ ] [DRY] Consolidate XML entity reference resolution into single function
-  - Entity resolution code (`&amp;` → `&`, `&#x30;` → char, etc.) duplicated in 3 locations:
-    - `crates/formats/mei/src/deserializer/mod.rs` (~line 347 and ~line 529)
-    - `crates/formats/mei/src/xml_compare.rs` (~line 308)
-  - Extract into a shared `resolve_xml_entities(s: &str) -> String` utility
-  - All 3 call sites should use the single function
+- [x] [DRY] Consolidate XML entity reference resolution into single function
+  - Extracted `resolve_xml_entity(&BytesRef, &mut String)` in `deserializer/mod.rs`
+  - Handles predefined entities, char refs, and unknown entities (preserved as-is)
+  - Replaced all 3 duplicated blocks: deserializer skip_to_end_and_collect, next_mixed_content, and xml_compare parse_canonical
+  - Removed unused `resolve_predefined_entity` import from xml_compare
 
 ---
 
