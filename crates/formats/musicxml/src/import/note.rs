@@ -1116,21 +1116,18 @@ mod tests {
     }
 
     #[test]
-    fn convert_rest_infers_duration_from_divisions() {
+    fn convert_rest_without_type_omits_dur() {
         use crate::model::note::{Note, Rest};
-        use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
 
-        // A rest with duration 4 when divisions=4 is a quarter note
+        // A rest with duration but no explicit <type> should NOT get @dur
+        // (whole-measure rests rely on dur_ppq only)
         let note = Note::rest(Rest::new(), 4.0);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         ctx.set_divisions(4.0);
 
         let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(
-            mei_rest.rest_log.dur,
-            Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
-        );
+        assert_eq!(mei_rest.rest_log.dur, None);
     }
 
     #[test]

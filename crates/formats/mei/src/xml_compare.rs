@@ -701,6 +701,12 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     .get("place")
                     .map(|p| format!(",place={}", p))
                     .unwrap_or_default();
+                // Include @tstamp2 for spanners with same startid/endid but different duration
+                let tstamp2_key = elem
+                    .attributes
+                    .get("tstamp2")
+                    .map(|t| format!(",tstamp2={}", t))
+                    .unwrap_or_default();
                 // Include element-specific attributes (e.g., @dir for pedal, @form for hairpin)
                 // Multiple control events can share the same startid (e.g., pedal down/up)
                 let type_key = control_event_type_key(name, elem);
@@ -712,7 +718,7 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     String::new()
                 };
                 return format!(
-                    "{}[startid={}{}{}{}{}{}{}{}]",
+                    "{}[startid={}{}{}{}{}{}{}{}{}]",
                     name,
                     startid,
                     staff_key,
@@ -720,6 +726,7 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                     curvedir_key,
                     lform_key,
                     place_key,
+                    tstamp2_key,
                     type_key,
                     text_key
                 );
@@ -750,6 +757,12 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 } else {
                     String::new()
                 };
+                // Include @curvedir for slurs/ties with same tstamp but different direction
+                let curvedir_key = elem
+                    .attributes
+                    .get("curvedir")
+                    .map(|c| format!(",curvedir={}", c))
+                    .unwrap_or_default();
                 // Include @tstamp2 for spanners (hairpin, slur, etc.) that start at
                 // the same beat but end at different points
                 let tstamp2_key = elem
@@ -774,11 +787,12 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 // Include element-specific attributes for disambiguation
                 let type_key = control_event_type_key(name, elem);
                 return format!(
-                    "{}[{}tstamp={}{}{}{}{}{}]",
+                    "{}[{}tstamp={}{}{}{}{}{}{}]",
                     name,
                     staff_key,
                     tstamp_key,
                     place_key,
+                    curvedir_key,
                     text_key,
                     tstamp2_key,
                     vis_keys,
@@ -827,8 +841,9 @@ fn get_element_key(elem: &CanonicalElement) -> String {
             // Key by normalized name + text only, never by @role.
             // Role can differ between input (implicit from deprecated element name like
             // <composer>) and output (explicit @role="cmp" on <creator>), or be absent
-            // entirely on a bare <creator>. Role correctness is verified later in
-            // compare_elements/compare_attributes via implicit migration role logic.
+            // entirely on a bare <creator>. FIFO matching (remove(0) in
+            // compare_children_unordered) handles same-text creators with different
+            // roles by preserving document order.
             let text = collect_deep_text(elem);
             if !text.is_empty() {
                 return format!(
@@ -969,7 +984,8 @@ fn compare_children_unordered(
     for elem1 in &elems1 {
         let key = get_element_key(elem1);
         if let Some(matches) = elems2_by_key.get_mut(&key) {
-            if let Some(elem2) = matches.pop() {
+            if !matches.is_empty() {
+                let elem2 = matches.remove(0);
                 // Found match - compare the elements
                 compare_elements(elem1, elem2, path, diffs);
                 matched_keys.insert(key);
