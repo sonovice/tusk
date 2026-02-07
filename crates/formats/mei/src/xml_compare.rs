@@ -824,23 +824,18 @@ fn get_element_key(elem: &CanonicalElement) -> String {
         }
 
         "creator" | "contributor" | "editor" => {
-            // Get role from explicit attribute or implicit migration
-            let role =
-                elem.attributes.get("role").cloned().or_else(|| {
-                    get_implicit_migration_role(&elem.name, name).map(|r| r.to_string())
-                });
-            // Extract deep text content for disambiguation (from persName etc.)
+            // Key by normalized name + text only, never by @role.
+            // Role can differ between input (implicit from deprecated element name like
+            // <composer>) and output (explicit @role="cmp" on <creator>), or be absent
+            // entirely on a bare <creator>. Role correctness is verified later in
+            // compare_elements/compare_attributes via implicit migration role logic.
             let text = collect_deep_text(elem);
-            if let Some(r) = role {
-                if !text.is_empty() {
-                    return format!(
-                        "{}[@={},text={}]",
-                        name,
-                        r,
-                        text.chars().take(40).collect::<String>()
-                    );
-                }
-                return format!("{}[@={}]", name, r);
+            if !text.is_empty() {
+                return format!(
+                    "{}[text={}]",
+                    name,
+                    text.chars().take(40).collect::<String>()
+                );
             }
             None
         }
