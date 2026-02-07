@@ -139,7 +139,7 @@ fn convert_mei_clef_dis_to_octave_change(
 /// # Returns
 ///
 /// A MusicXML Attributes element.
-pub fn convert_score_def_to_attributes(
+pub fn convert_mei_score_def_to_attributes(
     score_def: &ScoreDef,
     ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
@@ -263,7 +263,7 @@ pub fn convert_score_def_to_attributes(
 /// # Returns
 ///
 /// A MusicXML Attributes element.
-pub fn convert_staff_def_to_attributes(
+pub fn convert_mei_staff_def_to_attributes(
     staff_def: &StaffDef,
     _ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
@@ -528,7 +528,7 @@ mod tests {
         score_def.score_def_log.clef_line = Some(DataClefline(2));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         // Check key signature
         assert_eq!(attrs.keys.len(), 1);
@@ -575,7 +575,7 @@ mod tests {
         staff_def.staff_def_log.clef_line = Some(DataClefline(4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
+        let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
 
         // Check key signature
         assert_eq!(attrs.keys.len(), 1);
@@ -613,7 +613,7 @@ mod tests {
         staff_def.staff_def_log.clef_dis_place = Some(DataStaffrelBasic::Below);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
+        let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
 
         assert_eq!(attrs.clefs.len(), 1);
         assert_eq!(attrs.clefs[0].sign, crate::model::attributes::ClefSign::G);
@@ -634,7 +634,7 @@ mod tests {
         staff_def.staff_def_log.clef_dis_place = Some(DataStaffrelBasic::Above);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
+        let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
 
         assert_eq!(attrs.clefs.len(), 1);
         assert_eq!(attrs.clefs[0].clef_octave_change, Some(1));
@@ -647,7 +647,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
 
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         // Divisions should be included in attributes
         assert_eq!(attrs.divisions, Some(4.0));
@@ -658,7 +658,7 @@ mod tests {
         let score_def = ScoreDef::default();
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
 
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         // All should be empty/None
         assert!(attrs.keys.is_empty());
@@ -675,7 +675,7 @@ mod tests {
         staff_def.staff_def_log.trans_semi = Some(-2);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
+        let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
 
         assert_eq!(attrs.transposes.len(), 1);
         assert_eq!(attrs.transposes[0].diatonic, Some(-1));
@@ -690,7 +690,7 @@ mod tests {
         staff_def.staff_def_log.lines = Some(6);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_staff_def_to_attributes(&staff_def, &mut ctx);
+        let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
 
         assert_eq!(attrs.staff_details.len(), 1);
         assert_eq!(attrs.staff_details[0].staff_lines, Some(6));
@@ -704,7 +704,7 @@ mod tests {
         score_def.score_def_log.meter_sym = Some(DataMetersign::Open);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
         if let crate::model::attributes::TimeContent::SenzaMisura(_) = &attrs.times[0].content {
@@ -723,7 +723,7 @@ mod tests {
         score_def.score_def_log.meter_unit = Some(8.0);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
         if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {
@@ -743,7 +743,7 @@ mod tests {
         score_def.score_def_log.meter_unit = Some(8.0);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let attrs = convert_score_def_to_attributes(&score_def, &mut ctx);
+        let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
 
         assert_eq!(attrs.times.len(), 1);
         if let crate::model::attributes::TimeContent::Standard(std) = &attrs.times[0].content {

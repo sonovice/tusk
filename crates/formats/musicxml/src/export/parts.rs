@@ -23,7 +23,7 @@ use super::utils::{
 /// - MEI `<staffDef>` -> MusicXML `<score-part>`
 /// - MEI `<label>` -> MusicXML `<part-name>`
 /// - MEI `<labelAbbr>` -> MusicXML `<part-abbreviation>`
-pub fn convert_part_list(
+pub fn convert_mei_part_list(
     score_def: &ScoreDef,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<PartList> {
@@ -32,7 +32,7 @@ pub fn convert_part_list(
     // Find staffGrp in scoreDef children
     for child in &score_def.children {
         if let ScoreDefChild::StaffGrp(staff_grp) = child {
-            convert_staff_grp_to_part_list(staff_grp, &mut part_list, ctx, 1)?;
+            convert_mei_staff_grp_to_part_list(staff_grp, &mut part_list, ctx, 1)?;
         }
     }
 
@@ -42,7 +42,7 @@ pub fn convert_part_list(
 /// Recursively convert MEI staffGrp to MusicXML part-list items.
 ///
 /// Returns the next available group number.
-pub fn convert_staff_grp_to_part_list(
+pub fn convert_mei_staff_grp_to_part_list(
     staff_grp: &StaffGrp,
     part_list: &mut PartList,
     ctx: &mut ConversionContext,
@@ -71,8 +71,8 @@ pub fn convert_staff_grp_to_part_list(
             group_name_display: None,
             group_abbreviation: extract_label_abbr_text(staff_grp),
             group_abbreviation_display: None,
-            group_symbol: convert_staff_grp_symbol(staff_grp),
-            group_barline: convert_staff_grp_barline(staff_grp),
+            group_symbol: convert_mei_staff_grp_symbol(staff_grp),
+            group_barline: convert_mei_staff_grp_barline(staff_grp),
             group_time: None,
         };
         part_list
@@ -85,14 +85,18 @@ pub fn convert_staff_grp_to_part_list(
     for child in &staff_grp.children {
         match child {
             StaffGrpChild::StaffDef(staff_def) => {
-                let score_part = convert_staff_def_to_score_part(staff_def, ctx)?;
+                let score_part = convert_mei_staff_def_to_score_part(staff_def, ctx)?;
                 part_list
                     .items
                     .push(PartListItem::ScorePart(Box::new(score_part)));
             }
             StaffGrpChild::StaffGrp(nested_grp) => {
-                current_group_num =
-                    convert_staff_grp_to_part_list(nested_grp, part_list, ctx, current_group_num)?;
+                current_group_num = convert_mei_staff_grp_to_part_list(
+                    nested_grp,
+                    part_list,
+                    ctx,
+                    current_group_num,
+                )?;
             }
             StaffGrpChild::Label(_) | StaffGrpChild::LabelAbbr(_) => {
                 // Already handled above
@@ -129,7 +133,7 @@ pub fn convert_staff_grp_to_part_list(
 }
 
 /// Convert MEI staffGrp @symbol to MusicXML group-symbol.
-pub fn convert_staff_grp_symbol(
+pub fn convert_mei_staff_grp_symbol(
     staff_grp: &StaffGrp,
 ) -> Option<crate::model::elements::GroupSymbolValue> {
     use crate::model::elements::{GroupSymbol, GroupSymbolValue};
@@ -153,7 +157,7 @@ pub fn convert_staff_grp_symbol(
 }
 
 /// Convert MEI staffGrp @bar.thru to MusicXML group-barline.
-pub fn convert_staff_grp_barline(
+pub fn convert_mei_staff_grp_barline(
     staff_grp: &StaffGrp,
 ) -> Option<crate::model::elements::GroupBarlineValue> {
     use crate::model::elements::{GroupBarline, GroupBarlineValue};
@@ -169,7 +173,7 @@ pub fn convert_staff_grp_barline(
 }
 
 /// Convert MEI staffDef to MusicXML score-part.
-pub fn convert_staff_def_to_score_part(
+pub fn convert_mei_staff_def_to_score_part(
     staff_def: &StaffDef,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<ScorePart> {
@@ -228,7 +232,7 @@ mod tests {
             .push(StaffDefChild::Label(Box::new(label)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_staff_def_to_score_part(&staff_def, &mut ctx);
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();
@@ -259,7 +263,7 @@ mod tests {
             .push(StaffDefChild::LabelAbbr(Box::new(label_abbr)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_staff_def_to_score_part(&staff_def, &mut ctx);
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();
@@ -277,7 +281,7 @@ mod tests {
         staff_def.n_integer.n = Some(3);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_staff_def_to_score_part(&staff_def, &mut ctx);
+        let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
         assert!(result.is_ok());
 
         let score_part = result.unwrap();
@@ -327,7 +331,7 @@ mod tests {
             .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_part_list(&score_def, &mut ctx);
+        let result = convert_mei_part_list(&score_def, &mut ctx);
         assert!(result.is_ok());
 
         let part_list = result.unwrap();
@@ -364,7 +368,7 @@ mod tests {
             .children
             .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
 
-        let result = convert_staff_grp_symbol(&staff_grp);
+        let result = convert_mei_staff_grp_symbol(&staff_grp);
         assert!(result.is_some());
 
         use crate::model::elements::GroupSymbol;
@@ -376,7 +380,7 @@ mod tests {
         let mut staff_grp = StaffGrp::default();
         staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::True);
 
-        let result = convert_staff_grp_barline(&staff_grp);
+        let result = convert_mei_staff_grp_barline(&staff_grp);
         assert!(result.is_some());
 
         use crate::model::elements::GroupBarline;
@@ -475,7 +479,7 @@ mod tests {
             .push(ScoreDefChild::StaffGrp(Box::new(outer_grp)));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-        let result = convert_part_list(&score_def, &mut ctx);
+        let result = convert_mei_part_list(&score_def, &mut ctx);
         assert!(result.is_ok());
 
         let part_list = result.unwrap();
@@ -537,7 +541,7 @@ mod tests {
             let mut staff_grp = StaffGrp::default();
             staff_grp.staff_grp_vis.symbol = Some(mei_sym);
 
-            let result = convert_staff_grp_symbol(&staff_grp);
+            let result = convert_mei_staff_grp_symbol(&staff_grp);
             assert!(result.is_some());
             assert_eq!(result.unwrap().value, expected_mxml);
         }
@@ -550,13 +554,13 @@ mod tests {
         // Test true -> yes
         let mut staff_grp = StaffGrp::default();
         staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::True);
-        let result = convert_staff_grp_barline(&staff_grp);
+        let result = convert_mei_staff_grp_barline(&staff_grp);
         assert_eq!(result.unwrap().value, GroupBarline::Yes);
 
         // Test false -> no
         let mut staff_grp = StaffGrp::default();
         staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::False);
-        let result = convert_staff_grp_barline(&staff_grp);
+        let result = convert_mei_staff_grp_barline(&staff_grp);
         assert_eq!(result.unwrap().value, GroupBarline::No);
     }
 }

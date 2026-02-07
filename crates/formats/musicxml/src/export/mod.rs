@@ -32,7 +32,7 @@ mod utils;
 // Re-export attributes conversion functions
 pub use attributes::{
     convert_mei_clef_shape_to_mxml, convert_mei_keysig_to_fifths, convert_mei_meter_sym_to_mxml,
-    convert_score_def_to_attributes, convert_staff_def_to_attributes,
+    convert_mei_score_def_to_attributes, convert_mei_staff_def_to_attributes,
 };
 
 // Re-export direction conversion functions
@@ -43,8 +43,8 @@ pub use note::{convert_mei_chord, convert_mei_note, convert_mei_rest};
 
 // Re-export parts conversion functions
 pub use parts::{
-    convert_part_list, convert_staff_def_to_score_part, convert_staff_grp_barline,
-    convert_staff_grp_symbol, convert_staff_grp_to_part_list,
+    convert_mei_part_list, convert_mei_staff_def_to_score_part, convert_mei_staff_grp_barline,
+    convert_mei_staff_grp_symbol, convert_mei_staff_grp_to_part_list,
 };
 
 // Re-export structure conversion functions
@@ -125,7 +125,7 @@ pub fn convert_mei_with_context(
     {
         // Convert scoreDef to part-list
         if let Some(score_def) = find_score_def(mei_score) {
-            score.part_list = convert_part_list(score_def, ctx)?;
+            score.part_list = convert_mei_part_list(score_def, ctx)?;
         } else {
             // No scoreDef, create minimal part-list
             score.part_list = PartList::default();
@@ -147,7 +147,7 @@ pub fn convert_mei_with_context(
 
         // Convert measure content from MEI to MusicXML parts
         if !part_ids.is_empty() {
-            score.parts = content::convert_score_content(mei_score, &part_ids, ctx)?;
+            score.parts = content::convert_mei_score_content(mei_score, &part_ids, ctx)?;
         } else {
             score.parts = create_empty_parts(&score.part_list);
         }

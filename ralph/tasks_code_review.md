@@ -43,12 +43,11 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - Public API unchanged: all types re-exported from context/mod.rs
   - All tests pass, no regressions
 
-- [ ] [CONSISTENCY] Standardize import/export function naming in tusk-musicxml
-  - Import uses `convert_note()`, `convert_score_def()`, `convert_measure()`
-  - Export uses `convert_mei_note()`, `convert_part_list()`, `convert_mei_measure()`
-  - Adopt uniform convention: all import fns keep `convert_*`, all export fns keep `convert_mei_*` — OR rename both to `import_*`/`export_*`
-  - Whichever convention is chosen, apply consistently across all public functions in import/ and export/
-  - Update all call sites
+- [x] [CONSISTENCY] Standardize import/export function naming in tusk-musicxml
+  - Chose convention: import keeps `convert_*`, export uses `convert_mei_*` prefix
+  - Renamed 8 export functions: `convert_score_def_to_attributes`, `convert_staff_def_to_attributes`, `convert_part_list`, `convert_staff_def_to_score_part`, `convert_staff_grp_barline`, `convert_staff_grp_symbol`, `convert_staff_grp_to_part_list`, `convert_score_content` (in content.rs)
+  - Updated all call sites in attributes.rs, parts.rs, content.rs, structure.rs, mod.rs
+  - All tests pass, no regressions
 
 - [ ] [ERROR_HANDLING] Add `tracing::warn!` for silently skipped unknown elements in MEI deserializer
   - In `crates/formats/mei/src/deserializer/impls/`, the `_ =>` match arms silently skip unknown child elements

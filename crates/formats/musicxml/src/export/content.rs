@@ -16,7 +16,7 @@ use tusk_model::elements::{
     Staff, StaffChild, StaffGrp, StaffGrpChild,
 };
 
-use super::attributes::convert_staff_def_to_attributes;
+use super::attributes::convert_mei_staff_def_to_attributes;
 use super::direction::{
     convert_mei_dir, convert_mei_dynam, convert_mei_hairpin, convert_mei_tempo,
 };
@@ -218,7 +218,7 @@ fn collect_note_ids_from_beam(
 /// This collects all measures from MEI sections and reorganizes them into
 /// MusicXML part-oriented structure. MEI stores staff content within measures,
 /// while MusicXML stores measures within parts.
-pub fn convert_score_content(
+pub fn convert_mei_score_content(
     mei_score: &MeiScore,
     part_ids: &[String],
     ctx: &mut ConversionContext,
@@ -307,7 +307,7 @@ pub fn convert_score_content(
             if measure_idx == 0 {
                 // Get the staffDef for this staff number and convert to attributes
                 let attrs = if let Some(staff_def) = staff_defs.get(staff_idx) {
-                    let mut attrs = convert_staff_def_to_attributes(staff_def, ctx);
+                    let mut attrs = convert_mei_staff_def_to_attributes(staff_def, ctx);
                     // Get divisions from staffDef ppq attribute, or use context default
                     let divs = staff_def
                         .staff_def_ges
@@ -861,13 +861,13 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_score_content_single_part() {
+    fn test_convert_mei_score_content_single_part() {
         let score = create_simple_mei_score();
         let part_ids = vec!["P1".to_string()];
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);
 
-        let result = convert_score_content(&score, &part_ids, &mut ctx);
+        let result = convert_mei_score_content(&score, &part_ids, &mut ctx);
         assert!(result.is_ok());
 
         let parts = result.unwrap();
