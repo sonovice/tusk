@@ -47,9 +47,8 @@ pub use structure::{
 };
 
 // Re-export parts conversion functions
-#[allow(deprecated)]
 pub use parts::{
-    convert_score_def, convert_staff_def, convert_staff_def_from_score_part, convert_staff_grp,
+    convert_score_def, convert_staff_def_from_score_part, convert_staff_grp,
 };
 
 use crate::context::{ConversionContext, ConversionDirection};

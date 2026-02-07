@@ -351,38 +351,6 @@ pub fn convert_staff_def_from_score_part(
     Ok(staff_def)
 }
 
-/// Convert a MusicXML part to MEI staffDef (minimal version without part metadata).
-///
-/// This is a simpler version for cases where only a part ID and staff number are available.
-/// For full conversion including part name and abbreviation, use `convert_staff_def_from_score_part`.
-#[deprecated(
-    note = "Use convert_staff_def_from_score_part for full part-list conversion with labels"
-)]
-pub fn convert_staff_def(
-    _part_id: &str,
-    staff_number: u32,
-    ctx: &mut ConversionContext,
-) -> ConversionResult<StaffDef> {
-    let mut staff_def = StaffDef::default();
-
-    // Set staff number using n_integer.n (u64)
-    staff_def.n_integer.n = Some(staff_number as u64);
-
-    // Set default staff lines (5 for CMN)
-    staff_def.staff_def_log.lines = Some(5);
-
-    // Default clef (G clef on line 2 = treble clef)
-    // These will be overridden when we process attributes in the first measure
-    staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
-    staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
-
-    // Generate an ID for the staffDef using basic.xml_id
-    let staff_def_id = ctx.generate_id_with_suffix("staffdef");
-    staff_def.basic.xml_id = Some(staff_def_id);
-
-    Ok(staff_def)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -449,27 +417,30 @@ mod tests {
 
     #[test]
     fn convert_staff_def_sets_staff_number() {
+        let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        #[allow(deprecated)]
-        let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
+        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
+            .expect("conversion should succeed");
 
         assert_eq!(staff_def.n_integer.n, Some(1));
     }
 
     #[test]
     fn convert_staff_def_sets_default_lines() {
+        let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        #[allow(deprecated)]
-        let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
+        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
+            .expect("conversion should succeed");
 
         assert_eq!(staff_def.staff_def_log.lines, Some(5));
     }
 
     #[test]
     fn convert_staff_def_sets_default_clef() {
+        let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        #[allow(deprecated)]
-        let staff_def = convert_staff_def("P1", 1, &mut ctx).expect("conversion should succeed");
+        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
+            .expect("conversion should succeed");
 
         assert_eq!(staff_def.staff_def_log.clef_shape, Some(DataClefshape::G));
         assert_eq!(
