@@ -65,9 +65,7 @@ impl MeiDeserialize for SymbolTable {
                             .push(SymbolTableChild::SymbolDef(Box::new(symbol_def)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "symbolTable", child_empty)?;
                     }
                 }
             }
@@ -171,9 +169,7 @@ pub(crate) fn parse_symbol_def_from_event<R: BufRead>(
                         .push(SymbolDefChild::Mapping(Box::new(mapping)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "symbolDef", child_empty)?;
                 }
             }
         }
@@ -282,9 +278,7 @@ pub(crate) fn parse_sym_prop_from_event<R: BufRead>(
                         .push(SymPropChild::PropValue(Box::new(prop_value)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "symProp", child_empty)?;
                 }
             }
         }
@@ -447,9 +441,7 @@ pub(crate) fn parse_mapping_from_event<R: BufRead>(
                             .push(MappingChild::Symbol(Box::new(symbol)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "mapping", child_empty)?;
                     }
                 },
             }

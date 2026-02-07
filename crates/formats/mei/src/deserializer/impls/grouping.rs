@@ -24,7 +24,8 @@ use super::{extract_attr, from_attr_string, parse_clef_from_event};
 macro_rules! parse_grouping_child {
     ($reader:expr, $name:expr, $child_attrs:expr, $child_empty:expr, $children:expr, $ChildEnum:ident,
      [$(($elem_name:literal, $variant:ident, $ty:ty)),* $(,)?],
-     clef: $has_clef:expr
+     clef: $has_clef:expr,
+     parent: $parent:literal
     ) => {
         match $name.as_str() {
             $(
@@ -38,9 +39,7 @@ macro_rules! parse_grouping_child {
                 $children.push($ChildEnum::Clef(Box::new(clef)));
             }
             _ => {
-                if !$child_empty {
-                    $reader.skip_to_end(&$name)?;
-                }
+                $reader.skip_unknown_child(&$name, $parent, $child_empty)?;
             }
         }
     };
@@ -98,7 +97,8 @@ impl MeiDeserialize for Beam {
                         ("bTrem", BTrem, BTrem),
                         ("app", App, App),
                     ],
-                    clef: true
+                    clef: true,
+                    parent: "beam"
                 );
             }
         }
@@ -142,7 +142,8 @@ impl MeiDeserialize for Tuplet {
                         ("graceGrp", GraceGrp, GraceGrp),
                         ("bTrem", BTrem, BTrem),
                     ],
-                    clef: false
+                    clef: false,
+                    parent: "tuplet"
                 );
             }
         }
@@ -185,7 +186,8 @@ impl MeiDeserialize for GraceGrp {
                         ("tuplet", Tuplet, Tuplet),
                         ("graceGrp", GraceGrp, GraceGrp),
                     ],
-                    clef: false
+                    clef: false,
+                    parent: "graceGrp"
                 );
             }
         }

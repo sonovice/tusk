@@ -92,9 +92,7 @@ pub(crate) fn parse_ambitus_from_event<R: BufRead>(
                         .push(AmbitusChild::AmbNote(Box::new(amb_note)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "ambitus", child_empty)?;
                 }
             }
         }
@@ -154,9 +152,7 @@ pub(crate) fn parse_o_staff_from_event<R: BufRead>(
                 }
                 // For other children, skip to end for now
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "oStaff", child_empty)?;
                 }
             }
         }
@@ -320,9 +316,7 @@ pub(crate) fn parse_when_from_event<R: BufRead>(
             match name.as_str() {
                 // extData not yet implemented, skip
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "when", child_empty)?;
                 }
             }
         }
@@ -375,9 +369,7 @@ pub(crate) fn parse_clip_from_event<R: BufRead>(
                 }
                 // avFile not yet implemented, skip
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "clip", child_empty)?;
                 }
             }
         }
@@ -534,9 +526,7 @@ pub(crate) fn parse_gen_desc_from_event<R: BufRead>(
                         .push(GenDescChild::GenState(Box::new(gen_state)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "genDesc", child_empty)?;
                 }
             }
         }
@@ -601,9 +591,7 @@ pub(crate) fn parse_gen_state_from_event<R: BufRead>(
                 }
                 // desc not yet fully implemented, skip
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "genState", child_empty)?;
                 }
             }
         }

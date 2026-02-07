@@ -107,9 +107,7 @@ impl MeiDeserialize for Midi {
                         midi.children.push(MidiChild::Hex(Box::new(hex)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "midi", child_empty)?;
                     }
                 }
             }
@@ -148,9 +146,7 @@ impl MeiDeserialize for InstrGrp {
                     }
                     // Unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "instrGrp", child_empty)?;
                     }
                 }
             }

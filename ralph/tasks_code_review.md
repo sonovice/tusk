@@ -49,11 +49,12 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - Updated all call sites in attributes.rs, parts.rs, content.rs, structure.rs, mod.rs
   - All tests pass, no regressions
 
-- [ ] [ERROR_HANDLING] Add `tracing::warn!` for silently skipped unknown elements in MEI deserializer
-  - In `crates/formats/mei/src/deserializer/impls/`, the `_ =>` match arms silently skip unknown child elements
-  - Add `tracing::warn!("skipping unknown child element '{}' in {}", name, parent_element)` in the catch-all branches
-  - This makes data loss visible during debugging without changing behavior
-  - Only add to the main element deserializers (structure.rs, note.rs, grouping.rs, control/, etc.), not attribute classes
+- [x] [ERROR_HANDLING] Add `tracing::warn!` for silently skipped unknown elements in MEI deserializer
+  - Added `skip_unknown_child(&str, &str, bool)` method on `MeiReader` that logs via `tracing::warn!` and skips
+  - Replaced all ~155 catch-all `_ =>` blocks across 18 deserializer impl files to use the new method
+  - Updated `parse_grouping_child!` macro with new `parent:` parameter for correct parent name
+  - Fixed parent names that were incorrectly propagated from unrelated parsers in the same file
+  - Added `clippy::needless_borrow` to tusk-mei allow list (consistent with other suppressed lints)
 
 - [ ] [DRY] Extract beat position calculation into ConversionContext method
   - `import/structure.rs` and `import/direction.rs` both compute `beat_position / divisions` identically

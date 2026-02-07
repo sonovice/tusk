@@ -111,9 +111,7 @@ fn parse_creation_from_event<R: BufRead>(
                             .push(CreationChild::GeogName(Box::new(geog_name)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "creation", child_empty)?;
                     }
                 },
             }
@@ -157,9 +155,7 @@ pub(crate) fn parse_history_from_event<R: BufRead>(
                         .push(HistoryChild::EventList(Box::new(event_list)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "history", child_empty)?;
                 }
             }
         }
@@ -263,9 +259,7 @@ fn parse_event_list_from_event<R: BufRead>(
                         .push(EventListChild::Address(Box::new(address)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "eventList", child_empty)?;
                 }
             }
         }
@@ -382,9 +376,7 @@ fn parse_event_from_event<R: BufRead>(
                         .push(EventChild::PersName(Box::new(pers_name)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "event", child_empty)?;
                 }
             }
         }
@@ -426,9 +418,7 @@ fn parse_lang_usage_from_event<R: BufRead>(
                         .push(LangUsageChild::Language(Box::new(language)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "langUsage", child_empty)?;
                 }
             }
         }
@@ -511,9 +501,7 @@ fn parse_perf_medium_from_event<R: BufRead>(
                         .push(PerfMediumChild::CastList(Box::new(cast_list)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "perfMedium", child_empty)?;
                 }
             }
         }
@@ -560,9 +548,7 @@ fn parse_cast_list_from_event<R: BufRead>(
                         .push(CastListChild::CastGrp(Box::new(cast_grp)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "castList", child_empty)?;
                 }
             }
         }
@@ -612,9 +598,7 @@ fn parse_cast_item_from_event<R: BufRead>(
                         }
                         // actor and role elements are skipped for now - can be added later
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "castItem", child_empty)?;
                         }
                     }
                 }
@@ -664,9 +648,7 @@ fn parse_cast_grp_from_event<R: BufRead>(
                         .push(CastGrpChild::CastItem(Box::new(cast_item)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "castGrp", child_empty)?;
                 }
             }
         }
@@ -761,9 +743,7 @@ fn parse_perf_res_list_from_event<R: BufRead>(
                         .push(PerfResListChild::PerfResList(Box::new(nested)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "perfResList", child_empty)?;
                 }
             }
         }
@@ -809,9 +789,7 @@ fn parse_perf_res_from_event<R: BufRead>(
                         }
                         // For now, skip other complex child elements
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "perfRes", child_empty)?;
                         }
                     }
                 }
@@ -953,9 +931,7 @@ fn parse_contents_from_event<R: BufRead>(
                         .push(ContentsChild::Label(Box::new(label)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "contents", child_empty)?;
                 }
             }
         }
@@ -1005,9 +981,7 @@ fn parse_content_item_from_event<R: BufRead>(
                         }
                         // Skip other complex children for now - they can be added as needed
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "contentItem", child_empty)?;
                         }
                     }
                 }
@@ -1090,9 +1064,7 @@ fn parse_bibl_list_from_event<R: BufRead>(
                         .push(BiblListChild::BiblList(Box::new(nested_bibl_list)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "biblList", child_empty)?;
                 }
             }
         }
@@ -1133,9 +1105,7 @@ pub(crate) fn parse_notes_stmt_from_event<R: BufRead>(
                         .push(NotesStmtChild::Annot(Box::new(annot)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "notesStmt", child_empty)?;
                 }
             }
         }
@@ -1183,9 +1153,7 @@ pub(crate) fn parse_edition_from_event<R: BufRead>(
                         edition.children.push(EditionChild::Date(Box::new(date)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "edition", child_empty)?;
                     }
                 },
             }
@@ -1270,9 +1238,7 @@ pub(crate) fn parse_edition_stmt_from_event<R: BufRead>(
                         .push(EditionStmtChild::Contributor(Box::new(contributor)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "editionStmt", child_empty)?;
                 }
             }
         }
@@ -1381,9 +1347,7 @@ pub(crate) fn parse_series_stmt_from_event<R: BufRead>(
                         .push(SeriesStmtChild::Contributor(Box::new(contributor)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "seriesStmt", child_empty)?;
                 }
             }
         }
@@ -1500,9 +1464,7 @@ pub(crate) fn parse_term_from_event<R: BufRead>(
                         }
                         // Skip other child elements for now
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "term", child_empty)?;
                         }
                     }
                 }
@@ -1549,9 +1511,7 @@ fn parse_term_list_from_event<R: BufRead>(
                     term_list.children.push(TermListChild::Term(Box::new(term)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "termList", child_empty)?;
                 }
             }
         }
@@ -1595,9 +1555,7 @@ pub(crate) fn parse_classification_from_event<R: BufRead>(
                         .push(ClassificationChild::TermList(Box::new(term_list)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "classification", child_empty)?;
                 }
             }
         }
@@ -1839,9 +1797,7 @@ pub(crate) fn parse_expression_from_event<R: BufRead>(
                 }
                 // Unknown children are skipped in lenient mode
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "expression", child_empty)?;
                 }
             }
         }
@@ -1896,9 +1852,7 @@ pub(crate) fn parse_expression_list_from_event<R: BufRead>(
                 }
                 // Unknown children are skipped in lenient mode
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "expressionList", child_empty)?;
                 }
             }
         }
@@ -1952,9 +1906,7 @@ fn parse_component_list_from_event<R: BufRead>(
                         .push(ComponentListChild::Work(Box::new(work)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "componentList", child_empty)?;
                 }
             }
         }
@@ -1994,9 +1946,7 @@ fn parse_relation_list_from_event<R: BufRead>(
                         .push(RelationListChild::RelationList(Box::new(nested)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "relationList", child_empty)?;
                 }
             }
         }
@@ -2108,75 +2058,64 @@ fn parse_tempo_from_event<R: BufRead>(
                         tempo.children.push(TempoChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "rend" => {
-                            let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
-                            tempo.children.push(TempoChild::Rend(Box::new(rend)));
-                        }
-                        "lb" => {
-                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
-                            tempo.children.push(TempoChild::Lb(Box::new(lb)));
-                        }
-                        "ref" => {
-                            let ref_elem = super::header::parse_ref_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            tempo.children.push(TempoChild::Ref(Box::new(ref_elem)));
-                        }
-                        "persName" => {
-                            let pers_name = super::header::parse_pers_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            tempo
-                                .children
-                                .push(TempoChild::PersName(Box::new(pers_name)));
-                        }
-                        "corpName" => {
-                            let corp_name = super::header::parse_corp_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            tempo
-                                .children
-                                .push(TempoChild::CorpName(Box::new(corp_name)));
-                        }
-                        "name" => {
-                            let name_elem = super::header::parse_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            tempo.children.push(TempoChild::Name(Box::new(name_elem)));
-                        }
-                        "date" => {
-                            let date = parse_date_from_event(reader, child_attrs, child_empty)?;
-                            tempo.children.push(TempoChild::Date(Box::new(date)));
-                        }
-                        "title" => {
-                            let title = parse_title_from_event(reader, child_attrs, child_empty)?;
-                            tempo.children.push(TempoChild::Title(Box::new(title)));
-                        }
-                        "identifier" => {
-                            let identifier =
-                                parse_identifier_from_event(reader, child_attrs, child_empty)?;
-                            tempo
-                                .children
-                                .push(TempoChild::Identifier(Box::new(identifier)));
-                        }
-                        // Skip unknown child elements
-                        _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
-                        }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "rend" => {
+                        let rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Rend(Box::new(rend)));
                     }
-                }
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Lb(Box::new(lb)));
+                    }
+                    "ref" => {
+                        let ref_elem =
+                            super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Ref(Box::new(ref_elem)));
+                    }
+                    "persName" => {
+                        let pers_name = super::header::parse_pers_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        tempo
+                            .children
+                            .push(TempoChild::PersName(Box::new(pers_name)));
+                    }
+                    "corpName" => {
+                        let corp_name = super::header::parse_corp_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        tempo
+                            .children
+                            .push(TempoChild::CorpName(Box::new(corp_name)));
+                    }
+                    "name" => {
+                        let name_elem =
+                            super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Name(Box::new(name_elem)));
+                    }
+                    "date" => {
+                        let date = parse_date_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Date(Box::new(date)));
+                    }
+                    "title" => {
+                        let title = parse_title_from_event(reader, child_attrs, child_empty)?;
+                        tempo.children.push(TempoChild::Title(Box::new(title)));
+                    }
+                    "identifier" => {
+                        let identifier =
+                            parse_identifier_from_event(reader, child_attrs, child_empty)?;
+                        tempo
+                            .children
+                            .push(TempoChild::Identifier(Box::new(identifier)));
+                    }
+                    _ => {
+                        reader.skip_unknown_child(&name, "tempo", child_empty)?;
+                    }
+                },
             }
         }
     }
@@ -2310,9 +2249,7 @@ fn parse_incip_text_from_event<R: BufRead>(
                     incip_text.children.push(IncipTextChild::Lg(Box::new(lg)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "incipText", child_empty)?;
                 }
             }
         }
@@ -2382,9 +2319,7 @@ fn parse_incip_from_event<R: BufRead>(
                     incip.children.push(IncipChild::Score(Box::new(score)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "incip", child_empty)?;
                 }
             }
         }
@@ -2440,9 +2375,7 @@ pub(crate) fn parse_work_list_from_event<R: BufRead>(
                     work_list.children.push(WorkListChild::Work(Box::new(work)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "workList", child_empty)?;
                 }
             }
         }
@@ -2505,9 +2438,7 @@ pub(crate) fn parse_manifestation_list_from_event<R: BufRead>(
                         )));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "manifestationList", child_empty)?;
                 }
             }
         }
@@ -2685,9 +2616,7 @@ pub(crate) fn parse_manifestation_from_event<R: BufRead>(
                 }
                 // Skipped for now: itemList, componentList, physLoc, locus, locusGrp, extMeta
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "manifestation", child_empty)?;
                 }
             }
         }
@@ -2769,9 +2698,7 @@ pub(crate) fn parse_phys_desc_from_event<R: BufRead>(
                 }
                 // Other physDesc children are skipped for now
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "physDesc", child_empty)?;
                 }
             }
         }
@@ -3089,9 +3016,7 @@ pub(crate) fn parse_work_from_event<R: BufRead>(
                 }
                 // Unknown children are skipped in lenient mode
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "work", child_empty)?;
                 }
             }
         }
@@ -3152,9 +3077,7 @@ pub(crate) fn parse_revision_desc_from_event<R: BufRead>(
                         .push(RevisionDescChild::Change(Box::new(change)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "revisionDesc", child_empty)?;
                 }
             }
         }
@@ -3219,9 +3142,7 @@ pub(crate) fn parse_change_from_event<R: BufRead>(
                         .push(ChangeChild::RespStmt(Box::new(resp_stmt)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "change", child_empty)?;
                 }
             }
         }
@@ -3275,9 +3196,7 @@ pub(crate) fn parse_change_desc_from_event<R: BufRead>(
                     change_desc.children.push(ChangeDescChild::P(Box::new(p)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "changeDesc", child_empty)?;
                 }
             }
         }
@@ -3338,9 +3257,7 @@ impl MeiDeserialize for tusk_model::elements::Mei {
                     }
                     // Unknown children are skipped in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "mei", child_empty)?;
                     }
                 }
             }
@@ -3400,9 +3317,7 @@ impl MeiDeserialize for tusk_model::elements::MeiCorpus {
                     }
                     // Unknown children are skipped in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "meiCorpus", child_empty)?;
                     }
                 }
             }
@@ -3480,9 +3395,7 @@ impl MeiDeserialize for tusk_model::elements::Music {
                             .push(MusicChild::Performance(Box::new(performance)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "music", child_empty)?;
                     }
                 }
             }
@@ -3574,9 +3487,7 @@ pub(crate) fn parse_num_from_event<R: BufRead>(
                         }
                         // Skip unknown elements
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "num", child_empty)?;
                         }
                     }
                 }

@@ -122,98 +122,80 @@ pub(crate) fn parse_rend_from_event<R: BufRead>(
                         rend.children.push(RendChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "lb" => {
-                            let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
-                            rend.children.push(RendChild::Lb(Box::new(lb)));
-                        }
-                        "rend" => {
-                            let nested_rend =
-                                parse_rend_from_event(reader, child_attrs, child_empty)?;
-                            rend.children.push(RendChild::Rend(Box::new(nested_rend)));
-                        }
-                        "persName" => {
-                            let pers = super::header::parse_pers_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::PersName(Box::new(pers)));
-                        }
-                        "corpName" => {
-                            let corp = super::header::parse_corp_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::CorpName(Box::new(corp)));
-                        }
-                        "name" => {
-                            let name_elem = super::header::parse_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Name(Box::new(name_elem)));
-                        }
-                        "title" => {
-                            let title = super::header::parse_title_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Title(Box::new(title)));
-                        }
-                        "date" => {
-                            let date = super::header::parse_date_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Date(Box::new(date)));
-                        }
-                        "ref" => {
-                            let ref_elem = super::header::parse_ref_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Ref(Box::new(ref_elem)));
-                        }
-                        "ptr" => {
-                            let ptr = super::header::parse_ptr_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Ptr(Box::new(ptr)));
-                        }
-                        "identifier" => {
-                            let identifier = super::header::parse_identifier_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children
-                                .push(RendChild::Identifier(Box::new(identifier)));
-                        }
-                        "symbol" => {
-                            let symbol = super::control::parse_symbol_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            rend.children.push(RendChild::Symbol(Box::new(symbol)));
-                        }
-                        // Skip unknown children in lenient mode
-                        _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
-                        }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "lb" => {
+                        let lb = parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Lb(Box::new(lb)));
                     }
-                }
+                    "rend" => {
+                        let nested_rend = parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Rend(Box::new(nested_rend)));
+                    }
+                    "persName" => {
+                        let pers = super::header::parse_pers_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        rend.children.push(RendChild::PersName(Box::new(pers)));
+                    }
+                    "corpName" => {
+                        let corp = super::header::parse_corp_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        rend.children.push(RendChild::CorpName(Box::new(corp)));
+                    }
+                    "name" => {
+                        let name_elem =
+                            super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Name(Box::new(name_elem)));
+                    }
+                    "title" => {
+                        let title = super::header::parse_title_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        rend.children.push(RendChild::Title(Box::new(title)));
+                    }
+                    "date" => {
+                        let date =
+                            super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Date(Box::new(date)));
+                    }
+                    "ref" => {
+                        let ref_elem =
+                            super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Ref(Box::new(ref_elem)));
+                    }
+                    "ptr" => {
+                        let ptr =
+                            super::header::parse_ptr_from_event(reader, child_attrs, child_empty)?;
+                        rend.children.push(RendChild::Ptr(Box::new(ptr)));
+                    }
+                    "identifier" => {
+                        let identifier = super::header::parse_identifier_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        rend.children
+                            .push(RendChild::Identifier(Box::new(identifier)));
+                    }
+                    "symbol" => {
+                        let symbol = super::control::parse_symbol_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        rend.children.push(RendChild::Symbol(Box::new(symbol)));
+                    }
+                    _ => {
+                        reader.skip_unknown_child(&name, "rend", child_empty)?;
+                    }
+                },
             }
         }
     }
@@ -286,10 +268,7 @@ impl MeiDeserialize for Lg {
                         lg.children.push(LgChild::Lg(Box::new(nested_lg)));
                     }
                     _ => {
-                        // Skip unknown children in lenient mode
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "lg", child_empty)?;
                     }
                 }
             }
@@ -330,10 +309,7 @@ impl MeiDeserialize for Fig {
                         fig.children.push(FigChild::FigDesc(Box::new(fig_desc)));
                     }
                     _ => {
-                        // Skip unknown children in lenient mode
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "fig", child_empty)?;
                     }
                 }
             }
@@ -440,10 +416,7 @@ impl MeiDeserialize for Verse {
                     }
                     // Other verse children can be added here as needed
                     _ => {
-                        // Unknown child element - skip in lenient mode
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "verse", child_empty)?;
                     }
                 }
             }
@@ -516,9 +489,7 @@ impl MeiDeserialize for Syl {
                             }
                             // Syl can contain many child elements, skip others in lenient mode
                             _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
+                                reader.skip_unknown_child(&name, "syl", child_empty)?;
                             }
                         }
                     }
@@ -585,10 +556,7 @@ pub(crate) fn parse_list_from_event<R: BufRead>(
                     list.children.push(ListChild::Label(Box::new(label)));
                 }
                 _ => {
-                    // Skip unknown children in lenient mode
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "list", child_empty)?;
                 }
             }
         }
@@ -749,9 +717,7 @@ pub(crate) fn parse_li_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "li", child_empty)?;
                         }
                     }
                 }
@@ -885,9 +851,7 @@ pub(crate) fn parse_seg_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "seg", child_empty)?;
                         }
                     }
                 }
@@ -950,9 +914,7 @@ pub(crate) fn parse_div_from_event<R: BufRead>(
                 }
                 // Other child types can be added as needed
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "div", child_empty)?;
                 }
             }
         }
@@ -1008,10 +970,7 @@ pub(crate) fn parse_table_from_event<R: BufRead>(
                     table.children.push(TableChild::Tr(Box::new(tr)));
                 }
                 _ => {
-                    // Skip unknown children in lenient mode
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "table", child_empty)?;
                 }
             }
         }
@@ -1063,10 +1022,7 @@ pub(crate) fn parse_tr_from_event<R: BufRead>(
                     tr.children.push(TrChild::Th(Box::new(th)));
                 }
                 _ => {
-                    // Skip unknown children in lenient mode
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "tr", child_empty)?;
                 }
             }
         }
@@ -1213,9 +1169,7 @@ pub(crate) fn parse_td_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "td", child_empty)?;
                         }
                     }
                 }
@@ -1364,9 +1318,7 @@ pub(crate) fn parse_th_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "th", child_empty)?;
                         }
                     }
                 }
@@ -1503,9 +1455,7 @@ pub(crate) fn parse_caption_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "caption", child_empty)?;
                         }
                     }
                 }
@@ -1677,9 +1627,7 @@ pub(crate) fn parse_l_from_event<R: BufRead>(
                         }
                         // Other child elements not yet implemented - skip
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "l", child_empty)?;
                         }
                     }
                 }
@@ -1740,9 +1688,7 @@ impl MeiDeserialize for Front {
                     }
                     // Skip unknown children in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "front", child_empty)?;
                     }
                 }
             }
@@ -1807,9 +1753,7 @@ impl MeiDeserialize for Back {
                     }
                     // Skip unknown children in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "back", child_empty)?;
                     }
                 }
             }
@@ -1949,9 +1893,7 @@ impl MeiDeserialize for TitlePage {
                     }
                     // Skip unknown children in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "titlePage", child_empty)?;
                     }
                 }
             }
@@ -2036,9 +1978,7 @@ impl MeiDeserialize for Argument {
                     }
                     // Skip unknown children in lenient mode
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "argument", child_empty)?;
                     }
                 }
             }
@@ -2237,9 +2177,7 @@ impl MeiDeserialize for Epigraph {
                             }
                             // Skip unknown children in lenient mode
                             _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
+                                reader.skip_unknown_child(&name, "epigraph", child_empty)?;
                             }
                         }
                     }
@@ -2452,9 +2390,7 @@ impl MeiDeserialize for Dedication {
                             }
                             // Skip unknown children in lenient mode
                             _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
+                                reader.skip_unknown_child(&name, "dedication", child_empty)?;
                             }
                         }
                     }
@@ -2659,9 +2595,7 @@ impl MeiDeserialize for Imprimatur {
                             }
                             // Skip unknown children in lenient mode
                             _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
+                                reader.skip_unknown_child(&name, "imprimatur", child_empty)?;
                             }
                         }
                     }
@@ -2841,9 +2775,7 @@ impl MeiDeserialize for Colophon {
                             }
                             // Skip unknown children in lenient mode
                             _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
+                                reader.skip_unknown_child(&name, "colophon", child_empty)?;
                             }
                         }
                     }

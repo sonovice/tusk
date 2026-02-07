@@ -64,9 +64,7 @@ impl MeiDeserialize for ChordTable {
                             .push(ChordTableChild::ChordDef(Box::new(chord_def)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "chordTable", child_empty)?;
                     }
                 }
             }
@@ -115,9 +113,7 @@ impl MeiDeserialize for ChordDef {
                             .push(ChordDefChild::ChordMember(Box::new(chord_member)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "chordDef", child_empty)?;
                     }
                 }
             }

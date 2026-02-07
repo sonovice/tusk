@@ -166,10 +166,7 @@ fn parse_tab_grp_child<R: BufRead>(
             elem.children.push(TabGrpChild::Unclear(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "tabGrp", child_empty)?;
         }
     }
     Ok(())
@@ -337,10 +334,7 @@ fn parse_fing_child<R: BufRead>(
             elem.children.push(FingChild::Unclear(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "fing", child_empty)?;
         }
     }
     Ok(())
@@ -460,10 +454,7 @@ fn parse_fing_grp_child<R: BufRead>(
             elem.children.push(FingGrpChild::Unclear(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "fingGrp", child_empty)?;
         }
     }
     Ok(())
@@ -516,10 +507,7 @@ fn parse_string_child<R: BufRead>(
             elem.children.push(StringChild::String(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "string", child_empty)?;
         }
     }
     Ok(())
@@ -572,10 +560,7 @@ fn parse_course_child<R: BufRead>(
             elem.children.push(CourseChild::String(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "course", child_empty)?;
         }
     }
     Ok(())
@@ -628,10 +613,7 @@ fn parse_tuning_child<R: BufRead>(
             elem.children.push(TuningChild::Course(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "tuning", child_empty)?;
         }
     }
     Ok(())

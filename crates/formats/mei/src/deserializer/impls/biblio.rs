@@ -113,9 +113,7 @@ impl MeiDeserialize for AvFile {
                         elem.children.push(AvFileChild::Clip(Box::new(clip)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "avFile", child_empty)?;
                     }
                 }
             }
@@ -158,9 +156,7 @@ pub(crate) fn parse_patch_from_event<R: BufRead>(
                     elem.children.push(PatchChild::Folium(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "patch", child_empty)?;
                 }
             }
         }
@@ -217,9 +213,7 @@ pub(crate) fn parse_cutout_from_event<R: BufRead>(
                     elem.children.push(CutoutChild::Folium(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "cutout", child_empty)?;
                 }
             }
         }
@@ -272,9 +266,7 @@ pub(crate) fn parse_folium_from_event<R: BufRead>(
                     elem.children.push(FoliumChild::Patch(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "folium", child_empty)?;
                 }
             }
         }
@@ -377,9 +369,7 @@ pub(crate) fn parse_bifolium_from_event<R: BufRead>(
                     elem.children.push(BifoliumChild::Cutout(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "bifolium", child_empty)?;
                 }
             }
         }
@@ -468,9 +458,7 @@ pub(crate) fn parse_analytic_from_event<R: BufRead>(
                     elem.children.push(AnalyticChild::Creator(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "analytic", child_empty)?;
                 }
             }
         }
@@ -576,9 +564,7 @@ pub(crate) fn parse_monogr_from_event<R: BufRead>(
                     elem.children.push(MonogrChild::RespStmt(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "monogr", child_empty)?;
                 }
             }
         }
@@ -653,10 +639,7 @@ pub(crate) fn parse_series_from_event<R: BufRead>(
                         elem.children.push(SeriesChild::Extent(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "series", child_empty)?;
                     }
                 },
             }
@@ -723,10 +706,7 @@ pub(crate) fn parse_catchwords_from_event<R: BufRead>(
                             .push(CatchwordsChild::Catchwords(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "catchwords", child_empty)?;
                     }
                 },
             }
@@ -791,10 +771,7 @@ pub(crate) fn parse_signatures_from_event<R: BufRead>(
                             .push(SignaturesChild::Signatures(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "signatures", child_empty)?;
                     }
                 },
             }
@@ -862,10 +839,7 @@ pub(crate) fn parse_signif_let_from_event<R: BufRead>(
                             .push(SignifLetChild::Signatures(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "signifLet", child_empty)?;
                     }
                 },
             }
@@ -928,10 +902,7 @@ pub(crate) fn parse_actor_from_event<R: BufRead>(
                         elem.children.push(ActorChild::Signatures(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "actor", child_empty)?;
                     }
                 },
             }
@@ -989,9 +960,7 @@ pub(crate) fn parse_cat_rel_from_event<R: BufRead>(
                     elem.children.push(CatRelChild::Desc(Box::new(child)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "catRel", child_empty)?;
                 }
             }
         }
@@ -1056,10 +1025,7 @@ pub(crate) fn parse_context_from_event<R: BufRead>(
                             .push(ContextChild::Signatures(Box::new(child)));
                     }
                     _ => {
-                        // Skip other children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "context", child_empty)?;
                     }
                 },
             }

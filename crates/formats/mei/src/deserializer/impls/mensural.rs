@@ -310,10 +310,7 @@ fn parse_ligature_child<R: BufRead>(
             elem.children.push(LigatureChild::Unclear(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "ligature", child_empty)?;
         }
     }
     Ok(())

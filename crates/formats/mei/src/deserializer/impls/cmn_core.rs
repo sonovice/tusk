@@ -175,9 +175,7 @@ impl MeiDeserialize for ClefGrp {
                         clef_grp.children.push(ClefGrpChild::Clef(Box::new(clef)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "clefGrp", child_empty)?;
                     }
                 }
             }
@@ -219,9 +217,7 @@ impl MeiDeserialize for Custos {
                         custos.children.push(CustosChild::Accid(Box::new(accid)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "custos", child_empty)?;
                     }
                 }
             }
@@ -340,9 +336,7 @@ impl MeiDeserialize for MeterSigGrp {
                             .push(MeterSigGrpChild::MeterSigGrp(Box::new(nested)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "meterSigGrp", child_empty)?;
                     }
                 }
             }
@@ -397,31 +391,23 @@ fn parse_label_abbr_from_event<R: BufRead>(
                         label_abbr.children.push(LabelAbbrChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "rend" => {
-                            let rend = super::text::parse_rend_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Rend(Box::new(rend)));
-                        }
-                        "lb" => {
-                            let lb =
-                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
-                            label_abbr.children.push(LabelAbbrChild::Lb(Box::new(lb)));
-                        }
-                        _ => {
-                            // Skip unknown children
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
-                        }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "rend" => {
+                        let rend =
+                            super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Rend(Box::new(rend)));
                     }
-                }
+                    "lb" => {
+                        let lb =
+                            super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr.children.push(LabelAbbrChild::Lb(Box::new(lb)));
+                    }
+                    _ => {
+                        reader.skip_unknown_child(&name, "labelAbbr", child_empty)?;
+                    }
+                },
             }
         }
     }
@@ -468,9 +454,7 @@ impl MeiDeserialize for GrpSym {
                             .push(GrpSymChild::LabelAbbr(Box::new(label_abbr)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "grpSym", child_empty)?;
                     }
                 }
             }
@@ -572,10 +556,7 @@ impl MeiDeserialize for Part {
                             .push(PartChild::AnchoredText(Box::new(anchored_text)));
                     }
                     _ => {
-                        // Skip unknown children
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "part", child_empty)?;
                     }
                 }
             }
@@ -616,9 +597,7 @@ impl MeiDeserialize for Parts {
                         parts.children.push(PartsChild::Part(Box::new(part)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "parts", child_empty)?;
                     }
                 }
             }
@@ -665,9 +644,7 @@ impl MeiDeserialize for Ossia {
                     // oLayer and oStaff are currently not implemented
                     // They would need their own deserializers when added
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "ossia", child_empty)?;
                     }
                 }
             }

@@ -64,9 +64,7 @@ impl MeiDeserialize for App {
                         app.children.push(AppChild::Rdg(Box::new(rdg)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "app", child_empty)?;
                     }
                 }
             }
@@ -143,9 +141,7 @@ impl MeiDeserialize for Choice {
                     }
                     // For other children (unclear, abbr, expan, orig, subst, reg), skip for now
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "choice", child_empty)?;
                     }
                 }
             }
@@ -415,9 +411,7 @@ fn parse_lem_from_event<R: BufRead>(
                 // Text content is handled via MixedContent if needed
                 // Unknown children are skipped in lenient mode
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "lem", child_empty)?;
                 }
             }
         }
@@ -626,9 +620,7 @@ fn parse_rdg_from_event<R: BufRead>(
                 // Text content is handled via MixedContent if needed
                 // Unknown children are skipped in lenient mode
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "rdg", child_empty)?;
                 }
             }
         }
@@ -1157,11 +1149,8 @@ fn parse_add_child<R: BufRead>(
                 tusk_model::elements::Refrain::from_mei_event(reader, child_attrs, child_empty)?;
             Some(AddChild::Refrain(Box::new(elem)))
         }
-        // Unknown elements are skipped
         _ => {
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(name, "add", child_empty)?;
             None
         }
     };
@@ -1651,11 +1640,8 @@ fn parse_del_child<R: BufRead>(
                 tusk_model::elements::Rend::from_mei_event(reader, child_attrs, child_empty)?;
             Some(DelChild::Rend(Box::new(elem)))
         }
-        // Unknown elements are skipped
         _ => {
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(name, "del", child_empty)?;
             None
         }
     };

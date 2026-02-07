@@ -12,6 +12,7 @@
     clippy::manual_map,
     clippy::unnecessary_map_or,
     clippy::match_single_binding,
+    clippy::needless_borrow,
     clippy::redundant_closure,
     clippy::single_match,
     clippy::manual_pattern_char_comparison

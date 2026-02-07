@@ -120,9 +120,7 @@ impl MeiDeserialize for ScoreDef {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "scoreDef", child_empty)?;
                     }
                 }
             }
@@ -196,9 +194,7 @@ fn parse_staff_grp_from_event<R: BufRead>(
                         .push(StaffGrpChild::InstrDef(Box::new(instr_def)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "staffGrp", child_empty)?;
                 }
             }
         }
@@ -312,10 +308,7 @@ impl MeiDeserialize for StaffDef {
                         }
                     }
                     _ => {
-                        // Unknown children are skipped (lenient mode)
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "staffDef", child_empty)?;
                     }
                 }
             }
@@ -406,91 +399,74 @@ pub(crate) fn parse_label_from_event<R: BufRead>(
                         label.children.push(LabelChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "rend" => {
-                            let rend = super::text::parse_rend_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label.children.push(LabelChild::Rend(Box::new(rend)));
-                        }
-                        "ref" => {
-                            let ref_elem = super::header::parse_ref_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label.children.push(LabelChild::Ref(Box::new(ref_elem)));
-                        }
-                        "lb" => {
-                            let lb =
-                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
-                            label.children.push(LabelChild::Lb(Box::new(lb)));
-                        }
-                        "persName" => {
-                            let pers_name = super::header::parse_pers_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label
-                                .children
-                                .push(LabelChild::PersName(Box::new(pers_name)));
-                        }
-                        "corpName" => {
-                            let corp_name = super::header::parse_corp_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label
-                                .children
-                                .push(LabelChild::CorpName(Box::new(corp_name)));
-                        }
-                        "name" => {
-                            let name_elem = super::header::parse_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label.children.push(LabelChild::Name(Box::new(name_elem)));
-                        }
-                        "date" => {
-                            let date = super::header::parse_date_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label.children.push(LabelChild::Date(Box::new(date)));
-                        }
-                        "title" => {
-                            let title = super::header::parse_title_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label.children.push(LabelChild::Title(Box::new(title)));
-                        }
-                        "identifier" => {
-                            let identifier = super::header::parse_identifier_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label
-                                .children
-                                .push(LabelChild::Identifier(Box::new(identifier)));
-                        }
-                        _ => {
-                            // Skip unknown child elements
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
-                        }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "rend" => {
+                        let rend =
+                            super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        label.children.push(LabelChild::Rend(Box::new(rend)));
                     }
-                }
+                    "ref" => {
+                        let ref_elem =
+                            super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                        label.children.push(LabelChild::Ref(Box::new(ref_elem)));
+                    }
+                    "lb" => {
+                        let lb =
+                            super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        label.children.push(LabelChild::Lb(Box::new(lb)));
+                    }
+                    "persName" => {
+                        let pers_name = super::header::parse_pers_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label
+                            .children
+                            .push(LabelChild::PersName(Box::new(pers_name)));
+                    }
+                    "corpName" => {
+                        let corp_name = super::header::parse_corp_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label
+                            .children
+                            .push(LabelChild::CorpName(Box::new(corp_name)));
+                    }
+                    "name" => {
+                        let name_elem =
+                            super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                        label.children.push(LabelChild::Name(Box::new(name_elem)));
+                    }
+                    "date" => {
+                        let date =
+                            super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+                        label.children.push(LabelChild::Date(Box::new(date)));
+                    }
+                    "title" => {
+                        let title = super::header::parse_title_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label.children.push(LabelChild::Title(Box::new(title)));
+                    }
+                    "identifier" => {
+                        let identifier = super::header::parse_identifier_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label
+                            .children
+                            .push(LabelChild::Identifier(Box::new(identifier)));
+                    }
+                    _ => {
+                        reader.skip_unknown_child(&name, "label", child_empty)?;
+                    }
+                },
             }
         }
     }
@@ -536,101 +512,84 @@ fn parse_label_abbr_from_event<R: BufRead>(
                         label_abbr.children.push(LabelAbbrChild::Text(text));
                     }
                 }
-                MixedContent::Element(name, child_attrs, child_empty) => {
-                    match name.as_str() {
-                        "rend" => {
-                            let rend = super::text::parse_rend_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Rend(Box::new(rend)));
-                        }
-                        "ref" => {
-                            let ref_elem = super::header::parse_ref_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Ref(Box::new(ref_elem)));
-                        }
-                        "lb" => {
-                            let lb =
-                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
-                            label_abbr.children.push(LabelAbbrChild::Lb(Box::new(lb)));
-                        }
-                        "persName" => {
-                            let pers_name = super::header::parse_pers_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::PersName(Box::new(pers_name)));
-                        }
-                        "corpName" => {
-                            let corp_name = super::header::parse_corp_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::CorpName(Box::new(corp_name)));
-                        }
-                        "name" => {
-                            let name_elem = super::header::parse_name_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Name(Box::new(name_elem)));
-                        }
-                        "date" => {
-                            let date = super::header::parse_date_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Date(Box::new(date)));
-                        }
-                        "title" => {
-                            let title = super::header::parse_title_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Title(Box::new(title)));
-                        }
-                        "identifier" => {
-                            let identifier = super::header::parse_identifier_from_event(
-                                reader,
-                                child_attrs,
-                                child_empty,
-                            )?;
-                            label_abbr
-                                .children
-                                .push(LabelAbbrChild::Identifier(Box::new(identifier)));
-                        }
-                        _ => {
-                            // Skip unknown children (lenient mode)
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
-                        }
+                MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                    "rend" => {
+                        let rend =
+                            super::text::parse_rend_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Rend(Box::new(rend)));
                     }
-                }
+                    "ref" => {
+                        let ref_elem =
+                            super::header::parse_ref_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Ref(Box::new(ref_elem)));
+                    }
+                    "lb" => {
+                        let lb =
+                            super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr.children.push(LabelAbbrChild::Lb(Box::new(lb)));
+                    }
+                    "persName" => {
+                        let pers_name = super::header::parse_pers_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::PersName(Box::new(pers_name)));
+                    }
+                    "corpName" => {
+                        let corp_name = super::header::parse_corp_name_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::CorpName(Box::new(corp_name)));
+                    }
+                    "name" => {
+                        let name_elem =
+                            super::header::parse_name_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Name(Box::new(name_elem)));
+                    }
+                    "date" => {
+                        let date =
+                            super::header::parse_date_from_event(reader, child_attrs, child_empty)?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Date(Box::new(date)));
+                    }
+                    "title" => {
+                        let title = super::header::parse_title_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Title(Box::new(title)));
+                    }
+                    "identifier" => {
+                        let identifier = super::header::parse_identifier_from_event(
+                            reader,
+                            child_attrs,
+                            child_empty,
+                        )?;
+                        label_abbr
+                            .children
+                            .push(LabelAbbrChild::Identifier(Box::new(identifier)));
+                    }
+                    _ => {
+                        reader.skip_unknown_child(&name, "labelAbbr", child_empty)?;
+                    }
+                },
             }
         }
     }
@@ -702,10 +661,7 @@ fn parse_layer_def_from_event<R: BufRead>(
                     }
                 }
                 _ => {
-                    // Unknown children are skipped (lenient mode)
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "layerDef", child_empty)?;
                 }
             }
         }
@@ -937,9 +893,7 @@ pub(crate) fn parse_pg_head_from_event<R: BufRead>(
                         }
                         // Skip unknown child elements
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "pgHead", child_empty)?;
                         }
                     }
                 }
@@ -1115,9 +1069,7 @@ pub(crate) fn parse_pg_foot_from_event<R: BufRead>(
                         }
                         // Skip unknown child elements
                         _ => {
-                            if !child_empty {
-                                reader.skip_to_end(&name)?;
-                            }
+                            reader.skip_unknown_child(&name, "pgFoot", child_empty)?;
                         }
                     }
                 }

@@ -62,9 +62,7 @@ impl MeiDeserialize for Facsimile {
                             .push(FacsimileChild::Graphic(Box::new(graphic)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "facsimile", child_empty)?;
                     }
                 }
             }
@@ -131,9 +129,7 @@ pub(crate) fn parse_surface_from_event<R: BufRead>(
                         .push(SurfaceChild::FigDesc(Box::new(fig_desc)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "surface", child_empty)?;
                 }
             }
         }
@@ -187,9 +183,7 @@ pub(crate) fn parse_zone_from_event<R: BufRead>(
                     zone.children.push(ZoneChild::Graphic(Box::new(graphic)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "zone", child_empty)?;
                 }
             }
         }
@@ -247,9 +241,7 @@ pub(crate) fn parse_graphic_from_event<R: BufRead>(
                     graphic.children.push(GraphicChild::Zone(Box::new(zone)));
                 }
                 _ => {
-                    if !child_empty {
-                        reader.skip_to_end(&name)?;
-                    }
+                    reader.skip_unknown_child(&name, "graphic", child_empty)?;
                 }
             }
         }

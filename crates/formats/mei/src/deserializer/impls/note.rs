@@ -167,9 +167,7 @@ impl MeiDeserialize for Note {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "note", child_empty)?;
                     }
                 }
             }
@@ -252,10 +250,8 @@ impl MeiDeserialize for Rest {
                         let dot = parse_dot_from_raw(child_attrs);
                         rest.children.push(RestChild::Dot(Box::new(dot)));
                     }
-                    // Other child types (add, damage, app, etc.) can be added here as needed
-                    // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        // Unknown child element - skip in lenient mode
+                        tracing::warn!("skipping unknown child <{name}> in <rest>");
                     }
                 }
             }
@@ -306,9 +302,7 @@ impl MeiDeserialize for Chord {
                     // Other child types (verse, syl, etc.) can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "chord", child_empty)?;
                     }
                 }
             }

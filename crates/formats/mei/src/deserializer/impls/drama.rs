@@ -107,9 +107,7 @@ impl MeiDeserialize for Sp {
                     }
                     // Skip unknown children in lenient mode (including "app" which is not yet supported)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "sp", child_empty)?;
                     }
                 }
             }
@@ -154,60 +152,52 @@ impl MeiDeserialize for Speaker {
                             speaker.children.push(SpeakerChild::Text(text));
                         }
                     }
-                    MixedContent::Element(name, child_attrs, child_empty) => {
-                        match name.as_str() {
-                            "rend" => {
-                                let rend = super::text::parse_rend_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                speaker.children.push(SpeakerChild::Rend(Box::new(rend)));
-                            }
-                            "lb" => {
-                                let lb = super::text::parse_lb_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                speaker.children.push(SpeakerChild::Lb(Box::new(lb)));
-                            }
-                            "name" => {
-                                let name_elem = super::header::parse_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                speaker
-                                    .children
-                                    .push(SpeakerChild::Name(Box::new(name_elem)));
-                            }
-                            "persName" => {
-                                let pers_name = super::header::parse_pers_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                speaker
-                                    .children
-                                    .push(SpeakerChild::PersName(Box::new(pers_name)));
-                            }
-                            "seg" => {
-                                let seg = super::text::parse_seg_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                speaker.children.push(SpeakerChild::Seg(Box::new(seg)));
-                            }
-                            // Skip unknown children in lenient mode
-                            _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
-                            }
+                    MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            speaker.children.push(SpeakerChild::Rend(Box::new(rend)));
                         }
-                    }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            speaker.children.push(SpeakerChild::Lb(Box::new(lb)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            speaker
+                                .children
+                                .push(SpeakerChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            speaker
+                                .children
+                                .push(SpeakerChild::PersName(Box::new(pers_name)));
+                        }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            speaker.children.push(SpeakerChild::Seg(Box::new(seg)));
+                        }
+                        _ => {
+                            reader.skip_unknown_child(&name, "speaker", child_empty)?;
+                        }
+                    },
                 }
             }
         }
@@ -255,78 +245,70 @@ impl MeiDeserialize for StageDir {
                             stage_dir.children.push(StageDirChild::Text(text));
                         }
                     }
-                    MixedContent::Element(name, child_attrs, child_empty) => {
-                        match name.as_str() {
-                            "rend" => {
-                                let rend = super::text::parse_rend_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir.children.push(StageDirChild::Rend(Box::new(rend)));
-                            }
-                            "lb" => {
-                                let lb = super::text::parse_lb_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir.children.push(StageDirChild::Lb(Box::new(lb)));
-                            }
-                            "name" => {
-                                let name_elem = super::header::parse_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir
-                                    .children
-                                    .push(StageDirChild::Name(Box::new(name_elem)));
-                            }
-                            "persName" => {
-                                let pers_name = super::header::parse_pers_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir
-                                    .children
-                                    .push(StageDirChild::PersName(Box::new(pers_name)));
-                            }
-                            "seg" => {
-                                let seg = super::text::parse_seg_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir.children.push(StageDirChild::Seg(Box::new(seg)));
-                            }
-                            "ref" => {
-                                let ref_elem = super::header::parse_ref_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir
-                                    .children
-                                    .push(StageDirChild::Ref(Box::new(ref_elem)));
-                            }
-                            "fig" => {
-                                let fig = super::text::parse_fig_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                stage_dir.children.push(StageDirChild::Fig(Box::new(fig)));
-                            }
-                            // Skip unknown children in lenient mode
-                            _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
-                            }
+                    MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir.children.push(StageDirChild::Rend(Box::new(rend)));
                         }
-                    }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            stage_dir.children.push(StageDirChild::Lb(Box::new(lb)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir
+                                .children
+                                .push(StageDirChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir
+                                .children
+                                .push(StageDirChild::PersName(Box::new(pers_name)));
+                        }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir.children.push(StageDirChild::Seg(Box::new(seg)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir
+                                .children
+                                .push(StageDirChild::Ref(Box::new(ref_elem)));
+                        }
+                        "fig" => {
+                            let fig = super::text::parse_fig_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            stage_dir.children.push(StageDirChild::Fig(Box::new(fig)));
+                        }
+                        _ => {
+                            reader.skip_unknown_child(&name, "stageDir", child_empty)?;
+                        }
+                    },
                 }
             }
         }
@@ -370,64 +352,56 @@ impl MeiDeserialize for Role {
                             role.children.push(RoleChild::Text(text));
                         }
                     }
-                    MixedContent::Element(name, child_attrs, child_empty) => {
-                        match name.as_str() {
-                            "rend" => {
-                                let rend = super::text::parse_rend_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::Rend(Box::new(rend)));
-                            }
-                            "lb" => {
-                                let lb = super::text::parse_lb_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::Lb(Box::new(lb)));
-                            }
-                            "name" => {
-                                let name_elem = super::header::parse_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::Name(Box::new(name_elem)));
-                            }
-                            "persName" => {
-                                let pers_name = super::header::parse_pers_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::PersName(Box::new(pers_name)));
-                            }
-                            "seg" => {
-                                let seg = super::text::parse_seg_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::Seg(Box::new(seg)));
-                            }
-                            "ref" => {
-                                let ref_elem = super::header::parse_ref_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role.children.push(RoleChild::Ref(Box::new(ref_elem)));
-                            }
-                            // Skip unknown children in lenient mode
-                            _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
-                            }
+                    MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role.children.push(RoleChild::Rend(Box::new(rend)));
                         }
-                    }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            role.children.push(RoleChild::Lb(Box::new(lb)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role.children.push(RoleChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role.children.push(RoleChild::PersName(Box::new(pers_name)));
+                        }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role.children.push(RoleChild::Seg(Box::new(seg)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role.children.push(RoleChild::Ref(Box::new(ref_elem)));
+                        }
+                        _ => {
+                            reader.skip_unknown_child(&name, "role", child_empty)?;
+                        }
+                    },
                 }
             }
         }
@@ -474,78 +448,70 @@ impl MeiDeserialize for RoleName {
                             role_name.children.push(RoleNameChild::Text(text));
                         }
                     }
-                    MixedContent::Element(name, child_attrs, child_empty) => {
-                        match name.as_str() {
-                            "rend" => {
-                                let rend = super::text::parse_rend_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name.children.push(RoleNameChild::Rend(Box::new(rend)));
-                            }
-                            "lb" => {
-                                let lb = super::text::parse_lb_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name.children.push(RoleNameChild::Lb(Box::new(lb)));
-                            }
-                            "name" => {
-                                let name_elem = super::header::parse_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name
-                                    .children
-                                    .push(RoleNameChild::Name(Box::new(name_elem)));
-                            }
-                            "persName" => {
-                                let pers_name = super::header::parse_pers_name_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name
-                                    .children
-                                    .push(RoleNameChild::PersName(Box::new(pers_name)));
-                            }
-                            "seg" => {
-                                let seg = super::text::parse_seg_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name.children.push(RoleNameChild::Seg(Box::new(seg)));
-                            }
-                            "ref" => {
-                                let ref_elem = super::header::parse_ref_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name
-                                    .children
-                                    .push(RoleNameChild::Ref(Box::new(ref_elem)));
-                            }
-                            "date" => {
-                                let date = super::header::parse_date_from_event(
-                                    reader,
-                                    child_attrs,
-                                    child_empty,
-                                )?;
-                                role_name.children.push(RoleNameChild::Date(Box::new(date)));
-                            }
-                            // Skip unknown children in lenient mode
-                            _ => {
-                                if !child_empty {
-                                    reader.skip_to_end(&name)?;
-                                }
-                            }
+                    MixedContent::Element(name, child_attrs, child_empty) => match name.as_str() {
+                        "rend" => {
+                            let rend = super::text::parse_rend_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name.children.push(RoleNameChild::Rend(Box::new(rend)));
                         }
-                    }
+                        "lb" => {
+                            let lb =
+                                super::text::parse_lb_from_event(reader, child_attrs, child_empty)?;
+                            role_name.children.push(RoleNameChild::Lb(Box::new(lb)));
+                        }
+                        "name" => {
+                            let name_elem = super::header::parse_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name
+                                .children
+                                .push(RoleNameChild::Name(Box::new(name_elem)));
+                        }
+                        "persName" => {
+                            let pers_name = super::header::parse_pers_name_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name
+                                .children
+                                .push(RoleNameChild::PersName(Box::new(pers_name)));
+                        }
+                        "seg" => {
+                            let seg = super::text::parse_seg_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name.children.push(RoleNameChild::Seg(Box::new(seg)));
+                        }
+                        "ref" => {
+                            let ref_elem = super::header::parse_ref_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name
+                                .children
+                                .push(RoleNameChild::Ref(Box::new(ref_elem)));
+                        }
+                        "date" => {
+                            let date = super::header::parse_date_from_event(
+                                reader,
+                                child_attrs,
+                                child_empty,
+                            )?;
+                            role_name.children.push(RoleNameChild::Date(Box::new(date)));
+                        }
+                        _ => {
+                            reader.skip_unknown_child(&name, "roleName", child_empty)?;
+                        }
+                    },
                 }
             }
         }

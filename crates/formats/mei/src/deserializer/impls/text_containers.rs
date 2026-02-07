@@ -67,9 +67,7 @@ impl MeiDeserialize for Group {
                         elem.children.push(GroupChild::Music(Box::new(child)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "group", child_empty)?;
                     }
                 }
             }
@@ -228,10 +226,7 @@ fn parse_quote_child<R: BufRead>(
             elem.children.push(QuoteChild::StageDir(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "quote", child_empty)?;
         }
     }
     Ok(())
@@ -373,10 +368,7 @@ fn parse_q_child<R: BufRead>(
         }
         // Skip "abbr", "expan" - parsers not yet available
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "q", child_empty)?;
         }
     }
     Ok(())
@@ -562,10 +554,7 @@ fn parse_line_child<R: BufRead>(
         }
         // Skip "abbr", "expan" - parsers not yet available
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "line", child_empty)?;
         }
     }
     Ok(())
@@ -619,9 +608,7 @@ impl MeiDeserialize for Refrain {
                         elem.children.push(RefrainChild::Lb(Box::new(child)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "refrain", child_empty)?;
                     }
                 }
             }
@@ -763,10 +750,7 @@ fn parse_stack_child<R: BufRead>(
         }
         // Skip "abbr", "expan" - parsers not yet available
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "stack", child_empty)?;
         }
     }
     Ok(())
@@ -914,10 +898,7 @@ fn parse_rubric_child<R: BufRead>(
             elem.children.push(RubricChild::Stamp(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "rubric", child_empty)?;
         }
     }
     Ok(())
@@ -1062,10 +1043,7 @@ fn parse_explicit_child<R: BufRead>(
             elem.children.push(ExplicitChild::Stamp(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "explicit", child_empty)?;
         }
     }
     Ok(())
@@ -1224,10 +1202,7 @@ fn parse_byline_child<R: BufRead>(
             elem.children.push(BylineChild::Stamp(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "byline", child_empty)?;
         }
     }
     Ok(())
@@ -1373,10 +1348,7 @@ fn parse_stamp_child<R: BufRead>(
             elem.children.push(StampChild::Stamp(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "stamp", child_empty)?;
         }
     }
     Ok(())

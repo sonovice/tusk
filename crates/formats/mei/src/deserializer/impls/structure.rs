@@ -220,9 +220,7 @@ impl MeiDeserialize for Staff {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "staff", child_empty)?;
                     }
                 }
             }
@@ -341,9 +339,7 @@ impl MeiDeserialize for Layer {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "layer", child_empty)?;
                     }
                 }
             }
@@ -515,9 +511,7 @@ impl MeiDeserialize for Measure {
                     }
                     // Other child types - skip in lenient mode for now
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "measure", child_empty)?;
                     }
                 }
             }
@@ -621,9 +615,7 @@ impl MeiDeserialize for Section {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "section", child_empty)?;
                     }
                 }
             }
@@ -700,9 +692,7 @@ impl MeiDeserialize for Ending {
                     // Other child types can be added here as needed
                     // For now, unknown children are skipped (lenient mode)
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "ending", child_empty)?;
                     }
                 }
             }
@@ -757,9 +747,7 @@ impl MeiDeserialize for Mdiv {
                         mdiv.children.push(MdivChild::Parts(Box::new(parts)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "mdiv", child_empty)?;
                     }
                 }
             }
@@ -803,9 +791,7 @@ impl MeiDeserialize for Body {
                     }
                     // TODO: Add Div support when needed
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "body", child_empty)?;
                     }
                 }
             }
@@ -874,9 +860,7 @@ impl MeiDeserialize for Score {
                         score.children.push(ScoreChild::Sb(Box::new(sb)));
                     }
                     _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
+                        reader.skip_unknown_child(&name, "score", child_empty)?;
                     }
                 }
             }

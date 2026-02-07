@@ -361,6 +361,20 @@ impl<R: BufRead> MeiReader<R> {
         Ok(())
     }
 
+    /// Skip an unknown/unrecognized child element, logging a warning.
+    pub fn skip_unknown_child(
+        &mut self,
+        child_name: &str,
+        parent_name: &str,
+        is_empty: bool,
+    ) -> DeserializeResult<()> {
+        tracing::warn!("skipping unknown child <{child_name}> in <{parent_name}>");
+        if !is_empty {
+            self.skip_to_end(child_name)?;
+        }
+        Ok(())
+    }
+
     /// Read text content until the end tag for the given element.
     ///
     /// This skips to the end tag while collecting any text content encountered.

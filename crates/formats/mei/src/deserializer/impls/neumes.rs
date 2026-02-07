@@ -365,10 +365,7 @@ fn parse_nc_child<R: BufRead>(
             elem.children.push(NcChild::HispanTick(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "nc", child_empty)?;
         }
     }
     Ok(())
@@ -430,10 +427,7 @@ fn parse_nc_grp_child<R: BufRead>(
             elem.children.push(NcGrpChild::HispanTick(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "ncGrp", child_empty)?;
         }
     }
     Ok(())
@@ -500,10 +494,7 @@ fn parse_neume_child<R: BufRead>(
             elem.children.push(NeumeChild::HispanTick(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "neume", child_empty)?;
         }
     }
     Ok(())
@@ -562,10 +553,7 @@ fn parse_syllable_child<R: BufRead>(
                 .push(SyllableChild::HispanTick(Box::new(child)));
         }
         _ => {
-            // Skip unknown children in lenient mode
-            if !child_empty {
-                reader.skip_to_end(name)?;
-            }
+            reader.skip_unknown_child(&name, "syllable", child_empty)?;
         }
     }
     Ok(())
