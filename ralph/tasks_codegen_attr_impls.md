@@ -77,10 +77,10 @@ Extend `mei-codegen` to auto-generate `ExtractAttributes` and `CollectAttributes
   - Cleaned `deserializer/impls/mod.rs` — removed 42 unused `use tusk_model::att::*` imports
   - Zero unused import warnings from `cargo clippy`
 
-- [ ] [CLEANUP] Update mei-codegen documentation and add regeneration instructions
-  - Update module doc comments in `deserializer/impls/mod.rs` and `serializer/impls/mod.rs`
+- [x] [CLEANUP] Update mei-codegen documentation and add regeneration instructions
+  - Updated module doc comments in `deserializer/impls/mod.rs` and `serializer/impls/mod.rs`
   - Old: "In the future, these implementations should be code-generated from the MEI ODD specification"
-  - New: "Attribute class impls are auto-generated in generated_att_impls.rs. Element impls below are hand-written."
+  - New: "Attribute class impls are auto-generated in generated_att_impls.rs. Element impls are hand-written below."
   - Generated files already have DO NOT EDIT header with regeneration command
 
 - [ ] [VERIFY] Full test suite verification and final metrics

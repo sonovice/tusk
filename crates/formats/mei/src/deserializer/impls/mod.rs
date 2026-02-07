@@ -1,10 +1,7 @@
-//! Manual implementations of deserialization traits for MEI types.
+//! Deserialization trait implementations for MEI types.
 //!
-//! This module contains hand-written implementations for key attribute classes
-//! and elements to demonstrate and test the deserialization pattern.
-//!
-//! In the future, these implementations should be code-generated from the MEI ODD
-//! specification to cover all types.
+//! Attribute class impls (`ExtractAttributes for Att*`) are auto-generated in
+//! `generated_att_impls.rs`. Element impls (`MeiDeserialize`) are hand-written below.
 
 use super::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader};
 use serde::Deserialize;

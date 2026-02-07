@@ -1,10 +1,7 @@
-//! Manual implementations of serialization traits for MEI types.
+//! Serialization trait implementations for MEI types.
 //!
-//! This module contains hand-written implementations for key attribute classes
-//! and elements to demonstrate and test the serialization pattern.
-//!
-//! In the future, these implementations should be code-generated from the MEI ODD
-//! specification to cover all types.
+//! Attribute class impls (`CollectAttributes for Att*`) are auto-generated in
+//! `generated_att_impls.rs`. Element impls (`MeiSerialize`) are hand-written below.
 
 use serde::Serialize;
 
