@@ -21,12 +21,10 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - Beam, Tuplet, GraceGrp now use the macro instead of duplicated match blocks
   - All roundtrip and unit tests pass
 
-- [ ] [DRY] Consolidate `strip_namespace_prefix()` into single canonical implementation
-  - Currently duplicated in `crates/formats/mei/src/deserializer/mod.rs` and `crates/formats/mei/src/xml_compare.rs`
-  - Deserializer version preserves xml: AND xlink: prefixes; xml_compare version preserves only xml:
-  - Create single function (in deserializer/mod.rs or a shared utils module) with consistent behavior
-  - Update xml_compare.rs to use the canonical version
-  - Ensure both xlink: and xml: are preserved (xml_compare should handle xlink: too)
+- [x] [DRY] Consolidate `strip_namespace_prefix()` into single canonical implementation
+  - Removed duplicate from `xml_compare.rs`, now imports canonical version from `crate::deserializer`
+  - xml_compare now correctly preserves both `xml:` and `xlink:` prefixes
+  - Added `xlink:href` test case to xml_compare tests
 
 - [ ] [DRY] Consolidate XML entity reference resolution into single function
   - Entity resolution code (`&amp;` → `&`, `&#x30;` → char, etc.) duplicated in 3 locations:

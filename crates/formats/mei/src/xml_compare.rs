@@ -13,6 +13,8 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use std::collections::BTreeMap;
 
+use crate::deserializer::strip_namespace_prefix;
+
 /// A canonical representation of an XML element for comparison.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CanonicalElement {
@@ -71,23 +73,6 @@ pub struct Difference {
 impl std::fmt::Display for Difference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "at {}: {}", self.path, self.description)
-    }
-}
-
-/// Strip namespace prefix from an element or attribute name.
-///
-/// Examples:
-/// - `mei:note` -> `note`
-/// - `xml:id` -> `xml:id` (preserved - xml namespace is special)
-/// - `note` -> `note`
-fn strip_namespace_prefix(name: &str) -> &str {
-    if name.starts_with("xml:") {
-        // Preserve xml: prefix (for xml:id, xml:lang, etc.)
-        name
-    } else if let Some(pos) = name.find(':') {
-        &name[pos + 1..]
-    } else {
-        name
     }
 }
 
@@ -1181,6 +1166,7 @@ mod tests {
         assert_eq!(strip_namespace_prefix("mei:note"), "note");
         assert_eq!(strip_namespace_prefix("note"), "note");
         assert_eq!(strip_namespace_prefix("xml:id"), "xml:id");
+        assert_eq!(strip_namespace_prefix("xlink:href"), "xlink:href");
         assert_eq!(strip_namespace_prefix("foo:bar:baz"), "bar:baz");
     }
 
