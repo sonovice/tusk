@@ -1,6 +1,6 @@
 //!Element: `<barre>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///A barre in a chord tablature grid.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "barre")]

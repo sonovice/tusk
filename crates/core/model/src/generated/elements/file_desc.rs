@@ -1,36 +1,36 @@
 //!Element: `<fileDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fileDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FileDescChild {
-    #[serde(rename = "seriesStmt")]
-    SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
-    #[serde(rename = "sourceDesc")]
-    SourceDesc(Box<crate::generated::elements::SourceDesc>),
-    #[serde(rename = "editionStmt")]
-    EditionStmt(Box<crate::generated::elements::EditionStmt>),
-    #[serde(rename = "notesStmt")]
-    NotesStmt(Box<crate::generated::elements::NotesStmt>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
     #[serde(rename = "pubStmt")]
     PubStmt(Box<crate::generated::elements::PubStmt>),
     #[serde(rename = "titleStmt")]
     TitleStmt(Box<crate::generated::elements::TitleStmt>),
+    #[serde(rename = "editionStmt")]
+    EditionStmt(Box<crate::generated::elements::EditionStmt>),
+    #[serde(rename = "seriesStmt")]
+    SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
+    #[serde(rename = "notesStmt")]
+    NotesStmt(Box<crate::generated::elements::NotesStmt>),
+    #[serde(rename = "sourceDesc")]
+    SourceDesc(Box<crate::generated::elements::SourceDesc>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
 }
 impl FileDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FileDescChild::SeriesStmt(elem) => {
-                ctx.enter("seriesStmt", index);
+            FileDescChild::PubStmt(elem) => {
+                ctx.enter("pubStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FileDescChild::SourceDesc(elem) => {
-                ctx.enter("sourceDesc", index);
+            FileDescChild::TitleStmt(elem) => {
+                ctx.enter("titleStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,23 +39,23 @@ impl FileDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            FileDescChild::SeriesStmt(elem) => {
+                ctx.enter("seriesStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             FileDescChild::NotesStmt(elem) => {
                 ctx.enter("notesStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            FileDescChild::SourceDesc(elem) => {
+                ctx.enter("sourceDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             FileDescChild::Extent(elem) => {
                 ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            FileDescChild::PubStmt(elem) => {
-                ctx.enter("pubStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            FileDescChild::TitleStmt(elem) => {
-                ctx.enter("titleStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

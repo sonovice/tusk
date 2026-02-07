@@ -1,8 +1,8 @@
 //!Element: `<sb>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**system beginning - An empty formatting element that forces musical notation to begin on
-a new line.*/
+      a new line.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "sb")]
 pub struct Sb {

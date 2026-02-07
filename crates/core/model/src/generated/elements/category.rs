@@ -1,20 +1,20 @@
 //!Element: `<category>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<category>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CategoryChild {
     #[serde(rename = "altId")]
     AltId(Box<crate::generated::elements::AltId>),
-    #[serde(rename = "catRel")]
-    CatRel(Box<crate::generated::elements::CatRel>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "category")]
-    Category(Box<crate::generated::elements::Category>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "catRel")]
+    CatRel(Box<crate::generated::elements::CatRel>),
+    #[serde(rename = "category")]
+    Category(Box<crate::generated::elements::Category>),
 }
 impl CategoryChild {
     /// Validate this child element.
@@ -25,18 +25,8 @@ impl CategoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CategoryChild::CatRel(elem) => {
-                ctx.enter("catRel", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             CategoryChild::Label(elem) => {
                 ctx.enter("label", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            CategoryChild::Category(elem) => {
-                ctx.enter("category", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -45,11 +35,21 @@ impl CategoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            CategoryChild::CatRel(elem) => {
+                ctx.enter("catRel", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            CategoryChild::Category(elem) => {
+                ctx.enter("category", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**Contains an individual descriptive category in a user-defined taxonomy, possibly nested
-within a superordinate category.*/
+      within a superordinate category.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "category")]
 pub struct Category {

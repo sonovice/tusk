@@ -1272,7 +1272,13 @@ fn test_roundtrip_music_structure_part_element() {
 fn test_roundtrip_editorial_markup_weber_op73() {
     let path =
         sample_encodings_music_dir().join("Editorial_markup/Weber_op73/Editorial_markup.mei");
-    let result = roundtrip_mei_file(&path);
+    // Large MEI file; run in a thread with larger stack to avoid overflow in deep deserialization
+    let result = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(move || roundtrip_mei_file(&path))
+        .unwrap()
+        .join()
+        .unwrap();
     assert!(
         result.is_ok(),
         "Editorial_markup/Weber_op73/Editorial_markup.mei roundtrip failed: {}",

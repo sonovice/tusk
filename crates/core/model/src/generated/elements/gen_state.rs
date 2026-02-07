@@ -1,14 +1,14 @@
 //!Element: `<genState>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genState>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GenStateChild {
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "date")]
     Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
 }
@@ -16,13 +16,13 @@ impl GenStateChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            GenStateChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
+            GenStateChild::Date(elem) => {
+                ctx.enter("date", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            GenStateChild::Date(elem) => {
-                ctx.enter("date", index);
+            GenStateChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

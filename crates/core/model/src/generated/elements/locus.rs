@@ -1,6 +1,6 @@
 //!Element: `<locus>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<locus>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,10 +8,10 @@ pub enum LocusChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
     #[serde(rename = "symbol")]
     Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
     #[serde(rename = "locus")]
     Locus(Box<crate::generated::elements::Locus>),
 }
@@ -20,13 +20,13 @@ impl LocusChild {
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             LocusChild::Text(_) => {}
-            LocusChild::Rend(elem) => {
-                ctx.enter("rend", index);
+            LocusChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LocusChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
+            LocusChild::Rend(elem) => {
+                ctx.enter("rend", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,7 +39,7 @@ impl LocusChild {
     }
 }
 /**Defines a location within a manuscript or manuscript component, usually as a (possibly
-discontinuous) sequence of folio references.*/
+      discontinuous) sequence of folio references.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "locus")]
 pub struct Locus {

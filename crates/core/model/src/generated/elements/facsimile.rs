@@ -1,6 +1,6 @@
 //!Element: `<facsimile>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<facsimile>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl FacsimileChild {
     }
 }
 /**Contains a representation of a written source in the form of a set of images rather than
-as transcribed or encoded text.*/
+      as transcribed or encoded text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "facsimile")]
 pub struct Facsimile {

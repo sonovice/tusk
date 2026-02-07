@@ -1,6 +1,6 @@
 //!Element: `<relatedItem>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<relatedItem>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl RelatedItemChild {
     }
 }
 /**related item - Contains or references another bibliographic item which is related to the
-present one.*/
+      present one.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "relatedItem")]
 pub struct RelatedItem {

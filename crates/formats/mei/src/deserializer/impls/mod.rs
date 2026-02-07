@@ -1,72 +1,12 @@
 //! Deserialization trait implementations for MEI types.
 //!
 //! Attribute class impls (`ExtractAttributes for Att*`) are auto-generated in
-//! `generated_att_impls.rs`. Element impls (`MeiDeserialize`) are hand-written below.
+//! `generated_att_impls.rs`. Element impls (`MeiDeserialize`) are auto-generated in
+//! `generated_element_impls.rs`.
 
 use super::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader};
 use serde::Deserialize;
 use std::io::BufRead;
-
-mod analysis;
-mod biblio;
-mod chords;
-mod cmn_core;
-mod control;
-mod defs;
-mod drama;
-mod editorial;
-mod facsimile;
-mod grouping;
-mod header;
-mod mensural;
-mod midi;
-mod misc;
-mod neumes;
-mod note;
-mod structure;
-mod symbols;
-mod tablature;
-mod text;
-mod text_containers;
-
-pub(crate) use analysis::{
-    parse_ambitus_from_event, parse_attacca_from_event, parse_clip_from_event,
-    parse_cp_mark_from_event, parse_expansion_from_event, parse_gen_desc_from_event,
-    parse_gen_state_from_event, parse_meta_mark_from_event, parse_o_layer_from_event,
-    parse_o_staff_from_event, parse_when_from_event,
-};
-pub(crate) use biblio::{
-    parse_analytic_from_event, parse_bifolium_from_event, parse_cutout_from_event,
-    parse_folium_from_event, parse_monogr_from_event, parse_patch_from_event,
-    parse_series_from_event,
-};
-pub(crate) use defs::{parse_clef_from_event, parse_label_from_event};
-pub(crate) use drama::{
-    parse_role_from_event, parse_role_name_from_event, parse_sp_from_event,
-    parse_speaker_from_event, parse_stage_dir_from_event,
-};
-pub(crate) use header::{
-    parse_bibl_from_event, parse_bibl_scope_from_event, parse_bibl_struct_from_event,
-    parse_contributor_from_event, parse_creator_from_event, parse_date_from_event,
-    parse_deprecated_creator_from_event, parse_editor_from_event, parse_funder_from_event,
-    parse_head_from_event, parse_identifier_from_event, parse_p_from_event,
-    parse_resp_stmt_from_event, parse_sponsor_from_event, parse_title_from_event,
-};
-pub(crate) use misc::{
-    parse_change_desc_from_event, parse_change_from_event, parse_edition_from_event,
-    parse_edition_stmt_from_event, parse_expression_from_event, parse_expression_list_from_event,
-    parse_extent_from_event, parse_manifestation_list_from_event, parse_notes_stmt_from_event,
-    parse_num_from_event, parse_revision_desc_from_event, parse_series_stmt_from_event,
-    parse_term_from_event, parse_work_from_event, parse_work_list_from_event,
-};
-pub(crate) use text::{
-    parse_argument_from_event, parse_back_from_event, parse_colophon_from_event,
-    parse_dedication_from_event, parse_div_from_event, parse_epigraph_from_event,
-    parse_fig_desc_from_event, parse_fig_from_event, parse_front_from_event,
-    parse_imprimatur_from_event, parse_l_from_event, parse_lb_from_event, parse_lg_from_event,
-    parse_li_from_event, parse_list_from_event, parse_rend_from_event, parse_seg_from_event,
-    parse_title_page_from_event,
-};
 
 /// Parse a value using serde_json from XML attribute string.
 /// Tries multiple JSON formats to handle different serde derives:
@@ -113,10 +53,12 @@ macro_rules! extract_attr {
             $field = items;
         }
     };
-    // For Vec<String> fields (no serde parsing needed)
+    // For Vec<String> fields (no serde parsing needed). Use std::string::String so this
+    // works when macro is expanded in generated_element_impls where String is shadowed by the MEI element.
     ($attrs:expr, $name:expr, vec_string $field:expr) => {
         if let Some(value) = $attrs.remove($name) {
-            let items: Vec<String> = value.split_whitespace().map(|s| s.to_string()).collect();
+            let items: Vec<std::string::String> =
+                value.split_whitespace().map(|s| s.to_string()).collect();
             if !items.is_empty() {
                 $field = items;
             }
@@ -138,3 +80,4 @@ macro_rules! extract_attr {
 pub(crate) use extract_attr;
 
 mod generated_att_impls;
+mod generated_element_impls;

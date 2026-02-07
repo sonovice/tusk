@@ -1,28 +1,23 @@
 //!Element: `<fig>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<fig>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FigChild {
-    #[serde(rename = "figDesc")]
-    FigDesc(Box<crate::generated::elements::FigDesc>),
     #[serde(rename = "graphic")]
     Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "caption")]
     Caption(Box<crate::generated::elements::Caption>),
     #[serde(rename = "score")]
     Score(Box<crate::generated::elements::Score>),
+    #[serde(rename = "figDesc")]
+    FigDesc(Box<crate::generated::elements::FigDesc>),
 }
 impl FigChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FigChild::FigDesc(elem) => {
-                ctx.enter("figDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             FigChild::Graphic(elem) => {
                 ctx.enter("graphic", index);
                 elem.validate_with_context(ctx);
@@ -38,11 +33,16 @@ impl FigChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            FigChild::FigDesc(elem) => {
+                ctx.enter("figDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**figure - Groups elements representing or containing graphic information such as an
-illustration or figure.*/
+      illustration or figure.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "fig")]
 pub struct Fig {

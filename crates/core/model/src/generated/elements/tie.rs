@@ -1,6 +1,6 @@
 //!Element: `<tie>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<tie>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -21,7 +21,7 @@ impl TieChild {
     }
 }
 /**An indication that two notes of the same pitch form a single note with their combined
-rhythmic values.*/
+      rhythmic values.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tie")]
 pub struct Tie {

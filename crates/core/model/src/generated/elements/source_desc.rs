@@ -1,6 +1,6 @@
 //!Element: `<sourceDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<sourceDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl SourceDescChild {
     }
 }
 /**source description - A container for the descriptions of the source(s) used in the
-creation of the electronic file.*/
+      creation of the electronic file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "sourceDesc")]
 pub struct SourceDesc {

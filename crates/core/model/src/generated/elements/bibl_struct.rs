@@ -1,39 +1,39 @@
 //!Element: `<biblStruct>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<biblStruct>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BiblStructChild {
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
     #[serde(rename = "relatedItem")]
     RelatedItem(Box<crate::generated::elements::RelatedItem>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "series")]
+    Series(Box<crate::generated::elements::Series>),
     #[serde(rename = "monogr")]
     Monogr(Box<crate::generated::elements::Monogr>),
     #[serde(rename = "analytic")]
     Analytic(Box<crate::generated::elements::Analytic>),
-    #[serde(rename = "series")]
-    Series(Box<crate::generated::elements::Series>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
 }
 impl BiblStructChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            BiblStructChild::RelatedItem(elem) => {
+                ctx.enter("relatedItem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             BiblStructChild::Annot(elem) => {
                 ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BiblStructChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BiblStructChild::RelatedItem(elem) => {
-                ctx.enter("relatedItem", index);
+            BiblStructChild::Series(elem) => {
+                ctx.enter("series", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -47,8 +47,8 @@ impl BiblStructChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BiblStructChild::Series(elem) => {
-                ctx.enter("series", index);
+            BiblStructChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -56,7 +56,7 @@ impl BiblStructChild {
     }
 }
 /**structured bibliographic citation - Contains a bibliographic citation in which
-bibliographic sub-elements must appear in a specified order.*/
+      bibliographic sub-elements must appear in a specified order.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "biblStruct")]
 pub struct BiblStruct {

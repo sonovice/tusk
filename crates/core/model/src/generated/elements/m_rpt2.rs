@@ -1,8 +1,8 @@
 //!Element: `<mRpt2>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**2-measure repeat - An indication that the previous two measures should be
-repeated.*/
+      repeated.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "mRpt2")]
 pub struct MRpt2 {

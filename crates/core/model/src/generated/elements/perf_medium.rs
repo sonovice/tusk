@@ -1,23 +1,33 @@
 //!Element: `<perfMedium>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<perfMedium>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PerfMediumChild {
+    #[serde(rename = "castList")]
+    CastList(Box<crate::generated::elements::CastList>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "perfResList")]
     PerfResList(Box<crate::generated::elements::PerfResList>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "castList")]
-    CastList(Box<crate::generated::elements::CastList>),
 }
 impl PerfMediumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            PerfMediumChild::CastList(elem) => {
+                ctx.enter("castList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PerfMediumChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             PerfMediumChild::Head(elem) => {
                 ctx.enter("head", index);
                 elem.validate_with_context(ctx);
@@ -28,21 +38,11 @@ impl PerfMediumChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PerfMediumChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PerfMediumChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
         }
     }
 }
 /**performance medium - Indicates the number and character of the performing forces used in
-a musical composition.*/
+      a musical composition.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "perfMedium")]
 pub struct PerfMedium {

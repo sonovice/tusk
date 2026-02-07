@@ -1,6 +1,6 @@
 //!Element: `<projectDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<projectDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,8 +28,8 @@ impl ProjectDescChild {
     }
 }
 /**project description - Project-level meta-data describing the aim or purpose for which
-the electronic file was encoded, funding agencies, etc. together with any other relevant
-information concerning the process by which it was assembled or collected.*/
+      the electronic file was encoded, funding agencies, etc. together with any other relevant
+      information concerning the process by which it was assembled or collected.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "projectDesc")]
 pub struct ProjectDesc {

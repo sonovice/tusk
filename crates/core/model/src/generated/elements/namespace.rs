@@ -1,14 +1,14 @@
 //!Element: `<namespace>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<namespace>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NamespaceChild {
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "attUsage")]
     AttUsage(Box<crate::generated::elements::AttUsage>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
     #[serde(rename = "tagUsage")]
     TagUsage(Box<crate::generated::elements::TagUsage>),
 }
@@ -16,13 +16,13 @@ impl NamespaceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            NamespaceChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            NamespaceChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            NamespaceChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,7 +35,7 @@ impl NamespaceChild {
     }
 }
 /**Supplies the formal name of the namespace to which the elements documented by its children
-belong.*/
+      belong.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "namespace")]
 pub struct Namespace {

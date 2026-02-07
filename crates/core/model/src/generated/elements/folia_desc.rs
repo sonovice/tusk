@@ -1,22 +1,22 @@
 //!Element: `<foliaDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<foliaDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FoliaDescChild {
     #[serde(rename = "bifolium")]
     Bifolium(Box<crate::generated::elements::Bifolium>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "folium")]
     Folium(Box<crate::generated::elements::Folium>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
     #[serde(rename = "damage")]
     Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
 }
@@ -29,8 +29,8 @@ impl FoliaDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Restore(elem) => {
-                ctx.enter("restore", index);
+            FoliaDescChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,13 +44,13 @@ impl FoliaDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Damage(elem) => {
-                ctx.enter("damage", index);
+            FoliaDescChild::Restore(elem) => {
+                ctx.enter("restore", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FoliaDescChild::Gap(elem) => {
-                ctx.enter("gap", index);
+            FoliaDescChild::Damage(elem) => {
+                ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -63,7 +63,7 @@ impl FoliaDescChild {
     }
 }
 /**Describes the order of folia and bifolia making up the text block of a manuscript or
-print.*/
+      print.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "foliaDesc")]
 pub struct FoliaDesc {

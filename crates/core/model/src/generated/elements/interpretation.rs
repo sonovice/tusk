@@ -1,26 +1,26 @@
 //!Element: `<interpretation>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<interpretation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InterpretationChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl InterpretationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            InterpretationChild::P(elem) => {
-                ctx.enter("p", index);
+            InterpretationChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            InterpretationChild::Head(elem) => {
-                ctx.enter("head", index);
+            InterpretationChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl InterpretationChild {
     }
 }
 /**Describes the scope of any analytic or interpretive information added to the transcription
-of the music.*/
+      of the music.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "interpretation")]
 pub struct Interpretation {

@@ -1,26 +1,26 @@
 //!Element: `<table>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<table>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TableChild {
-    #[serde(rename = "caption")]
-    Caption(Box<crate::generated::elements::Caption>),
     #[serde(rename = "tr")]
     Tr(Box<crate::generated::elements::Tr>),
+    #[serde(rename = "caption")]
+    Caption(Box<crate::generated::elements::Caption>),
 }
 impl TableChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TableChild::Caption(elem) => {
-                ctx.enter("caption", index);
+            TableChild::Tr(elem) => {
+                ctx.enter("tr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TableChild::Tr(elem) => {
-                ctx.enter("tr", index);
+            TableChild::Caption(elem) => {
+                ctx.enter("caption", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

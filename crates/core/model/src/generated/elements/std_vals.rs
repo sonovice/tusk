@@ -1,26 +1,26 @@
 //!Element: `<stdVals>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<stdVals>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StdValsChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl StdValsChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            StdValsChild::P(elem) => {
-                ctx.enter("p", index);
+            StdValsChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            StdValsChild::Head(elem) => {
-                ctx.enter("head", index);
+            StdValsChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl StdValsChild {
     }
 }
 /**standard values - Specifies the format used when standardized date or number values are
-supplied.*/
+      supplied.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "stdVals")]
 pub struct StdVals {

@@ -4,13 +4,24 @@
 
 use anyhow::Result;
 use heck::{ToSnakeCase, ToUpperCamelCase};
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
 use crate::ast::*;
+
+/// Deprecated MEI 5.1 element names that map to creator with an implicit @role.
+/// (composer→creator role="cmp", etc.) Used so roundtrip preserves content when
+/// reading MEI 5.1 samples and serializing as creator.
+const CREATOR_DEPRECATED: &[(&str, &str)] = &[
+    ("composer", "cmp"),
+    ("lyricist", "lyr"),
+    ("arranger", "arr"),
+    ("author", "aut"),
+    ("librettist", "lbt"),
+];
 
 /// Generate all Rust code from ODD definitions.
 pub fn generate_all(defs: &OddDefinitions, output: &Path) -> Result<()> {
@@ -1778,6 +1789,545 @@ fn escape_keyword_filename(name: &str) -> String {
         format!("{}_", name)
     } else {
         name.to_string()
+    }
+}
+
+// ============================================================================
+// MEI Element Trait Impls (MeiSerialize / MeiDeserialize)
+// ============================================================================
+
+/// Generate MeiSerialize impls for all MEI elements and their child enums,
+/// and write to the tusk-mei serializer impls.
+pub fn generate_mei_element_ser_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> Result<()> {
+    let tokens = generate_mei_serialize_impls(defs);
+    let path = mei_crate_path.join("serializer/impls/generated_element_impls.rs");
+    write_tokens_to_file(&tokens, &path)?;
+    println!("  Generated: MeiSerialize impls in serializer/impls/generated_element_impls.rs");
+    Ok(())
+}
+
+/// Generate all MeiSerialize impls (elements + child enums).
+fn generate_mei_serialize_impls(defs: &OddDefinitions) -> TokenStream {
+    let mut element_impls = Vec::new();
+    let mut child_enum_impls = Vec::new();
+
+    let mut sorted_keys: Vec<&String> = defs.elements.keys().collect();
+    sorted_keys.sort();
+
+    for key in sorted_keys {
+        let elem = &defs.elements[key];
+        let (elem_impl, child_impl) = generate_mei_serialize_impl_for_element(elem, defs);
+        element_impls.push(elem_impl);
+        if let Some(ci) = child_impl {
+            child_enum_impls.push(ci);
+        }
+    }
+
+    quote! {
+        //! Auto-generated MeiSerialize impls for all MEI elements.
+        //!
+        //! DO NOT EDIT - regenerate with:
+        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+
+        use super::super::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
+        use std::io::Write;
+        use tusk_model::elements::*;
+
+        #(#element_impls)*
+
+        #(#child_enum_impls)*
+    }
+}
+
+/// Generate MeiSerialize for one element and optionally for its child enum.
+fn generate_mei_serialize_impl_for_element(
+    elem: &Element,
+    defs: &OddDefinitions,
+) -> (TokenStream, Option<TokenStream>) {
+    let name = mei_ident_to_type(&elem.ident);
+    let xml_name = &elem.ident;
+
+    // Attribute class field names (same order as generate_element)
+    let att_fields: Vec<Ident> = elem
+        .member_of
+        .iter()
+        .filter(|m| m.starts_with("att."))
+        .map(|m| {
+            format_ident!(
+                "{}",
+                m.strip_prefix("att.")
+                    .unwrap()
+                    .replace('.', "_")
+                    .to_snake_case()
+            )
+        })
+        .collect();
+
+    let collect_lines: Vec<TokenStream> = att_fields
+        .iter()
+        .map(|f| quote! { attrs.extend(self.#f.collect_attributes()); })
+        .collect();
+
+    // Local (element-specific) attributes: push_attr for each.
+    // Use "string" for Option<String> so values like "5.0" are not mangled by to_attr_string (which strips ".0").
+    let local_collect_lines: Vec<TokenStream> = elem
+        .local_attributes
+        .iter()
+        .map(|attr| {
+            let xml_name = &attr.ident;
+            let field_name =
+                make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
+            let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
+            match (&attr.datatype, is_unbounded) {
+                (None, true) => quote! { push_attr!(attrs, #xml_name, vec self.#field_name); },
+                (None, false) => quote! { push_attr!(attrs, #xml_name, string self.#field_name); },
+                (Some(_), true) => quote! { push_attr!(attrs, #xml_name, vec self.#field_name); },
+                (Some(AttributeDataType::Ref(ref_name)), false)
+                    if !defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
+                }
+                (Some(AttributeDataType::Primitive { type_name, .. }), false)
+                    if is_string_primitive(type_name) =>
+                {
+                    quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
+                }
+                (Some(_), false) => quote! { push_attr!(attrs, #xml_name, self.#field_name); },
+            }
+        })
+        .collect();
+
+    let mut child_types: HashSet<String> = HashSet::new();
+    let mut has_text = false;
+    collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
+    for &(parent, child) in EXTRA_CHILDREN {
+        if elem.ident == parent {
+            child_types.insert(child.to_string());
+        }
+    }
+
+    let has_children = !child_types.is_empty() || has_text;
+
+    let (has_children_expr, serialize_children_body) = if has_children {
+        (
+            quote! { !self.children.is_empty() },
+            quote! {
+                for child in &self.children {
+                    child.serialize_mei(writer)?;
+                }
+                Ok(())
+            },
+        )
+    } else {
+        (quote! { false }, quote! { Ok(()) })
+    };
+
+    let elem_impl = quote! {
+        impl MeiSerialize for #name {
+            fn element_name(&self) -> &'static str {
+                #xml_name
+            }
+
+            fn collect_all_attributes(&self) -> Vec<(&'static str, std::string::String)> {
+                let mut attrs = Vec::new();
+                #(#collect_lines)*
+                #(#local_collect_lines)*
+                attrs
+            }
+
+            fn has_children(&self) -> bool {
+                #has_children_expr
+            }
+
+            fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+                #serialize_children_body
+            }
+        }
+    };
+
+    let child_impl = if has_children {
+        let enum_name = format_ident!("{}Child", name);
+        let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.sort();
+
+        // element_name() match arms: variant => "xmlName"
+        let mut name_arms = Vec::new();
+        if has_text {
+            name_arms.push(quote! { #enum_name::Text(_) => "", });
+        }
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            name_arms.push(quote! { #enum_name::#var_name(_) => #child, });
+        }
+
+        // collect_all_attributes() match arms: variant => elem.collect_all_attributes()
+        let mut collect_arms = Vec::new();
+        if has_text {
+            collect_arms.push(quote! { #enum_name::Text(_) => Vec::new(), });
+        }
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            collect_arms.push(quote! { #enum_name::#var_name(elem) => elem.collect_all_attributes(), });
+        }
+
+        // has_children() match arms
+        let mut has_children_arms = Vec::new();
+        if has_text {
+            has_children_arms.push(quote! { #enum_name::Text(_) => false, });
+        }
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            has_children_arms.push(quote! { #enum_name::#var_name(elem) => elem.has_children(), });
+        }
+
+        // serialize_children() match arms
+        let mut serialize_children_arms = Vec::new();
+        if has_text {
+            serialize_children_arms.push(quote! { #enum_name::Text(_) => Ok(()), });
+        }
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            serialize_children_arms.push(quote! { #enum_name::#var_name(elem) => elem.serialize_children(writer), });
+        }
+
+        let child_impl_normal = quote! {
+            impl MeiSerialize for #enum_name {
+                fn element_name(&self) -> &'static str {
+                    match self {
+                        #(#name_arms)*
+                    }
+                }
+
+                fn collect_all_attributes(&self) -> Vec<(&'static str, std::string::String)> {
+                    match self {
+                        #(#collect_arms)*
+                    }
+                }
+
+                fn has_children(&self) -> bool {
+                    match self {
+                        #(#has_children_arms)*
+                    }
+                }
+
+                fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+                    match self {
+                        #(#serialize_children_arms)*
+                    }
+                }
+            }
+        };
+
+        let child_impl_with_override = if has_text {
+            // Override serialize_mei to handle Text variant with write_text
+            let mut serialize_mei_arms = Vec::new();
+            serialize_mei_arms.push(quote! {
+                #enum_name::Text(text) => {
+                    writer.write_text(text)?;
+                    Ok(())
+                }
+            });
+            for child in &child_list {
+                let var_name = mei_ident_to_type(child);
+                serialize_mei_arms.push(quote! { #enum_name::#var_name(elem) => elem.serialize_mei(writer), });
+            }
+            quote! {
+                impl MeiSerialize for #enum_name {
+                    fn element_name(&self) -> &'static str {
+                        match self {
+                            #(#name_arms)*
+                        }
+                    }
+
+                    fn collect_all_attributes(&self) -> Vec<(&'static str, std::string::String)> {
+                        match self {
+                            #(#collect_arms)*
+                        }
+                    }
+
+                    fn has_children(&self) -> bool {
+                        match self {
+                            #(#has_children_arms)*
+                        }
+                    }
+
+                    fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+                        match self {
+                            #(#serialize_children_arms)*
+                        }
+                    }
+
+                    fn serialize_mei<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {
+                        match self {
+                            #(#serialize_mei_arms)*
+                        }
+                    }
+                }
+            }
+        } else {
+            child_impl_normal
+        };
+
+        Some(child_impl_with_override)
+    } else {
+        None
+    };
+
+    (elem_impl, child_impl)
+}
+
+/// Generate MeiDeserialize impls for all MEI elements and write to the
+/// tusk-mei deserializer impls.
+pub fn generate_mei_element_deser_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> Result<()> {
+    let tokens = generate_mei_deserialize_impls(defs);
+    let path = mei_crate_path.join("deserializer/impls/generated_element_impls.rs");
+    write_tokens_to_file(&tokens, &path)?;
+    println!("  Generated: MeiDeserialize impls in deserializer/impls/generated_element_impls.rs");
+    Ok(())
+}
+
+/// Generate all MeiDeserialize impls.
+fn generate_mei_deserialize_impls(defs: &OddDefinitions) -> TokenStream {
+    let mut impls = Vec::new();
+
+    let mut sorted_keys: Vec<&String> = defs.elements.keys().collect();
+    sorted_keys.sort();
+
+    for key in sorted_keys {
+        let elem = &defs.elements[key];
+        impls.push(generate_mei_deserialize_impl_for_element(elem, defs));
+    }
+
+    quote! {
+        //! Auto-generated MeiDeserialize impls for all MEI elements.
+        //!
+        //! DO NOT EDIT - regenerate with:
+        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+
+        use super::super::{
+            AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
+            MixedContent,
+        };
+        use std::io::BufRead;
+        use tusk_model::elements::*;
+
+        #(#impls)*
+    }
+}
+
+/// Generate MeiDeserialize for one element.
+fn generate_mei_deserialize_impl_for_element(
+    elem: &Element,
+    defs: &OddDefinitions,
+) -> TokenStream {
+    let name = mei_ident_to_type(&elem.ident);
+    let xml_name = &elem.ident;
+
+    let att_fields: Vec<Ident> = elem
+        .member_of
+        .iter()
+        .filter(|m| m.starts_with("att."))
+        .map(|m| {
+            format_ident!(
+                "{}",
+                m.strip_prefix("att.")
+                    .unwrap()
+                    .replace('.', "_")
+                    .to_snake_case()
+            )
+        })
+        .collect();
+
+    let extract_lines: Vec<TokenStream> = att_fields
+        .iter()
+        .map(|f| quote! { result.#f.extract_attributes(&mut attrs)?; })
+        .collect();
+
+    // Local (element-specific) attributes: extract_attr for each
+    let local_extract_lines: Vec<TokenStream> = elem
+        .local_attributes
+        .iter()
+        .map(|attr| {
+            let xml_name = &attr.ident;
+            let field_name =
+                make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
+            let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
+            match (&attr.datatype, is_unbounded) {
+                (None, true) => quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); },
+                (None, false) => quote! { extract_attr!(attrs, #xml_name, string result.#field_name); },
+                (Some(AttributeDataType::Ref(ref_name)), true)
+                    if defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { extract_attr!(attrs, #xml_name, vec result.#field_name); }
+                }
+                (Some(AttributeDataType::Ref(_)), true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); }
+                }
+                (Some(AttributeDataType::Ref(ref_name)), false)
+                    if defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { extract_attr!(attrs, #xml_name, result.#field_name); }
+                }
+                (Some(AttributeDataType::Ref(_)), false) => {
+                    quote! { extract_attr!(attrs, #xml_name, string result.#field_name); }
+                }
+                (Some(AttributeDataType::Primitive { type_name, .. }), true) => {
+                    if is_string_primitive(type_name) {
+                        quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); }
+                    } else {
+                        quote! { extract_attr!(attrs, #xml_name, vec result.#field_name); }
+                    }
+                }
+                (Some(AttributeDataType::Primitive { type_name, .. }), false) => {
+                    if is_string_primitive(type_name) {
+                        quote! { extract_attr!(attrs, #xml_name, string result.#field_name); }
+                    } else {
+                        quote! { extract_attr!(attrs, #xml_name, result.#field_name); }
+                    }
+                }
+                (Some(AttributeDataType::InlineValList(_)), true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec result.#field_name); }
+                }
+                (Some(AttributeDataType::InlineValList(_)), false) => {
+                    quote! { extract_attr!(attrs, #xml_name, result.#field_name); }
+                }
+                (Some(AttributeDataType::List { .. }), _) => {
+                    quote! { extract_attr!(attrs, #xml_name, space_separated result.#field_name); }
+                }
+            }
+        })
+        .collect();
+
+    let mut child_types: HashSet<String> = HashSet::new();
+    let mut has_text = false;
+    collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
+    for &(parent, child) in EXTRA_CHILDREN {
+        if elem.ident == parent {
+            child_types.insert(child.to_string());
+        }
+    }
+
+    let has_children = !child_types.is_empty() || has_text;
+    let enum_name = format_ident!("{}Child", name);
+
+    let children_parsing = if !has_children {
+        quote! {}
+    } else if has_text {
+        let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.sort();
+        let mut element_match_arms = Vec::new();
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            element_match_arms.push(quote! {
+                #child => {
+                    let elem = #var_name::from_mei_event(reader, child_attrs, child_empty)?;
+                    result.children.push(#enum_name::#var_name(Box::new(elem)));
+                }
+            });
+            if child == "creator" {
+                for (deprecated, role) in CREATOR_DEPRECATED {
+                    let deprecated_lit = Literal::string(deprecated);
+                    let role_lit = Literal::string(role);
+                    element_match_arms.push(quote! {
+                        #deprecated_lit => {
+                            let mut attrs = child_attrs.clone();
+                            attrs.insert(std::string::String::from("role"), std::string::String::from(#role_lit));
+                            let elem = reader.with_alternate_end_tag(#deprecated_lit, |reader| {
+                                #var_name::from_mei_event(reader, attrs, child_empty)
+                            })?;
+                            result.children.push(#enum_name::#var_name(Box::new(elem)));
+                        }
+                    });
+                }
+            }
+        }
+        quote! {
+            if !is_empty {
+                while let Some(content) = reader.read_next_mixed_content(#xml_name)? {
+                    match content {
+                        MixedContent::Text(text) => {
+                            if !text.is_empty() {
+                                result.children.push(#enum_name::Text(text));
+                            }
+                        }
+                        MixedContent::Element(name, child_attrs, child_empty) => {
+                            match name.as_str() {
+                                #(#element_match_arms)*
+                                _ => {
+                                    if !child_empty {
+                                        reader.skip_to_end(&name)?;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.sort();
+        let mut child_match_arms = Vec::new();
+        for child in &child_list {
+            let var_name = mei_ident_to_type(child);
+            child_match_arms.push(quote! {
+                #child => {
+                    let elem = #var_name::from_mei_event(reader, child_attrs, child_empty)?;
+                    result.children.push(#enum_name::#var_name(Box::new(elem)));
+                }
+            });
+            // MEI 5.1 deprecated elements (composer, lyricist, etc.) → creator with implicit @role
+            if child == "creator" {
+                for (deprecated, role) in CREATOR_DEPRECATED {
+                    let deprecated_lit = Literal::string(deprecated);
+                    let role_lit = Literal::string(role);
+                    child_match_arms.push(quote! {
+                        #deprecated_lit => {
+                            let mut attrs = child_attrs.clone();
+                            attrs.insert(std::string::String::from("role"), std::string::String::from(#role_lit));
+                            let elem = reader.with_alternate_end_tag(#deprecated_lit, |reader| {
+                                #var_name::from_mei_event(reader, attrs, child_empty)
+                            })?;
+                            result.children.push(#enum_name::#var_name(Box::new(elem)));
+                        }
+                    });
+                }
+            }
+        }
+        quote! {
+            if !is_empty {
+                while let Some((name, child_attrs, child_empty)) =
+                    reader.read_next_child_start(#xml_name)?
+                {
+                    match name.as_str() {
+                        #(#child_match_arms)*
+                        _ => {
+                            reader.skip_unknown_child(&name, #xml_name, child_empty)?;
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    quote! {
+        impl MeiDeserialize for #name {
+            fn element_name() -> &'static str {
+                #xml_name
+            }
+
+            fn from_mei_event<R: BufRead>(
+                reader: &mut MeiReader<R>,
+                mut attrs: AttributeMap,
+                is_empty: bool,
+            ) -> DeserializeResult<Self> {
+                let mut result = #name::default();
+                #(#extract_lines)*
+                #(#local_extract_lines)*
+                #children_parsing
+                Ok(result)
+            }
+        }
     }
 }
 

@@ -1,26 +1,26 @@
 //!Element: `<normalization>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<normalization>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NormalizationChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl NormalizationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            NormalizationChild::P(elem) => {
-                ctx.enter("p", index);
+            NormalizationChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NormalizationChild::Head(elem) => {
-                ctx.enter("head", index);
+            NormalizationChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl NormalizationChild {
     }
 }
 /**Indicates the extent of normalization or regularization of the original source carried out
-in converting it to electronic form.*/
+      in converting it to electronic form.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "normalization")]
 pub struct Normalization {

@@ -1,41 +1,41 @@
 //!Element: `<seriesStmt>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<seriesStmt>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SeriesStmtChild {
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "editor")]
-    Editor(Box<crate::generated::elements::Editor>),
-    #[serde(rename = "creator")]
-    Creator(Box<crate::generated::elements::Creator>),
-    #[serde(rename = "contents")]
-    Contents(Box<crate::generated::elements::Contents>),
     #[serde(rename = "sponsor")]
     Sponsor(Box<crate::generated::elements::Sponsor>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "biblScope")]
-    BiblScope(Box<crate::generated::elements::BiblScope>),
-    #[serde(rename = "funder")]
-    Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "seriesStmt")]
     SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "creator")]
+    Creator(Box<crate::generated::elements::Creator>),
+    #[serde(rename = "editor")]
+    Editor(Box<crate::generated::elements::Editor>),
     #[serde(rename = "contributor")]
     Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
+    #[serde(rename = "contents")]
+    Contents(Box<crate::generated::elements::Contents>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "funder")]
+    Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "biblScope")]
+    BiblScope(Box<crate::generated::elements::BiblScope>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
 }
 impl SeriesStmtChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SeriesStmtChild::Title(elem) => {
-                ctx.enter("title", index);
+            SeriesStmtChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,8 +44,8 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::Editor(elem) => {
-                ctx.enter("editor", index);
+            SeriesStmtChild::SeriesStmt(elem) => {
+                ctx.enter("seriesStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -54,38 +54,8 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SeriesStmtChild::Contents(elem) => {
-                ctx.enter("contents", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::BiblScope(elem) => {
-                ctx.enter("biblScope", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::Funder(elem) => {
-                ctx.enter("funder", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::SeriesStmt(elem) => {
-                ctx.enter("seriesStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SeriesStmtChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            SeriesStmtChild::Editor(elem) => {
+                ctx.enter("editor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -94,11 +64,41 @@ impl SeriesStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SeriesStmtChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::Contents(elem) => {
+                ctx.enter("contents", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::Funder(elem) => {
+                ctx.enter("funder", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::BiblScope(elem) => {
+                ctx.enter("biblScope", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SeriesStmtChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**series statement - Groups information about the series, if any, to which a publication
-belongs.*/
+      belongs.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "seriesStmt")]
 pub struct SeriesStmt {

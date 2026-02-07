@@ -1,46 +1,36 @@
 //!Element: `<meiHead>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<meiHead>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiHeadChild {
-    #[serde(rename = "fileDesc")]
-    FileDesc(Box<crate::generated::elements::FileDesc>),
-    #[serde(rename = "altId")]
-    AltId(Box<crate::generated::elements::AltId>),
     #[serde(rename = "revisionDesc")]
     RevisionDesc(Box<crate::generated::elements::RevisionDesc>),
-    #[serde(rename = "encodingDesc")]
-    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
+    #[serde(rename = "fileDesc")]
+    FileDesc(Box<crate::generated::elements::FileDesc>),
     #[serde(rename = "workList")]
     WorkList(Box<crate::generated::elements::WorkList>),
-    #[serde(rename = "extMeta")]
-    ExtMeta(Box<crate::generated::elements::ExtMeta>),
+    #[serde(rename = "encodingDesc")]
+    EncodingDesc(Box<crate::generated::elements::EncodingDesc>),
     #[serde(rename = "manifestationList")]
     ManifestationList(Box<crate::generated::elements::ManifestationList>),
+    #[serde(rename = "altId")]
+    AltId(Box<crate::generated::elements::AltId>),
+    #[serde(rename = "extMeta")]
+    ExtMeta(Box<crate::generated::elements::ExtMeta>),
 }
 impl MeiHeadChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiHeadChild::FileDesc(elem) => {
-                ctx.enter("fileDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MeiHeadChild::AltId(elem) => {
-                ctx.enter("altId", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MeiHeadChild::RevisionDesc(elem) => {
                 ctx.enter("revisionDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::EncodingDesc(elem) => {
-                ctx.enter("encodingDesc", index);
+            MeiHeadChild::FileDesc(elem) => {
+                ctx.enter("fileDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,8 +39,8 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiHeadChild::ExtMeta(elem) => {
-                ctx.enter("extMeta", index);
+            MeiHeadChild::EncodingDesc(elem) => {
+                ctx.enter("encodingDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -59,11 +49,21 @@ impl MeiHeadChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MeiHeadChild::AltId(elem) => {
+                ctx.enter("altId", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MeiHeadChild::ExtMeta(elem) => {
+                ctx.enter("extMeta", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
         }
     }
 }
 /**MEI header - Supplies the descriptive and declarative metadata prefixed to every
-MEI-conformant text.*/
+      MEI-conformant text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiHead")]
 pub struct MeiHead {
@@ -80,7 +80,7 @@ pub struct MeiHead {
     #[serde(flatten)]
     pub responsibility: crate::generated::att::AttResponsibility,
     /**Specifies the kind of document to which the header is attached, for example whether it
-    is a corpus or individual text.*/
+          is a corpus or individual text.*/
     #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
     /// Child elements.

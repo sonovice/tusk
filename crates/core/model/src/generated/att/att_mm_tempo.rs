@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttMmTempo {
     /**Used to describe tempo in terms of beats (often the meter signature denominator) per
-    minute, ala M.M. (Maelzel’s Metronome). Do not confuse this attribute with midi.bpm or
-    midi.mspb. In MIDI, a beat is always defined as a quarter note, *not the numerator of the
-    time signature or the metronomic indication*.*/
+          minute, ala M.M. (Maelzel’s Metronome). Do not confuse this attribute with midi.bpm or
+          midi.mspb. In MIDI, a beat is always defined as a quarter note, *not the numerator of the
+          time signature or the metronomic indication*.*/
     #[serde(rename = "@mm", skip_serializing_if = "Option::is_none")]
     pub mm: Option<crate::generated::data::DataTempovalue>,
     ///Captures the metronomic unit.

@@ -9,7 +9,7 @@ pub enum AttEvidenceEvidence {
     #[serde(rename = "external")]
     External,
     /**The assertion has been made by the editor, cataloguer, or scholar on the basis of
-    their expertise.*/
+              their expertise.*/
     #[serde(rename = "conjecture")]
     Conjecture,
 }
@@ -20,7 +20,7 @@ pub struct AttEvidence {
     #[serde(rename = "@cert", skip_serializing_if = "Option::is_none")]
     pub cert: Option<crate::generated::data::DataCertainty>,
     /**Indicates the nature of the evidence supporting the reliability or accuracy of the
-    intervention or interpretation.*/
+          intervention or interpretation.*/
     #[serde(rename = "@evidence", skip_serializing_if = "Option::is_none")]
     pub evidence: Option<AttEvidenceEvidence>,
 }

@@ -1,10 +1,12 @@
 //!Element: `<support>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<support>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SupportChild {
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "decoNote")]
     DecoNote(Box<crate::generated::elements::DecoNote>),
     #[serde(rename = "dimensions")]
@@ -13,13 +15,16 @@ pub enum SupportChild {
     Condition(Box<crate::generated::elements::Condition>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
 }
 impl SupportChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            SupportChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SupportChild::DecoNote(elem) => {
                 ctx.enter("decoNote", index);
                 elem.validate_with_context(ctx);
@@ -37,11 +42,6 @@ impl SupportChild {
             }
             SupportChild::Head(elem) => {
                 ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SupportChild::P(elem) => {
-                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -1,6 +1,6 @@
 //!Element: `<beatRpt>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///beat repeat - An indication that material on a preceding beat should be repeated.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "beatRpt")]

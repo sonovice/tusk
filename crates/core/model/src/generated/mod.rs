@@ -3,18 +3,18 @@
 //! This module contains Rust types that map 1:1 to MEI constructs.
 //!
 //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
-pub mod att;
 pub mod data;
-pub mod elements;
+pub mod att;
 pub mod model;
 pub mod pattern_entities;
+pub mod elements;
 pub mod validation;
 pub use data::*;
 pub use elements::*;
+pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::str::FromStr;
-pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 /// Wrapper for space-separated list values in MEI attributes.
 ///
 /// MEI uses space-separated lists for some attributes (e.g., bezier coordinates).

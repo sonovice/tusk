@@ -1,26 +1,26 @@
 //!Element: `<back>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<back>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BackChild {
     #[serde(rename = "cb")]
     Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "colLayout")]
     ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
     #[serde(rename = "pb")]
     Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "div")]
-    Div(Box<crate::generated::elements::Div>),
-    #[serde(rename = "titlePage")]
-    TitlePage(Box<crate::generated::elements::TitlePage>),
     #[serde(rename = "relationList")]
     RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "div")]
+    Div(Box<crate::generated::elements::Div>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "titlePage")]
+    TitlePage(Box<crate::generated::elements::TitlePage>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
 }
 impl BackChild {
     /// Validate this child element.
@@ -31,18 +31,8 @@ impl BackChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BackChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             BackChild::ColLayout(elem) => {
                 ctx.enter("colLayout", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BackChild::Relation(elem) => {
-                ctx.enter("relation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -51,8 +41,18 @@ impl BackChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            BackChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             BackChild::Div(elem) => {
                 ctx.enter("div", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BackChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -61,8 +61,8 @@ impl BackChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BackChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
+            BackChild::Relation(elem) => {
+                ctx.enter("relation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -70,7 +70,7 @@ impl BackChild {
     }
 }
 /**back matter - Contains any appendixes, advertisements, indexes, etc. following the main
-body of a musical text.*/
+      body of a musical text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "back")]
 pub struct Back {

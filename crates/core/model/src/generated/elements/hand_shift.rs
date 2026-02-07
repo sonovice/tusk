@@ -1,8 +1,8 @@
 //!Element: `<handShift>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**Marks the beginning of a passage written in a new hand, or of a change in the scribe,
-writing style, ink or character of the document hand.*/
+      writing style, ink or character of the document hand.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "handShift")]
 pub struct HandShift {
@@ -18,11 +18,11 @@ pub struct HandShift {
     #[serde(rename = "@character", skip_serializing_if = "Option::is_none")]
     pub character: Option<String>,
     /**Identifies the new hand. The value must contain the ID of a hand element given
-    elsewhere in the document.*/
+          elsewhere in the document.*/
     #[serde(rename = "@new", skip_serializing_if = "Option::is_none")]
     pub new: Option<crate::generated::data::DataUri>,
     /**Identifies the old hand. The value must contain the ID of a hand element given
-    elsewhere in the document.*/
+          elsewhere in the document.*/
     #[serde(rename = "@old", skip_serializing_if = "Option::is_none")]
     pub old: Option<crate::generated::data::DataUri>,
 }

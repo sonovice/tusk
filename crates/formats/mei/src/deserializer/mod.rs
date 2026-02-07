@@ -134,6 +134,9 @@ pub struct MeiReader<R: BufRead> {
     pending_mixed_content_event: Option<MixedContent>,
     /// Flag indicating that mixed content reading hit the end tag.
     mixed_content_ended: bool,
+    /// When set, end tags with this name are accepted as the current element's end
+    /// (e.g. when parsing deprecated <composer> as Creator, accept </composer>).
+    alternate_end_tag: Option<String>,
 }
 
 impl MeiReader<&[u8]> {
@@ -152,6 +155,7 @@ impl MeiReader<&[u8]> {
             buf: Vec::new(),
             pending_mixed_content_event: None,
             mixed_content_ended: false,
+            alternate_end_tag: None,
         }
     }
 }
@@ -167,6 +171,7 @@ impl<R: BufRead> MeiReader<R> {
             buf: Vec::new(),
             pending_mixed_content_event: None,
             mixed_content_ended: false,
+            alternate_end_tag: None,
         }
     }
 
@@ -423,7 +428,9 @@ impl<R: BufRead> MeiReader<R> {
                     if name == parent_name {
                         return Ok(None);
                     }
-                    // Unexpected end tag - in lenient mode we might ignore this
+                    if self.alternate_end_tag.as_deref() == Some(name) {
+                        return Ok(None);
+                    }
                     return Err(DeserializeError::ParseError(format!(
                         "Unexpected end tag: </{}>",
                         name
@@ -444,6 +451,19 @@ impl<R: BufRead> MeiReader<R> {
                 }
             }
         }
+    }
+
+    /// Run a parsing closure with an alternate end tag (e.g. accept </composer> when
+    /// parsing as Creator). The alternate is cleared when the closure returns.
+    pub fn with_alternate_end_tag<T, F>(&mut self, tag: &str, f: F) -> DeserializeResult<T>
+    where
+        F: FnOnce(&mut MeiReader<R>) -> DeserializeResult<T>,
+    {
+        let prev = self.alternate_end_tag.take();
+        self.alternate_end_tag = Some(tag.to_string());
+        let result = f(self);
+        self.alternate_end_tag = prev;
+        result
     }
 
     /// Read the next child item from a mixed content element (text + elements).
@@ -511,7 +531,13 @@ impl<R: BufRead> MeiReader<R> {
                         }
                         return Ok(None);
                     }
-                    // Unexpected end tag - in lenient mode we might ignore this
+                    if self.alternate_end_tag.as_deref() == Some(name) {
+                        if !text_accumulator.trim().is_empty() {
+                            self.mixed_content_ended = true;
+                            return Ok(Some(MixedContent::Text(text_accumulator)));
+                        }
+                        return Ok(None);
+                    }
                     return Err(DeserializeError::ParseError(format!(
                         "Unexpected end tag: </{}>",
                         name

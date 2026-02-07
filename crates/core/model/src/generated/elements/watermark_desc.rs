@@ -1,18 +1,18 @@
 //!Element: `<watermarkDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<watermarkDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WatermarkDescChild {
     #[serde(rename = "watermarkList")]
     WatermarkList(Box<crate::generated::elements::WatermarkList>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "watermark")]
     Watermark(Box<crate::generated::elements::Watermark>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
 }
 impl WatermarkDescChild {
     /// Validate this child element.
@@ -23,11 +23,6 @@ impl WatermarkDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WatermarkDescChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             WatermarkDescChild::Watermark(elem) => {
                 ctx.enter("watermark", index);
                 elem.validate_with_context(ctx);
@@ -35,6 +30,11 @@ impl WatermarkDescChild {
             }
             WatermarkDescChild::Head(elem) => {
                 ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WatermarkDescChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

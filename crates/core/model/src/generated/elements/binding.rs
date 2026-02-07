@@ -1,27 +1,27 @@
 //!Element: `<binding>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<binding>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BindingChild {
-    #[serde(rename = "condition")]
-    Condition(Box<crate::generated::elements::Condition>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
     #[serde(rename = "dimensions")]
     Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
     #[serde(rename = "decoNote")]
     DecoNote(Box<crate::generated::elements::DecoNote>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "condition")]
+    Condition(Box<crate::generated::elements::Condition>),
 }
 impl BindingChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BindingChild::Condition(elem) => {
-                ctx.enter("condition", index);
+            BindingChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -30,8 +30,8 @@ impl BindingChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BindingChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
+            BindingChild::DecoNote(elem) => {
+                ctx.enter("decoNote", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -40,8 +40,8 @@ impl BindingChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BindingChild::DecoNote(elem) => {
-                ctx.enter("decoNote", index);
+            BindingChild::Condition(elem) => {
+                ctx.enter("condition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,7 +49,7 @@ impl BindingChild {
     }
 }
 /**binding - Contains a description of one binding,i.e., type of covering, boards, etc.
-applied to an item.*/
+      applied to an item.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "binding")]
 pub struct Binding {

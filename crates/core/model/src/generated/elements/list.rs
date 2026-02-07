@@ -1,16 +1,16 @@
 //!Element: `<list>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<list>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ListChild {
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "li")]
-    Li(Box<crate::generated::elements::Li>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "li")]
+    Li(Box<crate::generated::elements::Li>),
 }
 impl ListChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl ListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ListChild::Li(elem) => {
-                ctx.enter("li", index);
+            ListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ListChild::Head(elem) => {
-                ctx.enter("head", index);
+            ListChild::Li(elem) => {
+                ctx.enter("li", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,7 +35,7 @@ impl ListChild {
     }
 }
 /**A formatting element that contains a series of items separated from one another and
-arranged in a linear, often vertical, sequence.*/
+      arranged in a linear, often vertical, sequence.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "list")]
 pub struct List {
@@ -58,10 +58,10 @@ pub struct List {
     #[serde(flatten)]
     pub xy: crate::generated::att::AttXy,
     /**Used to indicate the format of a list. In asimplelist,lielements are not numbered or bulleted. In amarkedlist, the sequence of the list items
-    is not critical, and a bullet, box, dash, or other character is displayed at the start of
-    eachitem. In anorderedlist, the sequence of the items is
-    important, and eachliis lettered or numbered. Style sheet
-    functions should be used to specify the mark or numeration system for eachli.*/
+          is not critical, and a bullet, box, dash, or other character is displayed at the start of
+          eachitem. In anorderedlist, the sequence of the items is
+          important, and eachliis lettered or numbered. Style sheet
+          functions should be used to specify the mark or numeration system for eachli.*/
     #[serde(rename = "@form", skip_serializing_if = "Option::is_none")]
     pub form: Option<String>,
     ///Captures the nature of the content of a list.

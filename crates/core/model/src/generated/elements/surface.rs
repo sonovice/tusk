@@ -1,21 +1,26 @@
 //!Element: `<surface>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<surface>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SurfaceChild {
+    #[serde(rename = "zone")]
+    Zone(Box<crate::generated::elements::Zone>),
     #[serde(rename = "figDesc")]
     FigDesc(Box<crate::generated::elements::FigDesc>),
     #[serde(rename = "graphic")]
     Graphic(Box<crate::generated::elements::Graphic>),
-    #[serde(rename = "zone")]
-    Zone(Box<crate::generated::elements::Zone>),
 }
 impl SurfaceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            SurfaceChild::Zone(elem) => {
+                ctx.enter("zone", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SurfaceChild::FigDesc(elem) => {
                 ctx.enter("figDesc", index);
                 elem.validate_with_context(ctx);
@@ -26,17 +31,12 @@ impl SurfaceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SurfaceChild::Zone(elem) => {
-                ctx.enter("zone", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
         }
     }
 }
 /**Defines a writing surface in terms of a rectangular coordinate space, optionally grouping
-one or more graphic representations of that space, and rectangular zones of interest within
-it.*/
+      one or more graphic representations of that space, and rectangular zones of interest within
+      it.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "surface")]
 pub struct Surface {

@@ -1,26 +1,26 @@
 //!Element: `<manifestationList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<manifestationList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ManifestationListChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "manifestation")]
     Manifestation(Box<crate::generated::elements::Manifestation>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl ManifestationListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ManifestationListChild::Head(elem) => {
-                ctx.enter("head", index);
+            ManifestationListChild::Manifestation(elem) => {
+                ctx.enter("manifestation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationListChild::Manifestation(elem) => {
-                ctx.enter("manifestation", index);
+            ManifestationListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl ManifestationListChild {
     }
 }
 /**A container for the descriptions of physical embodiments of an expression of a
-work.*/
+      work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "manifestationList")]
 pub struct ManifestationList {

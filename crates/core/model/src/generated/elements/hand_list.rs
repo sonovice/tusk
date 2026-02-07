@@ -1,16 +1,16 @@
 //!Element: `<handList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<handList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HandListChild {
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "hand")]
-    Hand(Box<crate::generated::elements::Hand>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "hand")]
+    Hand(Box<crate::generated::elements::Hand>),
 }
 impl HandListChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl HandListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HandListChild::Hand(elem) => {
-                ctx.enter("hand", index);
+            HandListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            HandListChild::Head(elem) => {
-                ctx.enter("head", index);
+            HandListChild::Hand(elem) => {
+                ctx.enter("hand", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

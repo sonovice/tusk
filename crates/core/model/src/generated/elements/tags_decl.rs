@@ -1,6 +1,6 @@
 //!Element: `<tagsDecl>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<tagsDecl>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,7 +35,7 @@ impl TagsDeclChild {
     }
 }
 /**tagging declaration - Provides detailed information about the tagging applied to a
-document.*/
+      document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "tagsDecl")]
 pub struct TagsDecl {

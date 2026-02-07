@@ -1,6 +1,6 @@
 //!Element: `<subst>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<subst>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -9,26 +9,26 @@ pub enum SubstChild {
     Reg(Box<crate::generated::elements::Reg>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
     #[serde(rename = "orig")]
     Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "damage")]
     Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
     #[serde(rename = "sic")]
     Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
 }
 impl SubstChild {
     /// Validate this child element.
@@ -44,23 +44,18 @@ impl SubstChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SubstChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SubstChild::Orig(elem) => {
                 ctx.enter("orig", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SubstChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SubstChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SubstChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
+            SubstChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -74,8 +69,13 @@ impl SubstChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SubstChild::Gap(elem) => {
-                ctx.enter("gap", index);
+            SubstChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SubstChild::Del(elem) => {
+                ctx.enter("del", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -84,13 +84,13 @@ impl SubstChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SubstChild::Sic(elem) => {
-                ctx.enter("sic", index);
+            SubstChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SubstChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
+            SubstChild::Corr(elem) => {
+                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -98,7 +98,7 @@ impl SubstChild {
     }
 }
 /**substitution - Groups transcriptional elements when the combination is to be regarded as
-a single intervention in the text.*/
+      a single intervention in the text.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "subst")]
 pub struct Subst {

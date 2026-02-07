@@ -1,21 +1,26 @@
 //!Element: `<recording>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<recording>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RecordingChild {
+    #[serde(rename = "clip")]
+    Clip(Box<crate::generated::elements::Clip>),
     #[serde(rename = "avFile")]
     AvFile(Box<crate::generated::elements::AvFile>),
     #[serde(rename = "when")]
     When(Box<crate::generated::elements::When>),
-    #[serde(rename = "clip")]
-    Clip(Box<crate::generated::elements::Clip>),
 }
 impl RecordingChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            RecordingChild::Clip(elem) => {
+                ctx.enter("clip", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             RecordingChild::AvFile(elem) => {
                 ctx.enter("avFile", index);
                 elem.validate_with_context(ctx);
@@ -23,11 +28,6 @@ impl RecordingChild {
             }
             RecordingChild::When(elem) => {
                 ctx.enter("when", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            RecordingChild::Clip(elem) => {
-                ctx.enter("clip", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

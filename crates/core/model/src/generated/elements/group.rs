@@ -1,6 +1,6 @@
 //!Element: `<group>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<group>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,8 +28,8 @@ impl GroupChild {
     }
 }
 /**Contains a composite musical text, grouping together a sequence of distinct musical texts
-(or groups of such musical texts) which are regarded as a unit for some purpose, for example,
-the collected works of a composer.*/
+      (or groups of such musical texts) which are regarded as a unit for some purpose, for example,
+      the collected works of a composer.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "group")]
 pub struct Group {

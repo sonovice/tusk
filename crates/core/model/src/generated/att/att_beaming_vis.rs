@@ -13,7 +13,7 @@ pub enum AttBeamingVisBeamRend {
     Norm,
 }
 /**Used by layerDef, staffDef, and scoreDef to provide default values for attributes in the
-visual domain related to beaming.*/
+      visual domain related to beaming.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttBeamingVis {
     ///Color of beams, including those associated with tuplets.

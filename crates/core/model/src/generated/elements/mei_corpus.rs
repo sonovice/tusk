@@ -1,26 +1,26 @@
 //!Element: `<meiCorpus>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<meiCorpus>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiCorpusChild {
-    #[serde(rename = "meiHead")]
-    MeiHead(Box<crate::generated::elements::MeiHead>),
     #[serde(rename = "mei")]
     Mei(Box<crate::generated::elements::Mei>),
+    #[serde(rename = "meiHead")]
+    MeiHead(Box<crate::generated::elements::MeiHead>),
 }
 impl MeiCorpusChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiCorpusChild::MeiHead(elem) => {
-                ctx.enter("meiHead", index);
+            MeiCorpusChild::Mei(elem) => {
+                ctx.enter("mei", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiCorpusChild::Mei(elem) => {
-                ctx.enter("mei", index);
+            MeiCorpusChild::MeiHead(elem) => {
+                ctx.enter("meiHead", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl MeiCorpusChild {
     }
 }
 /**MEI corpus - A group of related MEI documents, consisting of a header for the group, and
-one or moremeielements, each with its own complete header.*/
+      one or moremeielements, each with its own complete header.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "meiCorpus")]
 pub struct MeiCorpus {

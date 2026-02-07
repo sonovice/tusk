@@ -1,27 +1,27 @@
 //!Element: `<source>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<source>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceChild {
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
     #[serde(rename = "locusGrp")]
     LocusGrp(Box<crate::generated::elements::LocusGrp>),
     #[serde(rename = "biblStruct")]
     BiblStruct(Box<crate::generated::elements::BiblStruct>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
 }
 impl SourceChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            SourceChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
+            SourceChild::Locus(elem) => {
+                ctx.enter("locus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -40,8 +40,8 @@ impl SourceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SourceChild::Locus(elem) => {
-                ctx.enter("locus", index);
+            SourceChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,7 +49,7 @@ impl SourceChild {
     }
 }
 /**A bibliographic description of a source used in the creation of the electronic
-file.*/
+      file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "source")]
 pub struct Source {

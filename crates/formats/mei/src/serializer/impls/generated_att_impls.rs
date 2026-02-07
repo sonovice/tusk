@@ -4,7 +4,7 @@
 //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
 use super::super::CollectAttributes;
 #[allow(unused_imports)]
-use super::{serialize_vec_serde, to_attr_string};
+use super::{to_attr_string, serialize_vec_serde};
 use tusk_model::att::*;
 impl CollectAttributes for AttAccidAnl {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {

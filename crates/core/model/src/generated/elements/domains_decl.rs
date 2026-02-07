@@ -1,6 +1,6 @@
 //!Element: `<domainsDecl>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///domains declaration - Indicates which domains are included in the encoding.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "domainsDecl")]

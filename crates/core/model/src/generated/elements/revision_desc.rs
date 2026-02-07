@@ -1,26 +1,26 @@
 //!Element: `<revisionDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<revisionDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RevisionDescChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "change")]
     Change(Box<crate::generated::elements::Change>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl RevisionDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RevisionDescChild::Head(elem) => {
-                ctx.enter("head", index);
+            RevisionDescChild::Change(elem) => {
+                ctx.enter("change", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RevisionDescChild::Change(elem) => {
-                ctx.enter("change", index);
+            RevisionDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,7 +28,7 @@ impl RevisionDescChild {
     }
 }
 /**revision description - Container for information about alterations that have been made
-to an MEI file.*/
+      to an MEI file.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "revisionDesc")]
 pub struct RevisionDesc {

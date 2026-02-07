@@ -1,6 +1,6 @@
 //!Element: `<creator>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<creator>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,10 +8,10 @@ pub enum CreatorChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
     #[serde(rename = "name")]
     Name(Box<crate::generated::elements::Name>),
 }
@@ -20,13 +20,13 @@ impl CreatorChild {
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             CreatorChild::Text(_) => {}
-            CreatorChild::PersName(elem) => {
-                ctx.enter("persName", index);
+            CreatorChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CreatorChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            CreatorChild::PersName(elem) => {
+                ctx.enter("persName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,7 +39,7 @@ impl CreatorChild {
     }
 }
 /**Names of individuals, institutions, or organizations responsible for the creation of the
-intellectual content of a work, e.g., authors, composers, etc. (context based also lyricists and librettist).*/
+      intellectual content of a work, e.g., authors, composers, etc. (context based also lyricists and librettist).*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "creator")]
 pub struct Creator {

@@ -1,37 +1,37 @@
 //!Element: `<eventList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<eventList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EventListChild {
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "event")]
-    Event(Box<crate::generated::elements::Event>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "persName")]
     PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "event")]
+    Event(Box<crate::generated::elements::Event>),
 }
 impl EventListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            EventListChild::EventList(elem) => {
-                ctx.enter("eventList", index);
+            EventListChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -40,13 +40,8 @@ impl EventListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EventListChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventListChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            EventListChild::PersName(elem) => {
+                ctx.enter("persName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -55,18 +50,8 @@ impl EventListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EventListChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             EventListChild::GeogName(elem) => {
                 ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventListChild::Event(elem) => {
-                ctx.enter("event", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -75,8 +60,23 @@ impl EventListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EventListChild::PersName(elem) => {
-                ctx.enter("persName", index);
+            EventListChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventListChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventListChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventListChild::Event(elem) => {
+                ctx.enter("event", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

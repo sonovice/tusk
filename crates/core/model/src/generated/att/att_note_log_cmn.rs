@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttNoteLogCmn {
     /**Marks a note or chord as a "grace" (without a definite performed duration) and records
-    from which other note/chord it should "steal" time.*/
+          from which other note/chord it should "steal" time.*/
     #[serde(rename = "@grace", skip_serializing_if = "Option::is_none")]
     pub grace: Option<crate::generated::data::DataGrace>,
     ///Records the amount of time to be "stolen" from a non-grace note/chord.

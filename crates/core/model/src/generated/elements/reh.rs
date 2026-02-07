@@ -1,6 +1,6 @@
 //!Element: `<reh>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<reh>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,10 +8,10 @@ pub enum RehChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "stack")]
-    Stack(Box<crate::generated::elements::Stack>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "stack")]
+    Stack(Box<crate::generated::elements::Stack>),
     #[serde(rename = "rend")]
     Rend(Box<crate::generated::elements::Rend>),
 }
@@ -20,13 +20,13 @@ impl RehChild {
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             RehChild::Text(_) => {}
-            RehChild::Stack(elem) => {
-                ctx.enter("stack", index);
+            RehChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RehChild::Lb(elem) => {
-                ctx.enter("lb", index);
+            RehChild::Stack(elem) => {
+                ctx.enter("stack", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -39,7 +39,7 @@ impl RehChild {
     }
 }
 /**rehearsal mark - In an orchestral score and its corresponding parts, a mark indicating a
-convenient point from which to resume rehearsal after a break.*/
+      convenient point from which to resume rehearsal after a break.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "reh")]
 pub struct Reh {

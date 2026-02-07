@@ -1,33 +1,10 @@
 //! Serialization trait implementations for MEI types.
 //!
 //! Attribute class impls (`CollectAttributes for Att*`) are auto-generated in
-//! `generated_att_impls.rs`. Element impls (`MeiSerialize`) are hand-written below.
+//! `generated_att_impls.rs`. Element impls (`MeiSerialize`) are auto-generated in
+//! `generated_element_impls.rs`.
 
 use serde::Serialize;
-
-mod analysis;
-mod biblio;
-mod chords;
-mod cmn_core;
-mod control;
-mod defs;
-mod drama;
-mod editorial;
-mod facsimile;
-mod header;
-mod mensural;
-mod metadata_text;
-mod midi;
-mod misc;
-mod neumes;
-mod note;
-mod structure;
-mod symbols;
-mod tablature;
-mod text;
-mod text_containers;
-
-// Header module is now a directory with submodules
 
 /// Serialize any serde-serializable value to a JSON string and strip quotes.
 /// This is used for all MEI data types that have serde derives.
@@ -86,3 +63,4 @@ macro_rules! push_attr {
 pub(crate) use push_attr;
 
 mod generated_att_impls;
+mod generated_element_impls;

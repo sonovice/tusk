@@ -1,14 +1,14 @@
 //!Element: `<contents>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<contents>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ContentsChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "contentItem")]
@@ -18,13 +18,13 @@ impl ContentsChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ContentsChild::Head(elem) => {
-                ctx.enter("head", index);
+            ContentsChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ContentsChild::P(elem) => {
-                ctx.enter("p", index);
+            ContentsChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

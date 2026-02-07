@@ -46,7 +46,7 @@ pub enum AttSylLogWordpos {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttSylLog {
     /**Describes the symbols typically used to indicate breaks between syllables and their
-    functions.*/
+          functions.*/
     #[serde(rename = "@con", skip_serializing_if = "Option::is_none")]
     pub con: Option<AttSylLogCon>,
     ///Records the position of a syllable within a word.

@@ -60,11 +60,13 @@ fn main() -> Result<()> {
     // Generate Rust code
     generator::generate_all(&defs, &args.output)?;
 
-    // Generate attribute trait impls for tusk-mei if requested
+    // Generate attribute and element trait impls for tusk-mei if requested
     if let Some(mei_crate) = &args.mei_crate {
-        println!("\nGenerating attribute trait impls for tusk-mei...");
+        println!("\nGenerating trait impls for tusk-mei...");
         println!("  Target: {}", mei_crate.display());
         generator::generate_mei_attr_impls(&defs, mei_crate)?;
+        generator::generate_mei_element_ser_impls(&defs, mei_crate)?;
+        generator::generate_mei_element_deser_impls(&defs, mei_crate)?;
     }
 
     println!("\nCode generation complete!");

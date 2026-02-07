@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttDurationLog {
     /**Records the duration of a feature using the relative durational values provided by the
-    data.DURATION datatype.*/
+          data.DURATION datatype.*/
     #[serde(rename = "@dur", skip_serializing_if = "Option::is_none")]
     pub dur: Option<crate::generated::data::DataDuration>,
 }

@@ -1,18 +1,18 @@
 //!Element: `<perfResList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<perfResList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PerfResListChild {
     #[serde(rename = "perfRes")]
     PerfRes(Box<crate::generated::elements::PerfRes>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "perfResList")]
     PerfResList(Box<crate::generated::elements::PerfResList>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
 }
 impl PerfResListChild {
     /// Validate this child element.
@@ -23,8 +23,8 @@ impl PerfResListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PerfResListChild::Annot(elem) => {
-                ctx.enter("annot", index);
+            PerfResListChild::PerfResList(elem) => {
+                ctx.enter("perfResList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +33,8 @@ impl PerfResListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PerfResListChild::PerfResList(elem) => {
-                ctx.enter("perfResList", index);
+            PerfResListChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

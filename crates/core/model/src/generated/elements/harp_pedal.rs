@@ -1,6 +1,6 @@
 //!Element: `<harpPedal>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///harp pedal - Harp pedal diagram.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "harpPedal")]

@@ -1,20 +1,20 @@
 //!Element: `<componentList>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<componentList>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ComponentListChild {
     #[serde(rename = "item")]
     Item(Box<crate::generated::elements::Item>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "manifestation")]
-    Manifestation(Box<crate::generated::elements::Manifestation>),
-    #[serde(rename = "work")]
-    Work(Box<crate::generated::elements::Work>),
     #[serde(rename = "expression")]
     Expression(Box<crate::generated::elements::Expression>),
+    #[serde(rename = "manifestation")]
+    Manifestation(Box<crate::generated::elements::Manifestation>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "work")]
+    Work(Box<crate::generated::elements::Work>),
 }
 impl ComponentListChild {
     /// Validate this child element.
@@ -25,8 +25,8 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Head(elem) => {
-                ctx.enter("head", index);
+            ComponentListChild::Expression(elem) => {
+                ctx.enter("expression", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,13 +35,13 @@ impl ComponentListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Work(elem) => {
-                ctx.enter("work", index);
+            ComponentListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ComponentListChild::Expression(elem) => {
-                ctx.enter("expression", index);
+            ComponentListChild::Work(elem) => {
+                ctx.enter("work", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

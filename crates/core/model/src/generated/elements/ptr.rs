@@ -1,8 +1,8 @@
 //!Element: `<ptr>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**pointer - Defines a traversible pointer to another location, using only attributes to
-describe the destination.*/
+      describe the destination.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "ptr")]
 pub struct Ptr {

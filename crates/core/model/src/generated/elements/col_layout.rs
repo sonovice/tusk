@@ -1,8 +1,8 @@
 //!Element: `<colLayout>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 /**column layout - An empty formatting element that signals the start of columnar
-layout.*/
+      layout.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "colLayout")]
 pub struct ColLayout {

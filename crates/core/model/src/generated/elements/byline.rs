@@ -1,6 +1,6 @@
 //!Element: `<byline>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<byline>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,236 +8,126 @@ pub enum BylineChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "contributor")]
-    Contributor(Box<crate::generated::elements::Contributor>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "editor")]
-    Editor(Box<crate::generated::elements::Editor>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
     #[serde(rename = "abbr")]
     Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
     #[serde(rename = "relationList")]
     RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "district")]
-    District(Box<crate::generated::elements::District>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
     #[serde(rename = "postCode")]
     PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "stack")]
-    Stack(Box<crate::generated::elements::Stack>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "editor")]
+    Editor(Box<crate::generated::elements::Editor>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "title")]
     Title(Box<crate::generated::elements::Title>),
     #[serde(rename = "height")]
     Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "funder")]
-    Funder(Box<crate::generated::elements::Funder>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
     #[serde(rename = "address")]
     Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "bloc")]
-    Bloc(Box<crate::generated::elements::Bloc>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
     #[serde(rename = "ptr")]
     Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
     #[serde(rename = "secFolio")]
     SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "street")]
-    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "bloc")]
+    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
     #[serde(rename = "extent")]
     Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "creator")]
-    Creator(Box<crate::generated::elements::Creator>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
     #[serde(rename = "postBox")]
     PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "stack")]
+    Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "creator")]
+    Creator(Box<crate::generated::elements::Creator>),
+    #[serde(rename = "contributor")]
+    Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "funder")]
+    Funder(Box<crate::generated::elements::Funder>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "street")]
+    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "district")]
+    District(Box<crate::generated::elements::District>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
 }
 impl BylineChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             BylineChild::Text(_) => {}
-            BylineChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Relation(elem) => {
-                ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Contributor(elem) => {
-                ctx.enter("contributor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Term(elem) => {
-                ctx.enter("term", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Editor(elem) => {
-                ctx.enter("editor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
+            BylineChild::Expan(elem) => {
+                ctx.enter("expan", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -246,18 +136,28 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            BylineChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             BylineChild::RelationList(elem) => {
                 ctx.enter("relationList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::District(elem) => {
-                ctx.enter("district", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
+            BylineChild::Q(elem) => {
+                ctx.enter("q", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -266,18 +166,43 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Stack(elem) => {
-                ctx.enter("stack", index);
+            BylineChild::Seg(elem) => {
+                ctx.enter("seg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
+            BylineChild::Editor(elem) => {
+                ctx.enter("editor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Rend(elem) => {
-                ctx.enter("rend", index);
+            BylineChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::PersName(elem) => {
+                ctx.enter("persName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -291,68 +216,23 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Funder(elem) => {
-                ctx.enter("funder", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             BylineChild::Address(elem) => {
                 ctx.enter("address", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Expan(elem) => {
-                ctx.enter("expan", index);
+            BylineChild::Depth(elem) => {
+                ctx.enter("depth", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Num(elem) => {
-                ctx.enter("num", index);
+            BylineChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Bloc(elem) => {
-                ctx.enter("bloc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Region(elem) => {
-                ctx.enter("region", index);
+            BylineChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -361,13 +241,38 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            BylineChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             BylineChild::SecFolio(elem) => {
                 ctx.enter("secFolio", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Street(elem) => {
-                ctx.enter("street", index);
+            BylineChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Bloc(elem) => {
+                ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -376,23 +281,8 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::Seg(elem) => {
-                ctx.enter("seg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Creator(elem) => {
-                ctx.enter("creator", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BylineChild::Dim(elem) => {
-                ctx.enter("dim", index);
+            BylineChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -401,8 +291,118 @@ impl BylineChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BylineChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
+            BylineChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Term(elem) => {
+                ctx.enter("term", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Stack(elem) => {
+                ctx.enter("stack", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Creator(elem) => {
+                ctx.enter("creator", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Contributor(elem) => {
+                ctx.enter("contributor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Funder(elem) => {
+                ctx.enter("funder", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Street(elem) => {
+                ctx.enter("street", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::District(elem) => {
+                ctx.enter("district", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BylineChild::Dim(elem) => {
+                ctx.enter("dim", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -410,7 +410,7 @@ impl BylineChild {
     }
 }
 /**Contains the primary statement of responsibility given for a work on its title
-page.*/
+      page.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "byline")]
 pub struct Byline {

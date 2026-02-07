@@ -1,6 +1,6 @@
 //!Element: `<genDesc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<genDesc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl GenDescChild {
     }
 }
 /**genetic description - Bundles information about the textual development of a
-work.*/
+      work.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "genDesc")]
 pub struct GenDesc {
@@ -37,7 +37,7 @@ pub struct GenDesc {
     #[serde(flatten)]
     pub metadata_pointing: crate::generated::att::AttMetadataPointing,
     /**When set to "true" the child elements are known to be in chronological order. When set
-    to "false" or when not provided, the order of child elements is unknown.*/
+          to "false" or when not provided, the order of child elements is unknown.*/
     #[serde(rename = "@ordered", skip_serializing_if = "Option::is_none")]
     pub ordered: Option<crate::generated::data::DataBoolean>,
     /// Child elements.

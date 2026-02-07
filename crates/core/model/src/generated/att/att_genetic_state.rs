@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttGeneticState {
     /**The @instant attribute is syntactic sugar for classifying a scribal intervention as an
-    ad-hoc modification; that is, one which does not interrupt the writing process.*/
+          ad-hoc modification; that is, one which does not interrupt the writing process.*/
     #[serde(rename = "@instant", skip_serializing_if = "Option::is_none")]
     pub instant: Option<crate::generated::data::DataBoolean>,
     ///Points to the genetic state that results from this modification.

@@ -1,25 +1,25 @@
 //!Element: `<physLoc>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<physLoc>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PhysLocChild {
-    #[serde(rename = "history")]
-    History(Box<crate::generated::elements::History>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "repository")]
     Repository(Box<crate::generated::elements::Repository>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "history")]
+    History(Box<crate::generated::elements::History>),
 }
 impl PhysLocChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PhysLocChild::History(elem) => {
-                ctx.enter("history", index);
+            PhysLocChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -33,8 +33,8 @@ impl PhysLocChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysLocChild::Head(elem) => {
-                ctx.enter("head", index);
+            PhysLocChild::History(elem) => {
+                ctx.enter("history", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -42,8 +42,8 @@ impl PhysLocChild {
     }
 }
 /**physical location - Groups information about the current physical location of a
-bibliographic item, such as the repository in which it is located and its shelf mark(s), and
-its previous locations.*/
+      bibliographic item, such as the repository in which it is located and its shelf mark(s), and
+      its previous locations.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "physLoc")]
 pub struct PhysLoc {

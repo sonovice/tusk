@@ -3,28 +3,7 @@
 //! Provides opt-in validation for MEI documents. Validation is NOT performed
 //! during deserialization - call `validate()` explicitly after loading.
 //!
-/*!///
-/// # Sample constraints (showing 20 of 241):
-/// - `check_joinTarget` (context: `@join`)
-/// - `check_joinTarget` (context: `@join`)
-/// - `check_plistTarget` (context: `@plist`)
-/// - `check_plistTarget` (context: `@plist`)
-/// - `dots_attribute_requires_dur` (context: `mei:*[@dots]`)
-/// - `clef_shape_requires_clef_line` (context: `mei:*[matches(@clef.shape, '[FCG]')]`)
-/// - `clef_shape_requires_clef_line` (context: `mei:*[matches(@clef.shape, '(TAB|perc)')]`)
-/// - `check_nymrefTarget` (context: `@nymref`)
-/// - `check_nymrefTarget` (context: `@nymref`)
-/// - `check_lsegs` (context: `@lsegs`)
-/// - `check_defTarget_layer` (context: `mei:layer/@def`)
-/// - `check_defTarget_layer` (context: `mei:layer/@def`)
-/// - `checkComponentType` (context: `mei:*[@comptype]`)
-/// - `check_head.altsymTarget` (context: `@head.altsym`)
-/// - `check_head.altsymTarget` (context: `@head.altsym`)
-/// - `check_head.auth` (context: `mei:*[lower-case(@head.auth) eq 'smufl']`)
-/// - `check_headshape_num` (context: `mei:*[(matches(@head.shape, '#x') or matches(@head.shape, 'U+')) and (lower-case(@head.auth) eq 'smufl')]`)
-/// - `check_extent` (context: `@extent[matches(normalize-space(.), '^\d+(\.\d+)?$')]`)
-/// - `check_extent` (context: `@extent[matches(., '\d+(\.\d+)?\s')]`)
-/// - `When_notationsubtype` (context: `mei:*[@notationsubtype]`)*/
+#![doc = "/// \n/// # Sample constraints (showing 20 of 241):\n/// - `extremis_disallows_gestural_pitch` (context: `mei:note[@extremis]`)\n/// - `check_barmethod` (context: `@bar.method[parent::*[matches(local-name(), '(staffDef|measure)')]]`)\n/// - `mensuration_conflicting_attributes` (context: `mei:mensur[@divisio]`)\n/// - `check_altsymTarget` (context: `@altsym`)\n/// - `check_altsymTarget` (context: `@altsym`)\n/// - `check_altsymTarget` (context: `@altsym`)\n/// - `check_dataTarget` (context: `@data`)\n/// - `check_dataTarget` (context: `@data`)\n/// - `meiVersion.onlyRoot` (context: `/mei:*//*`)\n/// - `check_defTarget_layer` (context: `mei:layer/@def`)\n/// - `check_defTarget_layer` (context: `mei:layer/@def`)\n/// - `checkComponentType` (context: `mei:*[@comptype]`)\n/// - `check_whenTarget` (context: `@when`)\n/// - `check_whenTarget` (context: `@when`)\n/// - `check_duplex_quality` (context: `(mei:note|mei:space)[@dur.quality='duplex']`)\n/// - `check_maiorminor_quality` (context: `(mei:note|mei:space)[@dur.quality='maior' or @dur.quality='minor']`)\n/// - `check_sourceTarget` (context: `@source`)\n/// - `check_sourceTarget` (context: `@source`)\n/// - `check_handTarget` (context: `@hand`)\n/// - `check_handTarget` (context: `@hand`)"]
 //!
 //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
 use std::fmt;
@@ -51,11 +30,7 @@ impl fmt::Display for Location {
 #[derive(Debug, Clone)]
 pub enum ValidationError {
     /// A Schematron constraint was violated.
-    ConstraintViolation {
-        location: Location,
-        constraint: String,
-        message: String,
-    },
+    ConstraintViolation { location: Location, constraint: String, message: String },
     /// An attribute value does not match its pattern.
     PatternMismatch {
         location: Location,
@@ -72,74 +47,36 @@ pub enum ValidationError {
         max: String,
     },
     /// A required attribute is missing.
-    MissingRequired {
-        location: Location,
-        attribute: String,
-    },
+    MissingRequired { location: Location, attribute: String },
     /// A reference does not resolve to any element.
-    UnresolvedReference {
-        location: Location,
-        attribute: String,
-        reference: String,
-    },
+    UnresolvedReference { location: Location, attribute: String, reference: String },
 }
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValidationError::ConstraintViolation {
-                location,
-                constraint,
-                message,
-            } => {
+            ValidationError::ConstraintViolation { location, constraint, message } => {
                 write!(
-                    f,
-                    "[{}] Constraint '{}' violated: {}",
-                    location, constraint, message
+                    f, "[{}] Constraint '{}' violated: {}", location, constraint, message
                 )
             }
-            ValidationError::PatternMismatch {
-                location,
-                attribute,
-                value,
-                pattern,
-            } => {
+            ValidationError::PatternMismatch { location, attribute, value, pattern } => {
                 write!(
-                    f,
-                    "[{}] Attribute @{}: value '{}' does not match pattern /{}/",
+                    f, "[{}] Attribute @{}: value '{}' does not match pattern /{}/",
                     location, attribute, value, pattern
                 )
             }
-            ValidationError::RangeViolation {
-                location,
-                attribute,
-                value,
-                min,
-                max,
-            } => {
+            ValidationError::RangeViolation { location, attribute, value, min, max } => {
                 write!(
-                    f,
-                    "[{}] Attribute @{}: value {} out of range [{}, {}]",
-                    location, attribute, value, min, max
+                    f, "[{}] Attribute @{}: value {} out of range [{}, {}]", location,
+                    attribute, value, min, max
                 )
             }
-            ValidationError::MissingRequired {
-                location,
-                attribute,
-            } => {
-                write!(
-                    f,
-                    "[{}] Required attribute @{} is missing",
-                    location, attribute
-                )
+            ValidationError::MissingRequired { location, attribute } => {
+                write!(f, "[{}] Required attribute @{} is missing", location, attribute)
             }
-            ValidationError::UnresolvedReference {
-                location,
-                attribute,
-                reference,
-            } => {
+            ValidationError::UnresolvedReference { location, attribute, reference } => {
                 write!(
-                    f,
-                    "[{}] Reference @{}='{}' does not resolve to any element",
+                    f, "[{}] Reference @{}='{}' does not resolve to any element",
                     location, attribute, reference
                 )
             }
@@ -193,11 +130,12 @@ impl ValidationContext {
         constraint: &str,
         message: &str,
     ) {
-        self.errors.push(ValidationError::ConstraintViolation {
-            location: self.location(element, xml_id),
-            constraint: constraint.to_string(),
-            message: message.to_string(),
-        });
+        self.errors
+            .push(ValidationError::ConstraintViolation {
+                location: self.location(element, xml_id),
+                constraint: constraint.to_string(),
+                message: message.to_string(),
+            });
     }
     /// Add a pattern mismatch error.
     pub fn add_pattern_mismatch(
@@ -208,20 +146,17 @@ impl ValidationContext {
         value: &str,
         pattern: &str,
     ) {
-        self.errors.push(ValidationError::PatternMismatch {
-            location: self.location(element, xml_id),
-            attribute: attribute.to_string(),
-            value: value.to_string(),
-            pattern: pattern.to_string(),
-        });
+        self.errors
+            .push(ValidationError::PatternMismatch {
+                location: self.location(element, xml_id),
+                attribute: attribute.to_string(),
+                value: value.to_string(),
+                pattern: pattern.to_string(),
+            });
     }
     /// Finish validation and return the result.
     pub fn finish(self) -> ValidationResult {
-        if self.errors.is_empty() {
-            Ok(())
-        } else {
-            Err(self.errors)
-        }
+        if self.errors.is_empty() { Ok(()) } else { Err(self.errors) }
     }
     /// Check if any errors have been recorded.
     pub fn has_errors(&self) -> bool {

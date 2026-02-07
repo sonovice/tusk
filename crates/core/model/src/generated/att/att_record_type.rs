@@ -46,7 +46,7 @@ pub enum AttRecordTypeRecordtype {
     T,
 }
 /**Attributes that define the characteristics and components of the bibliographic
-description.*/
+      description.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttRecordType {
     ///

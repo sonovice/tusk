@@ -1,6 +1,6 @@
 //!Element: `<availability>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<availability>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -8,52 +8,32 @@ pub enum AvailabilityChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "sysReq")]
-    SysReq(Box<crate::generated::elements::SysReq>),
-    #[serde(rename = "accessRestrict")]
-    AccessRestrict(Box<crate::generated::elements::AccessRestrict>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "price")]
-    Price(Box<crate::generated::elements::Price>),
+    #[serde(rename = "distributor")]
+    Distributor(Box<crate::generated::elements::Distributor>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "date")]
     Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "sysReq")]
+    SysReq(Box<crate::generated::elements::SysReq>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
     #[serde(rename = "useRestrict")]
     UseRestrict(Box<crate::generated::elements::UseRestrict>),
-    #[serde(rename = "distributor")]
-    Distributor(Box<crate::generated::elements::Distributor>),
+    #[serde(rename = "accessRestrict")]
+    AccessRestrict(Box<crate::generated::elements::AccessRestrict>),
+    #[serde(rename = "price")]
+    Price(Box<crate::generated::elements::Price>),
 }
 impl AvailabilityChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             AvailabilityChild::Text(_) => {}
-            AvailabilityChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::SysReq(elem) => {
-                ctx.enter("sysReq", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::AccessRestrict(elem) => {
-                ctx.enter("accessRestrict", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::Price(elem) => {
-                ctx.enter("price", index);
+            AvailabilityChild::Distributor(elem) => {
+                ctx.enter("distributor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -67,13 +47,33 @@ impl AvailabilityChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            AvailabilityChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AvailabilityChild::SysReq(elem) => {
+                ctx.enter("sysReq", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AvailabilityChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             AvailabilityChild::UseRestrict(elem) => {
                 ctx.enter("useRestrict", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AvailabilityChild::Distributor(elem) => {
-                ctx.enter("distributor", index);
+            AvailabilityChild::AccessRestrict(elem) => {
+                ctx.enter("accessRestrict", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AvailabilityChild::Price(elem) => {
+                ctx.enter("price", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -81,7 +81,7 @@ impl AvailabilityChild {
     }
 }
 /**Groups elements that describe the availability of and access to a bibliographic item,
-including an MEI-encoded document.*/
+      including an MEI-encoded document.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "availability")]
 pub struct Availability {

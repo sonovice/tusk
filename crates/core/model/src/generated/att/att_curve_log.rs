@@ -10,11 +10,11 @@ pub enum AttCurveLogFunc {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct AttCurveLog {
     /**Holds a reference to the first element in a sequence of events to which the feature
-    applies.*/
+          applies.*/
     #[serde(rename = "@startid", skip_serializing_if = "Option::is_none")]
     pub startid: Option<crate::generated::data::DataUri>,
     /**Indicates the final element in a sequence of events to which the feature
-    applies.*/
+          applies.*/
     #[serde(rename = "@endid", skip_serializing_if = "Option::is_none")]
     pub endid: Option<crate::generated::data::DataUri>,
     ///Indicates the function of the curve.

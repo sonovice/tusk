@@ -1,6 +1,6 @@
 //!Element: `<segmentation>`
-use crate::generated::validation::{Validate, ValidationContext};
 use serde::{Deserialize, Serialize};
+use crate::generated::validation::{ValidationContext, Validate};
 ///Child content for `<segmentation>`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,7 +28,7 @@ impl SegmentationChild {
     }
 }
 /**Describes the principles according to which the musical text has been segmented, for
-example into movements, sections, etc.*/
+      example into movements, sections, etc.*/
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename = "segmentation")]
 pub struct Segmentation {
