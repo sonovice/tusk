@@ -1,21 +1,14 @@
-// Allow clippy lints in generated serializer/deserializer impls
+// Allow lints in generated serializer/deserializer impls
 #![allow(
     dead_code,
     unused_imports,
     unused_variables,
     clippy::box_default,
     clippy::collapsible_if,
-    clippy::collapsible_match,
-    clippy::doc_lazy_continuation,
-    clippy::derivable_impls,
-    clippy::for_kv_map,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
     clippy::match_single_binding,
     clippy::needless_borrow,
     clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_pattern_char_comparison
+    clippy::single_match
 )]
 
 //! MEI parsing and serialization for Tusk.
@@ -110,11 +103,6 @@ mod tests {
     use quick_xml::se::to_string;
     use serde::{Deserialize, Serialize};
     use tusk_model::data::DataDurationCmn;
-
-    #[test]
-    fn crate_compiles() {
-        assert!(true);
-    }
 
     /// Test struct wrapping a duration enum value (simulates MEI attribute)
     #[derive(Debug, PartialEq, Serialize, Deserialize)]

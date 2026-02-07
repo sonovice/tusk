@@ -1,9 +1,8 @@
 // Allow clippy lints that are widespread in generated/mechanical code
 #![allow(
     clippy::collapsible_if,
-    clippy::doc_lazy_continuation,
     clippy::derivable_impls,
-    clippy::unnecessary_map_or
+    clippy::doc_lazy_continuation
 )]
 
 //! MusicXML parsing, serialization, and conversion for Tusk.
@@ -127,9 +126,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn crate_compiles() {
-        // Smoke test: ensure types can be instantiated
-        let _ = Step::C;
-        let _ = YesNo::Yes;
+    fn import_empty_score_succeeds() {
+        let score = model::elements::ScorePartwise::default();
+        assert!(import(&score).is_ok());
     }
 }

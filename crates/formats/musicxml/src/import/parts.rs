@@ -355,27 +355,8 @@ pub fn convert_staff_def_from_score_part(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
+    use crate::import::test_utils::make_score_part;
     use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
-
-    /// Helper to create a ScorePart with the given id and name.
-    fn make_score_part(id: &str, name: &str) -> ScorePart {
-        ScorePart {
-            id: id.to_string(),
-            identification: None,
-            part_links: vec![],
-            part_name: PartName {
-                value: name.to_string(),
-                ..Default::default()
-            },
-            part_name_display: None,
-            part_abbreviation: None,
-            part_abbreviation_display: None,
-            groups: vec![],
-            score_instruments: vec![],
-            players: vec![],
-            midi_assignments: vec![],
-        }
-    }
 
     // ============================================================================
     // Part List Conversion Tests

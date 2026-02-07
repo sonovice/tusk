@@ -982,7 +982,7 @@ pub fn convert_mei_chord(
                 let grace = convert_mei_grace_chord(mei_chord);
                 MxmlNote::unpitched_grace(unpitched, grace)
             } else {
-                MxmlNote::unpitched(unpitched, note_duration.unwrap())
+                MxmlNote::unpitched(unpitched, note_duration.unwrap_or(0.0))
             }
         } else {
             // Pitched note in chord
@@ -991,7 +991,7 @@ pub fn convert_mei_chord(
                 let grace = convert_mei_grace_chord(mei_chord);
                 MxmlNote::grace_note(pitch, grace)
             } else {
-                MxmlNote::pitched(pitch, note_duration.unwrap())
+                MxmlNote::pitched(pitch, note_duration.unwrap_or(0.0))
             }
         };
 

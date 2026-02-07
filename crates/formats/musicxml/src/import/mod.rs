@@ -47,9 +47,7 @@ pub use structure::{
 };
 
 // Re-export parts conversion functions
-pub use parts::{
-    convert_score_def, convert_staff_def_from_score_part, convert_staff_grp,
-};
+pub use parts::{convert_score_def, convert_staff_def_from_score_part, convert_staff_grp};
 
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::convert_error::ConversionResult;
@@ -206,6 +204,31 @@ fn convert_music(score: &ScorePartwise, ctx: &mut ConversionContext) -> Conversi
     music.children.push(MusicChild::Body(Box::new(body)));
 
     Ok(music)
+}
+
+#[cfg(test)]
+pub(crate) mod test_utils {
+    use crate::model::elements::{PartName, ScorePart};
+
+    /// Helper to create a ScorePart with the given id and name.
+    pub fn make_score_part(id: &str, name: &str) -> ScorePart {
+        ScorePart {
+            id: id.to_string(),
+            identification: None,
+            part_links: vec![],
+            part_name: PartName {
+                value: name.to_string(),
+                ..Default::default()
+            },
+            part_name_display: None,
+            part_abbreviation: None,
+            part_abbreviation_display: None,
+            groups: vec![],
+            score_instruments: vec![],
+            players: vec![],
+            midi_assignments: vec![],
+        }
+    }
 }
 
 #[cfg(test)]
