@@ -11,10 +11,40 @@ use tusk_model::att::{
     AttGraceGrpVis, AttTupletAnl, AttTupletGes, AttTupletLog, AttTupletVis,
 };
 use tusk_model::elements::{
-    App, Beam, BeamChild, Chord, GraceGrp, GraceGrpChild, Note, Rest, Space, Tuplet, TupletChild,
+    App, BTrem, Beam, BeamChild, Chord, GraceGrp, GraceGrpChild, Note, Rest, Space, Tuplet,
+    TupletChild,
 };
 
 use super::{extract_attr, from_attr_string, parse_clef_from_event};
+
+/// Parses a child element common to Beam, Tuplet, and GraceGrp containers.
+///
+/// Returns `Ok(Some(child))` if the element name matched, `Ok(None)` if unrecognized.
+/// The caller wraps the returned value into the appropriate parent child enum.
+macro_rules! parse_grouping_child {
+    ($reader:expr, $name:expr, $child_attrs:expr, $child_empty:expr, $children:expr, $ChildEnum:ident,
+     [$(($elem_name:literal, $variant:ident, $ty:ty)),* $(,)?],
+     clef: $has_clef:expr
+    ) => {
+        match $name.as_str() {
+            $(
+                $elem_name => {
+                    let parsed = <$ty>::from_mei_event($reader, $child_attrs, $child_empty)?;
+                    $children.push($ChildEnum::$variant(Box::new(parsed)));
+                }
+            )*
+            "clef" if $has_clef => {
+                let clef = parse_clef_from_event($reader, $child_attrs, $child_empty)?;
+                $children.push($ChildEnum::Clef(Box::new(clef)));
+            }
+            _ => {
+                if !$child_empty {
+                    $reader.skip_to_end(&$name)?;
+                }
+            }
+        }
+    };
+}
 
 // ============================================================================
 // Beam attribute class implementations
@@ -44,7 +74,6 @@ impl MeiDeserialize for Beam {
     ) -> DeserializeResult<Self> {
         let mut beam = Beam::default();
 
-        // Extract attributes into each attribute class
         beam.common.extract_attributes(&mut attrs)?;
         beam.facsimile.extract_attributes(&mut attrs)?;
         beam.beam_log.extract_attributes(&mut attrs)?;
@@ -52,59 +81,25 @@ impl MeiDeserialize for Beam {
         beam.beam_ges.extract_attributes(&mut attrs)?;
         beam.beam_anl.extract_attributes(&mut attrs)?;
 
-        // Remaining attributes are unknown - in lenient mode we ignore them
-
-        // Read children if not empty
         if !is_empty {
             while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("beam")?
             {
-                match name.as_str() {
-                    "note" => {
-                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Note(Box::new(note)));
-                    }
-                    "rest" => {
-                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Rest(Box::new(rest)));
-                    }
-                    "chord" => {
-                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Chord(Box::new(chord)));
-                    }
-                    "space" => {
-                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Space(Box::new(space)));
-                    }
-                    "beam" => {
-                        // Nested beams are allowed
-                        let nested_beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Beam(Box::new(nested_beam)));
-                    }
-                    "tuplet" => {
-                        let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Tuplet(Box::new(tuplet)));
-                    }
-                    "graceGrp" => {
-                        let grace_grp = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::GraceGrp(Box::new(grace_grp)));
-                    }
-                    "clef" => {
-                        let clef = parse_clef_from_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::Clef(Box::new(clef)));
-                    }
-                    "app" => {
-                        let app = App::from_mei_event(reader, child_attrs, child_empty)?;
-                        beam.children.push(BeamChild::App(Box::new(app)));
-                    }
-                    // Other child types can be added here as needed
-                    // For now, unknown children are skipped (lenient mode)
-                    _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
-                    }
-                }
+                parse_grouping_child!(
+                    reader, name, child_attrs, child_empty, beam.children, BeamChild,
+                    [
+                        ("note", Note, Note),
+                        ("rest", Rest, Rest),
+                        ("chord", Chord, Chord),
+                        ("space", Space, Space),
+                        ("beam", Beam, Beam),
+                        ("tuplet", Tuplet, Tuplet),
+                        ("graceGrp", GraceGrp, GraceGrp),
+                        ("bTrem", BTrem, BTrem),
+                        ("app", App, App),
+                    ],
+                    clef: true
+                );
             }
         }
 
@@ -124,7 +119,6 @@ impl MeiDeserialize for Tuplet {
     ) -> DeserializeResult<Self> {
         let mut tuplet = Tuplet::default();
 
-        // Extract attributes into each attribute class
         tuplet.common.extract_attributes(&mut attrs)?;
         tuplet.facsimile.extract_attributes(&mut attrs)?;
         tuplet.tuplet_log.extract_attributes(&mut attrs)?;
@@ -132,61 +126,24 @@ impl MeiDeserialize for Tuplet {
         tuplet.tuplet_ges.extract_attributes(&mut attrs)?;
         tuplet.tuplet_anl.extract_attributes(&mut attrs)?;
 
-        // Remaining attributes are unknown - in lenient mode we ignore them
-
-        // Read children if not empty
         if !is_empty {
             while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("tuplet")?
             {
-                match name.as_str() {
-                    "note" => {
-                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::Note(Box::new(note)));
-                    }
-                    "rest" => {
-                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::Rest(Box::new(rest)));
-                    }
-                    "chord" => {
-                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::Chord(Box::new(chord)));
-                    }
-                    "space" => {
-                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::Space(Box::new(space)));
-                    }
-                    "beam" => {
-                        let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::Beam(Box::new(beam)));
-                    }
-                    "tuplet" => {
-                        // Nested tuplets are allowed
-                        let nested_tuplet =
-                            Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet
-                            .children
-                            .push(TupletChild::Tuplet(Box::new(nested_tuplet)));
-                    }
-                    "graceGrp" => {
-                        let grace_grp = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet
-                            .children
-                            .push(TupletChild::GraceGrp(Box::new(grace_grp)));
-                    }
-                    "bTrem" => {
-                        use tusk_model::elements::BTrem;
-                        let b_trem = BTrem::from_mei_event(reader, child_attrs, child_empty)?;
-                        tuplet.children.push(TupletChild::BTrem(Box::new(b_trem)));
-                    }
-                    // Other child types can be added here as needed
-                    // For now, unknown children are skipped (lenient mode)
-                    _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
-                    }
-                }
+                parse_grouping_child!(
+                    reader, name, child_attrs, child_empty, tuplet.children, TupletChild,
+                    [
+                        ("note", Note, Note),
+                        ("rest", Rest, Rest),
+                        ("chord", Chord, Chord),
+                        ("space", Space, Space),
+                        ("beam", Beam, Beam),
+                        ("tuplet", Tuplet, Tuplet),
+                        ("graceGrp", GraceGrp, GraceGrp),
+                        ("bTrem", BTrem, BTrem),
+                    ],
+                    clef: false
+                );
             }
         }
 
@@ -206,7 +163,6 @@ impl MeiDeserialize for GraceGrp {
     ) -> DeserializeResult<Self> {
         let mut grace_grp = GraceGrp::default();
 
-        // Extract attributes into each attribute class
         grace_grp.common.extract_attributes(&mut attrs)?;
         grace_grp.facsimile.extract_attributes(&mut attrs)?;
         grace_grp.grace_grp_log.extract_attributes(&mut attrs)?;
@@ -214,59 +170,23 @@ impl MeiDeserialize for GraceGrp {
         grace_grp.grace_grp_ges.extract_attributes(&mut attrs)?;
         grace_grp.grace_grp_anl.extract_attributes(&mut attrs)?;
 
-        // Remaining attributes are unknown - in lenient mode we ignore them
-
-        // Read children if not empty
         if !is_empty {
             while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("graceGrp")?
             {
-                match name.as_str() {
-                    "note" => {
-                        let note = Note::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp.children.push(GraceGrpChild::Note(Box::new(note)));
-                    }
-                    "rest" => {
-                        let rest = Rest::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp.children.push(GraceGrpChild::Rest(Box::new(rest)));
-                    }
-                    "chord" => {
-                        let chord = Chord::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp
-                            .children
-                            .push(GraceGrpChild::Chord(Box::new(chord)));
-                    }
-                    "space" => {
-                        let space = Space::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp
-                            .children
-                            .push(GraceGrpChild::Space(Box::new(space)));
-                    }
-                    "beam" => {
-                        let beam = Beam::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp.children.push(GraceGrpChild::Beam(Box::new(beam)));
-                    }
-                    "tuplet" => {
-                        let tuplet = Tuplet::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp
-                            .children
-                            .push(GraceGrpChild::Tuplet(Box::new(tuplet)));
-                    }
-                    "graceGrp" => {
-                        // Nested graceGrp is allowed
-                        let nested = GraceGrp::from_mei_event(reader, child_attrs, child_empty)?;
-                        grace_grp
-                            .children
-                            .push(GraceGrpChild::GraceGrp(Box::new(nested)));
-                    }
-                    // Other child types (clef, barLine, etc.) can be added here as needed
-                    // For now, unknown children are skipped (lenient mode)
-                    _ => {
-                        if !child_empty {
-                            reader.skip_to_end(&name)?;
-                        }
-                    }
-                }
+                parse_grouping_child!(
+                    reader, name, child_attrs, child_empty, grace_grp.children, GraceGrpChild,
+                    [
+                        ("note", Note, Note),
+                        ("rest", Rest, Rest),
+                        ("chord", Chord, Chord),
+                        ("space", Space, Space),
+                        ("beam", Beam, Beam),
+                        ("tuplet", Tuplet, Tuplet),
+                        ("graceGrp", GraceGrp, GraceGrp),
+                    ],
+                    clef: false
+                );
             }
         }
 

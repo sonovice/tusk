@@ -15,11 +15,11 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
 <!-- These tasks address the most impactful DRY violations and structural issues -->
 <!-- IMPORTANT: Complete these BEFORE Priority 2 tasks -->
 
-- [ ] [DRY] Extract child element parsing helper in `crates/formats/mei/src/deserializer/impls/grouping.rs`
-  - Beam (lines ~184–233), Tuplet (~264–314), GraceGrp (~346–395) have near-identical match blocks
-  - Extract a shared `parse_layer_like_child()` or similar helper that all three call
-  - Must handle: note, rest, chord, space, mRest, mSpace, beam (nested), tuplet (nested), bTrem, fTrem, graceGrp, clef
-  - Verify: roundtrip tests still pass after refactor
+- [x] [DRY] Extract child element parsing helper in `crates/formats/mei/src/deserializer/impls/grouping.rs`
+  - Created `parse_grouping_child!` macro that generates the match block for each grouping element
+  - Each call site specifies its child enum type and the list of supported element→variant mappings
+  - Beam, Tuplet, GraceGrp now use the macro instead of duplicated match blocks
+  - All roundtrip and unit tests pass
 
 - [ ] [DRY] Consolidate `strip_namespace_prefix()` into single canonical implementation
   - Currently duplicated in `crates/formats/mei/src/deserializer/mod.rs` and `crates/formats/mei/src/xml_compare.rs`
