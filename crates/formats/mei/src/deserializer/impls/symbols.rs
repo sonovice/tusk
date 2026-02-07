@@ -31,13 +31,6 @@ use super::text_containers::{parse_curve_from_event, parse_line_from_event};
 // Attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttDataSelecting {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "select", string self.select);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // SymbolTable element
 // ============================================================================

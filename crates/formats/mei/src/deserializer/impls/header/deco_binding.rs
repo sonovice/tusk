@@ -18,13 +18,6 @@ use super::super::extract_attr;
 // Attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttContemporary {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "contemporary", self.contemporary);
-        Ok(())
-    }
-}
-
 // Note: AttDatable is already implemented in mod.rs
 
 // ============================================================================

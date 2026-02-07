@@ -21,54 +21,6 @@ use super::{push_attr, to_attr_string};
 // Attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttCoordinated {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "ulx", self.ulx);
-        push_attr!(attrs, "uly", self.uly);
-        push_attr!(attrs, "lrx", self.lrx);
-        push_attr!(attrs, "lry", self.lry);
-        push_attr!(attrs, "rotate", self.rotate);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttCoordinatedUl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "ulx", self.ulx);
-        push_attr!(attrs, "uly", self.uly);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttDimensions {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "height", self.height);
-        push_attr!(attrs, "width", self.width);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttVisualOffset {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttStartId {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "startid", self.startid);
-        attrs
-    }
-}
-
 // ============================================================================
 // Facsimile element
 // ============================================================================

@@ -20,194 +20,13 @@ use super::{push_attr, serialize_vec_serde, to_attr_string};
 // Attribute class implementations for Line
 // ============================================================================
 
-impl CollectAttributes for AttLineLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "plist", vec self.plist);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "evaluate", self.evaluate);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "dur", vec self.dur);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "tstamp2", self.tstamp2);
-        push_attr!(attrs, "func", self.func);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLineVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "startho", self.startho);
-        push_attr!(attrs, "endho", self.endho);
-        push_attr!(attrs, "startto", self.startto);
-        push_attr!(attrs, "endto", self.endto);
-        push_attr!(attrs, "startvo", self.startvo);
-        push_attr!(attrs, "endvo", self.endvo);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        push_attr!(attrs, "x2", self.x2);
-        push_attr!(attrs, "y2", self.y2);
-        push_attr!(attrs, "form", self.form);
-        push_attr!(attrs, "width", self.width);
-        push_attr!(attrs, "endsym", self.endsym);
-        push_attr!(attrs, "endsym.size", self.endsym_size);
-        push_attr!(attrs, "startsym", self.startsym);
-        push_attr!(attrs, "startsym.size", self.startsym_size);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLineGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "dur.ges", self.dur_ges);
-        push_attr!(attrs, "dots.ges", self.dots_ges);
-        push_attr!(attrs, "dur.metrical", self.dur_metrical);
-        push_attr!(attrs, "dur.ppq", self.dur_ppq);
-        push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
-        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLineAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Attribute class implementations for Phrase
 // ============================================================================
 
-impl CollectAttributes for AttPhraseLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "plist", vec self.plist);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "evaluate", self.evaluate);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "dur", vec self.dur);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "tstamp2", self.tstamp2);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPhraseVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "startho", self.startho);
-        push_attr!(attrs, "endho", self.endho);
-        push_attr!(attrs, "startto", self.startto);
-        push_attr!(attrs, "endto", self.endto);
-        push_attr!(attrs, "startvo", self.startvo);
-        push_attr!(attrs, "endvo", self.endvo);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        push_attr!(attrs, "x2", self.x2);
-        push_attr!(attrs, "y2", self.y2);
-        push_attr!(attrs, "bezier", self.bezier);
-        push_attr!(attrs, "bulge", self.bulge);
-        push_attr!(attrs, "curvedir", self.curvedir);
-        push_attr!(attrs, "lform", self.lform);
-        push_attr!(attrs, "lwidth", self.lwidth);
-        push_attr!(attrs, "lsegs", self.lsegs);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPhraseGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "dur.ges", self.dur_ges);
-        push_attr!(attrs, "dots.ges", self.dots_ges);
-        push_attr!(attrs, "dur.metrical", self.dur_metrical);
-        push_attr!(attrs, "dur.ppq", self.dur_ppq);
-        push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
-        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPhraseAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "join", vec self.join);
-        attrs
-    }
-}
-
 // ============================================================================
 // Attribute class implementations for Refrain
 // ============================================================================
-
-impl CollectAttributes for AttRefrainLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttRefrainVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "voltasym", self.voltasym);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttRefrainGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttRefrainAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 // ============================================================================
 // Group element implementation
@@ -1288,41 +1107,6 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{Cb, Curve, DivLine};
 
-impl CollectAttributes for AttVisibility {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "visible", self.visible);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttStaffLoc {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "loc", self.loc);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttVisualOffsetHo {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "ho", self.ho);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttExtSym {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        attrs
-    }
-}
-
 impl MeiSerialize for Cb {
     fn element_name(&self) -> &'static str {
         "cb"
@@ -1358,14 +1142,6 @@ impl MeiSerialize for Cb {
 // ============================================================================
 // DivLine (division line in neumes) element implementation
 // ============================================================================
-
-impl CollectAttributes for AttDivLineLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "form", vec self.form);
-        attrs
-    }
-}
 
 impl MeiSerialize for DivLine {
     fn element_name(&self) -> &'static str {
@@ -1403,80 +1179,6 @@ impl MeiSerialize for DivLine {
 // ============================================================================
 // Curve (generic curved line) element implementation
 // ============================================================================
-
-impl CollectAttributes for AttCurveLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "func", self.func);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttCurveVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        // bezier is space-separated f64 values
-        if let Some(ref bezier) = self.bezier {
-            if !bezier.is_empty() {
-                let values: Vec<String> = bezier.0.iter().map(|v| v.to_string()).collect();
-                attrs.push(("bezier", values.join(" ")));
-            }
-        }
-        // bulge is space-separated DataPercent values
-        if let Some(ref bulge) = self.bulge {
-            if !bulge.is_empty() {
-                if let Some(s) = serialize_vec_serde(&bulge.0) {
-                    attrs.push(("bulge", s));
-                }
-            }
-        }
-        push_attr!(attrs, "curvedir", self.curvedir);
-        push_attr!(attrs, "lform", self.lform);
-        push_attr!(attrs, "lwidth", self.lwidth);
-        if let Some(v) = &self.lsegs {
-            attrs.push(("lsegs", v.to_string()));
-        }
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "startho", self.startho);
-        push_attr!(attrs, "endho", self.endho);
-        push_attr!(attrs, "startto", self.startto);
-        push_attr!(attrs, "endto", self.endto);
-        push_attr!(attrs, "startvo", self.startvo);
-        push_attr!(attrs, "endvo", self.endvo);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        if let Some(v) = &self.x2 {
-            attrs.push(("x2", v.to_string()));
-        }
-        if let Some(v) = &self.y2 {
-            attrs.push(("y2", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttCurveGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttCurveGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttCurveAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttCurveAnl has no attributes
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for Curve {
     fn element_name(&self) -> &'static str {

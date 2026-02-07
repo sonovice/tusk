@@ -1770,12 +1770,12 @@ fn escape_keyword_filename(name: &str) -> String {
 pub fn generate_mei_attr_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> Result<()> {
     // Generate ExtractAttributes impls
     let extract_tokens = generate_extract_attributes_impls(defs);
-    let extract_path = mei_crate_path.join("deserializer/generated_att_impls.rs");
+    let extract_path = mei_crate_path.join("deserializer/impls/generated_att_impls.rs");
     write_tokens_to_file(&extract_tokens, &extract_path)?;
 
     // Generate CollectAttributes impls
     let collect_tokens = generate_collect_attributes_impls(defs);
-    let collect_path = mei_crate_path.join("serializer/generated_att_impls.rs");
+    let collect_path = mei_crate_path.join("serializer/impls/generated_att_impls.rs");
     write_tokens_to_file(&collect_tokens, &collect_path)?;
 
     let count = defs.att_classes.len();
@@ -1799,9 +1799,10 @@ fn generate_extract_attributes_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated ExtractAttributes impls for all MEI attribute classes.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/canonical -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::{AttributeMap, DeserializeResult, ExtractAttributes};
+        #[allow(unused_imports)]
         use super::from_attr_string;
         use tusk_model::att::*;
 
@@ -1821,9 +1822,10 @@ fn generate_collect_attributes_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated CollectAttributes impls for all MEI attribute classes.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/canonical -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::CollectAttributes;
+        #[allow(unused_imports)]
         use super::{to_attr_string, serialize_vec_serde};
         use tusk_model::att::*;
 
@@ -1961,12 +1963,22 @@ fn generate_collect_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
         })
         .collect();
 
-    quote! {
-        impl CollectAttributes for #name {
-            fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-                let mut attrs = Vec::new();
-                #(#collections)*
-                attrs
+    if collections.is_empty() {
+        quote! {
+            impl CollectAttributes for #name {
+                fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+                    Vec::new()
+                }
+            }
+        }
+    } else {
+        quote! {
+            impl CollectAttributes for #name {
+                fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+                    let mut attrs = Vec::new();
+                    #(#collections)*
+                    attrs
+                }
             }
         }
     }

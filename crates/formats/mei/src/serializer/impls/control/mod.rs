@@ -31,20 +31,3 @@ use super::{push_attr, serialize_vec_serde, to_attr_string};
 // ============================================================================
 // Common attribute class implementations used by multiple control elements
 // ============================================================================
-
-impl CollectAttributes for AttLang {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "xml:lang", clone self.xml_lang);
-        push_attr!(attrs, "translit", clone self.translit);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttBibl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "analog", clone self.analog);
-        attrs
-    }
-}

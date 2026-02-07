@@ -38,24 +38,6 @@ use super::{
 // Attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttBifoliumSurfaces {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "outer.recto", self.outer_recto);
-        extract_attr!(attrs, "inner.verso", self.inner_verso);
-        extract_attr!(attrs, "inner.recto", self.inner_recto);
-        extract_attr!(attrs, "outer.verso", self.outer_verso);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttFoliumSurfaces {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "recto", self.recto);
-        extract_attr!(attrs, "verso", self.verso);
-        Ok(())
-    }
-}
-
 // Note: AttSource is implemented in text.rs
 
 // ============================================================================
@@ -839,34 +821,6 @@ impl MeiDeserialize for Signatures {
 // ============================================================================
 // SignifLet element implementation
 // ============================================================================
-
-impl ExtractAttributes for AttSignifLetAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // No specific attributes defined for this class
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSignifLetGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // No specific attributes defined for this class
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSignifLetLog {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // No specific attributes defined for this class
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSignifLetVis {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // No specific attributes defined for this class
-        Ok(())
-    }
-}
 
 pub(crate) fn parse_signif_let_from_event<R: BufRead>(
     reader: &mut MeiReader<R>,

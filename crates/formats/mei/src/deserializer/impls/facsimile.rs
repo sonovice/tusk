@@ -22,49 +22,6 @@ use tusk_model::elements::{
 // Attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttCoordinated {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "ulx", self.ulx);
-        extract_attr!(attrs, "uly", self.uly);
-        extract_attr!(attrs, "lrx", self.lrx);
-        extract_attr!(attrs, "lry", self.lry);
-        extract_attr!(attrs, "rotate", self.rotate);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttCoordinatedUl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "ulx", self.ulx);
-        extract_attr!(attrs, "uly", self.uly);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttDimensions {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "height", self.height);
-        extract_attr!(attrs, "width", self.width);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttVisualOffset {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttStartId {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "startid", self.startid);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Facsimile element
 // ============================================================================

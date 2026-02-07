@@ -22,57 +22,6 @@ use super::{extract_attr, from_attr_string};
 // Midi attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMidiLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec_string self.part);
-        extract_attr!(attrs, "partstaff", vec_string self.partstaff);
-        extract_attr!(attrs, "staff", vec self.staff);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMidiGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMidiGes is empty - no attributes to extract
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMidiAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMidiAnl is empty - no attributes to extract
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMidiEvent {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec_string self.part);
-        extract_attr!(attrs, "partstaff", vec_string self.partstaff);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMidiNumber {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "num", self.num);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMidiValue {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "val", self.val);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // MeiDeserialize implementations
 // ============================================================================

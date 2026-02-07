@@ -20,138 +20,13 @@ use super::{extract_attr, from_attr_string, parse_clef_from_event};
 // Beam attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttBeamLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "beam.with", self.beam_with);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "cue", self.cue);
-        extract_attr!(attrs, "form", self.form);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "slash", self.slash);
-        extract_attr!(attrs, "slope", self.slope);
-        extract_attr!(attrs, "visible", self.visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBeamGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBeamAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Tuplet attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttTupletLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "beam.with", self.beam_with);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "num", self.num);
-        extract_attr!(attrs, "numbase", self.numbase);
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttTupletVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "num.place", self.num_place);
-        extract_attr!(attrs, "num.visible", self.num_visible);
-        extract_attr!(attrs, "bracket.place", self.bracket_place);
-        extract_attr!(attrs, "bracket.visible", self.bracket_visible);
-        extract_attr!(attrs, "num.format", self.num_format);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttTupletGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttTupletAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttTupletAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // GraceGrp attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttGraceGrpLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "grace", self.grace);
-        extract_attr!(attrs, "grace.time", self.grace_time);
-        extract_attr!(attrs, "attach", self.attach);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGraceGrpVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGraceGrpGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttGraceGrpGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGraceGrpAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttGraceGrpAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // MeiDeserialize implementations

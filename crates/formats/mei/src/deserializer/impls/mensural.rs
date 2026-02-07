@@ -21,98 +21,13 @@ use super::extract_attr;
 // Mensur attribute class implementations (Log/Vis already in mod.rs)
 // ============================================================================
 
-impl ExtractAttributes for AttMensurGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMensurGes is empty
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMensurAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMensurAnl is empty
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Ligature attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttLigatureLog {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLigatureLog is empty
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLigatureVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "form", self.form);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLigatureGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLigatureGes is empty
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLigatureAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLigatureAnl is empty
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Proport attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttProportLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "num", self.num);
-        extract_attr!(attrs, "numbase", self.numbase);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttProportVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "loc", self.loc);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttProportGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttProportGes is empty
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttProportAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttProportAnl is empty
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Mensur element implementation

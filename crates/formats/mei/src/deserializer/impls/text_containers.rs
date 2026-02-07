@@ -23,208 +23,13 @@ use super::{extract_attr, from_attr_string};
 // Attribute class implementations for Line
 // ============================================================================
 
-impl ExtractAttributes for AttLineLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec_string self.part);
-        extract_attr!(attrs, "partstaff", vec_string self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        extract_attr!(attrs, "func", self.func);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLineVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        extract_attr!(attrs, "form", self.form);
-        extract_attr!(attrs, "width", self.width);
-        extract_attr!(attrs, "endsym", self.endsym);
-        extract_attr!(attrs, "endsym.size", self.endsym_size);
-        extract_attr!(attrs, "startsym", self.startsym);
-        extract_attr!(attrs, "startsym.size", self.startsym_size);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLineGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLineAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLineAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Attribute class implementations for Phrase
 // ============================================================================
 
-impl ExtractAttributes for AttPhraseLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec_string self.part);
-        extract_attr!(attrs, "partstaff", vec_string self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPhraseVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        // bezier is space-separated f64 values
-        if let Some(value) = attrs.remove("bezier") {
-            let items: Vec<f64> = value
-                .split_whitespace()
-                .filter_map(|s| s.parse().ok())
-                .collect();
-            if !items.is_empty() {
-                self.bezier = Some(tusk_model::generated::SpaceSeparated::new(items));
-            }
-        }
-        // bulge is space-separated DataPercent values
-        if let Some(value) = attrs.remove("bulge") {
-            let items: Vec<tusk_model::generated::data::DataPercent> = value
-                .split_whitespace()
-                .filter_map(|s| from_attr_string(s).ok())
-                .collect();
-            if !items.is_empty() {
-                self.bulge = Some(tusk_model::generated::SpaceSeparated::new(items));
-            }
-        }
-        extract_attr!(attrs, "curvedir", self.curvedir);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPhraseGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPhraseAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "join", vec self.join);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Attribute class implementations for Refrain
 // ============================================================================
-
-impl ExtractAttributes for AttRefrainLog {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRefrainLog has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRefrainVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "voltasym", self.voltasym);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRefrainGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRefrainGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRefrainAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRefrainAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Group element implementation
@@ -1596,37 +1401,6 @@ use tusk_model::att::{
 };
 use tusk_model::elements::{Cb, Curve, DivLine};
 
-impl ExtractAttributes for AttVisibility {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "visible", self.visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttStaffLoc {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "loc", self.loc);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttVisualOffsetHo {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "ho", self.ho);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttExtSym {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for Cb {
     fn element_name() -> &'static str {
         "cb"
@@ -1672,13 +1446,6 @@ pub(crate) fn parse_cb_from_event<R: BufRead>(
 // ============================================================================
 // DivLine (division line in neumes) element implementation
 // ============================================================================
-
-impl ExtractAttributes for AttDivLineLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "form", vec self.form);
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for DivLine {
     fn element_name() -> &'static str {
@@ -1729,73 +1496,6 @@ pub(crate) fn parse_div_line_from_event<R: BufRead>(
 // ============================================================================
 // Curve (generic curved line) element implementation
 // ============================================================================
-
-impl ExtractAttributes for AttCurveLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "func", self.func);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttCurveVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        // bezier is space-separated f64 values
-        if let Some(value) = attrs.remove("bezier") {
-            let items: Vec<f64> = value
-                .split_whitespace()
-                .filter_map(|s| s.parse().ok())
-                .collect();
-            if !items.is_empty() {
-                self.bezier = Some(tusk_model::generated::SpaceSeparated::new(items));
-            }
-        }
-        // bulge is space-separated DataPercent values
-        if let Some(value) = attrs.remove("bulge") {
-            let items: Vec<tusk_model::generated::data::DataPercent> = value
-                .split_whitespace()
-                .filter_map(|s| from_attr_string(s).ok())
-                .collect();
-            if !items.is_empty() {
-                self.bulge = Some(tusk_model::generated::SpaceSeparated::new(items));
-            }
-        }
-        extract_attr!(attrs, "curvedir", self.curvedir);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttCurveGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttCurveGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttCurveAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttCurveAnl has no attributes
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for Curve {
     fn element_name() -> &'static str {

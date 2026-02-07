@@ -22,98 +22,13 @@ use super::{push_attr, serialize_vec_serde, to_attr_string};
 // ChordDefLog attribute class implementation
 // ============================================================================
 
-impl CollectAttributes for AttChordDefLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(v) = &self.tab_pos {
-            attrs.push(("tab.pos", v.to_string()));
-        }
-        if let Some(ref v) = self.tab_strings {
-            if let Some(s) = to_attr_string(v) {
-                attrs.push(("tab.strings", s));
-            }
-        }
-        if let Some(ref v) = self.tab_courses {
-            if let Some(s) = to_attr_string(v) {
-                attrs.push(("tab.courses", s));
-            }
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttChordDefVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttChordDefGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttChordDefAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // ChordMember attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttChordMemberLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "pname", self.pname);
-        push_attr!(attrs, "oct", self.oct);
-        push_attr!(attrs, "tab.fing", self.tab_fing);
-        push_attr!(attrs, "tab.fret", self.tab_fret);
-        push_attr!(attrs, "tab.line", self.tab_line);
-        push_attr!(attrs, "tab.string", self.tab_string);
-        push_attr!(attrs, "tab.course", self.tab_course);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttChordMemberVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttChordMemberGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "accid.ges", self.accid_ges);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttChordMemberAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(v) = serialize_vec_serde(&self.inth) {
-            attrs.push(("inth", v));
-        }
-        attrs
-    }
-}
-
 // ============================================================================
 // AttStartEndId attribute class implementation
 // ============================================================================
-
-impl CollectAttributes for AttStartEndId {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        attrs
-    }
-}
 
 // ============================================================================
 // Element implementations

@@ -17,30 +17,6 @@ use super::super::push_attr;
 // Attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttQuantity {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "unit", self.unit);
-        if let Some(ref v) = self.atleast {
-            attrs.push(("atleast", v.to_string()));
-        }
-        if let Some(ref v) = self.atmost {
-            attrs.push(("atmost", v.to_string()));
-        }
-        if let Some(ref v) = self.min {
-            attrs.push(("min", v.to_string()));
-        }
-        if let Some(ref v) = self.max {
-            attrs.push(("max", v.to_string()));
-        }
-        push_attr!(attrs, "confidence", self.confidence);
-        if let Some(ref v) = self.quantity {
-            attrs.push(("quantity", v.to_string()));
-        }
-        attrs
-    }
-}
-
 // ============================================================================
 // Dimensions
 // ============================================================================

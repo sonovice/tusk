@@ -26,26 +26,6 @@ use super::push_attr;
 // Attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttBifoliumSurfaces {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "outer.recto", self.outer_recto);
-        push_attr!(attrs, "inner.verso", self.inner_verso);
-        push_attr!(attrs, "inner.recto", self.inner_recto);
-        push_attr!(attrs, "outer.verso", self.outer_verso);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttFoliumSurfaces {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "recto", self.recto);
-        push_attr!(attrs, "verso", self.verso);
-        attrs
-    }
-}
-
 // Note: AttSource is implemented in misc.rs
 
 // ============================================================================
@@ -1054,30 +1034,6 @@ impl MeiSerialize for SignaturesChild {
 // ============================================================================
 // SignifLet element
 // ============================================================================
-
-impl CollectAttributes for AttSignifLetAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttSignifLetGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttSignifLetLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttSignifLetVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for SignifLet {
     fn element_name(&self) -> &'static str {

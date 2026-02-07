@@ -16,54 +16,6 @@ use super::super::{extract_attr, from_attr_string};
 // Reh (rehearsal mark) attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttRehLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRehVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRehGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRehGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRehAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRehAnl has no attributes
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for Reh {
     fn element_name() -> &'static str {
         "reh"
@@ -129,41 +81,6 @@ impl MeiDeserialize for Reh {
 // ============================================================================
 // AnchoredText attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttAnchoredTextLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "func", self.func);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttAnchoredTextVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttAnchoredTextGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttAnchoredTextGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttAnchoredTextAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttAnchoredTextAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for AnchoredText {
     fn element_name() -> &'static str {

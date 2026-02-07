@@ -23,14 +23,6 @@ use super::{push_attr, to_attr_string};
 // Attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttDataSelecting {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "select", clone self.select);
-        attrs
-    }
-}
-
 // ============================================================================
 // SymbolTable element
 // ============================================================================

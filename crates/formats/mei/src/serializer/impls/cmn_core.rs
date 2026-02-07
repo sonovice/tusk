@@ -37,48 +37,6 @@ use super::{push_attr, serialize_vec_serde, to_attr_string};
 // BarLine attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttBarLineLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "metcon", self.metcon);
-        push_attr!(attrs, "control", self.control);
-        push_attr!(attrs, "form", self.form);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttBarLineVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "visible", self.visible);
-        push_attr!(attrs, "width", self.width);
-        if let Some(v) = &self.len {
-            attrs.push(("len", v.to_string()));
-        }
-        push_attr!(attrs, "method", self.method);
-        push_attr!(attrs, "place", self.place);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttBarLineGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttBarLineAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for BarLine {
     fn element_name(&self) -> &'static str {
         "barLine"
@@ -110,49 +68,6 @@ impl MeiSerialize for BarLine {
 // Stem attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttStemLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttStemVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "visible", self.visible);
-        push_attr!(attrs, "pos", self.pos);
-        push_attr!(attrs, "len", self.len);
-        push_attr!(attrs, "form", self.form);
-        push_attr!(attrs, "dir", self.dir);
-        push_attr!(attrs, "flag.pos", self.flag_pos);
-        push_attr!(attrs, "flag.form", self.flag_form);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttStemGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttStemAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for Stem {
     fn element_name(&self) -> &'static str {
         "stem"
@@ -181,30 +96,6 @@ impl MeiSerialize for Stem {
 // ============================================================================
 // ClefGrp attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttClefGrpLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttClefGrpVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttClefGrpGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttClefGrpAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for ClefGrp {
     fn element_name(&self) -> &'static str {
@@ -271,40 +162,6 @@ impl MeiSerialize for ClefGrpChild {
 // Custos attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttCustosLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "oct", self.oct);
-        push_attr!(attrs, "pname", self.pname);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttCustosVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttCustosGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttCustosAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for Custos {
     fn element_name(&self) -> &'static str {
         "custos"
@@ -370,38 +227,6 @@ impl MeiSerialize for CustosChild {
 // Pad attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttPadLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "width", self.width);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPadVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPadGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPadAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for Pad {
     fn element_name(&self) -> &'static str {
         "pad"
@@ -429,56 +254,6 @@ impl MeiSerialize for Pad {
 // ============================================================================
 // KeyAccid attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttKeyAccidLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "accid", self.accid);
-        push_attr!(attrs, "pname", self.pname);
-        push_attr!(attrs, "oct", self.oct);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttKeyAccidVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "enclose", self.enclose);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "loc", self.loc);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttKeyAccidGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttKeyAccidAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for KeyAccid {
     fn element_name(&self) -> &'static str {
@@ -512,32 +287,6 @@ impl MeiSerialize for KeyAccid {
 // ============================================================================
 // MeterSigGrp attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttMeterSigGrpLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "func", self.func);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMeterSigGrpVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttMeterSigGrpGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttMeterSigGrpAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for MeterSigGrp {
     fn element_name(&self) -> &'static str {
@@ -608,58 +357,6 @@ impl MeiSerialize for MeterSigGrpChild {
 // GrpSym attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttGrpSymLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "symbol", self.symbol);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "level", self.level);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttGrpSymVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttGrpSymGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttGrpSymAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for GrpSym {
     fn element_name(&self) -> &'static str {
         "grpSym"
@@ -728,54 +425,6 @@ impl MeiSerialize for GrpSymChild {
 // ============================================================================
 // Part/Parts attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttPartLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartsLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartsVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartsGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPartsAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for Part {
     fn element_name(&self) -> &'static str {
@@ -963,30 +612,6 @@ impl MeiSerialize for PartsChild {
 // Ossia attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttOssiaLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttOssiaVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttOssiaGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttOssiaAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for Ossia {
     fn element_name(&self) -> &'static str {
         "ossia"
@@ -1064,75 +689,6 @@ impl MeiSerialize for OssiaChild {
 // ============================================================================
 // HarpPedal attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttHarpPedalLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "plist", vec self.plist);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "evaluate", self.evaluate);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "c", self.c);
-        push_attr!(attrs, "d", self.d);
-        push_attr!(attrs, "e", self.e);
-        push_attr!(attrs, "f", self.f);
-        push_attr!(attrs, "g", self.g);
-        push_attr!(attrs, "a", self.a);
-        push_attr!(attrs, "b", self.b);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttHarpPedalVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "vgrp", self.vgrp);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttHarpPedalGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttHarpPedalAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for HarpPedal {
     fn element_name(&self) -> &'static str {

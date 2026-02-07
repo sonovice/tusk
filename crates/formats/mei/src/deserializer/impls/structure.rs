@@ -27,286 +27,33 @@ use super::{extract_attr, from_attr_string};
 // Measure attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMeasureLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "metcon", self.metcon);
-        extract_attr!(attrs, "control", self.control);
-        extract_attr!(attrs, "left", self.left);
-        extract_attr!(attrs, "right", self.right);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMeasureGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMeasureVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "bar.len", self.bar_len);
-        extract_attr!(attrs, "bar.method", self.bar_method);
-        extract_attr!(attrs, "bar.place", self.bar_place);
-        extract_attr!(attrs, "width", self.width);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMeasureAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "join", vec self.join);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Staff attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttStaffLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "metcon", self.metcon);
-        extract_attr!(attrs, "def", self.def);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttStaffGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttStaffGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttStaffVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "visible", self.visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttStaffAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttStaffAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Layer attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttLayerLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "cue", self.cue);
-        extract_attr!(attrs, "metcon", self.metcon);
-        extract_attr!(attrs, "def", self.def);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLayerGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLayerGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLayerVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "visible", self.visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLayerAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLayerAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Section attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttSectionLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSectionGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "attacca", self.attacca);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSectionVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "restart", self.restart);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSectionAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttSectionAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Ending attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttEndingLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttEndingGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttEndingGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttEndingVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "lendsym", self.lendsym);
-        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
-        extract_attr!(attrs, "lstartsym", self.lstartsym);
-        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttEndingAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttEndingAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Sb (system break) attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttSbLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSbGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttSbGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSbVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "form", self.form);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttSbAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttSbAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Pb (page break) attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttPbLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPbGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttPbGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPbVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "folium", self.folium);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttPbAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttPbAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // Mdiv attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttMdivLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMdivGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "attacca", self.attacca);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMdivVis {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMdivVis has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMdivAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMdivAnl has no attributes
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Sb (system break) implementation

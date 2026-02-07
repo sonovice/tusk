@@ -19,135 +19,13 @@ use super::push_attr;
 // Mensur attribute class implementations (Log/Vis already done elsewhere)
 // ============================================================================
 
-impl CollectAttributes for AttMensurLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "num", self.num);
-        push_attr!(attrs, "numbase", self.numbase);
-        push_attr!(attrs, "modusmaior", self.modusmaior);
-        push_attr!(attrs, "modusminor", self.modusminor);
-        push_attr!(attrs, "prolatio", self.prolatio);
-        push_attr!(attrs, "tempus", self.tempus);
-        push_attr!(attrs, "divisio", self.divisio);
-        push_attr!(attrs, "level", self.level);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMensurVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "loc", self.loc);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "slash", self.slash);
-        push_attr!(attrs, "dot", self.dot);
-        push_attr!(attrs, "form", self.form);
-        push_attr!(attrs, "orient", self.orient);
-        push_attr!(attrs, "sign", self.sign);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMensurGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttMensurAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Ligature attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttLigatureLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttLigatureVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "form", self.form);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLigatureGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttLigatureAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Proport attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttProportLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "num", self.num);
-        push_attr!(attrs, "numbase", self.numbase);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttProportVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "loc", self.loc);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttProportGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttProportAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-}
 
 // ============================================================================
 // Mensur element implementation

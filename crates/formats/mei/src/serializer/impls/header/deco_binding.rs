@@ -16,14 +16,6 @@ use super::super::push_attr;
 // Attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttContemporary {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "contemporary", self.contemporary);
-        attrs
-    }
-}
-
 // Note: AttDatable is already implemented in misc.rs
 
 // ============================================================================

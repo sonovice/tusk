@@ -24,85 +24,13 @@ use super::{extract_attr, from_attr_string};
 // ChordDefLog attribute class implementation
 // ============================================================================
 
-impl ExtractAttributes for AttChordDefLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "tab.pos", self.tab_pos);
-        extract_attr!(attrs, "tab.strings", space_separated self.tab_strings);
-        extract_attr!(attrs, "tab.courses", space_separated self.tab_courses);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordDefVis {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttChordDefVis has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordDefGes {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttChordDefGes has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordDefAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttChordDefAnl has no attributes
-        Ok(())
-    }
-}
-
 // ============================================================================
 // ChordMember attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttChordMemberLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "pname", self.pname);
-        extract_attr!(attrs, "oct", self.oct);
-        extract_attr!(attrs, "tab.fing", self.tab_fing);
-        extract_attr!(attrs, "tab.fret", self.tab_fret);
-        extract_attr!(attrs, "tab.line", self.tab_line);
-        extract_attr!(attrs, "tab.string", self.tab_string);
-        extract_attr!(attrs, "tab.course", self.tab_course);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordMemberVis {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttChordMemberVis has no attributes
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordMemberGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "accid.ges", self.accid_ges);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttChordMemberAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "inth", vec self.inth);
-        Ok(())
-    }
-}
-
 // ============================================================================
 // AttStartEndId attribute class implementation
 // ============================================================================
-
-impl ExtractAttributes for AttStartEndId {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        Ok(())
-    }
-}
 
 // ============================================================================
 // Element implementations

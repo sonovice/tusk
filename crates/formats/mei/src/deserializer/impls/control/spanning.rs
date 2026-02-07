@@ -20,61 +20,6 @@ use super::super::{extract_attr, from_attr_string};
 // BeamSpan attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttBeamSpanLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "beam.with", self.beam_with);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamSpanVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "cue", self.cue);
-        extract_attr!(attrs, "form", self.form);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "slash", self.slash);
-        extract_attr!(attrs, "slope", self.slope);
-        extract_attr!(attrs, "visible", self.visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamSpanGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeamSpanAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBeamSpanAnl has no attributes
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for BeamSpan {
     fn element_name() -> &'static str {
         "beamSpan"
@@ -107,75 +52,6 @@ impl MeiDeserialize for BeamSpan {
 // ============================================================================
 // Octave attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttOctaveLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "dis", self.dis);
-        extract_attr!(attrs, "dis.place", self.dis_place);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        extract_attr!(attrs, "coll", self.coll);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttOctaveVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "lendsym", self.lendsym);
-        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
-        extract_attr!(attrs, "lstartsym", self.lstartsym);
-        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        extract_attr!(attrs, "extender", self.extender);
-        extract_attr!(attrs, "vgrp", self.vgrp);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttOctaveGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttOctaveAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttOctaveAnl has no attributes
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for Octave {
     fn element_name() -> &'static str {
@@ -210,86 +86,6 @@ impl MeiDeserialize for Octave {
 // Gliss attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttGlissLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGlissVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "lendsym", self.lendsym);
-        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
-        extract_attr!(attrs, "lstartsym", self.lstartsym);
-        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGlissGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttGlissAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttGlissAnl has no attributes
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for Gliss {
     fn element_name() -> &'static str {
         "gliss"
@@ -323,66 +119,6 @@ impl MeiDeserialize for Gliss {
 // Lv attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttLvLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLvVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "bezier", self.bezier);
-        extract_attr!(attrs, "bulge", self.bulge);
-        extract_attr!(attrs, "curvedir", self.curvedir);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLvGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttLvAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttLvAnl has no attributes
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for Lv {
     fn element_name() -> &'static str {
         "lv"
@@ -415,87 +151,6 @@ impl MeiDeserialize for Lv {
 // ============================================================================
 // BracketSpan attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttBracketSpanLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        extract_attr!(attrs, "func", self.func);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBracketSpanVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "lendsym", self.lendsym);
-        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
-        extract_attr!(attrs, "lstartsym", self.lstartsym);
-        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "startvo", self.startvo);
-        extract_attr!(attrs, "endvo", self.endvo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        extract_attr!(attrs, "x2", self.x2);
-        extract_attr!(attrs, "y2", self.y2);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBracketSpanGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBracketSpanAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBracketSpanAnl has no attributes
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for BracketSpan {
     fn element_name() -> &'static str {
@@ -537,44 +192,6 @@ impl MeiDeserialize for BracketSpan {
 // ============================================================================
 // BTrem (bowed tremolo) attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttBTremLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "dots", self.dots);
-        extract_attr!(attrs, "dur", self.dur);
-        extract_attr!(attrs, "num", self.num);
-        extract_attr!(attrs, "form", self.form);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBTremVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "num.place", self.num_place);
-        extract_attr!(attrs, "num.visible", self.num_visible);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBTremGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "unitdur", self.unitdur);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBTremAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBTremAnl has no attributes
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for BTrem {
     fn element_name() -> &'static str {
@@ -629,44 +246,6 @@ impl MeiDeserialize for BTrem {
 // ============================================================================
 // FTrem (fingered tremolo) attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttFTremLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "dots", self.dots);
-        extract_attr!(attrs, "dur", self.dur);
-        extract_attr!(attrs, "form", self.form);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttFTremVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "beams", self.beams);
-        extract_attr!(attrs, "beams.float", self.beams_float);
-        extract_attr!(attrs, "float.gap", self.float_gap);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttFTremGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "unitdur", self.unitdur);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttFTremAnl {
-    fn extract_attributes(&mut self, _attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttFTremAnl has no attributes
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for FTrem {
     fn element_name() -> &'static str {

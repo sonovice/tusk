@@ -10,60 +10,6 @@ use tusk_model::elements::{AnchoredText, AnchoredTextChild, Reh, RehChild};
 
 use super::super::{push_attr, serialize_vec_serde, to_attr_string};
 
-impl CollectAttributes for AttRehLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttRehVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttRehGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttRehGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttRehAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttRehAnl has no attributes
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for Reh {
     fn element_name(&self) -> &'static str {
         "reh"
@@ -109,45 +55,6 @@ impl MeiSerialize for Reh {
 // ============================================================================
 // AnchoredText attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttAnchoredTextLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "func", self.func);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttAnchoredTextVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        if let Some(v) = &self.x {
-            attrs.push(("x", v.to_string()));
-        }
-        if let Some(v) = &self.y {
-            attrs.push(("y", v.to_string()));
-        }
-        attrs
-    }
-}
-
-impl CollectAttributes for AttAnchoredTextGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttAnchoredTextGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttAnchoredTextAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttAnchoredTextAnl has no attributes
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for AnchoredText {
     fn element_name(&self) -> &'static str {

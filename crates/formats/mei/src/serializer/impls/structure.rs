@@ -25,374 +25,37 @@ use super::{push_attr, serialize_vec_serde, to_attr_string};
 // Measure attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttMeasureLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "metcon", self.metcon);
-        push_attr!(attrs, "control", self.control);
-        push_attr!(attrs, "left", self.left);
-        push_attr!(attrs, "right", self.right);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMeasureGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMeasureVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "bar.len", self.bar_len);
-        push_attr!(attrs, "bar.method", self.bar_method);
-        push_attr!(attrs, "bar.place", self.bar_place);
-        push_attr!(attrs, "width", self.width);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMeasureAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "join", vec self.join);
-        attrs
-    }
-}
-
 // ============================================================================
 // Staff attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttStaffLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "metcon", self.metcon);
-        push_attr!(attrs, "def", self.def);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttStaffGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttStaffGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttStaffVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "visible", self.visible);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttStaffAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttStaffAnl has no attributes
-        Vec::new()
-    }
-}
 
 // ============================================================================
 // Layer attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttLayerLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "cue", self.cue);
-        push_attr!(attrs, "metcon", self.metcon);
-        push_attr!(attrs, "def", self.def);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLayerGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttLayerGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttLayerVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "visible", self.visible);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttLayerAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttLayerAnl has no attributes
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // MRest (measure rest) attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttMRestLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "cue", self.cue);
-        push_attr!(attrs, "dur", vec self.dur);
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMRestGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "dur.ges", self.dur_ges);
-        push_attr!(attrs, "dots.ges", self.dots_ges);
-        push_attr!(attrs, "dur.metrical", self.dur_metrical);
-        push_attr!(attrs, "dur.ppq", self.dur_ppq);
-        push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMRestVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "cutout", self.cutout);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "loc", self.loc);
-        push_attr!(attrs, "ploc", self.ploc);
-        push_attr!(attrs, "oloc", self.oloc);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMRestAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "fermata", self.fermata);
-        attrs
-    }
-}
 
 // ============================================================================
 // Section attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttSectionLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSectionGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "attacca", self.attacca);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSectionVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "restart", self.restart);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSectionAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttSectionAnl has no attributes
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Ending attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttEndingLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttEndingGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttEndingGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttEndingVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "lform", self.lform);
-        push_attr!(attrs, "lwidth", self.lwidth);
-        push_attr!(attrs, "lsegs", self.lsegs);
-        push_attr!(attrs, "lendsym", self.lendsym);
-        push_attr!(attrs, "lendsym.size", self.lendsym_size);
-        push_attr!(attrs, "lstartsym", self.lstartsym);
-        push_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttEndingAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttEndingAnl has no attributes
-        Vec::new()
-    }
-}
 
 // ============================================================================
 // Sb (system break) attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttSbLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSbGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttSbGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttSbVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "form", self.form);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSbAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttSbAnl has no attributes
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Pb (page break) attribute class implementations
 // ============================================================================
 
-impl CollectAttributes for AttPbLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPbGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttPbGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttPbVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "folium", self.folium);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttPbAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttPbAnl has no attributes
-        Vec::new()
-    }
-}
-
 // ============================================================================
 // Mdiv attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttMdivLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMdivGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "attacca", self.attacca);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttMdivVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttMdivVis has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttMdivAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttMdivAnl has no attributes
-        Vec::new()
-    }
-}
 
 // ============================================================================
 // Staff element implementation
@@ -807,69 +470,6 @@ impl MeiSerialize for MRest {
 // ============================================================================
 // Clef attribute class implementations
 // ============================================================================
-
-impl CollectAttributes for AttClefLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "shape", self.shape);
-        push_attr!(attrs, "line", self.line);
-        push_attr!(attrs, "oct", self.oct);
-        push_attr!(attrs, "dis", self.dis);
-        push_attr!(attrs, "dis.place", self.dis_place);
-        push_attr!(attrs, "cautionary", self.cautionary);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttClefGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new() // AttClefGes has no attributes
-    }
-}
-
-impl CollectAttributes for AttClefVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "enclose", self.enclose);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "visible", self.visible);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttClefAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new() // AttClefAnl has no attributes
-    }
-}
-
-impl CollectAttributes for AttEvent {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        attrs
-    }
-}
 
 // ============================================================================
 // Clef element implementation

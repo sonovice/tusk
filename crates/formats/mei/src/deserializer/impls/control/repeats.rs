@@ -25,79 +25,6 @@ use super::super::{extract_attr, from_attr_string};
 // RepeatMark attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttRepeatMarkLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "part", vec self.part);
-        extract_attr!(attrs, "partstaff", vec self.partstaff);
-        extract_attr!(attrs, "plist", vec self.plist);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "evaluate", self.evaluate);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "startid", self.startid);
-        extract_attr!(attrs, "endid", self.endid);
-        extract_attr!(attrs, "tstamp2", self.tstamp2);
-        extract_attr!(attrs, "func", self.func);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRepeatMarkVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "lform", self.lform);
-        extract_attr!(attrs, "lwidth", self.lwidth);
-        extract_attr!(attrs, "lsegs", self.lsegs);
-        extract_attr!(attrs, "lendsym", self.lendsym);
-        extract_attr!(attrs, "lendsym.size", self.lendsym_size);
-        extract_attr!(attrs, "lstartsym", self.lstartsym);
-        extract_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        extract_attr!(attrs, "extender", self.extender);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "vgrp", self.vgrp);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "startho", self.startho);
-        extract_attr!(attrs, "endho", self.endho);
-        extract_attr!(attrs, "startto", self.startto);
-        extract_attr!(attrs, "endto", self.endto);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRepeatMarkGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        extract_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        extract_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttRepeatMarkAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttRepeatMarkAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for RepeatMark {
     fn element_name() -> &'static str {
         "repeatMark"
@@ -164,48 +91,6 @@ impl MeiDeserialize for RepeatMark {
 // Volta attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttVoltaLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttVoltaLog has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttVoltaVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttVoltaGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttVoltaGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttVoltaAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttVoltaAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for Volta {
     fn element_name() -> &'static str {
         "volta"
@@ -259,57 +144,6 @@ impl MeiDeserialize for Volta {
 // MRpt attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMRptLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "num", self.num);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRptVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "expand", self.expand);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "num.place", self.num_place);
-        extract_attr!(attrs, "num.visible", self.num_visible);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRptGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMRptGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRptAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMRptAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for MRpt {
     fn element_name() -> &'static str {
         "mRpt"
@@ -343,54 +177,6 @@ impl MeiDeserialize for MRpt {
 // MRpt2 attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMRpt2Log {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRpt2Vis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "expand", self.expand);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRpt2Ges {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMRpt2Ges has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMRpt2Anl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMRpt2Anl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for MRpt2 {
     fn element_name() -> &'static str {
         "mRpt2"
@@ -423,56 +209,6 @@ impl MeiDeserialize for MRpt2 {
 // ============================================================================
 // BeatRpt attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttBeatRptLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "beatdef", self.beatdef);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeatRptVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "expand", self.expand);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "slash", self.slash);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeatRptGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBeatRptGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttBeatRptAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttBeatRptAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for BeatRpt {
     fn element_name() -> &'static str {
@@ -509,62 +245,6 @@ impl MeiDeserialize for BeatRpt {
 // HalfmRpt attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttHalfmRptLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "dur", vec self.dur);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttHalfmRptVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "expand", self.expand);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttHalfmRptGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttHalfmRptAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttHalfmRptAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for HalfmRpt {
     fn element_name() -> &'static str {
         "halfmRpt"
@@ -597,55 +277,6 @@ impl MeiDeserialize for HalfmRpt {
 // ============================================================================
 // MultiRpt attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttMultiRptLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "num", self.num);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRptVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "expand", self.expand);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRptGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMultiRptGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRptAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMultiRptAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for MultiRpt {
     fn element_name() -> &'static str {
@@ -680,66 +311,6 @@ impl MeiDeserialize for MultiRpt {
 // MultiRest attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMultiRestLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        extract_attr!(attrs, "num", self.num);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRestVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "glyph.auth", self.glyph_auth);
-        extract_attr!(attrs, "glyph.uri", self.glyph_uri);
-        extract_attr!(attrs, "glyph.name", string self.glyph_name);
-        extract_attr!(attrs, "glyph.num", self.glyph_num);
-        extract_attr!(attrs, "num.place", self.num_place);
-        extract_attr!(attrs, "num.visible", self.num_visible);
-        extract_attr!(attrs, "loc", self.loc);
-        extract_attr!(attrs, "ploc", self.ploc);
-        extract_attr!(attrs, "oloc", self.oloc);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "visible", self.visible);
-        extract_attr!(attrs, "width", self.width);
-        extract_attr!(attrs, "block", self.block);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRestGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMultiRestAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMultiRestAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for MultiRest {
     fn element_name() -> &'static str {
         "multiRest"
@@ -773,48 +344,6 @@ impl MeiDeserialize for MultiRest {
 // MSpace attribute class implementations
 // ============================================================================
 
-impl ExtractAttributes for AttMSpaceLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur", vec self.dur);
-        extract_attr!(attrs, "when", self.when);
-        extract_attr!(attrs, "layer", vec self.layer);
-        extract_attr!(attrs, "staff", vec self.staff);
-        extract_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        extract_attr!(attrs, "tstamp.real", self.tstamp_real);
-        extract_attr!(attrs, "tstamp", self.tstamp);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMSpaceVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "altsym", self.altsym);
-        extract_attr!(attrs, "cutout", self.cutout);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMSpaceGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "dur.ges", self.dur_ges);
-        extract_attr!(attrs, "dots.ges", self.dots_ges);
-        extract_attr!(attrs, "dur.metrical", self.dur_metrical);
-        extract_attr!(attrs, "dur.ppq", self.dur_ppq);
-        extract_attr!(attrs, "dur.real", self.dur_real);
-        extract_attr!(attrs, "dur.recip", string self.dur_recip);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMSpaceAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "fermata", self.fermata);
-        Ok(())
-    }
-}
-
 impl MeiDeserialize for MSpace {
     fn element_name() -> &'static str {
         "mSpace"
@@ -847,50 +376,6 @@ impl MeiDeserialize for MSpace {
 // ============================================================================
 // MNum attribute class implementations
 // ============================================================================
-
-impl ExtractAttributes for AttMNumLog {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMNumLog has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMNumVis {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        extract_attr!(attrs, "color", self.color);
-        extract_attr!(attrs, "place", self.place);
-        extract_attr!(attrs, "fontfam", self.fontfam);
-        extract_attr!(attrs, "fontname", self.fontname);
-        extract_attr!(attrs, "fontsize", self.fontsize);
-        extract_attr!(attrs, "fontstyle", self.fontstyle);
-        extract_attr!(attrs, "fontweight", self.fontweight);
-        extract_attr!(attrs, "letterspacing", self.letterspacing);
-        extract_attr!(attrs, "lineheight", self.lineheight);
-        extract_attr!(attrs, "ho", self.ho);
-        extract_attr!(attrs, "to", self.to);
-        extract_attr!(attrs, "vo", self.vo);
-        extract_attr!(attrs, "x", self.x);
-        extract_attr!(attrs, "y", self.y);
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMNumGes {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMNumGes has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
-
-impl ExtractAttributes for AttMNumAnl {
-    fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
-        // AttMNumAnl has no attributes
-        let _ = attrs;
-        Ok(())
-    }
-}
 
 impl MeiDeserialize for MNum {
     fn element_name() -> &'static str {

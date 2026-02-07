@@ -14,80 +14,6 @@ use super::super::{push_attr, serialize_vec_serde, to_attr_string};
 // Harm (Harmony) element serialization
 // ============================================================================
 
-impl CollectAttributes for AttHarmLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "plist", vec self.plist);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "evaluate", self.evaluate);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "dur", vec self.dur);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "tstamp2", self.tstamp2);
-        push_attr!(attrs, "chordref", self.chordref);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttHarmVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "lform", self.lform);
-        push_attr!(attrs, "lwidth", self.lwidth);
-        push_attr!(attrs, "lsegs", self.lsegs);
-        push_attr!(attrs, "lendsym", self.lendsym);
-        push_attr!(attrs, "lendsym.size", self.lendsym_size);
-        push_attr!(attrs, "lstartsym", self.lstartsym);
-        push_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        push_attr!(attrs, "extender", self.extender);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "vgrp", self.vgrp);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "startho", self.startho);
-        push_attr!(attrs, "endho", self.endho);
-        push_attr!(attrs, "startto", self.startto);
-        push_attr!(attrs, "endto", self.endto);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        push_attr!(attrs, "rendgrid", self.rendgrid);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttHarmGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "dur.ges", self.dur_ges);
-        push_attr!(attrs, "dots.ges", self.dots_ges);
-        push_attr!(attrs, "dur.metrical", self.dur_metrical);
-        push_attr!(attrs, "dur.ppq", self.dur_ppq);
-        push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", self.dur_recip);
-        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttHarmAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "inth", vec self.inth);
-        push_attr!(attrs, "form", self.form);
-        attrs
-    }
-}
-
 impl MeiSerialize for Harm {
     fn element_name(&self) -> &'static str {
         "harm"
@@ -333,72 +259,6 @@ impl MeiSerialize for FbChild {
 // F (Figure) element serialization
 // ============================================================================
 
-impl CollectAttributes for AttFLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "when", self.when);
-        push_attr!(attrs, "layer", vec self.layer);
-        push_attr!(attrs, "part", vec self.part);
-        push_attr!(attrs, "partstaff", vec self.partstaff);
-        push_attr!(attrs, "plist", vec self.plist);
-        push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "evaluate", self.evaluate);
-        push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
-        push_attr!(attrs, "tstamp.real", self.tstamp_real);
-        push_attr!(attrs, "dur", vec self.dur);
-        push_attr!(attrs, "startid", self.startid);
-        push_attr!(attrs, "endid", self.endid);
-        push_attr!(attrs, "tstamp2", self.tstamp2);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttFVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "lform", self.lform);
-        push_attr!(attrs, "lwidth", self.lwidth);
-        push_attr!(attrs, "lsegs", self.lsegs);
-        push_attr!(attrs, "lendsym", self.lendsym);
-        push_attr!(attrs, "lendsym.size", self.lendsym_size);
-        push_attr!(attrs, "lstartsym", self.lstartsym);
-        push_attr!(attrs, "lstartsym.size", self.lstartsym_size);
-        push_attr!(attrs, "extender", self.extender);
-        push_attr!(attrs, "place", self.place);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttFGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "dur.ges", self.dur_ges);
-        push_attr!(attrs, "dots.ges", self.dots_ges);
-        push_attr!(attrs, "dur.metrical", self.dur_metrical);
-        push_attr!(attrs, "dur.ppq", self.dur_ppq);
-        push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", self.dur_recip);
-        push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
-        push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttFAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttFAnl has no attributes
-        Vec::new()
-    }
-}
-
 impl MeiSerialize for F {
     fn element_name(&self) -> &'static str {
         "f"
@@ -553,54 +413,6 @@ impl MeiSerialize for FChild {
 // ============================================================================
 // Symbol element serialization
 // ============================================================================
-
-impl CollectAttributes for AttSymbolLog {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "startid", self.startid);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSymbolVis {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_attr!(attrs, "altsym", self.altsym);
-        push_attr!(attrs, "color", self.color);
-        push_attr!(attrs, "glyph.auth", self.glyph_auth);
-        push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", self.glyph_name);
-        push_attr!(attrs, "glyph.num", self.glyph_num);
-        push_attr!(attrs, "scale", self.scale);
-        push_attr!(attrs, "fontfam", self.fontfam);
-        push_attr!(attrs, "fontname", self.fontname);
-        push_attr!(attrs, "fontsize", self.fontsize);
-        push_attr!(attrs, "fontstyle", self.fontstyle);
-        push_attr!(attrs, "fontweight", self.fontweight);
-        push_attr!(attrs, "letterspacing", self.letterspacing);
-        push_attr!(attrs, "lineheight", self.lineheight);
-        push_attr!(attrs, "ho", self.ho);
-        push_attr!(attrs, "to", self.to);
-        push_attr!(attrs, "vo", self.vo);
-        push_attr!(attrs, "x", self.x);
-        push_attr!(attrs, "y", self.y);
-        attrs
-    }
-}
-
-impl CollectAttributes for AttSymbolGes {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttSymbolGes has no attributes
-        Vec::new()
-    }
-}
-
-impl CollectAttributes for AttSymbolAnl {
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        // AttSymbolAnl has no attributes
-        Vec::new()
-    }
-}
 
 impl MeiSerialize for Symbol {
     fn element_name(&self) -> &'static str {

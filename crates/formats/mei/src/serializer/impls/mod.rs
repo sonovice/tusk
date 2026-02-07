@@ -87,3 +87,5 @@ macro_rules! push_attr {
     };
 }
 pub(crate) use push_attr;
+
+mod generated_att_impls;
