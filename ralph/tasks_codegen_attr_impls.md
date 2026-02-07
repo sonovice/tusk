@@ -83,12 +83,14 @@ Extend `mei-codegen` to auto-generate `ExtractAttributes` and `CollectAttributes
   - New: "Attribute class impls are auto-generated in generated_att_impls.rs. Element impls are hand-written below."
   - Generated files already have DO NOT EDIT header with regeneration command
 
-- [ ] [VERIFY] Full test suite verification and final metrics
-  - Run `cargo test` — all tests must pass
-  - Run `cargo clippy --all-targets` — no new warnings
-  - Count remaining `extract_attr!` calls (should be 0 in hand-written attribute impls)
-  - Count remaining `push_attr!` calls (same)
-  - Verify codegen is idempotent: run twice, diff output, should be identical
+- [x] [VERIFY] Full test suite verification and final metrics
+  - `cargo test`: all 2929 tests pass, 0 failures
+  - `cargo clippy --all-targets`: 0 errors, 0 new warnings (only pre-existing musicxml warnings)
+  - Hand-written `impl ExtractAttributes for Att*`: 0 remaining (all 729 in generated file)
+  - Hand-written `impl CollectAttributes for Att*`: 0 remaining (all 729 in generated file)
+  - Remaining `extract_attr!` in non-generated files: 109 (all in element impls, not attribute impls — correct)
+  - Remaining `push_attr!` in non-generated files: 24 (all in element impls — correct)
+  - Codegen idempotency: FIXED — sorted att_classes by key before generating impls; consecutive runs produce identical output
 
 ---
 

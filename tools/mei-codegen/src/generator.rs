@@ -1791,7 +1791,10 @@ pub fn generate_mei_attr_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> 
 fn generate_extract_attributes_impls(defs: &OddDefinitions) -> TokenStream {
     let mut impls = Vec::new();
 
-    for ac in defs.att_classes.values() {
+    let mut sorted_keys: Vec<&String> = defs.att_classes.keys().collect();
+    sorted_keys.sort();
+    for key in sorted_keys {
+        let ac = &defs.att_classes[key];
         impls.push(generate_extract_attributes_impl(ac, defs));
     }
 
@@ -1814,7 +1817,10 @@ fn generate_extract_attributes_impls(defs: &OddDefinitions) -> TokenStream {
 fn generate_collect_attributes_impls(defs: &OddDefinitions) -> TokenStream {
     let mut impls = Vec::new();
 
-    for ac in defs.att_classes.values() {
+    let mut sorted_keys: Vec<&String> = defs.att_classes.keys().collect();
+    sorted_keys.sort();
+    for key in sorted_keys {
+        let ac = &defs.att_classes[key];
         impls.push(generate_collect_attributes_impl(ac, defs));
     }
 
