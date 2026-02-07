@@ -16,7 +16,6 @@ use tusk_model::elements::{
     Staff, StaffChild, StaffGrp, StaffGrpChild,
 };
 
-use super::attributes::convert_mei_staff_def_to_attributes;
 use super::direction::{
     convert_mei_dir, convert_mei_dynam, convert_mei_hairpin, convert_mei_tempo,
 };
@@ -234,22 +233,26 @@ pub fn convert_mei_score_content(
     // Collect staffDefs from scoreDef for initial attributes
     let staff_defs = collect_staff_defs_from_score(mei_score);
 
+    // Get the scoreDef for global key/time signatures
+    let score_def = find_score_def(mei_score);
+
     // Create a part for each part ID
     let mut parts: Vec<Part> = part_ids.iter().map(|id| Part::new(id)).collect();
 
-    // Set divisions from first staffDef's ppq before processing measures,
-    // so that direction offset calculations have the correct value.
-    if let Some(staff_def) = staff_defs.first() {
-        let divs = staff_def
-            .staff_def_ges
-            .ppq
-            .map(|ppq| ppq as f64)
-            .unwrap_or_else(|| {
-                let ctx_divs = ctx.divisions();
-                if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
-            });
-        ctx.set_divisions(divs);
-    }
+    // Set divisions from first staffDef's ppq before processing measures.
+    // If no ppq is specified, calculate a smart default based on the smallest
+    // note duration in the score to avoid fractional durations.
+    let initial_divs = if let Some(staff_def) = staff_defs.first() {
+        staff_def.staff_def_ges.ppq.map(|ppq| ppq as f64)
+    } else {
+        None
+    };
+    let divs = initial_divs.unwrap_or_else(|| {
+        // Calculate smart divisions: find smallest note duration and set divisions
+        // so that smallest duration = 1. Default to 4 (supports 16th notes).
+        calculate_smart_divisions(&mei_measures)
+    });
+    ctx.set_divisions(divs);
 
     // For each MEI measure, extract staff content and add to corresponding part
     for (measure_idx, mei_measure) in mei_measures.iter().enumerate() {
@@ -263,15 +266,10 @@ pub fn convert_mei_score_content(
             // Set per-part divisions from the staffDef so that direction offset
             // calculations use the correct value for this part.
             if let Some(staff_def) = staff_defs.get(staff_idx) {
-                let divs = staff_def
-                    .staff_def_ges
-                    .ppq
-                    .map(|ppq| ppq as f64)
-                    .unwrap_or_else(|| {
-                        let ctx_divs = ctx.divisions();
-                        if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
-                    });
-                ctx.set_divisions(divs);
+                if let Some(ppq) = staff_def.staff_def_ges.ppq {
+                    ctx.set_divisions(ppq as f64);
+                }
+                // Otherwise keep using the smart divisions calculated earlier
             }
 
             // Create a new measure for this part
@@ -305,25 +303,12 @@ pub fn convert_mei_score_content(
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
-                // Get the staffDef for this staff number and convert to attributes
-                let attrs = if let Some(staff_def) = staff_defs.get(staff_idx) {
-                    let mut attrs = convert_mei_staff_def_to_attributes(staff_def, ctx);
-                    // Get divisions from staffDef ppq attribute, or use context default
-                    let divs = staff_def
-                        .staff_def_ges
-                        .ppq
-                        .map(|ppq| ppq as f64)
-                        .unwrap_or_else(|| {
-                            let ctx_divs = ctx.divisions();
-                            if ctx_divs > 0.0 { ctx_divs } else { 1.0 }
-                        });
-                    attrs.divisions = Some(divs);
-                    // Also set the context divisions for note duration calculations
-                    ctx.set_divisions(divs);
-                    attrs
-                } else {
-                    create_initial_attributes(ctx)
-                };
+                // Build attributes from scoreDef (key/time) + staffDef (clef/transposition)
+                let attrs = build_first_measure_attributes(
+                    score_def,
+                    staff_defs.get(staff_idx).copied(),
+                    ctx,
+                );
                 mxml_measure
                     .content
                     .insert(0, MeasureContent::Attributes(Box::new(attrs)));
@@ -799,19 +784,295 @@ fn collect_beam_events(
 }
 
 /// Create initial attributes for the first measure (divisions, etc.).
-fn create_initial_attributes(ctx: &ConversionContext) -> crate::model::attributes::Attributes {
-    let mut attrs = crate::model::attributes::Attributes::default();
+/// Calculate smart divisions value based on the smallest note duration in the score.
+///
+/// MusicXML `<duration>` must be an integer. This function finds the smallest note
+/// duration and sets divisions so that all durations become integers.
+/// Default is 4 (supports up to 16th notes).
+fn calculate_smart_divisions(mei_measures: &[&tusk_model::elements::Measure]) -> f64 {
+    use tusk_model::elements::{MeasureChild, StaffChild};
 
-    // Set divisions (number of units per quarter note)
+    let mut smallest_duration = 1.0_f64; // Start with quarter note
+
+    for measure in mei_measures {
+        for child in &measure.children {
+            if let MeasureChild::Staff(staff) = child {
+                for sc in &staff.children {
+                    if let StaffChild::Layer(layer) = sc {
+                        find_smallest_duration_in_layer(&layer.children, &mut smallest_duration);
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert smallest duration (in quarter notes) to divisions
+    // E.g., if smallest = 0.25 (16th), we need divisions = 4
+    // If smallest = 0.125 (32nd), we need divisions = 8
+    // If smallest = 0.0625 (64th), we need divisions = 16
+    let divisions = (1.0 / smallest_duration).ceil();
+
+    // Ensure minimum of 1
+    divisions.max(1.0)
+}
+
+/// Recursively find the smallest note duration in layer children.
+fn find_smallest_duration_in_layer(
+    children: &[tusk_model::elements::LayerChild],
+    smallest: &mut f64,
+) {
+    use super::utils::{duration_rests_to_quarter_notes, duration_to_quarter_notes};
+    use tusk_model::elements::LayerChild;
+
+    for child in children {
+        match child {
+            LayerChild::Note(note) => {
+                if let Some(ref dur) = note.note_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            LayerChild::Rest(rest) => {
+                if let Some(ref dur) = rest.rest_log.dur {
+                    let quarters = duration_rests_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            LayerChild::Chord(chord) => {
+                if let Some(ref dur) = chord.chord_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            LayerChild::Beam(beam) => {
+                find_smallest_duration_in_beam(&beam.children, smallest);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Recursively find the smallest note duration in beam children.
+fn find_smallest_duration_in_beam(
+    children: &[tusk_model::elements::BeamChild],
+    smallest: &mut f64,
+) {
+    use super::utils::{duration_rests_to_quarter_notes, duration_to_quarter_notes};
+    use tusk_model::elements::BeamChild;
+
+    for child in children {
+        match child {
+            BeamChild::Note(note) => {
+                if let Some(ref dur) = note.note_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            BeamChild::Rest(rest) => {
+                if let Some(ref dur) = rest.rest_log.dur {
+                    let quarters = duration_rests_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            BeamChild::Chord(chord) => {
+                if let Some(ref dur) = chord.chord_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            BeamChild::Beam(nested) => {
+                find_smallest_duration_in_beam(&nested.children, smallest);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Build MusicXML Attributes for the first measure by merging scoreDef and staffDef.
+///
+/// - scoreDef provides: key signature, time signature (global)
+/// - staffDef provides: clef, transposition, staff lines (per-staff)
+fn build_first_measure_attributes(
+    score_def: Option<&tusk_model::elements::ScoreDef>,
+    staff_def: Option<&tusk_model::elements::StaffDef>,
+    ctx: &mut ConversionContext,
+) -> crate::model::attributes::Attributes {
+    use super::attributes::{
+        convert_mei_clef_shape_to_mxml, convert_mei_keysig_to_fifths, convert_mei_meter_sym_to_mxml,
+    };
+    use crate::model::attributes::{
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
+        TimeContent, TimeSignature, TraditionalKey, Transpose,
+    };
+
+    let mut attrs = Attributes::default();
+
+    // Set divisions from context
     let divisions = ctx.divisions();
-    if divisions > 0.0 {
-        attrs.divisions = Some(divisions);
-    } else {
-        // Default divisions if not set
-        attrs.divisions = Some(1.0);
+    attrs.divisions = Some(divisions);
+
+    // Get key signature from scoreDef first, then staffDef as fallback
+    let keysig = score_def
+        .and_then(|sd| sd.score_def_log.keysig.first())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.first()));
+
+    if let Some(keysig) = keysig
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig)
+    {
+        attrs.keys.push(Key {
+            number: None,
+            print_object: None,
+            id: None,
+            content: KeyContent::Traditional(TraditionalKey {
+                cancel: None,
+                fifths,
+                mode: None,
+            }),
+            key_octaves: Vec::new(),
+        });
+    }
+
+    // Get time signature from scoreDef first, then staffDef as fallback
+    let meter_sym = score_def
+        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
+    let meter_count = score_def
+        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
+    let meter_unit = score_def
+        .and_then(|sd| sd.score_def_log.meter_unit)
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit));
+
+    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+        // Senza misura
+        attrs.times.push(Time {
+            number: None,
+            symbol: None,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
+        });
+    } else if meter_count.is_some() || meter_unit.is_some() {
+        let beats = meter_count.cloned().unwrap_or_else(|| "4".to_string());
+        let beat_type = meter_unit
+            .map(|u| format!("{}", u as i32))
+            .unwrap_or_else(|| "4".to_string());
+
+        let symbol = meter_sym.and_then(convert_mei_meter_sym_to_mxml);
+
+        attrs.times.push(Time {
+            number: None,
+            symbol,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::Standard(StandardTime {
+                signatures: vec![TimeSignature { beats, beat_type }],
+                interchangeable: None,
+            }),
+        });
+    }
+
+    // Get clef from staffDef (per-staff attribute)
+    if let Some(staff_def) = staff_def {
+        if let Some(shape) = &staff_def.staff_def_log.clef_shape {
+            let sign = convert_mei_clef_shape_to_mxml(shape);
+            let line = staff_def
+                .staff_def_log
+                .clef_line
+                .as_ref()
+                .map(|l| l.0 as u32);
+
+            // Convert octave displacement
+            let octave_change = convert_clef_dis_to_octave_change(
+                staff_def.staff_def_log.clef_dis.as_ref(),
+                staff_def.staff_def_log.clef_dis_place.as_ref(),
+            );
+
+            attrs.clefs.push(Clef {
+                number: None,
+                additional: None,
+                size: None,
+                after_barline: None,
+                print_object: None,
+                id: None,
+                sign,
+                line,
+                clef_octave_change: octave_change,
+            });
+        }
+
+        // Get transposition from staffDef
+        if staff_def.staff_def_log.trans_diat.is_some()
+            || staff_def.staff_def_log.trans_semi.is_some()
+        {
+            let chromatic = staff_def.staff_def_log.trans_semi.unwrap_or(0) as f64;
+            let diatonic = staff_def.staff_def_log.trans_diat.map(|d| d as i32);
+
+            attrs.transposes.push(Transpose {
+                number: None,
+                id: None,
+                diatonic,
+                chromatic,
+                octave_change: None,
+                double: None,
+            });
+        }
+
+        // Get staff lines from staffDef
+        if let Some(lines) = staff_def.staff_def_log.lines {
+            attrs.staff_details.push(StaffDetails {
+                number: None,
+                show_frets: None,
+                print_object: None,
+                print_spacing: None,
+                staff_type: None,
+                staff_lines: Some(lines as u32),
+                line_details: Vec::new(),
+                staff_tunings: Vec::new(),
+                capo: None,
+                staff_size: None,
+            });
+        }
     }
 
     attrs
+}
+
+/// Convert MEI octave displacement (clef.dis + clef.dis.place) to MusicXML octave-change.
+fn convert_clef_dis_to_octave_change(
+    dis: Option<&tusk_model::data::DataOctaveDis>,
+    dis_place: Option<&tusk_model::data::DataStaffrelBasic>,
+) -> Option<i32> {
+    use tusk_model::data::DataStaffrelBasic;
+
+    let dis_value = dis?;
+    let octaves = match dis_value.0 {
+        8 => 1,
+        15 => 2,
+        22 => 3,
+        _ => return None,
+    };
+
+    let direction = dis_place.map_or(1, |place| match place {
+        DataStaffrelBasic::Above => 1,
+        DataStaffrelBasic::Below => -1,
+    });
+
+    Some(octaves * direction)
 }
 
 #[cfg(test)]
