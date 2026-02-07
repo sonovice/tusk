@@ -1761,6 +1761,222 @@ fn escape_keyword_filename(name: &str) -> String {
     }
 }
 
+// ============================================================================
+// MEI Attribute Trait Impls (ExtractAttributes / CollectAttributes)
+// ============================================================================
+
+/// Generate ExtractAttributes and CollectAttributes impls for all attribute
+/// classes and write them into the tusk-mei crate source tree.
+pub fn generate_mei_attr_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> Result<()> {
+    // Generate ExtractAttributes impls
+    let extract_tokens = generate_extract_attributes_impls(defs);
+    let extract_path = mei_crate_path.join("deserializer/generated_att_impls.rs");
+    write_tokens_to_file(&extract_tokens, &extract_path)?;
+
+    // Generate CollectAttributes impls
+    let collect_tokens = generate_collect_attributes_impls(defs);
+    let collect_path = mei_crate_path.join("serializer/generated_att_impls.rs");
+    write_tokens_to_file(&collect_tokens, &collect_path)?;
+
+    let count = defs.att_classes.len();
+    println!(
+        "  Generated: {} ExtractAttributes + {} CollectAttributes impls",
+        count, count
+    );
+
+    Ok(())
+}
+
+/// Generate ExtractAttributes impls for all attribute classes.
+fn generate_extract_attributes_impls(defs: &OddDefinitions) -> TokenStream {
+    let mut impls = Vec::new();
+
+    for ac in defs.att_classes.values() {
+        impls.push(generate_extract_attributes_impl(ac, defs));
+    }
+
+    quote! {
+        //! Auto-generated ExtractAttributes impls for all MEI attribute classes.
+        //!
+        //! DO NOT EDIT - regenerate with:
+        //!   cargo run -p mei-codegen -- -i specs/mei/canonical -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+
+        use super::super::{AttributeMap, DeserializeResult, ExtractAttributes};
+        use super::from_attr_string;
+        use tusk_model::att::*;
+
+        #(#impls)*
+    }
+}
+
+/// Generate CollectAttributes impls for all attribute classes.
+fn generate_collect_attributes_impls(defs: &OddDefinitions) -> TokenStream {
+    let mut impls = Vec::new();
+
+    for ac in defs.att_classes.values() {
+        impls.push(generate_collect_attributes_impl(ac, defs));
+    }
+
+    quote! {
+        //! Auto-generated CollectAttributes impls for all MEI attribute classes.
+        //!
+        //! DO NOT EDIT - regenerate with:
+        //!   cargo run -p mei-codegen -- -i specs/mei/canonical -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+
+        use super::super::CollectAttributes;
+        use super::{to_attr_string, serialize_vec_serde};
+        use tusk_model::att::*;
+
+        #(#impls)*
+    }
+}
+
+/// Generate a single ExtractAttributes impl for one attribute class.
+fn generate_extract_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
+    let name = mei_ident_to_type(&ac.ident);
+    let all_attrs = defs.collect_attributes(&ac.ident);
+
+    let extractions: Vec<TokenStream> = all_attrs
+        .iter()
+        .map(|attr| {
+            let xml_name = &attr.ident;
+            let field_name =
+                make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
+            let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
+
+            match (&attr.datatype, is_unbounded) {
+                // Vec<String> — datatype=None + unbounded
+                (None, true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec_string self.#field_name); }
+                }
+                // Option<String> — datatype=None
+                (None, false) => {
+                    quote! { extract_attr!(attrs, #xml_name, string self.#field_name); }
+                }
+                // Vec<T> — Ref(known) + unbounded
+                (Some(AttributeDataType::Ref(ref_name)), true)
+                    if defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { extract_attr!(attrs, #xml_name, vec self.#field_name); }
+                }
+                // Vec<String> — Ref(unknown) + unbounded
+                (Some(AttributeDataType::Ref(_)), true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec_string self.#field_name); }
+                }
+                // Option<T> — Ref(known)
+                (Some(AttributeDataType::Ref(ref_name)), false)
+                    if defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { extract_attr!(attrs, #xml_name, self.#field_name); }
+                }
+                // Option<String> — Ref(unknown)
+                (Some(AttributeDataType::Ref(_)), false) => {
+                    quote! { extract_attr!(attrs, #xml_name, string self.#field_name); }
+                }
+                // Vec<T> — Primitive + unbounded
+                (Some(AttributeDataType::Primitive { type_name, .. }), true) => {
+                    if is_string_primitive(type_name) {
+                        quote! { extract_attr!(attrs, #xml_name, vec_string self.#field_name); }
+                    } else {
+                        quote! { extract_attr!(attrs, #xml_name, vec self.#field_name); }
+                    }
+                }
+                // Option<T> — Primitive
+                (Some(AttributeDataType::Primitive { type_name, .. }), false) => {
+                    if is_string_primitive(type_name) {
+                        quote! { extract_attr!(attrs, #xml_name, string self.#field_name); }
+                    } else {
+                        quote! { extract_attr!(attrs, #xml_name, self.#field_name); }
+                    }
+                }
+                // Vec<T> — InlineValList + unbounded
+                (Some(AttributeDataType::InlineValList(_)), true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec self.#field_name); }
+                }
+                // Option<T> — InlineValList
+                (Some(AttributeDataType::InlineValList(_)), false) => {
+                    quote! { extract_attr!(attrs, #xml_name, self.#field_name); }
+                }
+                // Option<SpaceSeparated<T>> — List
+                (Some(AttributeDataType::List { .. }), _) => {
+                    quote! { extract_attr!(attrs, #xml_name, space_separated self.#field_name); }
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        impl ExtractAttributes for #name {
+            fn extract_attributes(&mut self, attrs: &mut AttributeMap) -> DeserializeResult<()> {
+                #(#extractions)*
+                Ok(())
+            }
+        }
+    }
+}
+
+/// Generate a single CollectAttributes impl for one attribute class.
+fn generate_collect_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
+    let name = mei_ident_to_type(&ac.ident);
+    let all_attrs = defs.collect_attributes(&ac.ident);
+
+    let collections: Vec<TokenStream> = all_attrs
+        .iter()
+        .map(|attr| {
+            let xml_name = &attr.ident;
+            let field_name =
+                make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
+            let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
+
+            match (&attr.datatype, is_unbounded) {
+                // Vec<String> — datatype=None + unbounded
+                (None, true) => {
+                    quote! { push_attr!(attrs, #xml_name, vec self.#field_name); }
+                }
+                // Option<String> — datatype=None
+                (None, false) => {
+                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                }
+                // Vec<T> — any type + unbounded
+                (Some(_), true) => {
+                    quote! { push_attr!(attrs, #xml_name, vec self.#field_name); }
+                }
+                // Option<T> — Ref(unknown) → clone
+                (Some(AttributeDataType::Ref(ref_name)), false)
+                    if !defs.data_types.contains_key(ref_name) =>
+                {
+                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                }
+                // Option<T> — Primitive(String type) → clone
+                (Some(AttributeDataType::Primitive { type_name, .. }), false)
+                    if is_string_primitive(type_name) =>
+                {
+                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                }
+                // Option<T> — Ref(known), Primitive(non-string), InlineValList, List → default
+                (Some(_), false) => {
+                    quote! { push_attr!(attrs, #xml_name, self.#field_name); }
+                }
+            }
+        })
+        .collect();
+
+    quote! {
+        impl CollectAttributes for #name {
+            fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+                let mut attrs = Vec::new();
+                #(#collections)*
+                attrs
+            }
+        }
+    }
+}
+
+/// Check if an XML Schema primitive type maps to String in Rust.
+fn is_string_primitive(type_name: &str) -> bool {
+    matches!(rng_data_to_rust(type_name), "String")
+}
+
 /// Write token stream to file with formatting.
 fn write_tokens_to_file(tokens: &TokenStream, path: &Path) -> Result<()> {
     let code = tokens.to_string();
