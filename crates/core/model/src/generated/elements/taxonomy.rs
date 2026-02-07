@@ -5,40 +5,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaxonomyChild {
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "category")]
-    Category(Box<crate::generated::elements::Category>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "taxonomy")]
     Taxonomy(Box<crate::generated::elements::Taxonomy>),
     #[serde(rename = "biblStruct")]
     BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "category")]
+    Category(Box<crate::generated::elements::Category>),
 }
 impl TaxonomyChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TaxonomyChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TaxonomyChild::Category(elem) => {
-                ctx.enter("category", index);
+            TaxonomyChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             TaxonomyChild::Head(elem) => {
                 ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TaxonomyChild::Desc(elem) => {
-                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -49,6 +39,16 @@ impl TaxonomyChild {
             }
             TaxonomyChild::BiblStruct(elem) => {
                 ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TaxonomyChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TaxonomyChild::Category(elem) => {
+                ctx.enter("category", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

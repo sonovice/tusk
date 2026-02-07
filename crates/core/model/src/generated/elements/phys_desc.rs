@@ -5,138 +5,103 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PhysDescChild {
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "handList")]
-    HandList(Box<crate::generated::elements::HandList>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "explicit")]
-    Explicit(Box<crate::generated::elements::Explicit>),
-    #[serde(rename = "addDesc")]
-    AddDesc(Box<crate::generated::elements::AddDesc>),
     #[serde(rename = "dimensions")]
     Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "fileChar")]
-    FileChar(Box<crate::generated::elements::FileChar>),
-    #[serde(rename = "history")]
-    History(Box<crate::generated::elements::History>),
-    #[serde(rename = "condition")]
-    Condition(Box<crate::generated::elements::Condition>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "foliaDesc")]
+    FoliaDesc(Box<crate::generated::elements::FoliaDesc>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
     #[serde(rename = "inscription")]
     Inscription(Box<crate::generated::elements::Inscription>),
-    #[serde(rename = "bindingDesc")]
-    BindingDesc(Box<crate::generated::elements::BindingDesc>),
-    #[serde(rename = "layoutDesc")]
-    LayoutDesc(Box<crate::generated::elements::LayoutDesc>),
-    #[serde(rename = "watermarkDesc")]
-    WatermarkDesc(Box<crate::generated::elements::WatermarkDesc>),
-    #[serde(rename = "plateNum")]
-    PlateNum(Box<crate::generated::elements::PlateNum>),
-    #[serde(rename = "sealDesc")]
-    SealDesc(Box<crate::generated::elements::SealDesc>),
     #[serde(rename = "playingSpeed")]
     PlayingSpeed(Box<crate::generated::elements::PlayingSpeed>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "typeDesc")]
+    TypeDesc(Box<crate::generated::elements::TypeDesc>),
     #[serde(rename = "carrierForm")]
     CarrierForm(Box<crate::generated::elements::CarrierForm>),
-    #[serde(rename = "incip")]
-    Incip(Box<crate::generated::elements::Incip>),
-    #[serde(rename = "specRepro")]
-    SpecRepro(Box<crate::generated::elements::SpecRepro>),
-    #[serde(rename = "perfDuration")]
-    PerfDuration(Box<crate::generated::elements::PerfDuration>),
-    #[serde(rename = "captureMode")]
-    CaptureMode(Box<crate::generated::elements::CaptureMode>),
-    #[serde(rename = "scriptDesc")]
-    ScriptDesc(Box<crate::generated::elements::ScriptDesc>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "bindingDesc")]
+    BindingDesc(Box<crate::generated::elements::BindingDesc>),
+    #[serde(rename = "plateNum")]
+    PlateNum(Box<crate::generated::elements::PlateNum>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
     #[serde(rename = "accMat")]
     AccMat(Box<crate::generated::elements::AccMat>),
     #[serde(rename = "physMedium")]
     PhysMedium(Box<crate::generated::elements::PhysMedium>),
-    #[serde(rename = "supportDesc")]
-    SupportDesc(Box<crate::generated::elements::SupportDesc>),
-    #[serde(rename = "colophon")]
-    Colophon(Box<crate::generated::elements::Colophon>),
-    #[serde(rename = "typeDesc")]
-    TypeDesc(Box<crate::generated::elements::TypeDesc>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "decoDesc")]
-    DecoDesc(Box<crate::generated::elements::DecoDesc>),
-    #[serde(rename = "trackConfig")]
-    TrackConfig(Box<crate::generated::elements::TrackConfig>),
-    #[serde(rename = "foliaDesc")]
-    FoliaDesc(Box<crate::generated::elements::FoliaDesc>),
-    #[serde(rename = "titlePage")]
-    TitlePage(Box<crate::generated::elements::TitlePage>),
-    #[serde(rename = "scoreFormat")]
-    ScoreFormat(Box<crate::generated::elements::ScoreFormat>),
-    #[serde(rename = "soundChan")]
-    SoundChan(Box<crate::generated::elements::SoundChan>),
-    #[serde(rename = "rubric")]
-    Rubric(Box<crate::generated::elements::Rubric>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "titlePage")]
+    TitlePage(Box<crate::generated::elements::TitlePage>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "colophon")]
+    Colophon(Box<crate::generated::elements::Colophon>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "soundChan")]
+    SoundChan(Box<crate::generated::elements::SoundChan>),
+    #[serde(rename = "supportDesc")]
+    SupportDesc(Box<crate::generated::elements::SupportDesc>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "fileChar")]
+    FileChar(Box<crate::generated::elements::FileChar>),
+    #[serde(rename = "incip")]
+    Incip(Box<crate::generated::elements::Incip>),
+    #[serde(rename = "scriptDesc")]
+    ScriptDesc(Box<crate::generated::elements::ScriptDesc>),
+    #[serde(rename = "sealDesc")]
+    SealDesc(Box<crate::generated::elements::SealDesc>),
+    #[serde(rename = "layoutDesc")]
+    LayoutDesc(Box<crate::generated::elements::LayoutDesc>),
+    #[serde(rename = "captureMode")]
+    CaptureMode(Box<crate::generated::elements::CaptureMode>),
+    #[serde(rename = "explicit")]
+    Explicit(Box<crate::generated::elements::Explicit>),
+    #[serde(rename = "perfDuration")]
+    PerfDuration(Box<crate::generated::elements::PerfDuration>),
+    #[serde(rename = "specRepro")]
+    SpecRepro(Box<crate::generated::elements::SpecRepro>),
+    #[serde(rename = "scoreFormat")]
+    ScoreFormat(Box<crate::generated::elements::ScoreFormat>),
+    #[serde(rename = "addDesc")]
+    AddDesc(Box<crate::generated::elements::AddDesc>),
+    #[serde(rename = "history")]
+    History(Box<crate::generated::elements::History>),
+    #[serde(rename = "trackConfig")]
+    TrackConfig(Box<crate::generated::elements::TrackConfig>),
+    #[serde(rename = "decoDesc")]
+    DecoDesc(Box<crate::generated::elements::DecoDesc>),
+    #[serde(rename = "rubric")]
+    Rubric(Box<crate::generated::elements::Rubric>),
+    #[serde(rename = "condition")]
+    Condition(Box<crate::generated::elements::Condition>),
+    #[serde(rename = "handList")]
+    HandList(Box<crate::generated::elements::HandList>),
+    #[serde(rename = "watermarkDesc")]
+    WatermarkDesc(Box<crate::generated::elements::WatermarkDesc>),
 }
 impl PhysDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PhysDescChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::HandList(elem) => {
-                ctx.enter("handList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Explicit(elem) => {
-                ctx.enter("explicit", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::AddDesc(elem) => {
-                ctx.enter("addDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PhysDescChild::Dimensions(elem) => {
                 ctx.enter("dimensions", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::FileChar(elem) => {
-                ctx.enter("fileChar", index);
+            PhysDescChild::FoliaDesc(elem) => {
+                ctx.enter("foliaDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::History(elem) => {
-                ctx.enter("history", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Condition(elem) => {
-                ctx.enter("condition", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
+            PhysDescChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -145,38 +110,13 @@ impl PhysDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::BindingDesc(elem) => {
-                ctx.enter("bindingDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::LayoutDesc(elem) => {
-                ctx.enter("layoutDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::WatermarkDesc(elem) => {
-                ctx.enter("watermarkDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::PlateNum(elem) => {
-                ctx.enter("plateNum", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::SealDesc(elem) => {
-                ctx.enter("sealDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PhysDescChild::PlayingSpeed(elem) => {
                 ctx.enter("playingSpeed", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
+            PhysDescChild::TypeDesc(elem) => {
+                ctx.enter("typeDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -185,33 +125,23 @@ impl PhysDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::Incip(elem) => {
-                ctx.enter("incip", index);
+            PhysDescChild::P(elem) => {
+                ctx.enter("p", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::SpecRepro(elem) => {
-                ctx.enter("specRepro", index);
+            PhysDescChild::BindingDesc(elem) => {
+                ctx.enter("bindingDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::PerfDuration(elem) => {
-                ctx.enter("perfDuration", index);
+            PhysDescChild::PlateNum(elem) => {
+                ctx.enter("plateNum", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::CaptureMode(elem) => {
-                ctx.enter("captureMode", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::ScriptDesc(elem) => {
-                ctx.enter("scriptDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
+            PhysDescChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -225,38 +155,8 @@ impl PhysDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::SupportDesc(elem) => {
-                ctx.enter("supportDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Colophon(elem) => {
-                ctx.enter("colophon", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::TypeDesc(elem) => {
-                ctx.enter("typeDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::DecoDesc(elem) => {
-                ctx.enter("decoDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::TrackConfig(elem) => {
-                ctx.enter("trackConfig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PhysDescChild::FoliaDesc(elem) => {
-                ctx.enter("foliaDesc", index);
+            PhysDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -265,8 +165,18 @@ impl PhysDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::ScoreFormat(elem) => {
-                ctx.enter("scoreFormat", index);
+            PhysDescChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Colophon(elem) => {
+                ctx.enter("colophon", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -275,18 +185,108 @@ impl PhysDescChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            PhysDescChild::SupportDesc(elem) => {
+                ctx.enter("supportDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Extent(elem) => {
+                ctx.enter("extent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::FileChar(elem) => {
+                ctx.enter("fileChar", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Incip(elem) => {
+                ctx.enter("incip", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::ScriptDesc(elem) => {
+                ctx.enter("scriptDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::SealDesc(elem) => {
+                ctx.enter("sealDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::LayoutDesc(elem) => {
+                ctx.enter("layoutDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::CaptureMode(elem) => {
+                ctx.enter("captureMode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::Explicit(elem) => {
+                ctx.enter("explicit", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::PerfDuration(elem) => {
+                ctx.enter("perfDuration", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::SpecRepro(elem) => {
+                ctx.enter("specRepro", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::ScoreFormat(elem) => {
+                ctx.enter("scoreFormat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::AddDesc(elem) => {
+                ctx.enter("addDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::History(elem) => {
+                ctx.enter("history", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::TrackConfig(elem) => {
+                ctx.enter("trackConfig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::DecoDesc(elem) => {
+                ctx.enter("decoDesc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             PhysDescChild::Rubric(elem) => {
                 ctx.enter("rubric", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
+            PhysDescChild::Condition(elem) => {
+                ctx.enter("condition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PhysDescChild::Head(elem) => {
-                ctx.enter("head", index);
+            PhysDescChild::HandList(elem) => {
+                ctx.enter("handList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PhysDescChild::WatermarkDesc(elem) => {
+                ctx.enter("watermarkDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

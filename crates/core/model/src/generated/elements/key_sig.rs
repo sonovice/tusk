@@ -5,69 +5,44 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum KeySigChild {
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
     #[serde(rename = "handShift")]
     HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
     #[serde(rename = "keyAccid")]
     KeyAccid(Box<crate::generated::elements::KeyAccid>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
     #[serde(rename = "gap")]
     Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
     #[serde(rename = "supplied")]
     Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
 }
 impl KeySigChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            KeySigChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            KeySigChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            KeySigChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            KeySigChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            KeySigChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
+            KeySigChild::Reg(elem) => {
+                ctx.enter("reg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             KeySigChild::HandShift(elem) => {
                 ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            KeySigChild::Corr(elem) => {
-                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -86,8 +61,33 @@ impl KeySigChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            KeySigChild::Reg(elem) => {
-                ctx.enter("reg", index);
+            KeySigChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            KeySigChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            KeySigChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            KeySigChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            KeySigChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            KeySigChild::Corr(elem) => {
+                ctx.enter("corr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -96,8 +96,8 @@ impl KeySigChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            KeySigChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
+            KeySigChild::Sic(elem) => {
+                ctx.enter("sic", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

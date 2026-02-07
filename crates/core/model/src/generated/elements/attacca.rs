@@ -8,460 +8,150 @@ pub enum AttaccaChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
-    #[serde(rename = "curve")]
-    Curve(Box<crate::generated::elements::Curve>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "stack")]
-    Stack(Box<crate::generated::elements::Stack>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "height")]
-    Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "anchoredText")]
-    AnchoredText(Box<crate::generated::elements::AnchoredText>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "street")]
-    Street(Box<crate::generated::elements::Street>),
-    #[serde(rename = "line")]
-    Line(Box<crate::generated::elements::Line>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "bloc")]
-    Bloc(Box<crate::generated::elements::Bloc>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "district")]
     District(Box<crate::generated::elements::District>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "stack")]
+    Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "street")]
+    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "curve")]
+    Curve(Box<crate::generated::elements::Curve>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "anchoredText")]
+    AnchoredText(Box<crate::generated::elements::AnchoredText>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "height")]
+    Height(Box<crate::generated::elements::Height>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "bloc")]
+    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "line")]
+    Line(Box<crate::generated::elements::Line>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
 }
 impl AttaccaChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             AttaccaChild::Text(_) => {}
-            AttaccaChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Expan(elem) => {
-                ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Curve(elem) => {
-                ctx.enter("curve", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Dim(elem) => {
-                ctx.enter("dim", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Term(elem) => {
-                ctx.enter("term", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Stack(elem) => {
-                ctx.enter("stack", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Height(elem) => {
-                ctx.enter("height", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::AnchoredText(elem) => {
-                ctx.enter("anchoredText", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Gap(elem) => {
-                ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Abbr(elem) => {
-                ctx.enter("abbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Region(elem) => {
-                ctx.enter("region", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Corr(elem) => {
-                ctx.enter("corr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Street(elem) => {
-                ctx.enter("street", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Line(elem) => {
-                ctx.enter("line", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Bloc(elem) => {
-                ctx.enter("bloc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             AttaccaChild::District(elem) => {
                 ctx.enter("district", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AttaccaChild::Relation(elem) => {
-                ctx.enter("relation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -470,8 +160,203 @@ impl AttaccaChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            AttaccaChild::Term(elem) => {
+                ctx.enter("term", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Stack(elem) => {
+                ctx.enter("stack", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Street(elem) => {
+                ctx.enter("street", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Curve(elem) => {
+                ctx.enter("curve", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Expan(elem) => {
+                ctx.enter("expan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Gap(elem) => {
+                ctx.enter("gap", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::AnchoredText(elem) => {
+                ctx.enter("anchoredText", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Extent(elem) => {
+                ctx.enter("extent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Height(elem) => {
+                ctx.enter("height", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             AttaccaChild::Seg(elem) => {
                 ctx.enter("seg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Address(elem) => {
+                ctx.enter("address", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -480,13 +365,128 @@ impl AttaccaChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            AttaccaChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             AttaccaChild::SecFolio(elem) => {
                 ctx.enter("secFolio", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AttaccaChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
+            AttaccaChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Bloc(elem) => {
+                ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Line(elem) => {
+                ctx.enter("line", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Abbr(elem) => {
+                ctx.enter("abbr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::PersName(elem) => {
+                ctx.enter("persName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AttaccaChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

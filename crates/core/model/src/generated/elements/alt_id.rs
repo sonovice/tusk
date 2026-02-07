@@ -8,10 +8,10 @@ pub enum AltIdChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
 }
@@ -20,13 +20,13 @@ impl AltIdChild {
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             AltIdChild::Text(_) => {}
-            AltIdChild::Rend(elem) => {
-                ctx.enter("rend", index);
+            AltIdChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AltIdChild::Lb(elem) => {
-                ctx.enter("lb", index);
+            AltIdChild::Rend(elem) => {
+                ctx.enter("rend", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum NamespaceChild {
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
-    #[serde(rename = "tagUsage")]
-    TagUsage(Box<crate::generated::elements::TagUsage>),
     #[serde(rename = "attUsage")]
     AttUsage(Box<crate::generated::elements::AttUsage>),
+    #[serde(rename = "tagUsage")]
+    TagUsage(Box<crate::generated::elements::TagUsage>),
 }
 impl NamespaceChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl NamespaceChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::TagUsage(elem) => {
-                ctx.enter("tagUsage", index);
+            NamespaceChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NamespaceChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            NamespaceChild::TagUsage(elem) => {
+                ctx.enter("tagUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

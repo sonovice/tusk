@@ -7,32 +7,32 @@ use serde::{Deserialize, Serialize};
 pub enum SpChild {
     #[serde(rename = "quote")]
     Quote(Box<crate::generated::elements::Quote>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "speaker")]
-    Speaker(Box<crate::generated::elements::Speaker>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "lg")]
+    Lg(Box<crate::generated::elements::Lg>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
     #[serde(rename = "l")]
     L(Box<crate::generated::elements::L>),
-    #[serde(rename = "stageDir")]
-    StageDir(Box<crate::generated::elements::StageDir>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
     #[serde(rename = "fig")]
     Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "lg")]
-    Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "stageDir")]
+    StageDir(Box<crate::generated::elements::StageDir>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "speaker")]
+    Speaker(Box<crate::generated::elements::Speaker>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
 }
 impl SpChild {
     /// Validate this child element.
@@ -43,33 +43,8 @@ impl SpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SpChild::List(elem) => {
-                ctx.enter("list", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SpChild::Speaker(elem) => {
-                ctx.enter("speaker", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SpChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SpChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SpChild::ColLayout(elem) => {
-                ctx.enter("colLayout", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            SpChild::Pb(elem) => {
-                ctx.enter("pb", index);
+            SpChild::Lg(elem) => {
+                ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -83,8 +58,23 @@ impl SpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SpChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SpChild::Cb(elem) => {
+                ctx.enter("cb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SpChild::StageDir(elem) => {
                 ctx.enter("stageDir", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SpChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -93,18 +83,28 @@ impl SpChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            SpChild::Speaker(elem) => {
+                ctx.enter("speaker", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            SpChild::Pb(elem) => {
+                ctx.enter("pb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             SpChild::App(elem) => {
                 ctx.enter("app", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SpChild::Fig(elem) => {
-                ctx.enter("fig", index);
+            SpChild::ColLayout(elem) => {
+                ctx.enter("colLayout", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            SpChild::Lg(elem) => {
-                ctx.enter("lg", index);
+            SpChild::List(elem) => {
+                ctx.enter("list", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,19 +5,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PbChild {
-    #[serde(rename = "pgFoot")]
-    PgFoot(Box<crate::generated::elements::PgFoot>),
-    #[serde(rename = "pgDesc")]
-    PgDesc(Box<crate::generated::elements::PgDesc>),
     #[serde(rename = "pgHead")]
     PgHead(Box<crate::generated::elements::PgHead>),
+    #[serde(rename = "pgDesc")]
+    PgDesc(Box<crate::generated::elements::PgDesc>),
+    #[serde(rename = "pgFoot")]
+    PgFoot(Box<crate::generated::elements::PgFoot>),
 }
 impl PbChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PbChild::PgFoot(elem) => {
-                ctx.enter("pgFoot", index);
+            PbChild::PgHead(elem) => {
+                ctx.enter("pgHead", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -26,8 +26,8 @@ impl PbChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PbChild::PgHead(elem) => {
-                ctx.enter("pgHead", index);
+            PbChild::PgFoot(elem) => {
+                ctx.enter("pgFoot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

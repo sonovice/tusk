@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 pub enum MusicChild {
     #[serde(rename = "body")]
     Body(Box<crate::generated::elements::Body>),
-    #[serde(rename = "back")]
-    Back(Box<crate::generated::elements::Back>),
     #[serde(rename = "group")]
     Group(Box<crate::generated::elements::Group>),
     #[serde(rename = "genDesc")]
     GenDesc(Box<crate::generated::elements::GenDesc>),
-    #[serde(rename = "facsimile")]
-    Facsimile(Box<crate::generated::elements::Facsimile>),
     #[serde(rename = "performance")]
     Performance(Box<crate::generated::elements::Performance>),
+    #[serde(rename = "facsimile")]
+    Facsimile(Box<crate::generated::elements::Facsimile>),
+    #[serde(rename = "back")]
+    Back(Box<crate::generated::elements::Back>),
     #[serde(rename = "front")]
     Front(Box<crate::generated::elements::Front>),
 }
@@ -26,11 +26,6 @@ impl MusicChild {
         match self {
             MusicChild::Body(elem) => {
                 ctx.enter("body", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MusicChild::Back(elem) => {
-                ctx.enter("back", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -44,13 +39,18 @@ impl MusicChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MusicChild::Performance(elem) => {
+                ctx.enter("performance", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             MusicChild::Facsimile(elem) => {
                 ctx.enter("facsimile", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MusicChild::Performance(elem) => {
-                ctx.enter("performance", index);
+            MusicChild::Back(elem) => {
+                ctx.enter("back", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

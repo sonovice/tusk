@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BindingChild {
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "condition")]
     Condition(Box<crate::generated::elements::Condition>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "decoNote")]
     DecoNote(Box<crate::generated::elements::DecoNote>),
 }
@@ -20,8 +20,8 @@ impl BindingChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            BindingChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
+            BindingChild::Condition(elem) => {
+                ctx.enter("condition", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -30,13 +30,13 @@ impl BindingChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BindingChild::Head(elem) => {
-                ctx.enter("head", index);
+            BindingChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BindingChild::Condition(elem) => {
-                ctx.enter("condition", index);
+            BindingChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,17 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CastGrpChild {
+    #[serde(rename = "castItem")]
+    CastItem(Box<crate::generated::elements::CastItem>),
     #[serde(rename = "castGrp")]
     CastGrp(Box<crate::generated::elements::CastGrp>),
     #[serde(rename = "roleDesc")]
     RoleDesc(Box<crate::generated::elements::RoleDesc>),
-    #[serde(rename = "castItem")]
-    CastItem(Box<crate::generated::elements::CastItem>),
 }
 impl CastGrpChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            CastGrpChild::CastItem(elem) => {
+                ctx.enter("castItem", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             CastGrpChild::CastGrp(elem) => {
                 ctx.enter("castGrp", index);
                 elem.validate_with_context(ctx);
@@ -23,11 +28,6 @@ impl CastGrpChild {
             }
             CastGrpChild::RoleDesc(elem) => {
                 ctx.enter("roleDesc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            CastGrpChild::CastItem(elem) => {
-                ctx.enter("castItem", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

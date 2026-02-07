@@ -5,41 +5,31 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PubStmtChild {
-    #[serde(rename = "publisher")]
-    Publisher(Box<crate::generated::elements::Publisher>),
-    #[serde(rename = "unpub")]
-    Unpub(Box<crate::generated::elements::Unpub>),
     #[serde(rename = "respStmt")]
     RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "pubPlace")]
-    PubPlace(Box<crate::generated::elements::PubPlace>),
-    #[serde(rename = "distributor")]
-    Distributor(Box<crate::generated::elements::Distributor>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "distributor")]
+    Distributor(Box<crate::generated::elements::Distributor>),
     #[serde(rename = "address")]
     Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "availability")]
-    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "unpub")]
+    Unpub(Box<crate::generated::elements::Unpub>),
     #[serde(rename = "date")]
     Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "availability")]
+    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "pubPlace")]
+    PubPlace(Box<crate::generated::elements::PubPlace>),
+    #[serde(rename = "publisher")]
+    Publisher(Box<crate::generated::elements::Publisher>),
 }
 impl PubStmtChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            PubStmtChild::Publisher(elem) => {
-                ctx.enter("publisher", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PubStmtChild::Unpub(elem) => {
-                ctx.enter("unpub", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             PubStmtChild::RespStmt(elem) => {
                 ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
@@ -50,8 +40,8 @@ impl PubStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::PubPlace(elem) => {
-                ctx.enter("pubPlace", index);
+            PubStmtChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -60,13 +50,18 @@ impl PubStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::Head(elem) => {
-                ctx.enter("head", index);
+            PubStmtChild::Address(elem) => {
+                ctx.enter("address", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::Address(elem) => {
-                ctx.enter("address", index);
+            PubStmtChild::Unpub(elem) => {
+                ctx.enter("unpub", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Date(elem) => {
+                ctx.enter("date", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -75,8 +70,13 @@ impl PubStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PubStmtChild::Date(elem) => {
-                ctx.enter("date", index);
+            PubStmtChild::PubPlace(elem) => {
+                ctx.enter("pubPlace", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PubStmtChild::Publisher(elem) => {
+                ctx.enter("publisher", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GrpSymChild {
-    #[serde(rename = "labelAbbr")]
-    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "labelAbbr")]
+    LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
 }
 impl GrpSymChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            GrpSymChild::LabelAbbr(elem) => {
-                ctx.enter("labelAbbr", index);
+            GrpSymChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            GrpSymChild::Label(elem) => {
-                ctx.enter("label", index);
+            GrpSymChild::LabelAbbr(elem) => {
+                ctx.enter("labelAbbr", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

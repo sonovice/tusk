@@ -5,22 +5,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HandListChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "hand")]
     Hand(Box<crate::generated::elements::Hand>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl HandListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            HandListChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             HandListChild::Label(elem) => {
                 ctx.enter("label", index);
                 elem.validate_with_context(ctx);
@@ -28,6 +23,11 @@ impl HandListChild {
             }
             HandListChild::Hand(elem) => {
                 ctx.enter("hand", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            HandListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ClassDeclsChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "taxonomy")]
     Taxonomy(Box<crate::generated::elements::Taxonomy>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl ClassDeclsChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ClassDeclsChild::Head(elem) => {
-                ctx.enter("head", index);
+            ClassDeclsChild::Taxonomy(elem) => {
+                ctx.enter("taxonomy", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ClassDeclsChild::Taxonomy(elem) => {
-                ctx.enter("taxonomy", index);
+            ClassDeclsChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

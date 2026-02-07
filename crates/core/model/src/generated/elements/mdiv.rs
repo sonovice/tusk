@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum MdivChild {
     #[serde(rename = "score")]
     Score(Box<crate::generated::elements::Score>),
-    #[serde(rename = "mdiv")]
-    Mdiv(Box<crate::generated::elements::Mdiv>),
     #[serde(rename = "parts")]
     Parts(Box<crate::generated::elements::Parts>),
+    #[serde(rename = "mdiv")]
+    Mdiv(Box<crate::generated::elements::Mdiv>),
 }
 impl MdivChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl MdivChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MdivChild::Mdiv(elem) => {
-                ctx.enter("mdiv", index);
+            MdivChild::Parts(elem) => {
+                ctx.enter("parts", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MdivChild::Parts(elem) => {
-                ctx.enter("parts", index);
+            MdivChild::Mdiv(elem) => {
+                ctx.enter("mdiv", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

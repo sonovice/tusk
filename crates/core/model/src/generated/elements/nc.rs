@@ -5,117 +5,62 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NcChild {
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "episema")]
-    Episema(Box<crate::generated::elements::Episema>),
     #[serde(rename = "unclear")]
     Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "app")]
-    App(Box<crate::generated::elements::App>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
     #[serde(rename = "subst")]
     Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "quilisma")]
-    Quilisma(Box<crate::generated::elements::Quilisma>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "liquescent")]
-    Liquescent(Box<crate::generated::elements::Liquescent>),
     #[serde(rename = "damage")]
     Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "strophicus")]
     Strophicus(Box<crate::generated::elements::Strophicus>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "quilisma")]
+    Quilisma(Box<crate::generated::elements::Quilisma>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "hispanTick")]
-    HispanTick(Box<crate::generated::elements::HispanTick>),
-    #[serde(rename = "signifLet")]
-    SignifLet(Box<crate::generated::elements::SignifLet>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "oriscus")]
-    Oriscus(Box<crate::generated::elements::Oriscus>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
     #[serde(rename = "gap")]
     Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "episema")]
+    Episema(Box<crate::generated::elements::Episema>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "app")]
+    App(Box<crate::generated::elements::App>),
+    #[serde(rename = "oriscus")]
+    Oriscus(Box<crate::generated::elements::Oriscus>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "hispanTick")]
+    HispanTick(Box<crate::generated::elements::HispanTick>),
+    #[serde(rename = "liquescent")]
+    Liquescent(Box<crate::generated::elements::Liquescent>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
+    #[serde(rename = "signifLet")]
+    SignifLet(Box<crate::generated::elements::SignifLet>),
 }
 impl NcChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            NcChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Episema(elem) => {
-                ctx.enter("episema", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             NcChild::Unclear(elem) => {
                 ctx.enter("unclear", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::App(elem) => {
-                ctx.enter("app", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             NcChild::Subst(elem) => {
                 ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Quilisma(elem) => {
-                ctx.enter("quilisma", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            NcChild::Liquescent(elem) => {
-                ctx.enter("liquescent", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -129,8 +74,8 @@ impl NcChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::Sic(elem) => {
-                ctx.enter("sic", index);
+            NcChild::Quilisma(elem) => {
+                ctx.enter("quilisma", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -139,18 +84,43 @@ impl NcChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::HispanTick(elem) => {
-                ctx.enter("hispanTick", index);
+            NcChild::Del(elem) => {
+                ctx.enter("del", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::SignifLet(elem) => {
-                ctx.enter("signifLet", index);
+            NcChild::Gap(elem) => {
+                ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::Corr(elem) => {
-                ctx.enter("corr", index);
+            NcChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Episema(elem) => {
+                ctx.enter("episema", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::App(elem) => {
+                ctx.enter("app", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -159,8 +129,38 @@ impl NcChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            NcChild::Gap(elem) => {
-                ctx.enter("gap", index);
+            NcChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::HispanTick(elem) => {
+                ctx.enter("hispanTick", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Liquescent(elem) => {
+                ctx.enter("liquescent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::Corr(elem) => {
+                ctx.enter("corr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            NcChild::SignifLet(elem) => {
+                ctx.enter("signifLet", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

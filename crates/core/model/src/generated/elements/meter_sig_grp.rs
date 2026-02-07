@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeterSigGrpChild {
-    #[serde(rename = "meterSig")]
-    MeterSig(Box<crate::generated::elements::MeterSig>),
     #[serde(rename = "meterSigGrp")]
     MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
+    #[serde(rename = "meterSig")]
+    MeterSig(Box<crate::generated::elements::MeterSig>),
 }
 impl MeterSigGrpChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeterSigGrpChild::MeterSig(elem) => {
-                ctx.enter("meterSig", index);
+            MeterSigGrpChild::MeterSigGrp(elem) => {
+                ctx.enter("meterSigGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeterSigGrpChild::MeterSigGrp(elem) => {
-                ctx.enter("meterSigGrp", index);
+            MeterSigGrpChild::MeterSig(elem) => {
+                ctx.enter("meterSig", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

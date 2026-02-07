@@ -5,21 +5,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FigChild {
-    #[serde(rename = "score")]
-    Score(Box<crate::generated::elements::Score>),
-    #[serde(rename = "graphic")]
-    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "figDesc")]
     FigDesc(Box<crate::generated::elements::FigDesc>),
+    #[serde(rename = "graphic")]
+    Graphic(Box<crate::generated::elements::Graphic>),
     #[serde(rename = "caption")]
     Caption(Box<crate::generated::elements::Caption>),
+    #[serde(rename = "score")]
+    Score(Box<crate::generated::elements::Score>),
 }
 impl FigChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            FigChild::Score(elem) => {
-                ctx.enter("score", index);
+            FigChild::FigDesc(elem) => {
+                ctx.enter("figDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -28,13 +28,13 @@ impl FigChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FigChild::FigDesc(elem) => {
-                ctx.enter("figDesc", index);
+            FigChild::Caption(elem) => {
+                ctx.enter("caption", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            FigChild::Caption(elem) => {
-                ctx.enter("caption", index);
+            FigChild::Score(elem) => {
+                ctx.enter("score", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

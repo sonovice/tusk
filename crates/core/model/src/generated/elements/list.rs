@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ListChild {
-    #[serde(rename = "li")]
-    Li(Box<crate::generated::elements::Li>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "li")]
+    Li(Box<crate::generated::elements::Li>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
 }
@@ -16,13 +16,13 @@ impl ListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ListChild::Li(elem) => {
-                ctx.enter("li", index);
+            ListChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ListChild::Label(elem) => {
-                ctx.enter("label", index);
+            ListChild::Li(elem) => {
+                ctx.enter("li", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

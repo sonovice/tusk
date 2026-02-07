@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum RecordingChild {
     #[serde(rename = "avFile")]
     AvFile(Box<crate::generated::elements::AvFile>),
-    #[serde(rename = "clip")]
-    Clip(Box<crate::generated::elements::Clip>),
     #[serde(rename = "when")]
     When(Box<crate::generated::elements::When>),
+    #[serde(rename = "clip")]
+    Clip(Box<crate::generated::elements::Clip>),
 }
 impl RecordingChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl RecordingChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RecordingChild::Clip(elem) => {
-                ctx.enter("clip", index);
+            RecordingChild::When(elem) => {
+                ctx.enter("when", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RecordingChild::When(elem) => {
-                ctx.enter("when", index);
+            RecordingChild::Clip(elem) => {
+                ctx.enter("clip", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

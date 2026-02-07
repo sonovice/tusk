@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeiCorpusChild {
-    #[serde(rename = "mei")]
-    Mei(Box<crate::generated::elements::Mei>),
     #[serde(rename = "meiHead")]
     MeiHead(Box<crate::generated::elements::MeiHead>),
+    #[serde(rename = "mei")]
+    Mei(Box<crate::generated::elements::Mei>),
 }
 impl MeiCorpusChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MeiCorpusChild::Mei(elem) => {
-                ctx.enter("mei", index);
+            MeiCorpusChild::MeiHead(elem) => {
+                ctx.enter("meiHead", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MeiCorpusChild::MeiHead(elem) => {
-                ctx.enter("meiHead", index);
+            MeiCorpusChild::Mei(elem) => {
+                ctx.enter("mei", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

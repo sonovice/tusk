@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ManifestationListChild {
-    #[serde(rename = "manifestation")]
-    Manifestation(Box<crate::generated::elements::Manifestation>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "manifestation")]
+    Manifestation(Box<crate::generated::elements::Manifestation>),
 }
 impl ManifestationListChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ManifestationListChild::Manifestation(elem) => {
-                ctx.enter("manifestation", index);
+            ManifestationListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationListChild::Head(elem) => {
-                ctx.enter("head", index);
+            ManifestationListChild::Manifestation(elem) => {
+                ctx.enter("manifestation", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

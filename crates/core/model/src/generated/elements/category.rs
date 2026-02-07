@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CategoryChild {
-    #[serde(rename = "category")]
-    Category(Box<crate::generated::elements::Category>),
     #[serde(rename = "altId")]
     AltId(Box<crate::generated::elements::AltId>),
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "catRel")]
     CatRel(Box<crate::generated::elements::CatRel>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
+    #[serde(rename = "category")]
+    Category(Box<crate::generated::elements::Category>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
 }
@@ -20,13 +20,13 @@ impl CategoryChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CategoryChild::Category(elem) => {
-                ctx.enter("category", index);
+            CategoryChild::AltId(elem) => {
+                ctx.enter("altId", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CategoryChild::AltId(elem) => {
-                ctx.enter("altId", index);
+            CategoryChild::CatRel(elem) => {
+                ctx.enter("catRel", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -35,8 +35,8 @@ impl CategoryChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CategoryChild::CatRel(elem) => {
-                ctx.enter("catRel", index);
+            CategoryChild::Category(elem) => {
+                ctx.enter("category", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

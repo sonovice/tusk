@@ -5,34 +5,29 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TitleStmtChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "contributor")]
-    Contributor(Box<crate::generated::elements::Contributor>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
     #[serde(rename = "creator")]
     Creator(Box<crate::generated::elements::Creator>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
+    #[serde(rename = "respStmt")]
+    RespStmt(Box<crate::generated::elements::RespStmt>),
     #[serde(rename = "editor")]
     Editor(Box<crate::generated::elements::Editor>),
     #[serde(rename = "funder")]
     Funder(Box<crate::generated::elements::Funder>),
-    #[serde(rename = "respStmt")]
-    RespStmt(Box<crate::generated::elements::RespStmt>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
+    #[serde(rename = "contributor")]
+    Contributor(Box<crate::generated::elements::Contributor>),
 }
 impl TitleStmtChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TitleStmtChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            TitleStmtChild::Contributor(elem) => {
-                ctx.enter("contributor", index);
+            TitleStmtChild::Title(elem) => {
+                ctx.enter("title", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -41,8 +36,8 @@ impl TitleStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TitleStmtChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
+            TitleStmtChild::RespStmt(elem) => {
+                ctx.enter("respStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -56,13 +51,18 @@ impl TitleStmtChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TitleStmtChild::RespStmt(elem) => {
-                ctx.enter("respStmt", index);
+            TitleStmtChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TitleStmtChild::Title(elem) => {
-                ctx.enter("title", index);
+            TitleStmtChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            TitleStmtChild::Contributor(elem) => {
+                ctx.enter("contributor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

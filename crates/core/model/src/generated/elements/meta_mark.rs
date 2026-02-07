@@ -8,281 +8,156 @@ pub enum MetaMarkChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "section")]
-    Section(Box<crate::generated::elements::Section>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
-    #[serde(rename = "sic")]
-    Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "bibl")]
-    Bibl(Box<crate::generated::elements::Bibl>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "district")]
-    District(Box<crate::generated::elements::District>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "restore")]
-    Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
     #[serde(rename = "address")]
     Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
     #[serde(rename = "street")]
     Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "height")]
+    Height(Box<crate::generated::elements::Height>),
+    #[serde(rename = "district")]
+    District(Box<crate::generated::elements::District>),
     #[serde(rename = "relationList")]
     RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
-    #[serde(rename = "term")]
-    Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
     #[serde(rename = "signatures")]
     Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "section")]
+    Section(Box<crate::generated::elements::Section>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "styleName")]
+    StyleName(Box<crate::generated::elements::StyleName>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "sic")]
+    Sic(Box<crate::generated::elements::Sic>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "restore")]
+    Restore(Box<crate::generated::elements::Restore>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
+    #[serde(rename = "bibl")]
+    Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "corr")]
     Corr(Box<crate::generated::elements::Corr>),
     #[serde(rename = "bloc")]
     Bloc(Box<crate::generated::elements::Bloc>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "height")]
-    Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "term")]
+    Term(Box<crate::generated::elements::Term>),
     #[serde(rename = "gap")]
     Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "styleName")]
-    StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
 }
 impl MetaMarkChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             MetaMarkChild::Text(_) => {}
-            MetaMarkChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Section(elem) => {
-                ctx.enter("section", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Choice(elem) => {
-                ctx.enter("choice", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Dim(elem) => {
-                ctx.enter("dim", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Add(elem) => {
-                ctx.enter("add", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Seg(elem) => {
-                ctx.enter("seg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Region(elem) => {
-                ctx.enter("region", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Supplied(elem) => {
-                ctx.enter("supplied", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Relation(elem) => {
-                ctx.enter("relation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::District(elem) => {
-                ctx.enter("district", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             MetaMarkChild::Address(elem) => {
                 ctx.enter("address", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MetaMarkChild::Extent(elem) => {
-                ctx.enter("extent", index);
+            MetaMarkChild::Expan(elem) => {
+                ctx.enter("expan", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MetaMarkChild::Abbr(elem) => {
-                ctx.enter("abbr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Country(elem) => {
-                ctx.enter("country", index);
+            MetaMarkChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -291,28 +166,53 @@ impl MetaMarkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MetaMarkChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Extent(elem) => {
+                ctx.enter("extent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Height(elem) => {
+                ctx.enter("height", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::District(elem) => {
+                ctx.enter("district", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             MetaMarkChild::RelationList(elem) => {
                 ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Term(elem) => {
-                ctx.enter("term", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Q(elem) => {
-                ctx.enter("q", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -321,8 +221,238 @@ impl MetaMarkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            MetaMarkChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Section(elem) => {
+                ctx.enter("section", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Reg(elem) => {
+                ctx.enter("reg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Supplied(elem) => {
+                ctx.enter("supplied", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Damage(elem) => {
+                ctx.enter("damage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Unclear(elem) => {
+                ctx.enter("unclear", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             MetaMarkChild::Stack(elem) => {
                 ctx.enter("stack", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Sic(elem) => {
+                ctx.enter("sic", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::PeriodName(elem) => {
+                ctx.enter("periodName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Restore(elem) => {
+                ctx.enter("restore", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Abbr(elem) => {
+                ctx.enter("abbr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Del(elem) => {
+                ctx.enter("del", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::PersName(elem) => {
+                ctx.enter("persName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Seg(elem) => {
+                ctx.enter("seg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::PostBox(elem) => {
+                ctx.enter("postBox", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Ptr(elem) => {
+                ctx.enter("ptr", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MetaMarkChild::Lb(elem) => {
+                ctx.enter("lb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -336,143 +466,13 @@ impl MetaMarkChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MetaMarkChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Expan(elem) => {
-                ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Ptr(elem) => {
-                ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::PeriodName(elem) => {
-                ctx.enter("periodName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Unclear(elem) => {
-                ctx.enter("unclear", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Height(elem) => {
-                ctx.enter("height", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::PostBox(elem) => {
-                ctx.enter("postBox", index);
+            MetaMarkChild::Term(elem) => {
+                ctx.enter("term", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             MetaMarkChild::Gap(elem) => {
                 ctx.enter("gap", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Orig(elem) => {
-                ctx.enter("orig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MetaMarkChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

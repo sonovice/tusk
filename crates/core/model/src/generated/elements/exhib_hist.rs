@@ -8,167 +8,122 @@ pub enum ExhibHistChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "persName")]
-    PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "postBox")]
-    PostBox(Box<crate::generated::elements::PostBox>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "geogFeat")]
-    GeogFeat(Box<crate::generated::elements::GeogFeat>),
-    #[serde(rename = "repository")]
-    Repository(Box<crate::generated::elements::Repository>),
-    #[serde(rename = "heraldry")]
-    Heraldry(Box<crate::generated::elements::Heraldry>),
-    #[serde(rename = "symbol")]
-    Symbol(Box<crate::generated::elements::Symbol>),
-    #[serde(rename = "postCode")]
-    PostCode(Box<crate::generated::elements::PostCode>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
-    #[serde(rename = "name")]
-    Name(Box<crate::generated::elements::Name>),
-    #[serde(rename = "region")]
-    Region(Box<crate::generated::elements::Region>),
-    #[serde(rename = "dim")]
-    Dim(Box<crate::generated::elements::Dim>),
     #[serde(rename = "styleName")]
     StyleName(Box<crate::generated::elements::StyleName>),
-    #[serde(rename = "width")]
-    Width(Box<crate::generated::elements::Width>),
-    #[serde(rename = "dimensions")]
-    Dimensions(Box<crate::generated::elements::Dimensions>),
-    #[serde(rename = "seg")]
-    Seg(Box<crate::generated::elements::Seg>),
-    #[serde(rename = "signatures")]
-    Signatures(Box<crate::generated::elements::Signatures>),
-    #[serde(rename = "num")]
-    Num(Box<crate::generated::elements::Num>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "settlement")]
-    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
     #[serde(rename = "term")]
     Term(Box<crate::generated::elements::Term>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
-    #[serde(rename = "geogName")]
-    GeogName(Box<crate::generated::elements::GeogName>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "q")]
-    Q(Box<crate::generated::elements::Q>),
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
-    #[serde(rename = "catchwords")]
-    Catchwords(Box<crate::generated::elements::Catchwords>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
-    #[serde(rename = "stamp")]
-    Stamp(Box<crate::generated::elements::Stamp>),
-    #[serde(rename = "expan")]
-    Expan(Box<crate::generated::elements::Expan>),
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "country")]
-    Country(Box<crate::generated::elements::Country>),
-    #[serde(rename = "ref")]
-    Ref(Box<crate::generated::elements::Ref>),
-    #[serde(rename = "secFolio")]
-    SecFolio(Box<crate::generated::elements::SecFolio>),
-    #[serde(rename = "depth")]
-    Depth(Box<crate::generated::elements::Depth>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
-    #[serde(rename = "bloc")]
-    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
     #[serde(rename = "corpName")]
     CorpName(Box<crate::generated::elements::CorpName>),
     #[serde(rename = "district")]
     District(Box<crate::generated::elements::District>),
-    #[serde(rename = "ptr")]
-    Ptr(Box<crate::generated::elements::Ptr>),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "height")]
-    Height(Box<crate::generated::elements::Height>),
-    #[serde(rename = "street")]
-    Street(Box<crate::generated::elements::Street>),
-    #[serde(rename = "locusGrp")]
-    LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "abbr")]
-    Abbr(Box<crate::generated::elements::Abbr>),
-    #[serde(rename = "relation")]
-    Relation(Box<crate::generated::elements::Relation>),
-    #[serde(rename = "periodName")]
-    PeriodName(Box<crate::generated::elements::PeriodName>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "postCode")]
+    PostCode(Box<crate::generated::elements::PostCode>),
+    #[serde(rename = "ptr")]
+    Ptr(Box<crate::generated::elements::Ptr>),
+    #[serde(rename = "abbr")]
+    Abbr(Box<crate::generated::elements::Abbr>),
+    #[serde(rename = "settlement")]
+    Settlement(Box<crate::generated::elements::Settlement>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "width")]
+    Width(Box<crate::generated::elements::Width>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "street")]
+    Street(Box<crate::generated::elements::Street>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "postBox")]
+    PostBox(Box<crate::generated::elements::PostBox>),
+    #[serde(rename = "stamp")]
+    Stamp(Box<crate::generated::elements::Stamp>),
+    #[serde(rename = "secFolio")]
+    SecFolio(Box<crate::generated::elements::SecFolio>),
+    #[serde(rename = "heraldry")]
+    Heraldry(Box<crate::generated::elements::Heraldry>),
+    #[serde(rename = "height")]
+    Height(Box<crate::generated::elements::Height>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "geogName")]
+    GeogName(Box<crate::generated::elements::GeogName>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "bibl")]
     Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "catchwords")]
+    Catchwords(Box<crate::generated::elements::Catchwords>),
+    #[serde(rename = "dim")]
+    Dim(Box<crate::generated::elements::Dim>),
+    #[serde(rename = "expan")]
+    Expan(Box<crate::generated::elements::Expan>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "depth")]
+    Depth(Box<crate::generated::elements::Depth>),
+    #[serde(rename = "name")]
+    Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "num")]
+    Num(Box<crate::generated::elements::Num>),
+    #[serde(rename = "geogFeat")]
+    GeogFeat(Box<crate::generated::elements::GeogFeat>),
+    #[serde(rename = "locusGrp")]
+    LocusGrp(Box<crate::generated::elements::LocusGrp>),
+    #[serde(rename = "periodName")]
+    PeriodName(Box<crate::generated::elements::PeriodName>),
+    #[serde(rename = "persName")]
+    PersName(Box<crate::generated::elements::PersName>),
+    #[serde(rename = "region")]
+    Region(Box<crate::generated::elements::Region>),
+    #[serde(rename = "relation")]
+    Relation(Box<crate::generated::elements::Relation>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "ref")]
+    Ref(Box<crate::generated::elements::Ref>),
+    #[serde(rename = "country")]
+    Country(Box<crate::generated::elements::Country>),
+    #[serde(rename = "seg")]
+    Seg(Box<crate::generated::elements::Seg>),
+    #[serde(rename = "q")]
+    Q(Box<crate::generated::elements::Q>),
+    #[serde(rename = "bloc")]
+    Bloc(Box<crate::generated::elements::Bloc>),
+    #[serde(rename = "dimensions")]
+    Dimensions(Box<crate::generated::elements::Dimensions>),
+    #[serde(rename = "repository")]
+    Repository(Box<crate::generated::elements::Repository>),
+    #[serde(rename = "signatures")]
+    Signatures(Box<crate::generated::elements::Signatures>),
+    #[serde(rename = "symbol")]
+    Symbol(Box<crate::generated::elements::Symbol>),
 }
 impl ExhibHistChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             ExhibHistChild::Text(_) => {}
-            ExhibHistChild::Locus(elem) => {
-                ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::PersName(elem) => {
-                ctx.enter("persName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::PostBox(elem) => {
-                ctx.enter("postBox", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::EventList(elem) => {
-                ctx.enter("eventList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::GeogFeat(elem) => {
-                ctx.enter("geogFeat", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Repository(elem) => {
-                ctx.enter("repository", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Heraldry(elem) => {
-                ctx.enter("heraldry", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::PostCode(elem) => {
-                ctx.enter("postCode", index);
+            ExhibHistChild::StyleName(elem) => {
+                ctx.enter("styleName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -177,98 +132,8 @@ impl ExhibHistChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExhibHistChild::Name(elem) => {
-                ctx.enter("name", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Region(elem) => {
-                ctx.enter("region", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Dim(elem) => {
-                ctx.enter("dim", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::StyleName(elem) => {
-                ctx.enter("styleName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Width(elem) => {
-                ctx.enter("width", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Dimensions(elem) => {
-                ctx.enter("dimensions", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Seg(elem) => {
-                ctx.enter("seg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Signatures(elem) => {
-                ctx.enter("signatures", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Num(elem) => {
-                ctx.enter("num", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Title(elem) => {
-                ctx.enter("title", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Settlement(elem) => {
-                ctx.enter("settlement", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             ExhibHistChild::Term(elem) => {
                 ctx.enter("term", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::GeogName(elem) => {
-                ctx.enter("geogName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Q(elem) => {
-                ctx.enter("q", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Catchwords(elem) => {
-                ctx.enter("catchwords", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -277,58 +142,8 @@ impl ExhibHistChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExhibHistChild::Stamp(elem) => {
-                ctx.enter("stamp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Expan(elem) => {
-                ctx.enter("expan", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Country(elem) => {
-                ctx.enter("country", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Ref(elem) => {
-                ctx.enter("ref", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::SecFolio(elem) => {
-                ctx.enter("secFolio", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Depth(elem) => {
-                ctx.enter("depth", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::P(elem) => {
-                ctx.enter("p", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Bloc(elem) => {
-                ctx.enter("bloc", index);
+            ExhibHistChild::Extent(elem) => {
+                ctx.enter("extent", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -342,28 +157,18 @@ impl ExhibHistChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ExhibHistChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::PostCode(elem) => {
+                ctx.enter("postCode", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ExhibHistChild::Ptr(elem) => {
                 ctx.enter("ptr", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Height(elem) => {
-                ctx.enter("height", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::Street(elem) => {
-                ctx.enter("street", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ExhibHistChild::LocusGrp(elem) => {
-                ctx.enter("locusGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -372,8 +177,138 @@ impl ExhibHistChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExhibHistChild::Relation(elem) => {
-                ctx.enter("relation", index);
+            ExhibHistChild::Settlement(elem) => {
+                ctx.enter("settlement", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Title(elem) => {
+                ctx.enter("title", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Width(elem) => {
+                ctx.enter("width", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::P(elem) => {
+                ctx.enter("p", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Street(elem) => {
+                ctx.enter("street", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::PostBox(elem) => {
+                ctx.enter("postBox", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Stamp(elem) => {
+                ctx.enter("stamp", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::SecFolio(elem) => {
+                ctx.enter("secFolio", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Heraldry(elem) => {
+                ctx.enter("heraldry", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Height(elem) => {
+                ctx.enter("height", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::GeogName(elem) => {
+                ctx.enter("geogName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Annot(elem) => {
+                ctx.enter("annot", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Catchwords(elem) => {
+                ctx.enter("catchwords", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Dim(elem) => {
+                ctx.enter("dim", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Expan(elem) => {
+                ctx.enter("expan", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Locus(elem) => {
+                ctx.enter("locus", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Depth(elem) => {
+                ctx.enter("depth", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Num(elem) => {
+                ctx.enter("num", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::GeogFeat(elem) => {
+                ctx.enter("geogFeat", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::LocusGrp(elem) => {
+                ctx.enter("locusGrp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -382,13 +317,78 @@ impl ExhibHistChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExhibHistChild::Head(elem) => {
-                ctx.enter("head", index);
+            ExhibHistChild::PersName(elem) => {
+                ctx.enter("persName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ExhibHistChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
+            ExhibHistChild::Region(elem) => {
+                ctx.enter("region", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Relation(elem) => {
+                ctx.enter("relation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Rend(elem) => {
+                ctx.enter("rend", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Ref(elem) => {
+                ctx.enter("ref", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Country(elem) => {
+                ctx.enter("country", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Seg(elem) => {
+                ctx.enter("seg", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Q(elem) => {
+                ctx.enter("q", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Bloc(elem) => {
+                ctx.enter("bloc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Dimensions(elem) => {
+                ctx.enter("dimensions", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Repository(elem) => {
+                ctx.enter("repository", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Signatures(elem) => {
+                ctx.enter("signatures", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ExhibHistChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

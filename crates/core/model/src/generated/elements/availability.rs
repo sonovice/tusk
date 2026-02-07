@@ -8,42 +8,32 @@ pub enum AvailabilityChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "distributor")]
-    Distributor(Box<crate::generated::elements::Distributor>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "sysReq")]
-    SysReq(Box<crate::generated::elements::SysReq>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
     #[serde(rename = "identifier")]
     Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "price")]
-    Price(Box<crate::generated::elements::Price>),
-    #[serde(rename = "useRestrict")]
-    UseRestrict(Box<crate::generated::elements::UseRestrict>),
+    #[serde(rename = "sysReq")]
+    SysReq(Box<crate::generated::elements::SysReq>),
     #[serde(rename = "accessRestrict")]
     AccessRestrict(Box<crate::generated::elements::AccessRestrict>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "price")]
+    Price(Box<crate::generated::elements::Price>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "useRestrict")]
+    UseRestrict(Box<crate::generated::elements::UseRestrict>),
+    #[serde(rename = "distributor")]
+    Distributor(Box<crate::generated::elements::Distributor>),
 }
 impl AvailabilityChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             AvailabilityChild::Text(_) => {}
-            AvailabilityChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::Distributor(elem) => {
-                ctx.enter("distributor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            AvailabilityChild::Head(elem) => {
-                ctx.enter("head", index);
+            AvailabilityChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -52,13 +42,13 @@ impl AvailabilityChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AvailabilityChild::Date(elem) => {
-                ctx.enter("date", index);
+            AvailabilityChild::AccessRestrict(elem) => {
+                ctx.enter("accessRestrict", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AvailabilityChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            AvailabilityChild::Address(elem) => {
+                ctx.enter("address", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -67,13 +57,23 @@ impl AvailabilityChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            AvailabilityChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            AvailabilityChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             AvailabilityChild::UseRestrict(elem) => {
                 ctx.enter("useRestrict", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            AvailabilityChild::AccessRestrict(elem) => {
-                ctx.enter("accessRestrict", index);
+            AvailabilityChild::Distributor(elem) => {
+                ctx.enter("distributor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

@@ -5,49 +5,39 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MonogrChild {
-    #[serde(rename = "editor")]
-    Editor(Box<crate::generated::elements::Editor>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
-    #[serde(rename = "funder")]
-    Funder(Box<crate::generated::elements::Funder>),
-    #[serde(rename = "sponsor")]
-    Sponsor(Box<crate::generated::elements::Sponsor>),
-    #[serde(rename = "title")]
-    Title(Box<crate::generated::elements::Title>),
-    #[serde(rename = "extent")]
-    Extent(Box<crate::generated::elements::Extent>),
     #[serde(rename = "annot")]
     Annot(Box<crate::generated::elements::Annot>),
+    #[serde(rename = "funder")]
+    Funder(Box<crate::generated::elements::Funder>),
     #[serde(rename = "creator")]
     Creator(Box<crate::generated::elements::Creator>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "title")]
+    Title(Box<crate::generated::elements::Title>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
     #[serde(rename = "edition")]
     Edition(Box<crate::generated::elements::Edition>),
-    #[serde(rename = "imprint")]
-    Imprint(Box<crate::generated::elements::Imprint>),
+    #[serde(rename = "extent")]
+    Extent(Box<crate::generated::elements::Extent>),
+    #[serde(rename = "sponsor")]
+    Sponsor(Box<crate::generated::elements::Sponsor>),
     #[serde(rename = "contributor")]
     Contributor(Box<crate::generated::elements::Contributor>),
     #[serde(rename = "respStmt")]
     RespStmt(Box<crate::generated::elements::RespStmt>),
+    #[serde(rename = "imprint")]
+    Imprint(Box<crate::generated::elements::Imprint>),
+    #[serde(rename = "editor")]
+    Editor(Box<crate::generated::elements::Editor>),
 }
 impl MonogrChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            MonogrChild::Editor(elem) => {
-                ctx.enter("editor", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MonogrChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MonogrChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            MonogrChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -56,8 +46,13 @@ impl MonogrChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MonogrChild::Sponsor(elem) => {
-                ctx.enter("sponsor", index);
+            MonogrChild::Creator(elem) => {
+                ctx.enter("creator", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MonogrChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -66,18 +61,8 @@ impl MonogrChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MonogrChild::Extent(elem) => {
-                ctx.enter("extent", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MonogrChild::Annot(elem) => {
-                ctx.enter("annot", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            MonogrChild::Creator(elem) => {
-                ctx.enter("creator", index);
+            MonogrChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -86,8 +71,13 @@ impl MonogrChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            MonogrChild::Imprint(elem) => {
-                ctx.enter("imprint", index);
+            MonogrChild::Extent(elem) => {
+                ctx.enter("extent", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MonogrChild::Sponsor(elem) => {
+                ctx.enter("sponsor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -98,6 +88,16 @@ impl MonogrChild {
             }
             MonogrChild::RespStmt(elem) => {
                 ctx.enter("respStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MonogrChild::Imprint(elem) => {
+                ctx.enter("imprint", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            MonogrChild::Editor(elem) => {
+                ctx.enter("editor", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

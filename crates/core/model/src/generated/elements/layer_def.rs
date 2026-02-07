@@ -9,14 +9,14 @@ pub enum LayerDefChild {
     LabelAbbr(Box<crate::generated::elements::LabelAbbr>),
     #[serde(rename = "meterSigGrp")]
     MeterSigGrp(Box<crate::generated::elements::MeterSigGrp>),
+    #[serde(rename = "meterSig")]
+    MeterSig(Box<crate::generated::elements::MeterSig>),
     #[serde(rename = "instrDef")]
     InstrDef(Box<crate::generated::elements::InstrDef>),
     #[serde(rename = "ambitus")]
     Ambitus(Box<crate::generated::elements::Ambitus>),
     #[serde(rename = "label")]
     Label(Box<crate::generated::elements::Label>),
-    #[serde(rename = "meterSig")]
-    MeterSig(Box<crate::generated::elements::MeterSig>),
 }
 impl LayerDefChild {
     /// Validate this child element.
@@ -32,6 +32,11 @@ impl LayerDefChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            LayerDefChild::MeterSig(elem) => {
+                ctx.enter("meterSig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             LayerDefChild::InstrDef(elem) => {
                 ctx.enter("instrDef", index);
                 elem.validate_with_context(ctx);
@@ -44,11 +49,6 @@ impl LayerDefChild {
             }
             LayerDefChild::Label(elem) => {
                 ctx.enter("label", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            LayerDefChild::MeterSig(elem) => {
-                ctx.enter("meterSig", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

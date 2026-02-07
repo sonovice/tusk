@@ -7,32 +7,32 @@ use serde::{Deserialize, Serialize};
 pub enum EventChild {
     #[serde(rename = "persName")]
     PersName(Box<crate::generated::elements::PersName>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
     #[serde(rename = "name")]
     Name(Box<crate::generated::elements::Name>),
+    #[serde(rename = "address")]
+    Address(Box<crate::generated::elements::Address>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "date")]
+    Date(Box<crate::generated::elements::Date>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "corpName")]
+    CorpName(Box<crate::generated::elements::CorpName>),
+    #[serde(rename = "desc")]
+    Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
     #[serde(rename = "geogName")]
     GeogName(Box<crate::generated::elements::GeogName>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "address")]
-    Address(Box<crate::generated::elements::Address>),
-    #[serde(rename = "corpName")]
-    CorpName(Box<crate::generated::elements::CorpName>),
-    #[serde(rename = "date")]
-    Date(Box<crate::generated::elements::Date>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "desc")]
-    Desc(Box<crate::generated::elements::Desc>),
 }
 impl EventChild {
     /// Validate this child element.
@@ -43,13 +43,53 @@ impl EventChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            EventChild::Name(elem) => {
+                ctx.enter("name", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::Address(elem) => {
+                ctx.enter("address", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             EventChild::Table(elem) => {
                 ctx.enter("table", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EventChild::Name(elem) => {
-                ctx.enter("name", index);
+            EventChild::Date(elem) => {
+                ctx.enter("date", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::List(elem) => {
+                ctx.enter("list", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::CorpName(elem) => {
+                ctx.enter("corpName", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::Desc(elem) => {
+                ctx.enter("desc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            EventChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -63,48 +103,8 @@ impl EventChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            EventChild::List(elem) => {
-                ctx.enter("list", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::Address(elem) => {
-                ctx.enter("address", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::CorpName(elem) => {
-                ctx.enter("corpName", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::Date(elem) => {
-                ctx.enter("date", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             EventChild::CastList(elem) => {
                 ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::EventList(elem) => {
-                ctx.enter("eventList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            EventChild::Desc(elem) => {
-                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

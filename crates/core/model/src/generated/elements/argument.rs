@@ -5,73 +5,43 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ArgumentChild {
-    #[serde(rename = "fig")]
-    Fig(Box<crate::generated::elements::Fig>),
-    #[serde(rename = "table")]
-    Table(Box<crate::generated::elements::Table>),
-    #[serde(rename = "cb")]
-    Cb(Box<crate::generated::elements::Cb>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "eventList")]
-    EventList(Box<crate::generated::elements::EventList>),
-    #[serde(rename = "sp")]
-    Sp(Box<crate::generated::elements::Sp>),
-    #[serde(rename = "list")]
-    List(Box<crate::generated::elements::List>),
-    #[serde(rename = "quote")]
-    Quote(Box<crate::generated::elements::Quote>),
-    #[serde(rename = "lb")]
-    Lb(Box<crate::generated::elements::Lb>),
     #[serde(rename = "castList")]
     CastList(Box<crate::generated::elements::CastList>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "pb")]
-    Pb(Box<crate::generated::elements::Pb>),
-    #[serde(rename = "colLayout")]
-    ColLayout(Box<crate::generated::elements::ColLayout>),
-    #[serde(rename = "p")]
-    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "quote")]
+    Quote(Box<crate::generated::elements::Quote>),
     #[serde(rename = "lg")]
     Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "pb")]
+    Pb(Box<crate::generated::elements::Pb>),
+    #[serde(rename = "lb")]
+    Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "table")]
+    Table(Box<crate::generated::elements::Table>),
+    #[serde(rename = "colLayout")]
+    ColLayout(Box<crate::generated::elements::ColLayout>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "eventList")]
+    EventList(Box<crate::generated::elements::EventList>),
+    #[serde(rename = "fig")]
+    Fig(Box<crate::generated::elements::Fig>),
+    #[serde(rename = "list")]
+    List(Box<crate::generated::elements::List>),
+    #[serde(rename = "cb")]
+    Cb(Box<crate::generated::elements::Cb>),
+    #[serde(rename = "p")]
+    P(Box<crate::generated::elements::P>),
+    #[serde(rename = "sp")]
+    Sp(Box<crate::generated::elements::Sp>),
 }
 impl ArgumentChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ArgumentChild::Fig(elem) => {
-                ctx.enter("fig", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::Table(elem) => {
-                ctx.enter("table", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::Cb(elem) => {
-                ctx.enter("cb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::EventList(elem) => {
-                ctx.enter("eventList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::Sp(elem) => {
-                ctx.enter("sp", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::List(elem) => {
-                ctx.enter("list", index);
+            ArgumentChild::CastList(elem) => {
+                ctx.enter("castList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -80,18 +50,8 @@ impl ArgumentChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ArgumentChild::Lb(elem) => {
-                ctx.enter("lb", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::CastList(elem) => {
-                ctx.enter("castList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ArgumentChild::Head(elem) => {
-                ctx.enter("head", index);
+            ArgumentChild::Lg(elem) => {
+                ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -100,8 +60,48 @@ impl ArgumentChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            ArgumentChild::Lb(elem) => {
+                ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::Table(elem) => {
+                ctx.enter("table", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             ArgumentChild::ColLayout(elem) => {
                 ctx.enter("colLayout", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::EventList(elem) => {
+                ctx.enter("eventList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::Fig(elem) => {
+                ctx.enter("fig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::List(elem) => {
+                ctx.enter("list", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ArgumentChild::Cb(elem) => {
+                ctx.enter("cb", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -110,8 +110,8 @@ impl ArgumentChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ArgumentChild::Lg(elem) => {
-                ctx.enter("lg", index);
+            ArgumentChild::Sp(elem) => {
+                ctx.enter("sp", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

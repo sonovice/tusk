@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CatRelChild {
-    #[serde(rename = "label")]
-    Label(Box<crate::generated::elements::Label>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "label")]
+    Label(Box<crate::generated::elements::Label>),
 }
 impl CatRelChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            CatRelChild::Label(elem) => {
-                ctx.enter("label", index);
+            CatRelChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            CatRelChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            CatRelChild::Label(elem) => {
+                ctx.enter("label", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

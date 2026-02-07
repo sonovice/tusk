@@ -8,42 +8,42 @@ pub enum PostBoxChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "add")]
-    Add(Box<crate::generated::elements::Add>),
-    #[serde(rename = "corr")]
-    Corr(Box<crate::generated::elements::Corr>),
-    #[serde(rename = "handShift")]
-    HandShift(Box<crate::generated::elements::HandShift>),
-    #[serde(rename = "subst")]
-    Subst(Box<crate::generated::elements::Subst>),
     #[serde(rename = "restore")]
     Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "del")]
-    Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "reg")]
-    Reg(Box<crate::generated::elements::Reg>),
-    #[serde(rename = "orig")]
-    Orig(Box<crate::generated::elements::Orig>),
-    #[serde(rename = "supplied")]
-    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "corr")]
+    Corr(Box<crate::generated::elements::Corr>),
     #[serde(rename = "sic")]
     Sic(Box<crate::generated::elements::Sic>),
-    #[serde(rename = "choice")]
-    Choice(Box<crate::generated::elements::Choice>),
-    #[serde(rename = "unclear")]
-    Unclear(Box<crate::generated::elements::Unclear>),
-    #[serde(rename = "gap")]
-    Gap(Box<crate::generated::elements::Gap>),
     #[serde(rename = "damage")]
     Damage(Box<crate::generated::elements::Damage>),
+    #[serde(rename = "supplied")]
+    Supplied(Box<crate::generated::elements::Supplied>),
+    #[serde(rename = "reg")]
+    Reg(Box<crate::generated::elements::Reg>),
+    #[serde(rename = "unclear")]
+    Unclear(Box<crate::generated::elements::Unclear>),
+    #[serde(rename = "handShift")]
+    HandShift(Box<crate::generated::elements::HandShift>),
+    #[serde(rename = "choice")]
+    Choice(Box<crate::generated::elements::Choice>),
+    #[serde(rename = "gap")]
+    Gap(Box<crate::generated::elements::Gap>),
+    #[serde(rename = "orig")]
+    Orig(Box<crate::generated::elements::Orig>),
+    #[serde(rename = "add")]
+    Add(Box<crate::generated::elements::Add>),
+    #[serde(rename = "subst")]
+    Subst(Box<crate::generated::elements::Subst>),
+    #[serde(rename = "del")]
+    Del(Box<crate::generated::elements::Del>),
 }
 impl PostBoxChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             PostBoxChild::Text(_) => {}
-            PostBoxChild::Add(elem) => {
-                ctx.enter("add", index);
+            PostBoxChild::Restore(elem) => {
+                ctx.enter("restore", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -52,33 +52,13 @@ impl PostBoxChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PostBoxChild::HandShift(elem) => {
-                ctx.enter("handShift", index);
+            PostBoxChild::Sic(elem) => {
+                ctx.enter("sic", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PostBoxChild::Subst(elem) => {
-                ctx.enter("subst", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PostBoxChild::Restore(elem) => {
-                ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PostBoxChild::Del(elem) => {
-                ctx.enter("del", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PostBoxChild::Reg(elem) => {
-                ctx.enter("reg", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PostBoxChild::Orig(elem) => {
-                ctx.enter("orig", index);
+            PostBoxChild::Damage(elem) => {
+                ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -87,13 +67,8 @@ impl PostBoxChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PostBoxChild::Sic(elem) => {
-                ctx.enter("sic", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            PostBoxChild::Choice(elem) => {
-                ctx.enter("choice", index);
+            PostBoxChild::Reg(elem) => {
+                ctx.enter("reg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -102,13 +77,38 @@ impl PostBoxChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
+            PostBoxChild::HandShift(elem) => {
+                ctx.enter("handShift", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PostBoxChild::Choice(elem) => {
+                ctx.enter("choice", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             PostBoxChild::Gap(elem) => {
                 ctx.enter("gap", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            PostBoxChild::Damage(elem) => {
-                ctx.enter("damage", index);
+            PostBoxChild::Orig(elem) => {
+                ctx.enter("orig", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PostBoxChild::Add(elem) => {
+                ctx.enter("add", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PostBoxChild::Subst(elem) => {
+                ctx.enter("subst", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            PostBoxChild::Del(elem) => {
+                ctx.enter("del", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

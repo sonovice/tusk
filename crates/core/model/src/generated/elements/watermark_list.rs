@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum WatermarkListChild {
     #[serde(rename = "watermark")]
     Watermark(Box<crate::generated::elements::Watermark>),
-    #[serde(rename = "annot")]
-    Annot(Box<crate::generated::elements::Annot>),
     #[serde(rename = "head")]
     Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "annot")]
+    Annot(Box<crate::generated::elements::Annot>),
 }
 impl WatermarkListChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl WatermarkListChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WatermarkListChild::Annot(elem) => {
-                ctx.enter("annot", index);
+            WatermarkListChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            WatermarkListChild::Head(elem) => {
-                ctx.enter("head", index);
+            WatermarkListChild::Annot(elem) => {
+                ctx.enter("annot", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

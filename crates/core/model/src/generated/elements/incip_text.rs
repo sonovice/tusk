@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub enum IncipTextChild {
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "lg")]
     Lg(Box<crate::generated::elements::Lg>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl IncipTextChild {
     /// Validate this child element.
@@ -21,13 +21,13 @@ impl IncipTextChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipTextChild::Head(elem) => {
-                ctx.enter("head", index);
+            IncipTextChild::Lg(elem) => {
+                ctx.enter("lg", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            IncipTextChild::Lg(elem) => {
-                ctx.enter("lg", index);
+            IncipTextChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

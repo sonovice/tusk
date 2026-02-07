@@ -10,10 +10,10 @@ pub enum LocusChild {
     Text(String),
     #[serde(rename = "rend")]
     Rend(Box<crate::generated::elements::Rend>),
-    #[serde(rename = "locus")]
-    Locus(Box<crate::generated::elements::Locus>),
     #[serde(rename = "symbol")]
     Symbol(Box<crate::generated::elements::Symbol>),
+    #[serde(rename = "locus")]
+    Locus(Box<crate::generated::elements::Locus>),
 }
 impl LocusChild {
     /// Validate this child element.
@@ -25,13 +25,13 @@ impl LocusChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LocusChild::Locus(elem) => {
-                ctx.enter("locus", index);
+            LocusChild::Symbol(elem) => {
+                ctx.enter("symbol", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            LocusChild::Symbol(elem) => {
-                ctx.enter("symbol", index);
+            LocusChild::Locus(elem) => {
+                ctx.enter("locus", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

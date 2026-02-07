@@ -5,24 +5,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WatermarkDescChild {
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
     #[serde(rename = "watermarkList")]
     WatermarkList(Box<crate::generated::elements::WatermarkList>),
     #[serde(rename = "p")]
     P(Box<crate::generated::elements::P>),
     #[serde(rename = "watermark")]
     Watermark(Box<crate::generated::elements::Watermark>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
 }
 impl WatermarkDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            WatermarkDescChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             WatermarkDescChild::WatermarkList(elem) => {
                 ctx.enter("watermarkList", index);
                 elem.validate_with_context(ctx);
@@ -35,6 +30,11 @@ impl WatermarkDescChild {
             }
             WatermarkDescChild::Watermark(elem) => {
                 ctx.enter("watermark", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            WatermarkDescChild::Head(elem) => {
+                ctx.enter("head", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

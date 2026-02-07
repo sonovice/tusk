@@ -5,46 +5,36 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BifoliumChild {
+    #[serde(rename = "cutout")]
+    Cutout(Box<crate::generated::elements::Cutout>),
     #[serde(rename = "restore")]
     Restore(Box<crate::generated::elements::Restore>),
-    #[serde(rename = "damage")]
-    Damage(Box<crate::generated::elements::Damage>),
-    #[serde(rename = "bifolium")]
-    Bifolium(Box<crate::generated::elements::Bifolium>),
-    #[serde(rename = "patch")]
-    Patch(Box<crate::generated::elements::Patch>),
     #[serde(rename = "del")]
     Del(Box<crate::generated::elements::Del>),
-    #[serde(rename = "folium")]
-    Folium(Box<crate::generated::elements::Folium>),
+    #[serde(rename = "bifolium")]
+    Bifolium(Box<crate::generated::elements::Bifolium>),
+    #[serde(rename = "damage")]
+    Damage(Box<crate::generated::elements::Damage>),
     #[serde(rename = "add")]
     Add(Box<crate::generated::elements::Add>),
     #[serde(rename = "gap")]
     Gap(Box<crate::generated::elements::Gap>),
-    #[serde(rename = "cutout")]
-    Cutout(Box<crate::generated::elements::Cutout>),
+    #[serde(rename = "patch")]
+    Patch(Box<crate::generated::elements::Patch>),
+    #[serde(rename = "folium")]
+    Folium(Box<crate::generated::elements::Folium>),
 }
 impl BifoliumChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
+            BifoliumChild::Cutout(elem) => {
+                ctx.enter("cutout", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
             BifoliumChild::Restore(elem) => {
                 ctx.enter("restore", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BifoliumChild::Damage(elem) => {
-                ctx.enter("damage", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BifoliumChild::Bifolium(elem) => {
-                ctx.enter("bifolium", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            BifoliumChild::Patch(elem) => {
-                ctx.enter("patch", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -53,8 +43,13 @@ impl BifoliumChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BifoliumChild::Folium(elem) => {
-                ctx.enter("folium", index);
+            BifoliumChild::Bifolium(elem) => {
+                ctx.enter("bifolium", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BifoliumChild::Damage(elem) => {
+                ctx.enter("damage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -68,8 +63,13 @@ impl BifoliumChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            BifoliumChild::Cutout(elem) => {
-                ctx.enter("cutout", index);
+            BifoliumChild::Patch(elem) => {
+                ctx.enter("patch", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            BifoliumChild::Folium(elem) => {
+                ctx.enter("folium", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

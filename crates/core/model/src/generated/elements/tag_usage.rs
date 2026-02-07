@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TagUsageChild {
-    #[serde(rename = "attUsage")]
-    AttUsage(Box<crate::generated::elements::AttUsage>),
     #[serde(rename = "desc")]
     Desc(Box<crate::generated::elements::Desc>),
+    #[serde(rename = "attUsage")]
+    AttUsage(Box<crate::generated::elements::AttUsage>),
 }
 impl TagUsageChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            TagUsageChild::AttUsage(elem) => {
-                ctx.enter("attUsage", index);
+            TagUsageChild::Desc(elem) => {
+                ctx.enter("desc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            TagUsageChild::Desc(elem) => {
-                ctx.enter("desc", index);
+            TagUsageChild::AttUsage(elem) => {
+                ctx.enter("attUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

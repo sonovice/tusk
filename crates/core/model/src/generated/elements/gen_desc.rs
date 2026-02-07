@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GenDescChild {
-    #[serde(rename = "genDesc")]
-    GenDesc(Box<crate::generated::elements::GenDesc>),
     #[serde(rename = "genState")]
     GenState(Box<crate::generated::elements::GenState>),
+    #[serde(rename = "genDesc")]
+    GenDesc(Box<crate::generated::elements::GenDesc>),
 }
 impl GenDescChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            GenDescChild::GenDesc(elem) => {
-                ctx.enter("genDesc", index);
+            GenDescChild::GenState(elem) => {
+                ctx.enter("genState", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            GenDescChild::GenState(elem) => {
-                ctx.enter("genState", index);
+            GenDescChild::GenDesc(elem) => {
+                ctx.enter("genDesc", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

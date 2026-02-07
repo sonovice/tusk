@@ -8,23 +8,18 @@ pub enum RehChild {
     /// Text content.
     #[serde(rename = "$text")]
     Text(String),
-    #[serde(rename = "rend")]
-    Rend(Box<crate::generated::elements::Rend>),
     #[serde(rename = "stack")]
     Stack(Box<crate::generated::elements::Stack>),
     #[serde(rename = "lb")]
     Lb(Box<crate::generated::elements::Lb>),
+    #[serde(rename = "rend")]
+    Rend(Box<crate::generated::elements::Rend>),
 }
 impl RehChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
             RehChild::Text(_) => {}
-            RehChild::Rend(elem) => {
-                ctx.enter("rend", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
             RehChild::Stack(elem) => {
                 ctx.enter("stack", index);
                 elem.validate_with_context(ctx);
@@ -32,6 +27,11 @@ impl RehChild {
             }
             RehChild::Lb(elem) => {
                 ctx.enter("lb", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            RehChild::Rend(elem) => {
+                ctx.enter("rend", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

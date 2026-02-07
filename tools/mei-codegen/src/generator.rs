@@ -115,7 +115,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
 
         use serde::{Deserialize, Serialize};
         use crate::generated::validation::{ValidationContext, Validate};
-        use once_cell::sync::Lazy;
+        use std::sync::LazyLock;
         use regex::Regex;
 
     });
@@ -391,7 +391,7 @@ fn generate_primitive_validation(
         // Escape the pattern for use in Rust string
         let pattern_escaped = p.replace('\\', "\\\\").replace('"', "\\\"");
         quote! {
-            static #regex_name: Lazy<Regex> = Lazy::new(|| {
+            static #regex_name: LazyLock<Regex> = LazyLock::new(|| {
                 Regex::new(#p).expect("Invalid regex pattern in MEI spec")
             });
 
@@ -1060,6 +1060,19 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
     }
 }
 
+/// Extra child elements to inject into specific parent elements.
+///
+/// These are not part of the MEI 6.0 ODD content model but are needed for
+/// backward compatibility with MEI 5.x documents (e.g., deprecated elements
+/// that the deserializer upgrades into newer equivalents).
+///
+/// Format: `(parent_element, child_element)`
+const EXTRA_CHILDREN: &[(&str, &str)] = &[
+    // MEI 5.x deprecated composer/lyricist/arranger/author/librettist inside <work>;
+    // the deserializer converts them to <creator> with a @role attribute.
+    ("work", "creator"),
+];
+
 fn generate_child_content(
     elem: &Element,
     defs: &OddDefinitions,
@@ -1073,6 +1086,13 @@ fn generate_child_content(
     let mut has_text = false;
 
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
+
+    // Inject backward-compatibility extra children (not in the ODD but needed at runtime)
+    for &(parent, child) in EXTRA_CHILDREN {
+        if elem.ident == parent {
+            child_types.insert(child.to_string());
+        }
+    }
 
     if child_types.is_empty() && !has_text {
         return (quote! {}, None);

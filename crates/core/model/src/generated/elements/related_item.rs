@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RelatedItemChild {
-    #[serde(rename = "biblStruct")]
-    BiblStruct(Box<crate::generated::elements::BiblStruct>),
     #[serde(rename = "bibl")]
     Bibl(Box<crate::generated::elements::Bibl>),
+    #[serde(rename = "biblStruct")]
+    BiblStruct(Box<crate::generated::elements::BiblStruct>),
 }
 impl RelatedItemChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            RelatedItemChild::BiblStruct(elem) => {
-                ctx.enter("biblStruct", index);
+            RelatedItemChild::Bibl(elem) => {
+                ctx.enter("bibl", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            RelatedItemChild::Bibl(elem) => {
-                ctx.enter("bibl", index);
+            RelatedItemChild::BiblStruct(elem) => {
+                ctx.enter("biblStruct", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }

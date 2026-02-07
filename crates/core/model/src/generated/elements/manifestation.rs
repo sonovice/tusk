@@ -5,124 +5,64 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ManifestationChild {
-    #[serde(rename = "history")]
-    History(Box<crate::generated::elements::History>),
-    #[serde(rename = "titleStmt")]
-    TitleStmt(Box<crate::generated::elements::TitleStmt>),
-    #[serde(rename = "notesStmt")]
-    NotesStmt(Box<crate::generated::elements::NotesStmt>),
+    #[serde(rename = "classification")]
+    Classification(Box<crate::generated::elements::Classification>),
     #[serde(rename = "locus")]
     Locus(Box<crate::generated::elements::Locus>),
-    #[serde(rename = "editionStmt")]
-    EditionStmt(Box<crate::generated::elements::EditionStmt>),
-    #[serde(rename = "creation")]
-    Creation(Box<crate::generated::elements::Creation>),
-    #[serde(rename = "biblList")]
-    BiblList(Box<crate::generated::elements::BiblList>),
-    #[serde(rename = "physLoc")]
-    PhysLoc(Box<crate::generated::elements::PhysLoc>),
-    #[serde(rename = "relationList")]
-    RelationList(Box<crate::generated::elements::RelationList>),
-    #[serde(rename = "contents")]
-    Contents(Box<crate::generated::elements::Contents>),
-    #[serde(rename = "itemList")]
-    ItemList(Box<crate::generated::elements::ItemList>),
-    #[serde(rename = "head")]
-    Head(Box<crate::generated::elements::Head>),
-    #[serde(rename = "componentList")]
-    ComponentList(Box<crate::generated::elements::ComponentList>),
-    #[serde(rename = "langUsage")]
-    LangUsage(Box<crate::generated::elements::LangUsage>),
     #[serde(rename = "pubStmt")]
     PubStmt(Box<crate::generated::elements::PubStmt>),
     #[serde(rename = "dedication")]
     Dedication(Box<crate::generated::elements::Dedication>),
-    #[serde(rename = "availability")]
-    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "physLoc")]
+    PhysLoc(Box<crate::generated::elements::PhysLoc>),
+    #[serde(rename = "contents")]
+    Contents(Box<crate::generated::elements::Contents>),
     #[serde(rename = "locusGrp")]
     LocusGrp(Box<crate::generated::elements::LocusGrp>),
-    #[serde(rename = "extMeta")]
-    ExtMeta(Box<crate::generated::elements::ExtMeta>),
-    #[serde(rename = "seriesStmt")]
-    SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
-    #[serde(rename = "identifier")]
-    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "titleStmt")]
+    TitleStmt(Box<crate::generated::elements::TitleStmt>),
+    #[serde(rename = "componentList")]
+    ComponentList(Box<crate::generated::elements::ComponentList>),
     #[serde(rename = "physDesc")]
     PhysDesc(Box<crate::generated::elements::PhysDesc>),
-    #[serde(rename = "classification")]
-    Classification(Box<crate::generated::elements::Classification>),
+    #[serde(rename = "seriesStmt")]
+    SeriesStmt(Box<crate::generated::elements::SeriesStmt>),
+    #[serde(rename = "relationList")]
+    RelationList(Box<crate::generated::elements::RelationList>),
+    #[serde(rename = "creation")]
+    Creation(Box<crate::generated::elements::Creation>),
+    #[serde(rename = "availability")]
+    Availability(Box<crate::generated::elements::Availability>),
+    #[serde(rename = "notesStmt")]
+    NotesStmt(Box<crate::generated::elements::NotesStmt>),
+    #[serde(rename = "history")]
+    History(Box<crate::generated::elements::History>),
+    #[serde(rename = "identifier")]
+    Identifier(Box<crate::generated::elements::Identifier>),
+    #[serde(rename = "editionStmt")]
+    EditionStmt(Box<crate::generated::elements::EditionStmt>),
+    #[serde(rename = "head")]
+    Head(Box<crate::generated::elements::Head>),
+    #[serde(rename = "langUsage")]
+    LangUsage(Box<crate::generated::elements::LangUsage>),
+    #[serde(rename = "biblList")]
+    BiblList(Box<crate::generated::elements::BiblList>),
+    #[serde(rename = "itemList")]
+    ItemList(Box<crate::generated::elements::ItemList>),
+    #[serde(rename = "extMeta")]
+    ExtMeta(Box<crate::generated::elements::ExtMeta>),
 }
 impl ManifestationChild {
     /// Validate this child element.
     pub fn validate_with_context(&self, ctx: &mut ValidationContext, index: usize) {
         match self {
-            ManifestationChild::History(elem) => {
-                ctx.enter("history", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::TitleStmt(elem) => {
-                ctx.enter("titleStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::NotesStmt(elem) => {
-                ctx.enter("notesStmt", index);
+            ManifestationChild::Classification(elem) => {
+                ctx.enter("classification", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
             ManifestationChild::Locus(elem) => {
                 ctx.enter("locus", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::EditionStmt(elem) => {
-                ctx.enter("editionStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::Creation(elem) => {
-                ctx.enter("creation", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::BiblList(elem) => {
-                ctx.enter("biblList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::PhysLoc(elem) => {
-                ctx.enter("physLoc", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::RelationList(elem) => {
-                ctx.enter("relationList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::Contents(elem) => {
-                ctx.enter("contents", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::ItemList(elem) => {
-                ctx.enter("itemList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::Head(elem) => {
-                ctx.enter("head", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::ComponentList(elem) => {
-                ctx.enter("componentList", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::LangUsage(elem) => {
-                ctx.enter("langUsage", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -136,8 +76,13 @@ impl ManifestationChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationChild::Availability(elem) => {
-                ctx.enter("availability", index);
+            ManifestationChild::PhysLoc(elem) => {
+                ctx.enter("physLoc", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::Contents(elem) => {
+                ctx.enter("contents", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -146,18 +91,13 @@ impl ManifestationChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationChild::ExtMeta(elem) => {
-                ctx.enter("extMeta", index);
+            ManifestationChild::TitleStmt(elem) => {
+                ctx.enter("titleStmt", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationChild::SeriesStmt(elem) => {
-                ctx.enter("seriesStmt", index);
-                elem.validate_with_context(ctx);
-                ctx.exit();
-            }
-            ManifestationChild::Identifier(elem) => {
-                ctx.enter("identifier", index);
+            ManifestationChild::ComponentList(elem) => {
+                ctx.enter("componentList", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
@@ -166,8 +106,68 @@ impl ManifestationChild {
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
-            ManifestationChild::Classification(elem) => {
-                ctx.enter("classification", index);
+            ManifestationChild::SeriesStmt(elem) => {
+                ctx.enter("seriesStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::RelationList(elem) => {
+                ctx.enter("relationList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::Creation(elem) => {
+                ctx.enter("creation", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::Availability(elem) => {
+                ctx.enter("availability", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::NotesStmt(elem) => {
+                ctx.enter("notesStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::History(elem) => {
+                ctx.enter("history", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::Identifier(elem) => {
+                ctx.enter("identifier", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::EditionStmt(elem) => {
+                ctx.enter("editionStmt", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::Head(elem) => {
+                ctx.enter("head", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::LangUsage(elem) => {
+                ctx.enter("langUsage", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::BiblList(elem) => {
+                ctx.enter("biblList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::ItemList(elem) => {
+                ctx.enter("itemList", index);
+                elem.validate_with_context(ctx);
+                ctx.exit();
+            }
+            ManifestationChild::ExtMeta(elem) => {
+                ctx.enter("extMeta", index);
                 elem.validate_with_context(ctx);
                 ctx.exit();
             }
