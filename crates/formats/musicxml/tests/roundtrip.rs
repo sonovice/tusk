@@ -1,15 +1,20 @@
 //! Roundtrip tests for MusicXML → MEI → MusicXML conversion.
 //!
-//! Three levels of testing:
+//! All comparisons happen in **timewise** space — `ScoreTimewise` is the
+//! canonical internal representation.
+//!
+//! Four levels of testing:
 //!
 //! 1. **Conversion roundtrip** (import/export only):
-//!    XML → parse → ScorePartwise₁ → import → Mei → export → ScorePartwise₂
-//!    Compares ScorePartwise₁ vs ScorePartwise₂ directly.
+//!    XML → parse → partwise_to_timewise → ScoreTimewise₁
+//!    XML → parse → import → MEI → export_timewise → ScoreTimewise₂
+//!    Compares ScoreTimewise₁ vs ScoreTimewise₂.
 //!    Tests: import + export logic, isolated from serializer.
 //!
 //! 2. **Full roundtrip** (includes serializer/parser):
-//!    XML → parse → ScorePartwise₁ → import → Mei → export → serialize → XML₂ → parse → ScorePartwise₃
-//!    Compares ScorePartwise₁ vs ScorePartwise₃.
+//!    XML → parse → partwise_to_timewise → ScoreTimewise₁
+//!    XML → parse → import → MEI → export → serialize → XML₂ → parse → partwise_to_timewise → ScoreTimewise₃
+//!    Compares ScoreTimewise₁ vs ScoreTimewise₃.
 //!    Tests: entire pipeline including MusicXML serializer.
 //!
 //! 3. **Triangle MEI roundtrip** (catches symmetric import bugs):
@@ -18,9 +23,9 @@
 //!    Tests: if import has inconsistent behavior, MEI₁ ≠ MEI₂.
 //!
 //! 4. **Triangle MusicXML roundtrip** (catches symmetric export bugs):
-//!    MEI₁ → export → MusicXML₁ → import → MEI₂ → export → MusicXML₂
-//!    Compares MusicXML₁ vs MusicXML₂.
-//!    Tests: if export has inconsistent behavior, MusicXML₁ ≠ MusicXML₂.
+//!    MEI₁ → export_timewise → ScoreTimewise₁ → timewise_to_partwise → import → MEI₂ → export_timewise → ScoreTimewise₂
+//!    Compares ScoreTimewise₁ vs ScoreTimewise₂ (in timewise space).
+//!    Tests: if export has inconsistent behavior, ScoreTimewise₁ ≠ ScoreTimewise₂.
 //!
 //! If conversion roundtrip passes but full roundtrip fails → serializer bug.
 //! If conversion roundtrip fails → import/export bug.
@@ -32,10 +37,12 @@ use std::fs;
 use tusk_mei::xml_compare;
 use tusk_model::elements::Mei;
 use tusk_musicxml::model::attributes::{ClefSign, KeyContent, TimeContent};
-use tusk_musicxml::model::elements::{MeasureContent, ScorePartwise};
+use tusk_musicxml::model::elements::{MeasureContent, ScoreTimewise};
 use tusk_musicxml::model::note::FullNoteContent;
 use tusk_musicxml::parser::{parse_score_partwise, parse_score_timewise};
-use tusk_musicxml::{export, import, serialize};
+use tusk_musicxml::{
+    export, export_timewise, import, import_timewise, serialize, timewise_to_partwise,
+};
 
 /// Read a file and convert from UTF-16 to UTF-8 if needed.
 /// Handles both UTF-16 BE and LE with BOM detection.
@@ -77,58 +84,75 @@ fn is_timewise(xml: &str) -> bool {
     xml.contains("<score-timewise")
 }
 
-/// Parse MusicXML, auto-detecting partwise vs timewise format.
-fn parse_musicxml(xml: &str) -> Result<ScorePartwise, String> {
-    if is_timewise(xml) {
-        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))
-    } else {
-        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))
-    }
-}
-
-/// Conversion roundtrip: MusicXML → MEI → MusicXML (no serialization).
+/// Conversion roundtrip in timewise space (no serialization).
 /// Tests import/export logic only, isolated from serializer bugs.
-/// Returns (original, exported) for direct model comparison.
-fn conversion_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    let original = parse_musicxml(xml)?;
-    let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
-    let exported = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
-    Ok((original, exported))
+/// Returns (original_tw, exported_tw) for direct model comparison.
+fn conversion_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
+    let partwise = if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+    } else {
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
+    };
+    let original_tw = import_timewise(&partwise);
+    let mei = import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
+    let exported_tw =
+        export_timewise(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    Ok((original_tw, exported_tw))
 }
 
-/// Full roundtrip: MusicXML → MEI → MusicXML → XML string → MusicXML.
-/// Tests entire pipeline including MusicXML serializer/parser.
-/// Returns (original, roundtripped) after serialize→parse cycle.
-fn full_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    let original = parse_musicxml(xml)?;
-    let mei = import(&original).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
-    let exported = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
-    let xml2 = serialize(&exported).map_err(|e| format!("Serialize error: {}", e))?;
-    let roundtripped = parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
-    Ok((original, roundtripped))
+/// Full roundtrip in timewise space (includes serializer/parser).
+/// Tests entire pipeline including MusicXML serializer.
+/// Returns (original_tw, roundtripped_tw) after serialize→parse cycle.
+fn full_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
+    let partwise = if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+    } else {
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
+    };
+    let original_tw = import_timewise(&partwise);
+    let mei = import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
+    let exported_pw = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    let xml2 = serialize(&exported_pw).map_err(|e| format!("Serialize error: {}", e))?;
+    let roundtripped_pw =
+        parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
+    let roundtripped_tw = import_timewise(&roundtripped_pw);
+    Ok((original_tw, roundtripped_tw))
 }
 
 /// Triangle roundtrip A: MusicXML → MEI₁ → MusicXML → MEI₂.
 /// Catches import bugs where second import reveals inconsistency.
 /// Returns (mei1, mei2) for direct comparison.
 fn triangle_mei_roundtrip(xml: &str) -> Result<(Mei, Mei), String> {
-    let original = parse_musicxml(xml)?;
-    let mei1 = import(&original).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
-    let mxml1 = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
-    let mei2 = import(&mxml1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let partwise = if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+    } else {
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
+    };
+    let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let mxml1_pw = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let mei2 =
+        import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     Ok((mei1, mei2))
 }
 
-/// Triangle roundtrip B: MEI₁ → MusicXML₁ → MEI₂ → MusicXML₂.
+/// Triangle roundtrip B in timewise space.
+/// MEI₁ → ScoreTimewise₁, then timewise_to_partwise → import → MEI₂ → ScoreTimewise₂.
 /// Catches export bugs where second export reveals inconsistency.
-/// Returns (mxml1, mxml2) for comparison.
-fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
-    let original = parse_musicxml(xml)?;
-    let mei1 = import(&original).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
-    let mxml1 = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
-    let mei2 = import(&mxml1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
-    let mxml2 = export(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
-    Ok((mxml1, mxml2))
+/// Returns (tw1, tw2) for comparison in timewise space.
+fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
+    let partwise = if is_timewise(xml) {
+        parse_score_timewise(xml).map_err(|e| format!("Parse error (timewise): {}", e))?
+    } else {
+        parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
+    };
+    let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let tw1 =
+        export_timewise(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let pw1 = timewise_to_partwise(tw1.clone());
+    let mei2 = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let tw2 =
+        export_timewise(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
+    Ok((tw1, tw2))
 }
 
 /// Load a fixture file from tests/fixtures/musicxml/.
@@ -145,13 +169,15 @@ fn load_fixture(fixture_name: &str) -> Result<String, String> {
 /// Load a fixture and perform conversion roundtrip (no serialization).
 fn conversion_roundtrip_fixture(
     fixture_name: &str,
-) -> Result<(ScorePartwise, ScorePartwise), String> {
+) -> Result<(ScoreTimewise, ScoreTimewise), String> {
     let xml = load_fixture(fixture_name)?;
     conversion_roundtrip(&xml)
 }
 
 /// Load a fixture and perform full roundtrip (with serialization).
-fn full_roundtrip_fixture(fixture_name: &str) -> Result<(ScorePartwise, ScorePartwise), String> {
+fn full_roundtrip_fixture(
+    fixture_name: &str,
+) -> Result<(ScoreTimewise, ScoreTimewise), String> {
     let xml = load_fixture(fixture_name)?;
     full_roundtrip(&xml)
 }
@@ -165,7 +191,7 @@ fn triangle_mei_roundtrip_fixture(fixture_name: &str) -> Result<(Mei, Mei), Stri
 /// Load a fixture and perform triangle MusicXML roundtrip.
 fn triangle_mxml_roundtrip_fixture(
     fixture_name: &str,
-) -> Result<(ScorePartwise, ScorePartwise), String> {
+) -> Result<(ScoreTimewise, ScoreTimewise), String> {
     let xml = load_fixture(fixture_name)?;
     triangle_mxml_roundtrip(&xml)
 }
@@ -194,74 +220,73 @@ impl Differences {
     }
 }
 
-/// Compare two MusicXML scores for semantic equivalence.
-fn compare_scores(original: &ScorePartwise, roundtripped: &ScorePartwise) -> Differences {
+/// Compare two MusicXML timewise scores for semantic equivalence.
+fn compare_scores(original: &ScoreTimewise, roundtripped: &ScoreTimewise) -> Differences {
     let mut diffs = Differences::default();
-
-    // Compare part count
-    if original.parts.len() != roundtripped.parts.len() {
-        diffs.add(format!(
-            "Part count mismatch: original={}, roundtripped={}",
-            original.parts.len(),
-            roundtripped.parts.len()
-        ));
-        return diffs;
-    }
 
     // Compare part-list (part names)
     compare_part_list(original, roundtripped, &mut diffs);
 
-    // Compare each part
-    for (i, (orig_part, rt_part)) in original
-        .parts
+    // Compare measure count
+    if original.measures.len() != roundtripped.measures.len() {
+        diffs.add(format!(
+            "Measure count mismatch: original={}, roundtripped={}",
+            original.measures.len(),
+            roundtripped.measures.len()
+        ));
+        return diffs;
+    }
+
+    // Compare each measure
+    for (m_idx, (orig_measure, rt_measure)) in original
+        .measures
         .iter()
-        .zip(roundtripped.parts.iter())
+        .zip(roundtripped.measures.iter())
         .enumerate()
     {
-        let part_id = &orig_part.id;
+        let measure_num = &orig_measure.number;
 
-        // Check part ID
-        if orig_part.id != rt_part.id {
+        // Check measure number
+        if orig_measure.number != rt_measure.number {
             diffs.add(format!(
-                "Part {}: ID mismatch: original='{}', roundtripped='{}'",
-                i, orig_part.id, rt_part.id
+                "Measure {}: number mismatch: original='{}', roundtripped='{}'",
+                m_idx, orig_measure.number, rt_measure.number
             ));
         }
 
-        // Check measure count
-        if orig_part.measures.len() != rt_part.measures.len() {
+        // Check part count within measure
+        if orig_measure.parts.len() != rt_measure.parts.len() {
             diffs.add(format!(
-                "Part '{}': measure count mismatch: original={}, roundtripped={}",
-                part_id,
-                orig_part.measures.len(),
-                rt_part.measures.len()
+                "Measure '{}': part count mismatch: original={}, roundtripped={}",
+                measure_num,
+                orig_measure.parts.len(),
+                rt_measure.parts.len()
             ));
             continue;
         }
 
-        // Compare each measure
-        for (m_idx, (orig_measure, rt_measure)) in orig_part
-            .measures
+        // Compare each part within the measure
+        for (p_idx, (orig_part, rt_part)) in orig_measure
+            .parts
             .iter()
-            .zip(rt_part.measures.iter())
+            .zip(rt_measure.parts.iter())
             .enumerate()
         {
-            let measure_num = &orig_measure.number;
+            let part_id = &orig_part.id;
 
-            // Check measure number
-            if orig_measure.number != rt_measure.number {
+            if orig_part.id != rt_part.id {
                 diffs.add(format!(
-                    "Part '{}', Measure {}: number mismatch: original='{}', roundtripped='{}'",
-                    part_id, m_idx, orig_measure.number, rt_measure.number
+                    "Measure '{}', Part {}: ID mismatch: original='{}', roundtripped='{}'",
+                    measure_num, p_idx, orig_part.id, rt_part.id
                 ));
             }
 
-            // Compare measure content
+            // Compare measure content for this part
             compare_measure_content(
                 part_id,
                 measure_num,
-                &orig_measure.content,
-                &rt_measure.content,
+                &orig_part.content,
+                &rt_part.content,
                 &mut diffs,
             );
         }
@@ -271,8 +296,8 @@ fn compare_scores(original: &ScorePartwise, roundtripped: &ScorePartwise) -> Dif
 }
 
 fn compare_part_list(
-    original: &ScorePartwise,
-    roundtripped: &ScorePartwise,
+    original: &ScoreTimewise,
+    roundtripped: &ScoreTimewise,
     diffs: &mut Differences,
 ) {
     use tusk_musicxml::model::elements::PartListItem;
@@ -612,7 +637,7 @@ fn compare_attributes(
     }
 }
 
-/// Assert conversion roundtrip passes (import/export only, no serialization).
+/// Assert conversion roundtrip passes in timewise space (no serialization).
 fn assert_conversion_roundtrip(fixture_name: &str) {
     let (original, exported) = conversion_roundtrip_fixture(fixture_name)
         .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
@@ -627,7 +652,7 @@ fn assert_conversion_roundtrip(fixture_name: &str) {
     }
 }
 
-/// Assert full roundtrip passes (includes serialization).
+/// Assert full roundtrip passes in timewise space (includes serialization).
 fn assert_full_roundtrip(fixture_name: &str) {
     let (original, roundtripped) = full_roundtrip_fixture(fixture_name)
         .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
@@ -698,21 +723,21 @@ fn assert_triangle_mei_roundtrip(fixture_name: &str) {
     assert_mei_equal(&mei1, &mei2, fixture_name);
 }
 
-/// Assert triangle MusicXML roundtrip passes (MusicXML₁ == MusicXML₂).
+/// Assert triangle MusicXML roundtrip passes in timewise space (TW₁ == TW₂).
 /// Catches inconsistent export behavior.
 fn assert_triangle_mxml_roundtrip(fixture_name: &str) {
-    let (mxml1, mxml2) = triangle_mxml_roundtrip_fixture(fixture_name).unwrap_or_else(|e| {
+    let (tw1, tw2) = triangle_mxml_roundtrip_fixture(fixture_name).unwrap_or_else(|e| {
         panic!(
             "Triangle MusicXML roundtrip failed for {}: {}",
             fixture_name, e
         )
     });
 
-    let diffs = compare_scores(&mxml1, &mxml2);
+    let diffs = compare_scores(&tw1, &tw2);
     if !diffs.is_empty() {
         panic!(
-            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n\
-             Export produces different MusicXML from the same logical content.\n{}",
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): ScoreTimewise₁ ≠ ScoreTimewise₂\n\
+             Export produces different content from the same logical input.\n{}",
             fixture_name,
             diffs.report()
         );
@@ -773,16 +798,16 @@ fn debug_roundtrip_output() {
     let (original, exported) = conversion_roundtrip_fixture(fixture_name)
         .unwrap_or_else(|e| panic!("Conversion roundtrip failed: {}", e));
 
-    println!("=== Original ===");
-    println!("Parts: {}", original.parts.len());
-    for part in &original.parts {
-        println!("  Part '{}': {} measures", part.id, part.measures.len());
+    println!("=== Original (timewise) ===");
+    println!("Measures: {}", original.measures.len());
+    for m in &original.measures {
+        println!("  Measure '{}': {} parts", m.number, m.parts.len());
     }
 
-    println!("\n=== After MEI conversion (no serialization) ===");
-    println!("Parts: {}", exported.parts.len());
-    for part in &exported.parts {
-        println!("  Part '{}': {} measures", part.id, part.measures.len());
+    println!("\n=== After MEI conversion (timewise, no serialization) ===");
+    println!("Measures: {}", exported.measures.len());
+    for m in &exported.measures {
+        println!("  Measure '{}': {} parts", m.number, m.parts.len());
     }
 }
 
@@ -800,12 +825,12 @@ fn load_spec_example(example_name: &str) -> Result<String, String> {
     read_xml_file(&fixture_path)
 }
 
-/// Assert all three roundtrip tests pass for a spec example.
+/// Assert all four roundtrip tests pass for a spec example (in timewise space).
 fn assert_spec_example_roundtrip(example_name: &str) {
     let xml = load_spec_example(example_name)
         .unwrap_or_else(|e| panic!("Failed to load {}: {}", example_name, e));
 
-    // Test conversion roundtrip (import/export only)
+    // Test conversion roundtrip (import/export only, timewise space)
     let (original, exported) = conversion_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", example_name, e));
     let diffs = compare_scores(&original, &exported);
@@ -817,7 +842,7 @@ fn assert_spec_example_roundtrip(example_name: &str) {
         );
     }
 
-    // Test full roundtrip (includes serialization)
+    // Test full roundtrip (includes serialization, timewise space)
     let (original, roundtripped) = full_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", example_name, e));
     let diffs = compare_scores(&original, &roundtripped);
@@ -834,17 +859,17 @@ fn assert_spec_example_roundtrip(example_name: &str) {
         .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", example_name, e));
     assert_mei_equal(&mei1, &mei2, example_name);
 
-    // Test triangle MusicXML roundtrip (catches export inconsistency)
-    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+    // Test triangle MusicXML roundtrip (catches export inconsistency, timewise space)
+    let (tw1, tw2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
         panic!(
             "Triangle MusicXML roundtrip failed for {}: {}",
             example_name, e
         )
     });
-    let diffs = compare_scores(&mxml1, &mxml2);
+    let diffs = compare_scores(&tw1, &tw2);
     if !diffs.is_empty() {
         panic!(
-            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): ScoreTimewise₁ ≠ ScoreTimewise₂\n{}",
             example_name,
             diffs.report()
         );
@@ -956,12 +981,12 @@ fn load_spec_examples_fixture(fixture_name: &str) -> Result<String, String> {
         .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))
 }
 
-/// Assert all three roundtrip tests pass for a spec_examples fixture.
+/// Assert all four roundtrip tests pass for a spec_examples fixture (timewise space).
 fn assert_spec_examples_roundtrip(fixture_name: &str) {
     let xml = load_spec_examples_fixture(fixture_name)
         .unwrap_or_else(|e| panic!("Failed to load {}: {}", fixture_name, e));
 
-    // Test conversion roundtrip (import/export only)
+    // Test conversion roundtrip (import/export only, timewise space)
     let (original, exported) = conversion_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
     let diffs = compare_scores(&original, &exported);
@@ -973,7 +998,7 @@ fn assert_spec_examples_roundtrip(fixture_name: &str) {
         );
     }
 
-    // Test full roundtrip (includes serialization)
+    // Test full roundtrip (includes serialization, timewise space)
     let (original, roundtripped) = full_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
     let diffs = compare_scores(&original, &roundtripped);
@@ -990,17 +1015,17 @@ fn assert_spec_examples_roundtrip(fixture_name: &str) {
         .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
     assert_mei_equal(&mei1, &mei2, fixture_name);
 
-    // Test triangle MusicXML roundtrip (catches export inconsistency)
-    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+    // Test triangle MusicXML roundtrip (catches export inconsistency, timewise space)
+    let (tw1, tw2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
         panic!(
             "Triangle MusicXML roundtrip failed for {}: {}",
             fixture_name, e
         )
     });
-    let diffs = compare_scores(&mxml1, &mxml2);
+    let diffs = compare_scores(&tw1, &tw2);
     if !diffs.is_empty() {
         panic!(
-            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): ScoreTimewise₁ ≠ ScoreTimewise₂\n{}",
             fixture_name,
             diffs.report()
         );
@@ -1077,12 +1102,12 @@ fn load_fragment_fixture(fixture_name: &str) -> Result<String, String> {
         .map_err(|e| format!("Failed to read fixture {}: {}", fixture_name, e))
 }
 
-/// Assert all four roundtrip tests pass for a fragment example.
+/// Assert all four roundtrip tests pass for a fragment example (timewise space).
 fn assert_fragment_roundtrip(fixture_name: &str) {
     let xml = load_fragment_fixture(fixture_name)
         .unwrap_or_else(|e| panic!("Failed to load {}: {}", fixture_name, e));
 
-    // Test conversion roundtrip (import/export only)
+    // Test conversion roundtrip (import/export only, timewise space)
     let (original, exported) = conversion_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Conversion roundtrip failed for {}: {}", fixture_name, e));
     let diffs = compare_scores(&original, &exported);
@@ -1094,7 +1119,7 @@ fn assert_fragment_roundtrip(fixture_name: &str) {
         );
     }
 
-    // Test full roundtrip (includes serialization)
+    // Test full roundtrip (includes serialization, timewise space)
     let (original, roundtripped) = full_roundtrip(&xml)
         .unwrap_or_else(|e| panic!("Full roundtrip failed for {}: {}", fixture_name, e));
     let diffs = compare_scores(&original, &roundtripped);
@@ -1111,17 +1136,17 @@ fn assert_fragment_roundtrip(fixture_name: &str) {
         .unwrap_or_else(|e| panic!("Triangle MEI roundtrip failed for {}: {}", fixture_name, e));
     assert_mei_equal(&mei1, &mei2, fixture_name);
 
-    // Test triangle MusicXML roundtrip (catches export inconsistency)
-    let (mxml1, mxml2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
+    // Test triangle MusicXML roundtrip (catches export inconsistency, timewise space)
+    let (tw1, tw2) = triangle_mxml_roundtrip(&xml).unwrap_or_else(|e| {
         panic!(
             "Triangle MusicXML roundtrip failed for {}: {}",
             fixture_name, e
         )
     });
-    let diffs = compare_scores(&mxml1, &mxml2);
+    let diffs = compare_scores(&tw1, &tw2);
     if !diffs.is_empty() {
         panic!(
-            "Triangle MusicXML roundtrip failed for {} (export inconsistency): MusicXML₁ ≠ MusicXML₂\n{}",
+            "Triangle MusicXML roundtrip failed for {} (export inconsistency): ScoreTimewise₁ ≠ ScoreTimewise₂\n{}",
             fixture_name,
             diffs.report()
         );

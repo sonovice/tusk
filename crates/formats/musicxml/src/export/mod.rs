@@ -53,21 +53,19 @@ pub use structure::convert_mei_measure;
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::convert_error::ConversionResult;
 use crate::model::elements::{
-    Encoding, Identification, Part, PartList, PartListItem, ScorePart, ScorePartwise, Work,
+    Encoding, Identification, PartList, PartListItem, ScorePart, ScoreTimewise, Work,
 };
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild};
 use utils::{
-    create_empty_parts, extract_title_from_file_desc, find_body_in_music, find_first_mdiv_in_body,
-    find_score_def, find_score_in_mdiv,
+    extract_title_from_file_desc, find_body_in_music, find_first_mdiv_in_body, find_score_def,
+    find_score_in_mdiv,
 };
 
 /// Convert an MEI document to MusicXML score-partwise.
 ///
 /// This is the main entry point for MEI → MusicXML conversion.
-/// The conversion creates a MusicXML score-partwise document with:
-/// - Header from MEI `<meiHead>` (work, identification, encoding)
-/// - Part list from MEI `<scoreDef>/<staffGrp>`
-/// - Parts with measures from MEI `<section>/<measure>/<staff>/<layer>`
+/// Internally produces a `ScoreTimewise` first, then converts to
+/// `ScorePartwise` via `timewise_to_partwise`.
 ///
 /// # Arguments
 ///
@@ -81,20 +79,37 @@ use utils::{
 ///
 /// This conversion is lossy. MEI-specific features without MusicXML equivalents
 /// will generate warnings in the context. Check `ctx.warnings()` after conversion.
-pub fn convert_mei(mei: &Mei) -> ConversionResult<ScorePartwise> {
-    let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
-    convert_mei_with_context(mei, &mut ctx)
+pub fn convert_mei(
+    mei: &Mei,
+) -> ConversionResult<crate::model::elements::ScorePartwise> {
+    let timewise = convert_mei_to_timewise(mei)?;
+    Ok(crate::convert::timewise_to_partwise(timewise))
 }
 
-/// Convert an MEI document to MusicXML with an existing context.
+/// Convert an MEI document to MusicXML timewise format.
+///
+/// This is the core conversion function. It produces a `ScoreTimewise`
+/// which is the canonical intermediate representation. Call
+/// `timewise_to_partwise` on the result to get partwise output.
+///
+/// The conversion creates a MusicXML timewise document with:
+/// - Header from MEI `<meiHead>` (work, identification, encoding)
+/// - Part list from MEI `<scoreDef>/<staffGrp>`
+/// - Measures (each containing parts) from MEI `<section>/<measure>/<staff>/<layer>`
+pub fn convert_mei_to_timewise(mei: &Mei) -> ConversionResult<ScoreTimewise> {
+    let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+    convert_mei_to_timewise_with_context(mei, &mut ctx)
+}
+
+/// Convert an MEI document to MusicXML timewise with an existing context.
 ///
 /// This variant allows reusing a conversion context across multiple conversions,
 /// which is useful for batch processing or when custom context configuration is needed.
-pub fn convert_mei_with_context(
+pub fn convert_mei_to_timewise_with_context(
     mei: &Mei,
     ctx: &mut ConversionContext,
-) -> ConversionResult<ScorePartwise> {
-    let mut score = ScorePartwise {
+) -> ConversionResult<ScoreTimewise> {
+    let mut score = ScoreTimewise {
         version: Some("4.0".to_string()),
         ..Default::default()
     };
@@ -145,23 +160,20 @@ pub fn convert_mei_with_context(
             })
             .collect();
 
-        // Convert measure content from MEI to MusicXML parts
+        // Convert measure content from MEI to timewise measures
         if !part_ids.is_empty() {
-            score.parts = content::convert_mei_score_content(mei_score, &part_ids, ctx)?;
-        } else {
-            score.parts = create_empty_parts(&score.part_list);
+            score.measures =
+                content::convert_mei_score_content(mei_score, &part_ids, ctx)?;
         }
     }
 
     // If no parts were created, ensure part_list has at least one part
     if score.part_list.items.is_empty() {
-        // Create a minimal part-list with one part
         let default_part = ScorePart::new("P1", "Part 1");
         score
             .part_list
             .items
             .push(PartListItem::ScorePart(Box::new(default_part)));
-        score.parts.push(Part::new("P1"));
     }
 
     Ok(score)
@@ -222,15 +234,27 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn test_convert_empty_mei() {
+    fn test_convert_empty_mei_to_timewise() {
+        let mei = Mei::default();
+        let result = convert_mei_to_timewise(&mei);
+        assert!(result.is_ok());
+
+        let score = result.unwrap();
+        assert_eq!(score.version.as_deref(), Some("4.0"));
+        // Should have at least one part in part_list
+        assert!(!score.part_list.items.is_empty());
+    }
+
+    #[test]
+    fn test_convert_empty_mei_to_partwise() {
         let mei = Mei::default();
         let result = convert_mei(&mei);
         assert!(result.is_ok());
 
         let score = result.unwrap();
         assert_eq!(score.version.as_deref(), Some("4.0"));
-        // Should have at least one part
         assert!(!score.part_list.items.is_empty());
+        // Partwise gets parts from timewise_to_partwise
         assert!(!score.parts.is_empty());
     }
 
@@ -239,7 +263,7 @@ mod tests {
         let mei = Mei::default();
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
 
-        let result = convert_mei_with_context(&mei, &mut ctx);
+        let result = convert_mei_to_timewise_with_context(&mei, &mut ctx);
         assert!(result.is_ok());
         assert!(ctx.is_mei_to_musicxml());
     }
@@ -277,7 +301,7 @@ mod tests {
             .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
         mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
-        let result = convert_mei(&mei);
+        let result = convert_mei_to_timewise(&mei);
         assert!(result.is_ok());
 
         let score = result.unwrap();
@@ -294,7 +318,7 @@ mod tests {
         let mei_head = MeiHead::default();
         mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
-        let result = convert_mei(&mei);
+        let result = convert_mei_to_timewise(&mei);
         assert!(result.is_ok());
 
         let score = result.unwrap();

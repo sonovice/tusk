@@ -352,6 +352,7 @@ pub fn find_score_def(
 }
 
 /// Create empty Part elements matching the part-list.
+#[cfg(test)]
 pub fn create_empty_parts(
     part_list: &crate::model::elements::PartList,
 ) -> Vec<crate::model::elements::Part> {

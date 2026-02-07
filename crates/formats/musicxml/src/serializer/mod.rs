@@ -127,6 +127,28 @@ pub trait MusicXmlSerialize {
     }
 }
 
+/// Serialize a `ScoreTimewise` to a timewise MusicXML XML string.
+///
+/// This writes the timewise DOCTYPE and `<score-timewise>` root element.
+pub fn serialize_timewise(
+    score: &crate::model::elements::ScoreTimewise,
+) -> SerializeResult<String> {
+    serialize_timewise_with_config(score, SerializeConfig::default())
+}
+
+/// Serialize a `ScoreTimewise` to a timewise MusicXML XML string with custom config.
+pub fn serialize_timewise_with_config(
+    score: &crate::model::elements::ScoreTimewise,
+    config: SerializeConfig,
+) -> SerializeResult<String> {
+    let mut buffer = Vec::new();
+    let mut writer = MusicXmlWriter::new(&mut buffer, config);
+    writer.write_declaration()?;
+    writer.write_doctype_timewise()?;
+    score.serialize_timewise(&mut writer)?;
+    Ok(String::from_utf8(buffer)?)
+}
+
 /// Writer wrapper for MusicXML serialization.
 pub struct MusicXmlWriter<W: Write> {
     writer: Writer<W>,
@@ -162,14 +184,32 @@ impl<W: Write> MusicXmlWriter<W> {
         Ok(())
     }
 
-    /// Write DOCTYPE declaration if configured and not already written.
+    /// Write partwise DOCTYPE declaration if configured and not already written.
     pub fn write_doctype(&mut self) -> SerializeResult<()> {
+        self.write_doctype_partwise()
+    }
+
+    /// Write partwise DOCTYPE declaration if configured and not already written.
+    pub fn write_doctype_partwise(&mut self) -> SerializeResult<()> {
         if self.config.include_doctype && !self.doctype_written {
             // Use from_escaped to prevent quick-xml from escaping the literal
             // quotes in the DOCTYPE declaration (BytesText::new would turn " into &quot;).
             self.writer.write_event(Event::DocType(
                 BytesText::from_escaped(
                     "score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"",
+                ),
+            ))?;
+            self.doctype_written = true;
+        }
+        Ok(())
+    }
+
+    /// Write timewise DOCTYPE declaration if configured and not already written.
+    pub fn write_doctype_timewise(&mut self) -> SerializeResult<()> {
+        if self.config.include_doctype && !self.doctype_written {
+            self.writer.write_event(Event::DocType(
+                BytesText::from_escaped(
+                    "score-timewise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Timewise//EN\" \"http://www.musicxml.org/dtds/timewise.dtd\"",
                 ),
             ))?;
             self.doctype_written = true;

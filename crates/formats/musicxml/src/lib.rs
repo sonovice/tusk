@@ -20,7 +20,11 @@
 //! # Document Types
 //!
 //! Both `score-partwise` and `score-timewise` formats are supported.
-//! Timewise documents are converted to partwise internally.
+//!
+//! **Timewise is the canonical internal format.** All roundtrip comparisons
+//! and internal operations use `ScoreTimewise`. External files are written
+//! as partwise (the industry convention) and automatically converted on
+//! import/export.
 //!
 //! # Module Organization
 //!
@@ -28,25 +32,39 @@
 //! - `parser` - MusicXML parsing from XML to the model types
 //! - `versions` - Version-specific parsing and upgrade logic
 //! - `context` - Conversion context for tracking state during conversion
+//! - `convert` - Partwise ↔ Timewise conversion (mirrors `parttime.xsl` / `timepart.xsl`)
 //! - `import` - MusicXML → MEI conversion (lossless)
 //! - `export` - MEI → MusicXML conversion (lossy, see docs/conversion-notes.md)
+//!
+//! # Pipeline
+//!
+//! ```text
+//! Import: partwise XML → parse → ScorePartwise → partwise_to_timewise → ScoreTimewise → MEI
+//! Export: MEI → ScoreTimewise → timewise_to_partwise → ScorePartwise → serialize → partwise XML
+//! Roundtrip comparison: in ScoreTimewise space
+//! ```
 //!
 //! # Conversion Example
 //!
 //! ```ignore
-//! use tusk_musicxml::{import, export};
+//! use tusk_musicxml::{import, export, import_timewise, export_timewise};
 //! use tusk_musicxml::model::elements::ScorePartwise;
 //!
-//! // MusicXML → MEI (lossless)
+//! // MusicXML → MEI (lossless, via timewise)
 //! let musicxml_score: ScorePartwise = /* ... */;
 //! let mei_doc = import(&musicxml_score)?;
 //!
 //! // MEI → MusicXML (lossy)
 //! let mei_doc: tusk_model::elements::Mei = /* ... */;
 //! let musicxml_score = export(&mei_doc)?;
+//!
+//! // Direct timewise access
+//! let timewise = import_timewise(&musicxml_score)?; // ScorePartwise → ScoreTimewise
+//! let timewise = export_timewise(&mei_doc)?;        // MEI → ScoreTimewise
 //! ```
 
 pub mod context;
+pub mod convert;
 pub mod convert_error;
 pub mod export;
 pub mod import;
@@ -61,6 +79,7 @@ pub use parser::{ParseError, parse_score_partwise, parse_score_timewise};
 
 // Re-export conversion context types
 pub use context::{ConversionContext, ConversionDirection, PendingSlur, PendingTie};
+pub use convert::{partwise_to_timewise, timewise_to_partwise};
 pub use convert_error::{ConversionError, ConversionResult};
 
 // Re-export serializer types
@@ -86,11 +105,22 @@ pub fn import(
     import::convert_score(score)
 }
 
+/// Convert a partwise MusicXML score to a timewise representation.
+///
+/// This is a pure structural transformation (mirrors `parttime.xsl`).
+/// Use this for roundtrip comparison — timewise is the canonical format.
+pub fn import_timewise(
+    score: &model::elements::ScorePartwise,
+) -> model::elements::ScoreTimewise {
+    convert::partwise_to_timewise(score.clone())
+}
+
 /// Export an MEI document to MusicXML score-partwise (lossy conversion).
 ///
 /// This is the main entry point for MEI → MusicXML conversion.
-/// Note: This conversion is lossy. Many MEI-specific features have no
-/// MusicXML equivalent and will be lost. See docs/conversion-notes.md.
+/// Internally produces a timewise representation first, then converts
+/// to partwise. Note: This conversion is lossy. Many MEI-specific
+/// features have no MusicXML equivalent and will be lost.
 ///
 /// # Example
 ///
@@ -101,11 +131,24 @@ pub fn import(
 /// let mei = Mei::default();
 /// let musicxml = export(&mei)?;
 /// ```
-pub fn export(mei: &tusk_model::elements::Mei) -> ConversionResult<model::elements::ScorePartwise> {
-    export::convert_mei(mei)
+pub fn export(
+    mei: &tusk_model::elements::Mei,
+) -> ConversionResult<model::elements::ScorePartwise> {
+    let timewise = export::convert_mei_to_timewise(mei)?;
+    Ok(convert::timewise_to_partwise(timewise))
 }
 
-/// Serialize a MusicXML score-partwise document to an XML string.
+/// Export an MEI document to MusicXML timewise (lossy conversion).
+///
+/// Returns the intermediate timewise representation directly, useful for
+/// roundtrip comparison and debugging.
+pub fn export_timewise(
+    mei: &tusk_model::elements::Mei,
+) -> ConversionResult<model::elements::ScoreTimewise> {
+    export::convert_mei_to_timewise(mei)
+}
+
+/// Serialize a MusicXML score-partwise document to a partwise XML string.
 ///
 /// This is the main entry point for MusicXML serialization.
 ///
@@ -119,6 +162,15 @@ pub fn export(mei: &tusk_model::elements::Mei) -> ConversionResult<model::elemen
 /// ```
 pub fn serialize(score: &model::elements::ScorePartwise) -> SerializeResult<String> {
     score.to_musicxml_string()
+}
+
+/// Serialize a MusicXML score-timewise document to a timewise XML string.
+///
+/// Writes `<score-timewise>` as root element with the timewise DOCTYPE.
+pub fn serialize_timewise_score(
+    score: &model::elements::ScoreTimewise,
+) -> SerializeResult<String> {
+    serializer::serialize_timewise(score)
 }
 
 #[cfg(test)]

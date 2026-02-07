@@ -2241,3 +2241,106 @@ fn push_opt_str_attr_start(
         start.push_attribute((name, v.as_str()));
     }
 }
+
+// ============================================================================
+// ScoreTimewise serialization
+// ============================================================================
+
+impl ScoreTimewise {
+    /// Serialize this timewise score to a MusicXML writer.
+    ///
+    /// Uses `<score-timewise>` as the root element and nests parts inside
+    /// measures (the inverse of partwise).
+    pub fn serialize_timewise<W: Write>(
+        &self,
+        w: &mut MusicXmlWriter<W>,
+    ) -> SerializeResult<()> {
+        let mut start = w.start_element("score-timewise");
+        if let Some(ref v) = self.version {
+            start.push_attribute(("version", v.as_str()));
+        }
+        w.write_start(start)?;
+
+        // Header elements (same order as partwise)
+        if let Some(ref work) = self.work {
+            work.serialize(w)?;
+        }
+        w.write_opt_text_element("movement-number", &self.movement_number)?;
+        w.write_opt_text_element("movement-title", &self.movement_title)?;
+        if let Some(ref ident) = self.identification {
+            ident.serialize(w)?;
+        }
+        if let Some(ref defaults) = self.defaults {
+            defaults.serialize(w)?;
+        }
+        for credit in &self.credits {
+            credit.serialize(w)?;
+        }
+        self.part_list.serialize(w)?;
+
+        // Measures (each containing parts)
+        for measure in &self.measures {
+            measure.serialize_timewise(w)?;
+        }
+
+        w.write_end("score-timewise")?;
+        Ok(())
+    }
+}
+
+impl TimewiseMeasure {
+    /// Serialize a timewise measure to the writer.
+    pub fn serialize_timewise<W: Write>(
+        &self,
+        w: &mut MusicXmlWriter<W>,
+    ) -> SerializeResult<()> {
+        let mut start = w.start_element("measure");
+        start.push_attribute(("number", self.number.as_str()));
+        if let Some(ref imp) = self.implicit {
+            start.push_attribute(("implicit", yes_no_str(imp)));
+        }
+        if let Some(ref nc) = self.non_controlling {
+            start.push_attribute(("non-controlling", yes_no_str(nc)));
+        }
+        if let Some(width) = self.width {
+            let s = width.to_string();
+            start.push_attribute(("width", s.as_str()));
+        }
+        w.write_start(start)?;
+
+        for part in &self.parts {
+            part.serialize_timewise(w)?;
+        }
+
+        w.write_end("measure")?;
+        Ok(())
+    }
+}
+
+impl TimewisePart {
+    /// Serialize a timewise part (within a measure) to the writer.
+    pub fn serialize_timewise<W: Write>(
+        &self,
+        w: &mut MusicXmlWriter<W>,
+    ) -> SerializeResult<()> {
+        let mut start = w.start_element("part");
+        start.push_attribute(("id", self.id.as_str()));
+        w.write_start(start)?;
+
+        for item in &self.content {
+            match item {
+                MeasureContent::Note(note) => note.serialize(w)?,
+                MeasureContent::Backup(backup) => backup.serialize(w)?,
+                MeasureContent::Forward(forward) => forward.serialize(w)?,
+                MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
+                MeasureContent::Direction(dir) => dir.serialize(w)?,
+                MeasureContent::Barline(_) => {
+                    // TODO: implement barline serialization
+                }
+            }
+        }
+
+        w.write_end("part")?;
+        Ok(())
+    }
+}

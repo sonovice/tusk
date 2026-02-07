@@ -1261,6 +1261,112 @@ impl Part {
 }
 
 // ============================================================================
+// Timewise Types (intermediate representation for export)
+// ============================================================================
+
+/// A timewise MusicXML score structure.
+///
+/// In timewise format, measures are the top-level containers and each measure
+/// holds a list of parts. This is the natural mapping from MEI (which is also
+/// measure-centric) and serves as an intermediate representation before
+/// pivoting to the partwise format required for serialization.
+///
+/// The conversion from timewise to partwise mirrors the logic of the official
+/// MusicXML `timepart.xsl` XSLT stylesheet.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ScoreTimewise {
+    /// MusicXML version
+    pub version: Option<String>,
+
+    /// Work identification
+    pub work: Option<Work>,
+
+    /// Movement number
+    pub movement_number: Option<String>,
+
+    /// Movement title
+    pub movement_title: Option<String>,
+
+    /// Identification metadata
+    pub identification: Option<Identification>,
+
+    /// Score defaults
+    pub defaults: Option<Defaults>,
+
+    /// Credits appearing on pages
+    pub credits: Vec<Credit>,
+
+    /// Part list (required) - defines all parts in the score
+    pub part_list: PartList,
+
+    /// Measures containing parts (timewise structure)
+    pub measures: Vec<TimewiseMeasure>,
+}
+
+/// A measure in timewise format.
+///
+/// Contains the measure-level attributes (number, implicit, etc.) and a list
+/// of part entries, each holding that part's content for this measure.
+///
+/// Note: Unlike partwise measures, timewise measures do NOT carry an `id`
+/// attribute. In MusicXML, the `id` attribute on `<measure>` must be unique
+/// across the entire document. When converting to partwise, each part's
+/// measure instance could be assigned a unique scoped ID if needed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimewiseMeasure {
+    /// Measure number (required)
+    pub number: String,
+
+    /// Implicit measure (pickup, anacrusis)
+    pub implicit: Option<super::super::data::YesNo>,
+
+    /// Non-controlling measure (for multi-rest regions)
+    pub non_controlling: Option<super::super::data::YesNo>,
+
+    /// Measure width in tenths
+    pub width: Option<f64>,
+
+    /// Part entries within this measure
+    pub parts: Vec<TimewisePart>,
+}
+
+impl TimewiseMeasure {
+    /// Create a new timewise measure with the given number.
+    pub fn new(number: &str) -> Self {
+        Self {
+            number: number.to_string(),
+            implicit: None,
+            non_controlling: None,
+            width: None,
+            parts: Vec::new(),
+        }
+    }
+}
+
+/// A part's content within a timewise measure.
+///
+/// This represents one `<part id="...">` element inside a timewise `<measure>`.
+/// The content is identical to what would appear inside a partwise `<measure>`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimewisePart {
+    /// Part ID (must reference a score-part)
+    pub id: String,
+
+    /// Measure content for this part in this measure
+    pub content: Vec<super::measure::MeasureContent>,
+}
+
+impl TimewisePart {
+    /// Create a new timewise part entry with the given ID.
+    pub fn new(id: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            content: Vec::new(),
+        }
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 

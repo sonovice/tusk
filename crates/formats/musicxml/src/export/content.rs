@@ -10,7 +10,9 @@ use std::collections::HashMap;
 
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
-use crate::model::elements::{Measure as MxmlMeasure, MeasureContent, Part};
+use crate::model::elements::{
+    Measure as MxmlMeasure, MeasureContent, TimewiseMeasure, TimewisePart,
+};
 use tusk_model::elements::{
     LayerChild, MeasureChild, Score as MeiScore, ScoreChild, ScoreDefChild, Section, SectionChild,
     Staff, StaffChild, StaffGrp, StaffGrpChild,
@@ -212,16 +214,27 @@ fn collect_note_ids_from_beam(
     }
 }
 
-/// Convert MEI score content to MusicXML parts.
+/// Convert MEI score content to MusicXML timewise measures.
 ///
-/// This collects all measures from MEI sections and reorganizes them into
-/// MusicXML part-oriented structure. MEI stores staff content within measures,
-/// while MusicXML stores measures within parts.
+/// This collects all measures from MEI sections and produces a list of
+/// `TimewiseMeasure` entries where each measure contains per-part content.
+/// This is a natural mapping from MEI's measure-centric structure.
+///
+/// The caller should then use `timewise_to_partwise()` to pivot into the
+/// partwise format required by MusicXML serialization.
+///
+/// ## Staff number handling
+///
+/// MEI uses global staff numbers (1–N across all parts). MusicXML partwise
+/// uses part-local staff numbers (typically 1 for single-staff parts).
+/// This function remaps staff numbers to be part-local: each part's staff
+/// content is assigned `staff = 1` (or the appropriate local number for
+/// multi-staff instruments).
 pub fn convert_mei_score_content(
     mei_score: &MeiScore,
     part_ids: &[String],
     ctx: &mut ConversionContext,
-) -> ConversionResult<Vec<Part>> {
+) -> ConversionResult<Vec<TimewiseMeasure>> {
     // Collect all MEI measures from sections
     let mei_measures = collect_measures_from_score(mei_score);
 
@@ -236,9 +249,6 @@ pub fn convert_mei_score_content(
     // Get the scoreDef for global key/time signatures
     let score_def = find_score_def(mei_score);
 
-    // Create a part for each part ID
-    let mut parts: Vec<Part> = part_ids.iter().map(|id| Part::new(id)).collect();
-
     // Set divisions from first staffDef's ppq before processing measures.
     // If no ppq is specified, calculate a smart default based on the smallest
     // note duration in the score to avoid fractional durations.
@@ -248,20 +258,34 @@ pub fn convert_mei_score_content(
         None
     };
     let divs = initial_divs.unwrap_or_else(|| {
-        // Calculate smart divisions: find smallest note duration and set divisions
-        // so that smallest duration = 1. Default to 4 (supports 16th notes).
         calculate_smart_divisions(&mei_measures)
     });
     ctx.set_divisions(divs);
 
-    // For each MEI measure, extract staff content and add to corresponding part
+    // Track previous measures per part for cross-measure slur resolution.
+    // Key: part index, Value: accumulated measures for that part.
+    let mut part_prev_measures: Vec<Vec<MxmlMeasure>> =
+        part_ids.iter().map(|_| Vec::new()).collect();
+
+    let mut timewise_measures = Vec::new();
+
+    // For each MEI measure, build a TimewiseMeasure with per-part content
     for (measure_idx, mei_measure) in mei_measures.iter().enumerate() {
-        // Convert measure attributes
+        // Convert measure attributes (number, implicit, width, etc.)
         let mxml_measure_base = convert_mei_measure(mei_measure, "", ctx)?;
 
-        // For each part/staff, extract that staff's content from the measure
-        for (staff_idx, part) in parts.iter_mut().enumerate() {
-            let staff_n = staff_idx + 1; // Staff numbers are 1-based
+        let mut tw_measure = TimewiseMeasure {
+            number: mxml_measure_base.number.clone(),
+            implicit: mxml_measure_base.implicit,
+            non_controlling: mxml_measure_base.non_controlling,
+            width: mxml_measure_base.width,
+            parts: Vec::new(),
+        };
+
+        // For each part/staff, extract that staff's content
+        for (staff_idx, part_id) in part_ids.iter().enumerate() {
+            let global_staff_n = staff_idx + 1; // MEI staff numbers are 1-based global
+            let local_staff_n = 1_usize; // MusicXML: part-local staff number
 
             // Set per-part divisions from the staffDef so that direction offset
             // calculations use the correct value for this part.
@@ -269,41 +293,31 @@ pub fn convert_mei_score_content(
                 if let Some(ppq) = staff_def.staff_def_ges.ppq {
                     ctx.set_divisions(ppq as f64);
                 }
-                // Otherwise keep using the smart divisions calculated earlier
             }
 
-            // Create a new measure for this part
-            let mut mxml_measure = MxmlMeasure {
-                number: mxml_measure_base.number.clone(),
-                id: mxml_measure_base.id.clone(),
-                implicit: mxml_measure_base.implicit,
-                non_controlling: mxml_measure_base.non_controlling,
-                width: mxml_measure_base.width,
-                content: vec![],
-            };
+            // Build a temporary MxmlMeasure to collect content (reusing existing converters)
+            let mut mxml_measure = MxmlMeasure::new(&tw_measure.number);
 
-            // Convert direction events BEFORE notes so that on reimport,
-            // beat_position=0 and the offset-based tstamp calculation is correct.
-            convert_direction_events(mei_measure, staff_n, &mut mxml_measure, ctx)?;
+            // Convert direction events BEFORE notes
+            convert_direction_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
-            // Find the staff with matching @n in this MEI measure
-            if let Some(staff) = find_staff_in_measure(mei_measure, staff_n) {
-                // Convert the staff's layer content to MusicXML
-                convert_staff_content(staff, staff_n, &mut mxml_measure, ctx)?;
+            // Find the staff with matching global @n in this MEI measure
+            if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
+                // Convert staff content with part-LOCAL staff number
+                convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
             }
 
             // Convert slur events AFTER notes (need note IDs to attach notations)
             convert_slur_events(
                 mei_measure,
-                staff_n,
+                global_staff_n,
                 &mut mxml_measure,
-                &mut part.measures,
+                &mut part_prev_measures[staff_idx],
                 ctx,
             )?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
-                // Build attributes from scoreDef (key/time) + staffDef (clef/transposition)
                 let attrs = build_first_measure_attributes(
                     score_def,
                     staff_defs.get(staff_idx).copied(),
@@ -314,11 +328,20 @@ pub fn convert_mei_score_content(
                     .insert(0, MeasureContent::Attributes(Box::new(attrs)));
             }
 
-            part.measures.push(mxml_measure);
+            // Store the measure for future cross-measure slur resolution
+            part_prev_measures[staff_idx].push(mxml_measure.clone());
+
+            // Add part content to the timewise measure
+            tw_measure.parts.push(TimewisePart {
+                id: part_id.clone(),
+                content: mxml_measure.content,
+            });
         }
+
+        timewise_measures.push(tw_measure);
     }
 
-    Ok(parts)
+    Ok(timewise_measures)
 }
 
 /// Collect all measures from an MEI score by traversing sections.
@@ -1131,13 +1154,13 @@ mod tests {
         let result = convert_mei_score_content(&score, &part_ids, &mut ctx);
         assert!(result.is_ok());
 
-        let parts = result.unwrap();
-        assert_eq!(parts.len(), 1);
-        assert_eq!(parts[0].id, "P1");
-        assert_eq!(parts[0].measures.len(), 1);
-        assert_eq!(parts[0].measures[0].number, "1");
+        let tw_measures = result.unwrap();
+        assert_eq!(tw_measures.len(), 1);
+        assert_eq!(tw_measures[0].number, "1");
+        assert_eq!(tw_measures[0].parts.len(), 1);
+        assert_eq!(tw_measures[0].parts[0].id, "P1");
         // Should have attributes + note
-        assert!(parts[0].measures[0].content.len() >= 1);
+        assert!(tw_measures[0].parts[0].content.len() >= 1);
     }
 
     #[test]
