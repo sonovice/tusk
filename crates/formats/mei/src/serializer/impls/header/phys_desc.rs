@@ -338,7 +338,7 @@ impl MeiSerialize for Dim {
         attrs.extend(self.lang.collect_attributes());
         attrs.extend(self.quantity.collect_attributes());
         // Element-specific attribute
-        push_attr!(attrs, "form", clone self.form);
+        push_attr!(attrs, "form", string self.form);
         attrs
     }
 
@@ -478,7 +478,7 @@ impl MeiSerialize for SupportDesc {
         attrs.extend(self.bibl.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         // Element-specific attribute
-        push_attr!(attrs, "material", clone self.material);
+        push_attr!(attrs, "material", string self.material);
         attrs
     }
 

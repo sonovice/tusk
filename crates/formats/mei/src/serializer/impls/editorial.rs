@@ -309,7 +309,7 @@ impl MeiSerialize for Abbr {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         attrs.extend(self.trans.collect_attributes());
-        push_attr!(attrs, "expan", clone self.expan);
+        push_attr!(attrs, "expan", string self.expan);
         attrs
     }
 
@@ -346,7 +346,7 @@ impl MeiSerialize for Expan {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         attrs.extend(self.trans.collect_attributes());
-        push_attr!(attrs, "abbr", clone self.abbr);
+        push_attr!(attrs, "abbr", string self.abbr);
         attrs
     }
 
@@ -571,7 +571,7 @@ impl MeiSerialize for Damage {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.hand_ident.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
-        push_attr!(attrs, "degree", clone self.degree);
+        push_attr!(attrs, "degree", string self.degree);
         attrs
     }
 
@@ -637,7 +637,7 @@ impl MeiSerialize for Restore {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         attrs.extend(self.trans.collect_attributes());
-        push_attr!(attrs, "desc", clone self.desc);
+        push_attr!(attrs, "desc", string self.desc);
         attrs
     }
 
@@ -672,7 +672,7 @@ impl MeiSerialize for HandShift {
         attrs.extend(self.edit.collect_attributes());
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.medium.collect_attributes());
-        push_attr!(attrs, "character", clone self.character);
+        push_attr!(attrs, "character", string self.character);
         push_attr!(attrs, "new", self.new);
         push_attr!(attrs, "old", self.old);
         attrs

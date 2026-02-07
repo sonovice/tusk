@@ -148,7 +148,7 @@ impl MeiSerialize for PerfDuration {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         // Element-specific attribute
-        push_attr!(attrs, "isodur", clone self.isodur);
+        push_attr!(attrs, "isodur", string self.isodur);
         attrs
     }
 

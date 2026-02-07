@@ -62,11 +62,12 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
   - Replaced inline `if divisions > 0.0 { x / divisions } else { x }` pattern in `import/direction.rs`
   - Simplified `calculate_tstamp` from 14 lines to 6 lines
 
-- [ ] [CONSISTENCY] Align `extract_attr!` / `push_attr!` macro variant naming
-  - `extract_attr!` uses: default, `string`, `vec`, `vec_string`, `space_separated`
-  - `push_attr!` uses: default, `clone`, `string`, ... (different variant names for equivalent operations)
-  - Align the variant keywords so the same attribute uses the same keyword in both macros
-  - This is a mechanical rename of macro arms + updating call sites
+- [x] [CONSISTENCY] Align `extract_attr!` / `push_attr!` macro variant naming
+  - Renamed `push_attr!` `clone` variant to `string` to match `extract_attr!`
+  - Updated macro definition in `serializer/impls/mod.rs`
+  - Updated codegen in `tools/mei-codegen/src/generator.rs` (3 emit sites)
+  - Updated 133 call sites in `generated_att_impls.rs` and 16 in hand-written serializer files
+  - Both macros now use consistent variants: default, `string`, `vec` (+ `vec_string`, `space_separated` on extract only)
 
 ---
 

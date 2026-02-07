@@ -70,8 +70,8 @@ macro_rules! push_attr {
             }
         }
     };
-    // For String/clone types
-    ($attrs:expr, $name:expr, clone $opt_val:expr) => {
+    // For String fields (no serde parsing needed)
+    ($attrs:expr, $name:expr, string $opt_val:expr) => {
         if let Some(ref v) = $opt_val {
             $attrs.push(($name, v.clone()));
         }

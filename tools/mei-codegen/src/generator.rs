@@ -1943,23 +1943,23 @@ fn generate_collect_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Option<String> — datatype=None
                 (None, false) => {
-                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                    quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }
                 // Vec<T> — any type + unbounded
                 (Some(_), true) => {
                     quote! { push_attr!(attrs, #xml_name, vec self.#field_name); }
                 }
-                // Option<T> — Ref(unknown) → clone
+                // Option<T> — Ref(unknown) → string
                 (Some(AttributeDataType::Ref(ref_name)), false)
                     if !defs.data_types.contains_key(ref_name) =>
                 {
-                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                    quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }
-                // Option<T> — Primitive(String type) → clone
+                // Option<T> — Primitive(String type) → string
                 (Some(AttributeDataType::Primitive { type_name, .. }), false)
                     if is_string_primitive(type_name) =>
                 {
-                    quote! { push_attr!(attrs, #xml_name, clone self.#field_name); }
+                    quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }
                 // Option<T> — Ref(known), Primitive(non-string), InlineValList, List → default
                 (Some(_), false) => {

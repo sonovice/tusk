@@ -44,7 +44,7 @@ impl CollectAttributes for AttAccidVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "onstaff", self.onstaff);
         push_attr!(attrs, "place", self.place);
@@ -89,7 +89,7 @@ impl CollectAttributes for AttAdlibitum {
 impl CollectAttributes for AttAgentIdent {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "agent", clone self.agent);
+        push_attr!(attrs, "agent", string self.agent);
         attrs
     }
 }
@@ -227,7 +227,7 @@ impl CollectAttributes for AttAnnotGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
         push_attr!(attrs, "tstamp.real", self.tstamp_real);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
@@ -294,7 +294,7 @@ impl CollectAttributes for AttArpegVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "lform", self.lform);
         push_attr!(attrs, "lwidth", self.lwidth);
@@ -356,7 +356,7 @@ impl CollectAttributes for AttArticVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "onstaff", self.onstaff);
         push_attr!(attrs, "place", self.place);
@@ -476,7 +476,7 @@ impl CollectAttributes for AttAuthorized {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "codedval", vec self.codedval);
-        push_attr!(attrs, "auth", clone self.auth);
+        push_attr!(attrs, "auth", string self.auth);
         push_attr!(attrs, "auth.uri", self.auth_uri);
         attrs
     }
@@ -543,7 +543,7 @@ impl CollectAttributes for AttBarLineVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "visible", self.visible);
         push_attr!(attrs, "width", self.width);
@@ -565,7 +565,7 @@ impl CollectAttributes for AttBarring {
 impl CollectAttributes for AttBasic {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "xml:id", clone self.xml_id);
+        push_attr!(attrs, "xml:id", string self.xml_id);
         push_attr!(attrs, "xml:base", self.xml_base);
         attrs
     }
@@ -643,7 +643,7 @@ impl CollectAttributes for AttBeamSpanGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -693,7 +693,7 @@ impl CollectAttributes for AttBeamedWith {
 impl CollectAttributes for AttBeamingLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         attrs
     }
@@ -738,7 +738,7 @@ impl CollectAttributes for AttBeatRptVis {
         push_attr!(attrs, "expand", self.expand);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -815,7 +815,7 @@ impl CollectAttributes for AttBendVis {
 impl CollectAttributes for AttBibl {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "analog", clone self.analog);
+        push_attr!(attrs, "analog", string self.analog);
         attrs
     }
 }
@@ -842,7 +842,7 @@ impl CollectAttributes for AttBracketSpanGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -876,7 +876,7 @@ impl CollectAttributes for AttBracketSpanVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "lform", self.lform);
         push_attr!(attrs, "lwidth", self.lwidth);
@@ -941,7 +941,7 @@ impl CollectAttributes for AttBreathVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "loc", self.loc);
@@ -976,7 +976,7 @@ impl CollectAttributes for AttCaesuraGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
         push_attr!(attrs, "tstamp.real", self.tstamp_real);
         attrs
@@ -1001,7 +1001,7 @@ impl CollectAttributes for AttCaesuraVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "loc", self.loc);
@@ -1026,7 +1026,7 @@ impl CollectAttributes for AttCaesuraVis {
 impl CollectAttributes for AttCalendared {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "calendar", clone self.calendar);
+        push_attr!(attrs, "calendar", string self.calendar);
         attrs
     }
 }
@@ -1082,7 +1082,7 @@ impl CollectAttributes for AttChordGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "instr", self.instr);
         attrs
     }
@@ -1107,7 +1107,7 @@ impl CollectAttributes for AttChordLog {
         push_attr!(attrs, "tstamp.ges", self.tstamp_ges);
         push_attr!(attrs, "tstamp.real", self.tstamp_real);
         push_attr!(attrs, "tstamp", self.tstamp);
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         attrs
     }
 }
@@ -1127,7 +1127,7 @@ impl CollectAttributes for AttChordVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "stem.with", self.stem_with);
         push_attr!(attrs, "stem.form", self.stem_form);
@@ -1256,7 +1256,7 @@ impl CollectAttributes for AttClefVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -1334,9 +1334,9 @@ impl CollectAttributes for AttColoration {
 impl CollectAttributes for AttCommon {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "xml:id", clone self.xml_id);
+        push_attr!(attrs, "xml:id", string self.xml_id);
         push_attr!(attrs, "xml:base", self.xml_base);
-        push_attr!(attrs, "label", clone self.label);
+        push_attr!(attrs, "label", string self.label);
         push_attr!(attrs, "copyof", self.copyof);
         push_attr!(attrs, "corresp", vec self.corresp);
         push_attr!(attrs, "follows", vec self.follows);
@@ -1438,7 +1438,7 @@ impl CollectAttributes for AttCpMarkGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -1479,7 +1479,7 @@ impl CollectAttributes for AttCpMarkVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -1504,7 +1504,7 @@ impl CollectAttributes for AttCrit {
         push_attr!(attrs, "hand", self.hand);
         push_attr!(attrs, "seq", self.seq);
         push_attr!(attrs, "source", vec self.source);
-        push_attr!(attrs, "cause", clone self.cause);
+        push_attr!(attrs, "cause", string self.cause);
         attrs
     }
 }
@@ -1603,7 +1603,7 @@ impl CollectAttributes for AttCustosVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -1634,7 +1634,7 @@ impl CollectAttributes for AttDataPointing {
 impl CollectAttributes for AttDataSelecting {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "select", clone self.select);
+        push_attr!(attrs, "select", string self.select);
         attrs
     }
 }
@@ -1670,7 +1670,7 @@ impl CollectAttributes for AttDirGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -1774,7 +1774,7 @@ impl CollectAttributes for AttDotVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "ploc", self.ploc);
@@ -1817,7 +1817,7 @@ impl CollectAttributes for AttDurationGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -1856,7 +1856,7 @@ impl CollectAttributes for AttDynamGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "val", self.val);
         push_attr!(attrs, "val2", self.val2);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
@@ -1996,7 +1996,7 @@ impl CollectAttributes for AttEpisemaVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -2047,7 +2047,7 @@ impl CollectAttributes for AttExtSym {
         let mut attrs = Vec::new();
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         attrs
     }
@@ -2063,7 +2063,7 @@ impl CollectAttributes for AttExtSymAuth {
 impl CollectAttributes for AttExtSymNames {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         attrs
     }
@@ -2091,7 +2091,7 @@ impl CollectAttributes for AttExtent {
         push_attr!(attrs, "min", self.min);
         push_attr!(attrs, "max", self.max);
         push_attr!(attrs, "confidence", self.confidence);
-        push_attr!(attrs, "extent", clone self.extent);
+        push_attr!(attrs, "extent", string self.extent);
         attrs
     }
 }
@@ -2108,7 +2108,7 @@ impl CollectAttributes for AttFGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -2212,7 +2212,7 @@ impl CollectAttributes for AttFermataGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -2242,7 +2242,7 @@ impl CollectAttributes for AttFermataVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -2290,7 +2290,7 @@ impl CollectAttributes for AttFingGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -2352,7 +2352,7 @@ impl CollectAttributes for AttFingGrpGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -2446,7 +2446,7 @@ impl CollectAttributes for AttGlissGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -2479,7 +2479,7 @@ impl CollectAttributes for AttGlissVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -2585,7 +2585,7 @@ impl CollectAttributes for AttGrpSymVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -2622,7 +2622,7 @@ impl CollectAttributes for AttHairpinGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "val", self.val);
         push_attr!(attrs, "val2", self.val2);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
@@ -2694,7 +2694,7 @@ impl CollectAttributes for AttHalfmRptGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -2719,7 +2719,7 @@ impl CollectAttributes for AttHalfmRptVis {
         push_attr!(attrs, "expand", self.expand);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -2757,7 +2757,7 @@ impl CollectAttributes for AttHarmGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -2831,7 +2831,7 @@ impl CollectAttributes for AttHarpPedalGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -2867,7 +2867,7 @@ impl CollectAttributes for AttHarpPedalVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -2924,7 +2924,7 @@ impl CollectAttributes for AttHispanTickVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -2953,7 +2953,7 @@ impl CollectAttributes for AttHorizontalAlign {
 impl CollectAttributes for AttId {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "xml:id", clone self.xml_id);
+        push_attr!(attrs, "xml:id", string self.xml_id);
         attrs
     }
 }
@@ -2972,7 +2972,7 @@ impl CollectAttributes for AttInstrDefGes {
         push_attr!(attrs, "midi.instrnum", self.midi_instrnum);
         push_attr!(attrs, "midi.instrname", self.midi_instrname);
         push_attr!(attrs, "midi.pan", self.midi_pan);
-        push_attr!(attrs, "midi.patchname", clone self.midi_patchname);
+        push_attr!(attrs, "midi.patchname", string self.midi_patchname);
         push_attr!(attrs, "midi.patchnum", self.midi_patchnum);
         push_attr!(attrs, "midi.volume", self.midi_volume);
         push_attr!(attrs, "azimuth", self.azimuth);
@@ -3000,7 +3000,7 @@ impl CollectAttributes for AttInstrumentIdent {
 impl CollectAttributes for AttInternetMedia {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "mimetype", clone self.mimetype);
+        push_attr!(attrs, "mimetype", string self.mimetype);
         attrs
     }
 }
@@ -3052,7 +3052,7 @@ impl CollectAttributes for AttKeyAccidVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -3131,15 +3131,15 @@ impl CollectAttributes for AttKeySigDefaultVis {
 impl CollectAttributes for AttLabelled {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "label", clone self.label);
+        push_attr!(attrs, "label", string self.label);
         attrs
     }
 }
 impl CollectAttributes for AttLang {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "xml:lang", clone self.xml_lang);
-        push_attr!(attrs, "translit", clone self.translit);
+        push_attr!(attrs, "xml:lang", string self.xml_lang);
+        push_attr!(attrs, "translit", string self.translit);
         attrs
     }
 }
@@ -3190,7 +3190,7 @@ impl CollectAttributes for AttLayerDefLog {
         push_attr!(attrs, "dur.default", self.dur_default);
         push_attr!(attrs, "num.default", self.num_default);
         push_attr!(attrs, "numbase.default", self.numbase_default);
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         push_attr!(attrs, "oct.default", self.oct_default);
         push_attr!(attrs, "trans.diat", self.trans_diat);
@@ -3201,7 +3201,7 @@ impl CollectAttributes for AttLayerDefLog {
 impl CollectAttributes for AttLayerDefLogCmn {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         attrs
     }
@@ -3264,7 +3264,7 @@ impl CollectAttributes for AttLineGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -3385,7 +3385,7 @@ impl CollectAttributes for AttLiquescentVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -3564,7 +3564,7 @@ impl CollectAttributes for AttMRestGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -3590,7 +3590,7 @@ impl CollectAttributes for AttMRestVis {
         push_attr!(attrs, "cutout", self.cutout);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "ploc", self.ploc);
@@ -3641,7 +3641,7 @@ impl CollectAttributes for AttMRptVis {
         push_attr!(attrs, "expand", self.expand);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "num.place", self.num_place);
         push_attr!(attrs, "num.visible", self.num_visible);
@@ -3685,7 +3685,7 @@ impl CollectAttributes for AttMRpt2Vis {
         push_attr!(attrs, "expand", self.expand);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -3712,7 +3712,7 @@ impl CollectAttributes for AttMSpaceGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -3816,8 +3816,8 @@ impl CollectAttributes for AttMeasurement {
 impl CollectAttributes for AttMediaBounds {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "begin", clone self.begin);
-        push_attr!(attrs, "end", clone self.end);
+        push_attr!(attrs, "begin", string self.begin);
+        push_attr!(attrs, "end", string self.end);
         push_attr!(attrs, "betype", self.betype);
         attrs
     }
@@ -3825,7 +3825,7 @@ impl CollectAttributes for AttMediaBounds {
 impl CollectAttributes for AttMedium {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "medium", clone self.medium);
+        push_attr!(attrs, "medium", string self.medium);
         attrs
     }
 }
@@ -3874,7 +3874,7 @@ impl CollectAttributes for AttMensurVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -3943,7 +3943,7 @@ impl CollectAttributes for AttMetaMarkGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -4020,7 +4020,7 @@ impl CollectAttributes for AttMeterSigGes {
 impl CollectAttributes for AttMeterSigLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "count", clone self.count);
+        push_attr!(attrs, "count", string self.count);
         push_attr!(attrs, "sym", self.sym);
         push_attr!(attrs, "unit", self.unit);
         attrs
@@ -4034,7 +4034,7 @@ impl CollectAttributes for AttMeterSigVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -4051,7 +4051,7 @@ impl CollectAttributes for AttMeterSigVis {
 impl CollectAttributes for AttMeterSigDefaultLog {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "meter.count", clone self.meter_count);
+        push_attr!(attrs, "meter.count", string self.meter_count);
         push_attr!(attrs, "meter.unit", self.meter_unit);
         push_attr!(attrs, "meter.sym", self.meter_sym);
         attrs
@@ -4130,7 +4130,7 @@ impl CollectAttributes for AttMidiInstrument {
         push_attr!(attrs, "midi.instrnum", self.midi_instrnum);
         push_attr!(attrs, "midi.instrname", self.midi_instrname);
         push_attr!(attrs, "midi.pan", self.midi_pan);
-        push_attr!(attrs, "midi.patchname", clone self.midi_patchname);
+        push_attr!(attrs, "midi.patchname", string self.midi_patchname);
         push_attr!(attrs, "midi.patchnum", self.midi_patchnum);
         push_attr!(attrs, "midi.volume", self.midi_volume);
         attrs
@@ -4223,7 +4223,7 @@ impl CollectAttributes for AttMordentVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -4253,7 +4253,7 @@ impl CollectAttributes for AttMultiRestGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -4277,7 +4277,7 @@ impl CollectAttributes for AttMultiRestVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "num.place", self.num_place);
         push_attr!(attrs, "num.visible", self.num_visible);
@@ -4328,7 +4328,7 @@ impl CollectAttributes for AttMultiRptVis {
         push_attr!(attrs, "expand", self.expand);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -4365,7 +4365,7 @@ impl CollectAttributes for AttName {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "codedval", vec self.codedval);
-        push_attr!(attrs, "auth", clone self.auth);
+        push_attr!(attrs, "auth", string self.auth);
         push_attr!(attrs, "auth.uri", self.auth_uri);
         push_attr!(attrs, "enddate", self.enddate);
         push_attr!(attrs, "isodate", self.isodate);
@@ -4386,7 +4386,7 @@ impl CollectAttributes for AttNcAnl {
         push_attr!(attrs, "mfunc", self.mfunc);
         push_attr!(attrs, "type", vec self.r#type);
         push_attr!(attrs, "pclass", self.pclass);
-        push_attr!(attrs, "psolfa", clone self.psolfa);
+        push_attr!(attrs, "psolfa", string self.psolfa);
         attrs
     }
 }
@@ -4400,7 +4400,7 @@ impl CollectAttributes for AttNcGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "instr", self.instr);
         push_attr!(attrs, "vel", self.vel);
         push_attr!(attrs, "oct.ges", self.oct_ges);
@@ -4415,8 +4415,8 @@ impl CollectAttributes for AttNcLog {
         push_attr!(attrs, "when", self.when);
         push_attr!(attrs, "layer", vec self.layer);
         push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "oct", clone self.oct);
-        push_attr!(attrs, "pname", clone self.pname);
+        push_attr!(attrs, "oct", string self.oct);
+        push_attr!(attrs, "pname", string self.pname);
         attrs
     }
 }
@@ -4427,7 +4427,7 @@ impl CollectAttributes for AttNcVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "curve", self.curve);
         push_attr!(attrs, "angled", self.angled);
@@ -4485,7 +4485,7 @@ impl CollectAttributes for AttNcGrpLog {
         push_attr!(attrs, "when", self.when);
         push_attr!(attrs, "layer", vec self.layer);
         push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         attrs
     }
 }
@@ -4529,7 +4529,7 @@ impl CollectAttributes for AttNeumeLog {
         push_attr!(attrs, "when", self.when);
         push_attr!(attrs, "layer", vec self.layer);
         push_attr!(attrs, "staff", vec self.staff);
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         attrs
     }
 }
@@ -4541,7 +4541,7 @@ impl CollectAttributes for AttNeumeVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -4577,7 +4577,7 @@ impl CollectAttributes for AttNotationType {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_attr!(attrs, "notationtype", self.notationtype);
-        push_attr!(attrs, "notationsubtype", clone self.notationsubtype);
+        push_attr!(attrs, "notationsubtype", string self.notationsubtype);
         attrs
     }
 }
@@ -4594,12 +4594,12 @@ impl CollectAttributes for AttNoteAnl {
         push_attr!(attrs, "lv", self.lv);
         push_attr!(attrs, "ornam", vec self.ornam);
         push_attr!(attrs, "slur", vec self.slur);
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         push_attr!(attrs, "tie", vec self.tie);
         push_attr!(attrs, "tuplet", vec self.tuplet);
         push_attr!(attrs, "fermata", self.fermata);
         push_attr!(attrs, "pclass", self.pclass);
-        push_attr!(attrs, "psolfa", clone self.psolfa);
+        push_attr!(attrs, "psolfa", string self.psolfa);
         attrs
     }
 }
@@ -4611,7 +4611,7 @@ impl CollectAttributes for AttNoteAnlCmn {
         push_attr!(attrs, "lv", self.lv);
         push_attr!(attrs, "ornam", vec self.ornam);
         push_attr!(attrs, "slur", vec self.slur);
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         push_attr!(attrs, "tie", vec self.tie);
         push_attr!(attrs, "tuplet", vec self.tuplet);
         attrs
@@ -4632,7 +4632,7 @@ impl CollectAttributes for AttNoteGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "instr", self.instr);
         push_attr!(attrs, "vel", self.vel);
         push_attr!(attrs, "num", self.num);
@@ -4699,7 +4699,7 @@ impl CollectAttributes for AttNoteVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "head.altsym", self.head_altsym);
         push_attr!(attrs, "head.auth", self.head_auth);
@@ -4802,7 +4802,7 @@ impl CollectAttributes for AttOctaveGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -4938,7 +4938,7 @@ impl CollectAttributes for AttOriscusVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -4968,7 +4968,7 @@ impl CollectAttributes for AttOrnamGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -5218,7 +5218,7 @@ impl CollectAttributes for AttPedalVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "lform", self.lform);
         push_attr!(attrs, "lwidth", self.lwidth);
@@ -5279,7 +5279,7 @@ impl CollectAttributes for AttPhraseGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -5439,7 +5439,7 @@ impl CollectAttributes for AttPointing {
         push_attr!(attrs, "xlink:role", self.xlink_role);
         push_attr!(attrs, "xlink:show", self.xlink_show);
         push_attr!(attrs, "target", vec self.target);
-        push_attr!(attrs, "targettype", clone self.targettype);
+        push_attr!(attrs, "targettype", string self.targettype);
         attrs
     }
 }
@@ -5468,7 +5468,7 @@ impl CollectAttributes for AttProportVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -5517,7 +5517,7 @@ impl CollectAttributes for AttQuilismaVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -5569,7 +5569,7 @@ impl CollectAttributes for AttRdgVis {
 impl CollectAttributes for AttReasonIdent {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "reason", clone self.reason);
+        push_attr!(attrs, "reason", string self.reason);
         attrs
     }
 }
@@ -5686,7 +5686,7 @@ impl CollectAttributes for AttRepeatMarkGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -5727,7 +5727,7 @@ impl CollectAttributes for AttRepeatMarkVis {
         push_attr!(attrs, "extender", self.extender);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "vgrp", self.vgrp);
@@ -5776,7 +5776,7 @@ impl CollectAttributes for AttRestGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "num", self.num);
         push_attr!(attrs, "numbase", self.numbase);
         attrs
@@ -5818,7 +5818,7 @@ impl CollectAttributes for AttRestVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "breaksec", self.breaksec);
         push_attr!(attrs, "spaces", self.spaces);
@@ -5884,7 +5884,7 @@ impl CollectAttributes for AttSbVis {
         push_attr!(attrs, "altsym", self.altsym);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "fontfam", self.fontfam);
         push_attr!(attrs, "fontname", self.fontname);
@@ -5963,13 +5963,13 @@ impl CollectAttributes for AttScoreDefLog {
         push_attr!(attrs, "num.default", self.num_default);
         push_attr!(attrs, "numbase.default", self.numbase_default);
         push_attr!(attrs, "keysig", vec self.keysig);
-        push_attr!(attrs, "meter.count", clone self.meter_count);
+        push_attr!(attrs, "meter.count", string self.meter_count);
         push_attr!(attrs, "meter.unit", self.meter_unit);
         push_attr!(attrs, "meter.sym", self.meter_sym);
         push_attr!(attrs, "oct.default", self.oct_default);
         push_attr!(attrs, "trans.diat", self.trans_diat);
         push_attr!(attrs, "trans.semi", self.trans_semi);
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         push_attr!(attrs, "modusmaior", self.modusmaior);
         push_attr!(attrs, "modusminor", self.modusminor);
@@ -5984,7 +5984,7 @@ impl CollectAttributes for AttScoreDefLog {
 impl CollectAttributes for AttScoreDefLogCmn {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         attrs
     }
@@ -6075,7 +6075,7 @@ impl CollectAttributes for AttScoreDefVis {
         push_attr!(attrs, "mensur.sign", self.mensur_sign);
         push_attr!(attrs, "mensur.size", self.mensur_size);
         push_attr!(attrs, "mensur.slash", self.mensur_slash);
-        push_attr!(attrs, "vu.height", clone self.vu_height);
+        push_attr!(attrs, "vu.height", string self.vu_height);
         attrs
     }
 }
@@ -6178,7 +6178,7 @@ impl CollectAttributes for AttSignifLetVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -6218,7 +6218,7 @@ impl CollectAttributes for AttSlurGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -6288,7 +6288,7 @@ impl CollectAttributes for AttSlurRend {
 impl CollectAttributes for AttSolfa {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "psolfa", clone self.psolfa);
+        push_attr!(attrs, "psolfa", string self.psolfa);
         attrs
     }
 }
@@ -6381,7 +6381,7 @@ impl CollectAttributes for AttSpaceGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -6480,15 +6480,15 @@ impl CollectAttributes for AttStaffDefLog {
         push_attr!(attrs, "num.default", self.num_default);
         push_attr!(attrs, "numbase.default", self.numbase_default);
         push_attr!(attrs, "keysig", vec self.keysig);
-        push_attr!(attrs, "meter.count", clone self.meter_count);
+        push_attr!(attrs, "meter.count", string self.meter_count);
         push_attr!(attrs, "meter.unit", self.meter_unit);
         push_attr!(attrs, "meter.sym", self.meter_sym);
         push_attr!(attrs, "notationtype", self.notationtype);
-        push_attr!(attrs, "notationsubtype", clone self.notationsubtype);
+        push_attr!(attrs, "notationsubtype", string self.notationsubtype);
         push_attr!(attrs, "oct.default", self.oct_default);
         push_attr!(attrs, "trans.diat", self.trans_diat);
         push_attr!(attrs, "trans.semi", self.trans_semi);
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         push_attr!(attrs, "modusmaior", self.modusmaior);
         push_attr!(attrs, "modusminor", self.modusminor);
@@ -6504,7 +6504,7 @@ impl CollectAttributes for AttStaffDefLog {
 impl CollectAttributes for AttStaffDefLogCmn {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "beam.group", clone self.beam_group);
+        push_attr!(attrs, "beam.group", string self.beam_group);
         push_attr!(attrs, "beam.rests", self.beam_rests);
         attrs
     }
@@ -6777,7 +6777,7 @@ impl CollectAttributes for AttStemVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "visible", self.visible);
         push_attr!(attrs, "pos", self.pos);
@@ -6868,7 +6868,7 @@ impl CollectAttributes for AttStrophicusVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "loc", self.loc);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -6926,7 +6926,7 @@ impl CollectAttributes for AttSylVis {
 impl CollectAttributes for AttSylText {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
-        push_attr!(attrs, "syl", clone self.syl);
+        push_attr!(attrs, "syl", string self.syl);
         attrs
     }
 }
@@ -6976,7 +6976,7 @@ impl CollectAttributes for AttSymbolVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "scale", self.scale);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -7032,7 +7032,7 @@ impl CollectAttributes for AttTabDurSymVis {
         push_attr!(attrs, "color", self.color);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -7064,7 +7064,7 @@ impl CollectAttributes for AttTabGrpGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -7345,7 +7345,7 @@ impl CollectAttributes for AttTrillGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         push_attr!(attrs, "tstamp2.ges", self.tstamp2_ges);
         push_attr!(attrs, "tstamp2.real", self.tstamp2_real);
         attrs
@@ -7391,7 +7391,7 @@ impl CollectAttributes for AttTrillVis {
         push_attr!(attrs, "extender", self.extender);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);
@@ -7458,7 +7458,7 @@ impl CollectAttributes for AttTupletGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -7514,7 +7514,7 @@ impl CollectAttributes for AttTupletSpanGes {
         push_attr!(attrs, "dur.metrical", self.dur_metrical);
         push_attr!(attrs, "dur.ppq", self.dur_ppq);
         push_attr!(attrs, "dur.real", self.dur_real);
-        push_attr!(attrs, "dur.recip", clone self.dur_recip);
+        push_attr!(attrs, "dur.recip", string self.dur_recip);
         attrs
     }
 }
@@ -7594,7 +7594,7 @@ impl CollectAttributes for AttTurnVis {
         push_attr!(attrs, "enclose", self.enclose);
         push_attr!(attrs, "glyph.auth", self.glyph_auth);
         push_attr!(attrs, "glyph.uri", self.glyph_uri);
-        push_attr!(attrs, "glyph.name", clone self.glyph_name);
+        push_attr!(attrs, "glyph.name", string self.glyph_name);
         push_attr!(attrs, "glyph.num", self.glyph_num);
         push_attr!(attrs, "place", self.place);
         push_attr!(attrs, "fontfam", self.fontfam);

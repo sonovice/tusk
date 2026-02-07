@@ -313,7 +313,7 @@ impl MeiSerialize for PropName {
         attrs.extend(self.linking.collect_attributes());
         attrs.extend(self.n_number_like.collect_attributes());
         attrs.extend(self.responsibility.collect_attributes());
-        push_attr!(attrs, "type", clone self.r#type);
+        push_attr!(attrs, "type", string self.r#type);
         attrs
     }
 

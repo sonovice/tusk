@@ -383,7 +383,7 @@ impl MeiSerialize for tusk_model::elements::Mei {
     fn collect_all_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         // AttId: xml:id
-        push_attr!(attrs, "xml:id", clone self.id.xml_id);
+        push_attr!(attrs, "xml:id", string self.id.xml_id);
         // AttMeiVersion: meiversion
         attrs.extend(self.mei_version.collect_attributes());
         // AttResponsibility: resp
@@ -761,8 +761,8 @@ impl MeiSerialize for List {
         attrs.extend(self.n_number_like.collect_attributes());
         attrs.extend(self.responsibility.collect_attributes());
         attrs.extend(self.xy.collect_attributes());
-        push_attr!(attrs, "form", clone self.form);
-        push_attr!(attrs, "type", clone self.r#type);
+        push_attr!(attrs, "form", string self.form);
+        push_attr!(attrs, "type", string self.r#type);
         attrs
     }
 
@@ -1062,7 +1062,7 @@ impl MeiSerialize for L {
         attrs.extend(self.facsimile.collect_attributes());
         attrs.extend(self.lang.collect_attributes());
         // Element-local attribute: @rhythm
-        push_attr!(attrs, "rhythm", clone self.rhythm);
+        push_attr!(attrs, "rhythm", string self.rhythm);
         attrs
     }
 

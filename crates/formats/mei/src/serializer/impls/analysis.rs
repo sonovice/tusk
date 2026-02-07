@@ -636,8 +636,8 @@ impl MeiSerialize for When {
         let mut attrs = Vec::new();
         attrs.extend(self.common.collect_attributes());
         attrs.extend(self.data_pointing.collect_attributes());
-        push_attr!(attrs, "absolute", clone self.absolute);
-        push_attr!(attrs, "interval", clone self.interval);
+        push_attr!(attrs, "absolute", string self.absolute);
+        push_attr!(attrs, "interval", string self.interval);
         push_attr!(attrs, "abstype", self.abstype);
         push_attr!(attrs, "inttype", self.inttype);
         push_attr!(attrs, "since", self.since);
@@ -1090,7 +1090,7 @@ impl MeiSerialize for MetaMark {
         attrs.extend(self.meta_mark_ges.collect_attributes());
         attrs.extend(self.meta_mark_anl.collect_attributes());
         attrs.extend(self.pointing.collect_attributes());
-        push_attr!(attrs, "function", clone self.function);
+        push_attr!(attrs, "function", string self.function);
         attrs
     }
 
