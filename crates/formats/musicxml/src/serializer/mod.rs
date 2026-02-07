@@ -165,9 +165,12 @@ impl<W: Write> MusicXmlWriter<W> {
     /// Write DOCTYPE declaration if configured and not already written.
     pub fn write_doctype(&mut self) -> SerializeResult<()> {
         if self.config.include_doctype && !self.doctype_written {
-            // MusicXML 4.0 DOCTYPE
+            // Use from_escaped to prevent quick-xml from escaping the literal
+            // quotes in the DOCTYPE declaration (BytesText::new would turn " into &quot;).
             self.writer.write_event(Event::DocType(
-                BytesText::new("score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"")
+                BytesText::from_escaped(
+                    "score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"",
+                ),
             ))?;
             self.doctype_written = true;
         }
