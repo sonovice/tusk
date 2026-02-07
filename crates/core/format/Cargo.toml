@@ -1,0 +1,12 @@
+[package]
+name = "tusk-format"
+description = "Unified format traits for Tusk music notation converter"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tusk-model = { workspace = true }
+thiserror = { workspace = true }

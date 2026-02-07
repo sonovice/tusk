@@ -94,6 +94,55 @@ pub fn export(mei: &tusk_model::elements::Mei) -> SerializeResult<String> {
     <tusk_model::elements::Mei as MeiSerialize>::to_mei_string(mei)
 }
 
+// ---------------------------------------------------------------------------
+// Unified format trait implementations
+// ---------------------------------------------------------------------------
+
+/// MEI format handler.
+///
+/// Implements the unified [`tusk_format`] traits so that MEI can be
+/// used interchangeably with other formats through the [`FormatRegistry`].
+///
+/// Since MEI *is* the canonical internal model, import and export are
+/// essentially just XML deserialization / serialization — no semantic
+/// conversion step is needed.
+///
+/// [`FormatRegistry`]: tusk_format::FormatRegistry
+pub struct MeiFormat;
+
+impl tusk_format::Format for MeiFormat {
+    fn id(&self) -> &'static str {
+        "mei"
+    }
+
+    fn name(&self) -> &'static str {
+        "MEI"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["mei"]
+    }
+
+    fn detect(&self, content: &[u8]) -> bool {
+        // Only check the first 4 KB for efficiency with large files.
+        let prefix = &content[..content.len().min(4096)];
+        let s = std::str::from_utf8(prefix).unwrap_or("");
+        s.contains("<mei") || s.contains("music-encoding.org")
+    }
+}
+
+impl tusk_format::Importer for MeiFormat {
+    fn import_from_str(&self, input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
+        crate::import(input).map_err(tusk_format::FormatError::parse)
+    }
+}
+
+impl tusk_format::Exporter for MeiFormat {
+    fn export_to_string(&self, mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
+        crate::export(mei).map_err(tusk_format::FormatError::serialize)
+    }
+}
+
 #[cfg(test)]
 mod roundtrip_tests;
 

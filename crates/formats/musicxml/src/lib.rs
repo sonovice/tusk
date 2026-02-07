@@ -173,6 +173,63 @@ pub fn serialize_timewise_score(
     serializer::serialize_timewise(score)
 }
 
+// ---------------------------------------------------------------------------
+// Unified format trait implementations
+// ---------------------------------------------------------------------------
+
+/// MusicXML format handler.
+///
+/// Implements the unified [`tusk_format`] traits so that MusicXML can be
+/// used interchangeably with other formats through the [`FormatRegistry`].
+///
+/// **Import** (MusicXML → MEI) is lossless: the full pipeline parses XML
+/// into a `ScorePartwise`, converts to timewise, and then maps to MEI.
+///
+/// **Export** (MEI → MusicXML) is lossy: many MEI-specific features have
+/// no MusicXML equivalent and will be dropped.
+///
+/// [`FormatRegistry`]: tusk_format::FormatRegistry
+pub struct MusicXmlFormat;
+
+impl tusk_format::Format for MusicXmlFormat {
+    fn id(&self) -> &'static str {
+        "musicxml"
+    }
+
+    fn name(&self) -> &'static str {
+        "MusicXML"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["musicxml", "xml", "mxl"]
+    }
+
+    fn detect(&self, content: &[u8]) -> bool {
+        // Only check the first 4 KB for efficiency with large files.
+        let prefix = &content[..content.len().min(4096)];
+        let s = std::str::from_utf8(prefix).unwrap_or("");
+        s.contains("<score-partwise")
+            || s.contains("<score-timewise")
+            || s.contains("musicxml.org")
+    }
+}
+
+impl tusk_format::Importer for MusicXmlFormat {
+    fn import_from_str(&self, input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
+        let score = crate::parse_score_partwise(input)
+            .or_else(|_| crate::parse_score_timewise(input))
+            .map_err(tusk_format::FormatError::parse)?;
+        crate::import(&score).map_err(tusk_format::FormatError::conversion)
+    }
+}
+
+impl tusk_format::Exporter for MusicXmlFormat {
+    fn export_to_string(&self, mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
+        let score = crate::export(mei).map_err(tusk_format::FormatError::conversion)?;
+        crate::serialize(&score).map_err(tusk_format::FormatError::serialize)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,5 +238,24 @@ mod tests {
     fn import_empty_score_succeeds() {
         let score = model::elements::ScorePartwise::default();
         assert!(import(&score).is_ok());
+    }
+
+    #[test]
+    fn musicxml_format_trait_metadata() {
+        use tusk_format::Format;
+        let fmt = MusicXmlFormat;
+        assert_eq!(fmt.id(), "musicxml");
+        assert_eq!(fmt.name(), "MusicXML");
+        assert!(fmt.extensions().contains(&"musicxml"));
+        assert!(fmt.extensions().contains(&"xml"));
+    }
+
+    #[test]
+    fn musicxml_format_detect() {
+        use tusk_format::Format;
+        let fmt = MusicXmlFormat;
+        assert!(fmt.detect(b"<?xml?><score-partwise version=\"4.0\">"));
+        assert!(fmt.detect(b"<?xml?><score-timewise version=\"4.0\">"));
+        assert!(!fmt.detect(b"<mei xmlns=\"http://www.music-encoding.org/ns/mei\">"));
     }
 }

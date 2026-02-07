@@ -1,120 +1,90 @@
-//! Tusk CLI - MusicXML <-> MEI converter command-line tool.
+//! Tusk CLI - Music notation format converter command-line tool.
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::fs;
-use std::path::Path;
+use tusk_format::FormatRegistry;
 
 /// Tusk: The Ultimate Score Konverter
 ///
-/// Bidirectional MusicXML <-> MEI converter
+/// Bidirectional music notation format converter (MEI, MusicXML, …)
 #[derive(Parser, Debug)]
 #[command(name = "tusk")]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// Input file (MEI or MusicXML)
+    /// Input file (MEI, MusicXML, …)
     #[arg(value_name = "INPUT")]
     input: std::path::PathBuf,
 
-    /// Output file (MEI or MusicXML)
+    /// Output file (MEI, MusicXML, …)
     #[arg(value_name = "OUTPUT")]
     output: std::path::PathBuf,
 }
 
-/// Detected format of a music file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Format {
-    Mei,
-    MusicXml,
-}
+/// Build the default format registry with all compiled-in formats.
+fn build_registry() -> FormatRegistry {
+    let mut registry = FormatRegistry::new();
 
-/// Detect format from file extension.
-fn detect_format(path: &Path) -> Option<Format> {
-    let ext = path.extension()?.to_str()?.to_lowercase();
-    match ext.as_str() {
-        "mei" => Some(Format::Mei),
-        "xml" | "musicxml" | "mxl" => {
-            // Could be either - check for MEI in filename or content hint
-            let name = path.file_stem()?.to_str()?.to_lowercase();
-            if name.contains("mei") || name.ends_with(".mei") {
-                Some(Format::Mei)
-            } else {
-                Some(Format::MusicXml)
-            }
-        }
-        _ => None,
-    }
-}
+    // MEI
+    registry.register_importer(Box::new(tusk_mei::MeiFormat));
+    registry.register_exporter(Box::new(tusk_mei::MeiFormat));
 
-/// Detect format from file content (fallback).
-fn detect_format_from_content(content: &str) -> Option<Format> {
-    if content.contains("<mei") || content.contains("music-encoding.org") {
-        Some(Format::Mei)
-    } else if content.contains("<score-partwise")
-        || content.contains("<score-timewise")
-        || content.contains("musicxml.org")
-    {
-        Some(Format::MusicXml)
-    } else {
-        None
-    }
+    // MusicXML
+    registry.register_importer(Box::new(tusk_musicxml::MusicXmlFormat));
+    registry.register_exporter(Box::new(tusk_musicxml::MusicXmlFormat));
+
+    registry
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let registry = build_registry();
 
-    // Read input file
-    let input_xml = fs::read_to_string(&cli.input)
+    // Read input file.
+    let input_content = fs::read_to_string(&cli.input)
         .with_context(|| format!("Failed to read input file: {:?}", cli.input))?;
 
-    // Detect input format (prefer extension, fallback to content)
-    let input_format = detect_format(&cli.input)
-        .or_else(|| detect_format_from_content(&input_xml))
+    // Resolve input format (extension first, content fallback).
+    let input_ext = cli
+        .input
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    let importer = registry
+        .find_importer(input_ext, Some(input_content.as_bytes()))
         .with_context(|| format!("Could not detect format of input file: {:?}", cli.input))?;
 
-    // Detect output format (from extension only)
-    let output_format = detect_format(&cli.output)
+    // Resolve output format (extension only — we don't have content yet).
+    let output_ext = cli
+        .output
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    let exporter = registry
+        .find_exporter(output_ext)
         .with_context(|| format!("Could not detect format of output file: {:?}", cli.output))?;
 
-    // Perform conversion
-    let output_xml = match (input_format, output_format) {
-        (Format::MusicXml, Format::Mei) => {
-            // MusicXML -> MEI
-            let score = tusk_musicxml::parser::parse_score_partwise(&input_xml)
-                .or_else(|_| tusk_musicxml::parser::parse_score_timewise(&input_xml))
-                .with_context(|| "Failed to parse MusicXML")?;
-            let mei = tusk_musicxml::import(&score)
-                .with_context(|| "Failed to import MusicXML to MEI")?;
-            tusk_mei::export(&mei).with_context(|| "Failed to export MEI")?
-        }
-        (Format::Mei, Format::MusicXml) => {
-            // MEI -> MusicXML
-            let mei = tusk_mei::import(&input_xml).with_context(|| "Failed to parse MEI")?;
-            let score =
-                tusk_musicxml::export(&mei).with_context(|| "Failed to export MEI to MusicXML")?;
-            tusk_musicxml::serialize(&score).with_context(|| "Failed to serialize MusicXML")?
-        }
-        (Format::MusicXml, Format::MusicXml) => {
-            // MusicXML -> MusicXML (roundtrip for testing/normalization)
-            let score = tusk_musicxml::parser::parse_score_partwise(&input_xml)
-                .or_else(|_| tusk_musicxml::parser::parse_score_timewise(&input_xml))
-                .with_context(|| "Failed to parse MusicXML")?;
-            tusk_musicxml::serialize(&score).with_context(|| "Failed to serialize MusicXML")?
-        }
-        (Format::Mei, Format::Mei) => {
-            // MEI -> MEI (roundtrip for testing/normalization)
-            let mei = tusk_mei::import(&input_xml).with_context(|| "Failed to parse MEI")?;
-            tusk_mei::export(&mei).with_context(|| "Failed to export MEI")?
-        }
-    };
+    // Convert: input → MEI → output.
+    let mei = importer
+        .import_from_str(&input_content)
+        .with_context(|| format!("Failed to import {} file", importer.name()))?;
 
-    // Write output file
-    fs::write(&cli.output, &output_xml)
+    let output_content = exporter
+        .export_to_string(&mei)
+        .with_context(|| format!("Failed to export to {}", exporter.name()))?;
+
+    // Write output file.
+    fs::write(&cli.output, &output_content)
         .with_context(|| format!("Failed to write output file: {:?}", cli.output))?;
 
     println!(
-        "Converted {:?} ({:?}) -> {:?} ({:?})",
-        cli.input, input_format, cli.output, output_format
+        "Converted {:?} ({}) -> {:?} ({})",
+        cli.input,
+        importer.name(),
+        cli.output,
+        exporter.name(),
     );
 
     Ok(())
@@ -125,28 +95,64 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_detect_format_mei() {
-        assert_eq!(detect_format(Path::new("test.mei")), Some(Format::Mei));
+    fn registry_finds_mei_by_extension() {
+        let reg = build_registry();
+        let imp = reg.find_importer("mei", None);
+        assert!(imp.is_some());
+        assert_eq!(imp.unwrap().id(), "mei");
     }
 
     #[test]
-    fn test_detect_format_musicxml() {
-        assert_eq!(
-            detect_format(Path::new("test.musicxml")),
-            Some(Format::MusicXml)
-        );
-        assert_eq!(detect_format(Path::new("test.xml")), Some(Format::MusicXml));
+    fn registry_finds_musicxml_by_extension() {
+        let reg = build_registry();
+        assert!(reg.find_importer("musicxml", None).is_some());
+        assert!(reg.find_importer("xml", None).is_some());
     }
 
     #[test]
-    fn test_detect_format_from_content() {
-        assert_eq!(
-            detect_format_from_content("<mei xmlns=\"http://www.music-encoding.org/ns/mei\">"),
-            Some(Format::Mei)
-        );
-        assert_eq!(
-            detect_format_from_content("<score-partwise version=\"4.0\">"),
-            Some(Format::MusicXml)
-        );
+    fn registry_detects_mei_from_content() {
+        let reg = build_registry();
+        let content = b"<mei xmlns=\"http://www.music-encoding.org/ns/mei\">";
+        let imp = reg.find_importer("unknown", Some(content.as_slice()));
+        assert!(imp.is_some());
+        assert_eq!(imp.unwrap().id(), "mei");
+    }
+
+    #[test]
+    fn registry_detects_musicxml_from_content() {
+        let reg = build_registry();
+        let content = b"<score-partwise version=\"4.0\">";
+        let imp = reg.find_importer("unknown", Some(content.as_slice()));
+        assert!(imp.is_some());
+        assert_eq!(imp.unwrap().id(), "musicxml");
+    }
+
+    #[test]
+    fn registry_finds_exporters() {
+        let reg = build_registry();
+        assert!(reg.find_exporter("mei").is_some());
+        assert!(reg.find_exporter("musicxml").is_some());
+        assert!(reg.find_exporter("xml").is_some());
+        assert!(reg.find_exporter("unknown").is_none());
+    }
+
+    #[test]
+    fn xml_extension_defaults_to_musicxml() {
+        let reg = build_registry();
+        let exp = reg.find_exporter("xml");
+        assert!(exp.is_some());
+        assert_eq!(exp.unwrap().id(), "musicxml");
+    }
+
+    #[test]
+    fn xml_extension_with_mei_content_detects_mei() {
+        let reg = build_registry();
+        let content = b"<?xml version=\"1.0\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\">";
+        let imp = reg.find_importer("xml", Some(content.as_slice()));
+        assert!(imp.is_some());
+        // With .xml extension, both MEI and MusicXML match by extension.
+        // MusicXML matches first, but MEI content detection should win
+        // because MusicXML's detect() returns false for MEI content.
+        assert_eq!(imp.unwrap().id(), "mei");
     }
 }

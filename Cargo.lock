@@ -583,8 +583,17 @@ dependencies = [
  "clap",
  "indicatif",
  "tracing",
+ "tusk-format",
  "tusk-mei",
  "tusk-musicxml",
+]
+
+[[package]]
+name = "tusk-format"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "tusk-model",
 ]
 
 [[package]]
@@ -597,6 +606,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tracing",
+ "tusk-format",
  "tusk-model",
 ]
 
@@ -621,6 +631,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tracing",
+ "tusk-format",
  "tusk-mei",
  "tusk-model",
 ]
