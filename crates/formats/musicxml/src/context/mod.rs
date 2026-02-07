@@ -1,4 +1,4 @@
-//! Conversion context for MusicXML ↔ MEI bidirectional conversion.
+//! Conversion context for MusicXML <-> MEI bidirectional conversion.
 //!
 //! The `ConversionContext` maintains state during conversion to track:
 //! - Division calculations (MusicXML divisions per quarter note)
@@ -22,9 +22,18 @@
 //! assert_eq!(ctx.get_mei_id("P1"), Some("staff-1"));
 //! ```
 
+mod ids;
+mod positions;
+mod slurs;
+mod ties;
+
 use std::collections::HashMap;
 
 use crate::model::duration::DurationContext;
+
+pub use positions::{ConversionWarning, DocumentPosition};
+pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
+pub use ties::PendingTie;
 
 /// Direction of conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,100 +44,7 @@ pub enum ConversionDirection {
     MeiToMusicXml,
 }
 
-/// A pending tie that needs to be resolved.
-///
-/// Ties in MusicXML are represented as start/stop pairs on notes.
-/// MEI represents ties as control events with `@startid` and `@endid`.
-/// This struct tracks a started tie until its end note is found.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PendingTie {
-    /// The xml:id of the note where the tie starts.
-    pub start_id: String,
-    /// The staff number (1-based).
-    pub staff: u32,
-    /// The voice number.
-    pub voice: u32,
-    /// The pitch step (A-G).
-    pub step: char,
-    /// The octave number.
-    pub octave: u8,
-    /// Optional chromatic alteration.
-    pub alter: Option<f64>,
-}
-
-/// A pending slur that needs to be resolved.
-///
-/// Similar to ties, slurs have start/stop pairs that need matching.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PendingSlur {
-    /// The xml:id of the note where the slur starts.
-    pub start_id: String,
-    /// The MusicXML part ID (to scope matching within a single part).
-    pub part_id: String,
-    /// The MusicXML staff number within the part (for matching start/stop pairs).
-    pub staff: u32,
-    /// Slur number (for distinguishing multiple concurrent slurs).
-    pub number: u8,
-    /// The MEI staff number (global, for the @staff attribute on the slur element).
-    pub mei_staff: u32,
-}
-
-/// A completed slur with both start and end IDs.
-///
-/// Used to collect slurs that have been fully resolved (both start and stop found)
-/// so they can be emitted as MEI `<slur>` control events.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CompletedSlur {
-    /// The xml:id of the note where the slur starts.
-    pub start_id: String,
-    /// The xml:id of the note where the slur ends.
-    pub end_id: String,
-    /// The MEI staff number (global, for the @staff attribute).
-    pub mei_staff: u32,
-}
-
-/// A deferred slur stop that needs to be attached to a note in a future measure.
-///
-/// When exporting MEI → MusicXML, a slur may span measures. The start notation
-/// is attached in the current measure, but the stop notation must be deferred
-/// until the measure containing the end note is processed.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DeferredSlurStop {
-    /// The xml:id of the note where the slur ends.
-    pub end_id: String,
-    /// Slur number for MusicXML notation.
-    pub number: u8,
-    /// The MEI staff number this slur belongs to.
-    pub staff: usize,
-}
-
-/// Warnings generated during conversion for lossy MEI → MusicXML conversion.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ConversionWarning {
-    /// Location in the source document (path or ID).
-    pub location: String,
-    /// Description of what was lost or changed.
-    pub message: String,
-}
-
-/// Current position in the document during conversion.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct DocumentPosition {
-    /// Current part ID.
-    pub part_id: Option<String>,
-    /// Current measure number.
-    pub measure_number: Option<String>,
-    /// Current staff number (1-based).
-    pub staff: Option<u32>,
-    /// Current voice number.
-    pub voice: Option<u32>,
-    /// Current layer number (MEI).
-    pub layer: Option<u32>,
-    /// Current beat position within the measure (in divisions).
-    pub beat_position: f64,
-}
-
-/// Context maintained during MusicXML ↔ MEI conversion.
+/// Context maintained during MusicXML <-> MEI conversion.
 ///
 /// This struct tracks all state needed for accurate conversion between formats,
 /// including duration calculations, pending ties/slurs, and ID mappings.
@@ -141,50 +57,50 @@ pub struct ConversionContext {
     duration_ctx: DurationContext,
 
     /// Mapping from MusicXML IDs to MEI xml:id values.
-    musicxml_to_mei_ids: HashMap<String, String>,
+    pub(super) musicxml_to_mei_ids: HashMap<String, String>,
 
     /// Mapping from MEI xml:id values to MusicXML IDs.
-    mei_to_musicxml_ids: HashMap<String, String>,
+    pub(super) mei_to_musicxml_ids: HashMap<String, String>,
 
     /// Counter for generating unique IDs when none exist.
-    id_counter: u64,
+    pub(super) id_counter: u64,
 
     /// Prefix for generated IDs.
-    id_prefix: String,
+    pub(super) id_prefix: String,
 
     /// Pending ties waiting for their end notes.
-    pending_ties: Vec<PendingTie>,
+    pub(super) pending_ties: Vec<PendingTie>,
 
     /// Pending slurs waiting for their end notes.
-    pending_slurs: Vec<PendingSlur>,
+    pub(super) pending_slurs: Vec<PendingSlur>,
 
     /// Completed slurs ready to be emitted as MEI control events.
-    completed_slurs: Vec<CompletedSlur>,
+    pub(super) completed_slurs: Vec<CompletedSlur>,
 
-    /// Deferred slur stops for cross-measure slurs (MEI → MusicXML export).
-    deferred_slur_stops: Vec<DeferredSlurStop>,
+    /// Deferred slur stops for cross-measure slurs (MEI -> MusicXML export).
+    pub(super) deferred_slur_stops: Vec<DeferredSlurStop>,
 
     /// Warnings generated during lossy conversion.
-    warnings: Vec<ConversionWarning>,
+    pub(super) warnings: Vec<ConversionWarning>,
 
     /// Current position in the document.
-    position: DocumentPosition,
+    pub(super) position: DocumentPosition,
 
     /// Current key signature fifths value (-7 to 7, for accidental tracking).
     /// Positive = sharps, negative = flats.
-    key_fifths: i8,
+    pub(super) key_fifths: i8,
 
     /// Current key mode (major/minor).
-    key_mode: Option<String>,
+    pub(super) key_mode: Option<String>,
 
     /// Active accidentals in current measure, keyed by (staff, step, octave).
     /// Value is the alteration in semitones.
-    measure_accidentals: HashMap<(u32, char, u8), f64>,
+    pub(super) measure_accidentals: HashMap<(u32, char, u8), f64>,
 
-    /// Pre-assigned slur numbers for MEI→MusicXML export.
+    /// Pre-assigned slur numbers for MEI->MusicXML export.
     /// Keyed by (startid, endid) pair, value is the assigned MusicXML slur number.
     /// Computed in a pre-pass to ensure cross-measure slurs get unique numbers.
-    slur_number_map: HashMap<(String, String), u8>,
+    pub(super) slur_number_map: HashMap<(String, String), u8>,
 
     /// Per-part divisions cache. Keyed by part ID.
     /// MusicXML divisions persist across measures, so we cache the last-seen value
@@ -287,342 +203,6 @@ impl ConversionContext {
     /// Get a mutable reference to the duration context.
     pub fn duration_context_mut(&mut self) -> &mut DurationContext {
         &mut self.duration_ctx
-    }
-
-    // ========================================================================
-    // ID Mapping
-    // ========================================================================
-
-    /// Map a MusicXML ID to an MEI xml:id.
-    ///
-    /// Creates a bidirectional mapping.
-    pub fn map_id(&mut self, musicxml_id: impl Into<String>, mei_id: impl Into<String>) {
-        let mxml_id = musicxml_id.into();
-        let mei_id = mei_id.into();
-        self.musicxml_to_mei_ids
-            .insert(mxml_id.clone(), mei_id.clone());
-        self.mei_to_musicxml_ids.insert(mei_id, mxml_id);
-    }
-
-    /// Get the MEI xml:id for a MusicXML ID.
-    pub fn get_mei_id(&self, musicxml_id: &str) -> Option<&str> {
-        self.musicxml_to_mei_ids
-            .get(musicxml_id)
-            .map(|s| s.as_str())
-    }
-
-    /// Get the MusicXML ID for an MEI xml:id.
-    pub fn get_musicxml_id(&self, mei_id: &str) -> Option<&str> {
-        self.mei_to_musicxml_ids.get(mei_id).map(|s| s.as_str())
-    }
-
-    /// Get the current ID counter value (for debugging/testing).
-    pub fn id_counter(&self) -> u64 {
-        self.id_counter
-    }
-
-    /// Generate a unique ID with the configured prefix.
-    ///
-    /// Returns a new unique ID like "tusk-1", "tusk-2", etc.
-    pub fn generate_id(&mut self) -> String {
-        self.id_counter += 1;
-        format!("{}-{}", self.id_prefix, self.id_counter)
-    }
-
-    /// Generate a unique ID with a custom suffix.
-    ///
-    /// Returns IDs like "tusk-note-1", "tusk-measure-2", etc.
-    pub fn generate_id_with_suffix(&mut self, suffix: &str) -> String {
-        self.id_counter += 1;
-        format!("{}-{}-{}", self.id_prefix, suffix, self.id_counter)
-    }
-
-    // ========================================================================
-    // Pending Ties
-    // ========================================================================
-
-    /// Add a pending tie that started on a note.
-    pub fn add_pending_tie(&mut self, tie: PendingTie) {
-        self.pending_ties.push(tie);
-    }
-
-    /// Find and remove a pending tie that matches the given note.
-    ///
-    /// Returns the matching tie if found.
-    pub fn resolve_tie(
-        &mut self,
-        staff: u32,
-        voice: u32,
-        step: char,
-        octave: u8,
-    ) -> Option<PendingTie> {
-        let idx = self.pending_ties.iter().position(|t| {
-            t.staff == staff && t.voice == voice && t.step == step && t.octave == octave
-        })?;
-        Some(self.pending_ties.remove(idx))
-    }
-
-    /// Get all pending ties (for debugging/warnings).
-    pub fn pending_ties(&self) -> &[PendingTie] {
-        &self.pending_ties
-    }
-
-    /// Clear all pending ties (e.g., at end of conversion).
-    pub fn clear_pending_ties(&mut self) {
-        self.pending_ties.clear();
-    }
-
-    // ========================================================================
-    // Pending Slurs
-    // ========================================================================
-
-    /// Add a pending slur that started on a note.
-    pub fn add_pending_slur(&mut self, slur: PendingSlur) {
-        self.pending_slurs.push(slur);
-    }
-
-    /// Find and remove a pending slur that matches the given part, staff, and number.
-    ///
-    /// Returns the matching slur if found.
-    pub fn resolve_slur(&mut self, part_id: &str, staff: u32, number: u8) -> Option<PendingSlur> {
-        let idx = self
-            .pending_slurs
-            .iter()
-            .position(|s| s.part_id == part_id && s.staff == staff && s.number == number)?;
-        Some(self.pending_slurs.remove(idx))
-    }
-
-    /// Get all pending slurs (for debugging/warnings).
-    pub fn pending_slurs(&self) -> &[PendingSlur] {
-        &self.pending_slurs
-    }
-
-    /// Clear all pending slurs (e.g., at end of conversion).
-    pub fn clear_pending_slurs(&mut self) {
-        self.pending_slurs.clear();
-    }
-
-    /// Add a completed slur (both start and end IDs resolved).
-    pub fn add_completed_slur(&mut self, start_id: String, end_id: String, mei_staff: u32) {
-        self.completed_slurs.push(CompletedSlur {
-            start_id,
-            end_id,
-            mei_staff,
-        });
-    }
-
-    /// Drain all completed slurs, returning them for emission as MEI control events.
-    pub fn drain_completed_slurs(&mut self) -> Vec<CompletedSlur> {
-        std::mem::take(&mut self.completed_slurs)
-    }
-
-    // ========================================================================
-    // Deferred Slur Stops (for cross-measure slur export)
-    // ========================================================================
-
-    /// Add a deferred slur stop for a cross-measure slur.
-    pub fn add_deferred_slur_stop(&mut self, stop: DeferredSlurStop) {
-        self.deferred_slur_stops.push(stop);
-    }
-
-    /// Drain all deferred slur stops.
-    pub fn drain_deferred_slur_stops(&mut self) -> Vec<DeferredSlurStop> {
-        std::mem::take(&mut self.deferred_slur_stops)
-    }
-
-    // ========================================================================
-    // Slur Number Map (MEI→MusicXML export)
-    // ========================================================================
-
-    /// Set the pre-assigned slur number map.
-    pub fn set_slur_number_map(&mut self, map: HashMap<(String, String), u8>) {
-        self.slur_number_map = map;
-    }
-
-    /// Look up a pre-assigned slur number by (startid, endid).
-    pub fn get_slur_number(&self, start_id: &str, end_id: &str) -> Option<u8> {
-        self.slur_number_map
-            .get(&(start_id.to_string(), end_id.to_string()))
-            .copied()
-    }
-
-    // ========================================================================
-    // Warnings
-    // ========================================================================
-
-    /// Add a warning for lossy conversion.
-    pub fn add_warning(&mut self, location: impl Into<String>, message: impl Into<String>) {
-        self.warnings.push(ConversionWarning {
-            location: location.into(),
-            message: message.into(),
-        });
-    }
-
-    /// Get all warnings generated during conversion.
-    pub fn warnings(&self) -> &[ConversionWarning] {
-        &self.warnings
-    }
-
-    /// Check if any warnings were generated.
-    pub fn has_warnings(&self) -> bool {
-        !self.warnings.is_empty()
-    }
-
-    /// Clear all warnings.
-    pub fn clear_warnings(&mut self) {
-        self.warnings.clear();
-    }
-
-    // ========================================================================
-    // Position Tracking
-    // ========================================================================
-
-    /// Get the current document position.
-    pub fn position(&self) -> &DocumentPosition {
-        &self.position
-    }
-
-    /// Get a mutable reference to the current position.
-    pub fn position_mut(&mut self) -> &mut DocumentPosition {
-        &mut self.position
-    }
-
-    /// Set the current part ID.
-    pub fn set_part(&mut self, part_id: impl Into<String>) {
-        self.position.part_id = Some(part_id.into());
-    }
-
-    /// Set the current measure number.
-    pub fn set_measure(&mut self, measure_number: impl Into<String>) {
-        self.position.measure_number = Some(measure_number.into());
-        // Clear measure-local accidentals when entering a new measure
-        self.measure_accidentals.clear();
-    }
-
-    /// Get the current MEI staff number.
-    pub fn staff(&self) -> Option<u32> {
-        self.position.staff
-    }
-
-    /// Set the current staff number.
-    pub fn set_staff(&mut self, staff: u32) {
-        self.position.staff = Some(staff);
-    }
-
-    /// Set the current voice number.
-    pub fn set_voice(&mut self, voice: u32) {
-        self.position.voice = Some(voice);
-    }
-
-    /// Set the current layer number (MEI).
-    pub fn set_layer(&mut self, layer: u32) {
-        self.position.layer = Some(layer);
-    }
-
-    /// Get the current staff number, or 1 if not set.
-    pub fn current_staff(&self) -> u32 {
-        self.position.staff.unwrap_or(1)
-    }
-
-    /// Get the current beat position in divisions.
-    pub fn beat_position(&self) -> f64 {
-        self.position.beat_position
-    }
-
-    /// Set the beat position in divisions.
-    pub fn set_beat_position(&mut self, position: f64) {
-        self.position.beat_position = position;
-    }
-
-    /// Advance the beat position by the given duration (in divisions).
-    pub fn advance_beat_position(&mut self, duration: f64) {
-        self.position.beat_position += duration;
-    }
-
-    /// Reset beat position to start of measure.
-    pub fn reset_beat_position(&mut self) {
-        self.position.beat_position = 0.0;
-    }
-
-    // ========================================================================
-    // Key Signature and Accidentals
-    // ========================================================================
-
-    /// Set the current key signature.
-    ///
-    /// # Arguments
-    /// * `fifths` - Number of fifths (-7 to 7, negative = flats, positive = sharps)
-    /// * `mode` - Optional mode string (e.g., "major", "minor")
-    pub fn set_key_signature(&mut self, fifths: i8, mode: Option<String>) {
-        self.key_fifths = fifths;
-        self.key_mode = mode;
-    }
-
-    /// Get the current key fifths value.
-    pub fn key_fifths(&self) -> i8 {
-        self.key_fifths
-    }
-
-    /// Get the current key mode.
-    pub fn key_mode(&self) -> Option<&str> {
-        self.key_mode.as_deref()
-    }
-
-    /// Record an accidental that appeared in the current measure.
-    ///
-    /// This tracks accidentals for proper cautionary/courtesy accidental handling.
-    pub fn record_accidental(&mut self, staff: u32, step: char, octave: u8, alter: f64) {
-        self.measure_accidentals
-            .insert((staff, step, octave), alter);
-    }
-
-    /// Get the accidental state for a note in the current measure.
-    ///
-    /// Returns the alteration if an explicit accidental was recorded for this pitch.
-    pub fn get_measure_accidental(&self, staff: u32, step: char, octave: u8) -> Option<f64> {
-        self.measure_accidentals
-            .get(&(staff, step, octave))
-            .copied()
-    }
-
-    /// Get the default alteration for a pitch based on the key signature.
-    ///
-    /// Returns the semitone alteration that applies from the key signature.
-    pub fn key_signature_alteration(&self, step: char) -> f64 {
-        // Circle of fifths: F C G D A E B
-        // Sharps are added in order: F# C# G# D# A# E# B#
-        // Flats are added in order: Bb Eb Ab Db Gb Cb Fb
-        let sharp_order = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
-        let flat_order = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
-
-        let step_upper = step.to_ascii_uppercase();
-
-        if self.key_fifths > 0 {
-            // Sharps
-            for (i, &s) in sharp_order.iter().enumerate() {
-                if i < self.key_fifths as usize && s == step_upper {
-                    return 1.0;
-                }
-            }
-        } else if self.key_fifths < 0 {
-            // Flats
-            let num_flats = (-self.key_fifths) as usize;
-            for (i, &s) in flat_order.iter().enumerate() {
-                if i < num_flats && s == step_upper {
-                    return -1.0;
-                }
-            }
-        }
-
-        0.0
-    }
-
-    /// Clear measure-local state (accidentals, beat position).
-    ///
-    /// Call this when starting a new measure.
-    pub fn clear_measure_state(&mut self) {
-        self.measure_accidentals.clear();
-        self.position.beat_position = 0.0;
     }
 
     // ========================================================================

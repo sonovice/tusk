@@ -38,11 +38,10 @@ Tasks derived from `docs/review01.md`. Each task addresses a specific maintainab
 
 <!-- These tasks improve readability, consistency, and debuggability -->
 
-- [ ] [READABILITY] Split `crates/formats/musicxml/src/context.rs` into focused sub-modules
-  - Current file is 1,134 lines mixing 27+ state operations: slurs, ties, beat positions, divisions, staff mappings, IDs, deferred operations
-  - Split into `context/mod.rs` (ConversionContext struct + delegation), `context/slurs.rs`, `context/ties.rs`, `context/positions.rs`, `context/ids.rs`
-  - Keep the public API unchanged (re-export from context/mod.rs)
-  - Verify: all tests pass, no public API changes
+- [x] [READABILITY] Split `crates/formats/musicxml/src/context.rs` into focused sub-modules
+  - Split into `context/mod.rs` (struct def, constructor, direction, duration, reset), `context/slurs.rs`, `context/ties.rs`, `context/positions.rs` (position, key sig, accidentals, warnings), `context/ids.rs`
+  - Public API unchanged: all types re-exported from context/mod.rs
+  - All tests pass, no regressions
 
 - [ ] [CONSISTENCY] Standardize import/export function naming in tusk-musicxml
   - Import uses `convert_note()`, `convert_score_def()`, `convert_measure()`
