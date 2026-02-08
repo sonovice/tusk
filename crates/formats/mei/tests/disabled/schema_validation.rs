@@ -12,15 +12,12 @@
 use std::io::Write;
 use std::process::Command;
 use tusk_mei::serializer::{IndentConfig, MeiSerialize, MeiWriter, SerializeConfig};
-use tusk_model::att::AttHairpinLogForm;
 use tusk_model::data::{
-    DataDuration, DataDurationCmn, DataDurationrests, DataGrace, DataOctave, DataPitchname,
-    DataUri, DataWord,
+    DataDuration, DataDurationCmn, DataDurationrests, DataGrace, DataUri, DataWord,
 };
 use tusk_model::elements::{
-    Beam, BeamChild, Chord, ChordChild, Dir, DirChild, Dynam, DynamChild, Fermata, GraceGrp,
-    GraceGrpChild, Hairpin, Layer, LayerChild, Measure, MeasureChild, Note, Rest, Slur, Space,
-    Staff, StaffChild, Tempo, TempoChild, Tie, Tuplet, TupletChild,
+    Beam, Chord, Dir, Dynam, Fermata, GraceGrp, Hairpin, Layer, LayerChild, Measure, MeasureChild,
+    Note, Rest, Slur, Space, Staff, Tempo, Tie, Tuplet,
 };
 
 /// Path to the MEI RNG schema relative to the workspace root.
@@ -165,24 +162,23 @@ fn validate_simple_note() {
         return;
     }
 
-    // Create a simple note
+    // Create a simple note (internal model uses String for pname/oct and MeiDataDurationCmn for dur)
     let mut note = Note::default();
-    note.note_log.pname = Some(DataPitchname::from("c".to_string()));
-    note.note_log.oct = Some(DataOctave(4));
-    note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    note.note_log.pname = Some("c".to_string());
+    note.note_log.oct = Some("4".to_string());
+    note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
-    // Build measure structure
+    // Build measure structure (RNG model: LayerChild, MeasureChild exist; StaffChild may not)
     let mut layer = Layer::default();
-    layer.n_integer.n = Some(1);
+    layer.n_integer.n = Some("1".to_string());
     layer.children.push(LayerChild::Note(Box::new(note)));
 
     let mut staff = Staff::default();
-    staff.n_integer.n = Some(1);
-    staff.children.push(StaffChild::Layer(Box::new(layer)));
-
+    staff.n_integer.n = Some("1".to_string());
+    // Staff children: use whatever the RNG model provides (StaffChild or direct layer in measure)
     let mut measure = Measure::default();
     measure.common.n = Some(DataWord("1".to_string()));
-    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+    measure.children.push(MeasureChild::Layer(Box::new(layer)));
 
     // Serialize and validate
     let measure_xml = serialize_measure(&measure).expect("serialize measure");

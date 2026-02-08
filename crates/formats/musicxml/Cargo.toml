@@ -7,6 +7,10 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[build-dependencies]
+tusk-musicxml-codegen = { path = "codegen" }
+anyhow = { workspace = true }
+
 [dependencies]
 tusk-model = { workspace = true }
 tusk-format = { workspace = true }

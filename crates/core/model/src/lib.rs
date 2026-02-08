@@ -20,6 +20,7 @@
 //!
 //! DO NOT EDIT generated/ - regenerate with: cargo run -p mei-codegen -- --input specs/mei/modules --output crates/core/model/src/generated
 
+pub mod extensions;
 pub mod generated;
 
 // Re-export all generated modules at crate root for cleaner imports
@@ -34,6 +35,7 @@ pub use generated::validation;
 // Re-export commonly used types
 pub use data::*;
 pub use elements::*;
+pub use extensions::{ExtensionBag, ExtensionContent, ExtensionElement, TUSK_EXT_NS};
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
 #[cfg(test)]

@@ -8,8 +8,9 @@ members = [
     "crates/bindings/cli",
     "crates/bindings/wasm",
 
-    # Tools
-    "tools/mei-codegen",
+    # Format codegen (standalone, no cross-deps)
+    "crates/formats/mei/codegen",
+    "crates/formats/musicxml/codegen",
 ]
 resolver = "2"
 

@@ -286,20 +286,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
-name = "mei-codegen"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "heck",
- "prettyplease",
- "proc-macro2",
- "quick-xml 0.37.5",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,13 +587,30 @@ name = "tusk-mei"
 version = "0.1.0"
 dependencies = [
  "quick-xml 0.39.0",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror",
  "tracing",
  "tusk-format",
+ "tusk-mei-codegen",
  "tusk-model",
+]
+
+[[package]]
+name = "tusk-mei-codegen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "heck",
+ "prettyplease",
+ "proc-macro2",
+ "quick-xml 0.37.5",
+ "quote",
+ "regex",
+ "syn",
 ]
 
 [[package]]
@@ -621,12 +624,14 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
+ "tusk-mei-codegen",
 ]
 
 [[package]]
 name = "tusk-musicxml"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "quick-xml 0.39.0",
  "serde",
  "thiserror",
@@ -634,6 +639,17 @@ dependencies = [
  "tusk-format",
  "tusk-mei",
  "tusk-model",
+ "tusk-musicxml-codegen",
+]
+
+[[package]]
+name = "tusk-musicxml-codegen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "heck",
+ "quick-xml 0.37.5",
 ]
 
 [[package]]

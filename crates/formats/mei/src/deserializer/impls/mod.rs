@@ -81,3 +81,4 @@ pub(crate) use extract_attr;
 
 mod generated_att_impls;
 mod generated_element_impls;
+mod mei_root;

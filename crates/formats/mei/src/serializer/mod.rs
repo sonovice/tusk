@@ -659,13 +659,12 @@ mod tests {
     #[test]
     fn test_quick_xml_serde_with_flattened_note() {
         use quick_xml::se::to_string;
-        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
 
         let mut note = Note::default();
         note.common.xml_id = Some("n1".to_string());
-        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
-        note.note_log.pname = Some(DataPitchname::from("c".to_string()));
-        note.note_log.oct = Some(DataOctave(4));
+        note.note_log.dur = Some("4".to_string()); // quarter note (internal model may use String for dur)
+        note.note_log.pname = Some("c".to_string());
+        note.note_log.oct = Some("4".to_string());
 
         // Try quick-xml's built-in serialization
         let result = to_string(&note);

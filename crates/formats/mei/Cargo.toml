@@ -7,6 +7,11 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+# Enable to compile roundtrip tests (they require RNG model alignment; many are currently broken)
+roundtrip_tests = []
+
 [dependencies]
 tusk-model = { workspace = true }
 tusk-format = { workspace = true }

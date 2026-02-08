@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 
 /// MEI version labels and their corresponding RNG file names.
-const VERSIONED_MODELS: &[(&str, &str)] = &[
-    ("v2_1_1", "mei-all_v2.1.1.rng"),
-    ("v3_0_0", "mei-all_v3.0.0.rng"),
-    ("v4_0_1", "mei-all_v4.0.1.rng"),
-    ("v5_0", "mei-all_v.5.0.rng"),
-    ("v5_1", "mei-all_v5.1.rng"),
+/// For v6_0_dev we use the main validation RNG (mei-all.rng); no file in versions/.
+const VERSIONED_MODELS: &[(&str, Option<&str>)] = &[
+    ("v2_1_1", Some("mei-all_v2.1.1.rng")),
+    ("v3_0_0", Some("mei-all_v3.0.0.rng")),
+    ("v4_0_1", Some("mei-all_v4.0.1.rng")),
+    ("v5_0", Some("mei-all_v.5.0.rng")),
+    ("v5_1", Some("mei-all_v5.1.rng")),
+    ("v6_0_dev", None), // None = use specs/mei/validation/mei-all.rng
 ];
 
 fn main() {
@@ -43,8 +45,11 @@ fn main() {
         .expect("Failed to generate MEI element deserializer impls");
 
     // Generate versioned import models from version-specific RNG specs
-    for &(label, rng_file) in VERSIONED_MODELS {
-        let version_rng = versions_dir.join(rng_file);
+    for &(label, rng_file_opt) in VERSIONED_MODELS {
+        let version_rng = match rng_file_opt {
+            Some(rng_file) => versions_dir.join(rng_file),
+            None => rng_path.clone(), // v6_0_dev: use main mei-all.rng
+        };
         if !version_rng.exists() {
             println!(
                 "cargo::warning=Skipping versioned model '{}': RNG file not found at '{}'",
@@ -55,7 +60,7 @@ fn main() {
         }
 
         let version_defs = tusk_mei_codegen::rng::parse_rng_file(&version_rng)
-            .unwrap_or_else(|e| panic!("Failed to parse versioned RNG '{}': {}", rng_file, e));
+            .unwrap_or_else(|e| panic!("Failed to parse RNG for '{}': {}", label, e));
 
         let output = mei_src.join("versions").join(label);
         let module_path = format!("crate::versions::{}", label);

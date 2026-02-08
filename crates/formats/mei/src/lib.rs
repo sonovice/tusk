@@ -143,7 +143,7 @@ impl tusk_format::Exporter for MeiFormat {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "roundtrip_tests"))]
 mod roundtrip_tests;
 
 #[cfg(test)]

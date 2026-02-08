@@ -12,6 +12,27 @@ use std::path::Path;
 
 use crate::ast::*;
 
+/// Configuration for code generation (e.g. module path for versioned output).
+#[derive(Clone)]
+pub struct CodegenConfig {
+    /// Base path for generated types, e.g. "crate::generated" or "crate::versions::v2_1_1".
+    pub module_path: String,
+}
+
+impl Default for CodegenConfig {
+    fn default() -> Self {
+        Self {
+            module_path: "crate::generated".to_string(),
+        }
+    }
+}
+
+impl CodegenConfig {
+    fn base_tokens(&self) -> TokenStream {
+        self.module_path.parse().expect("invalid module path")
+    }
+}
+
 /// Deprecated MEI 5.1 element names that map to creator with an implicit @role.
 /// (composer→creator role="cmp", etc.) Used so roundtrip preserves content when
 /// reading MEI 5.1 samples and serializing as creator.
@@ -25,30 +46,25 @@ const CREATOR_DEPRECATED: &[(&str, &str)] = &[
 
 /// Generate all Rust code from ODD definitions.
 pub fn generate_all(defs: &OddDefinitions, output: &Path) -> Result<()> {
+    generate_all_with_config(defs, output, &CodegenConfig::default())
+}
+
+/// Generate all Rust code with optional config (e.g. versioned module path).
+pub fn generate_all_with_config(
+    defs: &OddDefinitions,
+    output: &Path,
+    config: &CodegenConfig,
+) -> Result<()> {
     fs::create_dir_all(output)?;
 
-    // Generate data types
-    generate_data_types(defs, output)?;
+    generate_data_types(defs, output, config)?;
+    generate_att_classes(defs, output, config)?;
+    generate_model_classes(defs, output, config)?;
+    generate_pattern_entities(defs, output, config)?;
+    generate_elements(defs, output, config)?;
+    generate_validation(defs, output, config)?;
+    generate_mod_rs(defs, output, config)?;
 
-    // Generate attribute classes
-    generate_att_classes(defs, output)?;
-
-    // Generate model class traits
-    generate_model_classes(defs, output)?;
-
-    // Generate pattern entities
-    generate_pattern_entities(defs, output)?;
-
-    // Generate elements
-    generate_elements(defs, output)?;
-
-    // Generate validation module
-    generate_validation(defs, output)?;
-
-    // Generate lib.rs
-    generate_mod_rs(defs, output)?;
-
-    // Print constraint statistics
     print_constraint_stats(defs);
 
     Ok(())
@@ -114,8 +130,9 @@ fn count_interleaves(content: &ContentModel, count: &mut usize) {
 // Data Types
 // ============================================================================
 
-fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_data_types(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
     let path = output.join("data.rs");
+    let base = config.base_tokens();
 
     let mut tokens = TokenStream::new();
 
@@ -125,7 +142,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
         //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
 
         use serde::{Deserialize, Serialize};
-        use crate::generated::validation::{ValidationContext, Validate};
+        use #base::validation::{ValidationContext, Validate};
         use std::sync::LazyLock;
         use regex::Regex;
 
@@ -139,7 +156,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
 
     for (_module, types) in by_module {
         for dt in types {
-            if let Some(type_tokens) = generate_data_type(dt, defs) {
+            if let Some(type_tokens) = generate_data_type(dt, defs, &base) {
                 tokens.extend(type_tokens);
                 tokens.extend(quote! {});
             }
@@ -152,7 +169,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path) -> Result<()> {
     Ok(())
 }
 
-fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStream> {
+fn generate_data_type(dt: &DataType, defs: &OddDefinitions, base: &TokenStream) -> Option<TokenStream> {
     let name = mei_ident_to_type(&dt.ident);
     let doc = &dt.desc;
 
@@ -224,6 +241,7 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
                 min_inclusive,
                 max_inclusive,
                 rust_type,
+                base,
             );
 
             // For f64 types, we need a special Display impl that formats whole numbers
@@ -304,46 +322,54 @@ fn generate_data_type(dt: &DataType, defs: &OddDefinitions) -> Option<TokenStrea
             })
         }
         DataTypeKind::Reference(ref_name) => {
-            // Type alias to referenced type
-            let ref_type = mei_ident_to_type(ref_name);
+            let lookup_key = if ref_name.starts_with("mei_data.") {
+                ref_name.replacen("mei_data.", "data.", 1)
+            } else {
+                ref_name.clone()
+            };
+            let ref_type = defs
+                .data_types
+                .get(&lookup_key)
+                .map(|r| mei_ident_to_type(&r.ident))
+                .unwrap_or_else(|| mei_ident_to_type(ref_name));
             Some(quote! {
                 #[doc = #doc]
                 pub type #name = #ref_type;
             })
         }
         DataTypeKind::Alternate(refs) | DataTypeKind::Choice(refs) => {
-            // Generate enum for union types
+            // Generate enum for union types. RNG uses mei_data.X, ODD uses data.X; normalize for lookup.
             let variants: Vec<_> = refs
                 .iter()
                 .filter_map(|r| {
                     let key = match r {
                         DataTypeRef::MacroRef(k) | DataTypeRef::RngRef(k) => k,
                     };
-                    // Skip model class references (they're traits, not types)
                     if key.starts_with("model.") {
                         return None;
                     }
-                    // Skip self-references to avoid infinite types
-                    if key == &dt.ident {
+                    let lookup_key = if key.starts_with("mei_data.") {
+                        key.replacen("mei_data.", "data.", 1)
+                    } else {
+                        key.clone()
+                    };
+                    if key == &dt.ident || lookup_key == dt.ident {
                         return None;
                     }
-                    // Only include references to types that actually exist
-                    if key.starts_with("data.") {
-                        match defs.data_types.get(key) {
-                            Some(ref_dt) => {
-                                // Skip type aliases (Reference) - they're not distinct types
-                                // Skip empty value lists
-                                match &ref_dt.kind {
-                                    DataTypeKind::Reference(_) => return None,
-                                    DataTypeKind::ValList(vals) if vals.is_empty() => return None,
-                                    _ => {} // Primitives are now newtypes, so include them
-                                }
-                            }
-                            None => return None,
-                        }
+                    if !lookup_key.starts_with("data.") {
+                        return None;
+                    }
+                    let ref_dt = match defs.data_types.get(&lookup_key) {
+                        Some(d) => d,
+                        None => return None,
+                    };
+                    match &ref_dt.kind {
+                        DataTypeKind::Reference(_) => return None,
+                        DataTypeKind::ValList(vals) if vals.is_empty() => return None,
+                        _ => {}
                     }
                     let var_name = mei_ident_to_type(key);
-                    let type_name = var_name.clone();
+                    let type_name = mei_ident_to_type(&ref_dt.ident);
                     Some(quote! { #var_name(#type_name), })
                 })
                 .collect();
@@ -378,6 +404,7 @@ fn generate_primitive_validation(
     min_inclusive: &Option<String>,
     max_inclusive: &Option<String>,
     rust_type: &str,
+    base: &TokenStream,
 ) -> TokenStream {
     let has_pattern = pattern.is_some();
     let has_min = min_inclusive.is_some();
@@ -422,7 +449,7 @@ fn generate_primitive_validation(
             let min_str = min.clone();
             quote! {
                 if (self.0 as f64) < (#min_val as f64) {
-                    ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
+                    ctx.add_error(#base::validation::ValidationError::RangeViolation {
                         location: ctx.location(#name_str, None),
                         attribute: #name_str.to_string(),
                         value: self.0.to_string(),
@@ -440,7 +467,7 @@ fn generate_primitive_validation(
             let max_str = max.clone();
             quote! {
                 if (self.0 as f64) > (#max_val as f64) {
-                    ctx.add_error(crate::generated::validation::ValidationError::RangeViolation {
+                    ctx.add_error(#base::validation::ValidationError::RangeViolation {
                         location: ctx.location(#name_str, None),
                         attribute: #name_str.to_string(),
                         value: self.0.to_string(),
@@ -475,9 +502,10 @@ fn generate_primitive_validation(
 // Attribute Classes
 // ============================================================================
 
-fn generate_att_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_att_classes(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
     let att_dir = output.join("att");
     fs::create_dir_all(&att_dir)?;
+    let base = config.base_tokens();
 
     let mut mod_items = Vec::new();
 
@@ -485,7 +513,7 @@ fn generate_att_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
         let file_name = escape_keyword_filename(&ac.ident.to_snake_case().replace('.', "_"));
         let file_path = att_dir.join(format!("{}.rs", file_name));
 
-        let tokens = generate_att_class(ac, defs);
+        let tokens = generate_att_class(ac, defs, &base);
         write_tokens_to_file(&tokens, &file_path)?;
 
         let mod_name = format_ident!("{}", file_name);
@@ -510,7 +538,7 @@ fn generate_att_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
     Ok(())
 }
 
-fn generate_att_class(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
+fn generate_att_class(ac: &AttClass, defs: &OddDefinitions, base: &TokenStream) -> TokenStream {
     let name = mei_ident_to_type(&ac.ident);
     let doc = &ac.desc;
 
@@ -591,7 +619,7 @@ fn generate_att_class(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
                     quote! { Option<#enum_name> }
                 }
             } else {
-                attribute_type_tokens(&attr.datatype, &attr.max_occurs, defs)
+                attribute_type_tokens(&attr.datatype, &attr.max_occurs, defs, base)
             };
 
             quote! {
@@ -619,12 +647,16 @@ fn generate_att_class(ac: &AttClass, defs: &OddDefinitions) -> TokenStream {
 
 /// Get the raw inner type for an attribute (without Option wrapper).
 /// Used for List inner types.
-fn attribute_inner_type_tokens(datatype: &AttributeDataType, defs: &OddDefinitions) -> TokenStream {
+fn attribute_inner_type_tokens(
+    datatype: &AttributeDataType,
+    defs: &OddDefinitions,
+    base: &TokenStream,
+) -> TokenStream {
     match datatype {
         AttributeDataType::Ref(ref_name) => {
             if defs.data_types.contains_key(ref_name) {
                 let type_name = mei_ident_to_type(ref_name);
-                quote! { crate::generated::data::#type_name }
+                quote! { #base::data::#type_name }
             } else {
                 quote! { String }
             }
@@ -638,8 +670,7 @@ fn attribute_inner_type_tokens(datatype: &AttributeDataType, defs: &OddDefinitio
             quote! { #rust_type_tokens }
         }
         AttributeDataType::List { inner, .. } => {
-            // Nested list - recurse
-            let inner_type = attribute_inner_type_tokens(inner, defs);
+            let inner_type = attribute_inner_type_tokens(inner, defs, base);
             quote! { Vec<#inner_type> }
         }
     }
@@ -649,21 +680,20 @@ fn attribute_type_tokens(
     datatype: &Option<AttributeDataType>,
     max_occurs: &Option<String>,
     defs: &OddDefinitions,
+    base: &TokenStream,
 ) -> TokenStream {
     let is_unbounded = max_occurs.as_deref() == Some("unbounded");
 
     match datatype {
         Some(AttributeDataType::Ref(ref_name)) => {
-            // Check if the referenced type actually exists in our definitions
             if defs.data_types.contains_key(ref_name) {
                 let type_name = mei_ident_to_type(ref_name);
                 if is_unbounded {
-                    quote! { Vec<crate::generated::data::#type_name> }
+                    quote! { Vec<#base::data::#type_name> }
                 } else {
-                    quote! { Option<crate::generated::data::#type_name> }
+                    quote! { Option<#base::data::#type_name> }
                 }
             } else {
-                // Type not found, fall back to String
                 if is_unbounded {
                     quote! { Vec<String> }
                 } else {
@@ -672,7 +702,6 @@ fn attribute_type_tokens(
             }
         }
         Some(AttributeDataType::InlineValList(_)) => {
-            // Inline value lists are handled separately in generate_att_class
             if is_unbounded {
                 quote! { Vec<String> }
             } else {
@@ -689,10 +718,8 @@ fn attribute_type_tokens(
             }
         }
         Some(AttributeDataType::List { inner, .. }) => {
-            // Space-separated list - get the raw inner type without Option wrapper
-            let inner_type = attribute_inner_type_tokens(inner, defs);
-            // We use a custom wrapper for space-separated serialization
-            quote! { Option<crate::generated::SpaceSeparated<#inner_type>> }
+            let inner_type = attribute_inner_type_tokens(inner, defs, base);
+            quote! { Option<#base::SpaceSeparated<#inner_type>> }
         }
         None => {
             if is_unbounded {
@@ -708,7 +735,7 @@ fn attribute_type_tokens(
 // Model Classes
 // ============================================================================
 
-fn generate_model_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_model_classes(defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
     let path = output.join("model.rs");
 
     let mut tokens = TokenStream::new();
@@ -743,8 +770,9 @@ fn generate_model_classes(defs: &OddDefinitions, output: &Path) -> Result<()> {
 // Pattern Entities
 // ============================================================================
 
-fn generate_pattern_entities(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_pattern_entities(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
     let path = output.join("pattern_entities.rs");
+    let base = config.base_tokens();
 
     let mut tokens = TokenStream::new();
 
@@ -768,7 +796,7 @@ fn generate_pattern_entities(defs: &OddDefinitions, output: &Path) -> Result<()>
 
     for (_module, entities) in by_module {
         for pe in entities {
-            let pe_tokens = generate_pattern_entity(pe, defs);
+            let pe_tokens = generate_pattern_entity(pe, defs, &base);
             tokens.extend(pe_tokens);
             tokens.extend(quote! {});
         }
@@ -783,7 +811,7 @@ fn generate_pattern_entities(defs: &OddDefinitions, output: &Path) -> Result<()>
     Ok(())
 }
 
-fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions) -> TokenStream {
+fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions, base: &TokenStream) -> TokenStream {
     let name = mei_ident_to_type(&pe.ident);
     let doc = &pe.desc;
 
@@ -819,7 +847,7 @@ fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions) -> TokenSt
         let xml_name = child;
         variants.push(quote! {
             #[serde(rename = #xml_name)]
-            #var_name(Box<crate::generated::elements::#var_name>),
+            #var_name(Box<#base::elements::#var_name>),
         });
     }
 
@@ -847,9 +875,10 @@ fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions) -> TokenSt
 // Elements
 // ============================================================================
 
-fn generate_elements(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_elements(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
     let elem_dir = output.join("elements");
     fs::create_dir_all(&elem_dir)?;
+    let base = config.base_tokens();
 
     let mut mod_items = Vec::new();
 
@@ -857,7 +886,7 @@ fn generate_elements(defs: &OddDefinitions, output: &Path) -> Result<()> {
         let file_name = escape_keyword_filename(&elem.ident.to_snake_case());
         let file_path = elem_dir.join(format!("{}.rs", file_name));
 
-        let tokens = generate_element(elem, defs);
+        let tokens = generate_element(elem, defs, &base, config);
         write_tokens_to_file(&tokens, &file_path)?;
 
         let mod_name = format_ident!("{}", file_name);
@@ -882,7 +911,12 @@ fn generate_elements(defs: &OddDefinitions, output: &Path) -> Result<()> {
     Ok(())
 }
 
-fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
+fn generate_element(
+    elem: &Element,
+    defs: &OddDefinitions,
+    base: &TokenStream,
+    config: &CodegenConfig,
+) -> TokenStream {
     let name = mei_ident_to_type(&elem.ident);
     let xml_name = &elem.ident;
     let doc = if elem.gloss.is_empty() {
@@ -907,7 +941,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
             let type_name = mei_ident_to_type(m);
             quote! {
                 #[serde(flatten)]
-                pub #field_name: crate::generated::att::#type_name,
+                pub #field_name: #base::att::#type_name,
             }
         })
         .collect();
@@ -942,7 +976,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
             };
 
             // Determine field type
-            let field_type = attribute_type_tokens(&attr.datatype, &attr.max_occurs, defs);
+            let field_type = attribute_type_tokens(&attr.datatype, &attr.max_occurs, defs, base);
 
             quote! {
                 #[doc = #field_doc]
@@ -953,7 +987,8 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         .collect();
 
     // Generate child element enum and field if content model is non-empty
-    let (child_enum, child_field) = generate_child_content(elem, defs);
+    let skip_extra_children = config.module_path != "crate::generated";
+    let (child_enum, child_field) = generate_child_content(elem, defs, base, skip_extra_children);
 
     // Generate model class trait implementations
     let model_impls: Vec<_> = elem
@@ -963,7 +998,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
         .map(|m| {
             let trait_name = mei_ident_to_type(m);
             quote! {
-                impl crate::generated::model::#trait_name for #name {}
+                impl #base::model::#trait_name for #name {}
             }
         })
         .collect();
@@ -974,11 +1009,21 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
     let child_field_tokens = child_field.unwrap_or_else(|| quote! {});
     let module_doc = format!("Element: `<{}>`", elem.ident);
 
+    let extensions_field = if elem.ident == "mei" && config.module_path == "crate::generated" {
+        quote! {
+            /// Extension point for custom data (namespace http://tusk.example.org/ns/ext). Preserved on round-trip.
+            #[serde(skip_serializing_if = "Option::is_none")]
+            pub extensions: Option<crate::extensions::ExtensionBag>,
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         #![doc = #module_doc]
 
         use serde::{Deserialize, Serialize};
-        use crate::generated::validation::{ValidationContext, Validate};
+        use #base::validation::{ValidationContext, Validate};
 
         #child_enum
 
@@ -989,6 +1034,7 @@ fn generate_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
             #(#att_class_fields)*
             #(#local_attr_fields)*
             #child_field_tokens
+            #extensions_field
         }
 
         #(#model_impls)*
@@ -1087,6 +1133,8 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
 fn generate_child_content(
     elem: &Element,
     defs: &OddDefinitions,
+    base: &TokenStream,
+    skip_extra_children: bool,
 ) -> (TokenStream, Option<TokenStream>) {
     if elem.content.is_empty() {
         return (quote! {}, None);
@@ -1098,10 +1146,12 @@ fn generate_child_content(
 
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
 
-    // Inject backward-compatibility extra children (not in the ODD but needed at runtime)
-    for &(parent, child) in EXTRA_CHILDREN {
-        if elem.ident == parent {
-            child_types.insert(child.to_string());
+    // Inject backward-compatibility extra children only for main model when the child element exists in the schema
+    if !skip_extra_children {
+        for &(parent, child) in EXTRA_CHILDREN {
+            if elem.ident == parent && defs.elements.contains_key(child) {
+                child_types.insert(child.to_string());
+            }
         }
     }
 
@@ -1134,7 +1184,7 @@ fn generate_child_content(
         let xml_name = child;
         variants.push(quote! {
             #[serde(rename = #xml_name)]
-            #var_name(Box<crate::generated::elements::#var_name>),
+            #var_name(Box<#base::elements::#var_name>),
         });
         validation_arms.push(quote! {
             #enum_name::#var_name(elem) => {
@@ -1330,7 +1380,7 @@ fn try_translate_simple_constraint(
 // Validation Module
 // ============================================================================
 
-fn generate_validation(defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_validation(defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
     let path = output.join("validation.rs");
 
     // Collect all unique constraints for documentation
@@ -1587,7 +1637,7 @@ fn generate_validation(defs: &OddDefinitions, output: &Path) -> Result<()> {
 // lib.rs
 // ============================================================================
 
-fn generate_mod_rs(_defs: &OddDefinitions, output: &Path) -> Result<()> {
+fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
     let tokens = quote! {
         //! Generated types from MEI ODD specification.
         //!
@@ -1817,6 +1867,13 @@ fn generate_mei_serialize_impls(defs: &OddDefinitions) -> TokenStream {
     for key in sorted_keys {
         let elem = &defs.elements[key];
         let (elem_impl, child_impl) = generate_mei_serialize_impl_for_element(elem, defs);
+        if elem.ident == "mei" {
+            // Mei root has a hand-written impl (serializer/impls/mei_root.rs) for extension support; still emit MeiChild impl
+            if let Some(ci) = child_impl {
+                child_enum_impls.push(ci);
+            }
+            continue;
+        }
         element_impls.push(elem_impl);
         if let Some(ci) = child_impl {
             child_enum_impls.push(ci);
@@ -1901,7 +1958,7 @@ fn generate_mei_serialize_impl_for_element(
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
     for &(parent, child) in EXTRA_CHILDREN {
-        if elem.ident == parent {
+        if elem.ident == parent && defs.elements.contains_key(child) {
             child_types.insert(child.to_string());
         }
     }
@@ -1948,6 +2005,7 @@ fn generate_mei_serialize_impl_for_element(
     let child_impl = if has_children {
         let enum_name = format_ident!("{}Child", name);
         let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.retain(|c| defs.elements.contains_key(c));
         child_list.sort();
 
         // element_name() match arms: variant => "xmlName"
@@ -2095,6 +2153,10 @@ fn generate_mei_deserialize_impls(defs: &OddDefinitions) -> TokenStream {
 
     for key in sorted_keys {
         let elem = &defs.elements[key];
+        if elem.ident == "mei" {
+            // Mei root has a hand-written impl (deserializer/impls/mei_root.rs) for extension support
+            continue;
+        }
         impls.push(generate_mei_deserialize_impl_for_element(elem, defs));
     }
 
@@ -2202,7 +2264,7 @@ fn generate_mei_deserialize_impl_for_element(
     let mut has_text = false;
     collect_content_refs(&elem.content, defs, &mut child_types, &mut has_text);
     for &(parent, child) in EXTRA_CHILDREN {
-        if elem.ident == parent {
+        if elem.ident == parent && defs.elements.contains_key(child) {
             child_types.insert(child.to_string());
         }
     }
@@ -2214,6 +2276,7 @@ fn generate_mei_deserialize_impl_for_element(
         quote! {}
     } else if has_text {
         let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.retain(|c| defs.elements.contains_key(c));
         child_list.sort();
         let mut element_match_arms = Vec::new();
         for child in &child_list {
@@ -2266,6 +2329,7 @@ fn generate_mei_deserialize_impl_for_element(
         }
     } else {
         let mut child_list: Vec<String> = child_types.into_iter().collect();
+        child_list.retain(|c| defs.elements.contains_key(c));
         child_list.sort();
         let mut child_match_arms = Vec::new();
         for child in &child_list {

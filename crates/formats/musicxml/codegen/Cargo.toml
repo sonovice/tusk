@@ -1,0 +1,20 @@
+[package]
+name = "tusk-musicxml-codegen"
+version.workspace = true
+edition.workspace = true
+description = "Generate Rust MusicXML model from XSD schema (4.1)"
+publish = false
+
+[lib]
+name = "tusk_musicxml_codegen"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tusk-musicxml-codegen"
+path = "src/main.rs"
+
+[dependencies]
+quick-xml = "0.37"
+clap = { version = "4", features = ["derive"] }
+heck = "0.5"
+anyhow = "1"
