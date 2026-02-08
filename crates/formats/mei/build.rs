@@ -1,23 +1,35 @@
 use std::path::PathBuf;
 
+/// MEI version labels and their corresponding RNG file names.
+const VERSIONED_MODELS: &[(&str, &str)] = &[
+    ("v2_1_1", "mei-all_v2.1.1.rng"),
+    ("v3_0_0", "mei-all_v3.0.0.rng"),
+    ("v4_0_1", "mei-all_v4.0.1.rng"),
+    ("v5_0", "mei-all_v.5.0.rng"),
+    ("v5_1", "mei-all_v5.1.rng"),
+];
+
 fn main() {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let workspace_root = manifest_dir.join("../../..");
     let rng_path = workspace_root.join("specs/mei/validation/mei-all.rng");
+    let versions_dir = workspace_root.join("specs/mei/versions");
     let mei_src = manifest_dir.join("src");
 
-    // Only re-run when the RNG spec or this build script changes
+    // Only re-run when spec files or this build script change
     println!("cargo::rerun-if-changed={}", rng_path.display());
+    println!("cargo::rerun-if-changed={}", versions_dir.display());
     println!("cargo::rerun-if-changed=build.rs");
 
     if !rng_path.exists() {
         panic!(
             "MEI RNG specification not found at '{}'.\n\
-             Place the MEI spec files under specs/mei/validation/ to enable code generation.",
+             Place the MEI spec files under specs/mei/ to enable code generation.",
             rng_path.display()
         );
     }
 
+    // Generate trait impls from the main (latest) RNG spec
     let defs = tusk_mei_codegen::rng::parse_rng_file(&rng_path)
         .expect("Failed to parse MEI RNG specification");
 
@@ -29,4 +41,27 @@ fn main() {
 
     tusk_mei_codegen::generator::generate_mei_element_deser_impls(&defs, &mei_src)
         .expect("Failed to generate MEI element deserializer impls");
+
+    // Generate versioned import models from version-specific RNG specs
+    for &(label, rng_file) in VERSIONED_MODELS {
+        let version_rng = versions_dir.join(rng_file);
+        if !version_rng.exists() {
+            println!(
+                "cargo::warning=Skipping versioned model '{}': RNG file not found at '{}'",
+                label,
+                version_rng.display()
+            );
+            continue;
+        }
+
+        let version_defs = tusk_mei_codegen::rng::parse_rng_file(&version_rng)
+            .unwrap_or_else(|e| panic!("Failed to parse versioned RNG '{}': {}", rng_file, e));
+
+        let output = mei_src.join("versions").join(label);
+        let module_path = format!("crate::versions::{}", label);
+        let config = tusk_mei_codegen::generator::CodegenConfig { module_path };
+
+        tusk_mei_codegen::generator::generate_all_with_config(&version_defs, &output, &config)
+            .unwrap_or_else(|e| panic!("Failed to generate versioned model '{}': {}", label, e));
+    }
 }

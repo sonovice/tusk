@@ -37,6 +37,7 @@ crates/formats/mei/src/serializer/impls/generated_att_impls.rs
 crates/formats/mei/src/serializer/impls/generated_element_impls.rs
 crates/formats/mei/src/deserializer/impls/generated_att_impls.rs
 crates/formats/mei/src/deserializer/impls/generated_element_impls.rs
+crates/formats/mei/src/versions/v*/
 
 # Cursor IDE
 .cursor/
