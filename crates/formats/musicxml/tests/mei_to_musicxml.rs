@@ -4,9 +4,9 @@
 //! The tests focus on individual element conversions: notes, rests, and chords.
 
 use tusk_model::data::{
-    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAugmentdot, DataBoolean,
-    DataDuration, DataDurationCmn, DataDurationrests, DataGrace, DataOctave, DataPitchname,
-    DataStemdirection, DataStemdirectionBasic,
+    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAugmentdot, DataBoolean, DataDuration,
+    DataDurationCmn, DataDurationrests, DataGrace, DataOctave, DataPitchname, DataStemdirection,
+    DataStemdirectionBasic,
 };
 use tusk_model::elements::{Chord, ChordChild, Note, Rest};
 use tusk_musicxml::context::{ConversionContext, ConversionDirection};
@@ -484,14 +484,14 @@ fn test_duration_divisions_relationship() {
 
     let test_cases = [
         // (duration_cmn, divisions, expected_mxml_duration)
-        ("1", 4.0, 16.0), // Whole: 4 quarters * 4 div/quarter
-        ("2", 4.0, 8.0),  // Half: 2 quarters * 4 div/quarter
-        ("4", 4.0, 4.0),  // Quarter: 1 quarter * 4 div/quarter
-        ("8", 4.0, 2.0),  // Eighth: 0.5 quarters * 4 div/quarter
-        ("16", 4.0, 1.0), // 16th: 0.25 quarters * 4 div/quarter
-        ("4", 1.0, 1.0),  // Quarter with div=1
-        ("4", 96.0, 96.0), // Quarter with div=96
-        ("8", 96.0, 48.0), // Eighth with div=96
+        ("1", 4.0, 16.0),   // Whole: 4 quarters * 4 div/quarter
+        ("2", 4.0, 8.0),    // Half: 2 quarters * 4 div/quarter
+        ("4", 4.0, 4.0),    // Quarter: 1 quarter * 4 div/quarter
+        ("8", 4.0, 2.0),    // Eighth: 0.5 quarters * 4 div/quarter
+        ("16", 4.0, 1.0),   // 16th: 0.25 quarters * 4 div/quarter
+        ("4", 1.0, 1.0),    // Quarter with div=1
+        ("4", 96.0, 96.0),  // Quarter with div=96
+        ("8", 96.0, 48.0),  // Eighth with div=96
         ("16", 96.0, 24.0), // 16th with div=96
     ];
 

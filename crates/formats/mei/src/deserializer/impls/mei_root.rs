@@ -3,9 +3,7 @@
 //! Collects attributes and elements in the extension namespace (ext:) into
 //! ExtensionBag so round-trip preserves custom data.
 
-use super::super::{
-    AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
-};
+use super::super::{AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader};
 use std::io::BufRead;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, Music};
 use tusk_model::extensions::{ExtensionBag, TUSK_EXT_NS};
@@ -40,11 +38,16 @@ impl MeiDeserialize for Mei {
         result.responsibility.extract_attributes(&mut attrs)?;
 
         if !custom_attributes.is_empty() {
-            result.extensions.get_or_insert_with(ExtensionBag::default).custom_attributes = custom_attributes;
+            result
+                .extensions
+                .get_or_insert_with(ExtensionBag::default)
+                .custom_attributes = custom_attributes;
         }
 
         if !is_empty {
-            while let Some((name, child_attrs, child_empty)) = reader.read_next_child_start("mei")? {
+            while let Some((name, child_attrs, child_empty)) =
+                reader.read_next_child_start("mei")?
+            {
                 if name.starts_with("ext:") {
                     reader.skip_unknown_child(&name, "mei", child_empty)?;
                     if result.extensions.is_none() {

@@ -58,9 +58,9 @@ fn main() -> Result<()> {
         println!("Output: {}", args.output.display());
         rng::parse_rng_file(rng_path)?
     } else {
-        let input = args
-            .input
-            .ok_or_else(|| anyhow::anyhow!("Either --input (ODD dir) or --rng (RNG file) is required"))?;
+        let input = args.input.ok_or_else(|| {
+            anyhow::anyhow!("Either --input (ODD dir) or --rng (RNG file) is required")
+        })?;
         println!("MEI ODD → Rust Code Generator");
         println!("Input:  {}", input.display());
         println!("Output: {}", args.output.display());
@@ -76,13 +76,13 @@ fn main() -> Result<()> {
 
     let config = if let Some(ref label) = args.versioned {
         if args.rng.is_none() {
-            anyhow::bail!("--versioned requires --rng (versioned models are generated from RNG only)");
+            anyhow::bail!(
+                "--versioned requires --rng (versioned models are generated from RNG only)"
+            );
         }
         let module_path = format!("crate::versions::{}", label);
         println!("  Versioned module:  {}", module_path);
-        generator::CodegenConfig {
-            module_path,
-        }
+        generator::CodegenConfig { module_path }
     } else {
         generator::CodegenConfig::default()
     };
@@ -93,11 +93,11 @@ fn main() -> Result<()> {
     // Generate attribute and element trait impls for tusk-mei if requested (only for main model, not versioned)
     if args.versioned.is_none() {
         if let Some(mei_crate) = &args.mei_crate {
-        println!("\nGenerating trait impls for tusk-mei...");
-        println!("  Target: {}", mei_crate.display());
-        generator::generate_mei_attr_impls(&defs, mei_crate)?;
-        generator::generate_mei_element_ser_impls(&defs, mei_crate)?;
-        generator::generate_mei_element_deser_impls(&defs, mei_crate)?;
+            println!("\nGenerating trait impls for tusk-mei...");
+            println!("  Target: {}", mei_crate.display());
+            generator::generate_mei_attr_impls(&defs, mei_crate)?;
+            generator::generate_mei_element_ser_impls(&defs, mei_crate)?;
+            generator::generate_mei_element_deser_impls(&defs, mei_crate)?;
         }
     }
 

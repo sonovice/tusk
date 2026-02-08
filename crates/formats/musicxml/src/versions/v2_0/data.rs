@@ -175,4 +175,3 @@ pub type NoteTypeValue = String;
 pub type TwoNoteTurn = String;
 
 pub type TrillStep = String;
-

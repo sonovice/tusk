@@ -4,8 +4,8 @@
 //! element definitions from codegen/schema/versions/musicxml-X.Y/schema/musicxml.xsd.
 
 use anyhow::{Context, Result};
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::io::BufRead;
 use std::path::Path;
 
@@ -36,8 +36,8 @@ fn parse_u32(s: &str) -> u32 {
 
 /// Parse the MusicXML XSD file and return a Schema AST.
 pub fn parse_xsd(path: &Path) -> Result<Schema> {
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("read XSD: {}", path.display()))?;
+    let content =
+        std::fs::read_to_string(path).with_context(|| format!("read XSD: {}", path.display()))?;
     parse_xsd_str(&content)
 }
 
@@ -148,10 +148,7 @@ fn read_simple_type<R: BufRead>(
     if !values.is_empty() {
         return Ok(Some(SimpleType::Enum { base, values }));
     }
-    Ok(Some(SimpleType::Alias {
-        base,
-        pattern,
-    }))
+    Ok(Some(SimpleType::Alias { base, pattern }))
 }
 
 fn read_complex_type<R: BufRead>(
@@ -257,7 +254,10 @@ fn read_complex_type<R: BufRead>(
     }))
 }
 
-fn read_documentation<R: BufRead>(reader: &mut Reader<R>, buf: &mut Vec<u8>) -> Result<Option<String>> {
+fn read_documentation<R: BufRead>(
+    reader: &mut Reader<R>,
+    buf: &mut Vec<u8>,
+) -> Result<Option<String>> {
     let mut depth = 1u32; // we're inside annotation
     let mut in_doc = false;
     let mut text = String::new();
@@ -323,16 +323,27 @@ fn read_extension<R: BufRead>(
                     let type_name = get_attr(&e, "type");
                     let required = get_attr(&e, "use").as_deref() == Some("required");
                     if let (Some(n), Some(t)) = (name, type_name) {
-                        attrs.push(Attribute { name: n, type_name: t, required, default_value: None });
+                        attrs.push(Attribute {
+                            name: n,
+                            type_name: t,
+                            required,
+                            default_value: None,
+                        });
                     }
                 }
-                if local.as_slice() == b"extension" || local.as_slice() == b"simpleContent" || local.as_slice() == b"complexContent" {
+                if local.as_slice() == b"extension"
+                    || local.as_slice() == b"simpleContent"
+                    || local.as_slice() == b"complexContent"
+                {
                     depth += 1;
                 }
             }
             Ok(Event::End(e)) => {
                 let local = local_name(e.name().as_ref());
-                if local.as_slice() == b"extension" || local.as_slice() == b"simpleContent" || local.as_slice() == b"complexContent" {
+                if local.as_slice() == b"extension"
+                    || local.as_slice() == b"simpleContent"
+                    || local.as_slice() == b"complexContent"
+                {
                     depth -= 1;
                 }
             }
@@ -363,8 +374,16 @@ fn read_sequence_or_choice<R: BufRead>(
                     b"element" => {
                         let name = get_attr(&e, "name").unwrap_or_default();
                         let type_name = get_attr(&e, "type");
-                        let min_occurs = get_attr(&e, "minOccurs").map(|s| parse_u32(&s)).unwrap_or(1);
-                        let max_occurs = get_attr(&e, "maxOccurs").and_then(|s| if s == "unbounded" { None } else { s.parse().ok() });
+                        let min_occurs = get_attr(&e, "minOccurs")
+                            .map(|s| parse_u32(&s))
+                            .unwrap_or(1);
+                        let max_occurs = get_attr(&e, "maxOccurs").and_then(|s| {
+                            if s == "unbounded" {
+                                None
+                            } else {
+                                s.parse().ok()
+                            }
+                        });
                         if !name.is_empty() {
                             children.push(Particle::Element(ElementParticle {
                                 name,
@@ -395,13 +414,20 @@ fn read_sequence_or_choice<R: BufRead>(
                     }
                     _ => {}
                 }
-                if local.as_slice() == b"sequence" || local.as_slice() == b"choice" || local.as_slice() == b"all" {
+                if local.as_slice() == b"sequence"
+                    || local.as_slice() == b"choice"
+                    || local.as_slice() == b"all"
+                {
                     depth += 1;
                 }
             }
             Ok(Event::End(e)) => {
                 let local = local_name(e.name().as_ref());
-                if local.as_slice() == kind || local.as_slice() == b"sequence" || local.as_slice() == b"choice" || local.as_slice() == b"all" {
+                if local.as_slice() == kind
+                    || local.as_slice() == b"sequence"
+                    || local.as_slice() == b"choice"
+                    || local.as_slice() == b"all"
+                {
                     depth -= 1;
                 }
             }
@@ -481,7 +507,12 @@ fn read_attribute_group<R: BufRead>(
                     let type_name = get_attr(&e, "type");
                     let required = get_attr(&e, "use").as_deref() == Some("required");
                     if let (Some(n), Some(t)) = (name, type_name) {
-                        attributes.push(Attribute { name: n, type_name: t, required, default_value: None });
+                        attributes.push(Attribute {
+                            name: n,
+                            type_name: t,
+                            required,
+                            default_value: None,
+                        });
                     }
                 }
                 if local.as_slice() == b"attributeGroup" {

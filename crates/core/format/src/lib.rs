@@ -188,20 +188,13 @@ impl FormatRegistry {
     /// 4. If no extension matches and `content` is provided, falls back to
     ///    pure content detection.
     pub fn find_importer(&self, ext: &str, content: Option<&[u8]>) -> Option<&dyn Importer> {
-        let matches_ext = |imp: &Box<dyn Importer>| {
-            imp.extensions()
-                .iter()
-                .any(|e| e.eq_ignore_ascii_case(ext))
-        };
+        let matches_ext =
+            |imp: &Box<dyn Importer>| imp.extensions().iter().any(|e| e.eq_ignore_ascii_case(ext));
 
         let ext_match_count = self.importers.iter().filter(|imp| matches_ext(imp)).count();
 
         if ext_match_count == 1 {
-            let ext_match = self
-                .importers
-                .iter()
-                .find(|imp| matches_ext(imp))
-                .unwrap();
+            let ext_match = self.importers.iter().find(|imp| matches_ext(imp)).unwrap();
 
             if let Some(content) = content {
                 // Extension match confirms via content — return it.
@@ -210,9 +203,7 @@ impl FormatRegistry {
                 }
                 // Extension-matched format doesn't recognise the content;
                 // another format might (e.g. an MEI file with .xml extension).
-                if let Some(content_match) =
-                    self.importers.iter().find(|imp| imp.detect(content))
-                {
+                if let Some(content_match) = self.importers.iter().find(|imp| imp.detect(content)) {
                     return Some(content_match.as_ref());
                 }
             }
@@ -252,11 +243,7 @@ impl FormatRegistry {
     pub fn find_exporter(&self, ext: &str) -> Option<&dyn Exporter> {
         self.exporters
             .iter()
-            .find(|exp| {
-                exp.extensions()
-                    .iter()
-                    .any(|e| e.eq_ignore_ascii_case(ext))
-            })
+            .find(|exp| exp.extensions().iter().any(|e| e.eq_ignore_ascii_case(ext)))
             .map(|exp| exp.as_ref())
     }
 

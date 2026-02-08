@@ -265,4 +265,3 @@ pub type LineEnd = String;
 pub type NonNegativeDecimal = f64;
 
 pub type CircularArrow = String;
-

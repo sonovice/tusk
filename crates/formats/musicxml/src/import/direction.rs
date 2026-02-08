@@ -113,13 +113,25 @@ pub fn convert_direction(
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Segno(_) => {
-                let dir =
-                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:segno", "");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:segno",
+                    "",
+                );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Coda(_) => {
-                let dir =
-                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:coda", "");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:coda",
+                    "",
+                );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Symbol(symbols) => {
@@ -206,8 +218,14 @@ pub fn convert_direction(
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Damp(_) => {
-                let dir =
-                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:damp", "");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:damp",
+                    "",
+                );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::DampAll(_) => {
@@ -375,9 +393,7 @@ fn dir_with_label(
     dir
 }
 
-fn dash_bracket_type_to_str(
-    t: crate::model::data::StartStopContinue,
-) -> &'static str {
+fn dash_bracket_type_to_str(t: crate::model::data::StartStopContinue) -> &'static str {
     use crate::model::data::StartStopContinue;
     match t {
         StartStopContinue::Start => "start",
@@ -558,8 +574,7 @@ fn convert_metronome(
 
             // Set dots if present
             if !beat_unit_dots.is_empty() {
-                tempo.tempo_log.mm_dots =
-                    Some(DataAugmentdot::from(beat_unit_dots.len() as u64));
+                tempo.tempo_log.mm_dots = Some(DataAugmentdot::from(beat_unit_dots.len() as u64));
             }
 
             // Parse per-minute value

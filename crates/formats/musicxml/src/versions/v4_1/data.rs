@@ -289,4 +289,3 @@ pub type HarmonyArrangement = String;
 pub type NumeralMode = String;
 
 pub type SyncType = String;
-

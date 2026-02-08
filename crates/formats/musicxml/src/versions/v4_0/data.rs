@@ -289,4 +289,3 @@ pub type PositiveIntegerOrEmpty = String;
 pub type TextDirection = String;
 
 pub type LineShape = String;
-

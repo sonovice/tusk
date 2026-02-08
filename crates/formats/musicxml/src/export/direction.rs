@@ -69,7 +69,12 @@ pub fn convert_mei_dynam(
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part.
     // With 1:1 part→staff mapping, within-part staff is always 1.
-    if dynam.dynam_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
+    if dynam
+        .dynam_log
+        .staff
+        .as_ref()
+        .map_or(false, |s| !s.is_empty())
+    {
         direction.staff = Some(1);
     }
 
@@ -183,7 +188,12 @@ pub fn convert_mei_hairpin(
     let mut direction = Direction::new(vec![direction_type]);
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
-    if hairpin.hairpin_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
+    if hairpin
+        .hairpin_log
+        .staff
+        .as_ref()
+        .map_or(false, |s| !s.is_empty())
+    {
         direction.staff = Some(1);
     }
 
@@ -229,9 +239,7 @@ pub fn convert_mei_dir(
         }
         Some("musicxml:segno") => DirectionTypeContent::Segno(vec![Segno::default()]),
         Some("musicxml:coda") => DirectionTypeContent::Coda(vec![Coda::default()]),
-        Some("musicxml:symbol") => {
-            DirectionTypeContent::Symbol(vec![Symbol::new(&text_content)])
-        }
+        Some("musicxml:symbol") => DirectionTypeContent::Symbol(vec![Symbol::new(&text_content)]),
         Some("musicxml:dashes") => {
             let dash_type = parse_start_stop_continue(&text_content);
             DirectionTypeContent::Dashes(Dashes::new(dash_type))
@@ -250,16 +258,14 @@ pub fn convert_mei_dir(
             shift.size = Some(size);
             DirectionTypeContent::OctaveShift(shift)
         }
-        Some("musicxml:harp-pedals") => {
-            DirectionTypeContent::HarpPedals(HarpPedals {
-                pedal_tunings: vec![],
-                default_x: None,
-                default_y: None,
-                halign: None,
-                valign: None,
-                id: None,
-            })
-        }
+        Some("musicxml:harp-pedals") => DirectionTypeContent::HarpPedals(HarpPedals {
+            pedal_tunings: vec![],
+            default_x: None,
+            default_y: None,
+            halign: None,
+            valign: None,
+            id: None,
+        }),
         Some("musicxml:damp") => DirectionTypeContent::Damp(Damp {
             default_x: None,
             default_y: None,
@@ -267,9 +273,7 @@ pub fn convert_mei_dir(
             valign: None,
             id: None,
         }),
-        Some("musicxml:damp-all") => {
-            DirectionTypeContent::DampAll(DampAll::default())
-        }
+        Some("musicxml:damp-all") => DirectionTypeContent::DampAll(DampAll::default()),
         Some("musicxml:eyeglasses") => DirectionTypeContent::Eyeglasses(Eyeglasses::default()),
         Some("musicxml:string-mute") => {
             DirectionTypeContent::StringMute(crate::model::direction::StringMute {
@@ -301,9 +305,7 @@ pub fn convert_mei_dir(
                 id: None,
             })
         }
-        Some("musicxml:percussion") => {
-            DirectionTypeContent::Words(vec![Words::new(&text_content)])
-        }
+        Some("musicxml:percussion") => DirectionTypeContent::Words(vec![Words::new(&text_content)]),
         Some("musicxml:accordion-registration") => {
             DirectionTypeContent::AccordionRegistration(Default::default())
         }
@@ -318,8 +320,8 @@ pub fn convert_mei_dir(
                 id: None,
             })
         }
-        Some("musicxml:other") => DirectionTypeContent::OtherDirection(
-            crate::model::direction::OtherDirection {
+        Some("musicxml:other") => {
+            DirectionTypeContent::OtherDirection(crate::model::direction::OtherDirection {
                 value: if text_content.is_empty() {
                     None
                 } else {
@@ -332,8 +334,8 @@ pub fn convert_mei_dir(
                 halign: None,
                 valign: None,
                 id: None,
-            },
-        ),
+            })
+        }
         _ => DirectionTypeContent::Words(vec![Words::new(&text_content)]),
     };
 
@@ -550,7 +552,12 @@ pub fn convert_mei_tempo(
     let mut direction = Direction::new(direction_types);
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
-    if tempo.tempo_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
+    if tempo
+        .tempo_log
+        .staff
+        .as_ref()
+        .map_or(false, |s| !s.is_empty())
+    {
         direction.staff = Some(1);
     }
 

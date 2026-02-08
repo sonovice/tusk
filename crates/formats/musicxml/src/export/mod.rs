@@ -79,9 +79,7 @@ use utils::{
 ///
 /// This conversion is lossy. MEI-specific features without MusicXML equivalents
 /// will generate warnings in the context. Check `ctx.warnings()` after conversion.
-pub fn convert_mei(
-    mei: &Mei,
-) -> ConversionResult<crate::model::elements::ScorePartwise> {
+pub fn convert_mei(mei: &Mei) -> ConversionResult<crate::model::elements::ScorePartwise> {
     let timewise = convert_mei_to_timewise(mei)?;
     Ok(crate::convert::timewise_to_partwise(timewise))
 }
@@ -162,8 +160,7 @@ pub fn convert_mei_to_timewise_with_context(
 
         // Convert measure content from MEI to timewise measures
         if !part_ids.is_empty() {
-            score.measures =
-                content::convert_mei_score_content(mei_score, &part_ids, ctx)?;
+            score.measures = content::convert_mei_score_content(mei_score, &part_ids, ctx)?;
         }
     }
 

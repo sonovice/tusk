@@ -403,56 +403,23 @@ mod tests {
     #[test]
     fn test_convert_mei_keysig_to_mxml_fifths() {
         // C major (no accidentals)
-        assert_eq!(
-            convert_mei_keysig_to_fifths("0"),
-            Some(0)
-        );
+        assert_eq!(convert_mei_keysig_to_fifths("0"), Some(0));
 
         // Sharp keys
-        assert_eq!(
-            convert_mei_keysig_to_fifths("1s"),
-            Some(1)
-        ); // G major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("2s"),
-            Some(2)
-        ); // D major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("3s"),
-            Some(3)
-        ); // A major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("7s"),
-            Some(7)
-        ); // C# major
+        assert_eq!(convert_mei_keysig_to_fifths("1s"), Some(1)); // G major
+        assert_eq!(convert_mei_keysig_to_fifths("2s"), Some(2)); // D major
+        assert_eq!(convert_mei_keysig_to_fifths("3s"), Some(3)); // A major
+        assert_eq!(convert_mei_keysig_to_fifths("7s"), Some(7)); // C# major
 
         // Flat keys
-        assert_eq!(
-            convert_mei_keysig_to_fifths("1f"),
-            Some(-1)
-        ); // F major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("2f"),
-            Some(-2)
-        ); // Bb major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("3f"),
-            Some(-3)
-        ); // Eb major
-        assert_eq!(
-            convert_mei_keysig_to_fifths("7f"),
-            Some(-7)
-        ); // Cb major
+        assert_eq!(convert_mei_keysig_to_fifths("1f"), Some(-1)); // F major
+        assert_eq!(convert_mei_keysig_to_fifths("2f"), Some(-2)); // Bb major
+        assert_eq!(convert_mei_keysig_to_fifths("3f"), Some(-3)); // Eb major
+        assert_eq!(convert_mei_keysig_to_fifths("7f"), Some(-7)); // Cb major
 
         // Invalid returns None
-        assert_eq!(
-            convert_mei_keysig_to_fifths("invalid"),
-            None
-        );
-        assert_eq!(
-            convert_mei_keysig_to_fifths("mixed"),
-            None
-        );
+        assert_eq!(convert_mei_keysig_to_fifths("invalid"), None);
+        assert_eq!(convert_mei_keysig_to_fifths("mixed"), None);
     }
 
     #[test]
@@ -479,20 +446,34 @@ mod tests {
         use crate::model::attributes::ClefSign;
         use tusk_model::data::DataClefshape;
 
-        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::G), ClefSign::G);
-        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::F), ClefSign::F);
-        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::C), ClefSign::C);
+        assert_eq!(
+            convert_mei_clef_shape_to_mxml(&DataClefshape::G),
+            ClefSign::G
+        );
+        assert_eq!(
+            convert_mei_clef_shape_to_mxml(&DataClefshape::F),
+            ClefSign::F
+        );
+        assert_eq!(
+            convert_mei_clef_shape_to_mxml(&DataClefshape::C),
+            ClefSign::C
+        );
         assert_eq!(
             convert_mei_clef_shape_to_mxml(&DataClefshape::Perc),
             ClefSign::Percussion
         );
-        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::Tab), ClefSign::Tab);
-        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::Gg), ClefSign::G); // GG maps to G
+        assert_eq!(
+            convert_mei_clef_shape_to_mxml(&DataClefshape::Tab),
+            ClefSign::Tab
+        );
+        assert_eq!(
+            convert_mei_clef_shape_to_mxml(&DataClefshape::Gg),
+            ClefSign::G
+        ); // GG maps to G
     }
 
     #[test]
     fn test_convert_mei_score_def_to_mxml_attributes() {
-
         let mut score_def = ScoreDef::default();
 
         // Set key signature (D major = 2 sharps)

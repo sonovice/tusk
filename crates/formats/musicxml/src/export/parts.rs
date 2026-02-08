@@ -162,14 +162,18 @@ pub fn convert_mei_staff_grp_barline(
 ) -> Option<crate::model::elements::GroupBarlineValue> {
     use crate::model::elements::{GroupBarline, GroupBarlineValue};
 
-    staff_grp.staff_grp_vis.bar_thru.as_ref().and_then(|bar_thru| {
-        use tusk_model::data::DataBoolean;
-        let value = match bar_thru {
-            DataBoolean::True => GroupBarline::Yes,
-            DataBoolean::False => GroupBarline::No,
-        };
-        Some(GroupBarlineValue { value, color: None })
-    })
+    staff_grp
+        .staff_grp_vis
+        .bar_thru
+        .as_ref()
+        .and_then(|bar_thru| {
+            use tusk_model::data::DataBoolean;
+            let value = match bar_thru {
+                DataBoolean::True => GroupBarline::Yes,
+                DataBoolean::False => GroupBarline::No,
+            };
+            Some(GroupBarlineValue { value, color: None })
+        })
 }
 
 /// Convert MEI staffDef to MusicXML score-part.

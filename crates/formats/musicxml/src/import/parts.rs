@@ -539,10 +539,7 @@ mod tests {
         // Get the nested staffGrp
         if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
             // Should have symbol=bracket
-            assert_eq!(
-                nested_grp.staff_grp_vis.symbol,
-                Some("bracket".to_string())
-            );
+            assert_eq!(nested_grp.staff_grp_vis.symbol, Some("bracket".to_string()));
 
             // Should have bar.thru=true (from group-barline="yes")
             assert_eq!(
@@ -552,7 +549,9 @@ mod tests {
 
             // Should have label "Strings"
             let has_label = nested_grp.children.iter().any(|c| {
-                let StaffGrpChild::Label(l) = c else { return false };
+                let StaffGrpChild::Label(l) = c else {
+                    return false;
+                };
                 l.children.iter().any(|lc| {
                     let LabelChild::Text(t) = lc;
                     t == "Strings"
@@ -562,7 +561,9 @@ mod tests {
 
             // Should have labelAbbr "Str."
             let has_abbr = nested_grp.children.iter().any(|c| {
-                let StaffGrpChild::LabelAbbr(l) = c else { return false };
+                let StaffGrpChild::LabelAbbr(l) = c else {
+                    return false;
+                };
                 l.children.iter().any(|lc| {
                     let LabelAbbrChild::Text(t) = lc;
                     t == "Str."
@@ -627,10 +628,7 @@ mod tests {
 
         // Get the nested staffGrp and verify brace symbol
         if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
-            assert_eq!(
-                nested_grp.staff_grp_vis.symbol,
-                Some("brace".to_string())
-            );
+            assert_eq!(nested_grp.staff_grp_vis.symbol, Some("brace".to_string()));
         } else {
             panic!("Expected nested StaffGrp");
         }

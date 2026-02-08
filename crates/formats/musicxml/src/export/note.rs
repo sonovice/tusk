@@ -232,8 +232,7 @@ fn convert_mei_gestural_accid_to_alter(
     accid_ges: &Option<tusk_model::data::DataAccidentalGestural>,
 ) -> Option<f64> {
     use tusk_model::data::{
-        DataAccidentalGestural, DataAccidentalGesturalBasic,
-        DataAccidentalGesturalExtended,
+        DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
     };
 
     accid_ges.as_ref().and_then(|a| {
@@ -337,9 +336,7 @@ fn convert_mei_accid_to_mxml(
     if let Some(ref enclose) = accid.accid_vis.enclose {
         match enclose {
             DataEnclosure::Paren => mxml_accid.parentheses = Some(YesNo::Yes),
-            DataEnclosure::Brack | DataEnclosure::Box => {
-                mxml_accid.bracket = Some(YesNo::Yes)
-            } // no box in MusicXML, use bracket
+            DataEnclosure::Brack | DataEnclosure::Box => mxml_accid.bracket = Some(YesNo::Yes), // no box in MusicXML, use bracket
             DataEnclosure::None => {}
         }
     }
@@ -475,7 +472,9 @@ fn convert_mei_note_label_articulations(
     }
     use crate::model::notations::{Articulations, BreathMark, Caesura, Notations};
     let notations = mxml_note.notations.get_or_insert_with(Notations::default);
-    let artics = notations.articulations.get_or_insert_with(Articulations::default);
+    let artics = notations
+        .articulations
+        .get_or_insert_with(Articulations::default);
     if has_breath {
         artics.breath_mark = Some(BreathMark::default());
     }
@@ -710,8 +709,16 @@ fn add_rest_conversion_warnings(
     }
 
     // Warn about staff/layer positioning (position determined by sequence in MusicXML)
-    if mei_rest.rest_log.staff.as_ref().map_or(false, |s| !s.is_empty())
-        || mei_rest.rest_log.layer.as_ref().map_or(false, |s| !s.is_empty())
+    if mei_rest
+        .rest_log
+        .staff
+        .as_ref()
+        .map_or(false, |s| !s.is_empty())
+        || mei_rest
+            .rest_log
+            .layer
+            .as_ref()
+            .map_or(false, |s| !s.is_empty())
     {
         ctx.add_warning(
             "rest",
@@ -720,7 +727,12 @@ fn add_rest_conversion_warnings(
     }
 
     // Warn about facsimile links; @facs is Option<String> or list
-    if mei_rest.facsimile.facs.as_ref().map_or(false, |s| !s.0.is_empty()) {
+    if mei_rest
+        .facsimile
+        .facs
+        .as_ref()
+        .map_or(false, |s| !s.0.is_empty())
+    {
         ctx.add_warning(
             "rest",
             "MEI @facs (facsimile link) has no MusicXML equivalent",
@@ -739,7 +751,10 @@ fn add_rest_conversion_warnings(
 
     // Warn about mensural durations
     if mei_rest.rest_log.dur.as_ref().is_some_and(|d| {
-        matches!(d, tusk_model::data::DataDurationrests::MeiDataDurationrestsMensural(_))
+        matches!(
+            d,
+            tusk_model::data::DataDurationrests::MeiDataDurationrestsMensural(_)
+        )
     }) {
         ctx.add_warning(
             "rest",
@@ -1083,8 +1098,16 @@ fn add_chord_conversion_warnings(
     }
 
     // Warn about staff/layer positioning
-    if mei_chord.chord_log.staff.as_ref().map_or(false, |s| !s.is_empty())
-        || mei_chord.chord_log.layer.as_ref().map_or(false, |s| !s.is_empty())
+    if mei_chord
+        .chord_log
+        .staff
+        .as_ref()
+        .map_or(false, |s| !s.is_empty())
+        || mei_chord
+            .chord_log
+            .layer
+            .as_ref()
+            .map_or(false, |s| !s.is_empty())
     {
         ctx.add_warning(
             "chord",
@@ -1093,7 +1116,12 @@ fn add_chord_conversion_warnings(
     }
 
     // Warn about facsimile links
-    if mei_chord.facsimile.facs.as_ref().map_or(false, |s| !s.0.is_empty()) {
+    if mei_chord
+        .facsimile
+        .facs
+        .as_ref()
+        .map_or(false, |s| !s.0.is_empty())
+    {
         ctx.add_warning(
             "chord",
             "MEI @facs (facsimile link) has no MusicXML equivalent",
@@ -1125,7 +1153,10 @@ fn add_chord_conversion_warnings(
 
     // Warn about mensural durations
     if mei_chord.chord_log.dur.as_ref().is_some_and(|d| {
-        matches!(d, tusk_model::data::DataDuration::MeiDataDurationMensural(_))
+        matches!(
+            d,
+            tusk_model::data::DataDuration::MeiDataDurationMensural(_)
+        )
     }) {
         ctx.add_warning(
             "chord",

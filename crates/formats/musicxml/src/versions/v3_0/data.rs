@@ -231,4 +231,3 @@ pub type SemiPitched = String;
 pub type Effect = String;
 
 pub type StartStopSingle = String;
-

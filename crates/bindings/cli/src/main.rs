@@ -45,11 +45,7 @@ fn main() -> Result<()> {
         .with_context(|| format!("Failed to read input file: {:?}", cli.input))?;
 
     // Resolve input format (extension first, content fallback).
-    let input_ext = cli
-        .input
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
+    let input_ext = cli.input.extension().and_then(|e| e.to_str()).unwrap_or("");
 
     let importer = registry
         .find_importer(input_ext, Some(input_content.as_bytes()))
@@ -147,7 +143,8 @@ mod tests {
     #[test]
     fn xml_extension_with_mei_content_detects_mei() {
         let reg = build_registry();
-        let content = b"<?xml version=\"1.0\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\">";
+        let content =
+            b"<?xml version=\"1.0\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\">";
         let imp = reg.find_importer("xml", Some(content.as_slice()));
         assert!(imp.is_some());
         // With .xml extension, both MEI and MusicXML match by extension.

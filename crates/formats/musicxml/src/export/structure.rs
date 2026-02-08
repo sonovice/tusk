@@ -8,7 +8,6 @@ use crate::convert_error::ConversionResult;
 use crate::model::data::YesNo;
 use crate::model::elements::Measure;
 
-
 // ============================================================================
 // MEI Measure -> MusicXML Measure Conversion
 // ============================================================================
@@ -171,7 +170,9 @@ mod tests {
 
         let mut mei_measure = MeiMeasure::default();
         mei_measure.common.n = Some(tusk_model::data::DataWord::from("1".to_string()));
-        mei_measure.measure_vis.width = Some(tusk_model::data::DataMeasurementunsigned::from("200vu".to_string()));
+        mei_measure.measure_vis.width = Some(tusk_model::data::DataMeasurementunsigned::from(
+            "200vu".to_string(),
+        ));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);

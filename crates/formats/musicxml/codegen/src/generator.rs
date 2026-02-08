@@ -10,15 +10,33 @@ use crate::ast::*;
 /// Map XSD type name to Rust type (for primitives and common types).
 fn xsd_type_to_rust(s: &str) -> String {
     match s {
-        "xs:string" | "xs:token" | "xs:normalizedString" | "xs:date" | "xs:dateTime" | "xs:gYear" | "xs:gMonthDay" => "String".to_string(),
+        "xs:string"
+        | "xs:token"
+        | "xs:normalizedString"
+        | "xs:date"
+        | "xs:dateTime"
+        | "xs:gYear"
+        | "xs:gMonthDay" => "String".to_string(),
         "xs:decimal" | "xs:float" | "xs:double" => "f64".to_string(),
-        "xs:integer" | "xs:nonNegativeInteger" | "xs:positiveInteger" | "xs:int" | "xs:long" | "xs:unsignedInt" | "xs:unsignedLong" => "i64".to_string(),
+        "xs:integer"
+        | "xs:nonNegativeInteger"
+        | "xs:positiveInteger"
+        | "xs:int"
+        | "xs:long"
+        | "xs:unsignedInt"
+        | "xs:unsignedLong" => "i64".to_string(),
         "xs:boolean" => "bool".to_string(),
         "xs:anyURI" => "String".to_string(),
         _ => {
             // MusicXML type like "yes-no", "left-center-right" -> enum or alias
             let name = s.trim_start_matches("xs:");
-            if name.contains('-') || name.chars().next().map(|c| c.is_lowercase()).unwrap_or(false) {
+            if name.contains('-')
+                || name
+                    .chars()
+                    .next()
+                    .map(|c| c.is_lowercase())
+                    .unwrap_or(false)
+            {
                 type_name_to_rust(name)
             } else {
                 type_name_to_rust(name)
@@ -103,9 +121,8 @@ fn generate_data(schema: &Schema, path: &Path) -> Result<()> {
 }
 
 fn generate_mod(_schema: &Schema, path: &Path) -> Result<()> {
-    let mut out = String::from(
-        "//! MusicXML model (generated from XSD). DO NOT EDIT.\n\npub mod data;\n\n",
-    );
+    let mut out =
+        String::from("//! MusicXML model (generated from XSD). DO NOT EDIT.\n\npub mod data;\n\n");
     out.push_str("// Re-export data types\npub use data::*;\n");
     fs::write(path, out)?;
     Ok(())

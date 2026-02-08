@@ -20,7 +20,9 @@ pub mod v6_0_dev;
 
 pub mod convert;
 
-pub use convert::{from_internal, to_internal, ConversionError, VersionedMei, DEFAULT_EXPORT_VERSION};
+pub use convert::{
+    ConversionError, DEFAULT_EXPORT_VERSION, VersionedMei, from_internal, to_internal,
+};
 
 /// Detect MEI version from the root element of an XML document.
 ///
@@ -29,8 +31,7 @@ pub use convert::{from_internal, to_internal, ConversionError, VersionedMei, DEF
 /// (e.g. `"2.1.1"` → `"v2_1_1"`), or `None` if unknown/missing.
 pub fn detect_mei_version(xml: &str) -> Option<Cow<'static, str>> {
     let root = find_mei_root(xml)?;
-    let version = get_attribute(&root, "meiversion")
-        .or_else(|| get_attribute(&root, "version"))?;
+    let version = get_attribute(&root, "meiversion").or_else(|| get_attribute(&root, "version"))?;
     version_string_to_label(version).map(Cow::Borrowed)
 }
 

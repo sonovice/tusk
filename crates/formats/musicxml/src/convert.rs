@@ -200,9 +200,7 @@ fn build_partwise_measure(
 mod tests {
     use super::*;
     use crate::model::data::YesNo;
-    use crate::model::elements::{
-        PartList, PartListItem, ScorePart, TimewisePart,
-    };
+    use crate::model::elements::{PartList, PartListItem, ScorePart, TimewisePart};
 
     fn make_part_list(ids: &[&str]) -> PartList {
         PartList {

@@ -381,7 +381,9 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                     reader, &e,
                 )?))),
                 b"barline" => {
-                    content.push(MeasureContent::Barline(Box::new(parse_barline(reader, &e)?)));
+                    content.push(MeasureContent::Barline(Box::new(parse_barline(
+                        reader, &e,
+                    )?)));
                 }
                 _ => skip_element(reader, &e)?,
             },
@@ -1318,7 +1320,9 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                     b"barline" => {
                         measure
                             .content
-                            .push(MeasureContent::Barline(Box::new(parse_barline(reader, &e)?)));
+                            .push(MeasureContent::Barline(Box::new(parse_barline(
+                                reader, &e,
+                            )?)));
                     }
                     _ => skip_element(reader, &e)?,
                 }
@@ -1405,13 +1409,11 @@ fn read_text_for_tag<R: BufRead>(reader: &mut Reader<R>, end_tag: &[u8]) -> Resu
 /// Parse barline from an empty element (attributes only).
 fn parse_barline_empty(e: &BytesStart) -> Result<crate::model::elements::Barline> {
     use crate::model::elements::{Barline, BarlineLocation};
-    let location = get_attr(e, "location")?.and_then(|s| {
-        match s.to_lowercase().as_str() {
-            "left" => Some(BarlineLocation::Left),
-            "right" => Some(BarlineLocation::Right),
-            "middle" => Some(BarlineLocation::Middle),
-            _ => None,
-        }
+    let location = get_attr(e, "location")?.and_then(|s| match s.to_lowercase().as_str() {
+        "left" => Some(BarlineLocation::Left),
+        "right" => Some(BarlineLocation::Right),
+        "middle" => Some(BarlineLocation::Middle),
+        _ => None,
     });
     Ok(Barline {
         location,

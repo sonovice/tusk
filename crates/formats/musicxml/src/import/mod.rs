@@ -313,7 +313,9 @@ mod tests {
                 // Check title text
                 let t = title.unwrap();
                 let text = t.children.iter().find_map(|c| {
-                    let tusk_model::elements::TitleChild::Text(s) = c else { return None };
+                    let tusk_model::elements::TitleChild::Text(s) = c else {
+                        return None;
+                    };
                     Some(s.as_str())
                 });
                 assert_eq!(text, Some("Test Symphony"));
@@ -389,7 +391,9 @@ mod tests {
                 for ts_child in &ts.children {
                     let TitleStmtChild::Title(title) = ts_child;
                     for t_child in &title.children {
-                        let TitleChild::Text(s) = t_child else { continue };
+                        let TitleChild::Text(s) = t_child else {
+                            continue;
+                        };
                         return Some(s.as_str());
                     }
                 }

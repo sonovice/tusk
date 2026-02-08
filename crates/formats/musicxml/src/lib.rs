@@ -109,9 +109,7 @@ pub fn import(
 ///
 /// This is a pure structural transformation (mirrors `parttime.xsl`).
 /// Use this for roundtrip comparison — timewise is the canonical format.
-pub fn import_timewise(
-    score: &model::elements::ScorePartwise,
-) -> model::elements::ScoreTimewise {
+pub fn import_timewise(score: &model::elements::ScorePartwise) -> model::elements::ScoreTimewise {
     convert::partwise_to_timewise(score.clone())
 }
 
@@ -131,9 +129,7 @@ pub fn import_timewise(
 /// let mei = Mei::default();
 /// let musicxml = export(&mei)?;
 /// ```
-pub fn export(
-    mei: &tusk_model::elements::Mei,
-) -> ConversionResult<model::elements::ScorePartwise> {
+pub fn export(mei: &tusk_model::elements::Mei) -> ConversionResult<model::elements::ScorePartwise> {
     let timewise = export::convert_mei_to_timewise(mei)?;
     Ok(convert::timewise_to_partwise(timewise))
 }
@@ -167,9 +163,7 @@ pub fn serialize(score: &model::elements::ScorePartwise) -> SerializeResult<Stri
 /// Serialize a MusicXML score-timewise document to a timewise XML string.
 ///
 /// Writes `<score-timewise>` as root element with the timewise DOCTYPE.
-pub fn serialize_timewise_score(
-    score: &model::elements::ScoreTimewise,
-) -> SerializeResult<String> {
+pub fn serialize_timewise_score(score: &model::elements::ScoreTimewise) -> SerializeResult<String> {
     serializer::serialize_timewise(score)
 }
 
@@ -208,9 +202,7 @@ impl tusk_format::Format for MusicXmlFormat {
         // Only check the first 4 KB for efficiency with large files.
         let prefix = &content[..content.len().min(4096)];
         let s = std::str::from_utf8(prefix).unwrap_or("");
-        s.contains("<score-partwise")
-            || s.contains("<score-timewise")
-            || s.contains("musicxml.org")
+        s.contains("<score-partwise") || s.contains("<score-timewise") || s.contains("musicxml.org")
     }
 }
 

@@ -22,10 +22,7 @@ pub struct Schema {
 #[derive(Debug, Clone)]
 pub enum SimpleType {
     /// Enumeration of allowed values.
-    Enum {
-        base: String,
-        values: Vec<String>,
-    },
+    Enum { base: String, values: Vec<String> },
     /// Restriction to a base type (pattern, min/max, etc.) - emit as alias or String.
     Alias {
         base: String,

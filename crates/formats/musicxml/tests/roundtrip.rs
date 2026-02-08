@@ -130,8 +130,7 @@ fn triangle_mei_roundtrip(xml: &str) -> Result<(Mei, Mei), String> {
     };
     let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
     let mxml1_pw = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
-    let mei2 =
-        import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let mei2 = import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     Ok((mei1, mei2))
 }
 
@@ -146,12 +145,10 @@ fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), 
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
     let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
-    let tw1 =
-        export_timewise(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let tw1 = export_timewise(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
     let pw1 = timewise_to_partwise(tw1.clone());
     let mei2 = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
-    let tw2 =
-        export_timewise(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
+    let tw2 = export_timewise(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
     Ok((tw1, tw2))
 }
 
@@ -175,9 +172,7 @@ fn conversion_roundtrip_fixture(
 }
 
 /// Load a fixture and perform full roundtrip (with serialization).
-fn full_roundtrip_fixture(
-    fixture_name: &str,
-) -> Result<(ScoreTimewise, ScoreTimewise), String> {
+fn full_roundtrip_fixture(fixture_name: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
     let xml = load_fixture(fixture_name)?;
     full_roundtrip(&xml)
 }

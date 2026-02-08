@@ -5,7 +5,7 @@
 //!
 //! RNG is the target source for MEI 6.0-dev; when --rng is passed, ODD is not used.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::reader::Reader;
 use std::collections::HashMap;
@@ -16,8 +16,8 @@ use crate::ast::*;
 
 /// Parse MEI RNG file and produce OddDefinitions for the generator.
 pub fn parse_rng_file(path: &Path) -> Result<OddDefinitions> {
-    let content =
-        fs::read_to_string(path).with_context(|| format!("Failed to read RNG: {}", path.display()))?;
+    let content = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read RNG: {}", path.display()))?;
     let bytes = content.as_bytes();
     let defines = collect_rng_defines(bytes)?;
     let defs = rng_to_odd(&defines)?;
@@ -83,7 +83,8 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                             }
                             b"value" => {
                                 if let Ok(Event::Text(t)) = reader.read_event_into(&mut buf) {
-                                    cur.values.push(t.unescape().unwrap_or_default().to_string());
+                                    cur.values
+                                        .push(t.unescape().unwrap_or_default().to_string());
                                 }
                             }
                             b"data" => {
@@ -260,10 +261,7 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
     }
 
     // 3) Model classes: mei_model.X combine=choice -> model.X
-    for (name, _d) in defines
-        .iter()
-        .filter(|(n, _)| n.starts_with("mei_model."))
-    {
+    for (name, _d) in defines.iter().filter(|(n, _)| n.starts_with("mei_model.")) {
         let model_ident = name
             .strip_prefix("mei_")
             .map(|s| s.to_string())
@@ -282,7 +280,11 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
     // 4) Elements: mei_X with element name="x" -> Element ident x; refs to .attributes are member_of
     for (name, d) in defines.iter() {
         if let Some(ref elem_name) = d.element_name {
-            if name.starts_with("mei_") && !name.starts_with("mei_att.") && !name.starts_with("mei_data.") && !name.starts_with("mei_model.") {
+            if name.starts_with("mei_")
+                && !name.starts_with("mei_att.")
+                && !name.starts_with("mei_data.")
+                && !name.starts_with("mei_model.")
+            {
                 let att_member_of: Vec<String> = d
                     .refs
                     .iter()
@@ -304,13 +306,9 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                     .into_iter()
                     .map(|r| {
                         if r.starts_with("mei_model.") {
-                            ContentItem::Ref(
-                                r.strip_prefix("mei_").unwrap_or(&r).to_string(),
-                            )
+                            ContentItem::Ref(r.strip_prefix("mei_").unwrap_or(&r).to_string())
                         } else if r.starts_with("mei_") {
-                            ContentItem::Ref(
-                                r.strip_prefix("mei_").unwrap_or(&r).to_string(),
-                            )
+                            ContentItem::Ref(r.strip_prefix("mei_").unwrap_or(&r).to_string())
                         } else {
                             ContentItem::Ref(r)
                         }
@@ -322,9 +320,13 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                 let content_model = if content.is_empty() {
                     vec![ContentItem::Empty]
                 } else if content.len() == 1 && !matches!(content[0], ContentItem::Empty) {
-                    vec![ContentItem::ZeroOrMore(Box::new(vec![ContentItem::Choice(vec![content])]))]
+                    vec![ContentItem::ZeroOrMore(Box::new(vec![
+                        ContentItem::Choice(vec![content]),
+                    ]))]
                 } else {
-                    vec![ContentItem::ZeroOrMore(Box::new(vec![ContentItem::Choice(vec![content])]))]
+                    vec![ContentItem::ZeroOrMore(Box::new(vec![
+                        ContentItem::Choice(vec![content]),
+                    ]))]
                 };
                 defs.elements.insert(
                     elem_name.clone(),

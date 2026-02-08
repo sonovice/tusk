@@ -31,7 +31,9 @@ pub enum VersionedMei {
 /// Convert a versioned MEI document into the internal (tusk_model) representation.
 pub fn to_internal(versioned: VersionedMei) -> Result<tusk_model::elements::Mei, ConversionError> {
     match versioned {
-        VersionedMei::V6_0Dev(mei) => versioned_to_internal_via_serde(&mei).map_err(ConversionError::Serde),
+        VersionedMei::V6_0Dev(mei) => {
+            versioned_to_internal_via_serde(&mei).map_err(ConversionError::Serde)
+        }
     }
 }
 
@@ -74,7 +76,10 @@ mod tests {
         let back = to_internal(versioned).expect("to_internal");
         let value_internal = serde_json::to_value(&internal).unwrap();
         let value_back = serde_json::to_value(&back).unwrap();
-        assert_eq!(value_internal, value_back, "internal → versioned → internal roundtrip");
+        assert_eq!(
+            value_internal, value_back,
+            "internal → versioned → internal roundtrip"
+        );
     }
 
     #[test]

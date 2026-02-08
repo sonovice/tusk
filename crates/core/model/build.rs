@@ -29,7 +29,8 @@ fn skip_if_up_to_date(inputs: &[PathBuf], stamp: &PathBuf) -> bool {
 fn main() {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let workspace_root = manifest_dir.join("../../..");
-    let rng_path = workspace_root.join("crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng");
+    let rng_path =
+        workspace_root.join("crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng");
     let output = manifest_dir.join("src/generated");
     let build_rs = manifest_dir.join("build.rs");
     let stamp = output.join(".codegen-stamp");

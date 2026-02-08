@@ -227,7 +227,9 @@ pub(crate) fn convert_grace(grace: &crate::model::note::Grace) -> DataGrace {
 pub(crate) fn convert_stem_direction(stem: StemValue) -> DataStemdirection {
     match stem {
         StemValue::Up => DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up),
-        StemValue::Down => DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Down),
+        StemValue::Down => {
+            DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Down)
+        }
         StemValue::Double => {
             // MEI doesn't have double, default to up
             DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up)
