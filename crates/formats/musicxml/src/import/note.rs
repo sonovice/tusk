@@ -12,8 +12,9 @@ use crate::model::StartStop;
 use crate::model::StartStopContinue;
 use crate::model::notations::{Articulations, TiedType};
 use crate::model::note::{FullNoteContent, Note as MusicXmlNote};
-use tusk_model::att::AttAccidLogFunc;
-use tusk_model::data::{DataArticulation, DataAugmentdot, DataBoolean, DataOctave, DataTie};
+use tusk_model::data::{
+    DataArticulation, DataAugmentdot, DataBoolean, DataOctave, DataStaffloc, DataTie,
+};
 use tusk_model::elements::{Accid, Chord, ChordChild, Note as MeiNote, NoteChild};
 
 /// Convert a MusicXML note to MEI note.
@@ -55,14 +56,9 @@ pub fn convert_note(
     // Convert pitch/unpitched content
     match &note.content {
         FullNoteContent::Pitch(pitch) => {
-            // Convert pitch name (step)
             mei_note.note_log.pname = Some(convert_pitch_name(pitch.step));
-
-            // Convert octave
             mei_note.note_log.oct = Some(DataOctave::from(pitch.octave as u64));
 
-            // Store gestural accidental (@accid.ges) for sounding pitch
-            // This represents the actual sounding pitch after key signature and accidentals
             if let Some(alter) = pitch.alter {
                 mei_note.note_ges.accid_ges = Some(convert_alter_to_gestural_accid(alter));
             }
@@ -73,9 +69,8 @@ pub fn convert_note(
             if let (Some(display_step), Some(display_octave)) =
                 (unpitched.display_step, unpitched.display_octave)
             {
-                // Calculate staff line location and store in @loc
                 mei_note.note_vis.loc =
-                    Some(calculate_staff_loc(display_step, display_octave).into());
+                    Some(DataStaffloc::from(calculate_staff_loc(display_step, display_octave)));
             }
             // Note: pname and oct are NOT set for unpitched notes
         }
@@ -165,11 +160,12 @@ pub(crate) fn convert_note_duration(
 ) {
     // Convert note type to MEI duration
     if let Some(ref note_type) = note.note_type {
-        mei_note.note_log.dur = Some(convert_note_type_to_duration(note_type.value));
+        let dur = convert_note_type_to_duration(note_type.value);
+        mei_note.note_log.dur = Some(dur);
     } else if let Some(duration) = note.duration {
-        // Try to infer note type from duration value
         if let Some((inferred_type, _dots)) = ctx.duration_context().infer_note_type(duration) {
-            mei_note.note_log.dur = Some(convert_note_type_to_duration(inferred_type));
+            let dur = convert_note_type_to_duration(inferred_type);
+            mei_note.note_log.dur = Some(dur);
         }
     }
 
@@ -179,9 +175,9 @@ pub(crate) fn convert_note_duration(
         mei_note.note_log.dots = Some(DataAugmentdot::from(dot_count));
     }
 
-    // Store gestural duration in ppq (divisions) for MIDI/playback
+    // Store gestural duration in ppq (MEI @dur.ppq is Option<String>)
     if let Some(duration) = note.duration {
-        mei_note.note_ges.dur_ppq = Some(duration as u64);
+        mei_note.note_ges.dur_ppq = Some((duration as u64).to_string());
     }
 }
 
@@ -201,21 +197,20 @@ pub(crate) fn convert_accidental(
     // Convert accidental value
     accid.accid_log.accid = Some(convert_accidental_value(accidental.value));
 
-    // Convert cautionary flag
+    // Convert cautionary/editorial (MEI @func is Option<String>)
     if let Some(YesNo::Yes) = accidental.cautionary {
-        accid.accid_log.func = Some(AttAccidLogFunc::Caution);
+        accid.accid_log.func = Some("caution".to_string());
     }
-
-    // Convert editorial flag
     if let Some(YesNo::Yes) = accidental.editorial {
-        accid.accid_log.func = Some(AttAccidLogFunc::Edit);
+        accid.accid_log.func = Some("edit".to_string());
     }
 
-    // Convert parentheses/bracket enclosure
+    // Convert enclosure
+    use tusk_model::data::DataEnclosure;
     if let Some(YesNo::Yes) = accidental.parentheses {
-        accid.accid_vis.enclose = Some(tusk_model::data::DataEnclosure::Paren);
+        accid.accid_vis.enclose = Some(DataEnclosure::Paren);
     } else if let Some(YesNo::Yes) = accidental.bracket {
-        accid.accid_vis.enclose = Some(tusk_model::data::DataEnclosure::Brack);
+        accid.accid_vis.enclose = Some(DataEnclosure::Brack);
     }
 
     Ok(accid)
@@ -242,7 +237,6 @@ pub fn convert_rest(
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::Rest> {
     use tusk_model::elements::Rest as MeiRest;
-    use tusk_model::generated::data::{DataAugmentdot, DataBoolean, DataDurationrests};
 
     let mut mei_rest = MeiRest::default();
 
@@ -260,21 +254,18 @@ pub fn convert_rest(
     // <type> and rely on <duration> alone; dur_ppq captures this below.
     if let Some(ref note_type) = note.note_type {
         let dur = convert_note_type_to_duration_cmn(note_type.value);
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(dur));
+        mei_rest.rest_log.dur = Some(tusk_model::data::DataDurationrests::MeiDataDurationCmn(dur));
     }
 
-    // Convert dots
     let dot_count = note.dots.len() as u64;
     if dot_count > 0 {
         mei_rest.rest_log.dots = Some(DataAugmentdot::from(dot_count));
     }
 
-    // Store gestural duration in ppq (divisions)
     if let Some(duration) = note.duration {
-        mei_rest.rest_ges.dur_ppq = Some(duration as u64);
+        mei_rest.rest_ges.dur_ppq = Some((duration as u64).to_string());
     }
 
-    // Handle cue rest
     if note.cue.is_some() {
         mei_rest.rest_log.cue = Some(DataBoolean::True);
     }
@@ -300,7 +291,6 @@ pub fn convert_measure_rest(
     ctx: &mut ConversionContext,
 ) -> ConversionResult<tusk_model::elements::MRest> {
     use tusk_model::elements::MRest;
-    use tusk_model::generated::data::DataBoolean;
 
     let mut mei_mrest = MRest::default();
 
@@ -313,13 +303,10 @@ pub fn convert_measure_rest(
         ctx.map_id(orig_id, mrest_id);
     }
 
-    // Store gestural duration in ppq (divisions)
-    // Measure rests don't need a written duration (they fill the measure)
     if let Some(duration) = note.duration {
-        mei_mrest.m_rest_ges.dur_ppq = Some(duration as u64);
+        mei_mrest.m_rest_ges.dur_ppq = Some((duration as u64).to_string());
     }
 
-    // Handle cue rest
     if note.cue.is_some() {
         mei_mrest.m_rest_log.cue = Some(DataBoolean::True);
     }
@@ -365,35 +352,29 @@ pub fn convert_chord(
 
     // Get duration info from the first note (all notes in a chord share duration)
     if let Some(first_note) = notes.first() {
-        // Convert duration
         if let Some(ref note_type) = first_note.note_type {
-            mei_chord.chord_log.dur = Some(convert_note_type_to_duration(note_type.value));
+            let dur = convert_note_type_to_duration(note_type.value);
+            mei_chord.chord_log.dur = Some(dur);
         } else if let Some(duration) = first_note.duration {
-            // Try to infer note type from duration value
             if let Some((inferred_type, _dots)) = ctx.duration_context().infer_note_type(duration) {
-                mei_chord.chord_log.dur = Some(convert_note_type_to_duration(inferred_type));
+                let dur = convert_note_type_to_duration(inferred_type);
+                mei_chord.chord_log.dur = Some(dur);
             }
         }
 
-        // Convert dots
         let dot_count = first_note.dots.len() as u64;
         if dot_count > 0 {
             mei_chord.chord_log.dots = Some(DataAugmentdot::from(dot_count));
         }
 
-        // Store gestural duration in ppq (divisions)
         if let Some(duration) = first_note.duration {
-            mei_chord.chord_ges.dur_ppq = Some(duration as u64);
+            mei_chord.chord_ges.dur_ppq = Some((duration as u64).to_string());
         }
 
-        // Handle grace chord
-        if first_note.is_grace()
-            && let Some(ref grace) = first_note.grace
-        {
+        if first_note.is_grace() && let Some(ref grace) = first_note.grace {
             mei_chord.chord_log.grace = Some(convert_grace(grace));
         }
 
-        // Handle cue chord
         if first_note.is_cue() {
             mei_chord.chord_log.cue = Some(DataBoolean::True);
         }
@@ -451,13 +432,13 @@ fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
             .map(|n| n.tied.iter().any(|t| matches!(t.tied_type, TiedType::Stop)))
             .unwrap_or(false);
 
-    // Set @tie attribute based on state
+    // Set @tie attribute (MEI @tie is Option<String>: "i", "m", "t")
     if has_start && has_stop {
-        mei_note.note_anl.tie.push(DataTie::from("m".to_string())); // medial
+        mei_note.note_anl.tie = Some(DataTie::from("m".to_string()));
     } else if has_start {
-        mei_note.note_anl.tie.push(DataTie::from("i".to_string())); // initial
+        mei_note.note_anl.tie = Some(DataTie::from("i".to_string()));
     } else if has_stop {
-        mei_note.note_anl.tie.push(DataTie::from("t".to_string())); // terminal
+        mei_note.note_anl.tie = Some(DataTie::from("t".to_string()));
     }
 }
 
@@ -472,7 +453,9 @@ fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
 fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote) {
     if let Some(ref notations) = note.notations {
         if let Some(ref artics) = notations.articulations {
-            mei_note.note_anl.artic = articulations_to_mei(artics);
+            let tokens = articulations_to_mei(artics);
+            // MEI @artic is single DataArticulation; use first if multiple present
+            mei_note.note_anl.artic = tokens.first().copied();
         }
     }
 }
@@ -581,10 +564,6 @@ fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_model::data::{
-        DataAccidentalWritten, DataAccidentalWrittenBasic, DataDuration, DataDurationCmn,
-        DataGrace, DataStemdirection, DataStemdirectionBasic,
-    };
 
     // ============================================================================
     // Note Conversion Tests
@@ -600,7 +579,7 @@ mod tests {
 
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "c");
+        assert_eq!(mei_note.note_log.pname.as_deref(), Some("c"));
     }
 
     #[test]
@@ -613,7 +592,7 @@ mod tests {
 
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.oct.as_ref().unwrap().0, 5);
+        assert_eq!(mei_note.note_log.oct.as_deref(), Some("5"));
     }
 
     #[test]
@@ -627,13 +606,8 @@ mod tests {
 
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "f");
-        assert_eq!(
-            mei_note.note_ges.accid_ges,
-            Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
-                DataAccidentalGesturalBasic::S
-            ))
-        );
+        assert_eq!(mei_note.note_log.pname.as_deref(), Some("f"));
+        assert_eq!(mei_note.note_ges.accid_ges.as_deref(), Some("s"));
     }
 
     #[test]
@@ -647,13 +621,8 @@ mod tests {
 
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.pname.as_ref().unwrap().0, "b");
-        assert_eq!(
-            mei_note.note_ges.accid_ges,
-            Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
-                DataAccidentalGesturalBasic::F
-            ))
-        );
+        assert_eq!(mei_note.note_log.pname.as_deref(), Some("b"));
+        assert_eq!(mei_note.note_ges.accid_ges.as_deref(), Some("f"));
     }
 
     #[test]
@@ -669,7 +638,7 @@ mod tests {
 
         assert_eq!(
             mei_note.note_log.dur,
-            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            Some("4".to_string())
         );
     }
 
@@ -685,11 +654,8 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(
-            mei_note.note_log.dur,
-            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
-        );
-        assert_eq!(mei_note.note_log.dots.as_ref().unwrap().0, 1);
+        assert_eq!(mei_note.note_log.dur.as_deref(), Some("4"));
+        assert_eq!(mei_note.note_log.dots.as_deref(), Some("1"));
     }
 
     #[test]
@@ -708,7 +674,7 @@ mod tests {
         // Should infer quarter note from duration=4 with divisions=4
         assert_eq!(
             mei_note.note_log.dur,
-            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            Some("4".to_string())
         );
     }
 
@@ -723,7 +689,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         // Should store duration in ppq
-        assert_eq!(mei_note.note_ges.dur_ppq, Some(96));
+        assert_eq!(mei_note.note_ges.dur_ppq.as_deref(), Some("96"));
     }
 
     #[test]
@@ -739,7 +705,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.grace, Some(DataGrace::Unacc));
+        assert_eq!(mei_note.note_log.grace.as_deref(), Some("unacc"));
     }
 
     #[test]
@@ -753,7 +719,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.grace, Some(DataGrace::Acc));
+        assert_eq!(mei_note.note_log.grace.as_deref(), Some("acc"));
     }
 
     #[test]
@@ -775,12 +741,7 @@ mod tests {
         assert!(accid_child.is_some());
 
         if let Some(NoteChild::Accid(accid)) = accid_child {
-            assert_eq!(
-                accid.accid_log.accid,
-                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
-                    DataAccidentalWrittenBasic::S
-                ))
-            );
+            assert_eq!(accid.accid_log.accid.as_deref(), Some("s"));
         }
     }
 
@@ -802,12 +763,7 @@ mod tests {
         assert!(accid_child.is_some());
 
         if let Some(NoteChild::Accid(accid)) = accid_child {
-            assert_eq!(
-                accid.accid_log.accid,
-                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
-                    DataAccidentalWrittenBasic::F
-                ))
-            );
+            assert_eq!(accid.accid_log.accid.as_deref(), Some("f"));
         }
     }
 
@@ -825,7 +781,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
-            assert_eq!(accid.accid_log.func, Some(AttAccidLogFunc::Caution));
+            assert_eq!(accid.accid_log.func.as_deref(), Some("caution"));
         } else {
             panic!("Expected accid child");
         }
@@ -845,7 +801,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
-            assert_eq!(accid.accid_log.func, Some(AttAccidLogFunc::Edit));
+            assert_eq!(accid.accid_log.func.as_deref(), Some("edit"));
         } else {
             panic!("Expected accid child");
         }
@@ -865,10 +821,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
-            assert_eq!(
-                accid.accid_vis.enclose,
-                Some(tusk_model::data::DataEnclosure::Paren)
-            );
+            assert_eq!(accid.accid_vis.enclose.as_deref(), Some("paren"));
         } else {
             panic!("Expected accid child");
         }
@@ -885,12 +838,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(
-            mei_note.note_vis.stem_dir,
-            Some(DataStemdirection::DataStemdirectionBasic(
-                DataStemdirectionBasic::Up
-            ))
-        );
+        assert_eq!(mei_note.note_vis.stem_dir.as_deref(), Some("up"));
     }
 
     #[test]
@@ -904,12 +852,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(
-            mei_note.note_vis.stem_dir,
-            Some(DataStemdirection::DataStemdirectionBasic(
-                DataStemdirectionBasic::Down
-            ))
-        );
+        assert_eq!(mei_note.note_vis.stem_dir.as_deref(), Some("down"));
     }
 
     #[test]
@@ -924,7 +867,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_note.note_log.cue, Some(DataBoolean::True));
+        assert_eq!(mei_note.note_log.cue.as_deref(), Some("true"));
     }
 
     #[test]
@@ -979,8 +922,8 @@ mod tests {
             let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
             assert_eq!(
-                mei_note.note_log.pname.as_ref().unwrap().0,
-                expected,
+                mei_note.note_log.pname.as_deref(),
+                Some(expected),
                 "Failed for step {:?}",
                 step
             );
@@ -993,16 +936,16 @@ mod tests {
         use crate::model::note::{Note, NoteType, NoteTypeValue, Pitch};
 
         let durations = [
-            (NoteTypeValue::Whole, DataDurationCmn::N1),
-            (NoteTypeValue::Half, DataDurationCmn::N2),
-            (NoteTypeValue::Quarter, DataDurationCmn::N4),
-            (NoteTypeValue::Eighth, DataDurationCmn::N8),
-            (NoteTypeValue::N16th, DataDurationCmn::N16),
-            (NoteTypeValue::N32nd, DataDurationCmn::N32),
-            (NoteTypeValue::N64th, DataDurationCmn::N64),
+            (NoteTypeValue::Whole, "1"),
+            (NoteTypeValue::Half, "2"),
+            (NoteTypeValue::Quarter, "4"),
+            (NoteTypeValue::Eighth, "8"),
+            (NoteTypeValue::N16th, "16"),
+            (NoteTypeValue::N32nd, "32"),
+            (NoteTypeValue::N64th, "64"),
         ];
 
-        for (mxml_dur, mei_dur) in durations {
+        for (mxml_dur, mei_dur_str) in durations {
             let mut note = Note::pitched(Pitch::new(Step::C, 4), 4.0);
             note.note_type = Some(NoteType::new(mxml_dur));
 
@@ -1010,8 +953,8 @@ mod tests {
             let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
             assert_eq!(
-                mei_note.note_log.dur,
-                Some(DataDuration::DataDurationCmn(mei_dur)),
+                mei_note.note_log.dur.as_deref(),
+                Some(mei_dur_str),
                 "Failed for duration {:?}",
                 mxml_dur
             );
@@ -1030,12 +973,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
-            assert_eq!(
-                accid.accid_log.accid,
-                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
-                    DataAccidentalWrittenBasic::X
-                ))
-            );
+            assert_eq!(accid.accid_log.accid.as_deref(), Some("x"));
         } else {
             panic!("Expected accid child");
         }
@@ -1053,12 +991,7 @@ mod tests {
         let mei_note = convert_note(&note, &mut ctx).expect("conversion should succeed");
 
         if let Some(NoteChild::Accid(accid)) = mei_note.children.first() {
-            assert_eq!(
-                accid.accid_log.accid,
-                Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
-                    DataAccidentalWrittenBasic::Ff
-                ))
-            );
+            assert_eq!(accid.accid_log.accid.as_deref(), Some("ff"));
         } else {
             panic!("Expected accid child");
         }
@@ -1084,7 +1017,6 @@ mod tests {
     #[test]
     fn convert_rest_with_duration() {
         use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
-        use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
 
         let mut note = Note::rest(Rest::new(), 4.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -1093,16 +1025,12 @@ mod tests {
         ctx.set_divisions(4.0);
 
         let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(
-            mei_rest.rest_log.dur,
-            Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4))
-        );
+        assert_eq!(mei_rest.rest_log.dur.as_deref(), Some("4"));
     }
 
     #[test]
     fn convert_rest_with_dots() {
         use crate::model::note::{Dot, Note, NoteType, NoteTypeValue, Rest};
-        use tusk_model::generated::data::DataAugmentdot;
 
         let mut note = Note::rest(Rest::new(), 6.0);
         note.note_type = Some(NoteType::new(NoteTypeValue::Quarter));
@@ -1112,7 +1040,7 @@ mod tests {
         ctx.set_divisions(4.0);
 
         let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(mei_rest.rest_log.dots, Some(DataAugmentdot(1)));
+        assert_eq!(mei_rest.rest_log.dots.as_deref(), Some("1"));
     }
 
     #[test]
@@ -1138,7 +1066,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
 
         let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(mei_rest.rest_ges.dur_ppq, Some(8));
+        assert_eq!(mei_rest.rest_ges.dur_ppq.as_deref(), Some("8"));
     }
 
     #[test]
@@ -1173,7 +1101,6 @@ mod tests {
     fn convert_cue_rest() {
         use crate::model::elements::Empty;
         use crate::model::note::{Note, Rest};
-        use tusk_model::generated::data::DataBoolean;
 
         let mut note = Note::rest(Rest::new(), 4.0);
         note.cue = Some(Empty);
@@ -1181,23 +1108,22 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
 
         let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(mei_rest.rest_log.cue, Some(DataBoolean::True));
+        assert_eq!(mei_rest.rest_log.cue.as_deref(), Some("true"));
     }
 
     #[test]
     fn convert_rest_various_durations() {
         use crate::model::note::{Note, NoteType, NoteTypeValue, Rest};
-        use tusk_model::generated::data::{DataDurationCmn, DataDurationrests};
 
         let test_cases = [
-            (NoteTypeValue::Whole, DataDurationCmn::N1),
-            (NoteTypeValue::Half, DataDurationCmn::N2),
-            (NoteTypeValue::Quarter, DataDurationCmn::N4),
-            (NoteTypeValue::Eighth, DataDurationCmn::N8),
-            (NoteTypeValue::N16th, DataDurationCmn::N16),
+            (NoteTypeValue::Whole, "1"),
+            (NoteTypeValue::Half, "2"),
+            (NoteTypeValue::Quarter, "4"),
+            (NoteTypeValue::Eighth, "8"),
+            (NoteTypeValue::N16th, "16"),
         ];
 
-        for (mxml_type, mei_dur) in test_cases {
+        for (mxml_type, mei_dur_str) in test_cases {
             let mut note = Note::rest(Rest::new(), 4.0);
             note.note_type = Some(NoteType::new(mxml_type));
 
@@ -1205,8 +1131,8 @@ mod tests {
 
             let mei_rest = convert_rest(&note, &mut ctx).expect("conversion should succeed");
             assert_eq!(
-                mei_rest.rest_log.dur,
-                Some(DataDurationrests::DataDurationCmn(mei_dur)),
+                mei_rest.rest_log.dur.as_deref(),
+                Some(mei_dur_str),
                 "Failed for {:?}",
                 mxml_type
             );
@@ -1255,7 +1181,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
 
         let mei_mrest = convert_measure_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(mei_mrest.m_rest_ges.dur_ppq, Some(16));
+        assert_eq!(mei_mrest.m_rest_ges.dur_ppq.as_deref(), Some("16"));
     }
 
     #[test]
@@ -1273,7 +1199,7 @@ mod tests {
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
 
         let mei_mrest = convert_measure_rest(&note, &mut ctx).expect("conversion should succeed");
-        assert_eq!(mei_mrest.m_rest_log.cue, Some(DataBoolean::True));
+        assert_eq!(mei_mrest.m_rest_log.cue.as_deref(), Some("true"));
     }
 
     // ============================================================================
@@ -1349,7 +1275,7 @@ mod tests {
         // Chord should have duration set
         assert_eq!(
             mei_chord.chord_log.dur,
-            Some(DataDuration::DataDurationCmn(DataDurationCmn::N4))
+            Some("4".to_string())
         );
     }
 
@@ -1372,7 +1298,7 @@ mod tests {
 
         let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_chord.chord_log.dots.as_ref().unwrap().0, 1);
+        assert_eq!(mei_chord.chord_log.dots.as_deref(), Some("1"));
     }
 
     #[test]
@@ -1390,7 +1316,7 @@ mod tests {
 
         let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
 
-        assert_eq!(mei_chord.chord_ges.dur_ppq, Some(96));
+        assert_eq!(mei_chord.chord_ges.dur_ppq.as_deref(), Some("96"));
     }
 
     #[test]
@@ -1434,7 +1360,7 @@ mod tests {
             .children
             .iter()
             .filter_map(|c| match c {
-                ChordChild::Note(n) => n.note_log.pname.as_ref().map(|p| p.0.as_str()),
+                ChordChild::Note(n) => n.note_log.pname.as_deref(),
                 _ => None,
             })
             .collect();
@@ -1495,6 +1421,6 @@ mod tests {
         let mei_chord = convert_chord(&notes, &mut ctx).expect("conversion should succeed");
 
         // Grace chord should have grace attribute
-        assert_eq!(mei_chord.chord_log.grace, Some(DataGrace::Acc));
+        assert_eq!(mei_chord.chord_log.grace.as_deref(), Some("acc"));
     }
 }

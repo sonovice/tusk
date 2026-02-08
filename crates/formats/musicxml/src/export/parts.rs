@@ -132,20 +132,20 @@ pub fn convert_mei_staff_grp_to_part_list(
     Ok(current_group_num)
 }
 
-/// Convert MEI staffGrp @symbol to MusicXML group-symbol.
+/// Convert MEI staffGrp @symbol (string) to MusicXML group-symbol.
 pub fn convert_mei_staff_grp_symbol(
     staff_grp: &StaffGrp,
 ) -> Option<crate::model::elements::GroupSymbolValue> {
     use crate::model::elements::{GroupSymbol, GroupSymbolValue};
-    use tusk_model::att::AttStaffGrpVisSymbol;
 
     staff_grp.staff_grp_vis.symbol.as_ref().map(|sym| {
-        let value = match sym {
-            AttStaffGrpVisSymbol::Brace => GroupSymbol::Brace,
-            AttStaffGrpVisSymbol::Bracket => GroupSymbol::Bracket,
-            AttStaffGrpVisSymbol::Bracketsq => GroupSymbol::Square,
-            AttStaffGrpVisSymbol::Line => GroupSymbol::Line,
-            AttStaffGrpVisSymbol::None => GroupSymbol::None,
+        let value = match sym.as_str() {
+            "brace" => GroupSymbol::Brace,
+            "bracket" => GroupSymbol::Bracket,
+            "bracketsq" => GroupSymbol::Square,
+            "line" => GroupSymbol::Line,
+            "none" => GroupSymbol::None,
+            _ => GroupSymbol::Brace, // fallback
         };
         GroupSymbolValue {
             value,
@@ -161,14 +161,14 @@ pub fn convert_mei_staff_grp_barline(
     staff_grp: &StaffGrp,
 ) -> Option<crate::model::elements::GroupBarlineValue> {
     use crate::model::elements::{GroupBarline, GroupBarlineValue};
-    use tusk_model::data::DataBoolean;
 
-    staff_grp.staff_grp_vis.bar_thru.as_ref().map(|bar_thru| {
+    staff_grp.staff_grp_vis.bar_thru.as_ref().and_then(|bar_thru| {
+        use tusk_model::data::DataBoolean;
         let value = match bar_thru {
             DataBoolean::True => GroupBarline::Yes,
             DataBoolean::False => GroupBarline::No,
         };
-        GroupBarlineValue { value, color: None }
+        Some(GroupBarlineValue { value, color: None })
     })
 }
 
@@ -182,7 +182,7 @@ pub fn convert_mei_staff_def_to_score_part(
         .basic
         .xml_id
         .clone()
-        .or_else(|| staff_def.n_integer.n.map(|n| format!("P{}", n)))
+        .or_else(|| staff_def.n_integer.n.as_ref().map(|n| format!("P{}", n)))
         .unwrap_or_else(|| ctx.generate_id_with_suffix("part"));
 
     // Extract label (part name) from staffDef children
@@ -210,7 +210,6 @@ pub fn convert_mei_staff_def_to_score_part(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_model::att::AttStaffGrpVisSymbol;
     use tusk_model::data::DataBoolean;
     use tusk_model::elements::{Label, LabelAbbr, LabelAbbrChild, LabelChild, StaffDefChild};
 
@@ -360,7 +359,7 @@ mod tests {
     #[test]
     fn test_convert_staff_grp_with_symbol() {
         let mut staff_grp = StaffGrp::default();
-        staff_grp.staff_grp_vis.symbol = Some(AttStaffGrpVisSymbol::Brace);
+        staff_grp.staff_grp_vis.symbol = Some("brace".to_string());
 
         let mut staff_def = StaffDef::default();
         staff_def.basic.xml_id = Some("P1".to_string());
@@ -407,7 +406,7 @@ mod tests {
     fn test_convert_nested_staff_grp() {
         // Create outer staffGrp with bracket
         let mut outer_grp = StaffGrp::default();
-        outer_grp.staff_grp_vis.symbol = Some(AttStaffGrpVisSymbol::Bracket);
+        outer_grp.staff_grp_vis.symbol = Some("bracket".to_string());
 
         let mut outer_label = Label::default();
         outer_label
@@ -419,7 +418,7 @@ mod tests {
 
         // Create inner staffGrp (violins) with brace
         let mut inner_grp = StaffGrp::default();
-        inner_grp.staff_grp_vis.symbol = Some(AttStaffGrpVisSymbol::Brace);
+        inner_grp.staff_grp_vis.symbol = Some("brace".to_string());
 
         let mut inner_label = Label::default();
         inner_label
@@ -530,16 +529,16 @@ mod tests {
         use crate::model::elements::GroupSymbol;
 
         let test_cases = [
-            (AttStaffGrpVisSymbol::Brace, GroupSymbol::Brace),
-            (AttStaffGrpVisSymbol::Bracket, GroupSymbol::Bracket),
-            (AttStaffGrpVisSymbol::Bracketsq, GroupSymbol::Square),
-            (AttStaffGrpVisSymbol::Line, GroupSymbol::Line),
-            (AttStaffGrpVisSymbol::None, GroupSymbol::None),
+            ("brace", GroupSymbol::Brace),
+            ("bracket", GroupSymbol::Bracket),
+            ("bracketsq", GroupSymbol::Square),
+            ("line", GroupSymbol::Line),
+            ("none", GroupSymbol::None),
         ];
 
         for (mei_sym, expected_mxml) in test_cases {
             let mut staff_grp = StaffGrp::default();
-            staff_grp.staff_grp_vis.symbol = Some(mei_sym);
+            staff_grp.staff_grp_vis.symbol = Some(mei_sym.to_string());
 
             let result = convert_mei_staff_grp_symbol(&staff_grp);
             assert!(result.is_some());
@@ -559,7 +558,7 @@ mod tests {
 
         // Test false -> no
         let mut staff_grp = StaffGrp::default();
-        staff_grp.staff_grp_vis.bar_thru = Some(DataBoolean::False);
+        staff_grp.staff_grp_vis.bar_thru = Some(tusk_model::data::DataBoolean::False);
         let result = convert_mei_staff_grp_barline(&staff_grp);
         assert_eq!(result.unwrap().value, GroupBarline::No);
     }

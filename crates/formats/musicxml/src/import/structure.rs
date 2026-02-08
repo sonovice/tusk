@@ -240,11 +240,10 @@ fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut Convers
         slur.common.xml_id = Some(slur_id);
 
         // Set startid and endid (with # prefix for URI references)
-        slur.slur_log.startid = Some(DataUri::from(format!("#{}", completed.start_id)));
-        slur.slur_log.endid = Some(DataUri::from(format!("#{}", completed.end_id)));
+        slur.slur_log.startid = Some(tusk_model::data::DataUri::from(format!("#{}", completed.start_id)));
+        slur.slur_log.endid = Some(tusk_model::data::DataUri::from(format!("#{}", completed.end_id)));
 
-        // Set MEI staff (global staff number, not MusicXML within-part staff)
-        slur.slur_log.staff.push(completed.mei_staff as u64);
+        slur.slur_log.staff = Some((completed.mei_staff as u64).to_string());
 
         mei_measure
             .children
@@ -268,7 +267,7 @@ fn convert_measure_attributes(
     use crate::model::data::YesNo;
 
     // Measure number → @n
-    mei_measure.common.n = Some(DataWord::from(musicxml_measure.number.clone()));
+    mei_measure.common.n = Some(tusk_model::data::DataWord::from(musicxml_measure.number.clone()));
 
     // implicit="yes" → metcon="false" (metrically non-conformant / pickup measure)
     // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
@@ -277,11 +276,9 @@ fn convert_measure_attributes(
         mei_measure.measure_log.metcon = Some(DataBoolean::False);
     }
 
-    // width → @width (in tenths, convert to MEI measurement format)
-    // MusicXML width is in tenths; we'll preserve the value with "vu" unit
     if let Some(width) = musicxml_measure.width {
-        // Convert to string with virtual units (vu)
-        mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from(format!("{}vu", width)));
+        mei_measure.measure_vis.width =
+            Some(DataMeasurementunsigned::from(format!("{}vu", width)));
     }
 
     // id → xml:id (with mapping)
@@ -309,7 +306,7 @@ pub fn convert_staff(
 
     let mut staff = Staff::default();
     // Set staff number using n_integer.n (u64)
-    staff.n_integer.n = Some(staff_number as u64);
+    staff.n_integer.n = Some((staff_number as u64).to_string());
 
     // Create a layer for the content
     // Note: Full measure content conversion will be implemented in subsequent tasks
@@ -331,7 +328,7 @@ pub fn convert_layer(
 
     let mut layer = Layer::default();
     // Set layer number using n_integer.n (u64)
-    layer.n_integer.n = Some(layer_number as u64);
+    layer.n_integer.n = Some((layer_number as u64).to_string());
 
     ctx.set_layer(layer_number);
     ctx.reset_beat_position();
@@ -684,7 +681,7 @@ mod tests {
         // Check measure number is set via common.n
         assert!(mei_measure.common.n.is_some());
         let n = mei_measure.common.n.as_ref().unwrap();
-        assert_eq!(n.0, "42");
+        assert_eq!(n.as_str(), "42");
     }
 
     // ============================================================================
@@ -716,7 +713,7 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // implicit="yes" → metcon="false"
-        assert_eq!(mei_measure.measure_log.metcon, Some(DataBoolean::False));
+        assert_eq!(mei_measure.measure_log.metcon.as_deref(), Some("false"));
     }
 
     #[test]
@@ -773,7 +770,7 @@ mod tests {
         // width → @width with virtual units
         assert!(mei_measure.measure_vis.width.is_some());
         let width = mei_measure.measure_vis.width.as_ref().unwrap();
-        assert_eq!(width.0, "150.5vu");
+        assert_eq!(width.as_str(), "150.5vu");
     }
 
     #[test]
@@ -833,7 +830,7 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // non_controlling="yes" → control="false"
-        assert_eq!(mei_measure.measure_log.control, Some(DataBoolean::False));
+        assert_eq!(mei_measure.measure_log.control.as_deref(), Some("false"));
     }
 
     #[test]
@@ -860,7 +857,7 @@ mod tests {
 
         // Only @n should be set, optional attributes should be None
         assert!(mei_measure.common.n.is_some());
-        assert_eq!(mei_measure.common.n.as_ref().unwrap().0, "1");
+        assert_eq!(mei_measure.common.n.as_deref(), Some("1"));
         assert!(mei_measure.measure_log.metcon.is_none());
         assert!(mei_measure.measure_vis.width.is_none());
         assert!(mei_measure.common.xml_id.is_none());
@@ -898,10 +895,10 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // All attributes should be converted
-        assert_eq!(mei_measure.common.n.as_ref().unwrap().0, "0");
-        assert_eq!(mei_measure.measure_log.metcon, Some(DataBoolean::False));
-        assert_eq!(mei_measure.measure_log.control, Some(DataBoolean::False));
-        assert_eq!(mei_measure.measure_vis.width.as_ref().unwrap().0, "200vu");
+        assert_eq!(mei_measure.common.n.as_deref(), Some("0"));
+        assert_eq!(mei_measure.measure_log.metcon.as_deref(), Some("false"));
+        assert_eq!(mei_measure.measure_log.control.as_deref(), Some("false"));
+        assert_eq!(mei_measure.measure_vis.width.as_deref(), Some("200vu"));
         assert!(mei_measure.common.xml_id.is_some());
         assert!(ctx.get_mei_id("m0").is_some());
     }

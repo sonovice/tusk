@@ -11,7 +11,6 @@ use super::utils::{
 };
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
-use tusk_model::data::DataBoolean;
 
 // ============================================================================
 // MEI Note → MusicXML Note Conversion
@@ -98,8 +97,7 @@ pub fn convert_mei_note(
 
     // Convert dots
     if let Some(ref dots) = mei_note.note_log.dots {
-        let dot_count = dots.to_string().parse::<u64>().unwrap_or(0);
-        for _ in 0..dot_count {
+        for _ in 0..dots.0 {
             mxml_note.dots.push(Dot::default());
         }
     }
@@ -117,12 +115,12 @@ pub fn convert_mei_note(
     }
 
     // Convert cue note
-    if let Some(DataBoolean::True) = mei_note.note_log.cue {
+    if mei_note.note_log.cue.as_ref() == Some(&tusk_model::data::DataBoolean::True) {
         mxml_note.cue = Some(Empty);
     }
 
     // Convert articulations from MEI @artic to MusicXML <articulations>
-    convert_mei_artic(&mei_note.note_anl.artic, &mut mxml_note);
+    convert_mei_artic(mei_note.note_anl.artic.as_ref(), &mut mxml_note);
 
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
@@ -145,7 +143,7 @@ fn convert_mei_loc_to_unpitched(
 
     if let Some(ref loc) = mei_note.note_vis.loc {
         // Convert @loc back to display-step and display-octave
-        let loc_value = loc.0;
+        let loc_value = loc.0 as i32;
 
         // loc = octave * 7 + step_value
         // where step_value: C=0, D=1, E=2, F=3, G=4, A=5, B=6
@@ -183,7 +181,7 @@ fn convert_mei_pitch(
 
     // Get pitch name (pname)
     let step = if let Some(ref pname) = mei_note.note_log.pname {
-        convert_mei_pname_to_step(pname)?
+        convert_mei_pname_to_step(pname.0.as_str())?
     } else {
         // Default to C if not specified (shouldn't happen in valid MEI)
         Step::C
@@ -191,7 +189,7 @@ fn convert_mei_pitch(
 
     // Get octave
     let octave = if let Some(ref oct) = mei_note.note_log.oct {
-        oct.to_string().parse::<u8>().unwrap_or(4)
+        oct.0 as u8
     } else {
         4 // Default octave
     };
@@ -206,13 +204,11 @@ fn convert_mei_pitch(
     })
 }
 
-/// Convert MEI pitch name to MusicXML Step.
-fn convert_mei_pname_to_step(
-    pname: &tusk_model::data::DataPitchname,
-) -> ConversionResult<crate::model::data::Step> {
+/// Convert MEI pitch name string to MusicXML Step.
+fn convert_mei_pname_to_step(pname: &str) -> ConversionResult<crate::model::data::Step> {
     use crate::model::data::Step;
 
-    let name = pname.to_string().to_lowercase();
+    let name = pname.trim().to_lowercase();
     match name.as_str() {
         "a" => Ok(Step::A),
         "b" => Ok(Step::B),
@@ -228,34 +224,27 @@ fn convert_mei_pname_to_step(
     }
 }
 
-/// Convert MEI gestural accidental to MusicXML alter value.
+/// Convert MEI gestural accidental (@accid.ges) to MusicXML alter value.
 fn convert_mei_gestural_accid_to_alter(
     accid_ges: &Option<tusk_model::data::DataAccidentalGestural>,
 ) -> Option<f64> {
-    use tusk_model::data::{
-        DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
-    };
+    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
 
-    accid_ges.as_ref().map(|ges| match ges {
-        DataAccidentalGestural::DataAccidentalGesturalBasic(basic) => match basic {
-            DataAccidentalGesturalBasic::Tf => -3.0,
-            DataAccidentalGesturalBasic::Ff => -2.0,
-            DataAccidentalGesturalBasic::F => -1.0,
-            DataAccidentalGesturalBasic::N => 0.0,
-            DataAccidentalGesturalBasic::S => 1.0,
-            DataAccidentalGesturalBasic::Ss => 2.0,
-            DataAccidentalGesturalBasic::Ts => 3.0,
-        },
-        DataAccidentalGestural::DataAccidentalGesturalExtended(ext) => match ext {
-            DataAccidentalGesturalExtended::Fu => -0.5, // Quarter-tone flat
-            DataAccidentalGesturalExtended::Sd => 0.5,  // Quarter-tone sharp
-            DataAccidentalGesturalExtended::Fd => -1.5, // Three quarter-tones flat
-            DataAccidentalGesturalExtended::Su => 1.5,  // Three quarter-tones sharp
-            DataAccidentalGesturalExtended::Ffd => -2.5, // Five quarter-tones flat
-            DataAccidentalGesturalExtended::Xu => 2.5,  // Five quarter-tones sharp
-        },
-        // AEU/Persian accidentals — approximate to nearest semitone
-        _ => 0.0,
+    accid_ges.as_ref().and_then(|a| {
+        Some(match a {
+            DataAccidentalGestural::MeiDataAccidentalGesturalBasic(basic) => match basic {
+                DataAccidentalGesturalBasic::Tf => -3.0,
+                DataAccidentalGesturalBasic::Ff => -2.0,
+                DataAccidentalGesturalBasic::F => -1.0,
+                DataAccidentalGesturalBasic::N => 0.0,
+                DataAccidentalGesturalBasic::S => 1.0,
+                DataAccidentalGesturalBasic::Ss => 2.0,
+                DataAccidentalGesturalBasic::Ts => 3.0,
+            },
+            DataAccidentalGestural::MeiDataAccidentalGesturalExtended(_)
+            | DataAccidentalGestural::MeiDataAccidentalAeu(_)
+            | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
+        })
     })
 }
 
@@ -264,9 +253,11 @@ fn calculate_mei_note_duration(
     mei_note: &tusk_model::elements::Note,
     ctx: &ConversionContext,
 ) -> f64 {
-    // First check if we have gestural duration in ppq (most accurate)
-    if let Some(dur_ppq) = mei_note.note_ges.dur_ppq {
-        return dur_ppq as f64;
+    // First check if we have gestural duration in ppq (most accurate); MEI @dur.ppq is Option<String>
+    if let Some(ref dur_ppq) = mei_note.note_ges.dur_ppq {
+        if let Ok(n) = dur_ppq.parse::<f64>() {
+            return n;
+        }
     }
 
     // Calculate from written duration
@@ -278,12 +269,7 @@ fn calculate_mei_note_duration(
     };
 
     // Apply dots
-    let dot_count = mei_note
-        .note_log
-        .dots
-        .as_ref()
-        .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
-        .unwrap_or(0);
+    let dot_count = mei_note.note_log.dots.as_ref().map(|d| d.0).unwrap_or(0);
 
     let dotted_duration = apply_dots(base_duration, dot_count);
 
@@ -301,18 +287,8 @@ fn convert_mei_grace(mei_note: &tusk_model::elements::Note) -> crate::model::not
 
     if let Some(ref grace_type) = mei_note.note_log.grace {
         match grace_type {
-            DataGrace::Unacc => {
-                // Unaccented = slashed grace note
-                grace.slash = Some(YesNo::Yes);
-            }
-            DataGrace::Acc => {
-                // Accented = no slash (appoggiatura-style)
-                grace.slash = Some(YesNo::No);
-            }
-            _ => {
-                // Other grace types default to no slash
-                grace.slash = Some(YesNo::No);
-            }
+            DataGrace::Unacc => grace.slash = Some(YesNo::Yes),
+            DataGrace::Acc | DataGrace::Unknown => grace.slash = Some(YesNo::No),
         }
     }
 
@@ -326,8 +302,6 @@ fn convert_mei_accid_to_mxml(
 ) -> ConversionResult<crate::model::note::Accidental> {
     use crate::model::data::YesNo;
     use crate::model::note::{Accidental, AccidentalValue};
-    use tusk_model::att::AttAccidLogFunc;
-    use tusk_model::data::DataEnclosure;
 
     let value = if let Some(ref accid_val) = accid.accid_log.accid {
         convert_mei_written_accid_to_mxml(accid_val)
@@ -337,31 +311,22 @@ fn convert_mei_accid_to_mxml(
 
     let mut mxml_accid = Accidental::new(value);
 
-    // Convert cautionary/editorial function
+    // Convert cautionary/editorial function (@func is string in MEI: "caution", "edit")
     if let Some(ref func) = accid.accid_log.func {
-        match func {
-            AttAccidLogFunc::Caution => {
-                mxml_accid.cautionary = Some(YesNo::Yes);
-            }
-            AttAccidLogFunc::Edit => {
-                mxml_accid.editorial = Some(YesNo::Yes);
-            }
+        if func.as_str() == "caution" {
+            mxml_accid.cautionary = Some(YesNo::Yes);
+        } else if func.as_str() == "edit" {
+            mxml_accid.editorial = Some(YesNo::Yes);
         }
     }
-
     // Convert enclosure
+    use tusk_model::data::DataEnclosure;
     if let Some(ref enclose) = accid.accid_vis.enclose {
         match enclose {
-            DataEnclosure::Paren => {
-                mxml_accid.parentheses = Some(YesNo::Yes);
-            }
-            DataEnclosure::Brack => {
-                mxml_accid.bracket = Some(YesNo::Yes);
-            }
-            DataEnclosure::Box => {
-                // MusicXML doesn't have box enclosure, use brackets as fallback
-                mxml_accid.bracket = Some(YesNo::Yes);
-            }
+            DataEnclosure::Paren => mxml_accid.parentheses = Some(YesNo::Yes),
+            DataEnclosure::Brack | DataEnclosure::Box => {
+                mxml_accid.bracket = Some(YesNo::Yes)
+            } // no box in MusicXML, use bracket
             DataEnclosure::None => {}
         }
     }
@@ -369,7 +334,35 @@ fn convert_mei_accid_to_mxml(
     Ok(mxml_accid)
 }
 
-/// Convert MEI written accidental to MusicXML AccidentalValue.
+/// Convert MEI written accidental string to MusicXML AccidentalValue.
+fn convert_mei_written_accid_str_to_mxml(s: &str) -> crate::model::note::AccidentalValue {
+    use crate::model::note::AccidentalValue;
+    match s.trim().to_lowercase().as_str() {
+        "s" => AccidentalValue::Sharp,
+        "f" => AccidentalValue::Flat,
+        "ss" => AccidentalValue::SharpSharp,
+        "x" => AccidentalValue::DoubleSharp,
+        "ff" => AccidentalValue::FlatFlat,
+        "xs" | "sx" | "ts" => AccidentalValue::TripleSharp,
+        "tf" => AccidentalValue::TripleFlat,
+        "n" => AccidentalValue::Natural,
+        "nf" => AccidentalValue::NaturalFlat,
+        "ns" => AccidentalValue::NaturalSharp,
+        "nu" => AccidentalValue::QuarterSharp,
+        "nd" => AccidentalValue::QuarterFlat,
+        "su" => AccidentalValue::ThreeQuartersSharp,
+        "sd" => AccidentalValue::SharpDown,
+        "fu" => AccidentalValue::FlatUp,
+        "fd" => AccidentalValue::ThreeQuartersFlat,
+        "xu" => AccidentalValue::DoubleSharpUp,
+        "xd" => AccidentalValue::DoubleSharpDown,
+        "ffu" => AccidentalValue::FlatFlatUp,
+        "ffd" => AccidentalValue::FlatFlatDown,
+        _ => AccidentalValue::Natural,
+    }
+}
+
+/// Convert MEI written accidental to MusicXML AccidentalValue (typed version for tests).
 fn convert_mei_written_accid_to_mxml(
     accid: &tusk_model::data::DataAccidentalWritten,
 ) -> crate::model::note::AccidentalValue {
@@ -379,7 +372,7 @@ fn convert_mei_written_accid_to_mxml(
     };
 
     match accid {
-        DataAccidentalWritten::DataAccidentalWrittenBasic(basic) => match basic {
+        DataAccidentalWritten::MeiDataAccidentalWrittenBasic(basic) => match basic {
             DataAccidentalWrittenBasic::S => AccidentalValue::Sharp,
             DataAccidentalWrittenBasic::F => AccidentalValue::Flat,
             DataAccidentalWrittenBasic::Ss => AccidentalValue::SharpSharp,
@@ -394,7 +387,7 @@ fn convert_mei_written_accid_to_mxml(
             DataAccidentalWrittenBasic::Nf => AccidentalValue::NaturalFlat,
             DataAccidentalWrittenBasic::Ns => AccidentalValue::NaturalSharp,
         },
-        DataAccidentalWritten::DataAccidentalWrittenExtended(ext) => match ext {
+        DataAccidentalWritten::MeiDataAccidentalWrittenExtended(ext) => match ext {
             DataAccidentalWrittenExtended::Nu => AccidentalValue::QuarterSharp,
             DataAccidentalWrittenExtended::Nd => AccidentalValue::QuarterFlat,
             DataAccidentalWrittenExtended::Su => AccidentalValue::ThreeQuartersSharp,
@@ -415,83 +408,37 @@ fn convert_mei_written_accid_to_mxml(
     }
 }
 
-/// Convert MEI @artic values to MusicXML articulations in notations.
-///
-/// Maps MEI DataArticulation values back to MusicXML articulation elements.
-/// Handles the special case of tenuto+staccato → detached-legato.
+/// Convert MEI @artic (single DataArticulation) to MusicXML articulations.
 fn convert_mei_artic(
-    artic: &[tusk_model::data::DataArticulation],
+    artic: Option<&tusk_model::data::DataArticulation>,
     mxml_note: &mut crate::model::note::Note,
 ) {
     use crate::model::notations::{Articulations, EmptyPlacement, Notations, StrongAccent};
     use tusk_model::data::DataArticulation;
 
-    if artic.is_empty() {
-        return;
-    }
+    let a = match artic {
+        Some(x) => x,
+        None => return,
+    };
 
     let mut mxml_artic = Articulations::default();
-
-    // Check for detached-legato (tenuto + staccato combined)
-    let has_ten = artic.contains(&DataArticulation::Ten);
-    let has_stacc = artic.contains(&DataArticulation::Stacc);
-    let is_detached_legato = has_ten && has_stacc;
-
-    for a in artic {
-        match a {
-            DataArticulation::Acc => {
-                mxml_artic.accent = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Marc => {
-                mxml_artic.strong_accent = Some(StrongAccent::default());
-            }
-            DataArticulation::Stacc => {
-                if is_detached_legato {
-                    mxml_artic.detached_legato = Some(EmptyPlacement::default());
-                } else {
-                    mxml_artic.staccato = Some(EmptyPlacement::default());
-                }
-            }
-            DataArticulation::Ten => {
-                if !is_detached_legato {
-                    mxml_artic.tenuto = Some(EmptyPlacement::default());
-                }
-                // When detached-legato, tenuto is consumed by the detached_legato field
-            }
-            DataArticulation::Stacciss => {
-                mxml_artic.staccatissimo = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Spicc => {
-                mxml_artic.spiccato = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Scoop => {
-                mxml_artic.scoop = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Plop => {
-                mxml_artic.plop = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Doit => {
-                mxml_artic.doit = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Fall => {
-                mxml_artic.falloff = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Stress => {
-                mxml_artic.stress = Some(EmptyPlacement::default());
-            }
-            DataArticulation::Unstress => {
-                mxml_artic.unstress = Some(EmptyPlacement::default());
-            }
-            DataArticulation::AccSoft => {
-                mxml_artic.soft_accent = Some(EmptyPlacement::default());
-            }
-            _ => {
-                // Other MEI articulations have no direct MusicXML equivalent
-            }
-        }
+    match a {
+        DataArticulation::Acc => mxml_artic.accent = Some(EmptyPlacement::default()),
+        DataArticulation::Marc => mxml_artic.strong_accent = Some(StrongAccent::default()),
+        DataArticulation::Stacc => mxml_artic.staccato = Some(EmptyPlacement::default()),
+        DataArticulation::Ten => mxml_artic.tenuto = Some(EmptyPlacement::default()),
+        DataArticulation::Stacciss => mxml_artic.staccatissimo = Some(EmptyPlacement::default()),
+        DataArticulation::Spicc => mxml_artic.spiccato = Some(EmptyPlacement::default()),
+        DataArticulation::Scoop => mxml_artic.scoop = Some(EmptyPlacement::default()),
+        DataArticulation::Plop => mxml_artic.plop = Some(EmptyPlacement::default()),
+        DataArticulation::Doit => mxml_artic.doit = Some(EmptyPlacement::default()),
+        DataArticulation::Fall => mxml_artic.falloff = Some(EmptyPlacement::default()),
+        DataArticulation::Stress => mxml_artic.stress = Some(EmptyPlacement::default()),
+        DataArticulation::Unstress => mxml_artic.unstress = Some(EmptyPlacement::default()),
+        DataArticulation::AccSoft => mxml_artic.soft_accent = Some(EmptyPlacement::default()),
+        _ => {}
     }
 
-    // Only add articulations if at least one was mapped
     if mxml_artic != Articulations::default() {
         let notations = mxml_note.notations.get_or_insert_with(Notations::default);
         notations.articulations = Some(mxml_artic);
@@ -511,7 +458,8 @@ fn convert_mei_ties(
     use crate::model::notations::{Notations, Tied, TiedType};
     use crate::model::note::Tie;
 
-    for tie_val in &mei_note.note_anl.tie {
+    // MEI @tie e.g. "i", "m", "t"
+    if let Some(ref tie_val) = mei_note.note_anl.tie {
         let val = tie_val.0.as_str();
         match val {
             "i" => {
@@ -559,8 +507,8 @@ fn add_note_conversion_warnings(
     // Warn about analytical attributes (100% loss), but skip tie and artic (handled above)
     {
         let mut check_anl = mei_note.note_anl.clone();
-        check_anl.tie.clear(); // tie is converted, not lost
-        check_anl.artic.clear(); // artic is not an analytical loss warning
+        check_anl.tie = None; // tie is converted, not lost
+        check_anl.artic = None; // artic is not an analytical loss warning
         if check_anl != tusk_model::att::AttNoteAnl::default() {
             ctx.add_warning(
                 "note",
@@ -577,25 +525,7 @@ fn add_note_conversion_warnings(
         );
     }
 
-    // Warn about editorial children
-    for child in &mei_note.children {
-        match child {
-            tusk_model::elements::NoteChild::App(_)
-            | tusk_model::elements::NoteChild::Choice(_)
-            | tusk_model::elements::NoteChild::Corr(_)
-            | tusk_model::elements::NoteChild::Sic(_)
-            | tusk_model::elements::NoteChild::Del(_)
-            | tusk_model::elements::NoteChild::Add(_)
-            | tusk_model::elements::NoteChild::Subst(_) => {
-                ctx.add_warning(
-                    "note",
-                    "MEI editorial markup (app, choice, corr, sic, etc.) is lost in MusicXML conversion",
-                );
-                break; // Only warn once
-            }
-            _ => {}
-        }
-    }
+    // NoteChild in generated model: Stem, Plica, Accid (if added); editorial variants skipped
 }
 
 // ============================================================================
@@ -655,13 +585,10 @@ pub fn convert_mei_rest(
     }
 
     // Convert note type (graphical duration)
-    if let Some(note_type_value) = mei_rest
-        .rest_log
-        .dur
-        .as_ref()
-        .and_then(convert_mei_duration_rests_to_note_type)
-    {
-        mxml_note.note_type = Some(NoteType::new(note_type_value));
+    if let Some(ref dur) = mei_rest.rest_log.dur {
+        if let Some(nv) = convert_mei_duration_rests_to_note_type(dur) {
+            mxml_note.note_type = Some(NoteType::new(nv));
+        }
     }
 
     // Convert dots - check both @dots attribute and <dot> children
@@ -671,7 +598,7 @@ pub fn convert_mei_rest(
     }
 
     // Convert cue rest
-    if let Some(DataBoolean::True) = mei_rest.rest_log.cue {
+    if mei_rest.rest_log.cue.as_ref() == Some(&tusk_model::data::DataBoolean::True) {
         mxml_note.cue = Some(Empty);
     }
 
@@ -686,9 +613,11 @@ fn calculate_mei_rest_duration(
     mei_rest: &tusk_model::elements::Rest,
     ctx: &ConversionContext,
 ) -> f64 {
-    // First check if we have gestural duration in ppq (most accurate)
-    if let Some(dur_ppq) = mei_rest.rest_ges.dur_ppq {
-        return dur_ppq as f64;
+    // First check if we have gestural duration in ppq (most accurate); MEI @dur.ppq is Option<String>
+    if let Some(ref dur_ppq) = mei_rest.rest_ges.dur_ppq {
+        if let Ok(n) = dur_ppq.parse::<f64>() {
+            return n;
+        }
     }
 
     // Calculate from written duration
@@ -744,15 +673,17 @@ fn add_rest_conversion_warnings(
     }
 
     // Warn about staff/layer positioning (position determined by sequence in MusicXML)
-    if !mei_rest.rest_log.staff.is_empty() || !mei_rest.rest_log.layer.is_empty() {
+    if mei_rest.rest_log.staff.as_ref().map_or(false, |s| !s.is_empty())
+        || mei_rest.rest_log.layer.as_ref().map_or(false, |s| !s.is_empty())
+    {
         ctx.add_warning(
             "rest",
             "MEI @staff/@layer attributes are not directly mapped; position in MusicXML is determined by sequence",
         );
     }
 
-    // Warn about facsimile links
-    if !mei_rest.facsimile.facs.is_empty() {
+    // Warn about facsimile links; @facs is Option<String> or list
+    if mei_rest.facsimile.facs.as_ref().map_or(false, |s| !s.0.is_empty()) {
         ctx.add_warning(
             "rest",
             "MEI @facs (facsimile link) has no MusicXML equivalent",
@@ -767,32 +698,11 @@ fn add_rest_conversion_warnings(
         );
     }
 
-    // Warn about editorial children
-    for child in &mei_rest.children {
-        match child {
-            RestChild::App(_)
-            | RestChild::Choice(_)
-            | RestChild::Corr(_)
-            | RestChild::Sic(_)
-            | RestChild::Del(_)
-            | RestChild::Add(_)
-            | RestChild::Subst(_) => {
-                ctx.add_warning(
-                    "rest",
-                    "MEI editorial markup (app, choice, corr, sic, etc.) is lost in MusicXML conversion",
-                );
-                break; // Only warn once
-            }
-            _ => {}
-        }
-    }
+    // RestChild in generated model: Dot; editorial variants skipped
 
     // Warn about mensural durations
-    if mei_rest.rest_log.dur.as_ref().is_some_and(|dur| {
-        matches!(
-            dur,
-            tusk_model::data::DataDurationrests::DataDurationrestsMensural(_)
-        )
+    if mei_rest.rest_log.dur.as_ref().is_some_and(|d| {
+        matches!(d, tusk_model::data::DataDurationrests::MeiDataDurationrestsMensural(_))
     }) {
         ctx.add_warning(
             "rest",
@@ -849,9 +759,11 @@ fn calculate_mei_mrest_duration(
     mei_mrest: &tusk_model::elements::MRest,
     ctx: &ConversionContext,
 ) -> f64 {
-    // First check if we have gestural duration in ppq (most accurate)
-    if let Some(dur_ppq) = mei_mrest.m_rest_ges.dur_ppq {
-        return dur_ppq as f64;
+    // First check if we have gestural duration in ppq (most accurate); MEI @dur.ppq is Option<String>
+    if let Some(ref dur_ppq) = mei_mrest.m_rest_ges.dur_ppq {
+        if let Ok(n) = dur_ppq.parse::<f64>() {
+            return n;
+        }
     }
 
     // Default: return the divisions value (as mRests typically span a full measure)
@@ -955,7 +867,7 @@ pub fn convert_mei_chord(
         .map(convert_mei_duration_to_note_type);
 
     // Check for cue chord
-    let is_cue = matches!(mei_chord.chord_log.cue, Some(DataBoolean::True));
+    let is_cue = mei_chord.chord_log.cue.as_ref() == Some(&tusk_model::data::DataBoolean::True);
 
     let mut mxml_notes = Vec::with_capacity(mei_notes.len());
 
@@ -1006,12 +918,7 @@ pub fn convert_mei_chord(
             if let Some(ref dur) = mei_note.note_log.dur {
                 mxml_note.note_type = Some(NoteType::new(convert_mei_duration_to_note_type(dur)));
             }
-            let note_dot_count = mei_note
-                .note_log
-                .dots
-                .as_ref()
-                .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
-                .unwrap_or(0);
+            let note_dot_count = mei_note.note_log.dots.as_ref().map(|d| d.0).unwrap_or(0);
             for _ in 0..note_dot_count {
                 mxml_note.dots.push(Dot::default());
             }
@@ -1054,11 +961,11 @@ pub fn convert_mei_chord(
         }
 
         // Convert articulations from MEI @artic on individual notes
-        convert_mei_artic(&mei_note.note_anl.artic, &mut mxml_note);
+        convert_mei_artic(mei_note.note_anl.artic.as_ref(), &mut mxml_note);
 
         // Apply chord-level articulations to the first note
         if i == 0 {
-            convert_mei_artic(&mei_chord.chord_log.artic, &mut mxml_note);
+            convert_mei_artic(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
         }
 
         // Convert ties from MEI @tie attribute to MusicXML <tie> elements
@@ -1083,9 +990,11 @@ fn calculate_mei_chord_duration(
     mei_chord: &tusk_model::elements::Chord,
     ctx: &ConversionContext,
 ) -> f64 {
-    // First check if we have gestural duration in ppq (most accurate)
-    if let Some(dur_ppq) = mei_chord.chord_ges.dur_ppq {
-        return dur_ppq as f64;
+    // First check if we have gestural duration in ppq (most accurate); MEI @dur.ppq is Option<String>
+    if let Some(ref dur_ppq) = mei_chord.chord_ges.dur_ppq {
+        if let Ok(n) = dur_ppq.parse::<f64>() {
+            return n;
+        }
     }
 
     // Calculate from written duration
@@ -1097,12 +1006,7 @@ fn calculate_mei_chord_duration(
     };
 
     // Apply dots
-    let dot_count = mei_chord
-        .chord_log
-        .dots
-        .as_ref()
-        .map(|d| d.to_string().parse::<u64>().unwrap_or(0))
-        .unwrap_or(0);
+    let dot_count = mei_chord.chord_log.dots.as_ref().map(|d| d.0).unwrap_or(0);
 
     let dotted_duration = apply_dots(base_duration, dot_count);
 
@@ -1119,13 +1023,9 @@ fn convert_mei_grace_chord(mei_chord: &tusk_model::elements::Chord) -> crate::mo
 
     if let Some(ref grace_type) = mei_chord.chord_log.grace {
         match grace_type {
-            DataGrace::Acc => {
-                grace.slash = Some(crate::model::data::YesNo::Yes);
-            }
-            DataGrace::Unacc => {
-                grace.slash = Some(crate::model::data::YesNo::No);
-            }
-            DataGrace::Unknown => {}
+            DataGrace::Acc => grace.slash = Some(crate::model::data::YesNo::Yes),
+            DataGrace::Unacc => grace.slash = Some(crate::model::data::YesNo::No),
+            _ => {}
         }
     }
 
@@ -1151,7 +1051,9 @@ fn add_chord_conversion_warnings(
     }
 
     // Warn about staff/layer positioning
-    if !mei_chord.chord_log.staff.is_empty() || !mei_chord.chord_log.layer.is_empty() {
+    if mei_chord.chord_log.staff.as_ref().map_or(false, |s| !s.is_empty())
+        || mei_chord.chord_log.layer.as_ref().map_or(false, |s| !s.is_empty())
+    {
         ctx.add_warning(
             "chord",
             "MEI @staff/@layer attributes are not directly mapped; position in MusicXML is determined by sequence",
@@ -1159,7 +1061,7 @@ fn add_chord_conversion_warnings(
     }
 
     // Warn about facsimile links
-    if !mei_chord.facsimile.facs.is_empty() {
+    if mei_chord.facsimile.facs.as_ref().map_or(false, |s| !s.0.is_empty()) {
         ctx.add_warning(
             "chord",
             "MEI @facs (facsimile link) has no MusicXML equivalent",
@@ -1187,45 +1089,12 @@ fn add_chord_conversion_warnings(
 
     // (chord-level artic is now exported on the first note)
 
-    // Warn about editorial children
-    for child in &mei_chord.children {
-        match child {
-            ChordChild::App(_)
-            | ChordChild::Choice(_)
-            | ChordChild::Corr(_)
-            | ChordChild::Sic(_)
-            | ChordChild::Del(_)
-            | ChordChild::Add(_)
-            | ChordChild::Subst(_) => {
-                ctx.add_warning(
-                    "chord",
-                    "MEI editorial markup (app, choice, corr, sic, etc.) is lost in MusicXML conversion",
-                );
-                break; // Only warn once
-            }
-            ChordChild::Artic(_) => {
-                // <artic> children are MEI elements; @artic attribute is handled
-                // in convert_mei_chord via convert_mei_artic.
-                // Child elements are not yet converted.
-            }
-            ChordChild::Verse(_) | ChordChild::Syl(_) | ChordChild::Refrain(_) => {
-                ctx.add_warning(
-                    "chord",
-                    "MEI lyric elements (verse, syl, refrain) on chord are not directly converted",
-                );
-                break;
-            }
-            _ => {}
-        }
-    }
+    // ChordChild in generated model only has Note; editorial/artic/lyric children are skipped
 
     // Warn about mensural durations
-    if mei_chord
-        .chord_log
-        .dur
-        .as_ref()
-        .is_some_and(|dur| matches!(dur, tusk_model::data::DataDuration::DataDurationMensural(_)))
-    {
+    if mei_chord.chord_log.dur.as_ref().is_some_and(|d| {
+        matches!(d, tusk_model::data::DataDuration::MeiDataDurationMensural(_))
+    }) {
         ctx.add_warning(
             "chord",
             "MEI mensural chord duration has no direct MusicXML equivalent",
@@ -1237,7 +1106,6 @@ fn add_chord_conversion_warnings(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_model::data::DataBoolean;
 
     // ========================================================================
     // MEI Note → MusicXML Note Conversion Tests
@@ -1253,7 +1121,7 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);
@@ -1281,7 +1149,7 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("e".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(5u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2)); // Half note
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2)); // Half note
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0); // 4 divisions per quarter
@@ -1311,7 +1179,7 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("g".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_note.note_log.dots = Some(DataAugmentdot::from(1u64)); // Dotted quarter
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1339,11 +1207,11 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("f".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
         // Add sharp accidental as child element
         let mut accid = Accid::default();
-        accid.accid_log.accid = Some(DataAccidentalWritten::DataAccidentalWrittenBasic(
+        accid.accid_log.accid = Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
             DataAccidentalWrittenBasic::S,
         ));
         mei_note.children.push(NoteChild::Accid(Box::new(accid)));
@@ -1375,9 +1243,9 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("b".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
         // Set gestural accidental (sounding pitch is B flat)
-        mei_note.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+        mei_note.note_ges.accid_ges = Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
             DataAccidentalGesturalBasic::F,
         ));
 
@@ -1408,8 +1276,8 @@ mod tests {
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("d".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(5u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
-        mei_note.note_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_vis.stem_dir = Some(DataStemdirection::MeiDataStemdirectionBasic(
             DataStemdirectionBasic::Down,
         ));
 
@@ -1430,12 +1298,13 @@ mod tests {
         use tusk_model::data::{
             DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname,
         };
+        use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("a".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N8));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N8));
         mei_note.note_log.grace = Some(DataGrace::Unacc); // Unaccented/slashed grace note
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1457,13 +1326,15 @@ mod tests {
 
     #[test]
     fn test_convert_mei_note_cue() {
-        use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
+        use tusk_model::data::{
+            DataBoolean, DataDuration, DataDurationCmn, DataOctave, DataPitchname,
+        };
         use tusk_model::elements::Note as MeiNote;
 
         let mut mei_note = MeiNote::default();
         mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(5u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_note.note_log.cue = Some(DataBoolean::True);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1485,7 +1356,7 @@ mod tests {
         mei_note.common.xml_id = Some("note-1".to_string());
         mei_note.note_log.pname = Some(DataPitchname::from("e".to_string()));
         mei_note.note_log.oct = Some(DataOctave::from(4u64));
-        mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
@@ -1520,7 +1391,7 @@ mod tests {
             let mut mei_note = MeiNote::default();
             mei_note.note_log.pname = Some(DataPitchname::from(mei_pname.to_string()));
             mei_note.note_log.oct = Some(DataOctave::from(4u64));
-            mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+            mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
             let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
             ctx.set_divisions(4.0);
@@ -1562,7 +1433,7 @@ mod tests {
             let mut mei_note = MeiNote::default();
             mei_note.note_log.pname = Some(DataPitchname::from("c".to_string()));
             mei_note.note_log.oct = Some(DataOctave::from(4u64));
-            mei_note.note_log.dur = Some(DataDuration::DataDurationCmn(mei_dur));
+            mei_note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(mei_dur));
 
             let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
             ctx.set_divisions(4.0);
@@ -1595,7 +1466,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
@@ -1617,7 +1488,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2)); // Half rest
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N2)); // Half rest
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
@@ -1642,7 +1513,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_rest.rest_log.dots = Some(DataAugmentdot::from(1u64)); // Dotted quarter
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1665,7 +1536,7 @@ mod tests {
 
         let mut mei_rest = MeiRest::default();
         mei_rest.common.xml_id = Some("rest-1".to_string());
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
@@ -1681,11 +1552,11 @@ mod tests {
 
     #[test]
     fn test_convert_mei_rest_cue() {
-        use tusk_model::data::{DataDurationCmn, DataDurationrests};
+        use tusk_model::data::{DataBoolean, DataDurationCmn, DataDurationrests};
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_rest.rest_log.cue = Some(DataBoolean::True);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1724,7 +1595,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1)); // Whole rest
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N1)); // Whole rest
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0);
@@ -1762,7 +1633,7 @@ mod tests {
 
         for (mei_dur, expected_type) in duration_mappings {
             let mut mei_rest = MeiRest::default();
-            mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(mei_dur));
+            mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(mei_dur));
 
             let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
             ctx.set_divisions(4.0);
@@ -1791,7 +1662,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N2));
         mei_rest.rest_log.dots = Some(DataAugmentdot::from(2u64)); // Double-dotted half
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1813,7 +1684,7 @@ mod tests {
         use tusk_model::elements::Rest as MeiRest;
 
         let mut mei_rest = MeiRest::default();
-        mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+        mei_rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_rest.rest_log.tstamp = Some(DataBeat::from(1.0));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -1893,8 +1764,8 @@ mod tests {
 
         for pname in ["c", "e", "g"] {
             let mut note = MeiNote::default();
-            note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
-            note.note_log.oct = Some(DataOctave::from(4u64));
+            note.note_log.pname = Some(pname.to_string());
+            note.note_log.oct = Some("4".to_string());
             mei_chord.children.push(ChordChild::Note(Box::new(note)));
         }
 
@@ -1926,7 +1797,7 @@ mod tests {
 
         // Create a chord with half note duration
         let mut mei_chord = MeiChord::default();
-        mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2)); // Half note
+        mei_chord.chord_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2)); // Half note
 
         let mut note1 = MeiNote::default();
         note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
@@ -1964,7 +1835,7 @@ mod tests {
 
         // Create a dotted quarter note chord
         let mut mei_chord = MeiChord::default();
-        mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        mei_chord.chord_log.dur = Some("4".to_string());
         mei_chord.chord_log.dots = Some(DataAugmentdot::from(1u64));
 
         let mut note1 = MeiNote::default();
@@ -2028,7 +1899,7 @@ mod tests {
 
     #[test]
     fn test_convert_mei_chord_cue() {
-        use tusk_model::data::{DataOctave, DataPitchname};
+        use tusk_model::data::{DataBoolean, DataOctave, DataPitchname};
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
 
         // Create a cue chord
@@ -2090,7 +1961,7 @@ mod tests {
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
 
         let mut mei_chord = MeiChord::default();
-        mei_chord.chord_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
+        mei_chord.chord_vis.stem_dir = Some(DataStemdirection::MeiDataStemdirectionBasic(
             DataStemdirectionBasic::Up,
         ));
 
@@ -2198,14 +2069,14 @@ mod tests {
         let mut note1 = MeiNote::default();
         note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
         note1.note_log.oct = Some(DataOctave::from(4u64));
-        note1.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+        note1.note_ges.accid_ges = Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
             DataAccidentalGesturalBasic::S,
         ));
 
         let mut note2 = MeiNote::default();
         note2.note_log.pname = Some(DataPitchname::from("f".to_string()));
         note2.note_log.oct = Some(DataOctave::from(4u64));
-        note2.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
+        note2.note_ges.accid_ges = Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
             DataAccidentalGesturalBasic::S,
         ));
 

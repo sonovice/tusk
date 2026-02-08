@@ -65,7 +65,13 @@ fn pre_assign_slur_numbers(
     for (m_idx, measure) in mei_measures.iter().enumerate() {
         for child in &measure.children {
             if let MeasureChild::Slur(slur) = child {
-                let staff = slur.slur_log.staff.first().copied().unwrap_or(0) as usize;
+                let staff = slur
+                    .slur_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0) as usize;
                 let start_id = slur
                     .slur_log
                     .startid
@@ -253,7 +259,12 @@ pub fn convert_mei_score_content(
     // If no ppq is specified, calculate a smart default based on the smallest
     // note duration in the score to avoid fractional durations.
     let initial_divs = if let Some(staff_def) = staff_defs.first() {
-        staff_def.staff_def_ges.ppq.map(|ppq| ppq as f64)
+        staff_def
+            .staff_def_ges
+            .ppq
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .map(|x: f64| x)
     } else {
         None
     };
@@ -302,8 +313,13 @@ pub fn convert_mei_score_content(
             // Set per-part divisions from the staffDef so that direction offset
             // calculations use the correct value for this part.
             if let Some(staff_def) = staff_defs.get(staff_idx) {
-                if let Some(ppq) = staff_def.staff_def_ges.ppq {
-                    ctx.set_divisions(ppq as f64);
+                if let Some(ppq) = staff_def
+                    .staff_def_ges
+                    .ppq
+                    .as_ref()
+                    .and_then(|s| s.parse().ok())
+                {
+                    ctx.set_divisions(ppq);
                 }
             }
 
@@ -403,8 +419,14 @@ fn collect_staff_defs_from_score(mei_score: &MeiScore) -> Vec<&tusk_model::eleme
         }
     }
 
-    // Sort by @n attribute to ensure correct order
-    staff_defs.sort_by_key(|sd| sd.n_integer.n.unwrap_or(0));
+    // Sort by @n attribute to ensure correct order; MEI @n is Option<String>
+    staff_defs.sort_by_key(|sd| {
+        sd.n_integer
+            .n
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0)
+    });
 
     staff_defs
 }
@@ -454,8 +476,13 @@ fn find_staff_in_measure(
 ) -> Option<&Staff> {
     for child in &mei_measure.children {
         if let MeasureChild::Staff(staff) = child {
-            // Check if this staff has the matching @n
-            if let Some(n) = staff.n_integer.n {
+            // Check if this staff has the matching @n; MEI @n is Option<String>
+            if let Some(n) = staff
+                .n_integer
+                .n
+                .as_ref()
+                .and_then(|s| s.parse::<usize>().ok())
+            {
                 if n as usize == staff_n {
                     return Some(staff);
                 }
@@ -482,7 +509,13 @@ fn convert_direction_events(
     for child in &mei_measure.children {
         match child {
             MeasureChild::Dynam(dynam) => {
-                let event_staff = dynam.dynam_log.staff.first().copied().unwrap_or(1) as usize;
+                let event_staff = dynam
+                    .dynam_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
                 if event_staff == staff_n
                     && let Some(direction) = convert_mei_dynam(dynam, ctx)
                 {
@@ -492,7 +525,13 @@ fn convert_direction_events(
                 }
             }
             MeasureChild::Hairpin(hairpin) => {
-                let event_staff = hairpin.hairpin_log.staff.first().copied().unwrap_or(1) as usize;
+                let event_staff = hairpin
+                    .hairpin_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
                 if event_staff == staff_n {
                     for direction in convert_mei_hairpin(hairpin, ctx) {
                         mxml_measure
@@ -502,7 +541,13 @@ fn convert_direction_events(
                 }
             }
             MeasureChild::Dir(dir) => {
-                let event_staff = dir.dir_log.staff.first().copied().unwrap_or(1) as usize;
+                let event_staff = dir
+                    .dir_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
                 if event_staff == staff_n
                     && let Some(direction) = convert_mei_dir(dir, ctx)
                 {
@@ -512,7 +557,13 @@ fn convert_direction_events(
                 }
             }
             MeasureChild::Tempo(tempo) => {
-                let event_staff = tempo.tempo_log.staff.first().copied().unwrap_or(1) as usize;
+                let event_staff = tempo
+                    .tempo_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
                 if event_staff == staff_n
                     && let Some(direction) = convert_mei_tempo(tempo, ctx)
                 {
@@ -549,8 +600,14 @@ fn convert_slur_events(
 
     for child in &mei_measure.children {
         if let MeasureChild::Slur(slur) = child {
-            // Only process slurs belonging to this staff
-            let slur_staff = slur.slur_log.staff.first().copied().unwrap_or(0) as usize;
+            // Only process slurs belonging to this staff; MEI @staff is Option<String> (space-separated list)
+            let slur_staff = slur
+                .slur_log
+                .staff
+                .as_ref()
+                .and_then(|s| s.split_whitespace().next())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0) as usize;
             if slur_staff == staff_n {
                 convert_mei_slur_to_notations(slur, staff_n, mxml_measure, prev_measures, ctx);
             }
@@ -976,13 +1033,13 @@ fn build_first_measure_attributes(
     let divisions = ctx.divisions();
     attrs.divisions = Some(divisions);
 
-    // Get key signature from scoreDef first, then staffDef as fallback
+    // Get key signature from scoreDef first, then staffDef as fallback (@keysig is Option<String>)
     let keysig = score_def
-        .and_then(|sd| sd.score_def_log.keysig.first())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.first()));
+        .and_then(|sd| sd.score_def_log.keysig.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
 
     if let Some(keysig) = keysig
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig)
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
     {
         attrs.keys.push(Key {
             number: None,
@@ -1005,10 +1062,10 @@ fn build_first_measure_attributes(
         .and_then(|sd| sd.score_def_log.meter_count.as_ref())
         .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
     let meter_unit = score_def
-        .and_then(|sd| sd.score_def_log.meter_unit)
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit));
+        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
 
-    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+    if meter_sym.as_deref() == Some(&tusk_model::data::DataMetersign::Open) {
         // Senza misura
         attrs.times.push(Time {
             number: None,
@@ -1019,12 +1076,12 @@ fn build_first_measure_attributes(
             content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
         });
     } else if meter_count.is_some() || meter_unit.is_some() {
-        let beats = meter_count.cloned().unwrap_or_else(|| "4".to_string());
-        let beat_type = meter_unit
-            .map(|u| format!("{}", u as i32))
+        let beats = meter_count
+            .map(|s| s.to_string())
             .unwrap_or_else(|| "4".to_string());
+        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
 
-        let symbol = meter_sym.and_then(convert_mei_meter_sym_to_mxml);
+        let symbol = meter_sym.as_ref().and_then(|s| convert_mei_meter_sym_to_mxml(s));
 
         attrs.times.push(Time {
             number: None,
@@ -1047,10 +1104,10 @@ fn build_first_measure_attributes(
                 .staff_def_log
                 .clef_line
                 .as_ref()
-                .map(|l| l.0 as u32);
+                .map(|c| c.0 as u32);
 
             // Convert octave displacement
-            let octave_change = convert_clef_dis_to_octave_change(
+            let octave_change = super::attributes::convert_mei_clef_dis_to_octave_change(
                 staff_def.staff_def_log.clef_dis.as_ref(),
                 staff_def.staff_def_log.clef_dis_place.as_ref(),
             );
@@ -1068,12 +1125,22 @@ fn build_first_measure_attributes(
             });
         }
 
-        // Get transposition from staffDef
+        // Get transposition from staffDef (MEI uses Option<String>)
         if staff_def.staff_def_log.trans_diat.is_some()
             || staff_def.staff_def_log.trans_semi.is_some()
         {
-            let chromatic = staff_def.staff_def_log.trans_semi.unwrap_or(0) as f64;
-            let diatonic = staff_def.staff_def_log.trans_diat.map(|d| d as i32);
+            let chromatic = staff_def
+                .staff_def_log
+                .trans_semi
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0) as f64;
+            let diatonic = staff_def
+                .staff_def_log
+                .trans_diat
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .map(|d: i32| d);
 
             attrs.transposes.push(Transpose {
                 number: None,
@@ -1085,15 +1152,20 @@ fn build_first_measure_attributes(
             });
         }
 
-        // Get staff lines from staffDef
-        if let Some(lines) = staff_def.staff_def_log.lines {
+        // Get staff lines from staffDef (MEI uses Option<String>)
+        if let Some(lines) = staff_def
+            .staff_def_log
+            .lines
+            .as_ref()
+            .and_then(|s| s.parse::<u64>().ok())
+        {
             attrs.staff_details.push(StaffDetails {
                 number: None,
                 show_frets: None,
                 print_object: None,
                 print_spacing: None,
                 staff_type: None,
-                staff_lines: Some(lines as u32),
+                staff_lines: Some(lines as u32), // lines is u64 from parse
                 line_details: Vec::new(),
                 staff_tunings: Vec::new(),
                 capo: None,
@@ -1132,7 +1204,6 @@ fn convert_clef_dis_to_octave_change(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname, DataWord};
     use tusk_model::elements::{
         Layer, LayerChild, Measure as MeiMeasure, MeasureChild, Note as MeiNote, Score as MeiScore,
         ScoreChild, Section, SectionChild, Staff, StaffChild,
@@ -1144,17 +1215,17 @@ mod tests {
         // Create section with one measure
         let mut section = Section::default();
         let mut measure = MeiMeasure::default();
-        measure.common.n = Some(DataWord::from("1".to_string()));
+        measure.common.n = Some("1".to_string());
 
-        // Create staff with layer containing a note
+        // Create staff with layer containing a note (MEI uses Option<String> for @n)
         let mut staff = Staff::default();
-        staff.n_integer.n = Some(1);
+        staff.n_integer.n = Some("1".to_string());
 
         let mut layer = Layer::default();
         let mut note = MeiNote::default();
-        note.note_log.pname = Some(DataPitchname::from("c".to_string()));
-        note.note_log.oct = Some(DataOctave::from(4u64));
-        note.note_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+        note.note_log.pname = Some("c".to_string());
+        note.note_log.oct = Some("4".to_string());
+        note.note_log.dur = Some("4".to_string());
 
         layer.children.push(LayerChild::Note(Box::new(note)));
         staff.children.push(StaffChild::Layer(Box::new(layer)));
@@ -1197,9 +1268,9 @@ mod tests {
     fn test_find_staff_in_measure() {
         let mut measure = MeiMeasure::default();
         let mut staff1 = Staff::default();
-        staff1.n_integer.n = Some(1);
+        staff1.n_integer.n = Some("1".to_string());
         let mut staff2 = Staff::default();
-        staff2.n_integer.n = Some(2);
+        staff2.n_integer.n = Some("2".to_string());
 
         measure.children.push(MeasureChild::Staff(Box::new(staff1)));
         measure.children.push(MeasureChild::Staff(Box::new(staff2)));

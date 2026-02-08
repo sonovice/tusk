@@ -7,7 +7,6 @@ use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
 use crate::model::data::YesNo;
 use crate::model::elements::Measure;
-use tusk_model::data::DataBoolean;
 
 use super::utils::parse_mei_measurement;
 
@@ -60,26 +59,20 @@ pub fn convert_mei_measure(
     }
 
     // Convert metcon="false" -> implicit="yes"
-    // In MEI, metcon="false" means the measure content doesn't conform to the meter
-    // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
-    if let Some(DataBoolean::False) = mei_measure.measure_log.metcon {
+    if mei_measure.measure_log.metcon.as_ref() == Some(&tusk_model::data::DataBoolean::False) {
         mxml_measure.implicit = Some(YesNo::Yes);
     }
 
     // Convert control="false" -> non_controlling="yes"
-    // In MEI, control="false" means the right barline doesn't indicate alignment
-    // In MusicXML, non_controlling="yes" is used for measures in multi-rest regions
-    if let Some(DataBoolean::False) = mei_measure.measure_log.control {
+    if mei_measure.measure_log.control.as_ref() == Some(&tusk_model::data::DataBoolean::False) {
         mxml_measure.non_controlling = Some(YesNo::Yes);
     }
 
-    // Convert width
-    // MEI @width is in DataMeasurementunsigned format (e.g., "200vu")
-    // MusicXML @width is a floating point number in tenths
-    if let Some(ref width) = mei_measure.measure_vis.width
-        && let Some(numeric_width) = parse_mei_measurement(width)
-    {
-        mxml_measure.width = Some(numeric_width);
+    // Convert width (e.g. "200vu")
+    if let Some(ref width) = mei_measure.measure_vis.width {
+        if let Some(numeric_width) = super::utils::parse_mei_measurement_str(&width.0) {
+            mxml_measure.width = Some(numeric_width);
+        }
     }
 
     // Note: Measure content (staff/layer/note/rest) conversion will be implemented
@@ -96,15 +89,13 @@ pub fn convert_mei_measure(
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use tusk_model::data::DataBoolean;
 
     #[test]
     fn test_convert_mei_measure_basic() {
-        use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
 
         let mut mei_measure = MeiMeasure::default();
-        mei_measure.common.n = Some(DataWord::from("1".to_string()));
+        mei_measure.common.n = Some(tusk_model::data::DataWord::from("1".to_string()));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0); // Set divisions for duration calculations
@@ -118,11 +109,10 @@ mod tests {
 
     #[test]
     fn test_convert_mei_measure_with_id() {
-        use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
 
         let mut mei_measure = MeiMeasure::default();
-        mei_measure.common.n = Some(DataWord::from("5".to_string()));
+        mei_measure.common.n = Some(tusk_model::data::DataWord::from("5".to_string()));
         mei_measure.common.xml_id = Some("m5".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -139,13 +129,12 @@ mod tests {
     #[test]
     fn test_convert_mei_measure_implicit() {
         use crate::model::data::YesNo;
-        use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
 
         let mut mei_measure = MeiMeasure::default();
-        mei_measure.common.n = Some(DataWord::from("0".to_string()));
+        mei_measure.common.n = Some(tusk_model::data::DataWord::from("0".to_string()));
         // metcon="false" means pickup/incomplete measure -> implicit="yes" in MusicXML
-        mei_measure.measure_log.metcon = Some(DataBoolean::False);
+        mei_measure.measure_log.metcon = Some(tusk_model::data::DataBoolean::False);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);
@@ -160,13 +149,12 @@ mod tests {
     #[test]
     fn test_convert_mei_measure_non_controlling() {
         use crate::model::data::YesNo;
-        use tusk_model::data::DataWord;
         use tusk_model::elements::Measure as MeiMeasure;
 
         let mut mei_measure = MeiMeasure::default();
-        mei_measure.common.n = Some(DataWord::from("2".to_string()));
+        mei_measure.common.n = Some(tusk_model::data::DataWord::from("2".to_string()));
         // control="false" means non-controlling barline
-        mei_measure.measure_log.control = Some(DataBoolean::False);
+        mei_measure.measure_log.control = Some(tusk_model::data::DataBoolean::False);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);
@@ -180,12 +168,11 @@ mod tests {
 
     #[test]
     fn test_convert_mei_measure_with_width() {
-        use tusk_model::data::{DataMeasurementunsigned, DataWord};
         use tusk_model::elements::Measure as MeiMeasure;
 
         let mut mei_measure = MeiMeasure::default();
-        mei_measure.common.n = Some(DataWord::from("1".to_string()));
-        mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from("200vu".to_string()));
+        mei_measure.common.n = Some(tusk_model::data::DataWord::from("1".to_string()));
+        mei_measure.measure_vis.width = Some(tusk_model::data::DataMeasurementunsigned::from("200vu".to_string()));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(1.0);

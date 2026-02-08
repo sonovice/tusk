@@ -12,8 +12,7 @@ use crate::import::{
 };
 use crate::model::attributes::KeyContent;
 use crate::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
-use tusk_model::att::AttStaffGrpVisSymbol;
-use tusk_model::data::{DataBoolean, DataClefline, DataClefshape};
+use tusk_model::data::{DataClefline, DataClefshape, DataMetersign};
 use tusk_model::elements::{
     Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild, StaffGrp,
     StaffGrpChild,
@@ -164,12 +163,17 @@ fn convert_staff_grp_from_part_group(
 
     // Convert group symbol
     if let Some(ref symbol_value) = part_group.group_symbol {
-        staff_grp.staff_grp_vis.symbol = Some(convert_group_symbol(symbol_value.value));
+        staff_grp.staff_grp_vis.symbol = Some(convert_group_symbol(symbol_value.value.clone()));
     }
 
     // Convert group barline → bar.thru
     if let Some(ref barline_value) = part_group.group_barline {
-        staff_grp.staff_grp_vis.bar_thru = Some(convert_group_barline(barline_value.value));
+        use crate::model::elements::GroupBarline;
+        use tusk_model::data::DataBoolean;
+        staff_grp.staff_grp_vis.bar_thru = Some(match barline_value.value {
+            GroupBarline::Yes => DataBoolean::True,
+            GroupBarline::No | GroupBarline::Mensurstrich => DataBoolean::False,
+        });
     }
 
     // Convert group name → label
@@ -195,29 +199,26 @@ fn convert_staff_grp_from_part_group(
     Ok(staff_grp)
 }
 
-/// Convert MusicXML GroupSymbol to MEI AttStaffGrpVisSymbol.
-fn convert_group_symbol(symbol: crate::model::elements::GroupSymbol) -> AttStaffGrpVisSymbol {
+/// Convert MusicXML GroupSymbol to MEI @symbol string.
+fn convert_group_symbol(symbol: crate::model::elements::GroupSymbol) -> String {
     use crate::model::elements::GroupSymbol;
 
     match symbol {
-        GroupSymbol::Brace => AttStaffGrpVisSymbol::Brace,
-        GroupSymbol::Bracket => AttStaffGrpVisSymbol::Bracket,
-        GroupSymbol::Square => AttStaffGrpVisSymbol::Bracketsq,
-        GroupSymbol::Line => AttStaffGrpVisSymbol::Line,
-        GroupSymbol::None => AttStaffGrpVisSymbol::None,
+        GroupSymbol::Brace => "brace".to_string(),
+        GroupSymbol::Bracket => "bracket".to_string(),
+        GroupSymbol::Square => "bracketsq".to_string(),
+        GroupSymbol::Line => "line".to_string(),
+        GroupSymbol::None => "none".to_string(),
     }
 }
 
 /// Convert MusicXML GroupBarline to MEI DataBoolean for bar.thru attribute.
-fn convert_group_barline(barline: crate::model::elements::GroupBarline) -> DataBoolean {
+fn convert_group_barline_to_string(barline: crate::model::elements::GroupBarline) -> String {
     use crate::model::elements::GroupBarline;
 
     match barline {
-        GroupBarline::Yes => DataBoolean::True,
-        GroupBarline::No => DataBoolean::False,
-        // Mensurstrich is a special case where barlines go between staves but not through them
-        // In MEI, this maps to bar.thru=false (barlines don't go through staves)
-        GroupBarline::Mensurstrich => DataBoolean::False,
+        GroupBarline::Yes => "true".to_string(),
+        GroupBarline::No | GroupBarline::Mensurstrich => "false".to_string(),
     }
 }
 
@@ -262,22 +263,16 @@ pub fn convert_staff_def_from_score_part(
 ) -> ConversionResult<StaffDef> {
     let mut staff_def = StaffDef::default();
 
-    // Set staff number
-    staff_def.n_integer.n = Some(staff_number as u64);
+    staff_def.n_integer.n = Some((staff_number as u64).to_string());
 
-    // Set default staff lines (5 for CMN)
-    staff_def.staff_def_log.lines = Some(5);
+    staff_def.staff_def_log.lines = Some("5".to_string());
 
-    // Default clef (G clef on line 2 = treble clef)
-    // These may be overridden below if initial attributes specify a different clef
-    staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
-    staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
+    staff_def.staff_def_log.clef_shape = Some(tusk_model::data::DataClefshape::G);
+    staff_def.staff_def_log.clef_line = Some(tusk_model::data::DataClefline::from(2));
 
-    // Set divisions/ppq — MusicXML defaults divisions to 1 when absent.
-    // Always store ppq on staffDef so triangle roundtrips are consistent.
     let divs = initial_attrs.and_then(|a| a.divisions).unwrap_or(1.0);
     ctx.set_divisions(divs);
-    staff_def.staff_def_ges.ppq = Some(divs as u64);
+    staff_def.staff_def_ges.ppq = Some((divs as u64).to_string());
 
     // Apply initial attributes from the first measure (key, time, clef)
     if let Some(attrs) = initial_attrs {
@@ -286,7 +281,7 @@ pub fn convert_staff_def_from_score_part(
             convert_key_to_context(key, ctx);
             if let KeyContent::Traditional(trad) = &key.content {
                 let keysig = convert_key_fifths(trad.fifths);
-                staff_def.staff_def_log.keysig = vec![keysig];
+                staff_def.staff_def_log.keysig = Some(keysig);
             }
         }
 
@@ -294,7 +289,7 @@ pub fn convert_staff_def_from_score_part(
         if let Some(time) = attrs.times.first() {
             let (count, unit, sym) = convert_time_signature(time);
             staff_def.staff_def_log.meter_count = count;
-            staff_def.staff_def_log.meter_unit = unit;
+            staff_def.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             staff_def.staff_def_log.meter_sym = sym;
         }
 
@@ -310,10 +305,7 @@ pub fn convert_staff_def_from_score_part(
 
         if let Some(clef) = clef {
             let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
-            if let Some(s) = shape {
-                staff_def.staff_def_log.clef_shape = Some(s);
-            }
-            // Always set clef_line (even if None) to preserve missing lines in percussion clefs
+            staff_def.staff_def_log.clef_shape = shape;
             staff_def.staff_def_log.clef_line = line;
             staff_def.staff_def_log.clef_dis = dis;
             staff_def.staff_def_log.clef_dis_place = dis_place;
@@ -357,6 +349,7 @@ mod tests {
     use crate::context::ConversionDirection;
     use crate::import::test_utils::make_score_part;
     use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
+    use tusk_model::data::DataBoolean;
 
     // ============================================================================
     // Part List Conversion Tests
@@ -403,7 +396,7 @@ mod tests {
         let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
             .expect("conversion should succeed");
 
-        assert_eq!(staff_def.n_integer.n, Some(1));
+        assert_eq!(staff_def.n_integer.n.as_deref(), Some("1"));
     }
 
     #[test]
@@ -413,7 +406,7 @@ mod tests {
         let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
             .expect("conversion should succeed");
 
-        assert_eq!(staff_def.staff_def_log.lines, Some(5));
+        assert_eq!(staff_def.staff_def_log.lines.as_deref(), Some("5"));
     }
 
     #[test]
@@ -423,11 +416,8 @@ mod tests {
         let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
             .expect("conversion should succeed");
 
-        assert_eq!(staff_def.staff_def_log.clef_shape, Some(DataClefshape::G));
-        assert_eq!(
-            staff_def.staff_def_log.clef_line,
-            Some(DataClefline::from(2u64))
-        );
+        assert_eq!(staff_def.staff_def_log.clef_shape.as_deref(), Some("g"));
+        assert_eq!(staff_def.staff_def_log.clef_line.as_deref(), Some("2"));
     }
 
     #[test]
@@ -552,11 +542,11 @@ mod tests {
             // Should have symbol=bracket
             assert_eq!(
                 nested_grp.staff_grp_vis.symbol,
-                Some(AttStaffGrpVisSymbol::Bracket)
+                Some("bracket".to_string())
             );
 
             // Should have bar.thru=true (from group-barline="yes")
-            assert_eq!(nested_grp.staff_grp_vis.bar_thru, Some(DataBoolean::True));
+            assert_eq!(nested_grp.staff_grp_vis.bar_thru.as_deref(), Some("true"));
 
             // Should have label "Strings"
             let has_label = nested_grp.children.iter().any(|c| {
@@ -649,7 +639,7 @@ mod tests {
         if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
             assert_eq!(
                 nested_grp.staff_grp_vis.symbol,
-                Some(AttStaffGrpVisSymbol::Brace)
+                Some("brace".to_string())
             );
         } else {
             panic!("Expected nested StaffGrp");
@@ -699,7 +689,7 @@ mod tests {
 
         // Get the nested staffGrp and verify Mensurstrich → bar.thru=false
         if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
-            assert_eq!(nested_grp.staff_grp_vis.bar_thru, Some(DataBoolean::False));
+            assert_eq!(nested_grp.staff_grp_vis.bar_thru.as_deref(), Some("false"));
         } else {
             panic!("Expected nested StaffGrp");
         }

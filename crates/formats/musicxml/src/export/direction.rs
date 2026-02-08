@@ -6,7 +6,6 @@
 use super::utils::convert_mei_duration_to_beat_unit;
 use crate::context::ConversionContext;
 use crate::model::data::AboveBelow;
-use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
 
 /// Convert an MEI dynam element to a MusicXML direction with dynamics.
 ///
@@ -67,7 +66,7 @@ pub fn convert_mei_dynam(
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part.
     // With 1:1 part→staff mapping, within-part staff is always 1.
-    if !dynam.dynam_log.staff.is_empty() {
+    if dynam.dynam_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
@@ -145,16 +144,15 @@ pub fn convert_mei_hairpin(
     use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Wedge, WedgeType,
     };
-    use tusk_model::att::AttHairpinLogForm;
     use tusk_model::data::DataBoolean;
 
     let mut directions = Vec::new();
 
-    // Determine wedge type from form
-    let wedge_type = match hairpin.hairpin_log.form {
-        Some(AttHairpinLogForm::Cres) => WedgeType::Crescendo,
-        Some(AttHairpinLogForm::Dim) => WedgeType::Diminuendo,
-        None => {
+    // Determine wedge type from form (MEI @form is string: "cres" or "dim")
+    let wedge_type = match hairpin.hairpin_log.form.as_deref() {
+        Some("cres") => WedgeType::Crescendo,
+        Some("dim") => WedgeType::Diminuendo,
+        None | Some(_) => {
             ctx.add_warning(
                 "hairpin",
                 "Hairpin without form attribute - defaulting to crescendo",
@@ -166,7 +164,7 @@ pub fn convert_mei_hairpin(
     let mut wedge = Wedge::new(wedge_type);
 
     // Convert niente attribute
-    if let Some(DataBoolean::True) = hairpin.hairpin_log.niente {
+    if hairpin.hairpin_log.niente.as_ref() == Some(&tusk_model::data::DataBoolean::True) {
         wedge.niente = Some(YesNo::Yes);
     }
 
@@ -184,7 +182,7 @@ pub fn convert_mei_hairpin(
     let mut direction = Direction::new(vec![direction_type]);
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
-    if !hairpin.hairpin_log.staff.is_empty() {
+    if hairpin.hairpin_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
@@ -249,7 +247,7 @@ pub fn convert_mei_dir(
     let mut direction = Direction::new(vec![direction_type]);
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
-    if !dir.dir_log.staff.is_empty() {
+    if dir.dir_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
@@ -330,21 +328,24 @@ pub fn convert_mei_tempo(
         let beat_unit = convert_mei_duration_to_beat_unit(mm_unit);
         // Use numeric mm if available, otherwise extract per-minute from text
         // content (handles non-numeric values like "132-144", "c. 108")
-        let per_minute = if let Some(mm) = &tempo.tempo_log.mm {
-            format!("{}", mm.0 as u32)
-        } else {
-            // Extract from text: format is "{symbol}{dots} = {per_minute}"
-            text_content
-                .split(" = ")
-                .nth(1)
-                .unwrap_or(&text_content)
-                .to_string()
-        };
-        let beat_unit_dots = if let Some(ref dots) = tempo.tempo_log.mm_dots {
-            vec![(); dots.0 as usize]
-        } else {
-            Vec::new()
-        };
+        let per_minute = tempo
+            .tempo_log
+            .mm
+            .as_ref()
+            .map(|m| format!("{}", m.0 as u32))
+            .unwrap_or_else(|| {
+                text_content
+                    .split(" = ")
+                    .nth(1)
+                    .unwrap_or(&text_content)
+                    .to_string()
+            });
+        let beat_unit_dots = tempo
+            .tempo_log
+            .mm_dots
+            .as_ref()
+            .map(|d| vec![(); d.0 as usize])
+            .unwrap_or_default();
 
         let metronome = Metronome {
             content: MetronomeContent::BeatUnit {
@@ -380,7 +381,7 @@ pub fn convert_mei_tempo(
     let mut direction = Direction::new(direction_types);
 
     // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
-    if !tempo.tempo_log.staff.is_empty() {
+    if tempo.tempo_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
@@ -406,27 +407,30 @@ pub fn convert_mei_tempo(
 
 /// Convert MEI tstamp to MusicXML offset.
 ///
-/// MEI tstamp is 1-based beat position. MusicXML offset is in divisions from
-/// the current position. When control events are placed before notes in the
-/// measure, the offset represents the absolute position from measure start.
+/// MEI @tstamp is Option<DataBeat> (1-based beat position). MusicXML offset is in divisions from
+/// the current position.
 fn convert_tstamp_to_offset(
-    tstamp: &Option<tusk_model::generated::data::DataBeat>,
+    tstamp: &Option<tusk_model::data::DataBeat>,
     ctx: &ConversionContext,
 ) -> Option<crate::model::direction::Offset> {
-    tstamp.as_ref().map(|ts| {
-        let beat_position = ts.0 - 1.0; // Convert 1-based to 0-based
+    tstamp.as_ref().map(|b| {
+        let beat_1based = b.0;
+        let beat_position = beat_1based - 1.0; // Convert 1-based to 0-based
         let offset_divisions = beat_position * ctx.divisions();
         crate::model::direction::Offset::new(offset_divisions)
     })
 }
 
-/// Convert MEI placement (DataStaffrel) to MusicXML AboveBelow.
-fn convert_place_to_placement(place: &Option<DataStaffrel>) -> Option<AboveBelow> {
-    match place {
-        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above)) => Some(AboveBelow::Above),
-        Some(DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Below)) => Some(AboveBelow::Below),
+/// Convert MEI placement (@place) to MusicXML AboveBelow.
+fn convert_place_to_placement(
+    place: &Option<tusk_model::data::DataStaffrel>,
+) -> Option<AboveBelow> {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    place.as_ref().and_then(|p| match p {
+        DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above) => Some(AboveBelow::Above),
+        DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below) => Some(AboveBelow::Below),
         _ => None,
-    }
+    })
 }
 
 // ============================================================================
@@ -445,8 +449,8 @@ mod tests {
 
         let mut dynam = Dynam::default();
         dynam.children.push(DynamChild::Text("f".to_string()));
-        dynam.dynam_log.tstamp = Some(DataBeat::from(1.0));
-        dynam.dynam_log.staff = vec![1];
+        dynam.dynam_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        dynam.dynam_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_dynam(&dynam, &mut ctx);
@@ -471,8 +475,8 @@ mod tests {
 
         let mut dynam = Dynam::default();
         dynam.children.push(DynamChild::Text("mp".to_string()));
-        dynam.dynam_log.tstamp = Some(DataBeat::from(2.5));
-        dynam.dynam_log.staff = vec![2];
+        dynam.dynam_log.tstamp = Some(tusk_model::data::DataBeat::from(2.5));
+        dynam.dynam_log.staff = Some("2".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_dynam(&dynam, &mut ctx);
@@ -502,8 +506,8 @@ mod tests {
         ] {
             let mut dynam = Dynam::default();
             dynam.children.push(DynamChild::Text(text.to_string()));
-            dynam.dynam_log.tstamp = Some(DataBeat::from(1.0));
-            dynam.dynam_log.staff = vec![1];
+            dynam.dynam_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+            dynam.dynam_log.staff = Some("1".to_string());
 
             let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
             let direction = convert_mei_dynam(&dynam, &mut ctx);
@@ -525,14 +529,13 @@ mod tests {
     #[test]
     fn test_convert_mei_hairpin_crescendo() {
         use crate::model::direction::{DirectionTypeContent, WedgeType};
-        use tusk_model::att::AttHairpinLogForm;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
-        hairpin.hairpin_log.form = Some(AttHairpinLogForm::Cres);
-        hairpin.hairpin_log.tstamp = Some(DataBeat::from(1.0));
-        hairpin.hairpin_log.staff = vec![1];
+        hairpin.hairpin_log.form = Some("cres".to_string());
+        hairpin.hairpin_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        hairpin.hairpin_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let directions = convert_mei_hairpin(&hairpin, &mut ctx);
@@ -549,14 +552,13 @@ mod tests {
     #[test]
     fn test_convert_mei_hairpin_diminuendo() {
         use crate::model::direction::{DirectionTypeContent, WedgeType};
-        use tusk_model::att::AttHairpinLogForm;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
-        hairpin.hairpin_log.form = Some(AttHairpinLogForm::Dim);
-        hairpin.hairpin_log.tstamp = Some(DataBeat::from(3.0));
-        hairpin.hairpin_log.staff = vec![2];
+        hairpin.hairpin_log.form = Some("dim".to_string());
+        hairpin.hairpin_log.tstamp = Some(tusk_model::data::DataBeat::from(3.0));
+        hairpin.hairpin_log.staff = Some("2".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let directions = convert_mei_hairpin(&hairpin, &mut ctx);
@@ -574,16 +576,15 @@ mod tests {
     fn test_convert_mei_hairpin_with_niente() {
         use crate::model::data::YesNo;
         use crate::model::direction::DirectionTypeContent;
-        use tusk_model::att::AttHairpinLogForm;
         use tusk_model::data::DataBoolean;
         use tusk_model::elements::Hairpin;
         use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
-        hairpin.hairpin_log.form = Some(AttHairpinLogForm::Cres);
-        hairpin.hairpin_log.niente = Some(DataBoolean::True);
-        hairpin.hairpin_log.tstamp = Some(DataBeat::from(1.0));
-        hairpin.hairpin_log.staff = vec![1];
+        hairpin.hairpin_log.form = Some("cres".to_string());
+        hairpin.hairpin_log.niente = Some(tusk_model::data::DataBoolean::True);
+        hairpin.hairpin_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        hairpin.hairpin_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let directions = convert_mei_hairpin(&hairpin, &mut ctx);
@@ -604,8 +605,8 @@ mod tests {
 
         let mut dir = Dir::default();
         dir.children.push(DirChild::Text("dolce".to_string()));
-        dir.dir_log.tstamp = Some(DataBeat::from(1.0));
-        dir.dir_log.staff = vec![1];
+        dir.dir_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        dir.dir_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_dir(&dir, &mut ctx);
@@ -627,8 +628,8 @@ mod tests {
 
         let mut tempo = Tempo::default();
         tempo.children.push(TempoChild::Text("Allegro".to_string()));
-        tempo.tempo_log.tstamp = Some(DataBeat::from(1.0));
-        tempo.tempo_log.staff = vec![1];
+        tempo.tempo_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        tempo.tempo_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_tempo(&tempo, &mut ctx);
@@ -652,9 +653,9 @@ mod tests {
 
         let mut tempo = Tempo::default();
         tempo.tempo_log.mm = Some(DataTempovalue::from(120.0));
-        tempo.tempo_log.mm_unit = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
-        tempo.tempo_log.tstamp = Some(DataBeat::from(1.0));
-        tempo.tempo_log.staff = vec![1];
+        tempo.tempo_log.mm_unit = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        tempo.tempo_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        tempo.tempo_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_tempo(&tempo, &mut ctx);
@@ -685,8 +686,8 @@ mod tests {
 
         let mut tempo = Tempo::default();
         tempo.tempo_log.mm = Some(DataTempovalue::from(90.0));
-        tempo.tempo_log.tstamp = Some(DataBeat::from(1.0));
-        tempo.tempo_log.staff = vec![1];
+        tempo.tempo_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
+        tempo.tempo_log.staff = Some("1".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let direction = convert_mei_tempo(&tempo, &mut ctx);

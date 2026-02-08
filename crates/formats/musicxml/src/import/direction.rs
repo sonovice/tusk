@@ -13,7 +13,6 @@ use crate::import::utils::{
 };
 use crate::model::data::AboveBelow;
 use crate::model::direction::{Direction, DirectionTypeContent, MetronomeContent, WedgeType};
-use tusk_model::att::{AttHairpinLogForm, AttTempoLogFunc};
 use tusk_model::data::{
     DataAugmentdot, DataBeat, DataBoolean, DataStaffrel, DataStaffrelBasic, DataTempovalue,
 };
@@ -100,8 +99,8 @@ pub fn convert_direction(
 /// Convert MusicXML placement (above/below) to MEI DataStaffrel.
 fn convert_placement(placement: Option<&AboveBelow>) -> Option<DataStaffrel> {
     placement.map(|p| match p {
-        AboveBelow::Above => DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Above),
-        AboveBelow::Below => DataStaffrel::DataStaffrelBasic(DataStaffrelBasic::Below),
+        AboveBelow::Above => DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above),
+        AboveBelow::Below => DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below),
     })
 }
 
@@ -140,7 +139,7 @@ fn convert_dynamics(
 
     // Set timestamp and staff
     dynam.dynam_log.tstamp = Some(tstamp);
-    dynam.dynam_log.staff = vec![staff as u64];
+    dynam.dynam_log.staff = Some((staff as u64).to_string());
 
     // Set placement
     dynam.dynam_vis.place = place;
@@ -189,10 +188,10 @@ fn convert_wedge(
                 ctx.map_id(orig_id, hairpin_id.clone());
             }
 
-            // Set form (cres or dim)
+            // Set form (cres or dim); MEI uses string values in @form
             hairpin.hairpin_log.form = Some(match wedge.wedge_type {
-                WedgeType::Crescendo => AttHairpinLogForm::Cres,
-                WedgeType::Diminuendo => AttHairpinLogForm::Dim,
+                WedgeType::Crescendo => "cres".to_string(),
+                WedgeType::Diminuendo => "dim".to_string(),
                 _ => unreachable!(),
             });
 
@@ -203,7 +202,7 @@ fn convert_wedge(
 
             // Set timestamp and staff
             hairpin.hairpin_log.tstamp = Some(tstamp);
-            hairpin.hairpin_log.staff = vec![staff as u64];
+            hairpin.hairpin_log.staff = Some((staff as u64).to_string());
 
             // Set placement
             hairpin.hairpin_vis.place = place;
@@ -238,13 +237,13 @@ fn convert_metronome(
 
     // Set timestamp and staff
     tempo.tempo_log.tstamp = Some(tstamp);
-    tempo.tempo_log.staff = vec![staff as u64];
+    tempo.tempo_log.staff = Some((staff as u64).to_string());
 
     // Set placement
     tempo.tempo_vis.place = place;
 
     // Set function to instantaneous (static tempo)
-    tempo.tempo_log.func = Some(AttTempoLogFunc::Instantaneous);
+    tempo.tempo_log.func = Some("instantaneous".to_string());
 
     // Convert metronome content
     match &metronome.content {
@@ -253,14 +252,15 @@ fn convert_metronome(
             beat_unit_dots,
             per_minute,
         } => {
-            // Convert beat unit to MEI duration
-            if let Some(mm_unit) = beat_unit_string_to_duration(beat_unit) {
-                tempo.tempo_log.mm_unit = Some(mm_unit);
+            // MEI @mm.unit
+            if let Some(dur) = beat_unit_string_to_duration(beat_unit) {
+                tempo.tempo_log.mm_unit = Some(dur);
             }
 
             // Set dots if present
             if !beat_unit_dots.is_empty() {
-                tempo.tempo_log.mm_dots = Some(DataAugmentdot::from(beat_unit_dots.len() as u64));
+                tempo.tempo_log.mm_dots =
+                    Some(DataAugmentdot::from(beat_unit_dots.len() as u64));
             }
 
             // Parse per-minute value
@@ -275,7 +275,7 @@ fn convert_metronome(
         MetronomeContent::BeatUnitEquivalent(modulation) => {
             // Metric modulation: beat-unit = beat-unit
             // Set function to metricmod
-            tempo.tempo_log.func = Some(AttTempoLogFunc::Metricmod);
+            tempo.tempo_log.func = Some("metricmod".to_string());
 
             // Add text content for metric modulation
             let text = format!("{} = {}", modulation.beat_unit_1, modulation.beat_unit_2);
@@ -304,7 +304,7 @@ fn convert_words(
 
     // Set timestamp and staff
     dir.dir_log.tstamp = Some(tstamp);
-    dir.dir_log.staff = vec![staff as u64];
+    dir.dir_log.staff = Some((staff as u64).to_string());
 
     // Set placement
     dir.dir_vis.place = place;

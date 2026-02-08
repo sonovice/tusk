@@ -178,7 +178,7 @@ pub fn process_attributes(
             && let KeyContent::Traditional(trad) = &key.content
         {
             let keysig = convert_key_fifths(trad.fifths);
-            sd.staff_def_log.keysig = vec![keysig];
+            sd.staff_def_log.keysig = Some(keysig);
         }
     }
 
@@ -187,7 +187,7 @@ pub fn process_attributes(
         if let Some(sd) = staff_def.as_deref_mut() {
             let (count, unit, sym) = convert_time_signature(time);
             sd.staff_def_log.meter_count = count;
-            sd.staff_def_log.meter_unit = unit;
+            sd.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             sd.staff_def_log.meter_sym = sym;
         }
     }
@@ -196,12 +196,8 @@ pub fn process_attributes(
     for clef in &attrs.clefs {
         if let Some(sd) = staff_def.as_deref_mut() {
             let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
-            if shape.is_some() {
-                sd.staff_def_log.clef_shape = shape;
-            }
-            if line.is_some() {
-                sd.staff_def_log.clef_line = line;
-            }
+            sd.staff_def_log.clef_shape = shape;
+            sd.staff_def_log.clef_line = line;
             sd.staff_def_log.clef_dis = dis;
             sd.staff_def_log.clef_dis_place = dis_place;
         }

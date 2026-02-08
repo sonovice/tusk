@@ -20,8 +20,8 @@ use tusk_model::elements::{ScoreDef, StaffDef};
 /// - "0" → 0 (C major)
 /// - "2s" → 2 (D major)
 /// - "3f" → -3 (Eb major)
-pub fn convert_mei_keysig_to_fifths(keysig: &tusk_model::data::DataKeyfifths) -> Option<i8> {
-    let s = keysig.0.as_str();
+pub fn convert_mei_keysig_to_fifths(keysig: &str) -> Option<i8> {
+    let s = keysig;
 
     // Handle "0" (C major)
     if s == "0" {
@@ -51,10 +51,10 @@ pub fn convert_mei_keysig_to_fifths(keysig: &tusk_model::data::DataKeyfifths) ->
 
 /// Convert MEI meter.sym attribute to MusicXML TimeSymbol.
 ///
-/// Maps:
-/// - DataMetersign::Common → TimeSymbol::Common
-/// - DataMetersign::Cut → TimeSymbol::Cut
-/// - DataMetersign::Open → None (handled as senza misura)
+/// Maps MEI @meter.sym to MusicXML TimeSymbol.
+/// - Common → TimeSymbol::Common
+/// - Cut → TimeSymbol::Cut
+/// - Open → None (handled as senza misura)
 pub fn convert_mei_meter_sym_to_mxml(
     meter_sym: &tusk_model::data::DataMetersign,
 ) -> Option<crate::model::attributes::TimeSymbol> {
@@ -68,15 +68,7 @@ pub fn convert_mei_meter_sym_to_mxml(
     }
 }
 
-/// Convert MEI clef.shape attribute to MusicXML ClefSign.
-///
-/// Maps:
-/// - G → G
-/// - GG → G (double G clef maps to G)
-/// - F → F
-/// - C → C
-/// - perc → percussion
-/// - TAB → TAB
+/// Convert MEI @clef.shape to MusicXML ClefSign.
 pub fn convert_mei_clef_shape_to_mxml(
     shape: &tusk_model::data::DataClefshape,
 ) -> crate::model::attributes::ClefSign {
@@ -84,8 +76,7 @@ pub fn convert_mei_clef_shape_to_mxml(
     use tusk_model::data::DataClefshape;
 
     match shape {
-        DataClefshape::G => ClefSign::G,
-        DataClefshape::Gg => ClefSign::G, // Double G maps to G
+        DataClefshape::G | DataClefshape::Gg => ClefSign::G,
         DataClefshape::F => ClefSign::F,
         DataClefshape::C => ClefSign::C,
         DataClefshape::Perc => ClefSign::Percussion,
@@ -93,22 +84,15 @@ pub fn convert_mei_clef_shape_to_mxml(
     }
 }
 
-/// Convert MEI octave displacement (clef.dis + clef.dis.place) to MusicXML octave-change.
-///
-/// MEI uses:
-/// - clef.dis: 8, 15, 22 for 1, 2, 3 octaves
-/// - clef.dis.place: "above" or "below"
-///
-/// MusicXML uses:
-/// - clef-octave-change: positive for up, negative for down
-fn convert_mei_clef_dis_to_octave_change(
+/// Convert MEI octave displacement (@clef.dis + @clef.dis.place) to MusicXML octave-change.
+pub(crate) fn convert_mei_clef_dis_to_octave_change(
     dis: Option<&tusk_model::data::DataOctaveDis>,
     dis_place: Option<&tusk_model::data::DataStaffrelBasic>,
 ) -> Option<i32> {
     use tusk_model::data::DataStaffrelBasic;
 
-    let dis_value = dis?;
-    let octaves = match dis_value.0 {
+    let dis_value = dis?.0;
+    let octaves = match dis_value {
         8 => 1,
         15 => 2,
         22 => 3,
@@ -157,8 +141,8 @@ pub fn convert_mei_score_def_to_attributes(
     }
 
     // Convert key signature
-    if let Some(keysig) = score_def.score_def_log.keysig.first()
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig)
+    if let Some(keysig) = score_def.score_def_log.keysig.as_ref()
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
     {
         attrs.keys.push(Key {
             number: None,
@@ -174,7 +158,7 @@ pub fn convert_mei_score_def_to_attributes(
     }
 
     // Convert time signature
-    if score_def.score_def_log.meter_sym == Some(tusk_model::data::DataMetersign::Open) {
+    if score_def.score_def_log.meter_sym.as_ref() == Some(&tusk_model::data::DataMetersign::Open) {
         // Senza misura
         attrs.times.push(Time {
             number: None,
@@ -195,7 +179,7 @@ pub fn convert_mei_score_def_to_attributes(
         let beat_type = score_def
             .score_def_log
             .meter_unit
-            .map(|u| format!("{}", u as i32))
+            .clone()
             .unwrap_or_else(|| "4".to_string());
 
         let symbol = score_def
@@ -224,7 +208,7 @@ pub fn convert_mei_score_def_to_attributes(
             .score_def_log
             .clef_line
             .as_ref()
-            .map(|l| l.0 as u32);
+            .map(|c| c.0 as u32);
         let octave_change = convert_mei_clef_dis_to_octave_change(
             score_def.score_def_log.clef_dis.as_ref(),
             score_def.score_def_log.clef_dis_place.as_ref(),
@@ -275,8 +259,8 @@ pub fn convert_mei_staff_def_to_attributes(
     let mut attrs = Attributes::default();
 
     // Convert key signature
-    if let Some(keysig) = staff_def.staff_def_log.keysig.first()
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig)
+    if let Some(keysig) = staff_def.staff_def_log.keysig.as_ref()
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
     {
         attrs.keys.push(Key {
             number: None,
@@ -292,7 +276,7 @@ pub fn convert_mei_staff_def_to_attributes(
     }
 
     // Convert time signature
-    if staff_def.staff_def_log.meter_sym == Some(tusk_model::data::DataMetersign::Open) {
+    if staff_def.staff_def_log.meter_sym.as_ref() == Some(&tusk_model::data::DataMetersign::Open) {
         // Senza misura
         attrs.times.push(Time {
             number: None,
@@ -313,7 +297,7 @@ pub fn convert_mei_staff_def_to_attributes(
         let beat_type = staff_def
             .staff_def_log
             .meter_unit
-            .map(|u| format!("{}", u as i32))
+            .clone()
             .unwrap_or_else(|| "4".to_string());
 
         let symbol = staff_def
@@ -335,14 +319,14 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert clef
+    // Convert clef; MEI uses Option<String> for clef attributes
     if let Some(shape) = &staff_def.staff_def_log.clef_shape {
         let sign = convert_mei_clef_shape_to_mxml(shape);
         let line = staff_def
             .staff_def_log
             .clef_line
             .as_ref()
-            .map(|l| l.0 as u32);
+            .map(|c| c.0 as u32);
         let octave_change = convert_mei_clef_dis_to_octave_change(
             staff_def.staff_def_log.clef_dis.as_ref(),
             staff_def.staff_def_log.clef_dis_place.as_ref(),
@@ -361,11 +345,20 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert transposition
+    // Convert transposition; MEI @trans.semi and @trans.diat are Option<String>
     if staff_def.staff_def_log.trans_diat.is_some() || staff_def.staff_def_log.trans_semi.is_some()
     {
-        let chromatic = staff_def.staff_def_log.trans_semi.unwrap_or(0) as f64;
-        let diatonic = staff_def.staff_def_log.trans_diat.map(|d| d as i32);
+        let chromatic = staff_def
+            .staff_def_log
+            .trans_semi
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0) as f64;
+        let diatonic = staff_def
+            .staff_def_log
+            .trans_diat
+            .as_ref()
+            .and_then(|s| s.parse().ok());
 
         attrs.transposes.push(Transpose {
             number: None,
@@ -377,8 +370,13 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert staff lines
-    if let Some(lines) = staff_def.staff_def_log.lines {
+    // Convert staff lines; MEI @lines is Option<String>
+    if let Some(lines) = staff_def
+        .staff_def_log
+        .lines
+        .as_ref()
+        .and_then(|s| s.parse::<u64>().ok())
+    {
         attrs.staff_details.push(StaffDetails {
             number: None,
             show_frets: None,
@@ -408,53 +406,53 @@ mod tests {
 
         // C major (no accidentals)
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("0".to_string())),
+            convert_mei_keysig_to_fifths("0"),
             Some(0)
         );
 
         // Sharp keys
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("1s".to_string())),
+            convert_mei_keysig_to_fifths("1s"),
             Some(1)
         ); // G major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("2s".to_string())),
+            convert_mei_keysig_to_fifths("2s"),
             Some(2)
         ); // D major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("3s".to_string())),
+            convert_mei_keysig_to_fifths("3s"),
             Some(3)
         ); // A major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("7s".to_string())),
+            convert_mei_keysig_to_fifths("7s"),
             Some(7)
         ); // C# major
 
         // Flat keys
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("1f".to_string())),
+            convert_mei_keysig_to_fifths("1f"),
             Some(-1)
         ); // F major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("2f".to_string())),
+            convert_mei_keysig_to_fifths("2f"),
             Some(-2)
         ); // Bb major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("3f".to_string())),
+            convert_mei_keysig_to_fifths("3f"),
             Some(-3)
         ); // Eb major
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("7f".to_string())),
+            convert_mei_keysig_to_fifths("7f"),
             Some(-7)
         ); // Cb major
 
         // Invalid returns None
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("invalid".to_string())),
+            convert_mei_keysig_to_fifths("invalid"),
             None
         );
         assert_eq!(
-            convert_mei_keysig_to_fifths(&DataKeyfifths("mixed".to_string())),
+            convert_mei_keysig_to_fifths("mixed"),
             None
         );
     }
@@ -483,49 +481,33 @@ mod tests {
         use crate::model::attributes::ClefSign;
         use tusk_model::data::DataClefshape;
 
-        assert_eq!(
-            convert_mei_clef_shape_to_mxml(&DataClefshape::G),
-            ClefSign::G
-        );
-        assert_eq!(
-            convert_mei_clef_shape_to_mxml(&DataClefshape::F),
-            ClefSign::F
-        );
-        assert_eq!(
-            convert_mei_clef_shape_to_mxml(&DataClefshape::C),
-            ClefSign::C
-        );
+        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::G), ClefSign::G);
+        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::F), ClefSign::F);
+        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::C), ClefSign::C);
         assert_eq!(
             convert_mei_clef_shape_to_mxml(&DataClefshape::Perc),
             ClefSign::Percussion
         );
-        assert_eq!(
-            convert_mei_clef_shape_to_mxml(&DataClefshape::Tab),
-            ClefSign::Tab
-        );
-        assert_eq!(
-            convert_mei_clef_shape_to_mxml(&DataClefshape::Gg),
-            ClefSign::G
-        ); // GG maps to G
+        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::Tab), ClefSign::Tab);
+        assert_eq!(convert_mei_clef_shape_to_mxml(&DataClefshape::Gg), ClefSign::G); // GG maps to G
     }
 
     #[test]
     fn test_convert_mei_score_def_to_mxml_attributes() {
-        use tusk_model::data::{DataClefline, DataClefshape, DataKeyfifths, DataMetersign};
 
         let mut score_def = ScoreDef::default();
 
-        // Set key signature (D major = 2 sharps)
-        score_def.score_def_log.keysig = vec![DataKeyfifths("2s".to_string())];
+        // Set key signature (D major = 2 sharps); MEI @keysig is Option<String>
+        score_def.score_def_log.keysig = Some("2s".to_string());
 
-        // Set time signature (4/4 common time)
+        // Set time signature (4/4 common time); MEI uses string attributes
         score_def.score_def_log.meter_count = Some("4".to_string());
-        score_def.score_def_log.meter_unit = Some(4.0);
-        score_def.score_def_log.meter_sym = Some(DataMetersign::Common);
+        score_def.score_def_log.meter_unit = Some("4".to_string());
+        score_def.score_def_log.meter_sym = Some(tusk_model::data::DataMetersign::Common);
 
         // Set clef (treble clef)
-        score_def.score_def_log.clef_shape = Some(DataClefshape::G);
-        score_def.score_def_log.clef_line = Some(DataClefline(2));
+        score_def.score_def_log.clef_shape = Some(tusk_model::data::DataClefshape::G);
+        score_def.score_def_log.clef_line = Some(tusk_model::data::DataClefline::from(2));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
@@ -559,20 +541,18 @@ mod tests {
 
     #[test]
     fn test_convert_mei_staff_def_to_mxml_attributes() {
-        use tusk_model::data::{DataClefline, DataClefshape, DataKeyfifths};
-
         let mut staff_def = StaffDef::default();
 
-        // Set key signature (Bb major = 2 flats)
-        staff_def.staff_def_log.keysig = vec![DataKeyfifths("2f".to_string())];
+        // Set key signature (Bb major = 2 flats); MEI @keysig is Option<String>
+        staff_def.staff_def_log.keysig = Some("2f".to_string());
 
-        // Set time signature (3/4)
+        // Set time signature (3/4); MEI uses string attributes
         staff_def.staff_def_log.meter_count = Some("3".to_string());
-        staff_def.staff_def_log.meter_unit = Some(4.0);
+        staff_def.staff_def_log.meter_unit = Some("4".to_string());
 
         // Set clef (bass clef)
-        staff_def.staff_def_log.clef_shape = Some(DataClefshape::F);
-        staff_def.staff_def_log.clef_line = Some(DataClefline(4));
+        staff_def.staff_def_log.clef_shape = Some(tusk_model::data::DataClefshape::F);
+        staff_def.staff_def_log.clef_line = Some(tusk_model::data::DataClefline::from(4));
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
@@ -608,8 +588,8 @@ mod tests {
 
         // Set treble clef 8vb (tenor voice)
         staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
-        staff_def.staff_def_log.clef_line = Some(DataClefline(2));
-        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis(8));
+        staff_def.staff_def_log.clef_line = Some(DataClefline::from(2));
+        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis::from(8));
         staff_def.staff_def_log.clef_dis_place = Some(DataStaffrelBasic::Below);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -629,8 +609,8 @@ mod tests {
 
         // Set treble clef 8va
         staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
-        staff_def.staff_def_log.clef_line = Some(DataClefline(2));
-        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis(8));
+        staff_def.staff_def_log.clef_line = Some(DataClefline::from(2));
+        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis::from(8));
         staff_def.staff_def_log.clef_dis_place = Some(DataStaffrelBasic::Above);
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -671,8 +651,8 @@ mod tests {
         let mut staff_def = StaffDef::default();
 
         // Set transposition for Bb clarinet (sounds M2 lower)
-        staff_def.staff_def_log.trans_diat = Some(-1);
-        staff_def.staff_def_log.trans_semi = Some(-2);
+        staff_def.staff_def_log.trans_diat = Some("-1".to_string());
+        staff_def.staff_def_log.trans_semi = Some("-2".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
@@ -687,7 +667,7 @@ mod tests {
         let mut staff_def = StaffDef::default();
 
         // Guitar tab has 6 lines
-        staff_def.staff_def_log.lines = Some(6);
+        staff_def.staff_def_log.lines = Some("6".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_staff_def_to_attributes(&staff_def, &mut ctx);
@@ -720,7 +700,7 @@ mod tests {
 
         // 6/8 time
         score_def.score_def_log.meter_count = Some("6".to_string());
-        score_def.score_def_log.meter_unit = Some(8.0);
+        score_def.score_def_log.meter_unit = Some("8".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
@@ -740,7 +720,7 @@ mod tests {
 
         // 3+2/8 additive meter
         score_def.score_def_log.meter_count = Some("3+2".to_string());
-        score_def.score_def_log.meter_unit = Some(8.0);
+        score_def.score_def_log.meter_unit = Some("8".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let attrs = convert_mei_score_def_to_attributes(&score_def, &mut ctx);
