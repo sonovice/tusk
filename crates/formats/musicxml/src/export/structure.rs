@@ -8,7 +8,6 @@ use crate::convert_error::ConversionResult;
 use crate::model::data::YesNo;
 use crate::model::elements::Measure;
 
-use super::utils::parse_mei_measurement;
 
 // ============================================================================
 // MEI Measure -> MusicXML Measure Conversion

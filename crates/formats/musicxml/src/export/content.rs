@@ -11,7 +11,8 @@ use std::collections::HashMap;
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
 use crate::model::elements::{
-    Measure as MxmlMeasure, MeasureContent, TimewiseMeasure, TimewisePart,
+    Barline, BarlineLocation, BarStyle, Measure as MxmlMeasure, MeasureContent, TimewiseMeasure,
+    TimewisePart,
 };
 use tusk_model::elements::{
     LayerChild, MeasureChild, Score as MeiScore, ScoreChild, ScoreDefChild, Section, SectionChild,
@@ -44,9 +45,8 @@ fn pre_assign_slur_numbers(
         for child in &measure.children {
             if let MeasureChild::Staff(staff) = child {
                 for sc in &staff.children {
-                    if let StaffChild::Layer(layer) = sc {
-                        collect_note_ids_from_layer(&layer.children, m_idx, &mut note_to_measure);
-                    }
+                    let StaffChild::Layer(layer) = sc;
+                    collect_note_ids_from_layer(&layer.children, m_idx, &mut note_to_measure);
                 }
             }
         }
@@ -160,10 +160,9 @@ fn collect_note_ids_from_layer(
                 }
                 // Also collect IDs from notes within the chord
                 for note in &chord.children {
-                    if let tusk_model::elements::ChordChild::Note(n) = note {
-                        if let Some(ref id) = n.common.xml_id {
-                            map.insert(id.clone(), measure_idx);
-                        }
+                    let tusk_model::elements::ChordChild::Note(n) = note;
+                    if let Some(ref id) = n.common.xml_id {
+                        map.insert(id.clone(), measure_idx);
                     }
                 }
             }
@@ -205,17 +204,15 @@ fn collect_note_ids_from_beam(
                     map.insert(id.clone(), measure_idx);
                 }
                 for note in &chord.children {
-                    if let tusk_model::elements::ChordChild::Note(n) = note {
-                        if let Some(ref id) = n.common.xml_id {
-                            map.insert(id.clone(), measure_idx);
-                        }
+                    let tusk_model::elements::ChordChild::Note(n) = note;
+                    if let Some(ref id) = n.common.xml_id {
+                        map.insert(id.clone(), measure_idx);
                     }
                 }
             }
             BeamChild::Beam(nested) => {
                 collect_note_ids_from_beam(&nested.children, measure_idx, map);
             }
-            _ => {}
         }
     }
 }
@@ -358,6 +355,21 @@ pub fn convert_mei_score_content(
                     .insert(0, MeasureContent::Attributes(Box::new(attrs)));
             }
 
+            // Prepend left barline if present (MusicXML: first element in measure)
+            if let Some(rend) = mei_measure.measure_log.left {
+                let barline = mei_barrendition_to_barline(rend, BarlineLocation::Left);
+                mxml_measure
+                    .content
+                    .insert(0, MeasureContent::Barline(Box::new(barline)));
+            }
+            // Append right barline if present
+            if let Some(rend) = mei_measure.measure_log.right {
+                let barline = mei_barrendition_to_barline(rend, BarlineLocation::Right);
+                mxml_measure
+                    .content
+                    .push(MeasureContent::Barline(Box::new(barline)));
+            }
+
             // Store the measure for future cross-measure slur resolution
             part_prev_measures[staff_idx].push(mxml_measure);
         }
@@ -490,6 +502,30 @@ fn find_staff_in_measure(
         }
     }
     None
+}
+
+/// Map MEI DataBarrendition to MusicXML Barline (with location).
+fn mei_barrendition_to_barline(
+    rend: tusk_model::data::DataBarrendition,
+    location: BarlineLocation,
+) -> Barline {
+    use tusk_model::data::DataBarrendition;
+    let bar_style = match rend {
+        DataBarrendition::Single => BarStyle::Regular,
+        DataBarrendition::Dotted => BarStyle::Dotted,
+        DataBarrendition::Dashed => BarStyle::Dashed,
+        DataBarrendition::Heavy => BarStyle::Heavy,
+        DataBarrendition::Dbl => BarStyle::LightLight,
+        DataBarrendition::Dblheavy => BarStyle::HeavyHeavy,
+        DataBarrendition::Invis => BarStyle::None,
+        DataBarrendition::Dbldashed => BarStyle::Dashed,
+        DataBarrendition::Dbldotted => BarStyle::Dotted,
+        _ => BarStyle::Regular,
+    };
+    Barline {
+        location: Some(location),
+        bar_style: Some(bar_style),
+    }
 }
 
 /// Convert MEI direction events (dynam, hairpin, dir, tempo) to MusicXML directions.
@@ -743,48 +779,47 @@ fn convert_staff_content(
 ) -> ConversionResult<()> {
     // Find all layers in the staff
     for child in &staff.children {
-        if let StaffChild::Layer(layer) = child {
-            // Convert layer content (notes, rests, chords)
-            for layer_child in &layer.children {
-                match layer_child {
-                    LayerChild::Note(note) => {
-                        let mut mxml_note = convert_mei_note(note, ctx)?;
-                        mxml_note.staff = Some(staff_n as u32);
+        let StaffChild::Layer(layer) = child;
+        // Convert layer content (notes, rests, chords)
+        for layer_child in &layer.children {
+            match layer_child {
+                LayerChild::Note(note) => {
+                    let mut mxml_note = convert_mei_note(note, ctx)?;
+                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(mxml_note)));
+                }
+                LayerChild::Rest(rest) => {
+                    let mut mxml_note = convert_mei_rest(rest, ctx)?;
+                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(mxml_note)));
+                }
+                LayerChild::Chord(chord) => {
+                    let mxml_notes = convert_mei_chord(chord, ctx)?;
+                    for mut note in mxml_notes {
+                        note.staff = Some(staff_n as u32);
                         mxml_measure
                             .content
-                            .push(MeasureContent::Note(Box::new(mxml_note)));
+                            .push(MeasureContent::Note(Box::new(note)));
                     }
-                    LayerChild::Rest(rest) => {
-                        let mut mxml_note = convert_mei_rest(rest, ctx)?;
-                        mxml_note.staff = Some(staff_n as u32);
-                        mxml_measure
-                            .content
-                            .push(MeasureContent::Note(Box::new(mxml_note)));
-                    }
-                    LayerChild::Chord(chord) => {
-                        let mxml_notes = convert_mei_chord(chord, ctx)?;
-                        for mut note in mxml_notes {
-                            note.staff = Some(staff_n as u32);
-                            mxml_measure
-                                .content
-                                .push(MeasureContent::Note(Box::new(note)));
-                        }
-                    }
-                    LayerChild::Beam(beam) => {
-                        // Recursively process beam content
-                        convert_beam_content(beam, staff_n, mxml_measure, ctx)?;
-                    }
-                    LayerChild::MRest(mrest) => {
-                        // Measure rest
-                        let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
-                        mxml_note.staff = Some(staff_n as u32);
-                        mxml_measure
-                            .content
-                            .push(MeasureContent::Note(Box::new(mxml_note)));
-                    }
-                    _ => {
-                        // Other layer children (space, tuplet, etc.) not handled yet
-                    }
+                }
+                LayerChild::Beam(beam) => {
+                    // Recursively process beam content
+                    convert_beam_content(beam, staff_n, mxml_measure, ctx)?;
+                }
+                LayerChild::MRest(mrest) => {
+                    // Measure rest
+                    let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
+                    mxml_note.staff = Some(staff_n as u32);
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(mxml_note)));
+                }
+                _ => {
+                    // Other layer children (space, tuplet, etc.) not handled yet
                 }
             }
         }
@@ -885,9 +920,6 @@ fn collect_beam_events(
                 let nested = collect_beam_events(nested_beam, staff_n, mxml_measure, ctx)?;
                 events.extend(nested);
             }
-            _ => {
-                // Other beam children not handled yet
-            }
         }
     }
     Ok(events)
@@ -908,9 +940,8 @@ fn calculate_smart_divisions(mei_measures: &[&tusk_model::elements::Measure]) ->
         for child in &measure.children {
             if let MeasureChild::Staff(staff) = child {
                 for sc in &staff.children {
-                    if let StaffChild::Layer(layer) = sc {
-                        find_smallest_duration_in_layer(&layer.children, &mut smallest_duration);
-                    }
+                    let StaffChild::Layer(layer) = sc;
+                    find_smallest_duration_in_layer(&layer.children, &mut smallest_duration);
                 }
             }
         }
@@ -963,7 +994,7 @@ fn find_smallest_duration_in_layer(
             LayerChild::Beam(beam) => {
                 find_smallest_duration_in_beam(&beam.children, smallest);
             }
-            _ => {}
+            LayerChild::MRest(_) | LayerChild::DivLine(_) => {}
         }
     }
 }
@@ -1005,7 +1036,6 @@ fn find_smallest_duration_in_beam(
             BeamChild::Beam(nested) => {
                 find_smallest_duration_in_beam(&nested.children, smallest);
             }
-            _ => {}
         }
     }
 }
@@ -1177,29 +1207,6 @@ fn build_first_measure_attributes(
     attrs
 }
 
-/// Convert MEI octave displacement (clef.dis + clef.dis.place) to MusicXML octave-change.
-fn convert_clef_dis_to_octave_change(
-    dis: Option<&tusk_model::data::DataOctaveDis>,
-    dis_place: Option<&tusk_model::data::DataStaffrelBasic>,
-) -> Option<i32> {
-    use tusk_model::data::DataStaffrelBasic;
-
-    let dis_value = dis?;
-    let octaves = match dis_value.0 {
-        8 => 1,
-        15 => 2,
-        22 => 3,
-        _ => return None,
-    };
-
-    let direction = dis_place.map_or(1, |place| match place {
-        DataStaffrelBasic::Above => 1,
-        DataStaffrelBasic::Below => -1,
-    });
-
-    Some(octaves * direction)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1211,8 +1218,7 @@ mod tests {
 
     fn create_simple_mei_score() -> MeiScore {
         use tusk_model::data::{
-            DataDuration, DataDurationCmn, DataMeasurementunsigned, DataOctave, DataPitchname,
-            DataWord,
+            DataDuration, DataDurationCmn, DataOctave, DataPitchname, DataWord,
         };
 
         let mut score = MeiScore::default();

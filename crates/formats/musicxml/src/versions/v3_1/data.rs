@@ -1,7 +1,5 @@
 //! MusicXML data types (generated from XSD). DO NOT EDIT.
 
-use serde::{Deserialize, Serialize};
-
 pub type Membrane = String;
 
 pub type StaffNumber = String;

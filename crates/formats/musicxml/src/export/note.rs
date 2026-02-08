@@ -122,6 +122,9 @@ pub fn convert_mei_note(
     // Convert articulations from MEI @artic to MusicXML <articulations>
     convert_mei_artic(mei_note.note_anl.artic.as_ref(), &mut mxml_note);
 
+    // Restore breath-mark and caesura from note label (roundtrip from import)
+    convert_mei_note_label_articulations(mei_note, &mut mxml_note);
+
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
 
@@ -345,6 +348,7 @@ fn convert_mei_accid_to_mxml(
 }
 
 /// Convert MEI written accidental string to MusicXML AccidentalValue.
+#[allow(dead_code)]
 fn convert_mei_written_accid_str_to_mxml(s: &str) -> crate::model::note::AccidentalValue {
     use crate::model::note::AccidentalValue;
     match s.trim().to_lowercase().as_str() {
@@ -452,6 +456,31 @@ fn convert_mei_artic(
     if mxml_artic != Articulations::default() {
         let notations = mxml_note.notations.get_or_insert_with(Notations::default);
         notations.articulations = Some(mxml_artic);
+    }
+}
+
+/// Apply breath-mark and caesura from MEI note common.label (roundtrip from import).
+fn convert_mei_note_label_articulations(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+) {
+    let label = match mei_note.common.label.as_deref() {
+        Some(l) => l,
+        None => return,
+    };
+    let has_breath = label.contains("musicxml:breath-mark");
+    let has_caesura = label.contains("musicxml:caesura");
+    if !has_breath && !has_caesura {
+        return;
+    }
+    use crate::model::notations::{Articulations, BreathMark, Caesura, Notations};
+    let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+    let artics = notations.articulations.get_or_insert_with(Articulations::default);
+    if has_breath {
+        artics.breath_mark = Some(BreathMark::default());
+    }
+    if has_caesura {
+        artics.caesura = Some(Caesura::default());
     }
 }
 
@@ -669,8 +698,6 @@ fn add_rest_conversion_warnings(
     mei_rest: &tusk_model::elements::Rest,
     ctx: &mut ConversionContext,
 ) {
-    use tusk_model::elements::RestChild;
-
     // Warn about timing attributes (100% loss)
     if mei_rest.rest_log.tstamp.is_some()
         || mei_rest.rest_log.tstamp_ges.is_some()
@@ -837,12 +864,9 @@ pub fn convert_mei_chord(
     let mei_notes: Vec<&tusk_model::elements::Note> = mei_chord
         .children
         .iter()
-        .filter_map(|child| {
-            if let ChordChild::Note(note) = child {
-                Some(note.as_ref())
-            } else {
-                None
-            }
+        .map(|child| {
+            let ChordChild::Note(note) = child;
+            note.as_ref()
         })
         .collect();
 
@@ -1047,8 +1071,6 @@ fn add_chord_conversion_warnings(
     mei_chord: &tusk_model::elements::Chord,
     ctx: &mut ConversionContext,
 ) {
-    use tusk_model::elements::ChordChild;
-
     // Warn about timing attributes (100% loss)
     if mei_chord.chord_log.tstamp.is_some()
         || mei_chord.chord_log.tstamp_ges.is_some()

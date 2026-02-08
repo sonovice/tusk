@@ -402,8 +402,6 @@ mod tests {
 
     #[test]
     fn test_convert_mei_keysig_to_mxml_fifths() {
-        use tusk_model::data::DataKeyfifths;
-
         // C major (no accidentals)
         assert_eq!(
             convert_mei_keysig_to_fifths("0"),

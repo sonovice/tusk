@@ -3,6 +3,7 @@
 //! Duration, pitch, and ID helper functions used across conversion modules.
 
 /// Convert MEI duration string (e.g. "4", "quarter") to quarter note units.
+#[allow(dead_code)]
 pub fn duration_str_to_quarter_notes(s: &str) -> f64 {
     match s.trim().to_lowercase().as_str() {
         "long" | "0" => 16.0,
@@ -50,6 +51,7 @@ pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
 }
 
 /// Convert MEI rest duration string to quarter note units.
+#[allow(dead_code)]
 pub fn duration_rests_str_to_quarter_notes(s: &str) -> f64 {
     duration_str_to_quarter_notes(s)
 }
@@ -92,6 +94,7 @@ pub fn apply_dots(base_duration: f64, dots: u64) -> f64 {
 }
 
 /// Convert MEI duration string to MusicXML NoteTypeValue.
+#[allow(dead_code)]
 pub fn convert_mei_duration_str_to_note_type(s: &str) -> crate::model::note::NoteTypeValue {
     use crate::model::note::NoteTypeValue;
     match s.trim().to_lowercase().as_str() {
@@ -175,6 +178,7 @@ pub fn convert_mei_duration_rests_to_note_type(
 }
 
 /// Convert MEI @mm.unit string (e.g. "quarter", "4") to MusicXML beat unit string.
+#[allow(dead_code)]
 pub fn mei_mm_unit_str_to_beat_unit(s: &str) -> String {
     match s.trim().to_lowercase().as_str() {
         "long" | "0" => "long".to_string(),
@@ -221,6 +225,7 @@ pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -
 }
 
 /// Convert MEI stem direction string to MusicXML StemValue.
+#[allow(dead_code)]
 pub fn convert_mei_stem_direction_str(s: &str) -> crate::model::note::StemValue {
     use crate::model::note::StemValue;
     match s.trim().to_lowercase().as_str() {
@@ -263,6 +268,7 @@ pub fn parse_mei_measurement_str(s: &str) -> Option<f64> {
     numeric_part.parse::<f64>().ok()
 }
 
+#[allow(dead_code)]
 pub fn parse_mei_measurement(
     measurement: &tusk_model::data::DataMeasurementunsigned,
 ) -> Option<f64> {
@@ -289,9 +295,8 @@ pub fn extract_label_text(staff_grp: &tusk_model::elements::StaffGrp) -> Option<
         if let StaffGrpChild::Label(label) = child {
             let mut text = String::new();
             for label_child in &label.children {
-                if let LabelChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -309,9 +314,8 @@ pub fn extract_label_abbr_text(staff_grp: &tusk_model::elements::StaffGrp) -> Op
         if let StaffGrpChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                if let LabelAbbrChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelAbbrChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -329,9 +333,8 @@ pub fn extract_staff_def_label(staff_def: &tusk_model::elements::StaffDef) -> Op
         if let StaffDefChild::Label(label) = child {
             let mut text = String::new();
             for label_child in &label.children {
-                if let LabelChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -349,9 +352,8 @@ pub fn extract_staff_def_label_abbr(staff_def: &tusk_model::elements::StaffDef) 
         if let StaffDefChild::LabelAbbr(label_abbr) = child {
             let mut text = String::new();
             for label_child in &label_abbr.children {
-                if let LabelAbbrChild::Text(t) = label_child {
-                    text.push_str(t);
-                }
+                let LabelAbbrChild::Text(t) = label_child;
+                text.push_str(t);
             }
             if !text.is_empty() {
                 return Some(text);
@@ -368,17 +370,16 @@ pub fn extract_title_from_file_desc(file_desc: &tusk_model::elements::FileDesc) 
     for child in &file_desc.children {
         if let FileDescChild::TitleStmt(title_stmt) = child {
             for ts_child in &title_stmt.children {
-                if let TitleStmtChild::Title(title) = ts_child {
-                    // Collect text content from title children
-                    let mut text = String::new();
-                    for title_child in &title.children {
-                        if let TitleChild::Text(t) = title_child {
-                            text.push_str(t);
-                        }
+                let TitleStmtChild::Title(title) = ts_child;
+                // Collect text content from title children
+                let mut text = String::new();
+                for title_child in &title.children {
+                    if let TitleChild::Text(t) = title_child {
+                        text.push_str(t);
                     }
-                    if !text.is_empty() {
-                        return Some(text);
-                    }
+                }
+                if !text.is_empty() {
+                    return Some(text);
                 }
             }
         }
@@ -393,9 +394,8 @@ pub fn find_body_in_music(
     use tusk_model::elements::MusicChild;
 
     for child in &music.children {
-        if let MusicChild::Body(body) = child {
-            return Some(body);
-        }
+        let MusicChild::Body(body) = child;
+        return Some(body);
     }
     None
 }
@@ -407,9 +407,8 @@ pub fn find_first_mdiv_in_body(
     use tusk_model::elements::BodyChild;
 
     for child in &body.children {
-        if let BodyChild::Mdiv(mdiv) = child {
-            return Some(mdiv);
-        }
+        let BodyChild::Mdiv(mdiv) = child;
+        return Some(mdiv);
     }
     None
 }
@@ -421,9 +420,8 @@ pub fn find_score_in_mdiv(
     use tusk_model::elements::MdivChild;
 
     for child in &mdiv.children {
-        if let MdivChild::Score(score) = child {
-            return Some(score);
-        }
+        let MdivChild::Score(score) = child;
+        return Some(score);
     }
     None
 }

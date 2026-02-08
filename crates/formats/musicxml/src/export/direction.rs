@@ -5,7 +5,13 @@
 
 use super::utils::convert_mei_duration_to_beat_unit;
 use crate::context::ConversionContext;
-use crate::model::data::AboveBelow;
+use crate::model::data::{AboveBelow, StartStop, StartStopContinue};
+use crate::model::direction::{
+    Bracket, Coda, Damp, DampAll, Dashes, Direction, DirectionType, DirectionTypeContent,
+    Eyeglasses, HarpPedals, LineEnd, OctaveShift, OctaveShiftType, Pedal, PedalType,
+    PrincipalVoice, PrincipalVoiceSymbol, Rehearsal, Segno, StaffDivide, StaffDivideType, Symbol,
+    Words,
+};
 
 /// Convert an MEI dynam element to a MusicXML direction with dynamics.
 ///
@@ -35,12 +41,9 @@ pub fn convert_mei_dynam(
     let text_content: String = dynam
         .children
         .iter()
-        .filter_map(|child| {
-            if let DynamChild::Text(t) = child {
-                Some(t.as_str())
-            } else {
-                None
-            }
+        .map(|child| {
+            let DynamChild::Text(t) = child;
+            t.as_str()
         })
         .collect::<Vec<_>>()
         .join("");
@@ -144,8 +147,6 @@ pub fn convert_mei_hairpin(
     use crate::model::direction::{
         Direction, DirectionType, DirectionTypeContent, Wedge, WedgeType,
     };
-    use tusk_model::data::DataBoolean;
-
     let mut directions = Vec::new();
 
     // Determine wedge type from form (MEI @form is string: "cres" or "dim")
@@ -203,67 +204,238 @@ pub fn convert_mei_hairpin(
 
 /// Convert an MEI dir (directive) element to a MusicXML direction.
 ///
-/// Maps:
-/// - MEI `<dir>` text content -> MusicXML words element
-/// - MEI `@tstamp` -> direction position
-/// - MEI `@staff` -> direction staff
-///
-/// # Arguments
-///
-/// * `dir` - The MEI dir element to convert
-/// * `ctx` - Conversion context
-///
-/// # Returns
-///
-/// A MusicXML Direction element, or None if conversion fails.
+/// If MEI dir has @label starting with "musicxml:", the label is used to emit the
+/// corresponding MusicXML direction type (rehearsal, segno, coda, pedal, octave-shift, etc.)
+/// for roundtrip. Otherwise, dir text is emitted as MusicXML words.
 pub fn convert_mei_dir(
     dir: &tusk_model::elements::Dir,
     ctx: &mut ConversionContext,
-) -> Option<crate::model::direction::Direction> {
-    use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Words};
+) -> Option<Direction> {
     use tusk_model::elements::DirChild;
 
-    // Extract text content
     let text_content: String = dir
         .children
         .iter()
-        .filter_map(|child| {
-            if let DirChild::Text(t) = child {
-                Some(t.as_str())
-            } else {
-                None
-            }
+        .map(|child| {
+            let DirChild::Text(t) = child;
+            t.as_str()
         })
         .collect::<Vec<_>>()
         .join("");
 
-    let words = Words::new(&text_content);
+    let direction_type_content = match dir.common.label.as_deref() {
+        Some("musicxml:rehearsal") => {
+            DirectionTypeContent::Rehearsal(vec![Rehearsal::new(&text_content)])
+        }
+        Some("musicxml:segno") => DirectionTypeContent::Segno(vec![Segno::default()]),
+        Some("musicxml:coda") => DirectionTypeContent::Coda(vec![Coda::default()]),
+        Some("musicxml:symbol") => {
+            DirectionTypeContent::Symbol(vec![Symbol::new(&text_content)])
+        }
+        Some("musicxml:dashes") => {
+            let dash_type = parse_start_stop_continue(&text_content);
+            DirectionTypeContent::Dashes(Dashes::new(dash_type))
+        }
+        Some("musicxml:bracket") => {
+            let (bracket_type, line_end) = parse_bracket_payload(&text_content);
+            DirectionTypeContent::Bracket(Bracket::new(bracket_type, line_end))
+        }
+        Some("musicxml:pedal") => {
+            let pedal_type = parse_pedal_type(&text_content);
+            DirectionTypeContent::Pedal(Pedal::new(pedal_type))
+        }
+        Some("musicxml:octave-shift") => {
+            let (shift_type, size) = parse_octave_shift_payload(&text_content);
+            let mut shift = OctaveShift::new(shift_type);
+            shift.size = Some(size);
+            DirectionTypeContent::OctaveShift(shift)
+        }
+        Some("musicxml:harp-pedals") => {
+            DirectionTypeContent::HarpPedals(HarpPedals {
+                pedal_tunings: vec![],
+                default_x: None,
+                default_y: None,
+                halign: None,
+                valign: None,
+                id: None,
+            })
+        }
+        Some("musicxml:damp") => DirectionTypeContent::Damp(Damp {
+            default_x: None,
+            default_y: None,
+            halign: None,
+            valign: None,
+            id: None,
+        }),
+        Some("musicxml:damp-all") => {
+            DirectionTypeContent::DampAll(DampAll::default())
+        }
+        Some("musicxml:eyeglasses") => DirectionTypeContent::Eyeglasses(Eyeglasses::default()),
+        Some("musicxml:string-mute") => {
+            DirectionTypeContent::StringMute(crate::model::direction::StringMute {
+                mute_type: crate::model::direction::StringMuteType::On,
+                default_x: None,
+                default_y: None,
+                halign: None,
+                valign: None,
+                id: None,
+            })
+        }
+        Some("musicxml:scordatura") => {
+            DirectionTypeContent::Scordatura(crate::model::direction::Scordatura {
+                accords: vec![],
+                id: None,
+            })
+        }
+        Some("musicxml:image") => DirectionTypeContent::Words(vec![Words::new(&text_content)]),
+        Some("musicxml:principal-voice") => {
+            let (voice_type, symbol) = parse_principal_voice_payload(&text_content);
+            DirectionTypeContent::PrincipalVoice(PrincipalVoice {
+                value: None,
+                voice_type,
+                symbol,
+                default_x: None,
+                default_y: None,
+                halign: None,
+                valign: None,
+                id: None,
+            })
+        }
+        Some("musicxml:percussion") => {
+            DirectionTypeContent::Words(vec![Words::new(&text_content)])
+        }
+        Some("musicxml:accordion-registration") => {
+            DirectionTypeContent::AccordionRegistration(Default::default())
+        }
+        Some("musicxml:staff-divide") => {
+            let divide_type = parse_staff_divide_type(&text_content);
+            DirectionTypeContent::StaffDivide(StaffDivide {
+                divide_type,
+                default_x: None,
+                default_y: None,
+                halign: None,
+                valign: None,
+                id: None,
+            })
+        }
+        Some("musicxml:other") => DirectionTypeContent::OtherDirection(
+            crate::model::direction::OtherDirection {
+                value: if text_content.is_empty() {
+                    None
+                } else {
+                    Some(text_content)
+                },
+                print_object: None,
+                smufl: None,
+                default_x: None,
+                default_y: None,
+                halign: None,
+                valign: None,
+                id: None,
+            },
+        ),
+        _ => DirectionTypeContent::Words(vec![Words::new(&text_content)]),
+    };
 
     let direction_type = DirectionType {
-        content: DirectionTypeContent::Words(vec![words]),
+        content: direction_type_content,
         id: None,
     };
 
     let mut direction = Direction::new(vec![direction_type]);
 
-    // Set staff: MEI @staff is global, MusicXML <staff> is within-part (always 1 for 1:1 mapping)
     if dir.dir_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
-    // Set placement from MEI @place (no default — only emit if explicitly set)
     direction.placement = convert_place_to_placement(&dir.dir_vis.place);
 
-    // Preserve ID
     if let Some(ref xml_id) = dir.common.xml_id {
         direction.id = Some(xml_id.clone());
         ctx.map_id(xml_id, xml_id.clone());
     }
 
-    // Convert tstamp to offset for proper repositioning on reimport
     direction.offset = convert_tstamp_to_offset(&dir.dir_log.tstamp, ctx);
 
     Some(direction)
+}
+
+fn parse_start_stop_continue(s: &str) -> StartStopContinue {
+    match s.trim().to_lowercase().as_str() {
+        "stop" => StartStopContinue::Stop,
+        "continue" => StartStopContinue::Continue,
+        _ => StartStopContinue::Start,
+    }
+}
+
+fn parse_bracket_payload(s: &str) -> (StartStopContinue, LineEnd) {
+    let mut parts = s.splitn(2, ':');
+    let first = parts.next().unwrap_or("").trim().to_lowercase();
+    let second = parts.next().unwrap_or("up").trim().to_lowercase();
+    let bracket_type = match first.as_str() {
+        "stop" => StartStopContinue::Stop,
+        "continue" => StartStopContinue::Continue,
+        _ => StartStopContinue::Start,
+    };
+    let line_end = match second.as_str() {
+        "down" => LineEnd::Down,
+        "both" => LineEnd::Both,
+        "arrow" => LineEnd::Arrow,
+        "none" => LineEnd::None,
+        _ => LineEnd::Up,
+    };
+    (bracket_type, line_end)
+}
+
+fn parse_pedal_type(s: &str) -> PedalType {
+    match s.trim().to_lowercase().as_str() {
+        "stop" => PedalType::Stop,
+        "sostenuto" => PedalType::Sostenuto,
+        "change" => PedalType::Change,
+        "continue" => PedalType::Continue,
+        "discontinue" => PedalType::Discontinue,
+        "resume" => PedalType::Resume,
+        _ => PedalType::Start,
+    }
+}
+
+fn parse_octave_shift_payload(s: &str) -> (OctaveShiftType, u8) {
+    let mut parts = s.splitn(2, ':');
+    let kind = parts.next().unwrap_or("").trim().to_lowercase();
+    let size_str = parts.next().unwrap_or("8").trim();
+    let size = size_str.parse().unwrap_or(8);
+    let shift_type = match kind.as_str() {
+        "down" => OctaveShiftType::Down,
+        "stop" => OctaveShiftType::Stop,
+        "continue" => OctaveShiftType::Continue,
+        _ => OctaveShiftType::Up,
+    };
+    (shift_type, size)
+}
+
+fn parse_principal_voice_payload(s: &str) -> (StartStop, PrincipalVoiceSymbol) {
+    let mut parts = s.splitn(2, ':');
+    let voice = parts.next().unwrap_or("").trim().to_lowercase();
+    let symbol_str = parts.next().unwrap_or("plain").trim().to_lowercase();
+    let voice_type = match voice.as_str() {
+        "stop" => StartStop::Stop,
+        _ => StartStop::Start,
+    };
+    let symbol = match symbol_str.as_str() {
+        "hauptstimme" => PrincipalVoiceSymbol::Hauptstimme,
+        "nebenstimme" => PrincipalVoiceSymbol::Nebenstimme,
+        "none" => PrincipalVoiceSymbol::None,
+        _ => PrincipalVoiceSymbol::Plain,
+    };
+    (voice_type, symbol)
+}
+
+fn parse_staff_divide_type(s: &str) -> StaffDivideType {
+    match s.trim().to_lowercase().as_str() {
+        "up" => StaffDivideType::Up,
+        "updown" | "up-down" => StaffDivideType::UpDown,
+        _ => StaffDivideType::Down,
+    }
 }
 
 /// Convert an MEI tempo element to a MusicXML direction.
@@ -297,12 +469,9 @@ pub fn convert_mei_tempo(
     let text_content: String = tempo
         .children
         .iter()
-        .filter_map(|child| {
-            if let TempoChild::Text(t) = child {
-                Some(t.as_str())
-            } else {
-                None
-            }
+        .map(|child| {
+            let TempoChild::Text(t) = child;
+            t.as_str()
         })
         .collect::<Vec<_>>()
         .join("");
@@ -439,13 +608,13 @@ fn convert_place_to_placement(
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
     use crate::context::ConversionDirection;
 
     #[test]
     fn test_convert_mei_dynam_basic() {
         use tusk_model::elements::{Dynam, DynamChild};
-        use tusk_model::generated::data::DataBeat;
 
         let mut dynam = Dynam::default();
         dynam.children.push(DynamChild::Text("f".to_string()));
@@ -471,7 +640,6 @@ mod tests {
     #[test]
     fn test_convert_mei_dynam_with_text_content() {
         use tusk_model::elements::{Dynam, DynamChild};
-        use tusk_model::generated::data::DataBeat;
 
         let mut dynam = Dynam::default();
         dynam.children.push(DynamChild::Text("mp".to_string()));
@@ -490,7 +658,6 @@ mod tests {
     fn test_convert_mei_dynam_recognizes_standard_dynamics() {
         use crate::model::direction::{DirectionTypeContent, DynamicsValue};
         use tusk_model::elements::{Dynam, DynamChild};
-        use tusk_model::generated::data::DataBeat;
 
         for (text, expected) in [
             ("ppp", DynamicsValue::Ppp),
@@ -530,7 +697,6 @@ mod tests {
     fn test_convert_mei_hairpin_crescendo() {
         use crate::model::direction::{DirectionTypeContent, WedgeType};
         use tusk_model::elements::Hairpin;
-        use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some("cres".to_string());
@@ -553,7 +719,6 @@ mod tests {
     fn test_convert_mei_hairpin_diminuendo() {
         use crate::model::direction::{DirectionTypeContent, WedgeType};
         use tusk_model::elements::Hairpin;
-        use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some("dim".to_string());
@@ -576,9 +741,7 @@ mod tests {
     fn test_convert_mei_hairpin_with_niente() {
         use crate::model::data::YesNo;
         use crate::model::direction::DirectionTypeContent;
-        use tusk_model::data::DataBoolean;
         use tusk_model::elements::Hairpin;
-        use tusk_model::generated::data::DataBeat;
 
         let mut hairpin = Hairpin::default();
         hairpin.hairpin_log.form = Some("cres".to_string());
@@ -601,7 +764,6 @@ mod tests {
     fn test_convert_mei_dir_basic() {
         use crate::model::direction::DirectionTypeContent;
         use tusk_model::elements::{Dir, DirChild};
-        use tusk_model::generated::data::DataBeat;
 
         let mut dir = Dir::default();
         dir.children.push(DirChild::Text("dolce".to_string()));
@@ -624,7 +786,6 @@ mod tests {
     fn test_convert_mei_tempo_basic() {
         use crate::model::direction::DirectionTypeContent;
         use tusk_model::elements::{Tempo, TempoChild};
-        use tusk_model::generated::data::DataBeat;
 
         let mut tempo = Tempo::default();
         tempo.children.push(TempoChild::Text("Allegro".to_string()));
@@ -649,7 +810,7 @@ mod tests {
         use crate::model::direction::{DirectionTypeContent, MetronomeContent};
         use tusk_model::data::{DataDuration, DataDurationCmn};
         use tusk_model::elements::Tempo;
-        use tusk_model::generated::data::{DataBeat, DataTempovalue};
+        use tusk_model::generated::data::DataTempovalue;
 
         let mut tempo = Tempo::default();
         tempo.tempo_log.mm = Some(DataTempovalue::from(120.0));
@@ -682,7 +843,7 @@ mod tests {
     #[test]
     fn test_convert_mei_tempo_with_bpm_sound() {
         use tusk_model::elements::Tempo;
-        use tusk_model::generated::data::{DataBeat, DataTempovalue};
+        use tusk_model::generated::data::DataTempovalue;
 
         let mut tempo = Tempo::default();
         tempo.tempo_log.mm = Some(DataTempovalue::from(90.0));

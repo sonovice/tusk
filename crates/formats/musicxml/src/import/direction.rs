@@ -5,6 +5,8 @@
 //! - `<wedge>` → `<hairpin>`
 //! - `<metronome>` → `<tempo>`
 //! - `<words>` → `<dir>`
+//! - Rehearsal, Segno, Coda, Pedal, OctaveShift, and other direction types → `<dir>` with
+//!   @label set to "musicxml:<type>" for roundtrip (export maps label back to MusicXML).
 
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
@@ -12,11 +14,17 @@ use crate::import::utils::{
     beat_unit_string_to_duration, dynamics_value_to_string, format_metronome_text,
 };
 use crate::model::data::AboveBelow;
-use crate::model::direction::{Direction, DirectionTypeContent, MetronomeContent, WedgeType};
+use crate::model::direction::{
+    Direction, DirectionTypeContent, MetronomeContent, OctaveShiftType, PedalType, WedgeType,
+};
 use tusk_model::data::{
     DataAugmentdot, DataBeat, DataBoolean, DataStaffrel, DataStaffrelBasic, DataTempovalue,
 };
 use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
+
+/// Label prefix for MEI dir elements that roundtrip to a specific MusicXML direction type.
+#[allow(dead_code)]
+pub const MXML_DIR_LABEL_PREFIX: &str = "musicxml:";
 
 // ============================================================================
 // Direction to Control Event Conversion
@@ -88,8 +96,234 @@ pub fn convert_direction(
                 let dir = convert_words(words, tstamp.clone(), staff, place.clone(), ctx);
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            // Other direction types can be added in future phases
-            _ => {}
+            DirectionTypeContent::Rehearsal(rehearsals) => {
+                let text = rehearsals
+                    .iter()
+                    .map(|r| r.value.as_str())
+                    .collect::<Vec<_>>()
+                    .join("");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:rehearsal",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Segno(_) => {
+                let dir =
+                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:segno", "");
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Coda(_) => {
+                let dir =
+                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:coda", "");
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Symbol(symbols) => {
+                let text = symbols
+                    .iter()
+                    .map(|s| s.value.as_str())
+                    .collect::<Vec<_>>()
+                    .join("");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:symbol",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Dashes(dashes) => {
+                let text = dash_bracket_type_to_str(dashes.dash_type);
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:dashes",
+                    text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Bracket(bracket) => {
+                let text = format!(
+                    "{}:{}",
+                    dash_bracket_type_to_str(bracket.bracket_type),
+                    line_end_to_str(bracket.line_end)
+                );
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:bracket",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Pedal(pedal) => {
+                let text = pedal_type_to_str(pedal.pedal_type);
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:pedal",
+                    text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::OctaveShift(shift) => {
+                let text = format!(
+                    "{}:{}",
+                    octave_shift_type_to_str(shift.shift_type),
+                    shift.size.unwrap_or(8)
+                );
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:octave-shift",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::HarpPedals(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:harp-pedals",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Damp(_) => {
+                let dir =
+                    dir_with_label(tstamp.clone(), staff, place.clone(), ctx, "musicxml:damp", "");
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::DampAll(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:damp-all",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Eyeglasses(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:eyeglasses",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::StringMute(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:string-mute",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Scordatura(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:scordatura",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Image(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:image",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::PrincipalVoice(pv) => {
+                let text = format!("{}:{:?}", pv.voice_type, pv.symbol);
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:principal-voice",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::Percussion(perc) => {
+                let text = format!("{:?}", perc);
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:percussion",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::AccordionRegistration(_) => {
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:accordion-registration",
+                    "",
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::StaffDivide(sd) => {
+                let text = format!("{:?}", sd.divide_type);
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:staff-divide",
+                    &text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
+            DirectionTypeContent::OtherDirection(other) => {
+                let text = other.value.as_deref().unwrap_or("");
+                let dir = dir_with_label(
+                    tstamp.clone(),
+                    staff,
+                    place.clone(),
+                    ctx,
+                    "musicxml:other",
+                    text,
+                );
+                results.push(DirectionConversionResult::Dir(dir));
+            }
         }
     }
 
@@ -117,6 +351,71 @@ fn calculate_tstamp(direction: &Direction, ctx: &ConversionContext) -> DataBeat 
 
     // MEI tstamp is 1-based (beat 1 is the first beat)
     DataBeat::from(beat_position + 1.0)
+}
+
+/// Build a Dir with a label (for MusicXML direction-type roundtrip) and optional text.
+fn dir_with_label(
+    tstamp: DataBeat,
+    staff: u32,
+    place: Option<DataStaffrel>,
+    ctx: &mut ConversionContext,
+    label: &str,
+    text: &str,
+) -> Dir {
+    let mut dir = Dir::default();
+    let dir_id = ctx.generate_id_with_suffix("dir");
+    dir.common.xml_id = Some(dir_id);
+    dir.common.label = Some(label.to_string());
+    dir.dir_log.tstamp = Some(tstamp);
+    dir.dir_log.staff = Some((staff as u64).to_string());
+    dir.dir_vis.place = place;
+    if !text.is_empty() {
+        dir.children.push(DirChild::Text(text.to_string()));
+    }
+    dir
+}
+
+fn dash_bracket_type_to_str(
+    t: crate::model::data::StartStopContinue,
+) -> &'static str {
+    use crate::model::data::StartStopContinue;
+    match t {
+        StartStopContinue::Start => "start",
+        StartStopContinue::Stop => "stop",
+        StartStopContinue::Continue => "continue",
+    }
+}
+
+fn line_end_to_str(t: crate::model::direction::LineEnd) -> &'static str {
+    use crate::model::direction::LineEnd;
+    match t {
+        LineEnd::Up => "up",
+        LineEnd::Down => "down",
+        LineEnd::Both => "both",
+        LineEnd::Arrow => "arrow",
+        LineEnd::None => "none",
+    }
+}
+
+fn pedal_type_to_str(t: PedalType) -> &'static str {
+    match t {
+        PedalType::Start => "start",
+        PedalType::Stop => "stop",
+        PedalType::Sostenuto => "sostenuto",
+        PedalType::Change => "change",
+        PedalType::Continue => "continue",
+        PedalType::Discontinue => "discontinue",
+        PedalType::Resume => "resume",
+    }
+}
+
+fn octave_shift_type_to_str(t: OctaveShiftType) -> &'static str {
+    match t {
+        OctaveShiftType::Up => "up",
+        OctaveShiftType::Down => "down",
+        OctaveShiftType::Stop => "stop",
+        OctaveShiftType::Continue => "continue",
+    }
 }
 
 /// Convert MusicXML dynamics to MEI dynam element.

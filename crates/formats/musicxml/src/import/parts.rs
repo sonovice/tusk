@@ -12,7 +12,6 @@ use crate::import::{
 };
 use crate::model::attributes::KeyContent;
 use crate::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
-use tusk_model::data::{DataClefline, DataClefshape, DataMetersign};
 use tusk_model::elements::{
     Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild, StaffGrp,
     StaffGrpChild,
@@ -213,6 +212,7 @@ fn convert_group_symbol(symbol: crate::model::elements::GroupSymbol) -> String {
 }
 
 /// Convert MusicXML GroupBarline to MEI DataBoolean for bar.thru attribute.
+#[allow(dead_code)]
 fn convert_group_barline_to_string(barline: crate::model::elements::GroupBarline) -> String {
     use crate::model::elements::GroupBarline;
 
@@ -348,8 +348,7 @@ mod tests {
     use super::*;
     use crate::context::ConversionDirection;
     use crate::import::test_utils::make_score_part;
-    use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
-    use tusk_model::data::DataBoolean;
+    use crate::model::elements::{PartList, PartListItem, PartName};
 
     // ============================================================================
     // Part List Conversion Tests
@@ -446,11 +445,8 @@ mod tests {
         // Check label text
         let label = label.unwrap();
         let text = label.children.iter().find_map(|c| {
-            if let LabelChild::Text(t) = c {
-                Some(t.as_str())
-            } else {
-                None
-            }
+            let LabelChild::Text(t) = c;
+            Some(t.as_str())
         });
         assert_eq!(text, Some("Violin I"));
     }
@@ -480,11 +476,8 @@ mod tests {
         // Check labelAbbr text
         let label_abbr = label_abbr.unwrap();
         let text = label_abbr.children.iter().find_map(|c| {
-            if let LabelAbbrChild::Text(t) = c {
-                Some(t.as_str())
-            } else {
-                None
-            }
+            let LabelAbbrChild::Text(t) = c;
+            Some(t.as_str())
         });
         assert_eq!(text, Some("Vln. I"));
     }
@@ -559,33 +552,21 @@ mod tests {
 
             // Should have label "Strings"
             let has_label = nested_grp.children.iter().any(|c| {
-                if let StaffGrpChild::Label(l) = c {
-                    l.children.iter().any(|lc| {
-                        if let LabelChild::Text(t) = lc {
-                            t == "Strings"
-                        } else {
-                            false
-                        }
-                    })
-                } else {
-                    false
-                }
+                let StaffGrpChild::Label(l) = c else { return false };
+                l.children.iter().any(|lc| {
+                    let LabelChild::Text(t) = lc;
+                    t == "Strings"
+                })
             });
             assert!(has_label, "Nested staffGrp should have 'Strings' label");
 
             // Should have labelAbbr "Str."
             let has_abbr = nested_grp.children.iter().any(|c| {
-                if let StaffGrpChild::LabelAbbr(l) = c {
-                    l.children.iter().any(|lc| {
-                        if let LabelAbbrChild::Text(t) = lc {
-                            t == "Str."
-                        } else {
-                            false
-                        }
-                    })
-                } else {
-                    false
-                }
+                let StaffGrpChild::LabelAbbr(l) = c else { return false };
+                l.children.iter().any(|lc| {
+                    let LabelAbbrChild::Text(t) = lc;
+                    t == "Str."
+                })
             });
             assert!(has_abbr, "Nested staffGrp should have 'Str.' labelAbbr");
 

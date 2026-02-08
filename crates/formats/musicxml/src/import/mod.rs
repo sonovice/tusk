@@ -305,22 +305,16 @@ mod tests {
                 // Check title content
                 let ts = title_stmt.unwrap();
                 let title = ts.children.iter().find_map(|c| {
-                    if let tusk_model::elements::TitleStmtChild::Title(t) = c {
-                        Some(t)
-                    } else {
-                        None
-                    }
+                    let tusk_model::elements::TitleStmtChild::Title(t) = c;
+                    Some(t)
                 });
                 assert!(title.is_some());
 
                 // Check title text
                 let t = title.unwrap();
                 let text = t.children.iter().find_map(|c| {
-                    if let tusk_model::elements::TitleChild::Text(s) = c {
-                        Some(s.as_str())
-                    } else {
-                        None
-                    }
+                    let tusk_model::elements::TitleChild::Text(s) = c else { return None };
+                    Some(s.as_str())
                 });
                 assert_eq!(text, Some("Test Symphony"));
             } else {
@@ -393,12 +387,10 @@ mod tests {
         for child in &file_desc.children {
             if let FileDescChild::TitleStmt(ts) = child {
                 for ts_child in &ts.children {
-                    if let TitleStmtChild::Title(title) = ts_child {
-                        for t_child in &title.children {
-                            if let TitleChild::Text(s) = t_child {
-                                return Some(s.as_str());
-                            }
-                        }
+                    let TitleStmtChild::Title(title) = ts_child;
+                    for t_child in &title.children {
+                        let TitleChild::Text(s) = t_child else { continue };
+                        return Some(s.as_str());
                     }
                 }
             }

@@ -1507,7 +1507,7 @@ fn test_divisions_changes_across_measures() {
 
 #[test]
 fn test_measure_duration_calculation() {
-    use crate::model::duration::{DurationContext, measure_duration};
+    use crate::model::duration::measure_duration;
 
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">

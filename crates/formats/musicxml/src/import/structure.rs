@@ -16,8 +16,7 @@ use crate::import::{
     convert_note, convert_rest, convert_score_def, is_measure_rest,
 };
 use crate::model::elements::ScorePartwise;
-use tusk_model::data::DataUri;
-use tusk_model::data::{DataBoolean, DataMeasurementunsigned, DataWord};
+use tusk_model::data::{DataBoolean, DataMeasurementunsigned};
 use tusk_model::elements::{
     Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild,
     Section, SectionChild, Slur, StaffChild,
@@ -107,12 +106,14 @@ pub fn convert_measure(
 
     let mut mei_measure = Measure::default();
 
-    // Get measure from first part to extract common attributes
+    // Get measure from first part to extract common attributes and barlines
     if let Some(first_part) = score.parts.first()
         && let Some(musicxml_measure) = first_part.measures.get(measure_idx)
     {
         // Convert measure attributes
         convert_measure_attributes(musicxml_measure, &mut mei_measure, ctx);
+        // Convert barlines (left/right) from first part's measure content
+        convert_measure_barlines(musicxml_measure, &mut mei_measure);
         ctx.set_measure(&musicxml_measure.number);
     }
 
@@ -248,6 +249,53 @@ fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut Convers
         mei_measure
             .children
             .push(MeasureChild::Slur(Box::new(slur)));
+    }
+}
+
+/// Convert MusicXML measure barlines to MEI measure @left and @right.
+///
+/// Iterates measure content for Barline elements and sets mei_measure.measure_log.left
+/// and measure_log.right from location (left/right). Middle barlines are not represented
+/// in MEI and are skipped.
+fn convert_measure_barlines(
+    musicxml_measure: &crate::model::elements::Measure,
+    mei_measure: &mut tusk_model::elements::Measure,
+) {
+    use crate::model::elements::{BarlineLocation, MeasureContent};
+    use tusk_model::data::DataBarrendition;
+
+    for content in &musicxml_measure.content {
+        if let MeasureContent::Barline(barline) = content {
+            let rend = barline
+                .bar_style
+                .map(bar_style_to_mei_barrendition)
+                .unwrap_or(DataBarrendition::Single);
+            let loc = barline.location.unwrap_or(BarlineLocation::Right);
+            match loc {
+                BarlineLocation::Left => mei_measure.measure_log.left = Some(rend),
+                BarlineLocation::Right => mei_measure.measure_log.right = Some(rend),
+                BarlineLocation::Middle => {}
+            }
+        }
+    }
+}
+
+/// Map MusicXML bar-style to MEI DataBarrendition.
+fn bar_style_to_mei_barrendition(
+    style: crate::model::elements::BarStyle,
+) -> tusk_model::data::DataBarrendition {
+    use crate::model::elements::BarStyle;
+    use tusk_model::data::DataBarrendition;
+    match style {
+        BarStyle::Regular => DataBarrendition::Single,
+        BarStyle::Dotted => DataBarrendition::Dotted,
+        BarStyle::Dashed => DataBarrendition::Dashed,
+        BarStyle::Heavy => DataBarrendition::Heavy,
+        BarStyle::LightLight => DataBarrendition::Dbl,
+        BarStyle::LightHeavy | BarStyle::HeavyLight => DataBarrendition::Single,
+        BarStyle::HeavyHeavy => DataBarrendition::Dblheavy,
+        BarStyle::Tick | BarStyle::Short => DataBarrendition::Single,
+        BarStyle::None => DataBarrendition::Invis,
     }
 }
 
@@ -578,12 +626,9 @@ fn layer_child_to_beam_child(child: &LayerChild) -> Option<BeamChild> {
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;
-    use crate::import::convert_staff_grp;
     use crate::import::test_utils::make_score_part;
-    use crate::model::elements::{Part, PartList, PartListItem, PartName, ScorePart};
-    use tusk_model::elements::{
-        LabelAbbrChild, LabelChild, MdivChild, StaffDefChild, StaffGrpChild,
-    };
+    use crate::model::elements::{Part, PartList, PartListItem};
+    use tusk_model::elements::MdivChild;
 
     // ============================================================================
     // Score Structure Tests

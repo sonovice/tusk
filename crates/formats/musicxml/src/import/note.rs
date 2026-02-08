@@ -12,11 +12,12 @@ use crate::model::StartStop;
 use crate::model::StartStopContinue;
 use crate::model::notations::{Articulations, TiedType};
 use crate::model::note::{FullNoteContent, Note as MusicXmlNote};
+// Some of these are only used in #[cfg(test)] modules; allow unused when building lib without tests.
+#[allow(unused_imports)]
 use tusk_model::data::{
-    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataArticulation, DataAugmentdot, DataBoolean, DataDuration,
-    DataDurationCmn, DataDurationrests, DataEnclosure, DataGrace, DataOctave, DataPitchname,
-    DataStaffloc, DataStemdirection, DataStemdirectionBasic, DataTie,
+    DataAccidentalWritten, DataAccidentalWrittenBasic, DataArticulation, DataAugmentdot,
+    DataBoolean, DataDuration, DataDurationCmn, DataDurationrests, DataEnclosure, DataGrace,
+    DataOctave, DataPitchname, DataStaffloc, DataStemdirection, DataStemdirectionBasic, DataTie,
 };
 use tusk_model::elements::{Accid, Chord, ChordChild, Note as MeiNote, NoteChild};
 
@@ -112,7 +113,7 @@ pub fn convert_note(
     convert_ties(note, &mut mei_note);
 
     // Convert articulations
-    convert_articulations(note, &mut mei_note);
+    convert_articulations(note, &mut mei_note, ctx);
 
     // Process slurs (track pending, resolve completed)
     let note_id = mei_note.common.xml_id.clone().unwrap_or_default();
@@ -449,16 +450,35 @@ fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
 // Articulation Conversion
 // ============================================================================
 
-/// Convert MusicXML articulations to MEI @artic attribute.
+/// Convert MusicXML articulations to MEI @artic attribute and note label for breath/caesura.
 ///
 /// Maps MusicXML articulation elements (accent, staccato, tenuto, etc.)
-/// to MEI DataArticulation values.
-fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote) {
+/// to MEI DataArticulation. Breath-mark and caesura are stored in note common.label
+/// (e.g. "musicxml:breath-mark", "musicxml:caesura") for roundtrip since MEI @artic
+/// has no equivalent and Breath/Caesura are not note children in our schema.
+fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote, ctx: &mut ConversionContext) {
     if let Some(ref notations) = note.notations {
         if let Some(ref artics) = notations.articulations {
             let tokens = articulations_to_mei(artics);
-            // MEI @artic is single DataArticulation; use first if multiple present
+            if tokens.len() > 1 {
+                ctx.add_warning(
+                    "artic",
+                    "Multiple articulations on note; only first is stored in MEI @artic",
+                );
+            }
             mei_note.note_anl.artic = tokens.first().copied();
+
+            // Store breath-mark and/or caesura in label for roundtrip
+            let mut labels = Vec::<&str>::new();
+            if artics.breath_mark.is_some() {
+                labels.push("musicxml:breath-mark");
+            }
+            if artics.caesura.is_some() {
+                labels.push("musicxml:caesura");
+            }
+            if !labels.is_empty() {
+                mei_note.common.label = Some(labels.join(","));
+            }
         }
     }
 }
@@ -559,6 +579,7 @@ fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
     if artics.soft_accent.is_some() {
         result.push(DataArticulation::AccSoft);
     }
+    // breath_mark and caesura are stored via note common.label in convert_articulations
 
     result
 }
@@ -1419,9 +1440,9 @@ mod tests {
         let pitches: Vec<&str> = mei_chord
             .children
             .iter()
-            .filter_map(|c| match c {
-                ChordChild::Note(n) => n.note_log.pname.as_ref().map(|p| p.0.as_str()),
-                _ => None,
+            .filter_map(|c| {
+                let ChordChild::Note(n) = c;
+                n.note_log.pname.as_ref().map(|p| p.0.as_str())
             })
             .collect();
 
@@ -1450,9 +1471,9 @@ mod tests {
         let notes: Vec<_> = mei_chord
             .children
             .iter()
-            .filter_map(|c| match c {
-                ChordChild::Note(n) => Some(n.as_ref()),
-                _ => None,
+            .filter_map(|c| {
+                let ChordChild::Note(n) = c;
+                Some(n.as_ref())
             })
             .collect();
 
