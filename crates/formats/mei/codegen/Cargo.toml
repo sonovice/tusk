@@ -1,0 +1,25 @@
+[package]
+name = "tusk-mei-codegen"
+version.workspace = true
+edition.workspace = true
+description = "Generate Rust model and MEI ser/de code from MEI ODD (relocated under tusk-mei format)"
+publish = false
+
+[lib]
+name = "tusk_mei_codegen"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tusk-mei-codegen"
+path = "src/main.rs"
+
+[dependencies]
+quick-xml = "0.37"
+clap = { version = "4", features = ["derive"] }
+heck = "0.5"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full", "parsing"] }
+prettyplease = "0.2"
+anyhow = "1"
+regex = "1"

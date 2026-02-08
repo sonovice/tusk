@@ -15,5 +15,8 @@ serde = { workspace = true }
 smallvec = { workspace = true }
 thiserror = { workspace = true }
 
+[build-dependencies]
+tusk-mei-codegen = { path = "../../formats/mei/codegen" }
+
 [dev-dependencies]
 serde_json = "1.0.149"
