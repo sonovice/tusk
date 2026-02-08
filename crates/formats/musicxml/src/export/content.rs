@@ -1210,22 +1210,27 @@ mod tests {
     };
 
     fn create_simple_mei_score() -> MeiScore {
+        use tusk_model::data::{
+            DataDuration, DataDurationCmn, DataMeasurementunsigned, DataOctave, DataPitchname,
+            DataWord,
+        };
+
         let mut score = MeiScore::default();
 
         // Create section with one measure
         let mut section = Section::default();
         let mut measure = MeiMeasure::default();
-        measure.common.n = Some("1".to_string());
+        measure.common.n = Some(DataWord("1".to_string()));
 
-        // Create staff with layer containing a note (MEI uses Option<String> for @n)
+        // Create staff with layer containing a note
         let mut staff = Staff::default();
         staff.n_integer.n = Some("1".to_string());
 
         let mut layer = Layer::default();
         let mut note = MeiNote::default();
-        note.note_log.pname = Some("c".to_string());
-        note.note_log.oct = Some("4".to_string());
-        note.note_log.dur = Some("4".to_string());
+        note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note.note_log.oct = Some(DataOctave::from(4u64));
+        note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
 
         layer.children.push(LayerChild::Note(Box::new(note)));
         staff.children.push(StaffChild::Layer(Box::new(layer)));

@@ -222,10 +222,17 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
             if r.contains(".attribute.") {
                 if let Some(attr_def) = defines.get(r) {
                     if let Some(ref an) = attr_def.att_name {
+                        // RNG can use <ref name="mei_data.X"/> or <data type="mei_data.X"/> for type
                         let datatype = attr_def
                             .refs
                             .first()
-                            .map(|t| AttributeDataType::Ref(t.clone()));
+                            .map(|t| AttributeDataType::Ref(t.clone()))
+                            .or_else(|| {
+                                attr_def
+                                    .data_type
+                                    .as_ref()
+                                    .map(|t| AttributeDataType::Ref(t.clone()))
+                            });
                         attributes.push(Attribute {
                             ident: an.clone(),
                             desc: attr_def.doc.clone(),

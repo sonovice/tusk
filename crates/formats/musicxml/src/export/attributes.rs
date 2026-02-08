@@ -497,10 +497,10 @@ mod tests {
 
         let mut score_def = ScoreDef::default();
 
-        // Set key signature (D major = 2 sharps); MEI @keysig is Option<String>
-        score_def.score_def_log.keysig = Some("2s".to_string());
+        // Set key signature (D major = 2 sharps)
+        score_def.score_def_log.keysig = Some(tusk_model::data::DataKeyfifths("2s".to_string()));
 
-        // Set time signature (4/4 common time); MEI uses string attributes
+        // Set time signature (4/4 common time)
         score_def.score_def_log.meter_count = Some("4".to_string());
         score_def.score_def_log.meter_unit = Some("4".to_string());
         score_def.score_def_log.meter_sym = Some(tusk_model::data::DataMetersign::Common);
@@ -543,10 +543,10 @@ mod tests {
     fn test_convert_mei_staff_def_to_mxml_attributes() {
         let mut staff_def = StaffDef::default();
 
-        // Set key signature (Bb major = 2 flats); MEI @keysig is Option<String>
-        staff_def.staff_def_log.keysig = Some("2f".to_string());
+        // Set key signature (Bb major = 2 flats)
+        staff_def.staff_def_log.keysig = Some(tusk_model::data::DataKeyfifths("2f".to_string()));
 
-        // Set time signature (3/4); MEI uses string attributes
+        // Set time signature (3/4)
         staff_def.staff_def_log.meter_count = Some("3".to_string());
         staff_def.staff_def_log.meter_unit = Some("4".to_string());
 

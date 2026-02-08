@@ -222,7 +222,7 @@ mod tests {
         // Create a staffDef with label
         let mut staff_def = StaffDef::default();
         staff_def.basic.xml_id = Some("staff-1".to_string());
-        staff_def.n_integer.n = Some(1);
+        staff_def.n_integer.n = Some("1".to_string());
 
         let mut label = Label::default();
         label.children.push(LabelChild::Text("Piano".to_string()));
@@ -243,7 +243,7 @@ mod tests {
     fn test_convert_staff_def_with_abbreviation() {
         let mut staff_def = StaffDef::default();
         staff_def.basic.xml_id = Some("staff-1".to_string());
-        staff_def.n_integer.n = Some(1);
+        staff_def.n_integer.n = Some("1".to_string());
 
         let mut label = Label::default();
         label
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn test_convert_staff_def_generates_id_from_n() {
         let mut staff_def = StaffDef::default();
-        staff_def.n_integer.n = Some(3);
+        staff_def.n_integer.n = Some("3".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         let result = convert_mei_staff_def_to_score_part(&staff_def, &mut ctx);
@@ -298,7 +298,7 @@ mod tests {
         // Add two staff defs
         let mut staff_def1 = StaffDef::default();
         staff_def1.basic.xml_id = Some("P1".to_string());
-        staff_def1.n_integer.n = Some(1);
+        staff_def1.n_integer.n = Some("1".to_string());
         let mut label1 = Label::default();
         label1
             .children
@@ -309,7 +309,7 @@ mod tests {
 
         let mut staff_def2 = StaffDef::default();
         staff_def2.basic.xml_id = Some("P2".to_string());
-        staff_def2.n_integer.n = Some(2);
+        staff_def2.n_integer.n = Some("2".to_string());
         let mut label2 = Label::default();
         label2.children.push(LabelChild::Text("Alto".to_string()));
         staff_def2

@@ -681,7 +681,7 @@ mod tests {
         // Check measure number is set via common.n
         assert!(mei_measure.common.n.is_some());
         let n = mei_measure.common.n.as_ref().unwrap();
-        assert_eq!(n.as_str(), "42");
+        assert_eq!(n.0.as_str(), "42");
     }
 
     // ============================================================================
@@ -713,7 +713,10 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // implicit="yes" → metcon="false"
-        assert_eq!(mei_measure.measure_log.metcon.as_deref(), Some("false"));
+        assert_eq!(
+            mei_measure.measure_log.metcon,
+            Some(tusk_model::data::DataBoolean::False)
+        );
     }
 
     #[test]
@@ -770,7 +773,7 @@ mod tests {
         // width → @width with virtual units
         assert!(mei_measure.measure_vis.width.is_some());
         let width = mei_measure.measure_vis.width.as_ref().unwrap();
-        assert_eq!(width.as_str(), "150.5vu");
+        assert_eq!(width.0.as_str(), "150.5vu");
     }
 
     #[test]
@@ -830,7 +833,10 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // non_controlling="yes" → control="false"
-        assert_eq!(mei_measure.measure_log.control.as_deref(), Some("false"));
+        assert_eq!(
+            mei_measure.measure_log.control,
+            Some(tusk_model::data::DataBoolean::False)
+        );
     }
 
     #[test]
@@ -857,7 +863,10 @@ mod tests {
 
         // Only @n should be set, optional attributes should be None
         assert!(mei_measure.common.n.is_some());
-        assert_eq!(mei_measure.common.n.as_deref(), Some("1"));
+        assert_eq!(
+            mei_measure.common.n.as_ref().map(|w| w.0.as_str()),
+            Some("1")
+        );
         assert!(mei_measure.measure_log.metcon.is_none());
         assert!(mei_measure.measure_vis.width.is_none());
         assert!(mei_measure.common.xml_id.is_none());
@@ -895,10 +904,22 @@ mod tests {
         let mei_measure = convert_measure(&score, 0, &mut ctx).expect("conversion should succeed");
 
         // All attributes should be converted
-        assert_eq!(mei_measure.common.n.as_deref(), Some("0"));
-        assert_eq!(mei_measure.measure_log.metcon.as_deref(), Some("false"));
-        assert_eq!(mei_measure.measure_log.control.as_deref(), Some("false"));
-        assert_eq!(mei_measure.measure_vis.width.as_deref(), Some("200vu"));
+        assert_eq!(
+            mei_measure.common.n.as_ref().map(|w| w.0.as_str()),
+            Some("0")
+        );
+        assert_eq!(
+            mei_measure.measure_log.metcon,
+            Some(tusk_model::data::DataBoolean::False)
+        );
+        assert_eq!(
+            mei_measure.measure_log.control,
+            Some(tusk_model::data::DataBoolean::False)
+        );
+        assert_eq!(
+            mei_measure.measure_vis.width.as_ref().map(|w| w.0.as_str()),
+            Some("200vu")
+        );
         assert!(mei_measure.common.xml_id.is_some());
         assert!(ctx.get_mei_id("m0").is_some());
     }

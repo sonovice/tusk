@@ -228,7 +228,10 @@ fn convert_mei_pname_to_step(pname: &str) -> ConversionResult<crate::model::data
 fn convert_mei_gestural_accid_to_alter(
     accid_ges: &Option<tusk_model::data::DataAccidentalGestural>,
 ) -> Option<f64> {
-    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
+    use tusk_model::data::{
+        DataAccidentalGestural, DataAccidentalGesturalBasic,
+        DataAccidentalGesturalExtended,
+    };
 
     accid_ges.as_ref().and_then(|a| {
         Some(match a {
@@ -241,8 +244,15 @@ fn convert_mei_gestural_accid_to_alter(
                 DataAccidentalGesturalBasic::Ss => 2.0,
                 DataAccidentalGesturalBasic::Ts => 3.0,
             },
-            DataAccidentalGestural::MeiDataAccidentalGesturalExtended(_)
-            | DataAccidentalGestural::MeiDataAccidentalAeu(_)
+            DataAccidentalGestural::MeiDataAccidentalGesturalExtended(ext) => match ext {
+                DataAccidentalGesturalExtended::Su => 1.5,
+                DataAccidentalGesturalExtended::Sd => 0.5,
+                DataAccidentalGesturalExtended::Fu => -0.5,
+                DataAccidentalGesturalExtended::Fd => -1.5,
+                DataAccidentalGesturalExtended::Xu => 2.5,
+                DataAccidentalGesturalExtended::Ffd => -2.5,
+            },
+            DataAccidentalGestural::MeiDataAccidentalAeu(_)
             | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
         })
     })
@@ -1298,7 +1308,6 @@ mod tests {
         use tusk_model::data::{
             DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname,
         };
-        use tusk_model::data::{DataDuration, DataDurationCmn, DataGrace, DataOctave, DataPitchname};
         use tusk_model::elements::Note as MeiNote;
 
         let mut mei_note = MeiNote::default();
@@ -1575,7 +1584,7 @@ mod tests {
 
         let mut mei_rest = MeiRest::default();
         // Set gestural duration directly (12 ppq)
-        mei_rest.rest_ges.dur_ppq = Some(12);
+        mei_rest.rest_ges.dur_ppq = Some("12".to_string());
 
         let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
         ctx.set_divisions(4.0); // Even with divisions set, dur.ppq takes precedence
@@ -1764,8 +1773,8 @@ mod tests {
 
         for pname in ["c", "e", "g"] {
             let mut note = MeiNote::default();
-            note.note_log.pname = Some(pname.to_string());
-            note.note_log.oct = Some("4".to_string());
+            note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
+            note.note_log.oct = Some(DataOctave::from(4u64));
             mei_chord.children.push(ChordChild::Note(Box::new(note)));
         }
 
@@ -1835,7 +1844,7 @@ mod tests {
 
         // Create a dotted quarter note chord
         let mut mei_chord = MeiChord::default();
-        mei_chord.chord_log.dur = Some("4".to_string());
+        mei_chord.chord_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
         mei_chord.chord_log.dots = Some(DataAugmentdot::from(1u64));
 
         let mut note1 = MeiNote::default();
@@ -2037,7 +2046,7 @@ mod tests {
         use tusk_model::elements::{Chord as MeiChord, ChordChild, Note as MeiNote};
 
         let mut mei_chord = MeiChord::default();
-        mei_chord.chord_ges.dur_ppq = Some(96); // 96 ppq = quarter note at 96 ppq
+        mei_chord.chord_ges.dur_ppq = Some("96".to_string()); // 96 ppq = quarter note at 96 ppq
 
         let mut note1 = MeiNote::default();
         note1.note_log.pname = Some(DataPitchname::from("c".to_string()));

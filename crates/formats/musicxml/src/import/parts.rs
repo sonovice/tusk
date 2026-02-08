@@ -416,8 +416,14 @@ mod tests {
         let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
             .expect("conversion should succeed");
 
-        assert_eq!(staff_def.staff_def_log.clef_shape.as_deref(), Some("g"));
-        assert_eq!(staff_def.staff_def_log.clef_line.as_deref(), Some("2"));
+        assert_eq!(
+            staff_def.staff_def_log.clef_shape,
+            Some(tusk_model::data::DataClefshape::G)
+        );
+        assert_eq!(
+            staff_def.staff_def_log.clef_line,
+            Some(tusk_model::data::DataClefline::from(2))
+        );
     }
 
     #[test]
@@ -546,7 +552,10 @@ mod tests {
             );
 
             // Should have bar.thru=true (from group-barline="yes")
-            assert_eq!(nested_grp.staff_grp_vis.bar_thru.as_deref(), Some("true"));
+            assert_eq!(
+                nested_grp.staff_grp_vis.bar_thru,
+                Some(tusk_model::data::DataBoolean::True)
+            );
 
             // Should have label "Strings"
             let has_label = nested_grp.children.iter().any(|c| {
@@ -689,7 +698,10 @@ mod tests {
 
         // Get the nested staffGrp and verify Mensurstrich → bar.thru=false
         if let StaffGrpChild::StaffGrp(nested_grp) = &staff_grp.children[0] {
-            assert_eq!(nested_grp.staff_grp_vis.bar_thru.as_deref(), Some("false"));
+            assert_eq!(
+                nested_grp.staff_grp_vis.bar_thru,
+                Some(tusk_model::data::DataBoolean::False)
+            );
         } else {
             panic!("Expected nested StaffGrp");
         }
