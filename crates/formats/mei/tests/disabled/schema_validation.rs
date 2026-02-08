@@ -1,4 +1,4 @@
-//! Integration tests that validate serialized MEI CMN output against mei-all.rng schema.
+//! Integration tests that validate serialized MEI CMN output against mei-all_v6.0-dev.rng schema.
 //!
 //! These tests serialize MEI elements to XML and validate them using xmllint with the
 //! official MEI RelaxNG schema. This ensures our serialization produces valid MEI documents.
@@ -21,7 +21,7 @@ use tusk_model::elements::{
 };
 
 /// Path to the MEI RNG schema relative to the workspace root.
-const MEI_RNG_SCHEMA: &str = "specs/mei/validation/mei-all.rng";
+const MEI_RNG_SCHEMA: &str = "crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng";
 
 /// Check if xmllint is available in PATH.
 fn xmllint_available() -> bool {
@@ -95,7 +95,7 @@ fn find_workspace_root() -> Result<std::path::PathBuf, String> {
     }
 }
 
-/// Validate an MEI XML string against the mei-all.rng schema using xmllint.
+/// Validate an MEI XML string against the mei-all_v6.0-dev.rng schema using xmllint.
 ///
 /// Returns Ok(()) if valid, Err with xmllint output if invalid.
 fn validate_mei_with_xmllint(mei_xml: &str) -> Result<(), String> {

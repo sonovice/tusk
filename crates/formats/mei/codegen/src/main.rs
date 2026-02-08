@@ -40,11 +40,11 @@ struct Args {
     #[arg(long)]
     mei_crate: Option<PathBuf>,
 
-    /// Use MEI RNG file instead of ODD (e.g. specs/mei/validation/mei-all.rng). When set, --input is not required.
+    /// Use MEI RNG file (e.g. codegen/schema/versions/mei-all_v6.0-dev.rng). When set, --input is not required.
     #[arg(long)]
     rng: Option<PathBuf>,
 
-    /// Generate a versioned import model; use with --rng pointing to specs/mei/versions/mei-all_vX.Y.Z.rng. Output should be crates/formats/mei/src/versions/<label>. Module path will be crate::versions::<label>.
+    /// Generate a versioned import model; use with --rng pointing to codegen/schema/versions/mei-all_vX.Y.rng. Output should be crates/formats/mei/src/versions/<label>. Module path will be crate::versions::<label>.
     #[arg(long)]
     versioned: Option<String>,
 }

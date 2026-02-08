@@ -44,7 +44,8 @@ const CREATOR_DEPRECATED: &[(&str, &str)] = &[
     ("librettist", "lbt"),
 ];
 
-/// Generate all Rust code from ODD definitions.
+/// Generate all Rust code from ODD definitions (used when calling the library directly).
+#[allow(dead_code)]
 pub fn generate_all(defs: &OddDefinitions, output: &Path) -> Result<()> {
     generate_all_with_config(defs, output, &CodegenConfig::default())
 }
@@ -137,9 +138,11 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path, config: &CodegenCon
     let mut tokens = TokenStream::new();
 
     tokens.extend(quote! {
-        //! MEI data types (generated from ODD).
+        //! MEI data types (generated from RNG/ODD).
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
+
+        #![allow(unused_imports)]
 
         use serde::{Deserialize, Serialize};
         use #base::validation::{ValidationContext, Validate};
@@ -527,7 +530,7 @@ fn generate_att_classes(defs: &OddDefinitions, output: &Path, config: &CodegenCo
     let mod_tokens = quote! {
         //! MEI attribute classes (generated from ODD).
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
         #(#mod_items)*
     };
@@ -654,8 +657,9 @@ fn attribute_inner_type_tokens(
 ) -> TokenStream {
     match datatype {
         AttributeDataType::Ref(ref_name) => {
-            if defs.data_types.contains_key(ref_name) {
-                let type_name = mei_ident_to_type(ref_name);
+            let key = data_type_lookup_key(ref_name);
+            if defs.data_types.contains_key(&key) {
+                let type_name = mei_ident_to_type(&key);
                 quote! { #base::data::#type_name }
             } else {
                 quote! { String }
@@ -686,8 +690,9 @@ fn attribute_type_tokens(
 
     match datatype {
         Some(AttributeDataType::Ref(ref_name)) => {
-            if defs.data_types.contains_key(ref_name) {
-                let type_name = mei_ident_to_type(ref_name);
+            let key = data_type_lookup_key(ref_name);
+            if defs.data_types.contains_key(&key) {
+                let type_name = mei_ident_to_type(&key);
                 if is_unbounded {
                     quote! { Vec<#base::data::#type_name> }
                 } else {
@@ -745,7 +750,7 @@ fn generate_model_classes(defs: &OddDefinitions, output: &Path, _config: &Codege
         //!
         //! Model classes group elements that can appear in specific content model positions.
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
     });
 
@@ -777,12 +782,14 @@ fn generate_pattern_entities(defs: &OddDefinitions, output: &Path, config: &Code
     let mut tokens = TokenStream::new();
 
     tokens.extend(quote! {
-        //! MEI pattern entities (generated from ODD).
+        //! MEI pattern entities (generated from RNG/ODD).
         //!
         //! Pattern entities define reusable content patterns that can be referenced
         //! by element content models via macroRef.
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
+
+        #![allow(unused_imports)]
 
         use serde::{Deserialize, Serialize};
 
@@ -900,7 +907,7 @@ fn generate_elements(defs: &OddDefinitions, output: &Path, config: &CodegenConfi
     let mod_tokens = quote! {
         //! MEI elements (generated from ODD).
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
         #(#mod_items)*
     };
@@ -1128,6 +1135,43 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     // MEI 5.x deprecated composer/lyricist/arranger/author/librettist inside <work>;
     // the deserializer converts them to <creator> with a @role attribute.
     ("work", "creator"),
+    // Content models that the RNG expresses via model classes; inject so export/import have full Child enums.
+    ("score", "scoreDef"),
+    ("score", "section"),
+    ("staff", "layer"),
+    ("layer", "note"),
+    ("layer", "chord"),
+    ("layer", "rest"),
+    ("layer", "beam"),
+    ("layer", "mRest"),
+    ("beam", "note"),
+    ("body", "mdiv"),
+    ("mdiv", "score"),
+    ("chord", "note"),
+    ("note", "accid"),
+    ("measure", "staff"),
+    ("measure", "layer"),
+    ("measure", "dir"),
+    ("measure", "dynam"),
+    ("measure", "hairpin"),
+    ("measure", "tempo"),
+    ("measure", "slur"),
+    ("staffDef", "label"),
+    ("staffDef", "labelAbbr"),
+    ("staffGrp", "staffDef"),
+    ("staffGrp", "staffGrp"),
+    ("staffGrp", "label"),
+    ("staffGrp", "labelAbbr"),
+    ("scoreDef", "staffGrp"),
+    ("beam", "chord"),
+    ("beam", "rest"),
+    ("beam", "beam"),
+    ("section", "measure"),
+    ("section", "section"),
+    ("music", "body"),
+    ("titleStmt", "title"),
+    ("fileDesc", "titleStmt"),
+    ("fileDesc", "pubStmt"),
 ];
 
 fn generate_child_content(
@@ -1424,7 +1468,7 @@ fn generate_validation(defs: &OddDefinitions, output: &Path, _config: &CodegenCo
         //!
         #![doc = #constraint_doc_str]
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
         use std::fmt;
 
@@ -1643,7 +1687,7 @@ fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfi
         //!
         //! This module contains Rust types that map 1:1 to MEI constructs.
         //!
-        //! DO NOT EDIT - regenerate with: cargo run -p mei-codegen
+        //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
         pub mod data;
         pub mod att;
@@ -1715,6 +1759,16 @@ fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfi
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/// Normalize a data type ref for lookup in defs.data_types.
+/// RNG uses "mei_data.X", ODD uses "data.X"; we store under "data.X".
+fn data_type_lookup_key(ref_name: &str) -> String {
+    if ref_name.starts_with("mei_data.") {
+        ref_name.replacen("mei_data.", "data.", 1)
+    } else {
+        ref_name.to_string()
+    }
+}
 
 /// Convert MEI identifier to Rust type name.
 /// e.g., "data.DURATION.cmn" -> "DataDurationCmn"
@@ -1884,7 +1938,7 @@ fn generate_mei_serialize_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated MeiSerialize impls for all MEI elements.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p tusk-mei-codegen -- --rng crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng --output crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::{CollectAttributes, MeiSerialize, MeiWriter, SerializeResult};
         use std::io::Write;
@@ -1940,7 +1994,7 @@ fn generate_mei_serialize_impl_for_element(
                 (None, false) => quote! { push_attr!(attrs, #xml_name, string self.#field_name); },
                 (Some(_), true) => quote! { push_attr!(attrs, #xml_name, vec self.#field_name); },
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if !defs.data_types.contains_key(ref_name) =>
+                    if !defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }
@@ -2164,7 +2218,7 @@ fn generate_mei_deserialize_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated MeiDeserialize impls for all MEI elements.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p tusk-mei-codegen -- --rng crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng --output crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::{
             AttributeMap, DeserializeResult, ExtractAttributes, MeiDeserialize, MeiReader,
@@ -2218,7 +2272,7 @@ fn generate_mei_deserialize_impl_for_element(
                 (None, true) => quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); },
                 (None, false) => quote! { extract_attr!(attrs, #xml_name, string result.#field_name); },
                 (Some(AttributeDataType::Ref(ref_name)), true)
-                    if defs.data_types.contains_key(ref_name) =>
+                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, vec result.#field_name); }
                 }
@@ -2226,7 +2280,7 @@ fn generate_mei_deserialize_impl_for_element(
                     quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); }
                 }
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if defs.data_types.contains_key(ref_name) =>
+                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, result.#field_name); }
                 }
@@ -2436,7 +2490,7 @@ fn generate_extract_attributes_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated ExtractAttributes impls for all MEI attribute classes.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p tusk-mei-codegen -- --rng crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng --output crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::{AttributeMap, DeserializeResult, ExtractAttributes};
         #[allow(unused_imports)]
@@ -2462,7 +2516,7 @@ fn generate_collect_attributes_impls(defs: &OddDefinitions) -> TokenStream {
         //! Auto-generated CollectAttributes impls for all MEI attribute classes.
         //!
         //! DO NOT EDIT - regenerate with:
-        //!   cargo run -p mei-codegen -- -i specs/mei/modules -o crates/core/model/src/generated --mei-crate crates/formats/mei/src
+        //!   cargo run -p tusk-mei-codegen -- --rng crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng --output crates/core/model/src/generated --mei-crate crates/formats/mei/src
 
         use super::super::CollectAttributes;
         #[allow(unused_imports)]
@@ -2497,7 +2551,7 @@ fn generate_extract_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Vec<T> — Ref(known) + unbounded
                 (Some(AttributeDataType::Ref(ref_name)), true)
-                    if defs.data_types.contains_key(ref_name) =>
+                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, vec self.#field_name); }
                 }
@@ -2507,7 +2561,7 @@ fn generate_extract_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Option<T> — Ref(known)
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if defs.data_types.contains_key(ref_name) =>
+                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, self.#field_name); }
                 }
@@ -2585,7 +2639,7 @@ fn generate_collect_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Option<T> — Ref(unknown) → string
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if !defs.data_types.contains_key(ref_name) =>
+                    if !defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }

@@ -2,8 +2,9 @@
 //!
 //! These tests verify that MEI elements can be correctly converted to MusicXML format.
 //! The tests focus on individual element conversions: notes, rests, and chords.
+//!
+//! The MEI model uses Option<String> for attributes (pname, oct, dur, etc.).
 
-use tusk_model::data::{DataDuration, DataDurationCmn, DataOctave, DataPitchname};
 use tusk_model::elements::{Chord, ChordChild, Note, Rest};
 use tusk_musicxml::context::{ConversionContext, ConversionDirection};
 use tusk_musicxml::export::{convert_mei_chord, convert_mei_note, convert_mei_rest};
@@ -12,12 +13,12 @@ use tusk_musicxml::export::{convert_mei_chord, convert_mei_note, convert_mei_res
 // Helper Functions
 // ============================================================================
 
-/// Create an MEI note with specified pitch and duration.
-fn create_mei_note(pname: &str, octave: u64, dur: DataDurationCmn) -> Note {
+/// MEI duration string: "1"=whole, "2"=half, "4"=quarter, "8"=eighth, "16"=sixteenth, "0"=breve.
+fn create_mei_note(pname: &str, octave: u64, dur: &str) -> Note {
     let mut note = Note::default();
-    note.note_log.pname = Some(DataPitchname::from(pname.to_string()));
-    note.note_log.oct = Some(DataOctave::from(octave));
-    note.note_log.dur = Some(DataDuration::DataDurationCmn(dur));
+    note.note_log.pname = Some(pname.to_string());
+    note.note_log.oct = Some(octave.to_string());
+    note.note_log.dur = Some(dur.to_string());
     note
 }
 
@@ -30,7 +31,7 @@ fn test_convert_mei_note_quarter_c4() {
     use tusk_musicxml::model::data::Step;
     use tusk_musicxml::model::note::FullNoteContent;
 
-    let mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
+    let mei_note = create_mei_note("c", 4, "4");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -57,7 +58,7 @@ fn test_convert_mei_note_half_g5() {
     use tusk_musicxml::model::data::Step;
     use tusk_musicxml::model::note::{FullNoteContent, NoteTypeValue};
 
-    let mei_note = create_mei_note("g", 5, DataDurationCmn::N2);
+    let mei_note = create_mei_note("g", 5, "2");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -91,7 +92,7 @@ fn test_convert_mei_note_eighth_a3() {
     use tusk_musicxml::model::data::Step;
     use tusk_musicxml::model::note::{FullNoteContent, NoteTypeValue};
 
-    let mei_note = create_mei_note("a", 3, DataDurationCmn::N8);
+    let mei_note = create_mei_note("a", 3, "8");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -125,7 +126,7 @@ fn test_convert_mei_note_whole_e4() {
     use tusk_musicxml::model::data::Step;
     use tusk_musicxml::model::note::{FullNoteContent, NoteTypeValue};
 
-    let mei_note = create_mei_note("e", 4, DataDurationCmn::N1);
+    let mei_note = create_mei_note("e", 4, "1");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -157,7 +158,7 @@ fn test_convert_mei_note_whole_e4() {
 #[test]
 fn test_convert_mei_note_with_high_divisions() {
     // Test with divisions=96 (common in notation software)
-    let mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
+    let mei_note = create_mei_note("c", 4, "4");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(96.0);
@@ -175,7 +176,7 @@ fn test_convert_mei_note_with_high_divisions() {
 fn test_convert_mei_note_sixteenth() {
     use tusk_musicxml::model::note::NoteTypeValue;
 
-    let mei_note = create_mei_note("d", 4, DataDurationCmn::N16);
+    let mei_note = create_mei_note("d", 4, "16");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -200,7 +201,7 @@ fn test_convert_mei_note_sixteenth() {
 fn test_convert_mei_note_breve() {
     use tusk_musicxml::model::note::NoteTypeValue;
 
-    let mei_note = create_mei_note("c", 4, DataDurationCmn::Breve);
+    let mei_note = create_mei_note("c", 4, "0");
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -227,10 +228,8 @@ fn test_convert_mei_note_breve() {
 
 #[test]
 fn test_convert_mei_rest_quarter() {
-    use tusk_model::data::DataDurationrests;
-
     let mut mei_rest = Rest::default();
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+    mei_rest.rest_log.dur = Some("4".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -253,7 +252,7 @@ fn test_convert_mei_rest_half() {
     use tusk_musicxml::model::note::NoteTypeValue;
 
     let mut mei_rest = Rest::default();
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N2));
+    mei_rest.rest_log.dur = Some("2".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -283,7 +282,7 @@ fn test_convert_mei_rest_whole() {
     use tusk_musicxml::model::note::NoteTypeValue;
 
     let mut mei_rest = Rest::default();
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N1));
+    mei_rest.rest_log.dur = Some("1".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -313,7 +312,7 @@ fn test_convert_mei_rest_eighth() {
     use tusk_musicxml::model::note::NoteTypeValue;
 
     let mut mei_rest = Rest::default();
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N8));
+    mei_rest.rest_log.dur = Some("8".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -348,11 +347,11 @@ fn test_convert_mei_chord_c_major() {
 
     // Create a C major chord (C4, E4, G4)
     let mut mei_chord = Chord::default();
-    mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    mei_chord.chord_log.dur = Some("4".to_string());
 
-    let note_c = create_mei_note("c", 4, DataDurationCmn::N4);
-    let note_e = create_mei_note("e", 4, DataDurationCmn::N4);
-    let note_g = create_mei_note("g", 4, DataDurationCmn::N4);
+    let note_c = create_mei_note("c", 4, "4");
+    let note_e = create_mei_note("e", 4, "4");
+    let note_g = create_mei_note("g", 4, "4");
 
     mei_chord.children.push(ChordChild::Note(Box::new(note_c)));
     mei_chord.children.push(ChordChild::Note(Box::new(note_e)));
@@ -394,10 +393,10 @@ fn test_convert_mei_chord_c_major() {
 fn test_convert_mei_chord_duration() {
     // Create a half note chord
     let mut mei_chord = Chord::default();
-    mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N2));
+    mei_chord.chord_log.dur = Some("2".to_string());
 
-    let note_c = create_mei_note("c", 4, DataDurationCmn::N4);
-    let note_e = create_mei_note("e", 4, DataDurationCmn::N4);
+    let note_c = create_mei_note("c", 4, "4");
+    let note_e = create_mei_note("e", 4, "4");
 
     mei_chord.children.push(ChordChild::Note(Box::new(note_c)));
     mei_chord.children.push(ChordChild::Note(Box::new(note_e)));
@@ -423,11 +422,11 @@ fn test_convert_mei_chord_g_minor() {
 
     // Create a G minor chord (G4, Bb4, D5)
     let mut mei_chord = Chord::default();
-    mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    mei_chord.chord_log.dur = Some("4".to_string());
 
-    let note_g = create_mei_note("g", 4, DataDurationCmn::N4);
-    let note_b = create_mei_note("b", 4, DataDurationCmn::N4);
-    let note_d = create_mei_note("d", 5, DataDurationCmn::N4);
+    let note_g = create_mei_note("g", 4, "4");
+    let note_b = create_mei_note("b", 4, "4");
+    let note_d = create_mei_note("d", 5, "4");
 
     mei_chord.children.push(ChordChild::Note(Box::new(note_g)));
     mei_chord.children.push(ChordChild::Note(Box::new(note_b)));
@@ -465,15 +464,15 @@ fn test_duration_divisions_relationship() {
 
     let test_cases = [
         // (duration_cmn, divisions, expected_mxml_duration)
-        (DataDurationCmn::N1, 4.0, 16.0), // Whole: 4 quarters * 4 div/quarter
-        (DataDurationCmn::N2, 4.0, 8.0),  // Half: 2 quarters * 4 div/quarter
-        (DataDurationCmn::N4, 4.0, 4.0),  // Quarter: 1 quarter * 4 div/quarter
-        (DataDurationCmn::N8, 4.0, 2.0),  // Eighth: 0.5 quarters * 4 div/quarter
-        (DataDurationCmn::N16, 4.0, 1.0), // 16th: 0.25 quarters * 4 div/quarter
-        (DataDurationCmn::N4, 1.0, 1.0),  // Quarter with div=1
-        (DataDurationCmn::N4, 96.0, 96.0), // Quarter with div=96
-        (DataDurationCmn::N8, 96.0, 48.0), // Eighth with div=96
-        (DataDurationCmn::N16, 96.0, 24.0), // 16th with div=96
+        ("1", 4.0, 16.0), // Whole: 4 quarters * 4 div/quarter
+        ("2", 4.0, 8.0),  // Half: 2 quarters * 4 div/quarter
+        ("4", 4.0, 4.0),  // Quarter: 1 quarter * 4 div/quarter
+        ("8", 4.0, 2.0),  // Eighth: 0.5 quarters * 4 div/quarter
+        ("16", 4.0, 1.0), // 16th: 0.25 quarters * 4 div/quarter
+        ("4", 1.0, 1.0),  // Quarter with div=1
+        ("4", 96.0, 96.0), // Quarter with div=96
+        ("8", 96.0, 48.0), // Eighth with div=96
+        ("16", 96.0, 24.0), // 16th with div=96
     ];
 
     for (dur_cmn, divisions, expected) in test_cases {
@@ -500,10 +499,8 @@ fn test_duration_divisions_relationship() {
 
 #[test]
 fn test_convert_dotted_quarter_note() {
-    use tusk_model::data::DataAugmentdot;
-
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
-    mei_note.note_log.dots = Some(DataAugmentdot::from(1u64));
+    let mut mei_note = create_mei_note("c", 4, "4");
+    mei_note.note_log.dots = Some("1".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -517,10 +514,8 @@ fn test_convert_dotted_quarter_note() {
 
 #[test]
 fn test_convert_double_dotted_half_note() {
-    use tusk_model::data::DataAugmentdot;
-
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N2);
-    mei_note.note_log.dots = Some(DataAugmentdot::from(2u64));
+    let mut mei_note = create_mei_note("c", 4, "2");
+    mei_note.note_log.dots = Some("2".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -534,10 +529,8 @@ fn test_convert_double_dotted_half_note() {
 
 #[test]
 fn test_convert_dotted_eighth_note() {
-    use tusk_model::data::DataAugmentdot;
-
-    let mut mei_note = create_mei_note("f", 4, DataDurationCmn::N8);
-    mei_note.note_log.dots = Some(DataAugmentdot::from(1u64));
+    let mut mei_note = create_mei_note("f", 4, "8");
+    mei_note.note_log.dots = Some("1".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -555,10 +548,8 @@ fn test_convert_dotted_eighth_note() {
 
 #[test]
 fn test_convert_grace_note() {
-    use tusk_model::data::DataGrace;
-
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N8);
-    mei_note.note_log.grace = Some(DataGrace::Unacc);
+    let mut mei_note = create_mei_note("c", 4, "8");
+    mei_note.note_log.grace = Some("unacc".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -572,11 +563,10 @@ fn test_convert_grace_note() {
 
 #[test]
 fn test_convert_accented_grace_note() {
-    use tusk_model::data::DataGrace;
     use tusk_musicxml::model::data::YesNo;
 
-    let mut mei_note = create_mei_note("d", 4, DataDurationCmn::N16);
-    mei_note.note_log.grace = Some(DataGrace::Acc);
+    let mut mei_note = create_mei_note("d", 4, "16");
+    mei_note.note_log.grace = Some("acc".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -593,11 +583,10 @@ fn test_convert_accented_grace_note() {
 
 #[test]
 fn test_convert_unaccented_grace_note_has_slash() {
-    use tusk_model::data::DataGrace;
     use tusk_musicxml::model::data::YesNo;
 
-    let mut mei_note = create_mei_note("e", 4, DataDurationCmn::N16);
-    mei_note.note_log.grace = Some(DataGrace::Unacc);
+    let mut mei_note = create_mei_note("e", 4, "16");
+    mei_note.note_log.grace = Some("unacc".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -614,7 +603,7 @@ fn test_convert_unaccented_grace_note_has_slash() {
 
 #[test]
 fn test_note_id_preserved() {
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
+    let mut mei_note = create_mei_note("c", 4, "4");
     mei_note.common.xml_id = Some("note-1".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -627,11 +616,9 @@ fn test_note_id_preserved() {
 
 #[test]
 fn test_rest_id_preserved() {
-    use tusk_model::data::DataDurationrests;
-
     let mut mei_rest = Rest::default();
     mei_rest.common.xml_id = Some("rest-1".to_string());
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
+    mei_rest.rest_log.dur = Some("4".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -645,9 +632,9 @@ fn test_rest_id_preserved() {
 fn test_chord_id_mapped() {
     let mut mei_chord = Chord::default();
     mei_chord.common.xml_id = Some("chord-1".to_string());
-    mei_chord.chord_log.dur = Some(DataDuration::DataDurationCmn(DataDurationCmn::N4));
+    mei_chord.chord_log.dur = Some("4".to_string());
 
-    let note_c = create_mei_note("c", 4, DataDurationCmn::N4);
+    let note_c = create_mei_note("c", 4, "4");
     mei_chord.children.push(ChordChild::Note(Box::new(note_c)));
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
@@ -665,13 +652,10 @@ fn test_chord_id_mapped() {
 
 #[test]
 fn test_note_with_gestural_sharp() {
-    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
     use tusk_musicxml::model::note::FullNoteContent;
 
-    let mut mei_note = create_mei_note("f", 4, DataDurationCmn::N4);
-    mei_note.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
-        DataAccidentalGesturalBasic::S,
-    ));
+    let mut mei_note = create_mei_note("f", 4, "4");
+    mei_note.note_ges.accid_ges = Some("s".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -687,13 +671,10 @@ fn test_note_with_gestural_sharp() {
 
 #[test]
 fn test_note_with_gestural_flat() {
-    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
     use tusk_musicxml::model::note::FullNoteContent;
 
-    let mut mei_note = create_mei_note("b", 4, DataDurationCmn::N4);
-    mei_note.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
-        DataAccidentalGesturalBasic::F,
-    ));
+    let mut mei_note = create_mei_note("b", 4, "4");
+    mei_note.note_ges.accid_ges = Some("f".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -709,13 +690,10 @@ fn test_note_with_gestural_flat() {
 
 #[test]
 fn test_note_with_gestural_double_sharp() {
-    use tusk_model::data::{DataAccidentalGestural, DataAccidentalGesturalBasic};
     use tusk_musicxml::model::note::FullNoteContent;
 
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
-    mei_note.note_ges.accid_ges = Some(DataAccidentalGestural::DataAccidentalGesturalBasic(
-        DataAccidentalGesturalBasic::Ss,
-    ));
+    let mut mei_note = create_mei_note("c", 4, "4");
+    mei_note.note_ges.accid_ges = Some("ss".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -735,13 +713,10 @@ fn test_note_with_gestural_double_sharp() {
 
 #[test]
 fn test_note_with_stem_up() {
-    use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
     use tusk_musicxml::model::note::StemValue;
 
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
-    mei_note.note_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
-        DataStemdirectionBasic::Up,
-    ));
+    let mut mei_note = create_mei_note("c", 4, "4");
+    mei_note.note_vis.stem_dir = Some("up".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -754,13 +729,10 @@ fn test_note_with_stem_up() {
 
 #[test]
 fn test_note_with_stem_down() {
-    use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
     use tusk_musicxml::model::note::StemValue;
 
-    let mut mei_note = create_mei_note("a", 5, DataDurationCmn::N4);
-    mei_note.note_vis.stem_dir = Some(DataStemdirection::DataStemdirectionBasic(
-        DataStemdirectionBasic::Down,
-    ));
+    let mut mei_note = create_mei_note("a", 5, "4");
+    mei_note.note_vis.stem_dir = Some("down".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -777,10 +749,8 @@ fn test_note_with_stem_down() {
 
 #[test]
 fn test_cue_note() {
-    use tusk_model::data::DataBoolean;
-
-    let mut mei_note = create_mei_note("c", 4, DataDurationCmn::N4);
-    mei_note.note_log.cue = Some(DataBoolean::True);
+    let mut mei_note = create_mei_note("c", 4, "4");
+    mei_note.note_log.cue = Some("true".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);
@@ -792,11 +762,9 @@ fn test_cue_note() {
 
 #[test]
 fn test_cue_rest() {
-    use tusk_model::data::{DataBoolean, DataDurationrests};
-
     let mut mei_rest = Rest::default();
-    mei_rest.rest_log.dur = Some(DataDurationrests::DataDurationCmn(DataDurationCmn::N4));
-    mei_rest.rest_log.cue = Some(DataBoolean::True);
+    mei_rest.rest_log.dur = Some("4".to_string());
+    mei_rest.rest_log.cue = Some("true".to_string());
 
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
     ctx.set_divisions(4.0);

@@ -40,8 +40,8 @@ pub(crate) fn convert_pitch_name(step: crate::model::data::Step) -> DataPitchnam
 /// Handles both standard semitone alterations and quarter-tone microtonal values.
 /// MusicXML alter is in semitones (e.g., -0.5 = quarter-tone flat, 1.5 = three quarter-tones sharp).
 pub(crate) fn convert_alter_to_gestural_accid(alter: f64) -> DataAccidentalGestural {
-    use DataAccidentalGestural::{
-        DataAccidentalGesturalBasic as Basic, DataAccidentalGesturalExtended as Ext,
+    use tusk_model::data::DataAccidentalGestural::{
+        MeiDataAccidentalGesturalBasic as Basic, MeiDataAccidentalGesturalExtended as Ext,
     };
 
     // Use epsilon comparison for floating point
@@ -80,8 +80,8 @@ pub(crate) fn convert_alter_to_gestural_accid(alter: f64) -> DataAccidentalGestu
 
 /// Convert MusicXML AccidentalValue to MEI DataAccidentalWritten.
 pub(crate) fn convert_accidental_value(value: AccidentalValue) -> DataAccidentalWritten {
-    use DataAccidentalWritten::{
-        DataAccidentalWrittenBasic as Basic, DataAccidentalWrittenExtended as Ext,
+    use tusk_model::data::DataAccidentalWritten::{
+        MeiDataAccidentalWrittenBasic as Basic, MeiDataAccidentalWrittenExtended as Ext,
     };
 
     match value {
@@ -160,7 +160,7 @@ pub(crate) fn convert_note_type_to_duration(note_type: NoteTypeValue) -> DataDur
         NoteTypeValue::N512th => DataDurationCmn::N512,
         NoteTypeValue::N1024th => DataDurationCmn::N1024,
     };
-    DataDuration::DataDurationCmn(dur)
+    DataDuration::MeiDataDurationCmn(dur)
 }
 
 /// Convert MusicXML NoteTypeValue to MEI DataDurationCmn.
@@ -204,7 +204,7 @@ pub(crate) fn beat_unit_string_to_duration(beat_unit: &str) -> Option<DataDurati
         "1024th" => DataDurationCmn::N1024,
         _ => return None,
     };
-    Some(DataDuration::DataDurationCmn(cmn))
+    Some(DataDuration::MeiDataDurationCmn(cmn))
 }
 
 /// Convert MusicXML grace note to MEI grace attribute.
@@ -226,15 +226,15 @@ pub(crate) fn convert_grace(grace: &crate::model::note::Grace) -> DataGrace {
 /// Convert MusicXML StemValue to MEI DataStemdirection.
 pub(crate) fn convert_stem_direction(stem: StemValue) -> DataStemdirection {
     match stem {
-        StemValue::Up => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up),
-        StemValue::Down => DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Down),
+        StemValue::Up => DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up),
+        StemValue::Down => DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Down),
         StemValue::Double => {
             // MEI doesn't have double, default to up
-            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
+            DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up)
         }
         StemValue::None => {
             // No stem, but still need a direction value
-            DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up)
+            DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up)
         }
     }
 }

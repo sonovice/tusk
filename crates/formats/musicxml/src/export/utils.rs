@@ -2,12 +2,33 @@
 //!
 //! Duration, pitch, and ID helper functions used across conversion modules.
 
+/// Convert MEI duration string (e.g. "4", "quarter") to quarter note units.
+pub fn duration_str_to_quarter_notes(s: &str) -> f64 {
+    match s.trim().to_lowercase().as_str() {
+        "long" | "0" => 16.0,
+        "breve" => 8.0,
+        "whole" | "1" => 4.0,
+        "half" | "2" => 2.0,
+        "quarter" | "4" => 1.0,
+        "eighth" | "8" => 0.5,
+        "16th" | "16" => 0.25,
+        "32nd" | "32" => 0.125,
+        "64th" | "64" => 0.0625,
+        "128th" | "128" => 0.03125,
+        "256th" | "256" => 0.015625,
+        "512th" | "512" => 0.0078125,
+        "1024th" | "1024" => 0.00390625,
+        "2048th" | "2048" => 0.001953125,
+        _ => 1.0,
+    }
+}
+
 /// Convert MEI duration to quarter note units.
 pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
     use tusk_model::data::{DataDuration, DataDurationCmn};
 
     match dur {
-        DataDuration::DataDurationCmn(cmn) => match cmn {
+        DataDuration::MeiDataDurationCmn(cmn) => match cmn {
             DataDurationCmn::Long => 16.0,    // Long = 4 whole notes
             DataDurationCmn::Breve => 8.0,    // Breve = 2 whole notes
             DataDurationCmn::N1 => 4.0,       // Whole = 4 quarters
@@ -28,12 +49,17 @@ pub fn duration_to_quarter_notes(dur: &tusk_model::data::DataDuration) -> f64 {
     }
 }
 
+/// Convert MEI rest duration string to quarter note units.
+pub fn duration_rests_str_to_quarter_notes(s: &str) -> f64 {
+    duration_str_to_quarter_notes(s)
+}
+
 /// Convert MEI rest duration (DataDurationrests) to quarter note units.
 pub fn duration_rests_to_quarter_notes(dur: &tusk_model::data::DataDurationrests) -> f64 {
     use tusk_model::data::{DataDurationCmn, DataDurationrests};
 
     match dur {
-        DataDurationrests::DataDurationCmn(cmn) => match cmn {
+        DataDurationrests::MeiDataDurationCmn(cmn) => match cmn {
             DataDurationCmn::Long => 16.0,    // Long = 4 whole notes
             DataDurationCmn::Breve => 8.0,    // Breve = 2 whole notes
             DataDurationCmn::N1 => 4.0,       // Whole = 4 quarters
@@ -50,7 +76,7 @@ pub fn duration_rests_to_quarter_notes(dur: &tusk_model::data::DataDurationrests
             DataDurationCmn::N2048 => 0.001953125,
         },
         // For mensural rest durations, return quarter note as fallback
-        DataDurationrests::DataDurationrestsMensural(_) => 1.0,
+        DataDurationrests::MeiDataDurationrestsMensural(_) => 1.0,
     }
 }
 
@@ -65,6 +91,28 @@ pub fn apply_dots(base_duration: f64, dots: u64) -> f64 {
     duration
 }
 
+/// Convert MEI duration string to MusicXML NoteTypeValue.
+pub fn convert_mei_duration_str_to_note_type(s: &str) -> crate::model::note::NoteTypeValue {
+    use crate::model::note::NoteTypeValue;
+    match s.trim().to_lowercase().as_str() {
+        "long" | "0" => NoteTypeValue::Long,
+        "breve" => NoteTypeValue::Breve,
+        "whole" | "1" => NoteTypeValue::Whole,
+        "half" | "2" => NoteTypeValue::Half,
+        "quarter" | "4" => NoteTypeValue::Quarter,
+        "eighth" | "8" => NoteTypeValue::Eighth,
+        "16th" | "16" => NoteTypeValue::N16th,
+        "32nd" | "32" => NoteTypeValue::N32nd,
+        "64th" | "64" => NoteTypeValue::N64th,
+        "128th" | "128" => NoteTypeValue::N128th,
+        "256th" | "256" => NoteTypeValue::N256th,
+        "512th" | "512" => NoteTypeValue::N512th,
+        "1024th" | "1024" => NoteTypeValue::N1024th,
+        "2048th" | "2048" => NoteTypeValue::N1024th,
+        _ => NoteTypeValue::Quarter,
+    }
+}
+
 /// Convert MEI duration to MusicXML NoteTypeValue.
 pub fn convert_mei_duration_to_note_type(
     dur: &tusk_model::data::DataDuration,
@@ -73,7 +121,7 @@ pub fn convert_mei_duration_to_note_type(
     use tusk_model::data::{DataDuration, DataDurationCmn};
 
     match dur {
-        DataDuration::DataDurationCmn(cmn) => match cmn {
+        DataDuration::MeiDataDurationCmn(cmn) => match cmn {
             DataDurationCmn::Long => NoteTypeValue::Long,
             DataDurationCmn::Breve => NoteTypeValue::Breve,
             DataDurationCmn::N1 => NoteTypeValue::Whole,
@@ -102,7 +150,7 @@ pub fn convert_mei_duration_rests_to_note_type(
     use tusk_model::data::{DataDurationCmn, DataDurationrests};
 
     match dur {
-        DataDurationrests::DataDurationCmn(cmn) => {
+        DataDurationrests::MeiDataDurationCmn(cmn) => {
             let value = match cmn {
                 DataDurationCmn::Long => NoteTypeValue::Long,
                 DataDurationCmn::Breve => NoteTypeValue::Breve,
@@ -122,7 +170,28 @@ pub fn convert_mei_duration_rests_to_note_type(
             Some(value)
         }
         // Mensural rest durations have no direct MusicXML equivalent
-        DataDurationrests::DataDurationrestsMensural(_) => None,
+        DataDurationrests::MeiDataDurationrestsMensural(_) => None,
+    }
+}
+
+/// Convert MEI @mm.unit string (e.g. "quarter", "4") to MusicXML beat unit string.
+pub fn mei_mm_unit_str_to_beat_unit(s: &str) -> String {
+    match s.trim().to_lowercase().as_str() {
+        "long" | "0" => "long".to_string(),
+        "breve" => "breve".to_string(),
+        "whole" | "1" => "whole".to_string(),
+        "half" | "2" => "half".to_string(),
+        "quarter" | "4" => "quarter".to_string(),
+        "eighth" | "8" => "eighth".to_string(),
+        "16th" | "16" => "16th".to_string(),
+        "32nd" | "32" => "32nd".to_string(),
+        "64th" | "64" => "64th".to_string(),
+        "128th" | "128" => "128th".to_string(),
+        "256th" | "256" => "256th".to_string(),
+        "512th" | "512" => "512th".to_string(),
+        "1024th" | "1024" => "1024th".to_string(),
+        "2048th" | "2048" => "2048th".to_string(),
+        _ => "quarter".to_string(),
     }
 }
 
@@ -131,7 +200,7 @@ pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -
     use tusk_model::data::{DataDuration, DataDurationCmn};
 
     match dur {
-        DataDuration::DataDurationCmn(cmn) => match cmn {
+        DataDuration::MeiDataDurationCmn(cmn) => match cmn {
             DataDurationCmn::Long => "long".to_string(),
             DataDurationCmn::Breve => "breve".to_string(),
             DataDurationCmn::N1 => "whole".to_string(),
@@ -151,6 +220,15 @@ pub fn convert_mei_duration_to_beat_unit(dur: &tusk_model::data::DataDuration) -
     }
 }
 
+/// Convert MEI stem direction string to MusicXML StemValue.
+pub fn convert_mei_stem_direction_str(s: &str) -> crate::model::note::StemValue {
+    use crate::model::note::StemValue;
+    match s.trim().to_lowercase().as_str() {
+        "down" => StemValue::Down,
+        _ => StemValue::Up,
+    }
+}
+
 /// Convert MEI stem direction to MusicXML StemValue.
 pub fn convert_mei_stem_direction(
     stem_dir: &tusk_model::data::DataStemdirection,
@@ -159,12 +237,12 @@ pub fn convert_mei_stem_direction(
     use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
 
     match stem_dir {
-        DataStemdirection::DataStemdirectionBasic(basic) => match basic {
+        DataStemdirection::MeiDataStemdirectionBasic(basic) => match basic {
             DataStemdirectionBasic::Up => StemValue::Up,
             DataStemdirectionBasic::Down => StemValue::Down,
         },
         // For extended directions (left, right, ne, nw, se, sw), default to up
-        DataStemdirection::DataStemdirectionExtended(_) => StemValue::Up,
+        DataStemdirection::MeiDataStemdirectionExtended(_) => StemValue::Up,
     }
 }
 
@@ -172,6 +250,19 @@ pub fn convert_mei_stem_direction(
 ///
 /// MEI measurements can include units like "vu" (virtual units), "pt" (points),
 /// etc. This function extracts the numeric value, discarding the unit suffix.
+/// Parse MEI measurement string (e.g. "200vu", "100") to f64.
+pub fn parse_mei_measurement_str(s: &str) -> Option<f64> {
+    let s = s.trim();
+    if let Ok(val) = s.parse::<f64>() {
+        return Some(val);
+    }
+    let numeric_part: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    numeric_part.parse::<f64>().ok()
+}
+
 pub fn parse_mei_measurement(
     measurement: &tusk_model::data::DataMeasurementunsigned,
 ) -> Option<f64> {
@@ -403,7 +494,7 @@ mod tests {
         ];
 
         for (cmn_dur, expected) in test_cases {
-            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let dur = DataDuration::MeiDataDurationCmn(cmn_dur);
             let result = duration_to_quarter_notes(&dur);
             assert!(
                 (result - expected).abs() < 1e-10,
@@ -431,7 +522,7 @@ mod tests {
         ];
 
         for (cmn_dur, expected) in test_cases {
-            let dur = DataDurationrests::DataDurationCmn(cmn_dur);
+            let dur = DataDurationrests::MeiDataDurationCmn(cmn_dur);
             let result = duration_rests_to_quarter_notes(&dur);
             assert!(
                 (result - expected).abs() < 1e-10,
@@ -508,7 +599,7 @@ mod tests {
         ];
 
         for (cmn_dur, expected) in test_cases {
-            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let dur = DataDuration::MeiDataDurationCmn(cmn_dur);
             let result = convert_mei_duration_to_note_type(&dur);
             assert_eq!(
                 result, expected,
@@ -535,7 +626,7 @@ mod tests {
         ];
 
         for (cmn_dur, expected) in test_cases {
-            let dur = DataDurationrests::DataDurationCmn(cmn_dur);
+            let dur = DataDurationrests::MeiDataDurationCmn(cmn_dur);
             let result = convert_mei_duration_rests_to_note_type(&dur);
             assert_eq!(
                 result, expected,
@@ -571,7 +662,7 @@ mod tests {
         ];
 
         for (cmn_dur, expected) in test_cases {
-            let dur = DataDuration::DataDurationCmn(cmn_dur);
+            let dur = DataDuration::MeiDataDurationCmn(cmn_dur);
             let result = convert_mei_duration_to_beat_unit(&dur);
             assert_eq!(
                 result, expected,
@@ -590,7 +681,7 @@ mod tests {
         use crate::model::note::StemValue;
         use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
 
-        let stem_dir = DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Up);
+        let stem_dir = DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Up);
         let result = convert_mei_stem_direction(&stem_dir);
         assert_eq!(result, StemValue::Up);
     }
@@ -600,7 +691,7 @@ mod tests {
         use crate::model::note::StemValue;
         use tusk_model::data::{DataStemdirection, DataStemdirectionBasic};
 
-        let stem_dir = DataStemdirection::DataStemdirectionBasic(DataStemdirectionBasic::Down);
+        let stem_dir = DataStemdirection::MeiDataStemdirectionBasic(DataStemdirectionBasic::Down);
         let result = convert_mei_stem_direction(&stem_dir);
         assert_eq!(result, StemValue::Down);
     }
@@ -614,7 +705,7 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Quarter note with divisions=4 should be 4 divisions
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N4);
         let quarters = duration_to_quarter_notes(&dur);
         let divisions = 4.0;
         let result = quarters * divisions;
@@ -626,7 +717,7 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Half note with divisions=4 should be 8 divisions
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N2);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N2);
         let quarters = duration_to_quarter_notes(&dur);
         let divisions = 4.0;
         let result = quarters * divisions;
@@ -638,7 +729,7 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Eighth note with divisions=4 should be 2 divisions
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N8);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N8);
         let quarters = duration_to_quarter_notes(&dur);
         let divisions = 4.0;
         let result = quarters * divisions;
@@ -650,7 +741,7 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Whole note with divisions=4 should be 16 divisions
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N1);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N1);
         let quarters = duration_to_quarter_notes(&dur);
         let divisions = 4.0;
         let result = quarters * divisions;
@@ -662,7 +753,7 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Dotted quarter with divisions=4 should be 6 divisions
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N4);
         let quarters = duration_to_quarter_notes(&dur);
         let dotted = apply_dots(quarters, 1);
         let divisions = 4.0;
@@ -675,20 +766,20 @@ mod tests {
         use tusk_model::data::{DataDuration, DataDurationCmn};
 
         // Test with divisions=96 (common high precision)
-        let dur = DataDuration::DataDurationCmn(DataDurationCmn::N4);
+        let dur = DataDuration::MeiDataDurationCmn(DataDurationCmn::N4);
         let quarters = duration_to_quarter_notes(&dur);
         let divisions = 96.0;
         let result = quarters * divisions;
         assert!((result - 96.0).abs() < 1e-10);
 
         // Eighth note with divisions=96 = 48
-        let dur_eighth = DataDuration::DataDurationCmn(DataDurationCmn::N8);
+        let dur_eighth = DataDuration::MeiDataDurationCmn(DataDurationCmn::N8);
         let quarters_eighth = duration_to_quarter_notes(&dur_eighth);
         let result_eighth = quarters_eighth * divisions;
         assert!((result_eighth - 48.0).abs() < 1e-10);
 
         // Sixteenth note with divisions=96 = 24
-        let dur_16th = DataDuration::DataDurationCmn(DataDurationCmn::N16);
+        let dur_16th = DataDuration::MeiDataDurationCmn(DataDurationCmn::N16);
         let quarters_16th = duration_to_quarter_notes(&dur_16th);
         let result_16th = quarters_16th * divisions;
         assert!((result_16th - 24.0).abs() < 1e-10);

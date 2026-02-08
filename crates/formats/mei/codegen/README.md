@@ -4,8 +4,9 @@ Generates Rust model code and MEI serializer/deserializer impls from the MEI spe
 
 ## Input
 
-- **ODD (current)**: `specs/mei/modules/MEI.*.xml`
-- **RNG (planned)**: `specs/mei/validation/mei-all.rng` (internal/export), `specs/mei/versions/mei-all_v*.rng` (versioned import)
+Schemas live under **`crates/formats/mei/codegen/schema/versions/`** (copied from upstream MEI spec):
+
+- **All RNG**: `mei-all_v*.rng` (e.g. `mei-all_v6.0-dev.rng` for internal/export, `mei-all_v5.1.rng` for versioned import)
 
 ## Output
 
@@ -17,7 +18,7 @@ Generates Rust model code and MEI serializer/deserializer impls from the MEI spe
 ```bash
 # From repo root
 cargo run -p tusk-mei-codegen -- \
-  --input specs/mei/modules \
+  --rng crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng \
   --output crates/core/model/src/generated \
   --mei-crate crates/formats/mei/src
 ```
@@ -29,11 +30,11 @@ To generate a versioned import model (e.g. MEI 5.1), use `--versioned` with `--r
 ```bash
 cargo run -p tusk-mei-codegen -- \
   --versioned v5_1 \
-  --rng specs/mei/versions/mei-all_v5.1.rng \
+  --rng crates/formats/mei/codegen/schema/versions/mei-all_v5.1.rng \
   --output crates/formats/mei/src/versions/v5_1
 ```
 
-Other version labels: `v2_1_1`, `v3_0_0`, `v4_0_1`, `v5_0`. RNG files: `specs/mei/versions/mei-all_v2.1.1.rng`, `mei-all_v.5.0.rng`, etc. Version detection is in `tusk_mei::versions::detect_mei_version`.
+Other version labels: `v2_1_1`, `v3_0_0`, `v4_0_1`, `v5_0`, `v6_0_dev`. RNG files live under `codegen/schema/versions/`. Version detection is in `tusk_mei::versions::detect_mei_version`.
 
 ## Regeneration
 

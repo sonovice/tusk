@@ -52,7 +52,6 @@ pub use parts::{convert_score_def, convert_staff_def_from_score_part, convert_st
 use crate::context::{ConversionContext, ConversionDirection};
 use crate::convert_error::ConversionResult;
 use crate::model::elements::ScorePartwise;
-use tusk_model::att::AttMeiVersionMeiversion;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
 
 /// Convert a MusicXML score-partwise document to MEI.
@@ -88,7 +87,7 @@ pub fn convert_score_with_context(
 
     // Create root MEI element
     let mut mei = Mei::default();
-    mei.mei_version.meiversion = Some(AttMeiVersionMeiversion::N60Dev);
+    mei.mei_version.meiversion = Some("6.0-dev".to_string());
 
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
     mei.children.push(MeiChild::Music(Box::new(music)));
@@ -260,10 +259,7 @@ mod tests {
         let mei = convert_score(&score).expect("conversion should succeed");
 
         // Should set MEI version to 6.0-dev (current dev version from ODD)
-        assert_eq!(
-            mei.mei_version.meiversion,
-            Some(AttMeiVersionMeiversion::N60Dev)
-        );
+        assert_eq!(mei.mei_version.meiversion.as_deref(), Some("6.0-dev"));
     }
 
     // ============================================================================

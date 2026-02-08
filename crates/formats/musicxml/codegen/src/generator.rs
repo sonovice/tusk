@@ -10,9 +10,9 @@ use crate::ast::*;
 /// Map XSD type name to Rust type (for primitives and common types).
 fn xsd_type_to_rust(s: &str) -> String {
     match s {
-        "xs:string" | "xs:token" | "xs:normalizedString" => "String".to_string(),
+        "xs:string" | "xs:token" | "xs:normalizedString" | "xs:date" | "xs:dateTime" | "xs:gYear" | "xs:gMonthDay" => "String".to_string(),
         "xs:decimal" | "xs:float" | "xs:double" => "f64".to_string(),
-        "xs:integer" | "xs:nonNegativeInteger" | "xs:positiveInteger" | "xs:int" | "xs:long" => "i64".to_string(),
+        "xs:integer" | "xs:nonNegativeInteger" | "xs:positiveInteger" | "xs:int" | "xs:long" | "xs:unsignedInt" | "xs:unsignedLong" => "i64".to_string(),
         "xs:boolean" => "bool".to_string(),
         "xs:anyURI" => "String".to_string(),
         _ => {
@@ -84,10 +84,16 @@ fn generate_data(schema: &Schema, path: &Path) -> Result<()> {
             }
             SimpleType::Alias { base, .. } => {
                 let rust_ty = xsd_type_to_rust(base);
-                if rust_ty == "String" || base.starts_with("xs:") {
+                // Always emit the alias so dependent types (e.g. PositiveDivisions = Divisions) can reference it.
+                if rust_ty == "String" && !base.starts_with("xs:") {
                     continue;
                 }
-                out.push_str(&format!("pub type {} = {};\n\n", rust_name, rust_ty));
+                let target = if base.starts_with("xs:") {
+                    rust_ty
+                } else {
+                    type_name_to_rust(base)
+                };
+                out.push_str(&format!("pub type {} = {};\n\n", rust_name, target));
             }
         }
     }

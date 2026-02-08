@@ -28,7 +28,10 @@ pub fn parse_rng_file(path: &Path) -> Result<OddDefinitions> {
 #[derive(Debug, Default)]
 struct RngDefine {
     name: String,
+    #[allow(dead_code)] // reserved for future combine-attribute handling
     combine: Option<String>,
+    /// True if the element content model includes <text/> (mixed content).
+    has_text: bool,
     refs: Vec<String>,
     values: Vec<String>,
     data_type: Option<String>,
@@ -117,6 +120,9 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                         }
                         b"data" => {
                             cur.data_type = get_attr(&e, b"type");
+                        }
+                        b"text" => {
+                            cur.has_text = true;
                         }
                         _ => {}
                     }
@@ -287,32 +293,31 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                     .filter(|r| !r.ends_with(".attributes"))
                     .cloned()
                     .collect();
-                let content = if content_refs.is_empty() {
+                let mut content: Vec<ContentItem> = content_refs
+                    .into_iter()
+                    .map(|r| {
+                        if r.starts_with("mei_model.") {
+                            ContentItem::Ref(
+                                r.strip_prefix("mei_").unwrap_or(&r).to_string(),
+                            )
+                        } else if r.starts_with("mei_") {
+                            ContentItem::Ref(
+                                r.strip_prefix("mei_").unwrap_or(&r).to_string(),
+                            )
+                        } else {
+                            ContentItem::Ref(r)
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                if d.has_text {
+                    content.push(ContentItem::Text);
+                }
+                let content_model = if content.is_empty() {
                     vec![ContentItem::Empty]
-                } else {
-                    content_refs
-                        .into_iter()
-                        .map(|r| {
-                            if r.starts_with("mei_model.") {
-                                ContentItem::Ref(
-                                    r.strip_prefix("mei_").unwrap_or(&r).to_string(),
-                                )
-                            } else if r.starts_with("mei_") {
-                                ContentItem::Ref(
-                                    r.strip_prefix("mei_").unwrap_or(&r).to_string(),
-                                )
-                            } else {
-                                ContentItem::Ref(r)
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                };
-                let content_model = if content.len() == 1 && !matches!(content[0], ContentItem::Empty) {
-                    vec![ContentItem::ZeroOrMore(Box::new(vec![ContentItem::Choice(vec![content])]))]
-                } else if content.len() > 1 {
+                } else if content.len() == 1 && !matches!(content[0], ContentItem::Empty) {
                     vec![ContentItem::ZeroOrMore(Box::new(vec![ContentItem::Choice(vec![content])]))]
                 } else {
-                    content
+                    vec![ContentItem::ZeroOrMore(Box::new(vec![ContentItem::Choice(vec![content])]))]
                 };
                 defs.elements.insert(
                     elem_name.clone(),

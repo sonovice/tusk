@@ -1,7 +1,7 @@
 //! Parser for MusicXML XSD schema.
 //!
 //! Extracts simpleType, complexType, group, attributeGroup, and top-level
-//! element definitions from specs/musicxml/schema/musicxml.xsd.
+//! element definitions from codegen/schema/versions/musicxml-X.Y/schema/musicxml.xsd.
 
 use anyhow::{Context, Result};
 use quick_xml::events::Event;

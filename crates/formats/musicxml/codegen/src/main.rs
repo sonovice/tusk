@@ -10,7 +10,7 @@ use tusk_musicxml_codegen::{generate, parse_xsd};
 #[command(name = "tusk-musicxml-codegen")]
 #[command(about = "Generate Rust MusicXML model from XSD schema (4.1)")]
 struct Args {
-    /// Path to musicxml.xsd (e.g. specs/musicxml/schema/musicxml.xsd)
+    /// Path to musicxml.xsd (e.g. codegen/schema/versions/musicxml-4.1/schema/musicxml.xsd)
     #[arg(short, long)]
     input: PathBuf,
 

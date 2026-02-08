@@ -1,6 +1,6 @@
 # MusicXML Codegen
 
-Generates Rust model types from the MusicXML 4.1 XSD schema.
+Generates Rust model types from the MusicXML XSD schema. Schemas live under **`codegen/schema/versions/musicxml-X.Y/schema/`** (2.0–4.1).
 
 ## Usage
 
@@ -8,13 +8,14 @@ From the workspace root:
 
 ```bash
 cargo run -p tusk-musicxml-codegen -- \
-  --input specs/musicxml/schema/musicxml.xsd \
+  --input crates/formats/musicxml/codegen/schema/versions/musicxml-4.1/schema/musicxml.xsd \
   --output path/to/output
 ```
 
 ## Input
 
-- **XSD**: `specs/musicxml/schema/musicxml.xsd` (MusicXML 4.1, single-file schema).
+- **XSD (all versions)**: `codegen/schema/versions/musicxml-{2.0,3.0,3.1,4.0,4.1}/schema/musicxml.xsd`.  
+  `tusk-musicxml` build.rs generates `src/versions/v2_0/` … `v4_1/` from these.
 
 ## Output
 

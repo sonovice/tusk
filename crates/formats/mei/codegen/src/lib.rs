@@ -22,7 +22,7 @@
 //! use std::path::Path;
 //! use tusk_mei_codegen::{rng, generator};
 //!
-//! let defs = rng::parse_rng_file(Path::new("specs/mei/validation/mei-all.rng")).unwrap();
+//! let defs = rng::parse_rng_file(Path::new("crates/formats/mei/codegen/schema/versions/mei-all_v6.0-dev.rng")).unwrap();
 //! generator::generate_all(&defs, Path::new("crates/core/model/src/generated")).unwrap();
 //! ```
 

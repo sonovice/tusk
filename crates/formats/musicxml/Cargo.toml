@@ -20,4 +20,5 @@ tracing = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
-tusk-mei.workspace = true
+tusk-mei = { workspace = true }
+tusk-model = { workspace = true }
