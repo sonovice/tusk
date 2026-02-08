@@ -2,6 +2,10 @@
 
 MusicXML parsing, serialization, and MEI conversion for Tusk.
 
+## Roundtrip (Phase 1)
+
+MusicXML → MEI → MusicXML is **lossless** for all parsed score-partwise content: directions, note articulations (including breath-mark and caesura), and measure barlines. Limitations: multiple articulations (first only); middle barlines not represented in MEI.
+
 ## Supported versions
 
 - **2.0, 3.0, 3.1, 4.0, 4.1** – XSD-based data types generated at build time from each version’s schema; use `versions::detect_musicxml_version()` to detect document version.

@@ -847,10 +847,37 @@ impl MusicXmlSerialize for Measure {
                 MeasureContent::Forward(forward) => forward.serialize(w)?,
                 MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
                 MeasureContent::Direction(dir) => dir.serialize(w)?,
-                MeasureContent::Barline(_) => {
-                    // TODO: implement barline serialization
-                }
+                MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Barline
+// ============================================================================
+
+impl MusicXmlSerialize for crate::model::elements::Barline {
+    fn element_name(&self) -> &'static str {
+        "barline"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        if let Some(ref loc) = self.location {
+            attrs.push(("location", loc.to_musicxml_str().to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        self.bar_style.is_some()
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        if let Some(ref style) = self.bar_style {
+            w.write_text_element("bar-style", style.to_musicxml_str())?;
         }
         Ok(())
     }
@@ -2334,9 +2361,7 @@ impl TimewisePart {
                 MeasureContent::Forward(forward) => forward.serialize(w)?,
                 MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
                 MeasureContent::Direction(dir) => dir.serialize(w)?,
-                MeasureContent::Barline(_) => {
-                    // TODO: implement barline serialization
-                }
+                MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
         }
 

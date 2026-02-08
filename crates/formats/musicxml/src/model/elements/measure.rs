@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::data::YesNo;
 
-use super::barline::BarlinePlaceholder;
+use super::barline::Barline;
 
 /// A measure in a part.
 ///
@@ -69,8 +69,8 @@ pub enum MeasureContent {
     Attributes(Box<crate::model::attributes::Attributes>),
     /// Direction (dynamics, tempo, pedals, wedges, etc.).
     Direction(Box<crate::model::direction::Direction>),
-    /// Barline - placeholder for Phase 4.2.
-    Barline(Box<BarlinePlaceholder>),
+    /// Barline (location and style).
+    Barline(Box<Barline>),
 }
 
 // ============================================================================

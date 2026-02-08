@@ -201,7 +201,7 @@ mod tests {
     use super::*;
     use crate::model::data::YesNo;
     use crate::model::elements::{
-        MeasureContent, PartList, PartListItem, ScorePart, TimewisePart,
+        PartList, PartListItem, ScorePart, TimewisePart,
     };
 
     fn make_part_list(ids: &[&str]) -> PartList {

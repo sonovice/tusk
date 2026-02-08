@@ -381,14 +381,13 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                     reader, &e,
                 )?))),
                 b"barline" => {
-                    content.push(MeasureContent::Barline(Box::new(BarlinePlaceholder)));
-                    skip_element(reader, &e)?;
+                    content.push(MeasureContent::Barline(Box::new(parse_barline(reader, &e)?)));
                 }
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => {
                 if e.name().as_ref() == b"barline" {
-                    content.push(MeasureContent::Barline(Box::new(BarlinePlaceholder)));
+                    content.push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?)));
                 }
             }
             Event::End(e) if e.name().as_ref() == b"part" => break,
@@ -1319,8 +1318,7 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                     b"barline" => {
                         measure
                             .content
-                            .push(MeasureContent::Barline(Box::new(BarlinePlaceholder)));
-                        skip_element(reader, &e)?;
+                            .push(MeasureContent::Barline(Box::new(parse_barline(reader, &e)?)));
                     }
                     _ => skip_element(reader, &e)?,
                 }
@@ -1330,7 +1328,7 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                 if e.name().as_ref() == b"barline" {
                     measure
                         .content
-                        .push(MeasureContent::Barline(Box::new(BarlinePlaceholder)))
+                        .push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?)))
                 }
             }
             Event::End(e) if e.name().as_ref() == b"measure" => break,
@@ -1402,6 +1400,53 @@ fn read_text<R: BufRead>(reader: &mut Reader<R>, end_tag: &[u8]) -> Result<Strin
 /// Read text content for a dynamically named tag.
 fn read_text_for_tag<R: BufRead>(reader: &mut Reader<R>, end_tag: &[u8]) -> Result<String> {
     read_text(reader, end_tag)
+}
+
+/// Parse barline from an empty element (attributes only).
+fn parse_barline_empty(e: &BytesStart) -> Result<crate::model::elements::Barline> {
+    use crate::model::elements::{Barline, BarlineLocation};
+    let location = get_attr(e, "location")?.and_then(|s| {
+        match s.to_lowercase().as_str() {
+            "left" => Some(BarlineLocation::Left),
+            "right" => Some(BarlineLocation::Right),
+            "middle" => Some(BarlineLocation::Middle),
+            _ => None,
+        }
+    });
+    Ok(Barline {
+        location,
+        bar_style: None,
+    })
+}
+
+/// Parse barline element with optional bar-style child.
+fn parse_barline<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<crate::model::elements::Barline> {
+    use crate::model::elements::BarStyle;
+    let mut barline = parse_barline_empty(start)?;
+    let mut buf = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"bar-style" => {
+                    let text = read_text(reader, b"bar-style")?;
+                    if let Some(style) = BarStyle::from_musicxml_str(&text) {
+                        barline.bar_style = Some(style);
+                    }
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"barline" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement("barline end".to_string()));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+    Ok(barline)
 }
 
 /// Skip an element and all its children.
