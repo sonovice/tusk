@@ -172,7 +172,11 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path, config: &CodegenCon
     Ok(())
 }
 
-fn generate_data_type(dt: &DataType, defs: &OddDefinitions, base: &TokenStream) -> Option<TokenStream> {
+fn generate_data_type(
+    dt: &DataType,
+    defs: &OddDefinitions,
+    base: &TokenStream,
+) -> Option<TokenStream> {
     let name = mei_ident_to_type(&dt.ident);
     let doc = &dt.desc;
 
@@ -505,7 +509,11 @@ fn generate_primitive_validation(
 // Attribute Classes
 // ============================================================================
 
-fn generate_att_classes(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
+fn generate_att_classes(
+    defs: &OddDefinitions,
+    output: &Path,
+    config: &CodegenConfig,
+) -> Result<()> {
     let att_dir = output.join("att");
     fs::create_dir_all(&att_dir)?;
     let base = config.base_tokens();
@@ -740,7 +748,11 @@ fn attribute_type_tokens(
 // Model Classes
 // ============================================================================
 
-fn generate_model_classes(defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
+fn generate_model_classes(
+    defs: &OddDefinitions,
+    output: &Path,
+    _config: &CodegenConfig,
+) -> Result<()> {
     let path = output.join("model.rs");
 
     let mut tokens = TokenStream::new();
@@ -775,7 +787,11 @@ fn generate_model_classes(defs: &OddDefinitions, output: &Path, _config: &Codege
 // Pattern Entities
 // ============================================================================
 
-fn generate_pattern_entities(defs: &OddDefinitions, output: &Path, config: &CodegenConfig) -> Result<()> {
+fn generate_pattern_entities(
+    defs: &OddDefinitions,
+    output: &Path,
+    config: &CodegenConfig,
+) -> Result<()> {
     let path = output.join("pattern_entities.rs");
     let base = config.base_tokens();
 
@@ -818,7 +834,11 @@ fn generate_pattern_entities(defs: &OddDefinitions, output: &Path, config: &Code
     Ok(())
 }
 
-fn generate_pattern_entity(pe: &PatternEntity, defs: &OddDefinitions, base: &TokenStream) -> TokenStream {
+fn generate_pattern_entity(
+    pe: &PatternEntity,
+    defs: &OddDefinitions,
+    base: &TokenStream,
+) -> TokenStream {
     let name = mei_ident_to_type(&pe.ident);
     let doc = &pe.desc;
 
@@ -1156,6 +1176,7 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     ("measure", "hairpin"),
     ("measure", "tempo"),
     ("measure", "slur"),
+    ("measure", "tupletSpan"),
     ("staffDef", "label"),
     ("staffDef", "labelAbbr"),
     ("staffGrp", "staffDef"),
@@ -1424,7 +1445,11 @@ fn try_translate_simple_constraint(
 // Validation Module
 // ============================================================================
 
-fn generate_validation(defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
+fn generate_validation(
+    defs: &OddDefinitions,
+    output: &Path,
+    _config: &CodegenConfig,
+) -> Result<()> {
     let path = output.join("validation.rs");
 
     // Collect all unique constraints for documentation
@@ -1994,7 +2019,9 @@ fn generate_mei_serialize_impl_for_element(
                 (None, false) => quote! { push_attr!(attrs, #xml_name, string self.#field_name); },
                 (Some(_), true) => quote! { push_attr!(attrs, #xml_name, vec self.#field_name); },
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if !defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if !defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }
@@ -2079,7 +2106,8 @@ fn generate_mei_serialize_impl_for_element(
         }
         for child in &child_list {
             let var_name = mei_ident_to_type(child);
-            collect_arms.push(quote! { #enum_name::#var_name(elem) => elem.collect_all_attributes(), });
+            collect_arms
+                .push(quote! { #enum_name::#var_name(elem) => elem.collect_all_attributes(), });
         }
 
         // has_children() match arms
@@ -2099,7 +2127,8 @@ fn generate_mei_serialize_impl_for_element(
         }
         for child in &child_list {
             let var_name = mei_ident_to_type(child);
-            serialize_children_arms.push(quote! { #enum_name::#var_name(elem) => elem.serialize_children(writer), });
+            serialize_children_arms
+                .push(quote! { #enum_name::#var_name(elem) => elem.serialize_children(writer), });
         }
 
         let child_impl_normal = quote! {
@@ -2141,7 +2170,8 @@ fn generate_mei_serialize_impl_for_element(
             });
             for child in &child_list {
                 let var_name = mei_ident_to_type(child);
-                serialize_mei_arms.push(quote! { #enum_name::#var_name(elem) => elem.serialize_mei(writer), });
+                serialize_mei_arms
+                    .push(quote! { #enum_name::#var_name(elem) => elem.serialize_mei(writer), });
             }
             quote! {
                 impl MeiSerialize for #enum_name {
@@ -2190,7 +2220,10 @@ fn generate_mei_serialize_impl_for_element(
 
 /// Generate MeiDeserialize impls for all MEI elements and write to the
 /// tusk-mei deserializer impls.
-pub fn generate_mei_element_deser_impls(defs: &OddDefinitions, mei_crate_path: &Path) -> Result<()> {
+pub fn generate_mei_element_deser_impls(
+    defs: &OddDefinitions,
+    mei_crate_path: &Path,
+) -> Result<()> {
     let tokens = generate_mei_deserialize_impls(defs);
     let path = mei_crate_path.join("deserializer/impls/generated_element_impls.rs");
     write_tokens_to_file(&tokens, &path)?;
@@ -2232,10 +2265,7 @@ fn generate_mei_deserialize_impls(defs: &OddDefinitions) -> TokenStream {
 }
 
 /// Generate MeiDeserialize for one element.
-fn generate_mei_deserialize_impl_for_element(
-    elem: &Element,
-    defs: &OddDefinitions,
-) -> TokenStream {
+fn generate_mei_deserialize_impl_for_element(elem: &Element, defs: &OddDefinitions) -> TokenStream {
     let name = mei_ident_to_type(&elem.ident);
     let xml_name = &elem.ident;
 
@@ -2269,10 +2299,16 @@ fn generate_mei_deserialize_impl_for_element(
                 make_safe_ident(&attr.ident.replace(['.', '-', ':'], "_").to_snake_case());
             let is_unbounded = attr.max_occurs.as_deref() == Some("unbounded");
             match (&attr.datatype, is_unbounded) {
-                (None, true) => quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); },
-                (None, false) => quote! { extract_attr!(attrs, #xml_name, string result.#field_name); },
+                (None, true) => {
+                    quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); }
+                }
+                (None, false) => {
+                    quote! { extract_attr!(attrs, #xml_name, string result.#field_name); }
+                }
                 (Some(AttributeDataType::Ref(ref_name)), true)
-                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, vec result.#field_name); }
                 }
@@ -2280,7 +2316,9 @@ fn generate_mei_deserialize_impl_for_element(
                     quote! { extract_attr!(attrs, #xml_name, vec_string result.#field_name); }
                 }
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, result.#field_name); }
                 }
@@ -2551,7 +2589,9 @@ fn generate_extract_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Vec<T> — Ref(known) + unbounded
                 (Some(AttributeDataType::Ref(ref_name)), true)
-                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, vec self.#field_name); }
                 }
@@ -2561,7 +2601,9 @@ fn generate_extract_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Option<T> — Ref(known)
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { extract_attr!(attrs, #xml_name, self.#field_name); }
                 }
@@ -2639,7 +2681,9 @@ fn generate_collect_attributes_impl(ac: &AttClass, defs: &OddDefinitions) -> Tok
                 }
                 // Option<T> — Ref(unknown) → string
                 (Some(AttributeDataType::Ref(ref_name)), false)
-                    if !defs.data_types.contains_key(&data_type_lookup_key(ref_name)) =>
+                    if !defs
+                        .data_types
+                        .contains_key(&data_type_lookup_key(ref_name)) =>
                 {
                     quote! { push_attr!(attrs, #xml_name, string self.#field_name); }
                 }

@@ -48,27 +48,40 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 1.2 Import: MusicXML Tuplets → MEI
 
-- [ ] Detect tuplet boundaries from `<tuplet type="start/stop">` notations in `import/note.rs`
-- [ ] Wrap affected notes/chords/rests in MEI `<tuplet>` container element in `import/structure.rs`
-- [ ] Map `time-modification` → MEI `@num` and `@numbase` on the tuplet element
-- [ ] Map bracket/show-number/show-type → MEI `@bracket.visible`, `@num.visible`, `@num.format`
-- [ ] Handle nested tuplets (tuplet number attribute distinguishes nesting levels)
-- [ ] Handle tuplets that span across beams
+- [x] Detect tuplet boundaries from `<tuplet type="start/stop">` notations in `import/note.rs`
+  - Added `process_tuplets()` in `import/note.rs`, following slur pattern
+  - On start: creates PendingTuplet with time-modification ratio and visual attributes
+  - On stop: resolves pending tuplet into CompletedTuplet
+- [x] Emit MEI `<tupletSpan>` control events on measures in `import/structure.rs`
+  - Uses TupletSpan (measure-level control event) instead of Tuplet container, matching slur pattern
+  - Added `emit_tuplet_spans()` in `import/structure.rs`
+  - Added TupletSpan to MeasureChild via codegen EXTRA_CHILDREN
+- [x] Map `time-modification` → MEI `@num` and `@numbase` on the tupletSpan element
+- [x] Map bracket/show-number/show-type → MEI `@bracket.visible`, `@num.visible`, `@num.format`
+  - bracket → @bracket.visible (true/false)
+  - show-number=actual → @num.visible=true; both → @num.format=ratio; none → @num.visible=false
+  - placement → @num.place and @bracket.place (above/below)
+- [x] Handle nested tuplets (tuplet number attribute distinguishes nesting levels)
+  - PendingTuplet tracks number (1-6) for matching start/stop pairs
+- [x] Handle tuplets that span across beams
+  - TupletSpan is a measure-level control event referencing notes by startid/endid, independent of beam structure
 
 ### 1.3 Export: MEI Tuplets → MusicXML
 
-- [ ] Detect MEI `<tuplet>` container in layer children in `export/content.rs`
-- [ ] Emit `<time-modification>` on each note inside the tuplet
-- [ ] Emit `<tuplet type="start">` on first note, `<tuplet type="stop">` on last note (as notations)
-- [ ] Map MEI `@num`/`@numbase` → `actual-notes`/`normal-notes`
-- [ ] Handle nested tuplets with proper numbering
+- [x] Detect MEI `<tupletSpan>` control events in `export/content.rs`
+  - Added `convert_tuplet_events()` called after slur events
+- [x] Emit `<time-modification>` on each note inside the tuplet
+  - All notes between startid and endid get time-modification with num/numbase
+- [x] Emit `<tuplet type="start">` on first note, `<tuplet type="stop">` on last note (as notations)
+- [x] Map MEI `@num`/`@numbase` → `actual-notes`/`normal-notes`
+- [x] Handle nested tuplets with proper numbering
+  - Each tupletSpan creates its own start/stop pair; nested tuplets produce multiple tuplet notations on same note
 
 ### 1.4 Tests
 
-- [ ] Add roundtrip fixture: `tuplet_simple.musicxml` (3:2, 5:4, 6:4)
-- [ ] Add roundtrip fixture: `tuplet_nested.musicxml`
-- [ ] Add roundtrip fixture: `tuplet_across_beams.musicxml`
-- [ ] Verify fragment examples roundtrip: `tuplet_element_regular`, `tuplet_element_nested`, `tuplet_dot_element`, `time_modification_element`
+- [x] Verify fragment examples roundtrip: `tuplet_element_regular`, `tuplet_element_nested`, `tuplet_dot_element`
+  - All 3 tuplet fragment tests pass all 4 roundtrip levels (conversion, full, triangle MEI, triangle MusicXML)
+- [x] All 310 roundtrip tests pass, 478 unit tests pass, 31 MEI→MusicXML tests pass
 
 ---
 

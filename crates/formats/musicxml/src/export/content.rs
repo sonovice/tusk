@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
 use crate::model::elements::{
-    Barline, BarlineLocation, BarStyle, Measure as MxmlMeasure, MeasureContent, TimewiseMeasure,
+    BarStyle, Barline, BarlineLocation, Measure as MxmlMeasure, MeasureContent, TimewiseMeasure,
     TimewisePart,
 };
 use tusk_model::elements::{
@@ -265,9 +265,7 @@ pub fn convert_mei_score_content(
     } else {
         None
     };
-    let divs = initial_divs.unwrap_or_else(|| {
-        calculate_smart_divisions(&mei_measures)
-    });
+    let divs = initial_divs.unwrap_or_else(|| calculate_smart_divisions(&mei_measures));
     ctx.set_divisions(divs);
 
     // Track previous measures per part for cross-measure slur resolution.
@@ -342,6 +340,9 @@ pub fn convert_mei_score_content(
                 &mut part_prev_measures[staff_idx],
                 ctx,
             )?;
+
+            // Convert tupletSpan events to time-modification and tuplet notations
+            convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
@@ -752,6 +753,134 @@ fn convert_mei_slur_to_notations(
     }
 }
 
+/// Convert MEI tupletSpan events to MusicXML time-modification and tuplet notations.
+///
+/// For each tupletSpan control event on this staff:
+/// 1. Add time-modification (actual-notes/normal-notes) to all notes between startid and endid
+/// 2. Add tuplet start notation to the start note
+/// 3. Add tuplet stop notation to the end note
+fn convert_tuplet_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::data::YesNo;
+    use crate::model::notations::{Notations, ShowTuplet, Tuplet as MxmlTuplet};
+    use crate::model::note::TimeModification;
+
+    for child in &mei_measure.children {
+        if let MeasureChild::TupletSpan(ts) = child {
+            let ts_staff = ts
+                .tuplet_span_log
+                .staff
+                .as_ref()
+                .and_then(|s| s.split_whitespace().next())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1) as usize;
+            if ts_staff != staff_n {
+                continue;
+            }
+
+            let start_id = ts
+                .tuplet_span_log
+                .startid
+                .as_ref()
+                .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+            let end_id = ts
+                .tuplet_span_log
+                .endid
+                .as_ref()
+                .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+
+            let num: u32 = ts
+                .tuplet_span_log
+                .num
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(3);
+            let numbase: u32 = ts
+                .tuplet_span_log
+                .numbase
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2);
+
+            // Decode visual attributes
+            let bracket = ts
+                .tuplet_span_vis
+                .bracket_visible
+                .as_ref()
+                .map(|b| matches!(b, tusk_model::data::DataBoolean::True));
+            let show_number = if let Some(ref nv) = ts.tuplet_span_vis.num_visible {
+                match nv {
+                    tusk_model::data::DataBoolean::False => Some(ShowTuplet::None),
+                    tusk_model::data::DataBoolean::True => {
+                        if ts.tuplet_span_vis.num_format.as_deref() == Some("ratio") {
+                            Some(ShowTuplet::Both)
+                        } else {
+                            Some(ShowTuplet::Actual)
+                        }
+                    }
+                }
+            } else {
+                None
+            };
+            let placement = ts.tuplet_span_vis.num_place.as_ref().map(|p| match p {
+                tusk_model::data::DataStaffrelBasic::Above => crate::model::data::AboveBelow::Above,
+                tusk_model::data::DataStaffrelBasic::Below => crate::model::data::AboveBelow::Below,
+            });
+
+            // Find note indices between startid and endid (inclusive)
+            let (Some(sid), Some(eid)) = (start_id, end_id) else {
+                continue;
+            };
+
+            // Find start and end positions in measure content
+            let start_pos = mxml_measure.content.iter().position(
+                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&sid)),
+            );
+            let end_pos = mxml_measure.content.iter().position(
+                |c| matches!(c, MeasureContent::Note(n) if n.id.as_deref() == Some(&eid)),
+            );
+
+            let (Some(start_pos), Some(end_pos)) = (start_pos, end_pos) else {
+                continue;
+            };
+
+            // Add time-modification to all notes in range
+            let time_mod = TimeModification::new(num, numbase);
+            for i in start_pos..=end_pos {
+                if let MeasureContent::Note(ref mut note) = mxml_measure.content[i] {
+                    note.time_modification = Some(time_mod.clone());
+                }
+            }
+
+            // Add tuplet start notation to start note
+            if let MeasureContent::Note(ref mut note) = mxml_measure.content[start_pos] {
+                let mut t = MxmlTuplet::start();
+                t.number = Some(1);
+                if let Some(b) = bracket {
+                    t.bracket = Some(if b { YesNo::Yes } else { YesNo::No });
+                }
+                t.show_number = show_number;
+                t.placement = placement;
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                notations.tuplets.push(t);
+            }
+
+            // Add tuplet stop notation to end note
+            if let MeasureContent::Note(ref mut note) = mxml_measure.content[end_pos] {
+                let mut t = MxmlTuplet::stop();
+                t.number = Some(1);
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                notations.tuplets.push(t);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Find a MusicXML note in the measure by its ID (mutable).
 fn find_note_by_id_mut<'a>(
     mxml_measure: &'a mut MxmlMeasure,
@@ -1111,7 +1240,9 @@ fn build_first_measure_attributes(
             .unwrap_or_else(|| "4".to_string());
         let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
 
-        let symbol = meter_sym.as_ref().and_then(|s| convert_mei_meter_sym_to_mxml(s));
+        let symbol = meter_sym
+            .as_ref()
+            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
 
         attrs.times.push(Time {
             number: None,

@@ -19,7 +19,7 @@ use crate::model::elements::ScorePartwise;
 use tusk_model::data::{DataBoolean, DataMeasurementunsigned};
 use tusk_model::elements::{
     Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild,
-    Section, SectionChild, Slur, StaffChild,
+    Section, SectionChild, Slur, StaffChild, TupletSpan,
 };
 
 /// Convert MusicXML content to MEI body.
@@ -147,6 +147,9 @@ pub fn convert_measure(
     // Emit completed slurs as MEI control events
     emit_slurs(&mut mei_measure, ctx);
 
+    // Emit completed tuplets as MEI control events
+    emit_tuplet_spans(&mut mei_measure, ctx);
+
     Ok(mei_measure)
 }
 
@@ -241,14 +244,88 @@ fn emit_slurs(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut Convers
         slur.common.xml_id = Some(slur_id);
 
         // Set startid and endid (with # prefix for URI references)
-        slur.slur_log.startid = Some(tusk_model::data::DataUri::from(format!("#{}", completed.start_id)));
-        slur.slur_log.endid = Some(tusk_model::data::DataUri::from(format!("#{}", completed.end_id)));
+        slur.slur_log.startid = Some(tusk_model::data::DataUri::from(format!(
+            "#{}",
+            completed.start_id
+        )));
+        slur.slur_log.endid = Some(tusk_model::data::DataUri::from(format!(
+            "#{}",
+            completed.end_id
+        )));
 
         slur.slur_log.staff = Some((completed.mei_staff as u64).to_string());
 
         mei_measure
             .children
             .push(MeasureChild::Slur(Box::new(slur)));
+    }
+}
+
+/// Emit completed tuplets as MEI `<tupletSpan>` control events.
+///
+/// Drains all completed tuplets from the context and adds them to the measure.
+fn emit_tuplet_spans(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut ConversionContext) {
+    use crate::model::data::AboveBelow;
+    use crate::model::notations::ShowTuplet;
+    use tusk_model::data::DataBoolean;
+
+    for completed in ctx.drain_completed_tuplets() {
+        let mut ts = TupletSpan::default();
+
+        let ts_id = ctx.generate_id_with_suffix("tupletspan");
+        ts.common.xml_id = Some(ts_id);
+
+        ts.tuplet_span_log.startid = Some(tusk_model::data::DataUri::from(format!(
+            "#{}",
+            completed.start_id
+        )));
+        ts.tuplet_span_log.endid = Some(tusk_model::data::DataUri::from(format!(
+            "#{}",
+            completed.end_id
+        )));
+
+        ts.tuplet_span_log.staff = Some((completed.mei_staff as u64).to_string());
+        ts.tuplet_span_log.num = Some(completed.num.to_string());
+        ts.tuplet_span_log.numbase = Some(completed.numbase.to_string());
+
+        // Visual attributes
+        if let Some(bracket) = completed.bracket {
+            ts.tuplet_span_vis.bracket_visible = Some(if bracket {
+                DataBoolean::True
+            } else {
+                DataBoolean::False
+            });
+        }
+
+        if let Some(show_number) = completed.show_number {
+            match show_number {
+                ShowTuplet::Both => {
+                    ts.tuplet_span_vis.num_visible = Some(DataBoolean::True);
+                    ts.tuplet_span_vis.num_format = Some("ratio".to_string());
+                }
+                ShowTuplet::None => {
+                    ts.tuplet_span_vis.num_visible = Some(DataBoolean::False);
+                }
+                ShowTuplet::Actual => {
+                    ts.tuplet_span_vis.num_visible = Some(DataBoolean::True);
+                }
+            }
+        }
+
+        if let Some(placement) = completed.placement {
+            ts.tuplet_span_vis.num_place = Some(match placement {
+                AboveBelow::Above => tusk_model::data::DataStaffrelBasic::Above,
+                AboveBelow::Below => tusk_model::data::DataStaffrelBasic::Below,
+            });
+            ts.tuplet_span_vis.bracket_place = Some(match placement {
+                AboveBelow::Above => tusk_model::data::DataStaffrelBasic::Above,
+                AboveBelow::Below => tusk_model::data::DataStaffrelBasic::Below,
+            });
+        }
+
+        mei_measure
+            .children
+            .push(MeasureChild::TupletSpan(Box::new(ts)));
     }
 }
 
@@ -315,7 +392,9 @@ fn convert_measure_attributes(
     use crate::model::data::YesNo;
 
     // Measure number → @n
-    mei_measure.common.n = Some(tusk_model::data::DataWord::from(musicxml_measure.number.clone()));
+    mei_measure.common.n = Some(tusk_model::data::DataWord::from(
+        musicxml_measure.number.clone(),
+    ));
 
     // implicit="yes" → metcon="false" (metrically non-conformant / pickup measure)
     // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
@@ -325,8 +404,7 @@ fn convert_measure_attributes(
     }
 
     if let Some(width) = musicxml_measure.width {
-        mei_measure.measure_vis.width =
-            Some(DataMeasurementunsigned::from(format!("{}vu", width)));
+        mei_measure.measure_vis.width = Some(DataMeasurementunsigned::from(format!("{}vu", width)));
     }
 
     // id → xml:id (with mapping)

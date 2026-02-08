@@ -26,6 +26,7 @@ mod ids;
 mod positions;
 mod slurs;
 mod ties;
+mod tuplets;
 
 use std::collections::HashMap;
 
@@ -34,6 +35,7 @@ use crate::model::duration::DurationContext;
 pub use positions::{ConversionWarning, DocumentPosition};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
+pub use tuplets::{CompletedTuplet, PendingTuplet};
 
 /// Direction of conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,6 +87,12 @@ pub struct ConversionContext {
     /// Deferred slur stops for cross-measure slurs (MEI -> MusicXML export).
     pub(super) deferred_slur_stops: Vec<DeferredSlurStop>,
 
+    /// Pending tuplets waiting for their end notes.
+    pub(super) pending_tuplets: Vec<PendingTuplet>,
+
+    /// Completed tuplets ready to be emitted as MEI control events.
+    pub(super) completed_tuplets: Vec<CompletedTuplet>,
+
     /// Warnings generated during lossy conversion.
     pub(super) warnings: Vec<ConversionWarning>,
 
@@ -134,6 +142,8 @@ impl ConversionContext {
             pending_slurs: Vec::new(),
             completed_slurs: Vec::new(),
             deferred_slur_stops: Vec::new(),
+            pending_tuplets: Vec::new(),
+            completed_tuplets: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
             key_fifths: 0,
@@ -226,6 +236,8 @@ impl ConversionContext {
         self.suffix_counters.clear();
         self.pending_ties.clear();
         self.pending_slurs.clear();
+        self.pending_tuplets.clear();
+        self.completed_tuplets.clear();
         self.warnings.clear();
         self.position = DocumentPosition::default();
         self.key_fifths = 0;

@@ -1,7 +1,7 @@
 //! Note, rest, and chord conversion from MusicXML to MEI.
 
 use crate::context::ConversionContext;
-use crate::context::PendingSlur;
+use crate::context::{PendingSlur, PendingTuplet};
 use crate::convert_error::ConversionResult;
 use crate::import::utils::{
     convert_accidental_value, convert_alter_to_gestural_accid, convert_grace,
@@ -73,8 +73,10 @@ pub fn convert_note(
             if let (Some(display_step), Some(display_octave)) =
                 (unpitched.display_step, unpitched.display_octave)
             {
-                mei_note.note_vis.loc =
-                    Some(DataStaffloc::from(calculate_staff_loc(display_step, display_octave)));
+                mei_note.note_vis.loc = Some(DataStaffloc::from(calculate_staff_loc(
+                    display_step,
+                    display_octave,
+                )));
             }
             // Note: pname and oct are NOT set for unpitched notes
         }
@@ -118,6 +120,9 @@ pub fn convert_note(
     // Process slurs (track pending, resolve completed)
     let note_id = mei_note.common.xml_id.clone().unwrap_or_default();
     process_slurs(note, &note_id, ctx);
+
+    // Process tuplets (track pending, resolve completed)
+    process_tuplets(note, &note_id, ctx);
 
     Ok(mei_note)
 }
@@ -375,7 +380,9 @@ pub fn convert_chord(
             mei_chord.chord_ges.dur_ppq = Some((duration as u64).to_string());
         }
 
-        if first_note.is_grace() && let Some(ref grace) = first_note.grace {
+        if first_note.is_grace()
+            && let Some(ref grace) = first_note.grace
+        {
             mei_chord.chord_log.grace = Some(convert_grace(grace));
         }
 
@@ -525,6 +532,66 @@ fn process_slurs(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext
                 }
                 StartStopContinue::Continue => {
                     // Continue slurs don't need any action
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Tuplet Processing
+// ============================================================================
+
+/// Process tuplets from note notations and time-modification.
+///
+/// On tuplet start: creates a PendingTuplet with the note's time-modification ratio.
+/// On tuplet stop: resolves the pending tuplet into a CompletedTuplet.
+fn process_tuplets(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    if let Some(ref notations) = note.notations {
+        let staff = note.staff.unwrap_or(1);
+        let mei_staff = ctx.staff().unwrap_or(1);
+        let part_id = ctx.position().part_id.clone().unwrap_or_default();
+
+        for tuplet in &notations.tuplets {
+            let number = tuplet.number.unwrap_or(1);
+
+            match tuplet.tuplet_type {
+                StartStop::Start => {
+                    // Get num/numbase from time-modification
+                    let (num, numbase) = note
+                        .time_modification
+                        .as_ref()
+                        .map(|tm| (tm.actual_notes, tm.normal_notes))
+                        .unwrap_or((3, 2));
+
+                    let bracket = tuplet.bracket.map(|b| b == crate::model::data::YesNo::Yes);
+
+                    ctx.add_pending_tuplet(PendingTuplet {
+                        start_id: note_id.to_string(),
+                        part_id: part_id.clone(),
+                        staff,
+                        number,
+                        mei_staff,
+                        num,
+                        numbase,
+                        bracket,
+                        show_number: tuplet.show_number,
+                        placement: tuplet.placement,
+                    });
+                }
+                StartStop::Stop => {
+                    if let Some(pending) = ctx.resolve_tuplet(&part_id, staff, number) {
+                        ctx.add_completed_tuplet(crate::context::CompletedTuplet {
+                            start_id: pending.start_id,
+                            end_id: note_id.to_string(),
+                            mei_staff: pending.mei_staff,
+                            num: pending.num,
+                            numbase: pending.numbase,
+                            bracket: pending.bracket,
+                            show_number: pending.show_number,
+                            placement: pending.placement,
+                        });
+                    }
                 }
             }
         }
@@ -1173,10 +1240,7 @@ mod tests {
         let mei_id = mei_rest.common.xml_id.as_ref().unwrap();
 
         // Check the ID mapping was stored
-        assert_eq!(
-            ctx.get_mei_id("original-rest-id"),
-            Some(mei_id.as_str())
-        );
+        assert_eq!(ctx.get_mei_id("original-rest-id"), Some(mei_id.as_str()));
     }
 
     #[test]
