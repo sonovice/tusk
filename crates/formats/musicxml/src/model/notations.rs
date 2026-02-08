@@ -1,11 +1,12 @@
 //! MusicXML 4.0 notations element types.
 //!
-//! Contains slurs, tied elements, articulations, and other notation markings
-//! that appear within a note's <notations> element.
+//! Contains slurs, tied elements, articulations, tuplets, and other notation
+//! markings that appear within a note's <notations> element.
 
 use serde::{Deserialize, Serialize};
 
-use super::data::{AboveBelow, OverUnder, StartStopContinue, UpDown};
+use super::data::{AboveBelow, LineShape, OverUnder, StartStop, StartStopContinue, UpDown};
+use super::note::NoteTypeValue;
 
 /// Container for notation elements on a note.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -18,10 +19,147 @@ pub struct Notations {
     #[serde(rename = "tied", default, skip_serializing_if = "Vec::is_empty")]
     pub tied: Vec<Tied>,
 
+    /// Tuplet display notations (start/stop).
+    #[serde(rename = "tuplet", default, skip_serializing_if = "Vec::is_empty")]
+    pub tuplets: Vec<Tuplet>,
+
     /// Articulation markings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub articulations: Option<Articulations>,
 }
+
+// ============================================================================
+// Tuplet Types
+// ============================================================================
+
+/// How to display tuplet numbers or types.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ShowTuplet {
+    /// Show only the actual value.
+    Actual,
+    /// Show both actual and normal values.
+    Both,
+    /// Show neither.
+    None,
+}
+
+/// Tuplet notation element — describes how a tuplet is displayed.
+///
+/// While `time-modification` describes the sounding effect of a tuplet,
+/// the tuplet notation element controls its visual display (bracket,
+/// number, type). Multiple tuplet elements on the same note support
+/// nested tuplets via the `number` attribute.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tuplet {
+    /// Start or stop.
+    #[serde(rename = "@type")]
+    pub tuplet_type: StartStop,
+
+    /// Tuplet number (1-6) for distinguishing nested/overlapping tuplets.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Whether to show a bracket.
+    #[serde(rename = "@bracket", skip_serializing_if = "Option::is_none")]
+    pub bracket: Option<YesNo>,
+
+    /// Whether to show the tuplet number (actual, both, or none).
+    #[serde(rename = "@show-number", skip_serializing_if = "Option::is_none")]
+    pub show_number: Option<ShowTuplet>,
+
+    /// Whether to show the tuplet note type (actual, both, or none).
+    #[serde(rename = "@show-type", skip_serializing_if = "Option::is_none")]
+    pub show_type: Option<ShowTuplet>,
+
+    /// Line shape (straight or curved) for the bracket.
+    #[serde(rename = "@line-shape", skip_serializing_if = "Option::is_none")]
+    pub line_shape: Option<LineShape>,
+
+    /// Placement above or below the staff.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Optional full control over how the actual part is displayed.
+    #[serde(rename = "tuplet-actual", skip_serializing_if = "Option::is_none")]
+    pub tuplet_actual: Option<TupletPortion>,
+
+    /// Optional full control over how the normal part is displayed.
+    #[serde(rename = "tuplet-normal", skip_serializing_if = "Option::is_none")]
+    pub tuplet_normal: Option<TupletPortion>,
+}
+
+impl Tuplet {
+    /// Create a tuplet start notation.
+    pub fn start() -> Self {
+        Self {
+            tuplet_type: StartStop::Start,
+            number: None,
+            bracket: None,
+            show_number: None,
+            show_type: None,
+            line_shape: None,
+            placement: None,
+            tuplet_actual: None,
+            tuplet_normal: None,
+        }
+    }
+
+    /// Create a tuplet stop notation.
+    pub fn stop() -> Self {
+        Self {
+            tuplet_type: StartStop::Stop,
+            number: None,
+            bracket: None,
+            show_number: None,
+            show_type: None,
+            line_shape: None,
+            placement: None,
+            tuplet_actual: None,
+            tuplet_normal: None,
+        }
+    }
+}
+
+/// A portion of a tuplet display (actual or normal), providing optional
+/// full control over number, note type, and dots.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TupletPortion {
+    /// The displayed number for this portion.
+    #[serde(rename = "tuplet-number", skip_serializing_if = "Option::is_none")]
+    pub tuplet_number: Option<TupletNumber>,
+
+    /// The displayed note type for this portion.
+    #[serde(rename = "tuplet-type", skip_serializing_if = "Option::is_none")]
+    pub tuplet_type: Option<TupletType>,
+
+    /// Dots on the displayed note type.
+    #[serde(rename = "tuplet-dot", default, skip_serializing_if = "Vec::is_empty")]
+    pub tuplet_dots: Vec<TupletDot>,
+}
+
+/// The number displayed for a tuplet portion.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TupletNumber {
+    /// The number value.
+    #[serde(rename = "$value")]
+    pub value: u32,
+}
+
+/// The note type displayed for a tuplet portion.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TupletType {
+    /// The note type value (quarter, eighth, etc.).
+    #[serde(rename = "$value")]
+    pub value: NoteTypeValue,
+}
+
+/// A dot on a tuplet portion's note type.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct TupletDot;
+
+// Re-export YesNo here for convenience since it's used in Tuplet.
+use super::data::YesNo;
 
 /// Slur notation element.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -354,5 +492,52 @@ mod tests {
         let artics = Articulations::default();
         assert!(artics.accent.is_none());
         assert!(artics.staccato.is_none());
+    }
+
+    #[test]
+    fn test_tuplet_start() {
+        let t = Tuplet::start();
+        assert_eq!(t.tuplet_type, StartStop::Start);
+        assert!(t.number.is_none());
+        assert!(t.bracket.is_none());
+        assert!(t.tuplet_actual.is_none());
+    }
+
+    #[test]
+    fn test_tuplet_stop() {
+        let t = Tuplet::stop();
+        assert_eq!(t.tuplet_type, StartStop::Stop);
+    }
+
+    #[test]
+    fn test_tuplet_with_portion() {
+        let mut t = Tuplet::start();
+        t.number = Some(1);
+        t.bracket = Some(YesNo::Yes);
+        t.show_number = Some(ShowTuplet::Both);
+        t.tuplet_actual = Some(TupletPortion {
+            tuplet_number: Some(TupletNumber { value: 3 }),
+            tuplet_type: Some(TupletType {
+                value: NoteTypeValue::Eighth,
+            }),
+            tuplet_dots: Vec::new(),
+        });
+        assert_eq!(
+            t.tuplet_actual
+                .as_ref()
+                .unwrap()
+                .tuplet_number
+                .as_ref()
+                .unwrap()
+                .value,
+            3
+        );
+    }
+
+    #[test]
+    fn test_notations_with_tuplets() {
+        let mut n = Notations::default();
+        n.tuplets.push(Tuplet::start());
+        assert_eq!(n.tuplets.len(), 1);
     }
 }

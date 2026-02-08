@@ -393,11 +393,10 @@ pub fn find_body_in_music(
 ) -> Option<&tusk_model::elements::Body> {
     use tusk_model::elements::MusicChild;
 
-    for child in &music.children {
+    music.children.first().map(|child| {
         let MusicChild::Body(body) = child;
-        return Some(body);
-    }
-    None
+        body.as_ref()
+    })
 }
 
 /// Find the first Mdiv in a Body.
@@ -406,11 +405,10 @@ pub fn find_first_mdiv_in_body(
 ) -> Option<&tusk_model::elements::Mdiv> {
     use tusk_model::elements::BodyChild;
 
-    for child in &body.children {
+    body.children.first().map(|child| {
         let BodyChild::Mdiv(mdiv) = child;
-        return Some(mdiv);
-    }
-    None
+        mdiv.as_ref()
+    })
 }
 
 /// Find the Score element in an Mdiv.
@@ -419,11 +417,10 @@ pub fn find_score_in_mdiv(
 ) -> Option<&tusk_model::elements::Score> {
     use tusk_model::elements::MdivChild;
 
-    for child in &mdiv.children {
+    mdiv.children.first().map(|child| {
         let MdivChild::Score(score) = child;
-        return Some(score);
-    }
-    None
+        score.as_ref()
+    })
 }
 
 /// Find the ScoreDef in a Score.

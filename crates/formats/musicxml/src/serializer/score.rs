@@ -1354,11 +1354,78 @@ impl MusicXmlSerialize for notations::Notations {
         for slur in &self.slurs {
             slur.serialize(w)?;
         }
+        for tuplet in &self.tuplets {
+            tuplet.serialize(w)?;
+        }
         if let Some(ref artics) = self.articulations {
             artics.serialize(w)?;
         }
         Ok(())
     }
+}
+
+impl MusicXmlSerialize for notations::Tuplet {
+    fn element_name(&self) -> &'static str {
+        "tuplet"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        attrs.push(("type", start_stop_str(&self.tuplet_type).to_string()));
+        if let Some(n) = self.number {
+            attrs.push(("number", n.to_string()));
+        }
+        if let Some(ref b) = self.bracket {
+            attrs.push(("bracket", yes_no_str(b).to_string()));
+        }
+        if let Some(ref sn) = self.show_number {
+            attrs.push(("show-number", show_tuplet_str(sn).to_string()));
+        }
+        if let Some(ref st) = self.show_type {
+            attrs.push(("show-type", show_tuplet_str(st).to_string()));
+        }
+        if let Some(ref ls) = self.line_shape {
+            attrs.push(("line-shape", line_shape_str(ls).to_string()));
+        }
+        if let Some(ref p) = self.placement {
+            attrs.push(("placement", above_below_str(p).to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        self.tuplet_actual.is_some() || self.tuplet_normal.is_some()
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        if let Some(ref actual) = self.tuplet_actual {
+            serialize_tuplet_portion(w, "tuplet-actual", actual)?;
+        }
+        if let Some(ref normal) = self.tuplet_normal {
+            serialize_tuplet_portion(w, "tuplet-normal", normal)?;
+        }
+        Ok(())
+    }
+}
+
+fn serialize_tuplet_portion<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    name: &str,
+    portion: &notations::TupletPortion,
+) -> SerializeResult<()> {
+    let start = w.start_element(name);
+    w.write_start(start)?;
+    if let Some(ref tn) = portion.tuplet_number {
+        w.write_text_element("tuplet-number", &tn.value.to_string())?;
+    }
+    if let Some(ref tt) = portion.tuplet_type {
+        w.write_text_element("tuplet-type", &tt.value.to_string())?;
+    }
+    for _ in &portion.tuplet_dots {
+        w.write_empty(w.start_element("tuplet-dot"))?;
+    }
+    w.write_end(name)?;
+    Ok(())
 }
 
 impl MusicXmlSerialize for notations::Slur {
@@ -1999,6 +2066,21 @@ fn start_stop_str(ss: &StartStop) -> &'static str {
     }
 }
 
+fn show_tuplet_str(st: &notations::ShowTuplet) -> &'static str {
+    match st {
+        notations::ShowTuplet::Actual => "actual",
+        notations::ShowTuplet::Both => "both",
+        notations::ShowTuplet::None => "none",
+    }
+}
+
+fn line_shape_str(ls: &LineShape) -> &'static str {
+    match ls {
+        LineShape::Straight => "straight",
+        LineShape::Curved => "curved",
+    }
+}
+
 fn start_stop_continue_str(ssc: &StartStopContinue) -> &'static str {
     match ssc {
         StartStopContinue::Start => "start",
@@ -2278,10 +2360,7 @@ impl ScoreTimewise {
     ///
     /// Uses `<score-timewise>` as the root element and nests parts inside
     /// measures (the inverse of partwise).
-    pub fn serialize_timewise<W: Write>(
-        &self,
-        w: &mut MusicXmlWriter<W>,
-    ) -> SerializeResult<()> {
+    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         let mut start = w.start_element("score-timewise");
         if let Some(ref v) = self.version {
             start.push_attribute(("version", v.as_str()));
@@ -2317,10 +2396,7 @@ impl ScoreTimewise {
 
 impl TimewiseMeasure {
     /// Serialize a timewise measure to the writer.
-    pub fn serialize_timewise<W: Write>(
-        &self,
-        w: &mut MusicXmlWriter<W>,
-    ) -> SerializeResult<()> {
+    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         let mut start = w.start_element("measure");
         start.push_attribute(("number", self.number.as_str()));
         if let Some(ref imp) = self.implicit {
@@ -2346,10 +2422,7 @@ impl TimewiseMeasure {
 
 impl TimewisePart {
     /// Serialize a timewise part (within a measure) to the writer.
-    pub fn serialize_timewise<W: Write>(
-        &self,
-        w: &mut MusicXmlWriter<W>,
-    ) -> SerializeResult<()> {
+    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         let mut start = w.start_element("part");
         start.push_attribute(("id", self.id.as_str()));
         w.write_start(start)?;

@@ -391,6 +391,7 @@ fn parse_time_modification<R: BufRead>(reader: &mut Reader<R>) -> Result<TimeMod
     let mut actual_notes = 1;
     let mut normal_notes = 1;
     let mut normal_type: Option<NoteTypeValue> = None;
+    let mut normal_dots: Vec<Empty> = Vec::new();
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -407,18 +408,13 @@ fn parse_time_modification<R: BufRead>(reader: &mut Reader<R>) -> Result<TimeMod
                 }
                 b"normal-type" => {
                     let s = read_text(reader, b"normal-type")?;
-                    normal_type = Some(match s.as_str() {
-                        "eighth" => NoteTypeValue::Eighth,
-                        "quarter" => NoteTypeValue::Quarter,
-                        "half" => NoteTypeValue::Half,
-                        "whole" => NoteTypeValue::Whole,
-                        "16th" => NoteTypeValue::N16th,
-                        "32nd" => NoteTypeValue::N32nd,
-                        _ => NoteTypeValue::Quarter,
-                    });
+                    normal_type = Some(parse_note_type_value(&s)?);
                 }
                 _ => skip_element(reader, &e)?,
             },
+            Event::Empty(e) if e.name().as_ref() == b"normal-dot" => {
+                normal_dots.push(Empty);
+            }
             Event::End(e) if e.name().as_ref() == b"time-modification" => break,
             Event::Eof => {
                 return Err(ParseError::MissingElement(
@@ -434,7 +430,7 @@ fn parse_time_modification<R: BufRead>(reader: &mut Reader<R>) -> Result<TimeMod
         actual_notes,
         normal_notes,
         normal_type,
-        normal_dots: Vec::new(),
+        normal_dots,
     })
 }
 
@@ -591,6 +587,9 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                     notations.tied.push(parse_tied(&e)?);
                     skip_to_end(reader, b"tied")?;
                 }
+                b"tuplet" => {
+                    notations.tuplets.push(parse_tuplet(reader, &e)?);
+                }
                 b"articulations" => {
                     notations.articulations = Some(parse_articulations(reader)?);
                 }
@@ -599,6 +598,7 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
             Event::Empty(e) => match e.name().as_ref() {
                 b"slur" => notations.slurs.push(parse_slur(&e)?),
                 b"tied" => notations.tied.push(parse_tied(&e)?),
+                b"tuplet" => notations.tuplets.push(parse_tuplet_empty(&e)?),
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"notations" => break,
@@ -609,6 +609,161 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
     }
 
     Ok(notations)
+}
+
+fn parse_tuplet_attrs(e: &BytesStart) -> Result<Tuplet> {
+    let tuplet_type = match get_attr_required(e, "type")?.as_str() {
+        "start" => StartStop::Start,
+        "stop" => StartStop::Stop,
+        s => {
+            return Err(ParseError::InvalidAttribute(
+                "type".to_string(),
+                s.to_string(),
+            ));
+        }
+    };
+    let number = get_attr(e, "number")?.and_then(|s| s.parse().ok());
+    let bracket = get_attr(e, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
+    let show_number = get_attr(e, "show-number")?.and_then(|s| match s.as_str() {
+        "actual" => Some(ShowTuplet::Actual),
+        "both" => Some(ShowTuplet::Both),
+        "none" => Some(ShowTuplet::None),
+        _ => Option::None,
+    });
+    let show_type = get_attr(e, "show-type")?.and_then(|s| match s.as_str() {
+        "actual" => Some(ShowTuplet::Actual),
+        "both" => Some(ShowTuplet::Both),
+        "none" => Some(ShowTuplet::None),
+        _ => Option::None,
+    });
+    let line_shape = get_attr(e, "line-shape")?.and_then(|s| match s.as_str() {
+        "straight" => Some(LineShape::Straight),
+        "curved" => Some(LineShape::Curved),
+        _ => Option::None,
+    });
+    let placement = get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+        "above" => Some(AboveBelow::Above),
+        "below" => Some(AboveBelow::Below),
+        _ => Option::None,
+    });
+
+    Ok(Tuplet {
+        tuplet_type,
+        number,
+        bracket,
+        show_number,
+        show_type,
+        line_shape,
+        placement,
+        tuplet_actual: None,
+        tuplet_normal: None,
+    })
+}
+
+/// Parse a <tuplet> element that is self-closing (empty, attributes only).
+fn parse_tuplet_empty(e: &BytesStart) -> Result<Tuplet> {
+    parse_tuplet_attrs(e)
+}
+
+/// Parse a <tuplet> element with children (tuplet-actual, tuplet-normal).
+fn parse_tuplet<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Tuplet> {
+    let mut tuplet = parse_tuplet_attrs(start)?;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"tuplet-actual" => {
+                    tuplet.tuplet_actual = Some(parse_tuplet_portion(reader, b"tuplet-actual")?);
+                }
+                b"tuplet-normal" => {
+                    tuplet.tuplet_normal = Some(parse_tuplet_portion(reader, b"tuplet-normal")?);
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(_) => {}
+            Event::End(e) if e.name().as_ref() == b"tuplet" => break,
+            Event::Eof => return Err(ParseError::MissingElement("tuplet end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(tuplet)
+}
+
+/// Parse a tuplet-portion (tuplet-actual or tuplet-normal).
+fn parse_tuplet_portion<R: BufRead>(
+    reader: &mut Reader<R>,
+    end_tag: &[u8],
+) -> Result<TupletPortion> {
+    let mut buf = Vec::new();
+    let mut tuplet_number: Option<TupletNumber> = None;
+    let mut tuplet_type: Option<TupletType> = None;
+    let mut tuplet_dots: Vec<TupletDot> = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"tuplet-number" => {
+                    let text = read_text(reader, b"tuplet-number")?;
+                    let value = text
+                        .parse::<u32>()
+                        .map_err(|_| ParseError::ParseNumber("tuplet-number".to_string()))?;
+                    tuplet_number = Some(TupletNumber { value });
+                }
+                b"tuplet-type" => {
+                    let text = read_text(reader, b"tuplet-type")?;
+                    let value = parse_note_type_value(&text)?;
+                    tuplet_type = Some(TupletType { value });
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) if e.name().as_ref() == b"tuplet-dot" => {
+                tuplet_dots.push(TupletDot);
+            }
+            Event::Empty(_) => {}
+            Event::End(e) if e.name().as_ref() == end_tag => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement(format!(
+                    "{} end",
+                    String::from_utf8_lossy(end_tag)
+                )));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(TupletPortion {
+        tuplet_number,
+        tuplet_type,
+        tuplet_dots,
+    })
+}
+
+/// Parse a NoteTypeValue from a string.
+fn parse_note_type_value(s: &str) -> Result<NoteTypeValue> {
+    match s {
+        "1024th" => Ok(NoteTypeValue::N1024th),
+        "512th" => Ok(NoteTypeValue::N512th),
+        "256th" => Ok(NoteTypeValue::N256th),
+        "128th" => Ok(NoteTypeValue::N128th),
+        "64th" => Ok(NoteTypeValue::N64th),
+        "32nd" => Ok(NoteTypeValue::N32nd),
+        "16th" => Ok(NoteTypeValue::N16th),
+        "eighth" => Ok(NoteTypeValue::Eighth),
+        "quarter" => Ok(NoteTypeValue::Quarter),
+        "half" => Ok(NoteTypeValue::Half),
+        "whole" => Ok(NoteTypeValue::Whole),
+        "breve" => Ok(NoteTypeValue::Breve),
+        "long" => Ok(NoteTypeValue::Long),
+        "maxima" => Ok(NoteTypeValue::Maxima),
+        _ => Err(ParseError::InvalidContent(
+            "note-type".to_string(),
+            s.to_string(),
+        )),
+    }
 }
 
 fn parse_slur(e: &BytesStart) -> Result<Slur> {
