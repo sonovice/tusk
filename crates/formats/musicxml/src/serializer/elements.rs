@@ -15,10 +15,10 @@ use crate::serializer::{
 
 use super::score::{
     above_below_str, accidental_value_str, beam_value_str, clef_sign_str, fan_str, font_size_str,
-    font_style_str, font_weight_str, left_center_right_str, mode_str, notehead_value_str,
-    push_opt_attr_start, push_opt_str_attr_start, start_stop_continue_str, start_stop_str,
-    stem_value_str, step_str, symbol_size_str, time_symbol_str, valign_str, wedge_type_str,
-    yes_no_str,
+    font_style_str, font_weight_str, left_center_right_str, line_type_str, mode_str,
+    notehead_value_str, push_opt_attr_start, push_opt_str_attr_start, start_stop_continue_str,
+    start_stop_str, stem_value_str, step_str, symbol_size_str, time_symbol_str, valign_str,
+    wedge_type_str, yes_no_str,
 };
 
 // ============================================================================
@@ -557,9 +557,29 @@ impl MusicXmlSerialize for Attributes {
             w.write_text_element("staves", &staves.to_string())?;
         }
 
+        // Part symbol
+        if let Some(ref ps) = self.part_symbol {
+            serialize_part_symbol(w, ps)?;
+        }
+
+        // Instruments
+        if let Some(instruments) = self.instruments {
+            w.write_text_element("instruments", &instruments.to_string())?;
+        }
+
         // Clef
         for clef in &self.clefs {
             clef.serialize(w)?;
+        }
+
+        // Staff details
+        for sd in &self.staff_details {
+            sd.serialize(w)?;
+        }
+
+        // Transpose
+        for transpose in &self.transposes {
+            transpose.serialize(w)?;
         }
 
         Ok(())
@@ -675,6 +695,197 @@ impl MusicXmlSerialize for Clef {
         }
         if let Some(oct) = self.clef_octave_change {
             w.write_text_element("clef-octave-change", &oct.to_string())?;
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Staff Details
+// ============================================================================
+
+impl MusicXmlSerialize for StaffDetails {
+    fn element_name(&self) -> &'static str {
+        "staff-details"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_opt_attr!(attrs, "number", self.number);
+        if let Some(ref sf) = self.show_frets {
+            attrs.push((
+                "show-frets",
+                match sf {
+                    ShowFrets::Numbers => "numbers",
+                    ShowFrets::Letters => "letters",
+                }
+                .to_string(),
+            ));
+        }
+        if let Some(ref po) = self.print_object {
+            attrs.push(("print-object", yes_no_str(po).to_string()));
+        }
+        if let Some(ref ps) = self.print_spacing {
+            attrs.push(("print-spacing", yes_no_str(ps).to_string()));
+        }
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        // staff-type
+        if let Some(ref st) = self.staff_type {
+            w.write_text_element(
+                "staff-type",
+                match st {
+                    StaffType::Ossia => "ossia",
+                    StaffType::Editorial => "editorial",
+                    StaffType::Cue => "cue",
+                    StaffType::Regular => "regular",
+                    StaffType::Alternate => "alternate",
+                },
+            )?;
+        }
+
+        // staff-lines
+        if let Some(lines) = self.staff_lines {
+            w.write_text_element("staff-lines", &lines.to_string())?;
+        }
+
+        // line-detail
+        for ld in &self.line_details {
+            serialize_line_detail(w, ld)?;
+        }
+
+        // staff-tuning
+        for st in &self.staff_tunings {
+            serialize_staff_tuning(w, st)?;
+        }
+
+        // capo
+        if let Some(c) = self.capo {
+            w.write_text_element("capo", &c.to_string())?;
+        }
+
+        // staff-size
+        if let Some(ref ss) = self.staff_size {
+            let mut start = w.start_element("staff-size");
+            if let Some(scaling) = ss.scaling {
+                start.push_attribute(("scaling", scaling.to_string().as_str()));
+            }
+            w.write_start(start)?;
+            w.write_text(&ss.value.to_string())?;
+            w.write_end("staff-size")?;
+        }
+
+        Ok(())
+    }
+}
+
+fn serialize_line_detail<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    ld: &LineDetail,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("line-detail");
+    start.push_attribute(("line", ld.line.to_string().as_str()));
+    if let Some(width) = ld.width {
+        start.push_attribute(("width", width.to_string().as_str()));
+    }
+    if let Some(ref color) = ld.color {
+        start.push_attribute(("color", color.as_str()));
+    }
+    if let Some(ref lt) = ld.line_type {
+        start.push_attribute(("line-type", line_type_str(lt)));
+    }
+    if let Some(ref po) = ld.print_object {
+        start.push_attribute(("print-object", yes_no_str(po)));
+    }
+    w.write_empty(start)?;
+    Ok(())
+}
+
+fn serialize_staff_tuning<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    st: &StaffTuning,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("staff-tuning");
+    start.push_attribute(("line", st.line.to_string().as_str()));
+    w.write_start(start)?;
+    w.write_text_element("tuning-step", step_str(&st.tuning_step))?;
+    if let Some(alter) = st.tuning_alter {
+        w.write_text_element("tuning-alter", &alter.to_string())?;
+    }
+    w.write_text_element("tuning-octave", &st.tuning_octave.to_string())?;
+    w.write_end("staff-tuning")?;
+    Ok(())
+}
+
+fn serialize_part_symbol<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    ps: &PartSymbol,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("part-symbol");
+    if let Some(top) = ps.top_staff {
+        start.push_attribute(("top-staff", top.to_string().as_str()));
+    }
+    if let Some(bottom) = ps.bottom_staff {
+        start.push_attribute(("bottom-staff", bottom.to_string().as_str()));
+    }
+    if let Some(dx) = ps.default_x {
+        start.push_attribute(("default-x", dx.to_string().as_str()));
+    }
+    if let Some(ref color) = ps.color {
+        start.push_attribute(("color", color.as_str()));
+    }
+    w.write_start(start)?;
+    w.write_text(match ps.value {
+        PartSymbolValue::None => "none",
+        PartSymbolValue::Brace => "brace",
+        PartSymbolValue::Line => "line",
+        PartSymbolValue::Bracket => "bracket",
+        PartSymbolValue::Square => "square",
+    })?;
+    w.write_end("part-symbol")?;
+    Ok(())
+}
+
+// ============================================================================
+// Transpose
+// ============================================================================
+
+impl MusicXmlSerialize for Transpose {
+    fn element_name(&self) -> &'static str {
+        "transpose"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_opt_attr!(attrs, "number", self.number);
+        push_opt_str_attr!(attrs, "id", self.id);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        if let Some(diatonic) = self.diatonic {
+            w.write_text_element("diatonic", &diatonic.to_string())?;
+        }
+        w.write_text_element("chromatic", &self.chromatic.to_string())?;
+        if let Some(oct) = self.octave_change {
+            w.write_text_element("octave-change", &oct.to_string())?;
+        }
+        if let Some(ref d) = self.double {
+            let mut start = w.start_element("double");
+            if let Some(ref above) = d.above {
+                start.push_attribute(("above", yes_no_str(above)));
+            }
+            w.write_empty(start)?;
         }
         Ok(())
     }

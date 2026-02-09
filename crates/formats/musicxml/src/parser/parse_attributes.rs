@@ -39,6 +39,7 @@ pub fn parse_attributes<R: BufRead>(reader: &mut Reader<R>) -> Result<Attributes
                     )
                 }
                 b"clef" => attrs.clefs.push(parse_clef(reader, &e)?),
+                b"staff-details" => attrs.staff_details.push(parse_staff_details(reader, &e)?),
                 b"transpose" => attrs.transposes.push(parse_transpose(reader, &e)?),
                 _ => skip_element(reader, &e)?,
             },
@@ -292,6 +293,165 @@ fn parse_transpose<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
         chromatic,
         octave_change,
         double: None,
+    })
+}
+
+fn parse_staff_details<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<StaffDetails> {
+    let mut buf = Vec::new();
+    let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
+    let show_frets = get_attr(start, "show-frets")?.and_then(|s| match s.as_str() {
+        "numbers" => Some(ShowFrets::Numbers),
+        "letters" => Some(ShowFrets::Letters),
+        _ => None,
+    });
+    let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    let print_spacing = get_attr(start, "print-spacing")?.and_then(|s| parse_yes_no_opt(&s));
+
+    let mut staff_type: Option<StaffType> = None;
+    let mut staff_lines: Option<u32> = None;
+    let mut line_details: Vec<LineDetail> = Vec::new();
+    let mut staff_tunings: Vec<StaffTuning> = Vec::new();
+    let mut capo: Option<u32> = None;
+    let mut staff_size: Option<StaffSize> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"staff-type" => {
+                    let s = read_text(reader, b"staff-type")?;
+                    staff_type = Some(match s.as_str() {
+                        "ossia" => StaffType::Ossia,
+                        "editorial" => StaffType::Editorial,
+                        "cue" => StaffType::Cue,
+                        "regular" => StaffType::Regular,
+                        "alternate" => StaffType::Alternate,
+                        _ => StaffType::Regular,
+                    });
+                }
+                b"staff-lines" => {
+                    staff_lines = Some(
+                        read_text(reader, b"staff-lines")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("staff-lines".to_string()))?,
+                    );
+                }
+                b"line-detail" => line_details.push(parse_line_detail(&e)?),
+                b"staff-tuning" => staff_tunings.push(parse_staff_tuning(reader, &e)?),
+                b"capo" => {
+                    capo = Some(
+                        read_text(reader, b"capo")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("capo".to_string()))?,
+                    );
+                }
+                b"staff-size" => {
+                    let scaling = get_attr(&e, "scaling")?.and_then(|s| s.parse().ok());
+                    let value: f64 = read_text(reader, b"staff-size")?
+                        .parse()
+                        .map_err(|_| ParseError::ParseNumber("staff-size".to_string()))?;
+                    staff_size = Some(StaffSize { value, scaling });
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) if e.name().as_ref() == b"line-detail" => {
+                line_details.push(parse_line_detail(&e)?);
+            }
+            Event::End(e) if e.name().as_ref() == b"staff-details" => break,
+            Event::Eof => return Err(ParseError::MissingElement("staff-details end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(StaffDetails {
+        number,
+        show_frets,
+        print_object,
+        print_spacing,
+        staff_type,
+        staff_lines,
+        line_details,
+        staff_tunings,
+        capo,
+        staff_size,
+    })
+}
+
+fn parse_line_detail(start: &BytesStart) -> Result<LineDetail> {
+    let line: u32 = get_attr(start, "line")?
+        .ok_or_else(|| ParseError::MissingAttribute("line-detail @line".to_string()))?
+        .parse()
+        .map_err(|_| ParseError::ParseNumber("line-detail line".to_string()))?;
+    let width = get_attr(start, "width")?.and_then(|s| s.parse().ok());
+    let color = get_attr(start, "color")?;
+    let line_type = get_attr(start, "line-type")?.and_then(|s| match s.as_str() {
+        "solid" => Some(LineType::Solid),
+        "dashed" => Some(LineType::Dashed),
+        "dotted" => Some(LineType::Dotted),
+        "wavy" => Some(LineType::Wavy),
+        _ => None,
+    });
+    let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+
+    Ok(LineDetail {
+        line,
+        width,
+        color,
+        line_type,
+        print_object,
+    })
+}
+
+fn parse_staff_tuning<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<StaffTuning> {
+    let mut buf = Vec::new();
+    let line: u32 = get_attr(start, "line")?
+        .ok_or_else(|| ParseError::MissingAttribute("staff-tuning @line".to_string()))?
+        .parse()
+        .map_err(|_| ParseError::ParseNumber("staff-tuning line".to_string()))?;
+
+    let mut tuning_step = Step::C;
+    let mut tuning_alter: Option<f64> = None;
+    let mut tuning_octave: u8 = 4;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"tuning-step" => {
+                    let s = read_text(reader, b"tuning-step")?;
+                    tuning_step = super::parse_harmony::parse_step_value(&s)?;
+                }
+                b"tuning-alter" => {
+                    tuning_alter = Some(
+                        read_text(reader, b"tuning-alter")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("tuning-alter".to_string()))?,
+                    );
+                }
+                b"tuning-octave" => {
+                    tuning_octave = read_text(reader, b"tuning-octave")?
+                        .parse()
+                        .map_err(|_| ParseError::ParseNumber("tuning-octave".to_string()))?;
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"staff-tuning" => break,
+            Event::Eof => return Err(ParseError::MissingElement("staff-tuning end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(StaffTuning {
+        line,
+        tuning_step,
+        tuning_alter,
+        tuning_octave,
     })
 }
 

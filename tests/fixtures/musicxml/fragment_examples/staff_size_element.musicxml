@@ -20,10 +20,10 @@
           <sign>G</sign>
           <line>2</line>
         </clef>
+        <staff-details number="1">
+          <staff-size scaling="75">75</staff-size>
+        </staff-details>
       </attributes>
-      <staff-details number="1">
-         <staff-size scaling="75">75</staff-size>
-      </staff-details>
     </measure>
   </part>
 </score-partwise>

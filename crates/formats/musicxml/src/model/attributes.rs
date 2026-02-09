@@ -749,9 +749,25 @@ pub struct StaffDetails {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub capo: Option<u32>,
 
-    /// Staff size as a percentage.
+    /// Staff size as a percentage with optional scaling attribute.
     #[serde(rename = "staff-size", skip_serializing_if = "Option::is_none")]
-    pub staff_size: Option<f64>,
+    pub staff_size: Option<StaffSize>,
+}
+
+/// Staff size with optional scaling attribute.
+///
+/// The staff-size element text content is a non-negative decimal representing
+/// the percentage of the regular staff size. The scaling attribute specifies
+/// a separate scaling factor (also non-negative decimal).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StaffSize {
+    /// The staff size percentage value.
+    #[serde(rename = "$value")]
+    pub value: f64,
+
+    /// Scaling factor.
+    #[serde(rename = "@scaling", skip_serializing_if = "Option::is_none")]
+    pub scaling: Option<f64>,
 }
 
 /// Staff type.

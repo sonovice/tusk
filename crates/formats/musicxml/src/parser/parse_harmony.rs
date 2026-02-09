@@ -232,7 +232,7 @@ fn parse_step_element<R: BufRead>(
     })
 }
 
-fn parse_step_value(s: &str) -> Result<Step> {
+pub(crate) fn parse_step_value(s: &str) -> Result<Step> {
     match s.trim() {
         "A" => Ok(Step::A),
         "B" => Ok(Step::B),

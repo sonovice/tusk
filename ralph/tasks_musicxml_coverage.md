@@ -672,9 +672,9 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 15.1 Staff Details
 
-- [ ] Integrate `staff-details` conversion: `staff-type` → MEI notation type, `staff-lines` → MEI `@lines`, `staff-tuning` → MEI `<tuning>`, `capo` → MEI capo attr, `staff-size` → MEI `@scale`
-- [ ] Export: reverse mappings
-- [ ] Verify fragment examples: `staff_tuning_element`, `capo_element`, `staff_lines_element`, `staff_size_element`
+- [x] Integrate `staff-details` conversion: `staff-type` → MEI notation type, `staff-lines` → MEI `@lines`, `staff-tuning` → MEI `<tuning>`, `capo` → MEI capo attr, `staff-size` → MEI `@scale`
+- [x] Export: reverse mappings
+- [x] Verify fragment examples: `staff_tuning_element`, `capo_element`, `staff_lines_element`, `staff_size_element`
 
 ### 15.2 Part Symbol
 

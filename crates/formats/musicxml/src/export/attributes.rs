@@ -9,7 +9,38 @@
 //! - Staff details (lines)
 
 use crate::context::ConversionContext;
+use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
+
+/// Label prefix for staff-details JSON stored on staffDef @label.
+const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
+
+/// Extract MusicXML StaffDetails from a MEI StaffDef.
+///
+/// Primary: recover full StaffDetails from JSON in @label (lossless roundtrip).
+/// Fallback: build minimal StaffDetails from @lines only.
+fn extract_staff_details(staff_def: &StaffDef) -> Option<StaffDetails> {
+    // Try JSON label first
+    if let Some(ref label) = staff_def.labelled.label {
+        if let Some(json) = label.strip_prefix(STAFF_DETAILS_LABEL_PREFIX) {
+            if let Ok(sd) = serde_json::from_str::<StaffDetails>(json) {
+                return Some(sd);
+            }
+        }
+    }
+
+    // Fallback: build from @lines only
+    let lines = staff_def
+        .staff_def_log
+        .lines
+        .as_ref()
+        .and_then(|s| s.parse::<u64>().ok());
+
+    lines.map(|l| StaffDetails {
+        staff_lines: Some(l as u32),
+        ..Default::default()
+    })
+}
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
 ///
@@ -252,8 +283,8 @@ pub fn convert_mei_staff_def_to_attributes(
     _ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
-        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
-        TimeContent, TimeSignature, TraditionalKey, Transpose,
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
+        TimeSignature, TraditionalKey, Transpose,
     };
 
     let mut attrs = Attributes::default();
@@ -370,25 +401,9 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert staff lines; MEI @lines is Option<String>
-    if let Some(lines) = staff_def
-        .staff_def_log
-        .lines
-        .as_ref()
-        .and_then(|s| s.parse::<u64>().ok())
-    {
-        attrs.staff_details.push(StaffDetails {
-            number: None,
-            show_frets: None,
-            print_object: None,
-            print_spacing: None,
-            staff_type: None,
-            staff_lines: Some(lines as u32),
-            line_details: Vec::new(),
-            staff_tunings: Vec::new(),
-            capo: None,
-            staff_size: None,
-        });
+    // Convert staff details from label JSON or fallback to @lines
+    if let Some(sd) = extract_staff_details(staff_def) {
+        attrs.staff_details.push(sd);
     }
 
     attrs
@@ -404,8 +419,8 @@ pub fn build_first_measure_attributes(
     ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
-        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
-        TimeContent, TimeSignature, TraditionalKey, Transpose,
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
+        TimeSignature, TraditionalKey, Transpose,
     };
 
     let mut attrs = Attributes::default();
@@ -535,25 +550,9 @@ pub fn build_first_measure_attributes(
             });
         }
 
-        // Get staff lines from staffDef (MEI uses Option<String>)
-        if let Some(lines) = staff_def
-            .staff_def_log
-            .lines
-            .as_ref()
-            .and_then(|s| s.parse::<u64>().ok())
-        {
-            attrs.staff_details.push(StaffDetails {
-                number: None,
-                show_frets: None,
-                print_object: None,
-                print_spacing: None,
-                staff_type: None,
-                staff_lines: Some(lines as u32),
-                line_details: Vec::new(),
-                staff_tunings: Vec::new(),
-                capo: None,
-                staff_size: None,
-            });
+        // Get staff details from label JSON or fallback to @lines
+        if let Some(sd) = extract_staff_details(staff_def) {
+            attrs.staff_details.push(sd);
         }
     }
 
@@ -575,8 +574,8 @@ pub fn build_first_measure_attributes_multi(
     ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
-        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
-        TimeContent, TimeSignature, TraditionalKey, Transpose,
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
+        TimeSignature, TraditionalKey, Transpose,
     };
 
     // Find the staffDefs belonging to this part via context mapping
@@ -718,25 +717,9 @@ pub fn build_first_measure_attributes_multi(
             });
         }
 
-        // Staff details from first staffDef
-        if let Some(lines) = staff_def
-            .staff_def_log
-            .lines
-            .as_ref()
-            .and_then(|s| s.parse::<u64>().ok())
-        {
-            attrs.staff_details.push(StaffDetails {
-                number: None,
-                show_frets: None,
-                print_object: None,
-                print_spacing: None,
-                staff_type: None,
-                staff_lines: Some(lines as u32),
-                line_details: Vec::new(),
-                staff_tunings: Vec::new(),
-                capo: None,
-                staff_size: None,
-            });
+        // Staff details from first staffDef (label JSON or @lines fallback)
+        if let Some(sd) = extract_staff_details(staff_def) {
+            attrs.staff_details.push(sd);
         }
     }
 

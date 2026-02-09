@@ -592,6 +592,24 @@ pub fn convert_staff_def_from_score_part(
             staff_def.staff_def_log.clef_dis = dis;
             staff_def.staff_def_log.clef_dis_place = dis_place;
         }
+
+        // Apply staff details
+        // Pick matching staff number or first entry
+        let sd = match clef_number {
+            Some(n) => attrs
+                .staff_details
+                .iter()
+                .find(|sd| sd.number == Some(n) || (n == 1 && sd.number.is_none()))
+                .or_else(|| attrs.staff_details.first()),
+            None => attrs
+                .staff_details
+                .iter()
+                .find(|sd| sd.number.is_none() || sd.number == Some(1))
+                .or_else(|| attrs.staff_details.first()),
+        };
+        if let Some(sd) = sd {
+            apply_staff_details_to_staff_def(sd, &mut staff_def);
+        }
     }
 
     // Use the original MusicXML part ID as the staffDef xml:id
@@ -625,6 +643,53 @@ pub fn convert_staff_def_from_score_part(
     }
 
     Ok(staff_def)
+}
+
+/// Label prefix for staff-details JSON stored on staffDef @label.
+const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
+
+/// Apply MusicXML StaffDetails to a MEI StaffDef.
+///
+/// Maps semantic fields to MEI attributes:
+/// - staff_lines → @lines
+/// - staff_size → @scale (percentage string)
+///
+/// Stores the full StaffDetails as JSON in @label for lossless roundtrip of
+/// all fields (staff_type, line_details, staff_tunings, capo, show_frets, etc.).
+fn apply_staff_details_to_staff_def(
+    sd: &crate::model::attributes::StaffDetails,
+    staff_def: &mut StaffDef,
+) {
+    // Map staff_lines → @lines
+    if let Some(lines) = sd.staff_lines {
+        staff_def.staff_def_log.lines = Some(lines.to_string());
+    }
+
+    // Map staff_size → @scale as percentage
+    if let Some(ref ss) = sd.staff_size {
+        staff_def.staff_def_vis.scale =
+            Some(tusk_model::data::DataPercent(format!("{}%", ss.value)));
+    }
+
+    // Store full StaffDetails as JSON in @label for lossless roundtrip
+    // Only store if there's meaningful data beyond just staff_lines
+    let has_extra = sd.staff_type.is_some()
+        || !sd.line_details.is_empty()
+        || !sd.staff_tunings.is_empty()
+        || sd.capo.is_some()
+        || sd.staff_size.is_some()
+        || sd.show_frets.is_some()
+        || sd.print_object.is_some()
+        || sd.print_spacing.is_some();
+
+    if has_extra {
+        // Clear the number field — it's handled via MEI @n / part mapping
+        let mut sd_for_json = sd.clone();
+        sd_for_json.number = None;
+        if let Ok(json) = serde_json::to_string(&sd_for_json) {
+            staff_def.labelled.label = Some(format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json));
+        }
+    }
 }
 
 /// Convert a multi-staff MusicXML part to a nested MEI staffGrp with multiple staffDefs.
