@@ -84,16 +84,26 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 1.2 Lexer Foundation
 
-- [ ] [L] Define `Token` enum in `lexer/tokens.rs`: keywords (`\version`, `\score`, `\book`, `\relative`, etc.), identifiers, numbers, strings, operators (`<`, `>`, `<<`, `>>`, `{`, `}`, `~`, `|`, etc.), note names, duration digits, dots, octave marks (`'`, `,`), accidental modifiers (`!`, `?`)
-- [ ] [L] Implement `Lexer` struct in `lexer/mod.rs`: input slice, position, current token; `next_token()` producing `Token` + span
-- [ ] [L] Tokenize comments (`%` to EOL) and skip whitespace
-- [ ] [L] Tokenize string literals (`"..."` with escapes)
-- [ ] [V] Lexer produces correct token sequence for a minimal `.ly` snippet (e.g. `\version "2.24" \score { { c4 } }`)
-- [ ] [T] Unit tests for lexer on minimal inputs
+- [x] [L] Define `Token` enum in `lexer/tokens.rs`: keywords (`\version`, `\score`, `\book`, `\relative`, etc.), identifiers, numbers, strings, operators (`<`, `>`, `<<`, `>>`, `{`, `}`, `~`, `|`, etc.), note names, duration digits, dots, octave marks (`'`, `,`), accidental modifiers (`!`, `?`)
+  - 55+ keywords, note names (Dutch convention), symbols, operators, escaped operators, compound tokens (lyric hyphen/extender)
+  - `is_note_name()` validates Dutch note name convention (a-g + is/es/isis/eses/ih/eh suffixes)
+  - `keyword_from_str()` maps 50+ keyword strings to Token variants
+- [x] [L] Implement `Lexer` struct in `lexer/mod.rs`: input slice, position, current token; `next_token()` producing `Token` + span
+  - Hand-rolled byte-level scanner with `Span` tracking
+  - `tokenize_all()` convenience method for tests
+  - Words are purely alphabetic (no digits) matching LilyPond's SYMBOL regex
+- [x] [L] Tokenize comments (`%` to EOL) and skip whitespace
+  - Line comments (`%`), block comments (`%{ ... %}`), nested block comments
+- [x] [L] Tokenize string literals (`"..."` with escapes)
+  - Supports `\n`, `\t`, `\\`, `\"`, `\'` escape sequences
+- [x] [V] Lexer produces correct token sequence for a minimal `.ly` snippet (e.g. `\version "2.24" \score { { c4 } }`)
+  - `fixture_minimal_score` test validates full token sequence
+- [x] [T] Unit tests for lexer on minimal inputs
+  - 47 unit tests covering: whitespace, comments, strings, numbers, keywords, note names, operators, escaped operators, compound sequences, spans, note name recognition
 
 ### 1.3 Tests
 
-- [ ] [T] Crate compiles; `cargo test -p tusk-lilypond` runs (can be empty tests initially)
+- [x] [T] Crate compiles; `cargo test -p tusk-lilypond` runs (47 lexer tests pass)
 
 ---
 

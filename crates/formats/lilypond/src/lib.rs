@@ -21,12 +21,12 @@
 //! Export: MEI → AST → serialize → .ly
 //! ```
 
-pub mod model;
+pub mod export;
+pub mod import;
 pub mod lexer;
+pub mod model;
 pub mod parser;
 pub mod serializer;
-pub mod import;
-pub mod export;
 pub mod validator;
 
 // ---------------------------------------------------------------------------
