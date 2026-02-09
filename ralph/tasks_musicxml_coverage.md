@@ -181,10 +181,18 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 4.1 Model & Parser
 
-- [ ] Add to `Notations` struct: `fermatas: Vec<Fermata>`, `arpeggiate: Option<Arpeggiate>`, `non_arpeggiate: Option<NonArpeggiate>`, `glissandos: Vec<Glissando>`, `slides: Vec<Slide>`, `accidental_marks: Vec<AccidentalMark>`, `other_notations: Vec<OtherNotation>`
-- [ ] Create structs: `Fermata` (shape, type upright/inverted, placement), `Arpeggiate` (number, direction up/down, placement), `NonArpeggiate` (type top/bottom, number, placement), `Glissando` (type start/stop, number, line-type, text, placement), `Slide` (type start/stop, number, line-type, text, placement), `AccidentalMark` (value, placement, parentheses), `OtherNotation` (type, text, placement)
-- [ ] Parse all in `parse_notations()`
-- [ ] Serialize all in serializer
+- [x] Add to `Notations` struct: `fermatas: Vec<Fermata>`, `arpeggiate: Option<Arpeggiate>`, `non_arpeggiate: Option<NonArpeggiate>`, `glissandos: Vec<Glissando>`, `slides: Vec<Slide>`, `accidental_marks: Vec<AccidentalMark>`, `other_notations: Vec<OtherNotation>`
+- [x] Create structs: `Fermata` (shape via FermataShape enum, type upright/inverted via UprightInverted, default-x/y, relative-x/y, color), `Arpeggiate` (number, direction up/down, unbroken, default-x/y, placement, color), `NonArpeggiate` (type top/bottom, number, default-x/y, placement, color), `Glissando` (type start/stop, number, line-type, default-x/y, color, text), `Slide` (type start/stop, number, line-type, default-x/y, color, text), reused existing `AccidentalMark` (value, placement), `OtherNotation` (type start/stop/single, number, placement, smufl, text)
+  - All structs in `model/notations.rs` with proper serde annotations
+  - FermataShape enum: Normal, Angled, Square, DoubleAngled, DoubleSquare, DoubleDot, HalfCurve, Curlew, Empty
+- [x] Parse all in `parse_notations()` — handles both Start and Empty XML events for each type
+  - New `parser/parse_notations.rs` module with all parsing functions
+  - Handles fermata text content (shape), glissando/slide text content, other-notation text
+  - Shared `parse_start_stop_line_attrs()` helper for glissando/slide
+- [x] Serialize all in serializer
+  - Added `serialize_fermata`, `serialize_arpeggiate`, `serialize_non_arpeggiate`, `serialize_glissando`, `serialize_slide`, `serialize_other_notation` in `serializer/notations.rs`
+  - Added `fermata_shape_str`, `top_bottom_str`, `upright_inverted_str`, `line_type_str`, `start_stop_single_str` helpers in `serializer/score.rs`
+  - Fermata serializes shape as text content or empty element; glissando/slide serialize text or empty
 
 ### 4.2 Import & Export
 

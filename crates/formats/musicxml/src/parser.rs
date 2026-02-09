@@ -1348,6 +1348,7 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
 // Include the note, backup, forward, attributes, direction parsers in a separate file
 mod parse_attributes;
 mod parse_direction;
+mod parse_notations;
 mod parse_note;
 
 use parse_attributes::parse_attributes;

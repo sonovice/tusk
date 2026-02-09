@@ -5,6 +5,7 @@
 //! - Slur, Tied, Tuplet
 //! - Articulations
 //! - Ornaments (trills, mordents, turns, tremolos, etc.)
+//! - Fermata, Arpeggiate, Glissando, Slide, AccidentalMark, OtherNotation
 
 use std::io::Write;
 
@@ -15,9 +16,10 @@ use crate::serializer::{
 };
 
 use super::score::{
-    above_below_str, line_shape_str, over_under_str, push_opt_attr_start, push_opt_str_attr_start,
-    show_tuplet_str, start_stop_continue_str, start_stop_str, tied_type_str, up_down_str,
-    yes_no_str,
+    above_below_str, fermata_shape_str, line_shape_str, line_type_str, over_under_str,
+    push_opt_attr_start, push_opt_str_attr_start, show_tuplet_str, start_stop_continue_str,
+    start_stop_single_str, start_stop_str, tied_type_str, top_bottom_str, up_down_str,
+    upright_inverted_str, yes_no_str,
 };
 
 // ============================================================================
@@ -52,6 +54,27 @@ impl MusicXmlSerialize for notations::Notations {
         }
         if let Some(ref ornaments) = self.ornaments {
             ornaments.serialize(w)?;
+        }
+        for fermata in &self.fermatas {
+            serialize_fermata(w, fermata)?;
+        }
+        if let Some(ref arp) = self.arpeggiate {
+            serialize_arpeggiate(w, arp)?;
+        }
+        if let Some(ref narp) = self.non_arpeggiate {
+            serialize_non_arpeggiate(w, narp)?;
+        }
+        for gliss in &self.glissandos {
+            serialize_glissando(w, gliss)?;
+        }
+        for slide in &self.slides {
+            serialize_slide(w, slide)?;
+        }
+        for am in &self.accidental_marks {
+            serialize_accidental_mark(w, am)?;
+        }
+        for on in &self.other_notations {
+            serialize_other_notation(w, on)?;
         }
         Ok(())
     }
@@ -546,4 +569,159 @@ fn tremolo_type_str(tt: &TremoloType) -> &'static str {
         TremoloType::Stop => "stop",
         TremoloType::Unmeasured => "unmeasured",
     }
+}
+
+// ============================================================================
+// Fermata, Arpeggiate, Glissando, Slide, OtherNotation
+// ============================================================================
+
+/// Serialize a fermata element (may have text content for shape).
+fn serialize_fermata<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    f: &notations::Fermata,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("fermata");
+    if let Some(ref t) = f.fermata_type {
+        elem.push_attribute(("type", upright_inverted_str(t)));
+    }
+    push_opt_attr_start(&mut elem, "default-x", &f.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &f.default_y);
+    push_opt_attr_start(&mut elem, "relative-x", &f.relative_x);
+    push_opt_attr_start(&mut elem, "relative-y", &f.relative_y);
+    push_opt_str_attr_start(&mut elem, "color", &f.color);
+    if let Some(ref shape) = f.shape {
+        let s = fermata_shape_str(shape);
+        if s.is_empty() {
+            // Empty shape = empty fermata element
+            w.write_empty(elem)?;
+        } else {
+            w.write_start(elem)?;
+            w.write_text(s)?;
+            w.write_end("fermata")?;
+        }
+    } else {
+        w.write_empty(elem)?;
+    }
+    Ok(())
+}
+
+/// Serialize an arpeggiate element.
+fn serialize_arpeggiate<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    a: &notations::Arpeggiate,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("arpeggiate");
+    if let Some(n) = a.number {
+        elem.push_attribute(("number", n.to_string().as_str()));
+    }
+    if let Some(ref d) = a.direction {
+        elem.push_attribute(("direction", up_down_str(d)));
+    }
+    if let Some(ref u) = a.unbroken {
+        elem.push_attribute(("unbroken", yes_no_str(u)));
+    }
+    push_opt_attr_start(&mut elem, "default-x", &a.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &a.default_y);
+    if let Some(ref p) = a.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    push_opt_str_attr_start(&mut elem, "color", &a.color);
+    w.write_empty(elem)?;
+    Ok(())
+}
+
+/// Serialize a non-arpeggiate element.
+fn serialize_non_arpeggiate<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    na: &notations::NonArpeggiate,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("non-arpeggiate");
+    elem.push_attribute(("type", top_bottom_str(&na.non_arpeggiate_type)));
+    if let Some(n) = na.number {
+        elem.push_attribute(("number", n.to_string().as_str()));
+    }
+    push_opt_attr_start(&mut elem, "default-x", &na.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &na.default_y);
+    if let Some(ref p) = na.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    push_opt_str_attr_start(&mut elem, "color", &na.color);
+    w.write_empty(elem)?;
+    Ok(())
+}
+
+/// Serialize a glissando element (may have text content).
+fn serialize_glissando<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    g: &notations::Glissando,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("glissando");
+    if let Some(ref lt) = g.line_type {
+        elem.push_attribute(("line-type", line_type_str(lt)));
+    }
+    if let Some(n) = g.number {
+        elem.push_attribute(("number", n.to_string().as_str()));
+    }
+    elem.push_attribute(("type", start_stop_str(&g.glissando_type)));
+    push_opt_attr_start(&mut elem, "default-x", &g.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &g.default_y);
+    push_opt_str_attr_start(&mut elem, "color", &g.color);
+    if g.text.is_empty() {
+        w.write_empty(elem)?;
+    } else {
+        w.write_start(elem)?;
+        w.write_text(&g.text)?;
+        w.write_end("glissando")?;
+    }
+    Ok(())
+}
+
+/// Serialize a slide element (may have text content).
+fn serialize_slide<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    s: &notations::Slide,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("slide");
+    if let Some(ref lt) = s.line_type {
+        elem.push_attribute(("line-type", line_type_str(lt)));
+    }
+    if let Some(n) = s.number {
+        elem.push_attribute(("number", n.to_string().as_str()));
+    }
+    elem.push_attribute(("type", start_stop_str(&s.slide_type)));
+    push_opt_attr_start(&mut elem, "default-x", &s.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &s.default_y);
+    push_opt_str_attr_start(&mut elem, "color", &s.color);
+    if s.text.is_empty() {
+        w.write_empty(elem)?;
+    } else {
+        w.write_start(elem)?;
+        w.write_text(&s.text)?;
+        w.write_end("slide")?;
+    }
+    Ok(())
+}
+
+/// Serialize an other-notation element.
+fn serialize_other_notation<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    on: &notations::OtherNotation,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("other-notation");
+    elem.push_attribute(("type", start_stop_single_str(&on.notation_type)));
+    if let Some(n) = on.number {
+        elem.push_attribute(("number", n.to_string().as_str()));
+    }
+    if let Some(ref p) = on.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    push_opt_str_attr_start(&mut elem, "smufl", &on.smufl);
+    if on.text.is_empty() {
+        w.write_empty(elem)?;
+    } else {
+        w.write_start(elem)?;
+        w.write_text(&on.text)?;
+        w.write_end("other-notation")?;
+    }
+    Ok(())
 }

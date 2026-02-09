@@ -1029,6 +1029,51 @@ pub(crate) fn above_below_str(ab: &AboveBelow) -> &'static str {
     }
 }
 
+pub(crate) fn top_bottom_str(tb: &TopBottom) -> &'static str {
+    match tb {
+        TopBottom::Top => "top",
+        TopBottom::Bottom => "bottom",
+    }
+}
+
+pub(crate) fn upright_inverted_str(ui: &UprightInverted) -> &'static str {
+    match ui {
+        UprightInverted::Upright => "upright",
+        UprightInverted::Inverted => "inverted",
+    }
+}
+
+pub(crate) fn line_type_str(lt: &LineType) -> &'static str {
+    match lt {
+        LineType::Solid => "solid",
+        LineType::Dashed => "dashed",
+        LineType::Dotted => "dotted",
+        LineType::Wavy => "wavy",
+    }
+}
+
+pub(crate) fn start_stop_single_str(sss: &StartStopSingle) -> &'static str {
+    match sss {
+        StartStopSingle::Start => "start",
+        StartStopSingle::Stop => "stop",
+        StartStopSingle::Single => "single",
+    }
+}
+
+pub(crate) fn fermata_shape_str(fs: &notations::FermataShape) -> &'static str {
+    match fs {
+        notations::FermataShape::Normal => "normal",
+        notations::FermataShape::Angled => "angled",
+        notations::FermataShape::Square => "square",
+        notations::FermataShape::DoubleAngled => "double-angled",
+        notations::FermataShape::DoubleSquare => "double-square",
+        notations::FermataShape::DoubleDot => "double-dot",
+        notations::FermataShape::HalfCurve => "half-curve",
+        notations::FermataShape::Curlew => "curlew",
+        notations::FermataShape::Empty => "",
+    }
+}
+
 pub(crate) fn symbol_size_str(ss: &SymbolSize) -> &'static str {
     match ss {
         SymbolSize::Full => "full",

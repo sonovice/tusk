@@ -4,6 +4,11 @@ use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
+use super::parse_notations::{
+    parse_arpeggiate, parse_fermata_empty, parse_fermata_start, parse_glissando,
+    parse_glissando_empty, parse_non_arpeggiate, parse_other_notation_empty,
+    parse_other_notation_start, parse_placement_attr, parse_slide, parse_slide_empty,
+};
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::elements::Empty;
@@ -596,12 +601,55 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                 b"ornaments" => {
                     notations.ornaments = Some(parse_ornaments(reader)?);
                 }
+                b"fermata" => {
+                    notations.fermatas.push(parse_fermata_start(reader, &e)?);
+                }
+                b"glissando" => {
+                    notations.glissandos.push(parse_glissando(reader, &e)?);
+                }
+                b"slide" => {
+                    notations.slides.push(parse_slide(reader, &e)?);
+                }
+                b"accidental-mark" => {
+                    notations
+                        .accidental_marks
+                        .push(parse_accidental_mark(reader, &e)?);
+                }
+                b"other-notation" => {
+                    notations
+                        .other_notations
+                        .push(parse_other_notation_start(reader, &e)?);
+                }
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
                 b"slur" => notations.slurs.push(parse_slur(&e)?),
                 b"tied" => notations.tied.push(parse_tied(&e)?),
                 b"tuplet" => notations.tuplets.push(parse_tuplet_empty(&e)?),
+                b"fermata" => notations.fermatas.push(parse_fermata_empty(&e)?),
+                b"arpeggiate" => {
+                    notations.arpeggiate = Some(parse_arpeggiate(&e)?);
+                }
+                b"non-arpeggiate" => {
+                    notations.non_arpeggiate = Some(parse_non_arpeggiate(&e)?);
+                }
+                b"glissando" => {
+                    notations.glissandos.push(parse_glissando_empty(&e)?);
+                }
+                b"slide" => {
+                    notations.slides.push(parse_slide_empty(&e)?);
+                }
+                b"accidental-mark" => {
+                    notations.accidental_marks.push(AccidentalMark {
+                        value: String::new(),
+                        placement: parse_placement_attr(&e),
+                    });
+                }
+                b"other-notation" => {
+                    notations
+                        .other_notations
+                        .push(parse_other_notation_empty(&e)?);
+                }
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"notations" => break,

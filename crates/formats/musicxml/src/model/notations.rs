@@ -1,13 +1,14 @@
 //! MusicXML 4.0 notations element types.
 //!
-//! Contains slurs, tied elements, articulations, tuplets, ornaments, and other
-//! notation markings that appear within a note's <notations> element.
+//! Contains slurs, tied elements, articulations, tuplets, ornaments, fermatas,
+//! arpeggiate, glissando, slide, accidental marks, and other notation markings
+//! that appear within a note's <notations> element.
 
 use serde::{Deserialize, Serialize};
 
 use super::data::{
-    AboveBelow, LineShape, OverUnder, StartNote, StartStop, StartStopContinue, TremoloType,
-    TrillStep, TwoNoteTurn, UpDown,
+    AboveBelow, LineShape, LineType, OverUnder, StartNote, StartStop, StartStopContinue,
+    StartStopSingle, TopBottom, TremoloType, TrillStep, TwoNoteTurn, UpDown, UprightInverted,
 };
 use super::note::NoteTypeValue;
 
@@ -33,6 +34,42 @@ pub struct Notations {
     /// Ornament markings (trills, mordents, turns, tremolos, etc.).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ornaments: Option<Ornaments>,
+
+    /// Fermata markings (up to 2 per note).
+    #[serde(rename = "fermata", default, skip_serializing_if = "Vec::is_empty")]
+    pub fermatas: Vec<Fermata>,
+
+    /// Arpeggiate notation on chord notes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arpeggiate: Option<Arpeggiate>,
+
+    /// Non-arpeggiate bracket on chord notes.
+    #[serde(rename = "non-arpeggiate", skip_serializing_if = "Option::is_none")]
+    pub non_arpeggiate: Option<NonArpeggiate>,
+
+    /// Glissando notations (start/stop pairs).
+    #[serde(rename = "glissando", default, skip_serializing_if = "Vec::is_empty")]
+    pub glissandos: Vec<Glissando>,
+
+    /// Slide notations (start/stop pairs).
+    #[serde(rename = "slide", default, skip_serializing_if = "Vec::is_empty")]
+    pub slides: Vec<Slide>,
+
+    /// Standalone accidental marks (not within ornaments).
+    #[serde(
+        rename = "accidental-mark",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub accidental_marks: Vec<AccidentalMark>,
+
+    /// Other notations not covered by specific types.
+    #[serde(
+        rename = "other-notation",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub other_notations: Vec<OtherNotation>,
 }
 
 // ============================================================================
@@ -776,6 +813,224 @@ pub struct Ornaments {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub accidental_marks: Vec<AccidentalMark>,
+}
+
+// ============================================================================
+// Fermata, Arpeggiate, Glissando, Slide, AccidentalMark, OtherNotation
+// ============================================================================
+
+/// Fermata shape values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FermataShape {
+    /// Normal (default when empty).
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "angled")]
+    Angled,
+    #[serde(rename = "square")]
+    Square,
+    #[serde(rename = "double-angled")]
+    DoubleAngled,
+    #[serde(rename = "double-square")]
+    DoubleSquare,
+    #[serde(rename = "double-dot")]
+    DoubleDot,
+    #[serde(rename = "half-curve")]
+    HalfCurve,
+    #[serde(rename = "curlew")]
+    Curlew,
+    /// Empty value (equivalent to normal).
+    #[serde(rename = "")]
+    Empty,
+}
+
+impl Default for FermataShape {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+/// Fermata notation element.
+///
+/// The text content represents the shape. The type attribute indicates
+/// upright or inverted. Up to 2 fermatas can appear on a single note.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Fermata {
+    /// Fermata shape (text content).
+    #[serde(rename = "$value", skip_serializing_if = "Option::is_none")]
+    pub shape: Option<FermataShape>,
+
+    /// Upright or inverted.
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
+    pub fermata_type: Option<UprightInverted>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Relative X position.
+    #[serde(rename = "@relative-x", skip_serializing_if = "Option::is_none")]
+    pub relative_x: Option<f64>,
+
+    /// Relative Y position.
+    #[serde(rename = "@relative-y", skip_serializing_if = "Option::is_none")]
+    pub relative_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
+/// Arpeggiate notation on chord notes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Arpeggiate {
+    /// Number (1-16) for distinguishing simultaneous arpeggios.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Direction (up/down) for the arpeggio arrow.
+    #[serde(rename = "@direction", skip_serializing_if = "Option::is_none")]
+    pub direction: Option<UpDown>,
+
+    /// Whether the arpeggio continues onto another staff.
+    #[serde(rename = "@unbroken", skip_serializing_if = "Option::is_none")]
+    pub unbroken: Option<YesNo>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
+/// Non-arpeggiate bracket notation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NonArpeggiate {
+    /// Top or bottom of the bracket (required).
+    #[serde(rename = "@type")]
+    pub non_arpeggiate_type: TopBottom,
+
+    /// Number (1-16) for distinguishing simultaneous non-arpeggiate brackets.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+
+/// Glissando notation (wavy line between pitches).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Glissando {
+    /// Start or stop (required).
+    #[serde(rename = "@type")]
+    pub glissando_type: StartStop,
+
+    /// Number (1-16) for distinguishing concurrent glissandos.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Line type (solid, dashed, dotted, wavy).
+    #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
+    pub line_type: Option<LineType>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Text content printed alongside the line (e.g. "gliss.").
+    #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]
+    pub text: String,
+}
+
+/// Slide notation (solid line between pitches, portamento).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Slide {
+    /// Start or stop (required).
+    #[serde(rename = "@type")]
+    pub slide_type: StartStop,
+
+    /// Number (1-16) for distinguishing concurrent slides.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Line type (solid, dashed, dotted, wavy).
+    #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
+    pub line_type: Option<LineType>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Text content printed alongside the line.
+    #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]
+    pub text: String,
+}
+
+/// Other notation type (extensibility).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OtherNotation {
+    /// Start, stop, or single (required).
+    #[serde(rename = "@type")]
+    pub notation_type: StartStopSingle,
+
+    /// Number (1-16).
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// SMuFL glyph name.
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
+    pub smufl: Option<String>,
+
+    /// Text content.
+    #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]
+    pub text: String,
 }
 
 #[cfg(test)]
