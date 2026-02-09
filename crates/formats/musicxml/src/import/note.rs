@@ -103,7 +103,20 @@ pub fn convert_note(
 
     // Convert stem direction (if present)
     if let Some(ref stem) = note.stem {
-        mei_note.note_vis.stem_dir = Some(convert_stem_direction(stem.value));
+        use crate::model::note::StemValue;
+        match stem.value {
+            StemValue::Double => {
+                // MEI has no double stem — store in label for roundtrip
+                append_note_label(&mut mei_note, "musicxml:stem,double");
+            }
+            StemValue::None => {
+                // MEI has no "no stem" — store in label for roundtrip
+                append_note_label(&mut mei_note, "musicxml:stem,none");
+            }
+            _ => {
+                mei_note.note_vis.stem_dir = Some(convert_stem_direction(stem.value));
+            }
+        }
     }
 
     // Convert cue note
@@ -485,6 +498,7 @@ pub fn convert_chord(
     }
 
     // Convert each note in the chord and add as children
+    let mut first_stem_handled = false;
     for note in notes {
         let mut mei_note = convert_note(note, ctx)?;
         // Move stem direction from individual notes to chord level:
@@ -496,6 +510,13 @@ pub fn convert_chord(
             }
         } else {
             mei_note.note_vis.stem_dir = None;
+        }
+        // For special stem values (Double/None) stored in label, only keep on the first
+        // chord note — chord stem applies to all notes, and export only emits on first note.
+        if first_stem_handled {
+            strip_label_segment(&mut mei_note, "musicxml:stem,");
+        } else if has_label_segment(&mei_note, "musicxml:stem,") {
+            first_stem_handled = true;
         }
         mei_chord
             .children
@@ -1850,6 +1871,31 @@ fn append_note_label(mei_note: &mut tusk_model::elements::Note, segment: &str) {
         }
         None => {
             mei_note.common.label = Some(segment.to_string());
+        }
+    }
+}
+
+/// Check if a note's label contains a segment with the given prefix.
+fn has_label_segment(mei_note: &tusk_model::elements::Note, prefix: &str) -> bool {
+    mei_note
+        .common
+        .label
+        .as_deref()
+        .map(|l| l.split('|').any(|seg| seg.starts_with(prefix)))
+        .unwrap_or(false)
+}
+
+/// Remove all label segments matching the given prefix from a note.
+fn strip_label_segment(mei_note: &mut tusk_model::elements::Note, prefix: &str) {
+    if let Some(ref label) = mei_note.common.label {
+        let remaining: Vec<&str> = label
+            .split('|')
+            .filter(|seg| !seg.starts_with(prefix))
+            .collect();
+        if remaining.is_empty() {
+            mei_note.common.label = None;
+        } else {
+            mei_note.common.label = Some(remaining.join("|"));
         }
     }
 }

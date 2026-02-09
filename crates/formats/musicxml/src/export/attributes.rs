@@ -9,12 +9,17 @@
 //! - Staff details (lines)
 
 use crate::context::ConversionContext;
-use crate::import::attributes::{KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment};
+use crate::import::attributes::{
+    FOR_PART_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment,
+};
 use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
 
 /// Label prefix for staff-details JSON stored on staffDef @label.
 const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
+
+/// Label marker for Jianpu clef stored on staffDef @label.
+const CLEF_JIANPU_LABEL: &str = "musicxml:clef-jianpu";
 
 /// Extract MusicXML StaffDetails from a MEI StaffDef.
 ///
@@ -55,6 +60,24 @@ fn extract_time_from_label(staff_def: &StaffDef) -> Option<crate::model::attribu
     let label = staff_def.labelled.label.as_ref()?;
     let json = extract_label_segment(label, TIME_LABEL_PREFIX)?;
     serde_json::from_str(json).ok()
+}
+
+/// Extract ForPart vec from a MEI StaffDef label (concert score roundtrip).
+fn extract_for_parts_from_label(
+    staff_def: &StaffDef,
+) -> Option<Vec<crate::model::attributes::ForPart>> {
+    let label = staff_def.labelled.label.as_ref()?;
+    let json = extract_label_segment(label, FOR_PART_LABEL_PREFIX)?;
+    serde_json::from_str(json).ok()
+}
+
+/// Check if a MEI StaffDef has a Jianpu clef marker in its label.
+fn has_jianpu_clef_label(staff_def: &StaffDef) -> bool {
+    staff_def
+        .labelled
+        .label
+        .as_deref()
+        .map_or(false, |l| l.split('|').any(|seg| seg == CLEF_JIANPU_LABEL))
 }
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
@@ -373,7 +396,11 @@ pub fn convert_mei_staff_def_to_attributes(
 
     // Convert clef; MEI uses Option<String> for clef attributes
     if let Some(shape) = &staff_def.staff_def_log.clef_shape {
-        let sign = convert_mei_clef_shape_to_mxml(shape);
+        let mut sign = convert_mei_clef_shape_to_mxml(shape);
+        // Override with Jianpu if label indicates it (G in MEI but jianpu in MusicXML)
+        if has_jianpu_clef_label(staff_def) {
+            sign = crate::model::attributes::ClefSign::Jianpu;
+        }
         let line = staff_def
             .staff_def_log
             .clef_line
@@ -395,6 +422,11 @@ pub fn convert_mei_staff_def_to_attributes(
             line,
             clef_octave_change: octave_change,
         });
+    }
+
+    // Convert for-part (concert score per-part transposition) from label
+    if let Some(for_parts) = extract_for_parts_from_label(staff_def) {
+        attrs.for_parts = for_parts;
     }
 
     // Convert transposition; MEI @trans.semi and @trans.diat are Option<String>
@@ -526,7 +558,11 @@ pub fn build_first_measure_attributes(
     // Get clef from staffDef (per-staff attribute)
     if let Some(staff_def) = staff_def {
         if let Some(shape) = &staff_def.staff_def_log.clef_shape {
-            let sign = convert_mei_clef_shape_to_mxml(shape);
+            let mut sign = convert_mei_clef_shape_to_mxml(shape);
+            // Override with Jianpu if label indicates it
+            if has_jianpu_clef_label(staff_def) {
+                sign = crate::model::attributes::ClefSign::Jianpu;
+            }
             let line = staff_def
                 .staff_def_log
                 .clef_line
@@ -550,6 +586,11 @@ pub fn build_first_measure_attributes(
                 line,
                 clef_octave_change: octave_change,
             });
+        }
+
+        // Get for-part from label (concert score per-part transposition)
+        if let Some(for_parts) = extract_for_parts_from_label(staff_def) {
+            attrs.for_parts = for_parts;
         }
 
         // Get transposition from staffDef (MEI uses Option<String>)
@@ -706,7 +747,10 @@ pub fn build_first_measure_attributes_multi(
     for (idx, staff_def) in part_staff_defs.iter().enumerate() {
         let local_staff = (idx + 1) as u32;
         if let Some(shape) = &staff_def.staff_def_log.clef_shape {
-            let sign = convert_mei_clef_shape_to_mxml(shape);
+            let mut sign = convert_mei_clef_shape_to_mxml(shape);
+            if has_jianpu_clef_label(staff_def) {
+                sign = crate::model::attributes::ClefSign::Jianpu;
+            }
             let line = staff_def
                 .staff_def_log
                 .clef_line
@@ -728,6 +772,11 @@ pub fn build_first_measure_attributes_multi(
                 clef_octave_change: octave_change,
             });
         }
+    }
+
+    // For-part from first staffDef
+    if let Some(for_parts) = first_def.and_then(extract_for_parts_from_label) {
+        attrs.for_parts = for_parts;
     }
 
     // Transposition from first staffDef

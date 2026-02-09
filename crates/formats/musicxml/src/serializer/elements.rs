@@ -618,6 +618,11 @@ impl MusicXmlSerialize for Attributes {
             serialize_measure_style(w, ms)?;
         }
 
+        // For-part (concert score)
+        for fp in &self.for_parts {
+            serialize_for_part(w, fp)?;
+        }
+
         Ok(())
     }
 }
@@ -1641,5 +1646,51 @@ fn serialize_accidental_text<W: Write>(
     w.write_start(start)?;
     w.write_text(accidental_value_str(&at.value))?;
     w.write_end("accidental-text")?;
+    Ok(())
+}
+
+fn serialize_for_part<W: Write>(w: &mut MusicXmlWriter<W>, fp: &ForPart) -> SerializeResult<()> {
+    let mut start = w.start_element("for-part");
+    if let Some(number) = fp.number {
+        start.push_attribute(("number", number.to_string().as_str()));
+    }
+    if let Some(ref id) = fp.id {
+        start.push_attribute(("id", id.as_str()));
+    }
+    w.write_start(start)?;
+
+    // part-clef (optional)
+    if let Some(ref pc) = fp.part_clef {
+        w.write_start(w.start_element("part-clef"))?;
+        w.write_text_element("sign", clef_sign_str(&pc.sign))?;
+        if let Some(line) = pc.line {
+            w.write_text_element("line", &line.to_string())?;
+        }
+        if let Some(oct) = pc.clef_octave_change {
+            w.write_text_element("clef-octave-change", &oct.to_string())?;
+        }
+        w.write_end("part-clef")?;
+    }
+
+    // part-transpose (required)
+    w.write_start(w.start_element("part-transpose"))?;
+    let pt = &fp.part_transpose;
+    if let Some(diatonic) = pt.diatonic {
+        w.write_text_element("diatonic", &diatonic.to_string())?;
+    }
+    w.write_text_element("chromatic", &pt.chromatic.to_string())?;
+    if let Some(oct) = pt.octave_change {
+        w.write_text_element("octave-change", &oct.to_string())?;
+    }
+    if let Some(ref d) = pt.double {
+        let mut ds = w.start_element("double");
+        if let Some(ref above) = d.above {
+            ds.push_attribute(("above", yes_no_str(above)));
+        }
+        w.write_empty(ds)?;
+    }
+    w.write_end("part-transpose")?;
+
+    w.write_end("for-part")?;
     Ok(())
 }

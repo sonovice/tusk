@@ -109,8 +109,19 @@ pub fn convert_mei_note(
         }
     }
 
-    // Convert stem direction
-    if let Some(ref stem_dir) = mei_note.note_vis.stem_dir {
+    // Convert stem direction — check label first for special stems (Double/None)
+    let stem_from_label = mei_note.common.label.as_deref().and_then(|l| {
+        l.split('|').find_map(|seg| {
+            seg.strip_prefix("musicxml:stem,").map(|v| match v {
+                "double" => crate::model::note::StemValue::Double,
+                "none" => crate::model::note::StemValue::None,
+                _ => crate::model::note::StemValue::Up,
+            })
+        })
+    });
+    if let Some(sv) = stem_from_label {
+        mxml_note.stem = Some(Stem::new(sv));
+    } else if let Some(ref stem_dir) = mei_note.note_vis.stem_dir {
         mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
     }
 
@@ -1271,10 +1282,20 @@ pub fn convert_mei_chord(
         }
 
         // Set stem direction on first note only (chord stem applies to all notes visually)
-        // Check chord-level stem_dir first, then fall back to individual note's stem_dir
-        // (import stores stem on individual notes within chords via note_vis.stem_dir)
+        // Check label first for special stems (Double/None), then chord-level, then note-level
         if i == 0 {
-            if let Some(ref stem_dir) = mei_chord.chord_vis.stem_dir {
+            let chord_stem_from_label = mei_note.common.label.as_deref().and_then(|l| {
+                l.split('|').find_map(|seg| {
+                    seg.strip_prefix("musicxml:stem,").map(|v| match v {
+                        "double" => crate::model::note::StemValue::Double,
+                        "none" => crate::model::note::StemValue::None,
+                        _ => crate::model::note::StemValue::Up,
+                    })
+                })
+            });
+            if let Some(sv) = chord_stem_from_label {
+                mxml_note.stem = Some(Stem::new(sv));
+            } else if let Some(ref stem_dir) = mei_chord.chord_vis.stem_dir {
                 mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));
             } else if let Some(ref stem_dir) = mei_note.note_vis.stem_dir {
                 mxml_note.stem = Some(Stem::new(convert_mei_stem_direction(stem_dir)));

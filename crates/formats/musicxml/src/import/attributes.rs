@@ -18,6 +18,9 @@ pub const KEY_LABEL_PREFIX: &str = "musicxml:key,";
 /// Label prefix for interchangeable/complex time JSON stored on staffDef @label.
 pub const TIME_LABEL_PREFIX: &str = "musicxml:time,";
 
+/// Label prefix for for-part JSON stored on staffDef @label.
+pub const FOR_PART_LABEL_PREFIX: &str = "musicxml:for-part,";
+
 /// Append a prefixed JSON segment to a staffDef label, using `|` separator.
 pub fn append_label(staff_def: &mut StaffDef, segment: String) {
     match &mut staff_def.labelled.label {
@@ -252,6 +255,20 @@ pub fn process_attributes(
             sd.staff_def_log.clef_line = line;
             sd.staff_def_log.clef_dis = dis;
             sd.staff_def_log.clef_dis_place = dis_place;
+
+            // Store Jianpu clef in label for lossless roundtrip (mapped to G in MEI)
+            if clef.sign == ClefSign::Jianpu {
+                append_label(sd, "musicxml:clef-jianpu".to_string());
+            }
+        }
+    }
+
+    // Process for-part (concert score per-part transposition)
+    if !attrs.for_parts.is_empty() {
+        if let Some(sd) = staff_def.as_deref_mut() {
+            if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
+                append_label(sd, format!("{}{}", FOR_PART_LABEL_PREFIX, json));
+            }
         }
     }
 }

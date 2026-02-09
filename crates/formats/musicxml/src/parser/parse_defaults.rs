@@ -30,7 +30,9 @@ pub(crate) fn parse_defaults<R: BufRead>(reader: &mut Reader<R>) -> Result<Defau
                         .lyric_languages
                         .push(parse_lyric_language_attrs(&e)?);
                 }
-                b"concert-score" => { /* Phase 24 */ }
+                b"concert-score" => {
+                    defaults.concert_score = Some(true);
+                }
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"defaults" => break,

@@ -276,6 +276,9 @@ impl MusicXmlSerialize for Defaults {
         if let Some(ref scaling) = self.scaling {
             scaling.serialize(w)?;
         }
+        if self.concert_score.is_some() {
+            w.write_empty(w.start_element("concert-score"))?;
+        }
         if let Some(ref page_layout) = self.page_layout {
             page_layout.serialize(w)?;
         }

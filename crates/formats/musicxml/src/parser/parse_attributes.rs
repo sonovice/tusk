@@ -44,6 +44,7 @@ pub fn parse_attributes<R: BufRead>(reader: &mut Reader<R>) -> Result<Attributes
                 b"staff-details" => attrs.staff_details.push(parse_staff_details(reader, &e)?),
                 b"transpose" => attrs.transposes.push(parse_transpose(reader, &e)?),
                 b"measure-style" => attrs.measure_styles.push(parse_measure_style(reader, &e)?),
+                b"for-part" => attrs.for_parts.push(parse_for_part(reader, &e)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::End(e) if e.name().as_ref() == b"attributes" => break,
@@ -859,6 +860,137 @@ fn parse_slash<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result
         slash_type_element,
         slash_dots,
         except_voices,
+    })
+}
+
+fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<ForPart> {
+    let mut buf = Vec::new();
+    let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
+    let id = get_attr(start, "id")?;
+
+    let mut part_clef: Option<PartClef> = None;
+    let mut diatonic: Option<i32> = None;
+    let mut chromatic: f64 = 0.0;
+    let mut octave_change: Option<i32> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"part-clef" => {
+                    part_clef = Some(parse_part_clef(reader)?);
+                }
+                b"part-transpose" => {
+                    // Parse part-transpose children (same as transpose)
+                    let mut tbuf = Vec::new();
+                    loop {
+                        match reader.read_event_into(&mut tbuf)? {
+                            Event::Start(te) => match te.name().as_ref() {
+                                b"diatonic" => {
+                                    diatonic =
+                                        Some(read_text(reader, b"diatonic")?.parse().map_err(
+                                            |_| ParseError::ParseNumber("diatonic".to_string()),
+                                        )?);
+                                }
+                                b"chromatic" => {
+                                    chromatic =
+                                        read_text(reader, b"chromatic")?.parse().map_err(|_| {
+                                            ParseError::ParseNumber("chromatic".to_string())
+                                        })?;
+                                }
+                                b"octave-change" => {
+                                    octave_change = Some(
+                                        read_text(reader, b"octave-change")?.parse().map_err(
+                                            |_| {
+                                                ParseError::ParseNumber("octave-change".to_string())
+                                            },
+                                        )?,
+                                    );
+                                }
+                                _ => skip_element(reader, &te)?,
+                            },
+                            Event::End(te) if te.name().as_ref() == b"part-transpose" => break,
+                            Event::Eof => {
+                                return Err(ParseError::MissingElement(
+                                    "part-transpose end".to_string(),
+                                ));
+                            }
+                            _ => {}
+                        }
+                        tbuf.clear();
+                    }
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"for-part" => break,
+            Event::Eof => return Err(ParseError::MissingElement("for-part end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(ForPart {
+        number,
+        id,
+        part_clef,
+        part_transpose: PartTranspose {
+            diatonic,
+            chromatic,
+            octave_change,
+            double: None,
+        },
+    })
+}
+
+fn parse_part_clef<R: BufRead>(reader: &mut Reader<R>) -> Result<PartClef> {
+    let mut buf = Vec::new();
+    let mut sign = ClefSign::G;
+    let mut line: Option<u32> = None;
+    let mut clef_octave_change: Option<i32> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => {
+                match e.name().as_ref() {
+                    b"sign" => {
+                        let s = read_text(reader, b"sign")?;
+                        sign = match s.as_str() {
+                            "G" => ClefSign::G,
+                            "F" => ClefSign::F,
+                            "C" => ClefSign::C,
+                            "percussion" => ClefSign::Percussion,
+                            "TAB" => ClefSign::Tab,
+                            "jianpu" => ClefSign::Jianpu,
+                            "none" => ClefSign::None,
+                            _ => ClefSign::G,
+                        };
+                    }
+                    b"line" => {
+                        line = Some(
+                            read_text(reader, b"line")?
+                                .parse()
+                                .map_err(|_| ParseError::ParseNumber("line".to_string()))?,
+                        );
+                    }
+                    b"clef-octave-change" => {
+                        clef_octave_change =
+                            Some(read_text(reader, b"clef-octave-change")?.parse().map_err(
+                                |_| ParseError::ParseNumber("clef-octave-change".to_string()),
+                            )?);
+                    }
+                    _ => skip_element(reader, &e)?,
+                }
+            }
+            Event::End(e) if e.name().as_ref() == b"part-clef" => break,
+            Event::Eof => return Err(ParseError::MissingElement("part-clef end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(PartClef {
+        sign,
+        line,
+        clef_octave_change,
     })
 }
 

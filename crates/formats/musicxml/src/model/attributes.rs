@@ -69,6 +69,10 @@ pub struct Attributes {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub measure_styles: Vec<MeasureStyle>,
+
+    /// Per-part transposition for concert score parts.
+    #[serde(rename = "for-part", default, skip_serializing_if = "Vec::is_empty")]
+    pub for_parts: Vec<ForPart>,
 }
 
 impl Attributes {
@@ -700,6 +704,71 @@ pub struct Double {
     /// Whether the doubling is above (yes) or below (no/absent).
     #[serde(rename = "@above", skip_serializing_if = "Option::is_none")]
     pub above: Option<YesNo>,
+}
+
+// ============================================================================
+// For-Part (Concert Score)
+// ============================================================================
+
+/// Per-part transposition in a concert score.
+///
+/// Indicates the transposition for a transposed part created from a concert score.
+/// Only used in score files that contain a concert-score element in the defaults.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ForPart {
+    /// Staff number this applies to (absent = all staves in the part).
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u32>,
+
+    /// Optional ID.
+    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+
+    /// Clef for the transposed part (when transposition includes a clef change).
+    #[serde(rename = "part-clef", skip_serializing_if = "Option::is_none")]
+    pub part_clef: Option<PartClef>,
+
+    /// Transposition for the transposed part.
+    #[serde(rename = "part-transpose")]
+    pub part_transpose: PartTranspose,
+}
+
+/// Clef for a transposed part created from a concert score.
+///
+/// Child elements have the same meaning as for the clef type.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PartClef {
+    /// Clef sign (G, F, C, etc.).
+    pub sign: ClefSign,
+
+    /// Clef line.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+
+    /// Octave change for transposing clefs.
+    #[serde(rename = "clef-octave-change", skip_serializing_if = "Option::is_none")]
+    pub clef_octave_change: Option<i32>,
+}
+
+/// Transposition for a transposed part created from a concert score.
+///
+/// Child elements have the same meaning as for the transpose type.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PartTranspose {
+    /// Diatonic steps for correct spelling.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diatonic: Option<i32>,
+
+    /// Chromatic semitones from concert to transposed pitch.
+    pub chromatic: f64,
+
+    /// Octave change.
+    #[serde(rename = "octave-change", skip_serializing_if = "Option::is_none")]
+    pub octave_change: Option<i32>,
+
+    /// Whether to double the music one octave.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub double: Option<Double>,
 }
 
 // ============================================================================

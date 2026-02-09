@@ -233,6 +233,14 @@ pub struct Defaults {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scaling: Option<Scaling>,
 
+    /// Whether the score is displayed in concert pitch.
+    #[serde(
+        rename = "concert-score",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub concert_score: Option<bool>,
+
     /// Page layout
     #[serde(rename = "page-layout", skip_serializing_if = "Option::is_none")]
     pub page_layout: Option<PageLayout>,

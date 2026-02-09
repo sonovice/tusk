@@ -884,22 +884,22 @@ Resolved TODO at `serializer/elements.rs`: "implement other direction types".
 
 ### 24.1 Note Attributes, Stem Extensions, Clef, Transposition
 
-- [ ] Import `end-dynamics`, `attack`/`release`, `pizzicato` → appropriate MEI attributes
-- [ ] Import `StemValue::Double` → MEI dual stem; `StemValue::None` → MEI `@stem.visible="false"`
-- [ ] Import `ClefSign::Jianpu` → proper MEI numbered notation clef (currently mapped to G)
-- [ ] Import `concert-score` and `for-part` with `part-clef`/`part-transpose` → MEI per-part transposition
-- [ ] Export: reverse all mappings
-- [ ] Verify fragment example: `concert_score_and_for_part_elements`
-- [ ] Verify edge case handling produces correct output
+- [x] Import `end-dynamics`, `attack`/`release`, `pizzicato` → appropriate MEI attributes
+- [x] Import `StemValue::Double` → MEI dual stem; `StemValue::None` → MEI `@stem.visible="false"`
+- [x] Import `ClefSign::Jianpu` → proper MEI numbered notation clef (currently mapped to G)
+- [x] Import `concert-score` and `for-part` with `part-clef`/`part-transpose` → MEI per-part transposition
+- [x] Export: reverse all mappings
+- [x] Verify fragment example: `concert_score_and_for_part_elements`
+- [x] Verify edge case handling produces correct output
 
 ---
 
 ## Phase 25: Version Compatibility
 
 ### 25.1 MusicXML Version Detection & Upgrade
+Output is always version 4.1
 
 - [ ] Detect version from DOCTYPE or `version` attribute
 - [ ] Implement MusicXML 2.0 → 4.1, 3.0 → 4.1, 3.1 → 4.1, 4.0 → 4.1 migration
-- [ ] Add version-specific export option (e.g. export as MusicXML 3.1)
-- [ ] Cross-version roundtrip tests
+- [ ] Cross-version roundtrip tests (output is always 4.1)
 - [ ] Test with real-world files from different MusicXML versions
