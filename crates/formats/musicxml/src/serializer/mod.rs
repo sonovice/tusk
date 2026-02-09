@@ -10,6 +10,7 @@
 mod elements;
 mod figured_bass;
 mod harmony;
+mod listening;
 mod notations;
 mod print;
 mod score;

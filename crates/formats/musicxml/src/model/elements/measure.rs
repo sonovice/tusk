@@ -7,9 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::model::data::YesNo;
 
 use super::barline::Barline;
+use super::score::{Bookmark, Link};
 use crate::model::direction::Sound;
 use crate::model::figured_bass::FiguredBass;
 use crate::model::harmony::Harmony;
+use crate::model::listening::{Grouping, Listening};
 use crate::model::print::Print;
 
 /// A measure in a part.
@@ -81,8 +83,16 @@ pub enum MeasureContent {
     Print(Box<Print>),
     /// Standalone sound (playback parameters not attached to a direction).
     Sound(Box<Sound>),
+    /// Listening (interactive performance synchronization).
+    Listening(Box<Listening>),
     /// Barline (location and style).
     Barline(Box<Barline>),
+    /// Grouping (analytical grouping of musical content).
+    Grouping(Box<Grouping>),
+    /// Link (XLink reference to external resource).
+    Link(Box<Link>),
+    /// Bookmark (navigation point within the score).
+    Bookmark(Box<Bookmark>),
 }
 
 // ============================================================================

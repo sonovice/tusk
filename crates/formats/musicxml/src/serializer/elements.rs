@@ -154,6 +154,11 @@ impl MusicXmlSerialize for Note {
             lyric.serialize(w)?;
         }
 
+        // Listen
+        if let Some(ref listen) = self.listen {
+            listen.serialize(w)?;
+        }
+
         Ok(())
     }
 }
@@ -1107,6 +1112,11 @@ impl MusicXmlSerialize for Direction {
         // Sound
         if let Some(ref sound) = self.sound {
             sound.serialize(w)?;
+        }
+
+        // Listening
+        if let Some(ref listening) = self.listening {
+            listening.serialize(w)?;
         }
 
         Ok(())

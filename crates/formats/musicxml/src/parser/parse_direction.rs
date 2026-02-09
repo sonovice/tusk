@@ -4,10 +4,12 @@ use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
+use super::parse_listening::parse_listening;
 use super::{ParseError, Result, get_attr, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::direction::*;
 use crate::model::elements::score::{MidiDevice, MidiInstrument};
+use crate::model::listening::Listening;
 
 pub fn parse_direction<R: BufRead>(
     reader: &mut Reader<R>,
@@ -25,6 +27,7 @@ pub fn parse_direction<R: BufRead>(
     let mut offset: Option<Offset> = None;
     let mut staff: Option<u32> = None;
     let mut sound: Option<Sound> = None;
+    let mut listening: Option<Listening> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -40,6 +43,9 @@ pub fn parse_direction<R: BufRead>(
                 }
                 b"sound" => {
                     sound = Some(parse_sound_full(reader, &e)?);
+                }
+                b"listening" => {
+                    listening = Some(parse_listening(reader)?);
                 }
                 _ => skip_element(reader, &e)?,
             },
@@ -60,6 +66,7 @@ pub fn parse_direction<R: BufRead>(
         offset,
         staff,
         sound,
+        listening,
         placement,
         directive,
         id: None,

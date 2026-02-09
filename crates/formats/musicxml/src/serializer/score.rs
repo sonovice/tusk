@@ -1070,7 +1070,11 @@ impl MusicXmlSerialize for Measure {
                 MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
                 MeasureContent::Print(print) => print.serialize(w)?,
                 MeasureContent::Sound(sound) => sound.serialize(w)?,
+                MeasureContent::Listening(listening) => listening.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
+                MeasureContent::Grouping(grouping) => grouping.serialize(w)?,
+                MeasureContent::Link(link) => link.serialize(w)?,
+                MeasureContent::Bookmark(bookmark) => bookmark.serialize(w)?,
             }
         }
         Ok(())
@@ -1743,7 +1747,11 @@ impl TimewisePart {
                 MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
                 MeasureContent::Print(print) => print.serialize(w)?,
                 MeasureContent::Sound(sound) => sound.serialize(w)?,
+                MeasureContent::Listening(listening) => listening.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
+                MeasureContent::Grouping(grouping) => grouping.serialize(w)?,
+                MeasureContent::Link(link) => link.serialize(w)?,
+                MeasureContent::Bookmark(bookmark) => bookmark.serialize(w)?,
             }
         }
 

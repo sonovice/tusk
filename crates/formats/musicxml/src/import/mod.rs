@@ -26,6 +26,7 @@ pub(crate) mod barline;
 mod direction;
 pub(crate) mod figured_bass;
 pub(crate) mod harmony;
+pub(crate) mod listening;
 pub(crate) mod measure_style;
 mod note;
 pub(crate) mod parts;

@@ -46,6 +46,10 @@ pub struct Direction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sound: Option<Sound>,
 
+    /// Listening (interactive performance synchronization)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listening: Option<super::listening::Listening>,
+
     /// Placement above or below the staff
     #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
     pub placement: Option<AboveBelow>,
@@ -67,6 +71,7 @@ impl Direction {
             offset: None,
             staff: None,
             sound: None,
+            listening: None,
             placement: None,
             directive: None,
             id: None,

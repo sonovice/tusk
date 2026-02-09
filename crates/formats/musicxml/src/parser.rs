@@ -389,11 +389,17 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                 b"sound" => content.push(MeasureContent::Sound(Box::new(parse_sound_full(
                     reader, &e,
                 )?))),
+                b"listening" => content.push(MeasureContent::Listening(Box::new(parse_listening(
+                    reader,
+                )?))),
                 b"barline" => {
                     content.push(MeasureContent::Barline(Box::new(parse_barline(
                         reader, &e,
                     )?)));
                 }
+                b"grouping" => content.push(MeasureContent::Grouping(Box::new(parse_grouping(
+                    reader, &e,
+                )?))),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -402,6 +408,19 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                 }
                 b"sound" => {
                     content.push(MeasureContent::Sound(Box::new(parse_sound_attrs(&e)?)));
+                }
+                b"grouping" => {
+                    content.push(MeasureContent::Grouping(Box::new(parse_grouping_empty(
+                        &e,
+                    )?)));
+                }
+                b"link" => {
+                    content.push(MeasureContent::Link(Box::new(parse_link_empty(&e)?)));
+                }
+                b"bookmark" => {
+                    content.push(MeasureContent::Bookmark(Box::new(parse_bookmark_empty(
+                        &e,
+                    )?)));
                 }
                 _ => {}
             },
@@ -1157,6 +1176,13 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                                 reader, &e,
                             )?)))
                     }
+                    b"listening" => {
+                        measure
+                            .content
+                            .push(MeasureContent::Listening(Box::new(parse_listening(
+                                reader,
+                            )?)))
+                    }
                     b"barline" => {
                         measure
                             .content
@@ -1164,21 +1190,39 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                                 reader, &e,
                             )?)));
                     }
+                    b"grouping" => {
+                        measure
+                            .content
+                            .push(MeasureContent::Grouping(Box::new(parse_grouping(
+                                reader, &e,
+                            )?)))
+                    }
                     _ => skip_element(reader, &e)?,
                 }
             }
-            Event::Empty(e) => match e.name().as_ref() {
-                b"barline" => measure
-                    .content
-                    .push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?))),
-                b"print" => measure
-                    .content
-                    .push(MeasureContent::Print(Box::new(parse_print_empty(&e)?))),
-                b"sound" => measure
-                    .content
-                    .push(MeasureContent::Sound(Box::new(parse_sound_attrs(&e)?))),
-                _ => {}
-            },
+            Event::Empty(e) => {
+                match e.name().as_ref() {
+                    b"barline" => measure
+                        .content
+                        .push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?))),
+                    b"print" => measure
+                        .content
+                        .push(MeasureContent::Print(Box::new(parse_print_empty(&e)?))),
+                    b"sound" => measure
+                        .content
+                        .push(MeasureContent::Sound(Box::new(parse_sound_attrs(&e)?))),
+                    b"grouping" => measure.content.push(MeasureContent::Grouping(Box::new(
+                        parse_grouping_empty(&e)?,
+                    ))),
+                    b"link" => measure
+                        .content
+                        .push(MeasureContent::Link(Box::new(parse_link_empty(&e)?))),
+                    b"bookmark" => measure.content.push(MeasureContent::Bookmark(Box::new(
+                        parse_bookmark_empty(&e)?,
+                    ))),
+                    _ => {}
+                }
+            }
             Event::End(e) if e.name().as_ref() == b"measure" => break,
             Event::Eof => return Err(ParseError::MissingElement("measure end".to_string())),
             _ => {}
@@ -1195,6 +1239,7 @@ mod parse_defaults;
 mod parse_direction;
 mod parse_figured_bass;
 mod parse_harmony;
+mod parse_listening;
 mod parse_notations;
 mod parse_note;
 mod parse_part_list;
@@ -1206,6 +1251,9 @@ use parse_defaults::parse_defaults;
 use parse_direction::{parse_direction, parse_sound_attrs, parse_sound_full};
 use parse_figured_bass::parse_figured_bass;
 use parse_harmony::parse_harmony;
+use parse_listening::{
+    parse_bookmark_empty, parse_grouping, parse_grouping_empty, parse_link_empty, parse_listening,
+};
 use parse_note::{parse_backup, parse_forward, parse_note};
 use parse_print::{parse_print, parse_print_empty};
 

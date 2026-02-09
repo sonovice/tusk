@@ -5,6 +5,7 @@ use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
 use super::parse_direction::parse_dynamics;
+use super::parse_listening::parse_listen;
 use super::parse_notations::{
     parse_arpeggiate, parse_fermata_empty, parse_fermata_start, parse_glissando,
     parse_glissando_empty, parse_non_arpeggiate, parse_other_notation_empty,
@@ -14,6 +15,7 @@ use super::parse_technical::parse_technical;
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::elements::Empty;
+use crate::model::listening::Listen;
 use crate::model::lyric::*;
 use crate::model::notations::*;
 use crate::model::note::*;
@@ -47,6 +49,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut beams: Vec<Beam> = Vec::new();
     let mut notations: Option<Notations> = None;
     let mut lyrics: Vec<Lyric> = Vec::new();
+    let mut listen: Option<Listen> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -94,6 +97,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"beam" => beams.push(parse_beam(reader, &e)?),
                 b"notations" => notations = Some(parse_notations(reader)?),
                 b"lyric" => lyrics.push(parse_lyric(reader, &e)?),
+                b"listen" => listen = Some(parse_listen(reader)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -150,6 +154,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         beams,
         notations,
         lyrics,
+        listen,
         default_x,
         default_y,
         relative_x: None,

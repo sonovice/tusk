@@ -789,6 +789,10 @@ pub struct Note {
     #[serde(rename = "lyric", default, skip_serializing_if = "Vec::is_empty")]
     pub lyrics: Vec<super::lyric::Lyric>,
 
+    /// Listen (interactive performance note assessment/waiting).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listen: Option<super::listening::Listen>,
+
     // --- Attributes ---
     /// Default X position.
     #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
@@ -871,6 +875,7 @@ impl Note {
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            listen: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -911,6 +916,7 @@ impl Note {
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            listen: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -951,6 +957,7 @@ impl Note {
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            listen: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -991,6 +998,7 @@ impl Note {
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            listen: None,
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -1031,6 +1039,7 @@ impl Note {
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            listen: None,
             default_x: None,
             default_y: None,
             relative_x: None,

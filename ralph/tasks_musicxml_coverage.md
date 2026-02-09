@@ -756,11 +756,11 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 19.1 Listening, Grouping, Link, Bookmark
 
-- [ ] Add `Listening` variant to `MeasureContent`, parse `<listening>`, import → MEI annotation or ignore
-- [ ] Add `Grouping` variant to `MeasureContent`, parse `<grouping>`, import → MEI `<expansion>` or annotation
-- [ ] Add `Link`/`Bookmark` variants to `MeasureContent`, parse, import → MEI `<ptr>`/`<ref>` or annotation
-- [ ] Export: reverse where possible
-- [ ] Verify fragment examples: `sync_element`, `wait_element`, `assess_and_player_elements`, `grouping_element`, `link_element`, `bookmark_element`
+- [x] Add `Listening` variant to `MeasureContent`, parse `<listening>`, import → MEI annotation or ignore
+- [x] Add `Grouping` variant to `MeasureContent`, parse `<grouping>`, import → MEI `<expansion>` or annotation
+- [x] Add `Link`/`Bookmark` variants to `MeasureContent`, parse, import → MEI `<ptr>`/`<ref>` or annotation
+- [x] Export: reverse where possible
+- [x] Verify fragment examples: `sync_element`, `wait_element`, `assess_and_player_elements`, `grouping_element`, `link_element`, `bookmark_element`
 
 ---
 

@@ -310,6 +310,34 @@ fn convert_measure_directions(
                     }
                 }
             }
+            MeasureContent::Listening(listening) => {
+                if ctx.current_staff() == 1 {
+                    mei_measure
+                        .children
+                        .push(super::listening::convert_listening(listening, ctx));
+                }
+            }
+            MeasureContent::Grouping(grouping) => {
+                if ctx.current_staff() == 1 {
+                    mei_measure
+                        .children
+                        .push(super::listening::convert_grouping(grouping, ctx));
+                }
+            }
+            MeasureContent::Link(link) => {
+                if ctx.current_staff() == 1 {
+                    mei_measure
+                        .children
+                        .push(super::listening::convert_link(link, ctx));
+                }
+            }
+            MeasureContent::Bookmark(bookmark) => {
+                if ctx.current_staff() == 1 {
+                    mei_measure
+                        .children
+                        .push(super::listening::convert_bookmark(bookmark, ctx));
+                }
+            }
             _ => {}
         }
     }
