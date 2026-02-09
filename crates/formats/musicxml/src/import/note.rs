@@ -862,7 +862,26 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // accidental-mark within ornaments → skip for now (rare, complex mapping)
+    // accidental-mark within ornaments → MEI <ornam> with label for roundtrip
+    for acc_mark in &ornaments.accidental_marks {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        let mut label = format!("musicxml:ornament-accidental-mark,value={}", acc_mark.value);
+        if let Some(ref p) = acc_mark.placement {
+            label.push_str(&format!(
+                ",placement={}",
+                match p {
+                    AboveBelow::Above => "above",
+                    AboveBelow::Below => "below",
+                }
+            ));
+        }
+        ornam.common.label = Some(label);
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(acc_mark.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
 }
 
 // ============================================================================

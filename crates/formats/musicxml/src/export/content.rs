@@ -1254,6 +1254,28 @@ fn convert_ornament_events(
                         value: text,
                         placement,
                     });
+                } else if let Some(rest) = label.strip_prefix("musicxml:ornament-accidental-mark,")
+                {
+                    // Accidental-mark within ornaments
+                    let mut value = String::new();
+                    let mut acc_placement = None;
+                    for part in rest.split(',') {
+                        if let Some(v) = part.strip_prefix("value=") {
+                            value = v.to_string();
+                        } else if let Some(v) = part.strip_prefix("placement=") {
+                            acc_placement = match v {
+                                "above" => Some(crate::model::data::AboveBelow::Above),
+                                "below" => Some(crate::model::data::AboveBelow::Below),
+                                _ => None,
+                            };
+                        }
+                    }
+                    ornaments
+                        .accidental_marks
+                        .push(crate::model::notations::AccidentalMark {
+                            value,
+                            placement: acc_placement,
+                        });
                 } else if let Some(rest) = label.strip_prefix("musicxml:accidental-mark,") {
                     // Standalone accidental-mark → goes on notations (not ornaments)
                     let mut value = String::new();

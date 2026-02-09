@@ -157,7 +157,10 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 - [x] `haydn` → MEI `<ornam>` with label
 - [x] `wavy-line` → MEI `<ornam>` with label encoding type/number for roundtrip
 - [x] `other-ornament` → MEI `<ornam>` with label and text content
-- [ ] `accidental-mark` within ornaments → MEI `@accidlower`/`@accidupper`
+- [x] `accidental-mark` within ornaments → MEI `<ornam>` with `musicxml:ornament-accidental-mark` label for roundtrip
+  - Label encodes value and placement; distinct from standalone accidental-mark label
+  - Export parses label and reconstructs AccidentalMark in ornaments (not notations)
+  - `accidental_mark_element_ornament` fragment test passes
 
 ### 3.3 Export: MEI Ornaments → MusicXML
 

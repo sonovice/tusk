@@ -66,7 +66,7 @@ Study existing code to follow established patterns:
 
 Read @$TASKS_FILE and the test/clippy results below. Then:
 
-1. **Find the first unchecked section**: Scan @$TASKS_FILE top-to-bottom. Find the FIRST section (### heading) that has ANY unchecked \`- [ ]\` tasks. Complete ALL unchecked tasks in that section.
+1. **Find the first unchecked task**: Scan @$TASKS_FILE top-to-bottom, line by line. Find the VERY FIRST line that contains \`- [ ]\` (unchecked checkbox). That task's \`### X.Y\` section is your target. Complete ALL unchecked \`- [ ]\` tasks in that section. Do NOT skip sections that are mostly done — even a single \`- [ ]\` means the section needs work.
 
 2. **Implement**: Read the relevant source files, understand the existing patterns, then make the changes.
    - For MODEL tasks: add structs/fields to \`model/\` files
@@ -155,6 +155,18 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   MEASURE_VARIANTS=$(grep -c '^\s*MeasureContent::' crates/formats/musicxml/src/model/elements/measure.rs || true)
   NOTATION_FIELDS=$(grep -c 'pub.*Option\|pub.*Vec' crates/formats/musicxml/src/model/notations.rs || true)
 
+  # Find the first unchecked task and its section
+  FIRST_UNCHECKED_LINE=$(grep -n '^\- \[ \]' "$TASKS_FILE" | head -1 || true)
+  FIRST_UNCHECKED_LINENUM=$(echo "$FIRST_UNCHECKED_LINE" | cut -d: -f1)
+  FIRST_UNCHECKED_TEXT=$(echo "$FIRST_UNCHECKED_LINE" | cut -d: -f2-)
+  # Find the ### section heading above the first unchecked task
+  if [ -n "$FIRST_UNCHECKED_LINENUM" ]; then
+    TARGET_SECTION=$(head -n "$FIRST_UNCHECKED_LINENUM" "$TASKS_FILE" | grep '^### ' | tail -1 || true)
+  else
+    TARGET_SECTION="(none — all done)"
+  fi
+  echo "Next section: $TARGET_SECTION"
+
   # Build the dynamic results section
   RESULTS_SECTION="# VALIDATION RESULTS
 
@@ -178,7 +190,12 @@ MeasureContent variants: $MEASURE_VARIANTS (target: 13 — note/backup/forward/a
 Notations fields: $NOTATION_FIELDS (target: ~10 — slurs/tied/articulations/tuplets/ornaments/technical/dynamics/fermata/arpeggiate/glissando/slide/accidental-mark/other)
 
 ## Task Progress
-Completed: $COMPLETED | Remaining: $REMAINING"
+Completed: $COMPLETED | Remaining: $REMAINING
+
+## NEXT TARGET
+Section: $TARGET_SECTION
+First unchecked task (line $FIRST_UNCHECKED_LINENUM): $FIRST_UNCHECKED_TEXT
+Complete ALL unchecked \`- [ ]\` tasks in this section."
 
   claude \
     --verbose \
