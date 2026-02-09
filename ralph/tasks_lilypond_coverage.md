@@ -111,16 +111,25 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 2.1 Model
 
-- [ ] [P] Add AST types in `model/`: `LilyPondFile` (top-level expressions), `Version` (string), `ScoreBlock`, `BookBlock`, `BookPartBlock`, `HeaderBlock`, `ScoreBody` (score items: music, header, layout, midi, etc.)
-- [ ] [P] Parse `\version "..."` and store in AST
-- [ ] [P] Parse top-level: `\score { ... }`, `\book { ... }`, `\bookpart { ... }`, `\header { ... }`, standalone music/markup (grammar: `toplevel_expression`, `score_block`, `book_block`, `bookpart_block`, `header_block`)
-- [ ] [S] Serialize `\version`, `\score`, `\book`, `\bookpart`, `\header` blocks back to `.ly` string
-- [ ] [V] Parser accepts valid score-only and book-only files from fixtures
-- [ ] [T] Parse `tests/fixtures/lilypond/simple.ly` and roundtrip via serializer
+- [x] [P] Add AST types in `model/`: `LilyPondFile` (top-level expressions), `Version` (string), `ScoreBlock`, `BookBlock`, `BookPartBlock`, `HeaderBlock`, `ScoreBody` (score items: music, header, layout, midi, etc.)
+  - LilyPondFile, Version, ToplevelExpression, ScoreBlock, ScoreItem, BookBlock, BookItem, BookPartBlock, BookPartItem, HeaderBlock, LayoutBlock, LayoutItem, MidiBlock, PaperBlock, ContextModBlock, ContextModItem, Assignment, AssignmentValue, Music (Sequential, Simultaneous, Relative, Fixed, ContextedMusic, Event, Identifier, Unparsed)
+- [x] [P] Parse `\version "..."` and store in AST
+  - Parser::parse_version() → Version { version: String }
+- [x] [P] Parse top-level: `\score { ... }`, `\book { ... }`, `\bookpart { ... }`, `\header { ... }`, standalone music/markup (grammar: `toplevel_expression`, `score_block`, `book_block`, `bookpart_block`, `header_block`)
+  - Recursive-descent parser with one-token lookahead; parse_score_block, parse_book_block, parse_bookpart_block, parse_header_block, parse_music (sequential, simultaneous, relative, fixed, context)
+  - Assignment detection via lookahead for `=` with backtracking
+  - Layout/midi/paper blocks with \context { } support including \consists, \remove, \ContextRef
+- [x] [S] Serialize `\version`, `\score`, `\book`, `\bookpart`, `\header` blocks back to `.ly` string
+  - serializer::serialize() with indentation; all block types, assignments, music expressions
+- [x] [V] Parser accepts valid score-only and book-only files from fixtures
+  - validator::validate() checks score has music; validates nested structures
+- [x] [T] Parse `tests/fixtures/lilypond/simple.ly` and roundtrip via serializer
+  - parse_simple_ly and roundtrip_simple_ly tests; parse_fragment_score_minimal and roundtrip_fragment_score_minimal
 
 ### 2.2 Tests
 
-- [ ] [T] Fixture `simple.ly` (single staff, few notes) parses and serializes without error
+- [x] [T] Fixture `simple.ly` (single staff, few notes) parses and serializes without error
+  - 71 total tests: 47 lexer + 11 parser + 6 serializer + 5 validator + 2 roundtrips
 
 ---
 
