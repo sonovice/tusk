@@ -1350,6 +1350,7 @@ mod parse_attributes;
 mod parse_direction;
 mod parse_notations;
 mod parse_note;
+mod parse_technical;
 
 use parse_attributes::parse_attributes;
 use parse_direction::parse_direction;

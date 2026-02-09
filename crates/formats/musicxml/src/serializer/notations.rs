@@ -70,6 +70,9 @@ impl MusicXmlSerialize for notations::Notations {
         for slide in &self.slides {
             serialize_slide(w, slide)?;
         }
+        if let Some(ref tech) = self.technical {
+            super::technical::serialize_technical(w, tech)?;
+        }
         for am in &self.accidental_marks {
             serialize_accidental_mark(w, am)?;
         }

@@ -371,20 +371,15 @@ fn emit_ornament_events(
 }
 
 /// Emit completed glissando/slide events as MEI `<gliss>` control events.
-fn emit_gliss_events(
-    mei_measure: &mut tusk_model::elements::Measure,
-    ctx: &mut ConversionContext,
-) {
+fn emit_gliss_events(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut ConversionContext) {
     use tusk_model::data::{DataLineform, DataUri};
     use tusk_model::elements::{Gliss, GlissChild, MeasureChild};
 
     for completed in ctx.drain_completed_glisses() {
         let mut gliss = Gliss::default();
         gliss.common.xml_id = Some(ctx.generate_id_with_suffix("gliss"));
-        gliss.gliss_log.startid =
-            Some(DataUri::from(format!("#{}", completed.start_id)));
-        gliss.gliss_log.endid =
-            Some(DataUri::from(format!("#{}", completed.end_id)));
+        gliss.gliss_log.startid = Some(DataUri::from(format!("#{}", completed.start_id)));
+        gliss.gliss_log.endid = Some(DataUri::from(format!("#{}", completed.end_id)));
         gliss.gliss_log.staff = Some((completed.mei_staff as u64).to_string());
 
         // Map line-type → MEI @lform

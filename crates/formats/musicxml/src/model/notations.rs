@@ -35,6 +35,10 @@ pub struct Notations {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ornaments: Option<Ornaments>,
 
+    /// Technical markings (bowing, fingering, fret, string, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub technical: Option<super::technical::Technical>,
+
     /// Fermata markings (up to 2 per note).
     #[serde(rename = "fermata", default, skip_serializing_if = "Vec::is_empty")]
     pub fermatas: Vec<Fermata>,

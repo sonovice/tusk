@@ -28,13 +28,15 @@
         </pitch>
         <duration>4</duration>
         <type>quarter</type>
-        <technical>
-           <hole>
+        <notations>
+          <technical>
+            <hole>
               <hole-type>thumb</hole-type>
               <hole-closed>no</hole-closed>
               <hole-shape>circle</hole-shape>
-           </hole>
-        </technical>
+            </hole>
+          </technical>
+        </notations>
       </note>
     </measure>
   </part>

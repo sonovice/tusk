@@ -10,6 +10,7 @@
 mod elements;
 mod notations;
 mod score;
+mod technical;
 
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};

@@ -9,6 +9,7 @@ use super::parse_notations::{
     parse_glissando_empty, parse_non_arpeggiate, parse_other_notation_empty,
     parse_other_notation_start, parse_placement_attr, parse_slide, parse_slide_empty,
 };
+use super::parse_technical::parse_technical;
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::elements::Empty;
@@ -600,6 +601,9 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                 }
                 b"ornaments" => {
                     notations.ornaments = Some(parse_ornaments(reader)?);
+                }
+                b"technical" => {
+                    notations.technical = Some(parse_technical(reader)?);
                 }
                 b"fermata" => {
                     notations.fermatas.push(parse_fermata_start(reader, &e)?);

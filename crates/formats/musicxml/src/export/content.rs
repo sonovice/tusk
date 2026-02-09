@@ -365,7 +365,14 @@ pub fn convert_mei_score_content(
 
                 convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                 convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
-                convert_gliss_events(mei_measure, global_staff_n, &mut mxml_measure, &mut part_prev_measures[part_idx], ctx)?;
+                convert_gliss_events(
+                    mei_measure,
+                    global_staff_n,
+                    &mut mxml_measure,
+                    &mut part_prev_measures[part_idx],
+                    ctx,
+                )?;
+                convert_technical_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
             } else {
                 // Multi-staff part: merge multiple staves with <backup> between them
                 for local_staff in 1..=num_staves {
@@ -408,7 +415,14 @@ pub fn convert_mei_score_content(
                     // Fermata, arpeg, gliss events
                     convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                     convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
-                    convert_gliss_events(mei_measure, global_staff_n, &mut mxml_measure, &mut part_prev_measures[part_idx], ctx)?;
+                    convert_gliss_events(
+                        mei_measure,
+                        global_staff_n,
+                        &mut mxml_measure,
+                        &mut part_prev_measures[part_idx],
+                        ctx,
+                    )?;
+                    convert_technical_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
                     // Insert <backup> between staves (not after the last one)
                     if local_staff < num_staves {
@@ -1238,12 +1252,9 @@ fn convert_ornament_events(
                         }
                     }
                     let notations = note.notations.get_or_insert_with(Notations::default);
-                    notations.accidental_marks.push(
-                        crate::model::notations::AccidentalMark {
-                            value,
-                            placement,
-                        },
-                    );
+                    notations
+                        .accidental_marks
+                        .push(crate::model::notations::AccidentalMark { value, placement });
                     // Skip adding to ornaments for accidental-mark
                     continue;
                 }
@@ -1852,6 +1863,448 @@ fn calculate_staff_duration(mxml_measure: &MxmlMeasure, content_from: usize) -> 
 
 // build_first_measure_attributes and build_first_measure_attributes_multi
 // are in super::attributes to keep this module under the line limit.
+
+/// Convert MEI `<ornam>` control events with `musicxml:` technical labels back to MusicXML
+/// `<technical>` notations on the referenced notes.
+fn convert_technical_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use super::direction::convert_place_to_placement;
+    use crate::model::data::{StartStop, YesNo};
+    use crate::model::notations::Notations;
+    use crate::model::technical::*;
+
+    for child in &mei_measure.children {
+        let MeasureChild::Ornam(ornam) = child else {
+            continue;
+        };
+        let label = match ornam.common.label.as_deref() {
+            Some(l) if l.starts_with("musicxml:") => l,
+            _ => continue,
+        };
+        // Extract the technical element name (after "musicxml:" prefix, before first comma)
+        let after_prefix = &label["musicxml:".len()..];
+        let element_name = after_prefix.split(',').next().unwrap_or("");
+
+        // Only handle technical element names
+        if !is_technical_label(element_name) {
+            continue;
+        }
+
+        let ornam_staff = ornam
+            .ornam_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if ornam_staff != staff_n {
+            continue;
+        }
+
+        let start_id = ornam
+            .ornam_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        let tech = notations.technical.get_or_insert_with(Technical::default);
+
+        let placement = convert_place_to_placement(&ornam.ornam_vis.place);
+        let ep = || crate::model::notations::EmptyPlacement {
+            placement,
+            ..Default::default()
+        };
+
+        // Collect text from ornam children
+        let text: String = ornam
+            .children
+            .iter()
+            .map(|c| {
+                let tusk_model::elements::OrnamChild::Text(t) = c;
+                t.as_str()
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        // Parse comma-separated key=value params from label
+        let params: Vec<&str> = after_prefix.split(',').skip(1).collect();
+
+        let find_param = |key: &str| -> Option<&str> {
+            params
+                .iter()
+                .find_map(|p| p.strip_prefix(key).and_then(|rest| rest.strip_prefix('=')))
+        };
+        let has_flag = |flag: &str| -> bool { params.contains(&flag) };
+
+        match element_name {
+            // Simple empty-placement types
+            "up-bow" => tech.up_bow.push(ep()),
+            "down-bow" => tech.down_bow.push(ep()),
+            "open-string" => tech.open_string.push(ep()),
+            "thumb-position" => tech.thumb_position.push(ep()),
+            "double-tongue" => tech.double_tongue.push(ep()),
+            "triple-tongue" => tech.triple_tongue.push(ep()),
+            "snap-pizzicato" => tech.snap_pizzicato.push(ep()),
+            "fingernails" => tech.fingernails.push(ep()),
+            "brass-bend" => tech.brass_bend.push(ep()),
+            "flip" => tech.flip.push(ep()),
+            "smear" => tech.smear.push(ep()),
+            "golpe" => tech.golpe.push(ep()),
+
+            // Empty-placement-smufl types
+            "stopped" => tech.stopped.push(EmptyPlacementSmufl {
+                placement,
+                smufl: find_param("smufl").map(|s| s.to_string()),
+                ..Default::default()
+            }),
+            "open" => tech.open.push(EmptyPlacementSmufl {
+                placement,
+                smufl: find_param("smufl").map(|s| s.to_string()),
+                ..Default::default()
+            }),
+            "half-muted" => tech.half_muted.push(EmptyPlacementSmufl {
+                placement,
+                smufl: find_param("smufl").map(|s| s.to_string()),
+                ..Default::default()
+            }),
+
+            // Text-content types
+            "fingering" => tech.fingering.push(Fingering {
+                value: text,
+                substitution: if has_flag("substitution=yes") {
+                    Some(YesNo::Yes)
+                } else {
+                    None
+                },
+                alternate: if has_flag("alternate=yes") {
+                    Some(YesNo::Yes)
+                } else {
+                    None
+                },
+                placement,
+                default_x: None,
+                default_y: None,
+                color: None,
+            }),
+            "pluck" => tech.pluck.push(PlacementText {
+                value: text,
+                placement,
+                default_x: None,
+                default_y: None,
+                font_style: None,
+                color: None,
+            }),
+            "fret" => tech.fret.push(Fret {
+                value: text.parse().unwrap_or(0),
+                color: None,
+            }),
+            "string" => tech.string.push(TechString {
+                value: text.parse().unwrap_or(1),
+                placement,
+                default_x: None,
+                default_y: None,
+                color: None,
+            }),
+            "hammer-on" => {
+                let ho_type = match find_param("type") {
+                    Some("stop") => StartStop::Stop,
+                    _ => StartStop::Start,
+                };
+                let number = find_param("number").and_then(|n| n.parse().ok());
+                tech.hammer_on.push(HammerOnPullOff {
+                    ho_type,
+                    number,
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text,
+                });
+            }
+            "pull-off" => {
+                let ho_type = match find_param("type") {
+                    Some("stop") => StartStop::Stop,
+                    _ => StartStop::Start,
+                };
+                let number = find_param("number").and_then(|n| n.parse().ok());
+                tech.pull_off.push(HammerOnPullOff {
+                    ho_type,
+                    number,
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text,
+                });
+            }
+            "tap" => {
+                let hand = find_param("hand").and_then(|h| match h {
+                    "left" => Some(TapHand::Left),
+                    "right" => Some(TapHand::Right),
+                    _ => None,
+                });
+                tech.tap.push(Tap {
+                    value: text,
+                    hand,
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                });
+            }
+            "heel" => tech.heel.push(HeelToe {
+                substitution: if has_flag("substitution=yes") {
+                    Some(YesNo::Yes)
+                } else {
+                    None
+                },
+                placement,
+                ..Default::default()
+            }),
+            "toe" => tech.toe.push(HeelToe {
+                substitution: if has_flag("substitution=yes") {
+                    Some(YesNo::Yes)
+                } else {
+                    None
+                },
+                placement,
+                ..Default::default()
+            }),
+            "handbell" => tech.handbell.push(Handbell {
+                value: text,
+                placement,
+                default_x: None,
+                default_y: None,
+                color: None,
+            }),
+
+            // Bend
+            "bend" => {
+                let alter: f64 = find_param("alter")
+                    .and_then(|a| a.parse().ok())
+                    .unwrap_or(0.0);
+                let pre_bend = if has_flag("pre-bend") {
+                    Some(true)
+                } else {
+                    None
+                };
+                let release = params.iter().find_map(|p| {
+                    if *p == "release" {
+                        Some(BendRelease { offset: None })
+                    } else {
+                        p.strip_prefix("release=").map(|offset_str| BendRelease {
+                            offset: offset_str.parse().ok(),
+                        })
+                    }
+                });
+                let shape = find_param("shape").and_then(|s| match s {
+                    "straight" => Some(BendShape::Straight),
+                    "curved" => Some(BendShape::Curved),
+                    _ => None,
+                });
+                let with_bar = if !text.is_empty() {
+                    Some(PlacementText {
+                        value: text,
+                        placement: None,
+                        default_x: None,
+                        default_y: None,
+                        font_style: None,
+                        color: None,
+                    })
+                } else {
+                    None
+                };
+                tech.bend.push(Bend {
+                    bend_alter: alter,
+                    pre_bend,
+                    release,
+                    with_bar,
+                    shape,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                });
+            }
+
+            // Hole
+            "hole" => {
+                let closed_val = match find_param("closed") {
+                    Some("no") => HoleClosedValue::No,
+                    Some("half") => HoleClosedValue::Half,
+                    _ => HoleClosedValue::Yes,
+                };
+                let location = find_param("location").and_then(|l| match l {
+                    "right" => Some(HoleClosedLocation::Right),
+                    "bottom" => Some(HoleClosedLocation::Bottom),
+                    "left" => Some(HoleClosedLocation::Left),
+                    "top" => Some(HoleClosedLocation::Top),
+                    _ => None,
+                });
+                tech.hole.push(Hole {
+                    hole_type: find_param("hole-type").map(|s| s.to_string()),
+                    hole_closed: HoleClosed {
+                        value: closed_val,
+                        location,
+                    },
+                    hole_shape: find_param("hole-shape").map(|s| s.to_string()),
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                });
+            }
+
+            // Arrow
+            "arrow" => {
+                if let Some(dir) = find_param("direction") {
+                    let style = find_param("style").map(|s| s.to_string());
+                    let arrowhead = has_flag("arrowhead");
+                    tech.arrow.push(Arrow {
+                        content: ArrowContent::Directional {
+                            direction: dir.to_string(),
+                            style,
+                            arrowhead,
+                        },
+                        placement,
+                        default_x: None,
+                        default_y: None,
+                        color: None,
+                        smufl: None,
+                    });
+                } else if let Some(circ) = find_param("circular") {
+                    tech.arrow.push(Arrow {
+                        content: ArrowContent::Circular(circ.to_string()),
+                        placement,
+                        default_x: None,
+                        default_y: None,
+                        color: None,
+                        smufl: None,
+                    });
+                }
+            }
+
+            // Harmon mute
+            "harmon-mute" => {
+                let closed_val = match find_param("closed") {
+                    Some("no") => HarmonClosedValue::No,
+                    Some("half") => HarmonClosedValue::Half,
+                    _ => HarmonClosedValue::Yes,
+                };
+                let location = find_param("location").and_then(|l| match l {
+                    "right" => Some(HarmonClosedLocation::Right),
+                    "bottom" => Some(HarmonClosedLocation::Bottom),
+                    "left" => Some(HarmonClosedLocation::Left),
+                    "top" => Some(HarmonClosedLocation::Top),
+                    _ => None,
+                });
+                tech.harmon_mute.push(HarmonMute {
+                    harmon_closed: HarmonClosed {
+                        value: closed_val,
+                        location,
+                    },
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                });
+            }
+
+            // Harmonic
+            "harmonic" => {
+                tech.harmonic.push(Harmonic {
+                    natural: if has_flag("natural") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    artificial: if has_flag("artificial") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    base_pitch: if has_flag("base-pitch") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    touching_pitch: if has_flag("touching-pitch") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    sounding_pitch: if has_flag("sounding-pitch") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    placement,
+                    ..Default::default()
+                });
+            }
+
+            // Other-technical
+            "other-technical" => {
+                tech.other_technical.push(OtherTechnical {
+                    value: text,
+                    placement,
+                    smufl: find_param("smufl").map(|s| s.to_string()),
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                });
+            }
+
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Check if an element name corresponds to a MusicXML technical notation.
+fn is_technical_label(name: &str) -> bool {
+    matches!(
+        name,
+        "up-bow"
+            | "down-bow"
+            | "open-string"
+            | "thumb-position"
+            | "double-tongue"
+            | "triple-tongue"
+            | "snap-pizzicato"
+            | "fingernails"
+            | "brass-bend"
+            | "flip"
+            | "smear"
+            | "golpe"
+            | "stopped"
+            | "open"
+            | "half-muted"
+            | "fingering"
+            | "pluck"
+            | "fret"
+            | "string"
+            | "hammer-on"
+            | "pull-off"
+            | "tap"
+            | "heel"
+            | "toe"
+            | "handbell"
+            | "bend"
+            | "hole"
+            | "arrow"
+            | "harmon-mute"
+            | "harmonic"
+            | "other-technical"
+    )
+}
 
 #[cfg(test)]
 mod tests {

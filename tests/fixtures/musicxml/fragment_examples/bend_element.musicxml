@@ -28,13 +28,15 @@
         </pitch>
         <duration>4</duration>
         <type>quarter</type>
-        <technical>
-           <string>4</string>
-           <fret>3</fret>
-           <bend shape="curved">
+        <notations>
+          <technical>
+            <string>4</string>
+            <fret>3</fret>
+            <bend shape="curved">
               <bend-alter>2</bend-alter>
-           </bend>
-        </technical>
+            </bend>
+          </technical>
+        </notations>
       </note>
     </measure>
   </part>

@@ -228,24 +228,25 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 5.1 Model & Parser
 
-- [ ] Add `technical: Option<Technical>` field to `Notations` struct
-- [ ] Create `Technical` struct with all 30+ types as `Option<_>`: up_bow, down_bow, harmonic, open_string, thumb_position, fingering, pluck, snap_pizzicato, stopped, fret, string, hammer_on, pull_off, bend, tap, heel, toe, double_tongue, triple_tongue, fingernails, hole, arrow, brass_bend, flip, smear, open, half_muted, harmon_mute, golpe, handbell, other_technical
-- [ ] Create supporting structs for complex types: `Harmonic`, `Fingering`, `Bend`, `HammerOn`, `PullOff`, `Hole`, `Arrow`, `HarmonMute`
-- [ ] Parse all in `parse_notations()` → `parse_technical()` function
-- [ ] Serialize all in serializer
+- [x] Add `technical: Option<Technical>` field to `Notations` struct
+- [x] Create `Technical` struct with all 31 types as `Vec<_>` in `model/technical.rs`: up_bow, down_bow, harmonic, open_string, thumb_position, fingering, pluck, snap_pizzicato, stopped, fret, string, hammer_on, pull_off, bend, tap, heel, toe, double_tongue, triple_tongue, fingernails, hole, arrow, brass_bend, flip, smear, open, half_muted, harmon_mute, golpe, handbell, other_technical
+- [x] Create supporting structs: `EmptyPlacementSmufl`, `PlacementText`, `Fingering`, `Fret`, `TechString`, `HammerOnPullOff`, `Bend`, `BendRelease`, `BendShape`, `Tap`, `TapHand`, `HeelToe`, `Hole`, `HoleClosed`, `HoleClosedValue`, `HoleClosedLocation`, `Arrow`, `ArrowContent`, `Handbell`, `HarmonMute`, `HarmonClosed`, `HarmonClosedValue`, `HarmonClosedLocation`, `Harmonic`, `OtherTechnical`
+- [x] Parse all in `parse_notations()` → `parse_technical()` in `parser/parse_technical.rs`
+- [x] Serialize all in `serializer/technical.rs`
 
 ### 5.2 Import & Export
 
-- [ ] Bowing marks (up-bow, down-bow) → MEI `<artic>` or dedicated elements
-- [ ] `fingering` → MEI `<fing>` element
-- [ ] `bend`, `hammer-on`, `pull-off` → MEI guitar/tablature elements or labels for roundtrip
-- [ ] For elements without direct MEI equivalents: store with `musicxml:` label for lossless roundtrip
-- [ ] Export: reverse all mappings
+- [x] All 31 technical types → MEI `<ornam>` with `musicxml:` label for lossless roundtrip
+  - Simple types (up-bow, down-bow, etc.): `musicxml:<element-name>` label + placement
+  - Text types (fingering, pluck, fret, string, handbell, tap): text in OrnamChild::Text
+  - Complex types (bend, hole, arrow, harmon-mute, harmonic): key params encoded in label
+- [x] Export: reverse all label-based mappings in `convert_technical_events()`
 
 ### 5.3 Tests
 
-- [ ] Add roundtrip fixtures for key technical notations
-- [ ] Verify fragment examples: `up_bow_element`, `down_bow_element`, `open_string_element`, `thumb_position_element`, `snap_pizzicato_element`, `stopped_element`, `double_tongue_element`, `triple_tongue_element`, `fingernails_element`, `pluck_element`, `tap_element`, `heel_element`, `toe_element`, `heel_toe_substitution`, `fingering_element_notation`, `bend_element`, `brass_bend_element`, `flip_element`, `smear_element`, `open_element`, `half_muted_element`, `harmon_mute_element`, `golpe_element`, `handbell_element`, `hole_element`, `hole_type_element`, `arrow_element`, `arrowhead_element`, `circular_arrow_element`, `pre_bend_element`, `with_bar_element`, `technical_element_tablature`
+- [x] Fixed invalid fixtures (bend_element, hole_element, hole_type_element) — `<technical>` was outside `<notations>`
+- [x] All 32 fragment examples pass roundtrip: `up_bow_element`, `down_bow_element`, `open_string_element`, `thumb_position_element`, `snap_pizzicato_element`, `stopped_element`, `double_tongue_element`, `triple_tongue_element`, `fingernails_element`, `pluck_element`, `tap_element`, `heel_element`, `toe_element`, `heel_toe_substitution`, `fingering_element_notation`, `bend_element`, `brass_bend_element`, `flip_element`, `smear_element`, `open_element`, `half_muted_element`, `harmon_mute_element`, `golpe_element`, `handbell_element`, `hole_element`, `hole_type_element`, `arrow_element`, `arrowhead_element`, `circular_arrow_element`, `pre_bend_element`, `with_bar_element`, `technical_element_tablature`
+  - 481 unit tests, 31 integration tests, 313 roundtrip tests — all pass
 
 ---
 

@@ -33,8 +33,8 @@ use std::collections::HashMap;
 
 use crate::model::duration::DurationContext;
 
-pub use positions::{ConversionWarning, DocumentPosition};
 pub use glissandos::{CompletedGliss, PendingGliss};
+pub use positions::{ConversionWarning, DocumentPosition};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
 pub use tuplets::{CompletedTuplet, PendingTuplet};

@@ -139,6 +139,9 @@ pub fn convert_note(
     // Process standalone accidental marks
     process_accidental_marks(note, &note_id, ctx);
 
+    // Process technical notations
+    process_technical(note, &note_id, ctx);
+
     Ok(mei_note)
 }
 
@@ -1001,7 +1004,10 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                     staff,
                     number,
                     mei_staff,
-                    line_type: gliss.line_type.as_ref().map(|lt| line_type_str(lt).to_string()),
+                    line_type: gliss
+                        .line_type
+                        .as_ref()
+                        .map(|lt| line_type_str(lt).to_string()),
                     text: gliss.text.clone(),
                     label: None,
                 });
@@ -1032,7 +1038,10 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                     staff,
                     number,
                     mei_staff,
-                    line_type: slide.line_type.as_ref().map(|lt| line_type_str(lt).to_string()),
+                    line_type: slide
+                        .line_type
+                        .as_ref()
+                        .map(|lt| line_type_str(lt).to_string()),
                     text: slide.text.clone(),
                     label: Some("musicxml:slide".to_string()),
                 });
@@ -1090,6 +1099,373 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
             ornam.children.push(OrnamChild::Text(am.value.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+}
+
+/// Process technical notations into MEI `<ornam>` control events with `musicxml:` labels.
+fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::import::direction::convert_placement;
+    use crate::model::data::AboveBelow;
+    use crate::model::technical::*;
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+
+    let tech = match note.notations {
+        Some(ref n) => match n.technical {
+            Some(ref t) => t,
+            None => return,
+        },
+        None => return,
+    };
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    let place_for = |p: Option<AboveBelow>| convert_placement(p.as_ref());
+
+    // Helper macro to create an ornam with label and add it
+    macro_rules! emit {
+        ($label:expr, $placement:expr) => {{
+            let mut ornam = Ornam::default();
+            ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+            ornam.common.label = Some($label);
+            ornam.ornam_log.startid = Some(startid.clone());
+            ornam.ornam_log.staff = Some(staff_str.clone());
+            ornam.ornam_vis.place = place_for($placement);
+            ornam
+        }};
+    }
+
+    // Simple empty-placement types
+    for v in &tech.up_bow {
+        let o = emit!("musicxml:up-bow".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.down_bow {
+        let o = emit!("musicxml:down-bow".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.open_string {
+        let o = emit!("musicxml:open-string".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.thumb_position {
+        let o = emit!("musicxml:thumb-position".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.double_tongue {
+        let o = emit!("musicxml:double-tongue".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.triple_tongue {
+        let o = emit!("musicxml:triple-tongue".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.snap_pizzicato {
+        let o = emit!("musicxml:snap-pizzicato".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.fingernails {
+        let o = emit!("musicxml:fingernails".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.brass_bend {
+        let o = emit!("musicxml:brass-bend".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.flip {
+        let o = emit!("musicxml:flip".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.smear {
+        let o = emit!("musicxml:smear".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.golpe {
+        let o = emit!("musicxml:golpe".into(), v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Empty-placement-smufl types (stopped, open, half-muted)
+    for v in &tech.stopped {
+        let mut label = "musicxml:stopped".to_string();
+        if let Some(ref s) = v.smufl {
+            label.push_str(&format!(",smufl={}", s));
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.open {
+        let mut label = "musicxml:open".to_string();
+        if let Some(ref s) = v.smufl {
+            label.push_str(&format!(",smufl={}", s));
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.half_muted {
+        let mut label = "musicxml:half-muted".to_string();
+        if let Some(ref s) = v.smufl {
+            label.push_str(&format!(",smufl={}", s));
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Fingering (text content + substitution/alternate attrs)
+    for v in &tech.fingering {
+        let mut label = "musicxml:fingering".to_string();
+        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
+            label.push_str(",substitution=yes");
+        }
+        if matches!(v.alternate, Some(crate::model::data::YesNo::Yes)) {
+            label.push_str(",alternate=yes");
+        }
+        let mut o = emit!(label, v.placement);
+        if !v.value.is_empty() {
+            o.children.push(OrnamChild::Text(v.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Pluck (text content)
+    for v in &tech.pluck {
+        let mut o = emit!("musicxml:pluck".into(), v.placement);
+        if !v.value.is_empty() {
+            o.children.push(OrnamChild::Text(v.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Fret (numeric text)
+    for v in &tech.fret {
+        let mut o = emit!("musicxml:fret".into(), None);
+        o.children.push(OrnamChild::Text(v.value.to_string()));
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // String (numeric text)
+    for v in &tech.string {
+        let mut o = emit!("musicxml:string".into(), v.placement);
+        o.children.push(OrnamChild::Text(v.value.to_string()));
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Hammer-on / Pull-off (type + number + text)
+    for v in &tech.hammer_on {
+        let type_str = match v.ho_type {
+            crate::model::data::StartStop::Start => "start",
+            crate::model::data::StartStop::Stop => "stop",
+        };
+        let mut label = format!("musicxml:hammer-on,type={}", type_str);
+        if let Some(n) = v.number {
+            label.push_str(&format!(",number={}", n));
+        }
+        let mut o = emit!(label, v.placement);
+        if !v.text.is_empty() {
+            o.children.push(OrnamChild::Text(v.text.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.pull_off {
+        let type_str = match v.ho_type {
+            crate::model::data::StartStop::Start => "start",
+            crate::model::data::StartStop::Stop => "stop",
+        };
+        let mut label = format!("musicxml:pull-off,type={}", type_str);
+        if let Some(n) = v.number {
+            label.push_str(&format!(",number={}", n));
+        }
+        let mut o = emit!(label, v.placement);
+        if !v.text.is_empty() {
+            o.children.push(OrnamChild::Text(v.text.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Tap (text + hand)
+    for v in &tech.tap {
+        let mut label = "musicxml:tap".to_string();
+        if let Some(ref h) = v.hand {
+            let h_str = match h {
+                TapHand::Left => "left",
+                TapHand::Right => "right",
+            };
+            label.push_str(&format!(",hand={}", h_str));
+        }
+        let mut o = emit!(label, v.placement);
+        if !v.value.is_empty() {
+            o.children.push(OrnamChild::Text(v.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Heel / Toe (substitution)
+    for v in &tech.heel {
+        let mut label = "musicxml:heel".to_string();
+        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
+            label.push_str(",substitution=yes");
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+    for v in &tech.toe {
+        let mut label = "musicxml:toe".to_string();
+        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
+            label.push_str(",substitution=yes");
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Bend (alter + pre-bend/release/with-bar + shape)
+    for v in &tech.bend {
+        let mut label = format!("musicxml:bend,alter={}", v.bend_alter);
+        if v.pre_bend.is_some() {
+            label.push_str(",pre-bend");
+        }
+        if let Some(ref rel) = v.release {
+            label.push_str(",release");
+            if let Some(offset) = rel.offset {
+                label.push_str(&format!("={}", offset));
+            }
+        }
+        if let Some(ref shape) = v.shape {
+            let s = match shape {
+                BendShape::Straight => "straight",
+                BendShape::Curved => "curved",
+            };
+            label.push_str(&format!(",shape={}", s));
+        }
+        let mut o = emit!(label, None);
+        if let Some(ref wb) = v.with_bar {
+            if !wb.value.is_empty() {
+                o.children.push(OrnamChild::Text(wb.value.clone()));
+            }
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Hole (hole-type, hole-closed, hole-shape)
+    for v in &tech.hole {
+        let closed_str = match v.hole_closed.value {
+            HoleClosedValue::Yes => "yes",
+            HoleClosedValue::No => "no",
+            HoleClosedValue::Half => "half",
+        };
+        let mut label = format!("musicxml:hole,closed={}", closed_str);
+        if let Some(ref loc) = v.hole_closed.location {
+            let loc_str = match loc {
+                HoleClosedLocation::Right => "right",
+                HoleClosedLocation::Bottom => "bottom",
+                HoleClosedLocation::Left => "left",
+                HoleClosedLocation::Top => "top",
+            };
+            label.push_str(&format!(",location={}", loc_str));
+        }
+        if let Some(ref ht) = v.hole_type {
+            label.push_str(&format!(",hole-type={}", ht));
+        }
+        if let Some(ref hs) = v.hole_shape {
+            label.push_str(&format!(",hole-shape={}", hs));
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Arrow (directional or circular)
+    for v in &tech.arrow {
+        match &v.content {
+            ArrowContent::Directional {
+                direction,
+                style,
+                arrowhead,
+            } => {
+                let mut label = format!("musicxml:arrow,direction={}", direction);
+                if let Some(s) = style {
+                    label.push_str(&format!(",style={}", s));
+                }
+                if *arrowhead {
+                    label.push_str(",arrowhead");
+                }
+                let o = emit!(label, v.placement);
+                ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+            }
+            ArrowContent::Circular(value) => {
+                let label = format!("musicxml:arrow,circular={}", value);
+                let o = emit!(label, v.placement);
+                ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+            }
+        }
+    }
+
+    // Handbell (text value)
+    for v in &tech.handbell {
+        let mut o = emit!("musicxml:handbell".into(), v.placement);
+        o.children.push(OrnamChild::Text(v.value.clone()));
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Harmon mute (harmon-closed value + location)
+    for v in &tech.harmon_mute {
+        let closed_str = match v.harmon_closed.value {
+            HarmonClosedValue::Yes => "yes",
+            HarmonClosedValue::No => "no",
+            HarmonClosedValue::Half => "half",
+        };
+        let mut label = format!("musicxml:harmon-mute,closed={}", closed_str);
+        if let Some(ref loc) = v.harmon_closed.location {
+            let loc_str = match loc {
+                HarmonClosedLocation::Right => "right",
+                HarmonClosedLocation::Bottom => "bottom",
+                HarmonClosedLocation::Left => "left",
+                HarmonClosedLocation::Top => "top",
+            };
+            label.push_str(&format!(",location={}", loc_str));
+        }
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Harmonic (natural/artificial/base-pitch/touching-pitch/sounding-pitch)
+    for v in &tech.harmonic {
+        let mut parts = Vec::new();
+        if v.natural.is_some() {
+            parts.push("natural");
+        }
+        if v.artificial.is_some() {
+            parts.push("artificial");
+        }
+        if v.base_pitch.is_some() {
+            parts.push("base-pitch");
+        }
+        if v.touching_pitch.is_some() {
+            parts.push("touching-pitch");
+        }
+        if v.sounding_pitch.is_some() {
+            parts.push("sounding-pitch");
+        }
+        let label = if parts.is_empty() {
+            "musicxml:harmonic".to_string()
+        } else {
+            format!("musicxml:harmonic,{}", parts.join(","))
+        };
+        let o = emit!(label, v.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Other-technical (text + smufl)
+    for v in &tech.other_technical {
+        let mut label = "musicxml:other-technical".to_string();
+        if let Some(ref s) = v.smufl {
+            label.push_str(&format!(",smufl={}", s));
+        }
+        let mut o = emit!(label, v.placement);
+        if !v.value.is_empty() {
+            o.children.push(OrnamChild::Text(v.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 }
 

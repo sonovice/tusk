@@ -21,6 +21,7 @@ pub mod duration;
 pub mod elements;
 pub mod notations;
 pub mod note;
+pub mod technical;
 
 // Re-export commonly used types
 pub use attributes::*;
@@ -30,3 +31,4 @@ pub use duration::*;
 pub use elements::*;
 pub use notations::*;
 pub use note::*;
+pub use technical::*;

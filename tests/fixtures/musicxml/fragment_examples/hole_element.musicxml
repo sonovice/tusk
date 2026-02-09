@@ -28,11 +28,13 @@
         </pitch>
         <duration>4</duration>
         <type>quarter</type>
-        <technical>
-           <hole default-x="3" placement="above">
+        <notations>
+          <technical>
+            <hole default-x="3" placement="above">
               <hole-closed>yes</hole-closed>
-           </hole>
-        </technical>
+            </hole>
+          </technical>
+        </notations>
       </note>
     </measure>
   </part>
