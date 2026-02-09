@@ -498,12 +498,27 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ## Phase 11: Defaults, Layout & Appearance
 
-### 11.1 Serializer Completion
+### 11.1 Serializer & Parser Completion
 
-- [ ] Complete `Defaults` serialization in `serializer/score.rs` (resolve TODO at line 289: "appearance, fonts, etc.")
-- [ ] Serialize `appearance` children: `line-width`, `note-size`, `distance`, `glyph`, `other-appearance`
-- [ ] Serialize font elements: `music-font`, `word-font`, `lyric-font`, `lyric-language`
-- [ ] Serialize `scaling`: `millimeters`, `tenths`
+- [x] Complete `Defaults` serialization in `serializer/score.rs` (resolved TODO: "appearance, fonts, etc.")
+  - Added `serialize_appearance()` with line-width, note-size, distance, glyph, other-appearance children
+  - Added `serialize_empty_font()` for music-font and word-font (empty elements with font attrs)
+  - Added `serialize_lyric_font()` and `serialize_lyric_language()` for lyric font/language elements
+  - Added `serialize_system_dividers()` for left-divider/right-divider in system-layout
+  - Added `note_size_type_str()` helper for cue/grace/grace-cue/large serialization
+- [x] Serialize `appearance` children: `line-width`, `note-size`, `distance`, `glyph`, `other-appearance`
+- [x] Serialize font elements: `music-font`, `word-font`, `lyric-font`, `lyric-language`
+- [x] Serialize `scaling`: `millimeters`, `tenths` (already existed)
+- [x] Parse `appearance` and all children in `parse_defaults.rs`
+  - New `parse_appearance()` handles line-width, note-size, distance, glyph, other-appearance
+  - Each child reads type attribute + text content value
+- [x] Parse font elements: `music-font`, `word-font`, `lyric-font`, `lyric-language`
+  - `parse_empty_font_attrs()` for music-font/word-font (Empty events with font-family/style/size/weight)
+  - `parse_lyric_font_attrs()` adds number/name attrs
+  - `parse_lyric_language_attrs()` reads xml:lang
+  - `parse_font_size_value()` handles both numeric points and CSS size names
+- [x] Parse `system-dividers` with left-divider/right-divider (Empty events with print-object attr)
+- [x] Extracted all defaults/layout/appearance/font parsing to `parser/parse_defaults.rs` (parser.rs was over 1500 lines)
 
 ### 11.2 Import & Export
 

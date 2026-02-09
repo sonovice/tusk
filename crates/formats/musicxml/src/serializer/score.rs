@@ -285,7 +285,21 @@ impl MusicXmlSerialize for Defaults {
         for staff_layout in &self.staff_layouts {
             staff_layout.serialize(w)?;
         }
-        // TODO: appearance, fonts, etc.
+        if let Some(ref appearance) = self.appearance {
+            serialize_appearance(w, appearance)?;
+        }
+        if let Some(ref font) = self.music_font {
+            serialize_empty_font(w, "music-font", font)?;
+        }
+        if let Some(ref font) = self.word_font {
+            serialize_empty_font(w, "word-font", font)?;
+        }
+        for lf in &self.lyric_fonts {
+            serialize_lyric_font(w, lf)?;
+        }
+        for ll in &self.lyric_languages {
+            serialize_lyric_language(w, ll)?;
+        }
         Ok(())
     }
 }
@@ -386,6 +400,9 @@ impl MusicXmlSerialize for SystemLayout {
         if let Some(d) = self.top_system_distance {
             w.write_text_element("top-system-distance", &d.to_string())?;
         }
+        if let Some(ref dividers) = self.system_dividers {
+            serialize_system_dividers(w, dividers)?;
+        }
         Ok(())
     }
 }
@@ -431,6 +448,141 @@ impl MusicXmlSerialize for StaffLayout {
         }
         Ok(())
     }
+}
+
+// ============================================================================
+// Appearance, Fonts, System Dividers
+// ============================================================================
+
+fn serialize_appearance<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    appearance: &Appearance,
+) -> SerializeResult<()> {
+    let start = w.start_element("appearance");
+    w.write_start(start)?;
+    for lw in &appearance.line_widths {
+        let mut s = w.start_element("line-width");
+        s.push_attribute(("type", lw.line_width_type.as_str()));
+        w.write_start(s)?;
+        w.write_text(&lw.value.to_string())?;
+        w.write_end("line-width")?;
+    }
+    for ns in &appearance.note_sizes {
+        let mut s = w.start_element("note-size");
+        s.push_attribute(("type", note_size_type_str(&ns.note_size_type)));
+        w.write_start(s)?;
+        w.write_text(&ns.value.to_string())?;
+        w.write_end("note-size")?;
+    }
+    for d in &appearance.distances {
+        let mut s = w.start_element("distance");
+        s.push_attribute(("type", d.distance_type.as_str()));
+        w.write_start(s)?;
+        w.write_text(&d.value.to_string())?;
+        w.write_end("distance")?;
+    }
+    for g in &appearance.glyphs {
+        let mut s = w.start_element("glyph");
+        s.push_attribute(("type", g.glyph_type.as_str()));
+        w.write_start(s)?;
+        w.write_text(&g.value)?;
+        w.write_end("glyph")?;
+    }
+    for oa in &appearance.other_appearances {
+        let mut s = w.start_element("other-appearance");
+        s.push_attribute(("type", oa.appearance_type.as_str()));
+        w.write_start(s)?;
+        w.write_text(&oa.value)?;
+        w.write_end("other-appearance")?;
+    }
+    w.write_end("appearance")?;
+    Ok(())
+}
+
+fn note_size_type_str(nst: &NoteSizeType) -> &'static str {
+    match nst {
+        NoteSizeType::Cue => "cue",
+        NoteSizeType::Grace => "grace",
+        NoteSizeType::GraceCue => "grace-cue",
+        NoteSizeType::Large => "large",
+    }
+}
+
+fn serialize_empty_font<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    name: &str,
+    font: &EmptyFont,
+) -> SerializeResult<()> {
+    let mut start = w.start_element(name);
+    push_opt_str_attr_start(&mut start, "font-family", &font.font_family);
+    if let Some(ref style) = font.font_style {
+        start.push_attribute(("font-style", font_style_str(style)));
+    }
+    if let Some(ref size) = font.font_size {
+        start.push_attribute(("font-size", font_size_str(size).as_str()));
+    }
+    if let Some(ref weight) = font.font_weight {
+        start.push_attribute(("font-weight", font_weight_str(weight)));
+    }
+    w.write_empty(start)?;
+    Ok(())
+}
+
+fn serialize_lyric_font<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    lf: &LyricFont,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("lyric-font");
+    push_opt_str_attr_start(&mut start, "number", &lf.number);
+    push_opt_str_attr_start(&mut start, "name", &lf.name);
+    push_opt_str_attr_start(&mut start, "font-family", &lf.font_family);
+    if let Some(ref style) = lf.font_style {
+        start.push_attribute(("font-style", font_style_str(style)));
+    }
+    if let Some(ref size) = lf.font_size {
+        start.push_attribute(("font-size", font_size_str(size).as_str()));
+    }
+    if let Some(ref weight) = lf.font_weight {
+        start.push_attribute(("font-weight", font_weight_str(weight)));
+    }
+    w.write_empty(start)?;
+    Ok(())
+}
+
+fn serialize_lyric_language<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    ll: &LyricLanguage,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("lyric-language");
+    push_opt_str_attr_start(&mut start, "number", &ll.number);
+    push_opt_str_attr_start(&mut start, "name", &ll.name);
+    start.push_attribute(("xml:lang", ll.lang.as_str()));
+    w.write_empty(start)?;
+    Ok(())
+}
+
+fn serialize_system_dividers<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    dividers: &SystemDividers,
+) -> SerializeResult<()> {
+    let start = w.start_element("system-dividers");
+    w.write_start(start)?;
+    if let Some(ref ld) = dividers.left_divider {
+        let mut s = w.start_element("left-divider");
+        if let Some(ref po) = ld.print_object {
+            s.push_attribute(("print-object", yes_no_str(po)));
+        }
+        w.write_empty(s)?;
+    }
+    if let Some(ref rd) = dividers.right_divider {
+        let mut s = w.start_element("right-divider");
+        if let Some(ref po) = rd.print_object {
+            s.push_attribute(("print-object", yes_no_str(po)));
+        }
+        w.write_empty(s)?;
+    }
+    w.write_end("system-dividers")?;
+    Ok(())
 }
 
 // ============================================================================
