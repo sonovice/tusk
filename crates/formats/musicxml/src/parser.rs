@@ -383,6 +383,9 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                 b"harmony" => content.push(MeasureContent::Harmony(Box::new(parse_harmony(
                     reader, &e,
                 )?))),
+                b"figured-bass" => content.push(MeasureContent::FiguredBass(Box::new(
+                    parse_figured_bass(reader, &e)?,
+                ))),
                 b"barline" => {
                     content.push(MeasureContent::Barline(Box::new(parse_barline(
                         reader, &e,
@@ -1327,6 +1330,9 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                                 reader, &e,
                             )?)))
                     }
+                    b"figured-bass" => measure.content.push(MeasureContent::FiguredBass(Box::new(
+                        parse_figured_bass(reader, &e)?,
+                    ))),
                     b"barline" => {
                         measure
                             .content
@@ -1358,6 +1364,7 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
 // Include the note, backup, forward, attributes, direction parsers in a separate file
 mod parse_attributes;
 mod parse_direction;
+mod parse_figured_bass;
 mod parse_harmony;
 mod parse_notations;
 mod parse_note;
@@ -1365,6 +1372,7 @@ mod parse_technical;
 
 use parse_attributes::parse_attributes;
 use parse_direction::parse_direction;
+use parse_figured_bass::parse_figured_bass;
 use parse_harmony::parse_harmony;
 use parse_note::{parse_backup, parse_forward, parse_note};
 

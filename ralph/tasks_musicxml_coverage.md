@@ -424,12 +424,12 @@ kind, bass, degrees, frame, numeral, function, and all styling attributes).
 
 ### 9.1 Model, Parser, Import, Export
 
-- [ ] Add `FiguredBass` variant to `MeasureContent` enum
-- [ ] Create `model/figured_bass.rs` with: `FiguredBass`, `Figure` (prefix, figure-number, suffix, extend)
-- [ ] Parse `<figured-bass>` in `parse_measure()`
-- [ ] Serialize all
-- [ ] Import: `figured-bass` → MEI `<fb>` with `<f>` children
-- [ ] Export: reverse mapping
+- [x] Add `FiguredBass` variant to `MeasureContent` enum
+- [x] Create `model/figured_bass.rs` with: `FiguredBass`, `Figure` (prefix, figure-number, suffix, extend)
+- [x] Parse `<figured-bass>` in `parse_measure()`
+- [x] Serialize all
+- [x] Import: `figured-bass` → MEI `<fb>` with `<f>` children (JSON-in-label roundtrip pattern)
+- [x] Export: reverse mapping (label-based + fallback from fb children)
 
 ### 9.2 Tests
 

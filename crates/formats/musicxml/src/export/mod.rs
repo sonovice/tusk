@@ -24,6 +24,7 @@
 mod attributes;
 mod content;
 mod direction;
+mod figured_bass;
 mod harmony;
 mod note;
 mod parts;

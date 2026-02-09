@@ -1191,6 +1191,8 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     ("measure", "arpeg"),
     ("measure", "gliss"),
     ("measure", "harm"),
+    ("measure", "fb"),
+    ("fb", "f"),
     ("staffDef", "label"),
     ("staffDef", "labelAbbr"),
     ("staffGrp", "staffDef"),

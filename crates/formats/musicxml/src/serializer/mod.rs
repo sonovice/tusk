@@ -8,6 +8,7 @@
 //! The serializer follows the same pattern as the MEI serializer for consistency.
 
 mod elements;
+mod figured_bass;
 mod harmony;
 mod notations;
 mod score;

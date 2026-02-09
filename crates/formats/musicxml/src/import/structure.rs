@@ -254,6 +254,21 @@ fn convert_measure_directions(
                     .children
                     .push(MeasureChild::Harm(Box::new(harm)));
             }
+            MeasureContent::FiguredBass(fb) => {
+                // For multi-staff parts, resolve within-part staff to global MEI staff
+                if num_staves > 1 {
+                    if let Some(ref pid) = part_id {
+                        let fb_local_staff = fb.staff.unwrap_or(1);
+                        if let Some(global) = ctx.global_staff_for_part(pid, fb_local_staff) {
+                            ctx.set_staff(global);
+                        }
+                    }
+                }
+                let mei_fb = super::figured_bass::convert_figured_bass(fb, ctx);
+                mei_measure
+                    .children
+                    .push(MeasureChild::Fb(Box::new(mei_fb)));
+            }
             MeasureContent::Note(note) => {
                 // Advance beat position for non-chord, non-grace notes
                 if !note.is_chord()

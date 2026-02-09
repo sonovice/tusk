@@ -822,6 +822,16 @@ fn convert_direction_events(
                     }
                 }
             }
+            MeasureChild::Fb(fb) => {
+                // Figured bass has no @staff attribute — emit on first staff only
+                if local_staff_n == 1 {
+                    if let Some(content) =
+                        super::figured_bass::convert_mei_fb(fb, local_staff_n, ctx)
+                    {
+                        mxml_measure.content.push(content);
+                    }
+                }
+            }
             _ => {}
         }
     }

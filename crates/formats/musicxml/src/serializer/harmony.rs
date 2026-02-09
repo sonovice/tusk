@@ -427,7 +427,7 @@ pub(crate) fn harmony_arrangement_str(a: &HarmonyArrangement) -> &'static str {
 }
 
 /// Format a decimal value: if integer, omit fractional part.
-fn format_decimal(v: f64) -> String {
+pub(crate) fn format_decimal(v: f64) -> String {
     if v.fract() == 0.0 {
         format!("{}", v as i64)
     } else {
