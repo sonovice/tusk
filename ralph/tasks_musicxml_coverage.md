@@ -594,20 +594,20 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 13.1 Model & Parser
 
-- [ ] Add `Print` variant to `MeasureContent` enum
-- [ ] Create `model/print.rs` with `Print` struct (staff-spacing, new-system, new-page, blank-page, page-number, layout children)
-- [ ] Parse `<print>` in `parse_measure()` (currently falls through to `skip_element`)
-- [ ] Serialize all
+- [x] Add `Print` variant to `MeasureContent` enum
+- [x] Create `model/print.rs` with `Print` struct (staff-spacing, new-system, new-page, blank-page, page-number, layout children)
+- [x] Parse `<print>` in `parse_measure()` (currently falls through to `skip_element`)
+- [x] Serialize all
 
 ### 13.2 Import & Export
 
-- [ ] Import `new-system="yes"` → MEI `<sb>` (system break)
-- [ ] Import `new-page="yes"` → MEI `<pb>` (page break)
-- [ ] Import `staff-spacing` and inline layouts → MEI `<scoreDef>` overrides
-- [ ] Import `measure-numbering` → MEI `@mnum.visible`
-- [ ] Export: MEI `<sb>` → `<print new-system="yes">`, MEI `<pb>` → `<print new-page="yes">`
-- [ ] Add roundtrip fixture with system/page breaks
-- [ ] Verify fragment examples: `system_attribute_only_top`, `system_attribute_also_top`, `staff_lines_element`, `staff_type_element`, `staves_element`
+- [x] Import `new-system="yes"` → MEI `<sb>` (system break)
+- [x] Import `new-page="yes"` → MEI `<pb>` (page break)
+- [x] Import `staff-spacing` and inline layouts → JSON-in-label roundtrip on sb/pb
+- [x] Import `measure-numbering` → JSON-in-label roundtrip on sb/pb
+- [x] Export: MEI `<sb>` → `<print new-system="yes">`, MEI `<pb>` → `<print new-page="yes">`
+- [x] Add roundtrip fixture with system/page breaks
+- [x] Verify fragment examples: `system_attribute_only_top`, `system_attribute_also_top`, `staff_lines_element`, `staff_type_element`, `staves_element`
 
 ---
 

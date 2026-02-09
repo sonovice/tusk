@@ -9,6 +9,7 @@ use crate::model::data::YesNo;
 use super::barline::Barline;
 use crate::model::figured_bass::FiguredBass;
 use crate::model::harmony::Harmony;
+use crate::model::print::Print;
 
 /// A measure in a part.
 ///
@@ -75,6 +76,8 @@ pub enum MeasureContent {
     Harmony(Box<Harmony>),
     /// Figured bass notation.
     FiguredBass(Box<FiguredBass>),
+    /// Print (page/system breaks, layout overrides).
+    Print(Box<Print>),
     /// Barline (location and style).
     Barline(Box<Barline>),
 }

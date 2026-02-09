@@ -897,6 +897,19 @@ fn get_element_key(elem: &CanonicalElement) -> String {
             None
         }
 
+        // sb/pb keyed by @label prefix (carries musicxml:print roundtrip data)
+        "sb" | "pb" => {
+            if let Some(label) = elem.attributes.get("label") {
+                let prefix = label.split(',').next().unwrap_or(label);
+                return format!(
+                    "{}[label={}]",
+                    name,
+                    prefix.chars().take(60).collect::<String>()
+                );
+            }
+            None
+        }
+
         // extMeta keyed by @analog prefix (carries musicxml: roundtrip data)
         "extMeta" => {
             if let Some(analog) = elem.attributes.get("analog") {

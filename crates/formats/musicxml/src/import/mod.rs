@@ -27,6 +27,7 @@ pub(crate) mod figured_bass;
 pub(crate) mod harmony;
 mod note;
 mod parts;
+pub(crate) mod print;
 mod structure;
 mod utils;
 

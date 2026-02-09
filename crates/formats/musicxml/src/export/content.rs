@@ -832,6 +832,22 @@ fn convert_direction_events(
                     }
                 }
             }
+            MeasureChild::Sb(sb) => {
+                // System break — emit on first staff only
+                if local_staff_n == 1 {
+                    if let Some(content) = super::print::convert_mei_sb(sb, ctx) {
+                        mxml_measure.content.push(content);
+                    }
+                }
+            }
+            MeasureChild::Pb(pb) => {
+                // Page break — emit on first staff only
+                if local_staff_n == 1 {
+                    if let Some(content) = super::print::convert_mei_pb(pb, ctx) {
+                        mxml_measure.content.push(content);
+                    }
+                }
+            }
             _ => {}
         }
     }

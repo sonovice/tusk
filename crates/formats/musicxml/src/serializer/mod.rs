@@ -11,6 +11,7 @@ mod elements;
 mod figured_bass;
 mod harmony;
 mod notations;
+mod print;
 mod score;
 mod technical;
 

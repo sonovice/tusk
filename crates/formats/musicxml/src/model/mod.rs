@@ -24,6 +24,7 @@ pub mod harmony;
 pub mod lyric;
 pub mod notations;
 pub mod note;
+pub mod print;
 pub mod technical;
 
 // Re-export commonly used types
@@ -37,4 +38,5 @@ pub use harmony::*;
 pub use lyric::*;
 pub use notations::*;
 pub use note::*;
+pub use print::*;
 pub use technical::*;

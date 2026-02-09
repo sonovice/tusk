@@ -802,6 +802,11 @@ fn test_roundtrip_credits() {
     assert_roundtrip("credits.musicxml");
 }
 
+#[test]
+fn test_roundtrip_print_breaks() {
+    assert_roundtrip("print_breaks.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

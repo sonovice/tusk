@@ -284,6 +284,14 @@ fn convert_measure_directions(
             MeasureContent::Forward(forward) => {
                 ctx.advance_beat_position(forward.duration);
             }
+            MeasureContent::Print(print) => {
+                // Print is measure-level, not per-part — only import from first staff
+                if ctx.current_staff() == 1 {
+                    for child in super::print::convert_print(print, ctx) {
+                        mei_measure.children.push(child);
+                    }
+                }
+            }
             _ => {}
         }
     }

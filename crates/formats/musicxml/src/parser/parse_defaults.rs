@@ -76,7 +76,7 @@ fn parse_scaling<R: BufRead>(reader: &mut Reader<R>) -> Result<Scaling> {
     })
 }
 
-fn parse_page_layout<R: BufRead>(reader: &mut Reader<R>) -> Result<PageLayout> {
+pub(crate) fn parse_page_layout<R: BufRead>(reader: &mut Reader<R>) -> Result<PageLayout> {
     let mut buf = Vec::new();
     let mut layout = PageLayout::default();
 
@@ -166,7 +166,7 @@ fn parse_page_margins<R: BufRead>(
     })
 }
 
-fn parse_system_layout<R: BufRead>(reader: &mut Reader<R>) -> Result<SystemLayout> {
+pub(crate) fn parse_system_layout<R: BufRead>(reader: &mut Reader<R>) -> Result<SystemLayout> {
     let mut buf = Vec::new();
     let mut layout = SystemLayout::default();
 
