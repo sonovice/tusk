@@ -258,7 +258,7 @@ mod tests {
         let score = ScorePartwise::default();
         let mei = convert_score(&score).expect("conversion should succeed");
 
-        // Should set MEI version to 6.0-dev (current dev version from ODD)
+        // Should set MEI version to 6.0-dev (current dev version from RNG schema)
         assert_eq!(mei.mei_version.meiversion.as_deref(), Some("6.0-dev"));
     }
 

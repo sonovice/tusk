@@ -16,7 +16,7 @@
 //! - `elements/` - Elements from `elementSpec`
 //! - `validation` - Validation support
 //!
-//! All types are generated from MEI ODD specification by `tools/mei-codegen`.
+//! All types are generated from the MEI RNG schema by `tools/mei-codegen`.
 //!
 //! DO NOT EDIT generated/ - regenerate with: cargo run -p mei-codegen -- --input specs/mei/modules --output crates/core/model/src/generated
 

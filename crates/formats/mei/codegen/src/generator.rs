@@ -1,4 +1,4 @@
-//! Rust code generator from MEI ODD definitions.
+//! Rust code generator from MEI RNG schema definitions.
 //!
 //! Generates Rust types that map 1:1 to MEI elements and attribute classes.
 
@@ -44,7 +44,7 @@ const CREATOR_DEPRECATED: &[(&str, &str)] = &[
     ("librettist", "lbt"),
 ];
 
-/// Generate all Rust code from ODD definitions (used when calling the library directly).
+/// Generate all Rust code from RNG schema definitions (used when calling the library directly).
 #[allow(dead_code)]
 pub fn generate_all(defs: &OddDefinitions, output: &Path) -> Result<()> {
     generate_all_with_config(defs, output, &CodegenConfig::default())
@@ -138,7 +138,7 @@ fn generate_data_types(defs: &OddDefinitions, output: &Path, config: &CodegenCon
     let mut tokens = TokenStream::new();
 
     tokens.extend(quote! {
-        //! MEI data types (generated from RNG/ODD).
+        //! MEI data types (generated from RNG schema).
         //!
         //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
@@ -345,7 +345,7 @@ fn generate_data_type(
             })
         }
         DataTypeKind::Alternate(refs) | DataTypeKind::Choice(refs) => {
-            // Generate enum for union types. RNG uses mei_data.X, ODD uses data.X; normalize for lookup.
+            // Generate enum for union types. RNG uses mei_data.X and data.X; normalize for lookup.
             let variants: Vec<_> = refs
                 .iter()
                 .filter_map(|r| {
@@ -536,7 +536,7 @@ fn generate_att_classes(
 
     // Generate mod.rs
     let mod_tokens = quote! {
-        //! MEI attribute classes (generated from ODD).
+        //! MEI attribute classes (generated from RNG schema).
         //!
         //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
@@ -758,7 +758,7 @@ fn generate_model_classes(
     let mut tokens = TokenStream::new();
 
     tokens.extend(quote! {
-        //! MEI model classes (generated from ODD).
+        //! MEI model classes (generated from RNG schema).
         //!
         //! Model classes group elements that can appear in specific content model positions.
         //!
@@ -798,7 +798,7 @@ fn generate_pattern_entities(
     let mut tokens = TokenStream::new();
 
     tokens.extend(quote! {
-        //! MEI pattern entities (generated from RNG/ODD).
+        //! MEI pattern entities (generated from RNG schema).
         //!
         //! Pattern entities define reusable content patterns that can be referenced
         //! by element content models via macroRef.
@@ -925,7 +925,7 @@ fn generate_elements(defs: &OddDefinitions, output: &Path, config: &CodegenConfi
 
     // Generate mod.rs
     let mod_tokens = quote! {
-        //! MEI elements (generated from ODD).
+        //! MEI elements (generated from RNG schema).
         //!
         //! DO NOT EDIT - regenerate with: cargo run -p tusk-mei-codegen (see codegen/README.md)
 
@@ -1146,7 +1146,7 @@ fn generate_element_validation(elem: &Element, defs: &OddDefinitions) -> TokenSt
 
 /// Extra child elements to inject into specific parent elements.
 ///
-/// These are not part of the MEI 6.0 ODD content model but are needed for
+/// These are not part of the MEI 6.0 RNG content model but are needed for
 /// backward compatibility with MEI 5.x documents (e.g., deprecated elements
 /// that the deserializer upgrades into newer equivalents).
 ///
@@ -1500,7 +1500,7 @@ fn generate_validation(
     };
 
     let tokens = quote! {
-        //! MEI validation support (generated from ODD).
+        //! MEI validation support (generated from RNG schema).
         //!
         //! Provides opt-in validation for MEI documents. Validation is NOT performed
         //! during deserialization - call `validate()` explicitly after loading.
@@ -1722,7 +1722,7 @@ fn generate_validation(
 
 fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfig) -> Result<()> {
     let tokens = quote! {
-        //! Generated types from MEI ODD specification.
+        //! Generated types from MEI RNG schema.
         //!
         //! This module contains Rust types that map 1:1 to MEI constructs.
         //!
@@ -1800,7 +1800,7 @@ fn generate_mod_rs(_defs: &OddDefinitions, output: &Path, _config: &CodegenConfi
 // ============================================================================
 
 /// Normalize a data type ref for lookup in defs.data_types.
-/// RNG uses "mei_data.X", ODD uses "data.X"; we store under "data.X".
+/// RNG uses "mei_data.X" and "data.X"; we store under "data.X".
 fn data_type_lookup_key(ref_name: &str) -> String {
     if ref_name.starts_with("mei_data.") {
         ref_name.replacen("mei_data.", "data.", 1)

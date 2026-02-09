@@ -81,7 +81,7 @@ In the RARE case that an MEI struct/model is incorrect (bug in generated code), 
 3. Run \`cargo fmt\` to format the generated code
 4. Rebuild and test
 
-NOTE: This should almost never be needed. The MEI model is generated from the official ODD spec and should be correct. Most roundtrip issues are in deserializer/serializer impls, NOT the MEI model itself.
+NOTE: This should almost never be needed. The MEI model is generated from the official RNG schema and should be correct. Most roundtrip issues are in deserializer/serializer impls, NOT the MEI model itself.
 
 # RULES
 

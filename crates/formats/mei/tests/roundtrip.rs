@@ -174,7 +174,7 @@ fn test_harness_can_find_sample_encodings() {
 #[test]
 fn test_roundtrip_helper_works_on_simple_mei() {
     // Create a minimal valid MEI document
-    // Note: meiversion is omitted as the model is generated from 6.0-dev ODD spec
+    // Note: meiversion is omitted as the model is generated from 6.0-dev RNG schema
     // and doesn't support 5.1 as a valid value
     let simple_mei = r#"<?xml version="1.0" encoding="UTF-8"?>
 <mei xmlns="http://www.music-encoding.org/ns/mei">

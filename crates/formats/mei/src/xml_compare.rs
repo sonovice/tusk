@@ -429,7 +429,7 @@ fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
 ///
 /// If `skip_meiversion` is true, the `meiversion` attribute is ignored.
 /// This is needed because MEI export always uses the version from codegen
-/// (currently 6.0-dev from ODD spec), not the original file's version.
+/// (currently 6.0-dev from RNG schema), not the original file's version.
 ///
 /// If `implicit_migration_role` is Some, the `role` attribute with that value
 /// is ignored when it appears only in the second (output) document. This handles

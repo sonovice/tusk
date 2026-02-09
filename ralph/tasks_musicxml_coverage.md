@@ -21,7 +21,39 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 - Conversion context: `crates/formats/musicxml/src/context/`
 - Fragment test fixtures: `tests/fixtures/musicxml/fragment_examples/`
 - Roundtrip tests: `crates/formats/musicxml/tests/roundtrip.rs`
-- MEI model (generated): `crates/core/model/src/generated/`
+- MEI model (generated): `crates/core/model/src/generated/` — **DO NOT EDIT**, overwritten by codegen
+- MEI model extensions: `crates/core/model/src/extended/` — hand-written enrichments, safe from codegen
+
+**Extending the internal model**:
+
+The internal model is generated from the MEI v6.0-dev RNG schema. While MEI is broadly
+a superset of common music notation formats, some concepts lack structured MEI equivalents
+(e.g. MEI `<harm>` only has text children — no structured root/bass/kind/degree). When
+the generated MEI model is insufficient for lossless roundtrip, follow this approach:
+
+1. **Create hand-written extension types** in `crates/core/model/src/extended/`.
+   This module is NEVER touched by codegen (codegen only writes to `generated/`).
+   Example: `extended/harmony.rs` could define `HarmonyData { root, bass, kind, degrees }`.
+
+2. **Store structured data alongside the MEI element**. Two options:
+   - **Wrapper approach**: Create a wrapper struct that holds the generated MEI element
+     plus the extension data. The import code populates both; the export code reads both.
+   - **Label + sidecar approach**: Store the structured data in the conversion context or
+     as a sidecar map keyed by `xml:id`, and encode a summary in the MEI element's text
+     or `@label` for human readability.
+
+3. **Wire into `lib.rs`**: Add `pub mod extended;` to `crates/core/model/src/lib.rs`
+   and re-export as needed.
+
+4. **Codegen safety**: The codegen (`build.rs` / `mei-codegen`) only writes to
+   `src/generated/`. It uses `create_dir_all` + individual file writes — it does NOT
+   delete or clear directories. Files outside `generated/` (like `extensions.rs`,
+   `extended/`, `lib.rs`) are never touched.
+
+5. **EXTRA_CHILDREN in codegen**: When a new child variant is needed in a generated
+   `*Child` enum (so serializer/deserializer match arms are generated), add an entry
+   to `EXTRA_CHILDREN` in `crates/formats/mei/codegen/src/generator.rs`. This was done
+   for `("measure", "harm")` — see commit `7153703d`.
 
 ---
 
@@ -351,13 +383,21 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 8.2 Import & Export
 
-- [ ] `harmony` → MEI `<harm>` control event
-- [ ] `root` + `kind` → MEI harm text or structured `<chordDef>` reference
-- [ ] `bass` → MEI slash notation in harm
-- [ ] `degree` → MEI harm extensions
-- [ ] `frame` → MEI `<chordDef>` with `<chordMember>`
-- [ ] `function` → MEI `<harm>` with function text
-- [ ] Export: reverse all mappings
+**Strategy**: MEI `<harm>` only has `Text(String)` children — it cannot structurally
+represent root/bass/kind/degree/frame. Use the `extended` module to create structured
+companion types. Store a human-readable chord label as the `<harm>` text child and
+attach structured `HarmonyData` as a sidecar (keyed by `xml:id`) in the conversion
+context, or as a field in a wrapper type.
+
+- [ ] Create `crates/core/model/src/extended/mod.rs` + `harmony.rs` with `HarmonyData`, `HarmRoot`, `HarmBass`, `HarmKind`, `HarmDegree`, `HarmFrame` structs
+- [ ] Wire `pub mod extended;` into `crates/core/model/src/lib.rs`
+- [ ] `harmony` → MEI `<harm>` control event + `HarmonyData` sidecar
+- [ ] `root` + `kind` → chord label text + structured `HarmRoot`/`HarmKind` in sidecar
+- [ ] `bass` → slash notation text + structured `HarmBass` in sidecar
+- [ ] `degree` → structured `HarmDegree` list in sidecar
+- [ ] `frame` → structured `HarmFrame` in sidecar (and/or MEI `<chordDef>` with `<chordMember>`)
+- [ ] `function` → MEI `<harm>` with function text (no sidecar needed — text is sufficient)
+- [ ] Export: read `HarmonyData` sidecar to reconstruct full MusicXML `Harmony` elements
 
 ### 8.3 Tests
 

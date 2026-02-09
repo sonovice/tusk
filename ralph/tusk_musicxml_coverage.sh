@@ -31,7 +31,9 @@ You are extending the MusicXML ↔ MEI converter to cover ALL MusicXML 4.1 eleme
 - Import (MusicXML→MEI): \`crates/formats/musicxml/src/import/\` — conversion to MEI model
 - Export (MEI→MusicXML): \`crates/formats/musicxml/src/export/\` — conversion from MEI model
 - Context: \`crates/formats/musicxml/src/context/\` — state tracking during conversion (divisions, ties, slurs, IDs)
-- MEI model (generated from ODD): \`crates/core/model/src/generated/\` — target data structures
+- MEI model (generated from RNG): \`crates/core/model/src/generated/\` — target data structures (DO NOT EDIT)
+- MEI model extensions: \`crates/core/model/src/extended/\` — hand-written structs enriching the generated model (see below)
+- MEI generic extensions: \`crates/core/model/src/extensions.rs\` — ExtensionBag for arbitrary custom namespace XML
 - Roundtrip tests: \`crates/formats/musicxml/tests/roundtrip.rs\`
 - Fragment fixtures: \`tests/fixtures/musicxml/fragment_examples/\` — 275 small files testing individual elements
 
@@ -61,6 +63,32 @@ Study existing code to follow established patterns:
 - **Control events**: Look at how MEI \`<slur>\`, \`<dynam>\`, \`<hairpin>\` are created as control events during import and extracted during export.
 - **Roundtrip labels**: Look at how specialized direction types use \`musicxml:<type>\` labels on MEI \`<dir>\` elements to enable lossless roundtrip for types without direct MEI equivalents.
 - **Fragment fixtures**: Minimal MusicXML files wrapping a single element. See existing examples in \`tests/fixtures/musicxml/fragment_examples/\`.
+
+## Extending the Generated Model
+
+The generated MEI model sometimes lacks structured fields for concepts from other formats.
+For example, MEI \`<harm>\` only has \`Text(String)\` children — no structured root/bass/kind/degree.
+
+When the generated MEI model is insufficient for lossless roundtrip:
+
+1. **Create extension types** in \`crates/core/model/src/extended/\`.
+   This directory is NEVER touched by codegen (codegen only writes to \`generated/\`).
+   Example: \`extended/harmony.rs\` defines \`HarmonyData { root, bass, kind, degrees }\`.
+
+2. **Wire into lib.rs**: Add \`pub mod extended;\` to \`crates/core/model/src/lib.rs\`.
+
+3. **Store structured data as a sidecar**: During import, populate both the MEI element
+   (with a human-readable text summary) and a companion \`extended\` struct.
+   Store the companion in the conversion context or as a field in a wrapper type.
+   During export, read the structured companion to reconstruct the full source element.
+
+4. **EXTRA_CHILDREN in codegen**: When a new child variant is needed in a generated
+   \`*Child\` enum (so serializer/deserializer match arms are generated), add an entry
+   to \`EXTRA_CHILDREN\` in \`crates/formats/mei/codegen/src/generator.rs\`.
+   Example: \`(\"measure\", \"harm\")\` was added in commit \`7153703d\`.
+
+5. **Do NOT edit files in \`generated/\`** — they will be overwritten. Instead, extend
+   behavior via wrapper types, trait impls, or the \`extended\` module.
 
 # WORKFLOW
 
