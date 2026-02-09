@@ -127,9 +127,11 @@ pub fn convert_mei_to_timewise_with_context(
 
     // Convert header (metadata)
     if let Some(head) = mei_head {
-        let (work, identification) = convert_header(head, ctx)?;
-        score.work = work;
-        score.identification = identification;
+        let header = convert_header(head, ctx)?;
+        score.work = header.work;
+        score.identification = header.identification;
+        score.movement_number = header.movement_number;
+        score.movement_title = header.movement_title;
     }
 
     // Convert music content (requires body/mdiv/score structure)
@@ -178,43 +180,101 @@ pub fn convert_mei_to_timewise_with_context(
     Ok(score)
 }
 
+/// Header data extracted from MEI meiHead.
+struct HeaderData {
+    work: Option<Work>,
+    identification: Option<Identification>,
+    movement_number: Option<String>,
+    movement_title: Option<String>,
+}
+
 /// Convert MEI meiHead to MusicXML header elements.
 ///
-/// Returns (Work, Identification) tuple.
+/// Extracts title from `<fileDesc>/<titleStmt>/<title>`, and recovers full
+/// MusicXML `Identification`, `Work`, `movement-number`, and `movement-title`
+/// from `<extMeta>` elements that store JSON roundtrip data. Falls back to
+/// minimal data when no JSON is available.
 fn convert_header(
     mei_head: &MeiHead,
-    ctx: &mut ConversionContext,
-) -> ConversionResult<(Option<Work>, Option<Identification>)> {
-    let mut work: Option<Work> = None;
-    let mut identification = Identification::default();
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<HeaderData> {
+    use crate::import::{
+        IDENTIFICATION_LABEL_PREFIX, MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX,
+        WORK_LABEL_PREFIX,
+    };
 
-    // Find fileDesc to extract title
+    let mut work: Option<Work> = None;
+    let mut identification: Option<Identification> = None;
+    let mut movement_number: Option<String> = None;
+    let mut movement_title: Option<String> = None;
+
+    // Extract title from fileDesc
+    let mut title_text: Option<String> = None;
     for child in &mei_head.children {
         if let MeiHeadChild::FileDesc(file_desc) = child {
-            // Extract title from fileDesc -> titleStmt -> title
-            if let Some(title) = extract_title_from_file_desc(file_desc) {
-                work = Some(Work {
-                    work_title: Some(title),
-                    ..Default::default()
-                });
+            title_text = extract_title_from_file_desc(file_desc);
+        }
+    }
+
+    // Scan extMeta elements for JSON roundtrip data
+    for child in &mei_head.children {
+        if let MeiHeadChild::ExtMeta(ext_meta) = child {
+            if let Some(analog) = &ext_meta.bibl.analog {
+                if let Some(json) = analog.strip_prefix(IDENTIFICATION_LABEL_PREFIX) {
+                    if let Ok(ident) = serde_json::from_str::<Identification>(json) {
+                        identification = Some(ident);
+                    }
+                } else if let Some(json) = analog.strip_prefix(WORK_LABEL_PREFIX) {
+                    if let Ok(mut w) = serde_json::from_str::<Work>(json) {
+                        // Merge work-title from titleStmt (canonical source)
+                        if w.work_title.is_none() {
+                            w.work_title = title_text.clone();
+                        }
+                        work = Some(w);
+                    }
+                } else if let Some(data) = analog.strip_prefix(MOVEMENT_NUMBER_LABEL_PREFIX) {
+                    movement_number = Some(data.to_string());
+                } else if let Some(data) = analog.strip_prefix(MOVEMENT_TITLE_LABEL_PREFIX) {
+                    movement_title = Some(data.to_string());
+                }
             }
         }
     }
 
-    // Add encoding info showing conversion from MEI
-    let encoding = Encoding {
-        software: vec!["Tusk MusicXML-MEI Converter".to_string()],
-        ..Default::default()
-    };
-    identification.encoding = Some(encoding);
+    // If no work was recovered from extMeta, create one from title
+    if work.is_none() {
+        if let Some(title) = &title_text {
+            if title != "Untitled" {
+                work = Some(Work {
+                    work_title: Some(title.clone()),
+                    ..Default::default()
+                });
+            }
+        }
+    } else if let Some(w) = &mut work {
+        // Ensure work-title is set from titleStmt if missing
+        if w.work_title.is_none() {
+            w.work_title = title_text;
+        }
+    }
 
-    // Add warning about potential lossy conversion
-    ctx.add_warning(
-        "meiHead",
-        "MEI metadata may be simplified during conversion to MusicXML",
-    );
+    // Fall back to minimal identification with Tusk encoding info
+    if identification.is_none() {
+        identification = Some(Identification {
+            encoding: Some(Encoding {
+                software: vec!["Tusk MusicXML-MEI Converter".to_string()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+    }
 
-    Ok((work, Some(identification)))
+    Ok(HeaderData {
+        work,
+        identification,
+        movement_number,
+        movement_title,
+    })
 }
 
 // ============================================================================

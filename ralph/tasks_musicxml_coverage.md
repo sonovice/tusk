@@ -446,15 +446,29 @@ kind, bass, degrees, frame, numeral, function, and all styling attributes).
 
 ### 10.1 Identification
 
-- [ ] Import `creator type="composer"` → MEI `<titleStmt>/<composer>/<persName>`
-- [ ] Import `creator type="lyricist"` → MEI `<titleStmt>/<lyricist>/<persName>`
-- [ ] Import `creator type="arranger"` → MEI `<titleStmt>/<arranger>/<persName>`
-- [ ] Import `rights` → MEI `<pubStmt>/<availability>/<useRestrict>`
-- [ ] Import `source` → MEI `<sourceDesc>/<source>`
-- [ ] Import `relation` → MEI `<relationList>/<relation>`
-- [ ] Import `encoding` → MEI `<encodingDesc>/<appInfo>/<application>` (software, date, supports, description)
-- [ ] Import `miscellaneous` → MEI `<notesStmt>/<annot>`
-- [ ] Export: reverse all identification mappings
+**Strategy**: MEI generated model header types are too limited for structured mapping
+(TitleStmt only has Title, PubStmt only has Unpub, etc.). Uses JSON-in-`<extMeta>` pattern:
+full MusicXML Identification serialized as JSON in `@analog` attribute with `musicxml:identification,`
+prefix. Human-readable text summary stored as ExtMeta text child. Same pattern as harmony/figured-bass.
+
+- [x] Import `creator type="composer"` → MEI `<extMeta>` with JSON-encoded Identification
+  - All creators (composer, lyricist, arranger, etc.) stored in single Identification JSON
+- [x] Import `creator type="lyricist"` → (included in Identification JSON)
+- [x] Import `creator type="arranger"` → (included in Identification JSON)
+- [x] Import `rights` → (included in Identification JSON)
+- [x] Import `source` → (included in Identification JSON)
+- [x] Import `relation` → (included in Identification JSON)
+- [x] Import `encoding` → (included in Identification JSON)
+  - `has_meaningful_identification()` guard prevents storing extMeta for default-only Tusk encoding
+- [x] Import `miscellaneous` → (included in Identification JSON)
+- [x] Export: reverse all identification mappings
+  - Scans `<meiHead>` extMeta children for `musicxml:identification,` prefix
+  - Deserializes JSON to full Identification; merges work-title from titleStmt
+  - Falls back to minimal Tusk encoding when no JSON available
+- [x] Added `musicxml:work,` extMeta for work-number/opus roundtrip
+- [x] Added `musicxml:movement-number,` and `musicxml:movement-title,` extMeta
+- [x] xml_compare: extMeta keyed by `@analog` prefix for unordered comparison
+- [x] Roundtrip fixture: `identification_metadata.musicxml` (3 creators, rights, encoding with supports, source, relation, miscellaneous, work-number, movement-number/title)
 
 ### 10.2 Work Element
 

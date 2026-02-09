@@ -56,6 +56,15 @@ use crate::convert_error::ConversionResult;
 use crate::model::elements::ScorePartwise;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
 
+/// Label prefix for MEI extMeta carrying roundtrip identification JSON.
+pub(crate) const IDENTIFICATION_LABEL_PREFIX: &str = "musicxml:identification,";
+/// Label prefix for MEI extMeta carrying roundtrip work JSON.
+pub(crate) const WORK_LABEL_PREFIX: &str = "musicxml:work,";
+/// Label prefix for MEI extMeta carrying roundtrip movement-number.
+pub(crate) const MOVEMENT_NUMBER_LABEL_PREFIX: &str = "musicxml:movement-number,";
+/// Label prefix for MEI extMeta carrying roundtrip movement-title.
+pub(crate) const MOVEMENT_TITLE_LABEL_PREFIX: &str = "musicxml:movement-title,";
+
 /// Convert a MusicXML score-partwise document to MEI.
 ///
 /// This is the main entry point for MusicXML → MEI conversion.
@@ -113,7 +122,175 @@ fn convert_header(score: &ScorePartwise, ctx: &mut ConversionContext) -> Convers
         .children
         .push(MeiHeadChild::EncodingDesc(Box::new(encoding_desc)));
 
+    // Store full identification as JSON in extMeta for lossless roundtrip.
+    // The generated MEI model's header types are too limited to hold all
+    // MusicXML identification fields (TitleStmt only has Title, PubStmt
+    // only has Unpub, NotesStmt has no children, etc.), so we use extMeta
+    // which is designed for "non-MEI metadata formats".
+    //
+    // Only store when there's meaningful data beyond the default Tusk
+    // encoding that the export creates. This prevents the triangle MEI
+    // roundtrip from diverging: without this guard, export adds a default
+    // Identification (Tusk software), the next import stores it in extMeta,
+    // and MEI₂ gets an extMeta that MEI₁ didn't have.
+    if let Some(identification) = &score.identification {
+        if has_meaningful_identification(identification) {
+            if let Ok(json) = serde_json::to_string(identification) {
+                let ext_meta = create_ext_meta(
+                    ctx,
+                    "identification",
+                    IDENTIFICATION_LABEL_PREFIX,
+                    &json,
+                    &identification_summary(identification),
+                );
+                mei_head
+                    .children
+                    .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+            }
+        }
+    }
+
+    // Store work data (work-number, opus) in extMeta for roundtrip of
+    // fields beyond the basic work-title already in titleStmt.
+    if let Some(work) = &score.work {
+        if work.work_number.is_some() || work.opus.is_some() {
+            if let Ok(json) = serde_json::to_string(work) {
+                let ext_meta =
+                    create_ext_meta(ctx, "work", WORK_LABEL_PREFIX, &json, &work_summary(work));
+                mei_head
+                    .children
+                    .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+            }
+        }
+    }
+
+    // Store movement-number if present
+    if let Some(movement_number) = &score.movement_number {
+        let ext_meta = create_ext_meta(
+            ctx,
+            "mvmt-num",
+            MOVEMENT_NUMBER_LABEL_PREFIX,
+            movement_number,
+            movement_number,
+        );
+        mei_head
+            .children
+            .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+    }
+
+    // Store movement-title if present
+    if let Some(movement_title) = &score.movement_title {
+        let ext_meta = create_ext_meta(
+            ctx,
+            "mvmt-title",
+            MOVEMENT_TITLE_LABEL_PREFIX,
+            movement_title,
+            movement_title,
+        );
+        mei_head
+            .children
+            .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+    }
+
     Ok(mei_head)
+}
+
+/// Create an extMeta element with a label prefix + data and human-readable text.
+fn create_ext_meta(
+    ctx: &mut ConversionContext,
+    id_suffix: &str,
+    label_prefix: &str,
+    data: &str,
+    summary_text: &str,
+) -> tusk_model::elements::ExtMeta {
+    use tusk_model::elements::{ExtMeta, ExtMetaChild};
+
+    let mut ext_meta = ExtMeta::default();
+    ext_meta.common.xml_id = Some(ctx.generate_id_with_suffix(id_suffix));
+    ext_meta.bibl.analog = Some(format!("{label_prefix}{data}"));
+    ext_meta
+        .children
+        .push(ExtMetaChild::Text(summary_text.to_string()));
+    ext_meta
+}
+
+/// Check if identification has meaningful data beyond the default Tusk encoding.
+///
+/// Returns false for identifications that only contain the Tusk software
+/// entry (which is the default added by the export path). This prevents
+/// a growing extMeta on each roundtrip.
+fn has_meaningful_identification(ident: &crate::model::elements::Identification) -> bool {
+    if !ident.creators.is_empty()
+        || !ident.rights.is_empty()
+        || ident.source.is_some()
+        || !ident.relations.is_empty()
+        || ident.miscellaneous.is_some()
+    {
+        return true;
+    }
+    // Check encoding: meaningful if it has anything beyond just Tusk software
+    if let Some(enc) = &ident.encoding {
+        if enc.encoding_date.is_some()
+            || !enc.encoders.is_empty()
+            || !enc.encoding_descriptions.is_empty()
+            || !enc.supports.is_empty()
+        {
+            return true;
+        }
+        // software: meaningful if there's any entry besides "Tusk MusicXML-MEI Converter"
+        let non_tusk_sw = enc
+            .software
+            .iter()
+            .any(|s| s != "Tusk MusicXML-MEI Converter");
+        if non_tusk_sw {
+            return true;
+        }
+    }
+    false
+}
+
+/// Build a human-readable summary of identification metadata.
+fn identification_summary(ident: &crate::model::elements::Identification) -> String {
+    let mut parts = Vec::new();
+    for creator in &ident.creators {
+        if let Some(t) = &creator.text_type {
+            parts.push(format!("{}: {}", t, creator.value));
+        } else {
+            parts.push(creator.value.clone());
+        }
+    }
+    for right in &ident.rights {
+        parts.push(format!("rights: {}", right.value));
+    }
+    if let Some(source) = &ident.source {
+        parts.push(format!("source: {source}"));
+    }
+    if let Some(enc) = &ident.encoding {
+        for sw in &enc.software {
+            parts.push(format!("software: {sw}"));
+        }
+    }
+    if parts.is_empty() {
+        "identification".to_string()
+    } else {
+        parts.join("; ")
+    }
+}
+
+/// Build a human-readable summary of work metadata.
+fn work_summary(work: &crate::model::elements::Work) -> String {
+    let mut parts = Vec::new();
+    if let Some(n) = &work.work_number {
+        parts.push(format!("number: {n}"));
+    }
+    if let Some(opus) = &work.opus {
+        parts.push(format!("opus: {}", opus.href));
+    }
+    if parts.is_empty() {
+        "work".to_string()
+    } else {
+        parts.join("; ")
+    }
 }
 
 /// Convert MusicXML identification to MEI fileDesc.

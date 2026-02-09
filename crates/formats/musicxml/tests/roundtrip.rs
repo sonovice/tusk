@@ -787,6 +787,11 @@ fn test_roundtrip_figured_bass() {
     assert_roundtrip("figured_bass.musicxml");
 }
 
+#[test]
+fn test_roundtrip_identification_metadata() {
+    assert_roundtrip("identification_metadata.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

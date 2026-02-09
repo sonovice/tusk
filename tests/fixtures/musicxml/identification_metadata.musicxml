@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work>
+    <work-number>Op. 27, No. 2</work-number>
+    <work-title>Piano Sonata No. 14</work-title>
+  </work>
+  <movement-number>1</movement-number>
+  <movement-title>Adagio sostenuto</movement-title>
+  <identification>
+    <creator type="composer">Ludwig van Beethoven</creator>
+    <creator type="lyricist">Anonymous</creator>
+    <creator type="arranger">Franz Liszt</creator>
+    <rights type="copyright">Copyright 2024 Example Publisher</rights>
+    <encoding>
+      <software>Test Engraver 3.0</software>
+      <encoding-date>2024-06-15</encoding-date>
+      <supports element="accidental" type="yes"/>
+      <supports element="beam" type="yes"/>
+      <supports element="stem" type="yes"/>
+    </encoding>
+    <source>Breitkopf &amp; Hartel edition, 1862</source>
+    <relation type="arrangement">urn:example:arrangement-source</relation>
+    <miscellaneous>
+      <miscellaneous-field name="difficulty">Advanced</miscellaneous-field>
+      <miscellaneous-field name="genre">Classical</miscellaneous-field>
+    </miscellaneous>
+  </identification>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key>
+          <fifths>4</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>whole</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>
