@@ -19,11 +19,19 @@ use tusk_model::elements::{
 };
 
 /// Convert MusicXML part-list to MEI scoreDef.
+///
+/// Also maps MusicXML `<defaults>` layout/font data to MEI scoreDef visual
+/// attributes (page dimensions, margins, spacing, fonts, vu.height).
 pub fn convert_score_def(
     score: &ScorePartwise,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<ScoreDef> {
     let mut score_def = ScoreDef::default();
+
+    // Map defaults to scoreDef visual attributes
+    if let Some(defaults) = &score.defaults {
+        apply_defaults_to_score_def(defaults, &mut score_def);
+    }
 
     // Create staffGrp containing staffDef for each part
     let staff_grp = convert_staff_grp(score, ctx)?;
@@ -34,6 +42,181 @@ pub fn convert_score_def(
         )));
 
     Ok(score_def)
+}
+
+/// Map MusicXML `<defaults>` fields to MEI scoreDef visual attributes.
+///
+/// Maps:
+/// - `scaling` → `@vu.height` (millimeters-per-half-interline-space)
+/// - `page-layout` → `@page.height`, `@page.width`, `@page.topmar`, etc.
+/// - `system-layout` → `@system.leftmar`, `@system.rightmar`, `@spacing.system`
+/// - `staff-layout` → `@spacing.staff`
+/// - `music-font` → `@music.name`, `@music.size`
+/// - `word-font` → `@text.fam`, `@text.size`, `@text.style`, `@text.weight`
+/// - `lyric-font` (first) → `@lyric.fam`, `@lyric.size`, `@lyric.style`, `@lyric.weight`
+fn apply_defaults_to_score_def(
+    defaults: &crate::model::elements::Defaults,
+    score_def: &mut ScoreDef,
+) {
+    use tusk_model::data::{
+        DataFontfamily, DataMeasurementsigned, DataMeasurementunsigned, DataMusicfont,
+    };
+
+    let vis = &mut score_def.score_def_vis;
+
+    // Scaling → vu.height
+    // MusicXML scaling defines mm-per-tenths; MEI vu.height = mm for one virtual unit
+    // (half interline space). vu.height = millimeters / (tenths / 2) = 2*mm/tenths
+    // But MEI typically stores "Xmm" string. Format as "<value>mm".
+    if let Some(scaling) = &defaults.scaling {
+        if scaling.tenths != 0.0 {
+            let vu = scaling.millimeters / (scaling.tenths / 2.0);
+            vis.vu_height = Some(format!("{vu:.4}mm"));
+        }
+    }
+
+    // Page layout → page.height, page.width, page margins
+    // MusicXML values are in tenths; MEI uses measurement strings (vu by default).
+    // Store as plain numbers (tenths) — vu.height provides the conversion factor.
+    if let Some(pl) = &defaults.page_layout {
+        if let Some(h) = pl.page_height {
+            vis.page_height = Some(DataMeasurementunsigned(format_tenths(h)));
+        }
+        if let Some(w) = pl.page_width {
+            vis.page_width = Some(DataMeasurementunsigned(format_tenths(w)));
+        }
+        // Use the first "both" margins, or fall back to first margins entry
+        if let Some(margins) = pl
+            .page_margins
+            .iter()
+            .find(|m| {
+                m.margin_type.is_none()
+                    || m.margin_type == Some(crate::model::elements::MarginType::Both)
+            })
+            .or_else(|| pl.page_margins.first())
+        {
+            vis.page_topmar = Some(DataMeasurementunsigned(format_tenths(margins.top_margin)));
+            vis.page_botmar = Some(DataMeasurementunsigned(format_tenths(
+                margins.bottom_margin,
+            )));
+            vis.page_leftmar = Some(DataMeasurementunsigned(format_tenths(margins.left_margin)));
+            vis.page_rightmar = Some(DataMeasurementunsigned(format_tenths(margins.right_margin)));
+        }
+    }
+
+    // System layout → system margins and spacing
+    if let Some(sl) = &defaults.system_layout {
+        if let Some(sm) = &sl.system_margins {
+            vis.system_leftmar = Some(DataMeasurementunsigned(format_tenths(sm.left_margin)));
+            vis.system_rightmar = Some(DataMeasurementunsigned(format_tenths(sm.right_margin)));
+        }
+        if let Some(sd) = sl.system_distance {
+            vis.spacing_system = Some(DataMeasurementsigned(format_tenths(sd)));
+        }
+        // top-system-distance → system.topmar
+        if let Some(tsd) = sl.top_system_distance {
+            vis.system_topmar = Some(DataMeasurementunsigned(format_tenths(tsd)));
+        }
+    }
+
+    // Staff layout → spacing.staff (use first staff-layout with distance, no number filter)
+    if let Some(sl) = defaults.staff_layouts.first() {
+        if let Some(sd) = sl.staff_distance {
+            vis.spacing_staff = Some(DataMeasurementsigned(format_tenths(sd)));
+        }
+    }
+
+    // Music font → music.name, music.size
+    if let Some(mf) = &defaults.music_font {
+        if let Some(ref family) = mf.font_family {
+            vis.music_name = Some(DataMusicfont(family.clone()));
+        }
+        if let Some(ref size) = mf.font_size {
+            vis.music_size = Some(convert_font_size_to_mei(size));
+        }
+    }
+
+    // Word font → text.fam, text.size, text.style, text.weight
+    if let Some(wf) = &defaults.word_font {
+        if let Some(ref family) = wf.font_family {
+            vis.text_fam = Some(DataFontfamily(family.clone()));
+        }
+        if let Some(ref size) = wf.font_size {
+            vis.text_size = Some(convert_font_size_to_mei(size));
+        }
+        if let Some(style) = &wf.font_style {
+            vis.text_style = Some(convert_font_style_to_mei(style));
+        }
+        if let Some(weight) = &wf.font_weight {
+            vis.text_weight = Some(convert_font_weight_to_mei(weight));
+        }
+    }
+
+    // Lyric font (first entry) → lyric.fam, lyric.size, lyric.style, lyric.weight
+    if let Some(lf) = defaults.lyric_fonts.first() {
+        if let Some(ref family) = lf.font_family {
+            vis.lyric_fam = Some(DataFontfamily(family.clone()));
+        }
+        if let Some(ref size) = lf.font_size {
+            vis.lyric_size = Some(convert_font_size_to_mei(size));
+        }
+        if let Some(style) = &lf.font_style {
+            vis.lyric_style = Some(convert_font_style_to_mei(style));
+        }
+        if let Some(weight) = &lf.font_weight {
+            vis.lyric_weight = Some(convert_font_weight_to_mei(weight));
+        }
+    }
+}
+
+/// Format a tenths value as a string, stripping trailing zeros.
+fn format_tenths(value: f64) -> String {
+    // If the value is an integer, format without decimals
+    if value == value.trunc() {
+        format!("{}", value as i64)
+    } else {
+        format!("{value}")
+    }
+}
+
+/// Convert MusicXML FontSize to MEI DataFontsize.
+fn convert_font_size_to_mei(size: &crate::model::data::FontSize) -> tusk_model::data::DataFontsize {
+    use crate::model::data::{CssFontSize, FontSize};
+    use tusk_model::data::{DataFontsize, DataFontsizenumeric, DataFontsizeterm};
+    match size {
+        FontSize::Points(pts) => {
+            DataFontsize::MeiDataFontsizenumeric(DataFontsizenumeric(format!("{pts}")))
+        }
+        FontSize::Css(css) => DataFontsize::MeiDataFontsizeterm(match css {
+            CssFontSize::XxSmall => DataFontsizeterm::XxSmall,
+            CssFontSize::XSmall => DataFontsizeterm::XSmall,
+            CssFontSize::Small => DataFontsizeterm::Small,
+            CssFontSize::Medium => DataFontsizeterm::Normal,
+            CssFontSize::Large => DataFontsizeterm::Large,
+            CssFontSize::XLarge => DataFontsizeterm::XLarge,
+            CssFontSize::XxLarge => DataFontsizeterm::XxLarge,
+        }),
+    }
+}
+
+/// Convert MusicXML FontStyle to MEI DataFontstyle.
+fn convert_font_style_to_mei(
+    style: &crate::model::data::FontStyle,
+) -> tusk_model::data::DataFontstyle {
+    match style {
+        crate::model::data::FontStyle::Normal => tusk_model::data::DataFontstyle::Normal,
+        crate::model::data::FontStyle::Italic => tusk_model::data::DataFontstyle::Italic,
+    }
+}
+
+/// Convert MusicXML FontWeight to MEI DataFontweight.
+fn convert_font_weight_to_mei(
+    weight: &crate::model::data::FontWeight,
+) -> tusk_model::data::DataFontweight {
+    match weight {
+        crate::model::data::FontWeight::Normal => tusk_model::data::DataFontweight::Normal,
+        crate::model::data::FontWeight::Bold => tusk_model::data::DataFontweight::Bold,
+    }
 }
 
 /// Convert MusicXML part-list to MEI staffGrp.

@@ -522,12 +522,31 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 11.2 Import & Export
 
-- [ ] Import `scaling` → MEI `<scoreDef>` page/spacing attributes
-- [ ] Import `page-layout` → MEI `@page.height`, `@page.width`, `@page.*mar`
-- [ ] Import `system-layout` → MEI `@system.leftmar`, `@system.rightmar`, `@spacing.system`
-- [ ] Import `staff-layout` → MEI `@spacing.staff`
-- [ ] Import font info → MEI `@fontfam`, `@fontsize`, `@fontstyle`, `@fontweight`
-- [ ] Export: reverse layout mappings (lossy — many MEI visual attributes have no MusicXML equivalent)
+**Strategy**: Two-pronged approach for lossless roundtrip + semantic MEI attributes:
+1. Full `Defaults` struct serialized as JSON in MEI `<extMeta>` (`@analog="musicxml:defaults,{json}"`)
+   for lossless roundtrip of all fields (appearance, line-widths, note-sizes, glyphs, system-dividers, etc.)
+2. Key fields also mapped to MEI `<scoreDef>` visual attributes for semantic fidelity in external MEI tools
+
+- [x] Import `scaling` → MEI `@vu.height` on scoreDef (computed as `2 * mm / tenths` formatted as `"Xmm"`)
+  - Added `apply_defaults_to_score_def()` in `import/parts.rs`
+  - Full Defaults JSON stored in extMeta via `DEFAULTS_LABEL_PREFIX` in `import/mod.rs`
+- [x] Import `page-layout` → MEI `@page.height`, `@page.width`, `@page.topmar`, `@page.botmar`, `@page.leftmar`, `@page.rightmar`
+  - Values stored as tenths strings; prefers `type="both"` margins, falls back to first entry
+- [x] Import `system-layout` → MEI `@system.leftmar`, `@system.rightmar`, `@spacing.system`, `@system.topmar`
+  - System margins + system-distance + top-system-distance all mapped
+- [x] Import `staff-layout` → MEI `@spacing.staff`
+  - Uses first staff-layout entry's staff-distance
+- [x] Import font info → MEI font attributes
+  - `music-font` → `@music.name`, `@music.size`
+  - `word-font` → `@text.fam`, `@text.size`, `@text.style`, `@text.weight`
+  - `lyric-font` (first) → `@lyric.fam`, `@lyric.size`, `@lyric.style`, `@lyric.weight`
+  - Added `convert_font_size_to_mei()`, `convert_font_style_to_mei()`, `convert_font_weight_to_mei()` helpers
+- [x] Export: reverse layout mappings
+  - Primary: recover full `Defaults` from extMeta JSON (lossless roundtrip)
+  - Fallback: `defaults_from_score_def()` builds Defaults from scoreDef visual attrs (lossy)
+  - Added `convert_mei_font_size()`, `convert_mei_font_style()`, `convert_mei_font_weight()` reverse helpers
+  - Scaling fallback assumes tenths=40 (common MusicXML default) since vu.height alone can't reconstruct both mm and tenths
+  - 316/316 roundtrip tests pass (0 regressions), 492 unit tests, 31 integration tests — all pass
 
 ### 11.3 Tests
 

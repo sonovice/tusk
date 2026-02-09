@@ -64,6 +64,8 @@ pub(crate) const WORK_LABEL_PREFIX: &str = "musicxml:work,";
 pub(crate) const MOVEMENT_NUMBER_LABEL_PREFIX: &str = "musicxml:movement-number,";
 /// Label prefix for MEI extMeta carrying roundtrip movement-title.
 pub(crate) const MOVEMENT_TITLE_LABEL_PREFIX: &str = "musicxml:movement-title,";
+/// Label prefix for MEI extMeta carrying roundtrip defaults JSON.
+pub(crate) const DEFAULTS_LABEL_PREFIX: &str = "musicxml:defaults,";
 
 /// Convert a MusicXML score-partwise document to MEI.
 ///
@@ -192,6 +194,25 @@ fn convert_header(score: &ScorePartwise, ctx: &mut ConversionContext) -> Convers
             .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
     }
 
+    // Store defaults (layout, appearance, fonts) in extMeta for lossless roundtrip.
+    // MEI scoreDef attributes can hold some of these (page dimensions, margins,
+    // spacing, fonts) but not all (appearance line-widths, note-sizes, glyphs,
+    // system-dividers, etc.). The extMeta JSON preserves the full Defaults struct.
+    if let Some(defaults) = &score.defaults {
+        if let Ok(json) = serde_json::to_string(defaults) {
+            let ext_meta = create_ext_meta(
+                ctx,
+                "defaults",
+                DEFAULTS_LABEL_PREFIX,
+                &json,
+                &defaults_summary(defaults),
+            );
+            mei_head
+                .children
+                .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+        }
+    }
+
     Ok(mei_head)
 }
 
@@ -288,6 +309,45 @@ fn work_summary(work: &crate::model::elements::Work) -> String {
     }
     if parts.is_empty() {
         "work".to_string()
+    } else {
+        parts.join("; ")
+    }
+}
+
+/// Build a human-readable summary of defaults metadata.
+fn defaults_summary(defaults: &crate::model::elements::Defaults) -> String {
+    let mut parts = Vec::new();
+    if let Some(scaling) = &defaults.scaling {
+        parts.push(format!(
+            "scaling: {}mm/{}tenths",
+            scaling.millimeters, scaling.tenths
+        ));
+    }
+    if let Some(pl) = &defaults.page_layout {
+        if let (Some(h), Some(w)) = (pl.page_height, pl.page_width) {
+            parts.push(format!("page: {w}x{h}"));
+        }
+    }
+    if defaults.system_layout.is_some() {
+        parts.push("system-layout".to_string());
+    }
+    if !defaults.staff_layouts.is_empty() {
+        parts.push(format!("{} staff-layout(s)", defaults.staff_layouts.len()));
+    }
+    if defaults.appearance.is_some() {
+        parts.push("appearance".to_string());
+    }
+    if defaults.music_font.is_some() {
+        parts.push("music-font".to_string());
+    }
+    if defaults.word_font.is_some() {
+        parts.push("word-font".to_string());
+    }
+    if !defaults.lyric_fonts.is_empty() {
+        parts.push("lyric-font".to_string());
+    }
+    if parts.is_empty() {
+        "defaults".to_string()
     } else {
         parts.join("; ")
     }
