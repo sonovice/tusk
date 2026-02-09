@@ -19,6 +19,15 @@ pub enum ValidationError {
     #[error("empty sequential music block")]
     EmptySequential,
 
+    #[error("invalid duration base {base}: must be a power of 2 (1..128)")]
+    InvalidDurationBase { base: u32 },
+
+    #[error("excessive dots ({dots}): maximum recommended is 4")]
+    ExcessiveDots { dots: u8 },
+
+    #[error("duration multiplier denominator is zero")]
+    ZeroMultiplierDenominator,
+
     #[error("{0}")]
     Other(String),
 }
@@ -123,7 +132,41 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
         Music::ContextedMusic { music, .. } => {
             validate_music(music, errors);
         }
+        Music::Note(n) => {
+            if let Some(dur) = &n.duration {
+                validate_duration(dur, errors);
+            }
+        }
+        Music::Rest(r) => {
+            if let Some(dur) = &r.duration {
+                validate_duration(dur, errors);
+            }
+        }
+        Music::Skip(s) => {
+            if let Some(dur) = &s.duration {
+                validate_duration(dur, errors);
+            }
+        }
+        Music::MultiMeasureRest(r) => {
+            if let Some(dur) = &r.duration {
+                validate_duration(dur, errors);
+            }
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+    }
+}
+
+fn validate_duration(dur: &Duration, errors: &mut Vec<ValidationError>) {
+    if !Duration::is_valid_base(dur.base) {
+        errors.push(ValidationError::InvalidDurationBase { base: dur.base });
+    }
+    if dur.dots > 4 {
+        errors.push(ValidationError::ExcessiveDots { dots: dur.dots });
+    }
+    for &(_, den) in &dur.multipliers {
+        if den == 0 {
+            errors.push(ValidationError::ZeroMultiplierDenominator);
+        }
     }
 }
 
@@ -142,8 +185,22 @@ mod tests {
                 version: "2.24.0".into(),
             }),
             items: vec![ToplevelExpression::Score(ScoreBlock {
-                items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Event(
-                    "c4".into(),
+                items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Note(
+                    NoteEvent {
+                        pitch: Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                        },
+                        duration: Some(Duration {
+                            base: 4,
+                            dots: 0,
+                            multipliers: vec![],
+                        }),
+                        pitched_rest: false,
+                    },
                 )]))],
             })],
         };
@@ -158,8 +215,22 @@ mod tests {
             }),
             items: vec![ToplevelExpression::Book(BookBlock {
                 items: vec![BookItem::Score(ScoreBlock {
-                    items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Event(
-                        "c4".into(),
+                    items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Note(
+                        NoteEvent {
+                            pitch: Pitch {
+                                step: 'c',
+                                alter: 0.0,
+                                octave: 0,
+                                force_accidental: false,
+                                cautionary: false,
+                            },
+                            duration: Some(Duration {
+                                base: 4,
+                                dots: 0,
+                                multipliers: vec![],
+                            }),
+                            pitched_rest: false,
+                        },
                     )]))],
                 })],
             })],
@@ -203,6 +274,112 @@ mod tests {
                     value: AssignmentValue::String("Test".into()),
                 }],
             })],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 3 validator tests ─────────────────────────────────────
+
+    #[test]
+    fn invalid_duration_base() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 3, // invalid
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                }),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+        );
+    }
+
+    #[test]
+    fn excessive_dots() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 5, // excessive
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                }),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::ExcessiveDots { dots: 5 }))
+        );
+    }
+
+    #[test]
+    fn zero_multiplier_denominator() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Rest(RestEvent {
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![(2, 0)],
+                    }),
+                }),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::ZeroMultiplierDenominator))
+        );
+    }
+
+    #[test]
+    fn valid_duration_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 2,
+                        multipliers: vec![(3, 2)],
+                    }),
+                    pitched_rest: false,
+                }),
+            ]))],
         };
         assert!(validate(&file).is_ok());
     }

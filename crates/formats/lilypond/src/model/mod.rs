@@ -2,6 +2,14 @@
 //!
 //! Types are added incrementally per phase (score, music, note, pitch, duration, etc.).
 
+pub mod duration;
+pub mod note;
+pub mod pitch;
+
+pub use duration::Duration;
+pub use note::{MultiMeasureRestEvent, NoteEvent, RestEvent, SkipEvent};
+pub use pitch::Pitch;
+
 // ---------------------------------------------------------------------------
 // Top-level file
 // ---------------------------------------------------------------------------
@@ -185,14 +193,12 @@ pub enum AssignmentValue {
 }
 
 // ---------------------------------------------------------------------------
-// Music (placeholder — expanded in later phases)
+// Music
 // ---------------------------------------------------------------------------
 
 /// A music expression.
 ///
-/// This is a placeholder that will be expanded with note events, sequential
-/// and simultaneous music, etc. in later phases. For Phase 2 we represent
-/// music as opaque token ranges or basic structures.
+/// Variants are expanded as new phases implement more of the grammar.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Music {
     /// Sequential music: `{ ... }`.
@@ -213,8 +219,16 @@ pub enum Music {
         with_block: Option<Vec<ContextModItem>>,
         music: Box<Music>,
     },
-    /// A note/rest/chord event (details parsed in later phases).
-    /// For now, stores the raw token text.
+    /// A note event with structured pitch and duration.
+    Note(NoteEvent),
+    /// A rest event (`r`).
+    Rest(RestEvent),
+    /// A skip event (`s`).
+    Skip(SkipEvent),
+    /// A multi-measure rest (`R`).
+    MultiMeasureRest(MultiMeasureRestEvent),
+    /// A note/rest/chord event stored as raw text (for tokens not yet
+    /// decomposed into structured types).
     Event(String),
     /// An identifier reference like `\melody`.
     Identifier(String),

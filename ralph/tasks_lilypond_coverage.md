@@ -137,13 +137,14 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 3.1 Model & Parser
 
-- [ ] [P] Add `Pitch` (step, alter, octave), `Duration` (log2, dots, multipliers), `NoteEvent`, `RestEvent`, `SkipEvent` in `model/note.rs`, `model/pitch.rs`, `model/duration.rs`
-- [ ] [P] Parse steno pitch: note name (a–g, optional accidental `is`/`es`/etc.), octave marks `'`/`,` (sup_quotes/sub_quotes), optional `!`/`?` (force/cautionary accidental), optional `= quotes` (octave check)
-- [ ] [P] Parse duration: integer or duration identifier, dots, optional `* n` or `* n/m` multipliers
-- [ ] [P] Parse rest `r`, skip `s`, optional `\rest` for pitched rest
-- [ ] [S] Serialize pitch (note name + octave marks + accidentals), duration, rest/skip
-- [ ] [V] Validator checks duration values in range and dot count
-- [ ] [T] Fragment fixtures: pitch-only, duration-only, rest, skip; parse and serialize
+- [x] [P] Add `Pitch` (step, alter, octave), `Duration` (log2, dots, multipliers), `NoteEvent`, `RestEvent`, `SkipEvent` in `model/note.rs`, `model/pitch.rs`, `model/duration.rs`
+- [x] [P] Parse steno pitch: note name (a–g, optional accidental `is`/`es`/etc.), octave marks `'`/`,` (sup_quotes/sub_quotes), optional `!`/`?` (force/cautionary accidental), optional `= quotes` (octave check)
+- [x] [P] Parse duration: integer or duration identifier, dots, optional `* n` or `* n/m` multipliers
+- [x] [P] Parse rest `r`, skip `s`, optional `\rest` for pitched rest
+- [x] [S] Serialize pitch (note name + octave marks + accidentals), duration, rest/skip
+- [x] [V] Validator checks duration values in range and dot count
+- [x] [T] Fragment fixtures: pitch-only, duration-only, rest, skip; parse and serialize
+  - 109 total tests: 47 lexer + 12 model + 29 parser + 12 serializer + 9 validator
 
 ### 3.2 Import & Export
 

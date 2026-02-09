@@ -383,12 +383,77 @@ impl<'a> Serializer<'a> {
                 self.out.push(' ');
                 self.write_music(music);
             }
+            Music::Note(n) => self.write_note_event(n),
+            Music::Rest(r) => self.write_rest_event(r),
+            Music::Skip(s) => self.write_skip_event(s),
+            Music::MultiMeasureRest(r) => self.write_multi_measure_rest(r),
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');
                 self.out.push_str(name);
             }
             Music::Unparsed(text) => self.out.push_str(text),
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Structured note/rest/skip serialization
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_note_event(&mut self, n: &NoteEvent) {
+        self.write_pitch(&n.pitch);
+        if let Some(dur) = &n.duration {
+            self.write_duration(dur);
+        }
+        if n.pitched_rest {
+            self.out.push_str("\\rest");
+        }
+    }
+
+    fn write_rest_event(&mut self, r: &RestEvent) {
+        self.out.push('r');
+        if let Some(dur) = &r.duration {
+            self.write_duration(dur);
+        }
+    }
+
+    fn write_skip_event(&mut self, s: &SkipEvent) {
+        self.out.push('s');
+        if let Some(dur) = &s.duration {
+            self.write_duration(dur);
+        }
+    }
+
+    fn write_multi_measure_rest(&mut self, r: &MultiMeasureRestEvent) {
+        self.out.push('R');
+        if let Some(dur) = &r.duration {
+            self.write_duration(dur);
+        }
+    }
+
+    fn write_pitch(&mut self, p: &Pitch) {
+        self.out.push_str(&p.to_note_name());
+        self.out.push_str(&p.octave_marks());
+        if p.force_accidental {
+            self.out.push('!');
+        }
+        if p.cautionary {
+            self.out.push('?');
+        }
+    }
+
+    fn write_duration(&mut self, dur: &Duration) {
+        self.out.push_str(&dur.base.to_string());
+        for _ in 0..dur.dots {
+            self.out.push('.');
+        }
+        for &(num, den) in &dur.multipliers {
+            self.out.push('*');
+            self.out.push_str(&num.to_string());
+            if den != 1 {
+                self.out.push('/');
+                self.out.push_str(&den.to_string());
+            }
         }
     }
 }
@@ -420,8 +485,22 @@ mod tests {
                 version: "2.24.0".into(),
             }),
             items: vec![ToplevelExpression::Score(ScoreBlock {
-                items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Event(
-                    "c4".into(),
+                items: vec![ScoreItem::Music(Music::Sequential(vec![Music::Note(
+                    NoteEvent {
+                        pitch: Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                        },
+                        duration: Some(Duration {
+                            base: 4,
+                            dots: 0,
+                            multipliers: vec![],
+                        }),
+                        pitched_rest: false,
+                    },
                 )]))],
             })],
         };
@@ -461,7 +540,21 @@ mod tests {
             version: None,
             items: vec![ToplevelExpression::Score(ScoreBlock {
                 items: vec![
-                    ScoreItem::Music(Music::Sequential(vec![Music::Event("c4".into())])),
+                    ScoreItem::Music(Music::Sequential(vec![Music::Note(NoteEvent {
+                        pitch: Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                        },
+                        duration: Some(Duration {
+                            base: 4,
+                            dots: 0,
+                            multipliers: vec![],
+                        }),
+                        pitched_rest: false,
+                    })])),
                     ScoreItem::Layout(LayoutBlock { body: vec![] }),
                     ScoreItem::Midi(MidiBlock { body: vec![] }),
                 ],
@@ -479,8 +572,36 @@ mod tests {
             items: vec![ToplevelExpression::Assignment(Assignment {
                 name: "melody".into(),
                 value: AssignmentValue::Music(Box::new(Music::Sequential(vec![
-                    Music::Event("c4".into()),
-                    Music::Event("d4".into()),
+                    Music::Note(NoteEvent {
+                        pitch: Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                        },
+                        duration: Some(Duration {
+                            base: 4,
+                            dots: 0,
+                            multipliers: vec![],
+                        }),
+                        pitched_rest: false,
+                    }),
+                    Music::Note(NoteEvent {
+                        pitch: Pitch {
+                            step: 'd',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                        },
+                        duration: Some(Duration {
+                            base: 4,
+                            dots: 0,
+                            multipliers: vec![],
+                        }),
+                        pitched_rest: false,
+                    }),
                 ]))),
             })],
         };
@@ -496,5 +617,139 @@ mod tests {
         // Re-parse the serialized output
         let ast2 = crate::parser::parse(&output).unwrap();
         assert_eq!(ast, ast2);
+    }
+
+    // ── Phase 3 serializer tests ────────────────────────────────────
+
+    #[test]
+    fn serialize_note_with_accidental_octave() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 1.0,
+                        octave: 2,
+                        force_accidental: true,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 1,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("cis''!4."));
+    }
+
+    #[test]
+    fn serialize_rest() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Rest(RestEvent {
+                    duration: Some(Duration {
+                        base: 2,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("r2"));
+    }
+
+    #[test]
+    fn serialize_skip() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Skip(SkipEvent {
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("s4"));
+    }
+
+    #[test]
+    fn serialize_multi_measure_rest_with_multiplier() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::MultiMeasureRest(MultiMeasureRestEvent {
+                    duration: Some(Duration {
+                        base: 1,
+                        dots: 0,
+                        multipliers: vec![(4, 1)],
+                    }),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("R1*4"));
+    }
+
+    #[test]
+    fn serialize_duration_fraction_multiplier() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![(2, 3)],
+                    }),
+                    pitched_rest: false,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4*2/3"));
+    }
+
+    #[test]
+    fn serialize_pitched_rest() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: true,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4\\rest"));
     }
 }

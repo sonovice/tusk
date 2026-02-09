@@ -27,6 +27,9 @@ pub enum ParseError {
 
     #[error("unexpected end of input, expected {expected}")]
     UnexpectedEof { expected: String },
+
+    #[error("invalid note name '{name}' at byte offset {offset}")]
+    InvalidNoteName { name: String, offset: usize },
 }
 
 // ---------------------------------------------------------------------------
@@ -590,7 +593,7 @@ impl<'src> Parser<'src> {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // Music expressions (simplified for Phase 2)
+    // Music expressions
     // ──────────────────────────────────────────────────────────────────
 
     fn parse_music(&mut self) -> Result<Music, ParseError> {
@@ -607,30 +610,168 @@ impl<'src> Parser<'src> {
                     _ => unreachable!(),
                 }
             }
-            Token::NoteName(_) => {
-                let tok = self.advance()?;
-                let mut text = match tok.token {
-                    Token::NoteName(s) => s,
-                    _ => unreachable!(),
-                };
-                // Consume trailing octave marks, accidental modifiers, duration, dots
-                self.consume_note_suffix(&mut text);
-                Ok(Music::Event(text))
-            }
-            Token::Symbol(s) if s == "r" || s == "s" || s == "R" => {
-                let tok = self.advance()?;
-                let mut text = match tok.token {
-                    Token::Symbol(s) => s,
-                    _ => unreachable!(),
-                };
-                self.consume_note_suffix(&mut text);
-                Ok(Music::Event(text))
-            }
+            Token::NoteName(_) => self.parse_note_event(),
+            Token::Symbol(s) if s == "r" || s == "s" || s == "R" => self.parse_rest_or_skip(),
             _ => Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
                 expected: "music expression".into(),
             }),
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Note event: pitch exclamations questions optional_duration [\rest]
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_note_event(&mut self) -> Result<Music, ParseError> {
+        let offset = self.offset();
+        let tok = self.advance()?;
+        let note_name = match tok.token {
+            Token::NoteName(s) => s,
+            _ => unreachable!(),
+        };
+
+        let (step, alter) =
+            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
+                name: note_name.clone(),
+                offset,
+            })?;
+
+        // Parse octave marks (quotes)
+        let octave = self.parse_quotes();
+
+        // Parse exclamations and questions (force/cautionary accidentals)
+        let force_accidental = self.try_consume(&Token::Exclamation);
+        let cautionary = self.try_consume(&Token::Question);
+
+        // Parse optional duration
+        let duration = self.parse_optional_duration()?;
+
+        // Check for \rest (pitched rest)
+        let pitched_rest = self.try_consume(&Token::Rest);
+
+        Ok(Music::Note(NoteEvent {
+            pitch: Pitch {
+                step,
+                alter,
+                octave,
+                force_accidental,
+                cautionary,
+            },
+            duration,
+            pitched_rest,
+        }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Rest (r), skip (s), multi-measure rest (R)
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_rest_or_skip(&mut self) -> Result<Music, ParseError> {
+        let tok = self.advance()?;
+        let kind = match tok.token {
+            Token::Symbol(s) => s,
+            _ => unreachable!(),
+        };
+        let duration = self.parse_optional_duration()?;
+        match kind.as_str() {
+            "r" => Ok(Music::Rest(RestEvent { duration })),
+            "s" => Ok(Music::Skip(SkipEvent { duration })),
+            "R" => Ok(Music::MultiMeasureRest(MultiMeasureRestEvent { duration })),
+            _ => unreachable!(),
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Quotes: octave marks (' and ,)
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_quotes(&mut self) -> i8 {
+        let mut octave: i8 = 0;
+        loop {
+            match self.peek() {
+                Token::Quote => {
+                    octave = octave.saturating_add(1);
+                    let _ = self.advance();
+                }
+                Token::Comma => {
+                    octave = octave.saturating_sub(1);
+                    let _ = self.advance();
+                }
+                _ => break,
+            }
+        }
+        octave
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Optional duration: UNSIGNED dots multipliers
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_optional_duration(&mut self) -> Result<Option<Duration>, ParseError> {
+        match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                let base = match tok.token {
+                    Token::Unsigned(n) => n as u32,
+                    _ => unreachable!(),
+                };
+                let dots = self.parse_dots();
+                let multipliers = self.parse_multipliers()?;
+                Ok(Some(Duration {
+                    base,
+                    dots,
+                    multipliers,
+                }))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Parse dots: zero or more `.` tokens.
+    fn parse_dots(&mut self) -> u8 {
+        let mut dots: u8 = 0;
+        while *self.peek() == Token::Dot {
+            dots = dots.saturating_add(1);
+            let _ = self.advance();
+        }
+        dots
+    }
+
+    /// Parse multipliers: zero or more `*N` or `*N/M` sequences.
+    fn parse_multipliers(&mut self) -> Result<Vec<(u32, u32)>, ParseError> {
+        let mut multipliers = Vec::new();
+        while *self.peek() == Token::Star {
+            let _ = self.advance(); // consume `*`
+            if let Token::Unsigned(n) = self.peek() {
+                let n = *n as u32;
+                let _ = self.advance();
+                if *self.peek() == Token::Slash {
+                    let _ = self.advance(); // consume `/`
+                    if let Token::Unsigned(d) = self.peek() {
+                        let d = *d as u32;
+                        let _ = self.advance();
+                        multipliers.push((n, d));
+                    } else {
+                        // `*N/` without denominator — treat as `*N/1`
+                        multipliers.push((n, 1));
+                    }
+                } else {
+                    multipliers.push((n, 1));
+                }
+            }
+        }
+        Ok(multipliers)
+    }
+
+    /// Try to consume a specific token, returning true if consumed.
+    fn try_consume(&mut self, token: &Token) -> bool {
+        if self.peek() == token {
+            let _ = self.advance();
+            true
+        } else {
+            false
         }
     }
 
@@ -658,15 +799,9 @@ impl<'src> Parser<'src> {
         self.expect(&Token::Relative)?;
         // Optional reference pitch before the braced body
         let pitch = if *self.peek() != Token::BraceOpen {
-            // Parse a single pitch as Music::Event
+            // Parse a single pitch as Music::Note (or Event for now)
             if matches!(self.peek(), Token::NoteName(_)) {
-                let tok = self.advance()?;
-                let mut text = match tok.token {
-                    Token::NoteName(s) => s,
-                    _ => unreachable!(),
-                };
-                self.consume_note_suffix(&mut text);
-                Some(Box::new(Music::Event(text)))
+                Some(Box::new(self.parse_note_event()?))
             } else {
                 None
             }
@@ -680,19 +815,14 @@ impl<'src> Parser<'src> {
     fn parse_fixed(&mut self) -> Result<Music, ParseError> {
         self.expect(&Token::Fixed)?;
         // Reference pitch
-        let tok = self.advance()?;
-        let mut text = match tok.token {
-            Token::NoteName(s) => s,
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: tok.token,
-                    offset: tok.span.start,
-                    expected: "pitch after \\fixed".into(),
-                });
-            }
-        };
-        self.consume_note_suffix(&mut text);
-        let pitch = Box::new(Music::Event(text));
+        if !matches!(self.peek(), Token::NoteName(_)) {
+            return Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "pitch after \\fixed".into(),
+            });
+        }
+        let pitch = Box::new(self.parse_note_event()?);
         let body = Box::new(self.parse_music()?);
         Ok(Music::Fixed { pitch, body })
     }
@@ -744,57 +874,6 @@ impl<'src> Parser<'src> {
             with_block,
             music,
         })
-    }
-
-    /// Consume trailing octave marks (`'`, `,`), force/cautionary (`!`, `?`),
-    /// duration digits, and dots after a note name or rest.
-    fn consume_note_suffix(&mut self, text: &mut String) {
-        loop {
-            match self.peek() {
-                Token::Quote => {
-                    text.push('\'');
-                    let _ = self.advance();
-                }
-                Token::Comma => {
-                    text.push(',');
-                    let _ = self.advance();
-                }
-                Token::Exclamation => {
-                    text.push('!');
-                    let _ = self.advance();
-                }
-                Token::Question => {
-                    text.push('?');
-                    let _ = self.advance();
-                }
-                Token::Unsigned(n) => {
-                    text.push_str(&n.to_string());
-                    let _ = self.advance();
-                }
-                Token::Dot => {
-                    text.push('.');
-                    let _ = self.advance();
-                }
-                Token::Star => {
-                    // Duration multiplier: *N or *N/M
-                    text.push('*');
-                    let _ = self.advance();
-                    if let Token::Unsigned(n) = self.peek() {
-                        text.push_str(&n.to_string());
-                        let _ = self.advance();
-                        if *self.peek() == Token::Slash {
-                            text.push('/');
-                            let _ = self.advance();
-                            if let Token::Unsigned(d) = self.peek() {
-                                text.push_str(&d.to_string());
-                                let _ = self.advance();
-                            }
-                        }
-                    }
-                }
-                _ => break,
-            }
-        }
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -919,8 +998,12 @@ mod tests {
                     ScoreItem::Music(Music::Sequential(items)) => {
                         assert_eq!(items.len(), 1);
                         match &items[0] {
-                            Music::Event(s) => assert_eq!(s, "c4"),
-                            other => panic!("expected Event, got {other:?}"),
+                            Music::Note(n) => {
+                                assert_eq!(n.pitch.step, 'c');
+                                assert_eq!(n.pitch.alter, 0.0);
+                                assert_eq!(n.duration.as_ref().unwrap().base, 4);
+                            }
+                            other => panic!("expected Note, got {other:?}"),
                         }
                     }
                     other => panic!("expected sequential music, got {other:?}"),
@@ -1026,8 +1109,11 @@ mod tests {
             ToplevelExpression::Music(Music::Relative { pitch, body }) => {
                 assert!(pitch.is_some());
                 match pitch.as_deref() {
-                    Some(Music::Event(s)) => assert_eq!(s, "c'"),
-                    other => panic!("expected pitch Event, got {other:?}"),
+                    Some(Music::Note(n)) => {
+                        assert_eq!(n.pitch.step, 'c');
+                        assert_eq!(n.pitch.octave, 1);
+                    }
+                    other => panic!("expected Note, got {other:?}"),
                 }
                 assert!(matches!(body.as_ref(), Music::Sequential(_)));
             }
@@ -1114,5 +1200,269 @@ mod tests {
         let output = crate::serializer::serialize(&ast);
         let ast2 = parse(&output).unwrap();
         assert_eq!(ast, ast2);
+    }
+
+    // ── Phase 3 tests ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_note_with_pitch() {
+        let ast = parse("{ c }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.step, 'c');
+                    assert_eq!(n.pitch.alter, 0.0);
+                    assert_eq!(n.pitch.octave, 0);
+                    assert!(!n.pitch.force_accidental);
+                    assert!(!n.pitch.cautionary);
+                    assert!(n.duration.is_none());
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_note_with_accidental_octave_duration() {
+        let ast = parse("{ cis''4. }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.step, 'c');
+                    assert_eq!(n.pitch.alter, 1.0);
+                    assert_eq!(n.pitch.octave, 2);
+                    let dur = n.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 4);
+                    assert_eq!(dur.dots, 1);
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_note_force_accidental() {
+        let ast = parse("{ cis! }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert!(n.pitch.force_accidental);
+                    assert!(!n.pitch.cautionary);
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_note_cautionary_accidental() {
+        let ast = parse("{ bes? }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert!(!n.pitch.force_accidental);
+                    assert!(n.pitch.cautionary);
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_rest() {
+        let ast = parse("{ r4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Rest(r) => {
+                    let dur = r.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 4);
+                    assert_eq!(dur.dots, 0);
+                }
+                other => panic!("expected Rest, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_skip() {
+        let ast = parse("{ s2. }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Skip(s) => {
+                    let dur = s.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 2);
+                    assert_eq!(dur.dots, 1);
+                }
+                other => panic!("expected Skip, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_multi_measure_rest() {
+        let ast = parse("{ R1 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::MultiMeasureRest(r) => {
+                    let dur = r.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 1);
+                }
+                other => panic!("expected MultiMeasureRest, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_duration_multiplier() {
+        let ast = parse("{ R1*4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::MultiMeasureRest(r) => {
+                    let dur = r.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 1);
+                    assert_eq!(dur.multipliers, vec![(4, 1)]);
+                }
+                other => panic!("expected MultiMeasureRest, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_duration_fraction_multiplier() {
+        let ast = parse("{ c4*2/3 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    let dur = n.duration.as_ref().unwrap();
+                    assert_eq!(dur.base, 4);
+                    assert_eq!(dur.multipliers, vec![(2, 3)]);
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_pitched_rest() {
+        let ast = parse("{ c4\\rest }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert!(n.pitched_rest);
+                    assert_eq!(n.pitch.step, 'c');
+                }
+                other => panic!("expected Note (pitched rest), got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_rest_no_duration() {
+        let ast = parse("{ r }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Rest(r) => {
+                    assert!(r.duration.is_none());
+                }
+                other => panic!("expected Rest, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_note_no_duration() {
+        let ast = parse("{ c }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert!(n.duration.is_none());
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_multiple_notes() {
+        let ast = parse("{ c4 d8 e16 f2 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 4);
+                match &items[0] {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'c');
+                        assert_eq!(n.duration.as_ref().unwrap().base, 4);
+                    }
+                    other => panic!("expected Note, got {other:?}"),
+                }
+                match &items[1] {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'd');
+                        assert_eq!(n.duration.as_ref().unwrap().base, 8);
+                    }
+                    other => panic!("expected Note, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_octave_down() {
+        let ast = parse("{ c,, }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.octave, -2);
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    // ── Phase 3 fixture roundtrip tests ──────────────────────────────
+
+    fn roundtrip_fixture(name: &str) {
+        let input = std::fs::read_to_string(
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../tests/fixtures/lilypond/"
+            )
+            .to_string()
+                + name,
+        )
+        .expect("fixture file");
+        let ast = parse(&input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2, "AST mismatch after roundtrip of {name}");
+    }
+
+    #[test]
+    fn roundtrip_fragment_pitches() {
+        roundtrip_fixture("fragment_pitches.ly");
+    }
+
+    #[test]
+    fn roundtrip_fragment_durations() {
+        roundtrip_fixture("fragment_durations.ly");
+    }
+
+    #[test]
+    fn roundtrip_fragment_rests() {
+        roundtrip_fixture("fragment_rests.ly");
     }
 }
