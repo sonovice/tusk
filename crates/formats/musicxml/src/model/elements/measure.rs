@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::data::YesNo;
 
 use super::barline::Barline;
+use crate::model::direction::Sound;
 use crate::model::figured_bass::FiguredBass;
 use crate::model::harmony::Harmony;
 use crate::model::print::Print;
@@ -78,6 +79,8 @@ pub enum MeasureContent {
     FiguredBass(Box<FiguredBass>),
     /// Print (page/system breaks, layout overrides).
     Print(Box<Print>),
+    /// Standalone sound (playback parameters not attached to a direction).
+    Sound(Box<Sound>),
     /// Barline (location and style).
     Barline(Box<Barline>),
 }

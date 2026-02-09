@@ -615,11 +615,31 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 14.1 Model & Parser
 
-- [ ] Add `Sound` variant to `MeasureContent` enum
-- [ ] Expand `Sound` struct for all attributes: tempo, dynamics, dacapo, segno, dalsegno, coda, tocoda, divisions, forward-repeat, fine, time-only, pizzicato, pan, elevation, damper-pedal, soft-pedal, sostenuto-pedal
-- [ ] Parse children: `instrument-change`, `midi-device`, `midi-instrument`, `play`, `swing`, `offset`
-- [ ] Parse standalone `<sound>` in `parse_measure()` (currently falls through to `skip_element`)
-- [ ] Serialize standalone sound elements
+- [x] Add `Sound` variant to `MeasureContent` enum
+  - Added `Sound(Box<Sound>)` variant to `MeasureContent` in `model/elements/measure.rs`
+  - Updated both partwise and timewise serializer match arms in `serializer/score.rs`
+- [x] Expand `Sound` struct for all attributes: tempo, dynamics, dacapo, segno, dalsegno, coda, tocoda, divisions, forward-repeat, fine, time-only, pizzicato, pan, elevation, damper-pedal, soft-pedal, sostenuto-pedal
+  - Moved Sound from `model/direction/misc.rs` to new `model/direction/sound.rs` module
+  - Added missing attributes: `divisions`, `time_only`, `pan`, `elevation`
+  - Added child fields: `midi_instrument_changes: Vec<SoundMidiGroup>`, `swing: Option<Swing>`, `offset: Option<Offset>`
+  - Created `SoundMidiGroup` (instrument-change + midi-device + midi-instrument + play group)
+  - Created `InstrumentChange` (id, instrument-sound, solo, ensemble, virtual-library, virtual-name)
+  - Created `Play` (id, entries), `PlayEntry` enum (Ipa/Mute/SemiPitched/OtherPlay), `OtherPlay` (type, value)
+  - Created `Swing` (content, swing-style), `SwingContent` enum (Straight/Ratio), `SwingRatio` (first, second, swing-type)
+- [x] Parse children: `instrument-change`, `midi-device`, `midi-instrument`, `play`, `swing`, `offset`
+  - `parse_sound_full()` parses Start events with all children; `parse_sound_attrs()` parses Empty events
+  - Dedicated parsers: `parse_instrument_change`, `parse_midi_device_child/empty`, `parse_midi_instrument_child`, `parse_play`, `parse_swing`
+  - MIDI group elements are flushed into `SoundMidiGroup` entries; swing and offset parsed as trailing children
+  - Direction parser now calls `parse_sound_full()` instead of `skip_to_end()`
+- [x] Parse standalone `<sound>` in `parse_measure()` (currently falls through to `skip_element`)
+  - Added `b"sound"` cases in both `Event::Start` and `Event::Empty` branches of both parse_measure functions (partwise and timewise)
+- [x] Serialize standalone sound elements
+  - Created `serializer/sound.rs` with `MusicXmlSerialize` impl for `Sound`
+  - Serializes all 18 attributes and all child elements (midi groups, swing, offset)
+  - Helper functions: `serialize_midi_group`, `serialize_instrument_change`, `serialize_midi_device`, `serialize_midi_instrument`, `serialize_play`, `serialize_other_play`, `serialize_swing`
+  - Also fixed Direction serializer TODO — now serializes `sound` child in Direction elements
+  - `swing_element` and `pan_and_elevation_elements` fragment roundtrip tests pass (Sound children in Direction context)
+  - 494 unit tests, 31 integration tests, 319 roundtrip tests — all pass
 
 ### 14.2 Import & Export
 

@@ -6,11 +6,13 @@
 mod dynamics;
 mod metronome;
 mod misc;
+mod sound;
 mod wedge;
 
 pub use dynamics::*;
 pub use metronome::*;
 pub use misc::*;
+pub use sound::*;
 pub use wedge::*;
 
 use serde::{Deserialize, Serialize};

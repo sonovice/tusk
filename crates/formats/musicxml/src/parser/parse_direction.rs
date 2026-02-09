@@ -7,6 +7,7 @@ use std::io::BufRead;
 use super::{ParseError, Result, get_attr, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::direction::*;
+use crate::model::elements::score::{MidiDevice, MidiInstrument};
 
 pub fn parse_direction<R: BufRead>(
     reader: &mut Reader<R>,
@@ -38,14 +39,13 @@ pub fn parse_direction<R: BufRead>(
                     )
                 }
                 b"sound" => {
-                    sound = Some(parse_sound(&e)?);
-                    skip_to_end(reader, b"sound")?;
+                    sound = Some(parse_sound_full(reader, &e)?);
                 }
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => {
                 if e.name().as_ref() == b"sound" {
-                    sound = Some(parse_sound(&e)?);
+                    sound = Some(parse_sound_attrs(&e)?);
                 }
             }
             Event::End(e) if e.name().as_ref() == b"direction" => break,
@@ -485,7 +485,8 @@ fn parse_offset<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resul
     Ok(Offset { value, sound })
 }
 
-fn parse_sound(e: &BytesStart) -> Result<Sound> {
+/// Parse sound attributes from a `<sound>` element tag.
+pub(crate) fn parse_sound_attrs(e: &BytesStart) -> Result<Sound> {
     Ok(Sound {
         tempo: get_attr(e, "tempo")?.and_then(|s| s.parse().ok()),
         dynamics: get_attr(e, "dynamics")?.and_then(|s| s.parse().ok()),
@@ -494,13 +495,335 @@ fn parse_sound(e: &BytesStart) -> Result<Sound> {
         dalsegno: get_attr(e, "dalsegno")?,
         coda: get_attr(e, "coda")?,
         tocoda: get_attr(e, "tocoda")?,
-        fine: get_attr(e, "fine")?,
+        divisions: get_attr(e, "divisions")?.and_then(|s| s.parse().ok()),
         forward_repeat: get_attr(e, "forward-repeat")?.and_then(|s| parse_yes_no_opt(&s)),
+        fine: get_attr(e, "fine")?,
+        time_only: get_attr(e, "time-only")?,
         pizzicato: get_attr(e, "pizzicato")?.and_then(|s| parse_yes_no_opt(&s)),
+        pan: get_attr(e, "pan")?.and_then(|s| s.parse().ok()),
+        elevation: get_attr(e, "elevation")?.and_then(|s| s.parse().ok()),
         damper_pedal: get_attr(e, "damper-pedal")?,
         soft_pedal: get_attr(e, "soft-pedal")?,
         sostenuto_pedal: get_attr(e, "sostenuto-pedal")?,
         id: get_attr(e, "id")?,
+        ..Default::default()
+    })
+}
+
+/// Parse a `<sound>` element with children from a Start event.
+pub(crate) fn parse_sound_full<R: BufRead>(
+    reader: &mut Reader<R>,
+    e: &BytesStart,
+) -> Result<Sound> {
+    let mut sound = parse_sound_attrs(e)?;
+    let mut buf = Vec::new();
+    let mut current_group: Option<SoundMidiGroup> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref start) => match start.name().as_ref() {
+                b"instrument-change" => {
+                    // Flush any pending group if it has content
+                    flush_midi_group(&mut sound, &mut current_group);
+                    let ic = parse_instrument_change(reader, start)?;
+                    current_group = Some(SoundMidiGroup {
+                        instrument_change: Some(ic),
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                }
+                b"midi-device" => {
+                    let md = parse_midi_device_child(reader, start)?;
+                    let group = current_group.get_or_insert(SoundMidiGroup {
+                        instrument_change: None,
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                    group.midi_device = Some(md);
+                }
+                b"midi-instrument" => {
+                    let mi = parse_midi_instrument_child(reader, start)?;
+                    let group = current_group.get_or_insert(SoundMidiGroup {
+                        instrument_change: None,
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                    group.midi_instrument = Some(mi);
+                }
+                b"play" => {
+                    let play = parse_play(reader, start)?;
+                    let group = current_group.get_or_insert(SoundMidiGroup {
+                        instrument_change: None,
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                    group.play = Some(play);
+                }
+                b"swing" => {
+                    sound.swing = Some(parse_swing(reader)?);
+                }
+                b"offset" => {
+                    sound.offset = Some(parse_offset(reader, start)?);
+                }
+                _ => skip_element(reader, start)?,
+            },
+            Event::Empty(ref emp) => match emp.name().as_ref() {
+                b"midi-device" => {
+                    let md = parse_midi_device_empty(emp)?;
+                    let group = current_group.get_or_insert(SoundMidiGroup {
+                        instrument_change: None,
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                    group.midi_device = Some(md);
+                }
+                b"instrument-change" => {
+                    flush_midi_group(&mut sound, &mut current_group);
+                    let ic = InstrumentChange {
+                        id: get_attr(emp, "id")?.unwrap_or_default(),
+                        instrument_sound: None,
+                        solo: None,
+                        ensemble: None,
+                        virtual_library: None,
+                        virtual_name: None,
+                    };
+                    current_group = Some(SoundMidiGroup {
+                        instrument_change: Some(ic),
+                        midi_device: None,
+                        midi_instrument: None,
+                        play: None,
+                    });
+                }
+                _ => {}
+            },
+            Event::End(ref end) if end.name().as_ref() == b"sound" => break,
+            Event::Eof => return Err(ParseError::MissingElement("sound end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    // Flush final group
+    flush_midi_group(&mut sound, &mut current_group);
+    Ok(sound)
+}
+
+fn flush_midi_group(sound: &mut Sound, group: &mut Option<SoundMidiGroup>) {
+    if let Some(g) = group.take() {
+        sound.midi_instrument_changes.push(g);
+    }
+}
+
+fn parse_instrument_change<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<InstrumentChange> {
+    let id = get_attr(start, "id")?.unwrap_or_default();
+    let mut instrument_sound = None;
+    let mut solo = None;
+    let mut ensemble = None;
+    let mut virtual_library = None;
+    let mut virtual_name = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"instrument-sound" => {
+                    instrument_sound = Some(read_text(reader, b"instrument-sound")?)
+                }
+                b"solo" => {
+                    read_text(reader, b"solo").ok();
+                    solo = Some(());
+                }
+                b"ensemble" => ensemble = Some(read_text(reader, b"ensemble")?),
+                b"virtual-library" => {
+                    virtual_library = Some(read_text(reader, b"virtual-library")?)
+                }
+                b"virtual-name" => virtual_name = Some(read_text(reader, b"virtual-name")?),
+                _ => skip_element(reader, e)?,
+            },
+            Event::Empty(ref e) => {
+                if e.name().as_ref() == b"solo" {
+                    solo = Some(());
+                }
+            }
+            Event::End(ref e) if e.name().as_ref() == b"instrument-change" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement(
+                    "instrument-change end".to_string(),
+                ));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(InstrumentChange {
+        id,
+        instrument_sound,
+        solo,
+        ensemble,
+        virtual_library,
+        virtual_name,
+    })
+}
+
+fn parse_midi_device_child<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<MidiDevice> {
+    let port = get_attr(start, "port")?.and_then(|s| s.parse().ok());
+    let id = get_attr(start, "id")?;
+    let value_text = read_text(reader, b"midi-device")?;
+    let value = if value_text.is_empty() {
+        None
+    } else {
+        Some(value_text)
+    };
+    Ok(MidiDevice { value, port, id })
+}
+
+fn parse_midi_device_empty(e: &BytesStart) -> Result<MidiDevice> {
+    Ok(MidiDevice {
+        value: None,
+        port: get_attr(e, "port")?.and_then(|s| s.parse().ok()),
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_midi_instrument_child<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<MidiInstrument> {
+    let id = get_attr(start, "id")?.unwrap_or_default();
+    let mut mi = MidiInstrument {
+        id,
+        midi_channel: None,
+        midi_name: None,
+        midi_bank: None,
+        midi_program: None,
+        midi_unpitched: None,
+        volume: None,
+        pan: None,
+        elevation: None,
+    };
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"midi-channel" => {
+                    mi.midi_channel = read_text(reader, b"midi-channel")?.parse().ok()
+                }
+                b"midi-name" => mi.midi_name = Some(read_text(reader, b"midi-name")?),
+                b"midi-bank" => mi.midi_bank = read_text(reader, b"midi-bank")?.parse().ok(),
+                b"midi-program" => {
+                    mi.midi_program = read_text(reader, b"midi-program")?.parse().ok()
+                }
+                b"midi-unpitched" => {
+                    mi.midi_unpitched = read_text(reader, b"midi-unpitched")?.parse().ok()
+                }
+                b"volume" => mi.volume = read_text(reader, b"volume")?.parse().ok(),
+                b"pan" => mi.pan = read_text(reader, b"pan")?.parse().ok(),
+                b"elevation" => mi.elevation = read_text(reader, b"elevation")?.parse().ok(),
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"midi-instrument" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement(
+                    "midi-instrument end".to_string(),
+                ));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(mi)
+}
+
+fn parse_play<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Play> {
+    let id = get_attr(start, "id")?;
+    let mut entries = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"ipa" => entries.push(PlayEntry::Ipa(read_text(reader, b"ipa")?)),
+                b"mute" => entries.push(PlayEntry::Mute(read_text(reader, b"mute")?)),
+                b"semi-pitched" => {
+                    entries.push(PlayEntry::SemiPitched(read_text(reader, b"semi-pitched")?))
+                }
+                b"other-play" => {
+                    let play_type = get_attr(e, "type")?.unwrap_or_default();
+                    let value = read_text(reader, b"other-play")?;
+                    entries.push(PlayEntry::OtherPlay(OtherPlay { play_type, value }));
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"play" => break,
+            Event::Eof => return Err(ParseError::MissingElement("play end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Play { id, entries })
+}
+
+fn parse_swing<R: BufRead>(reader: &mut Reader<R>) -> Result<Swing> {
+    let mut buf = Vec::new();
+    let mut is_straight = false;
+    let mut first: Option<u32> = None;
+    let mut second: Option<u32> = None;
+    let mut swing_type: Option<String> = None;
+    let mut swing_style: Option<String> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"first" => first = read_text(reader, b"first")?.parse().ok(),
+                b"second" => second = read_text(reader, b"second")?.parse().ok(),
+                b"swing-type" => swing_type = Some(read_text(reader, b"swing-type")?),
+                b"swing-style" => swing_style = Some(read_text(reader, b"swing-style")?),
+                b"straight" => {
+                    read_text(reader, b"straight").ok();
+                    is_straight = true;
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::Empty(ref e) => {
+                if e.name().as_ref() == b"straight" {
+                    is_straight = true;
+                }
+            }
+            Event::End(ref e) if e.name().as_ref() == b"swing" => break,
+            Event::Eof => return Err(ParseError::MissingElement("swing end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    let content = if is_straight {
+        SwingContent::Straight
+    } else {
+        SwingContent::Ratio(SwingRatio {
+            first: first.unwrap_or(1),
+            second: second.unwrap_or(1),
+            swing_type,
+        })
+    };
+
+    Ok(Swing {
+        content,
+        swing_style,
     })
 }
 

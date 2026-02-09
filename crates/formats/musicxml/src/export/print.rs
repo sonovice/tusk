@@ -13,10 +13,7 @@ use crate::model::print::Print;
 use tusk_model::elements::{Pb, Sb};
 
 /// Convert an MEI `<sb>` element to a MusicXML `<print>` measure content.
-pub fn convert_mei_sb(
-    sb: &Sb,
-    _ctx: &mut ConversionContext,
-) -> Option<MeasureContent> {
+pub fn convert_mei_sb(sb: &Sb, _ctx: &mut ConversionContext) -> Option<MeasureContent> {
     if let Some(label) = sb.common.label.as_deref() {
         if let Some(print) = print_from_label(label) {
             return Some(MeasureContent::Print(Box::new(print)));
@@ -43,10 +40,7 @@ pub fn convert_mei_sb(
 }
 
 /// Convert an MEI `<pb>` element to a MusicXML `<print>` measure content.
-pub fn convert_mei_pb(
-    pb: &Pb,
-    _ctx: &mut ConversionContext,
-) -> Option<MeasureContent> {
+pub fn convert_mei_pb(pb: &Pb, _ctx: &mut ConversionContext) -> Option<MeasureContent> {
     if let Some(label) = pb.common.label.as_deref() {
         if let Some(print) = print_from_label(label) {
             return Some(MeasureContent::Print(Box::new(print)));

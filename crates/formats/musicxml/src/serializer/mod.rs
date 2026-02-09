@@ -13,6 +13,7 @@ mod harmony;
 mod notations;
 mod print;
 mod score;
+mod sound;
 mod technical;
 
 use quick_xml::Writer;

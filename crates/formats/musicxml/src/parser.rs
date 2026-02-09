@@ -386,6 +386,9 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                 b"figured-bass" => content.push(MeasureContent::FiguredBass(Box::new(
                     parse_figured_bass(reader, &e)?,
                 ))),
+                b"sound" => content.push(MeasureContent::Sound(Box::new(parse_sound_full(
+                    reader, &e,
+                )?))),
                 b"barline" => {
                     content.push(MeasureContent::Barline(Box::new(parse_barline(
                         reader, &e,
@@ -393,11 +396,15 @@ fn parse_timewise_part_content<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec
                 }
                 _ => skip_element(reader, &e)?,
             },
-            Event::Empty(e) => {
-                if e.name().as_ref() == b"barline" {
+            Event::Empty(e) => match e.name().as_ref() {
+                b"barline" => {
                     content.push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?)));
                 }
-            }
+                b"sound" => {
+                    content.push(MeasureContent::Sound(Box::new(parse_sound_attrs(&e)?)));
+                }
+                _ => {}
+            },
             Event::End(e) if e.name().as_ref() == b"part" => break,
             Event::Eof => return Err(ParseError::MissingElement("part end".to_string())),
             _ => {}
@@ -1081,10 +1088,15 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                     b"figured-bass" => measure.content.push(MeasureContent::FiguredBass(Box::new(
                         parse_figured_bass(reader, &e)?,
                     ))),
-                    b"print" => {
+                    b"print" => measure
+                        .content
+                        .push(MeasureContent::Print(Box::new(parse_print(reader, &e)?))),
+                    b"sound" => {
                         measure
                             .content
-                            .push(MeasureContent::Print(Box::new(parse_print(reader, &e)?)))
+                            .push(MeasureContent::Sound(Box::new(parse_sound_full(
+                                reader, &e,
+                            )?)))
                     }
                     b"barline" => {
                         measure
@@ -1097,16 +1109,15 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
                 }
             }
             Event::Empty(e) => match e.name().as_ref() {
-                b"barline" => {
-                    measure
-                        .content
-                        .push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?)))
-                }
-                b"print" => {
-                    measure
-                        .content
-                        .push(MeasureContent::Print(Box::new(parse_print_empty(&e)?)))
-                }
+                b"barline" => measure
+                    .content
+                    .push(MeasureContent::Barline(Box::new(parse_barline_empty(&e)?))),
+                b"print" => measure
+                    .content
+                    .push(MeasureContent::Print(Box::new(parse_print_empty(&e)?))),
+                b"sound" => measure
+                    .content
+                    .push(MeasureContent::Sound(Box::new(parse_sound_attrs(&e)?))),
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"measure" => break,
@@ -1132,7 +1143,7 @@ mod parse_technical;
 
 use parse_attributes::parse_attributes;
 use parse_defaults::parse_defaults;
-use parse_direction::parse_direction;
+use parse_direction::{parse_direction, parse_sound_attrs, parse_sound_full};
 use parse_figured_bass::parse_figured_bass;
 use parse_harmony::parse_harmony;
 use parse_note::{parse_backup, parse_forward, parse_note};

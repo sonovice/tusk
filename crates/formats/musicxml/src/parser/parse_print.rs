@@ -41,8 +41,7 @@ pub fn parse_print<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
                     measure_numbering = Some(parse_measure_numbering(reader, &e)?)
                 }
                 b"part-name-display" => {
-                    part_name_display =
-                        Some(parse_name_display(reader, &e, b"part-name-display")?)
+                    part_name_display = Some(parse_name_display(reader, &e, b"part-name-display")?)
                 }
                 b"part-abbreviation-display" => {
                     part_abbreviation_display = Some(parse_name_display(
@@ -67,16 +66,14 @@ pub fn parse_print<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
                     });
                 }
                 b"part-name-display" => {
-                    let print_object =
-                        get_attr(&e, "print-object")?.and_then(|s| parse_yes_no(&s));
+                    let print_object = get_attr(&e, "print-object")?.and_then(|s| parse_yes_no(&s));
                     part_name_display = Some(NameDisplay {
                         content: Vec::new(),
                         print_object,
                     });
                 }
                 b"part-abbreviation-display" => {
-                    let print_object =
-                        get_attr(&e, "print-object")?.and_then(|s| parse_yes_no(&s));
+                    let print_object = get_attr(&e, "print-object")?.and_then(|s| parse_yes_no(&s));
                     part_abbreviation_display = Some(NameDisplay {
                         content: Vec::new(),
                         print_object,
@@ -146,17 +143,13 @@ fn parse_measure_layout<R: BufRead>(reader: &mut Reader<R>) -> Result<MeasureLay
                     measure_distance = Some(
                         read_text(reader, b"measure-distance")?
                             .parse()
-                            .map_err(|_| {
-                                ParseError::ParseNumber("measure-distance".to_string())
-                            })?,
+                            .map_err(|_| ParseError::ParseNumber("measure-distance".to_string()))?,
                     );
                 }
                 _ => skip_element(reader, &e)?,
             },
             Event::End(e) if e.name().as_ref() == b"measure-layout" => break,
-            Event::Eof => {
-                return Err(ParseError::MissingElement("measure-layout end".to_string()))
-            }
+            Event::Eof => return Err(ParseError::MissingElement("measure-layout end".to_string())),
             _ => {}
         }
         buf.clear();
@@ -259,7 +252,7 @@ fn parse_name_display<R: BufRead>(
             Event::Eof => {
                 return Err(ParseError::MissingElement(
                     String::from_utf8_lossy(end_tag).to_string() + " end",
-                ))
+                ));
             }
             _ => {}
         }

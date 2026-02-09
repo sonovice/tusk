@@ -193,7 +193,11 @@ fn serialize_name_display<W: Write>(
 }
 
 /// Push an optional f64 attribute to a BytesStart (avoids lifetime issues with to_string()).
-fn push_start_opt_f64(start: &mut quick_xml::events::BytesStart<'static>, name: &str, val: Option<f64>) {
+fn push_start_opt_f64(
+    start: &mut quick_xml::events::BytesStart<'static>,
+    name: &str,
+    val: Option<f64>,
+) {
     if let Some(v) = val {
         start.push_attribute((name, v.to_string().as_str()));
     }

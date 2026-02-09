@@ -724,7 +724,10 @@ impl MusicXmlSerialize for Direction {
             w.write_text_element("staff", &staff.to_string())?;
         }
 
-        // Sound (if present, needs further implementation)
+        // Sound
+        if let Some(ref sound) = self.sound {
+            sound.serialize(w)?;
+        }
 
         Ok(())
     }

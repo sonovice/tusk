@@ -1184,90 +1184,7 @@ impl Offset {
     }
 }
 
-// ============================================================================
-// Sound
-// ============================================================================
-
-/// Sound/playback information.
-///
-/// This is a simplified version; full implementation would include
-/// MIDI device changes, swing, and other playback parameters.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct Sound {
-    /// Tempo in quarter notes per minute
-    #[serde(rename = "@tempo", skip_serializing_if = "Option::is_none")]
-    pub tempo: Option<f64>,
-
-    /// Dynamics (percentage of default forte = 90)
-    #[serde(rename = "@dynamics", skip_serializing_if = "Option::is_none")]
-    pub dynamics: Option<f64>,
-
-    /// Da capo
-    #[serde(rename = "@dacapo", skip_serializing_if = "Option::is_none")]
-    pub dacapo: Option<YesNo>,
-
-    /// Segno target
-    #[serde(rename = "@segno", skip_serializing_if = "Option::is_none")]
-    pub segno: Option<String>,
-
-    /// Dal segno target
-    #[serde(rename = "@dalsegno", skip_serializing_if = "Option::is_none")]
-    pub dalsegno: Option<String>,
-
-    /// Coda target
-    #[serde(rename = "@coda", skip_serializing_if = "Option::is_none")]
-    pub coda: Option<String>,
-
-    /// To coda target
-    #[serde(rename = "@tocoda", skip_serializing_if = "Option::is_none")]
-    pub tocoda: Option<String>,
-
-    /// Fine
-    #[serde(rename = "@fine", skip_serializing_if = "Option::is_none")]
-    pub fine: Option<String>,
-
-    /// Forward repeat
-    #[serde(rename = "@forward-repeat", skip_serializing_if = "Option::is_none")]
-    pub forward_repeat: Option<YesNo>,
-
-    /// Pizzicato
-    #[serde(rename = "@pizzicato", skip_serializing_if = "Option::is_none")]
-    pub pizzicato: Option<YesNo>,
-
-    /// Damper pedal (yes/no or percentage)
-    #[serde(rename = "@damper-pedal", skip_serializing_if = "Option::is_none")]
-    pub damper_pedal: Option<String>,
-
-    /// Soft pedal (yes/no or percentage)
-    #[serde(rename = "@soft-pedal", skip_serializing_if = "Option::is_none")]
-    pub soft_pedal: Option<String>,
-
-    /// Sostenuto pedal (yes/no or percentage)
-    #[serde(rename = "@sostenuto-pedal", skip_serializing_if = "Option::is_none")]
-    pub sostenuto_pedal: Option<String>,
-
-    /// Optional unique ID
-    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
-
-impl Sound {
-    /// Create a sound element with tempo.
-    pub fn with_tempo(tempo: f64) -> Self {
-        Self {
-            tempo: Some(tempo),
-            ..Default::default()
-        }
-    }
-
-    /// Create a sound element with dynamics.
-    pub fn with_dynamics(dynamics: f64) -> Self {
-        Self {
-            dynamics: Some(dynamics),
-            ..Default::default()
-        }
-    }
-}
+// Sound is defined in sound.rs
 
 #[cfg(test)]
 mod tests {
@@ -1363,18 +1280,6 @@ mod tests {
         let offset = Offset::new(4.0);
         assert_eq!(offset.value, 4.0);
         assert!(offset.sound.is_none());
-    }
-
-    #[test]
-    fn test_sound_with_tempo() {
-        let sound = Sound::with_tempo(120.0);
-        assert_eq!(sound.tempo, Some(120.0));
-    }
-
-    #[test]
-    fn test_sound_with_dynamics() {
-        let sound = Sound::with_dynamics(80.0);
-        assert_eq!(sound.dynamics, Some(80.0));
     }
 
     #[test]

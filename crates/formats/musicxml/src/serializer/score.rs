@@ -1001,6 +1001,7 @@ impl MusicXmlSerialize for Measure {
                 MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
                 MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
                 MeasureContent::Print(print) => print.serialize(w)?,
+                MeasureContent::Sound(sound) => sound.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
         }
@@ -1478,6 +1479,7 @@ impl TimewisePart {
                 MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
                 MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
                 MeasureContent::Print(print) => print.serialize(w)?,
+                MeasureContent::Sound(sound) => sound.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
         }
