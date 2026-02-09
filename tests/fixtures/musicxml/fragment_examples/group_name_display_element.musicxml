@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.1">
   <part-list>
+    <part-group type="start" number="1">
+      <group-name>Woodwinds</group-name>
+      <group-name-display>
+        <display-text font-weight="bold">Woodwinds</display-text>
+      </group-name-display>
+      <group-symbol>bracket</group-symbol>
+    </part-group>
     <score-part id="P1">
-      <part-name>Part 1</part-name>
+      <part-name>Flute</part-name>
     </score-part>
+    <part-group type="stop" number="1"/>
   </part-list>
   <part id="P1">
     <measure number="1">

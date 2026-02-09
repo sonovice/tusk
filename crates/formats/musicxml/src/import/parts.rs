@@ -465,7 +465,38 @@ fn convert_staff_grp_from_part_group(
             .push(StaffGrpChild::LabelAbbr(Box::new(label_abbr)));
     }
 
+    // Store extra group details as JSON-in-label for lossless roundtrip
+    let has_group_details = part_group.group_name_display.is_some()
+        || part_group.group_abbreviation_display.is_some()
+        || part_group.group_time.is_some();
+    if has_group_details {
+        let details = GroupExtraDetails {
+            group_name_display: part_group.group_name_display.clone(),
+            group_abbreviation_display: part_group.group_abbreviation_display.clone(),
+            group_time: part_group.group_time.map(|_| true),
+        };
+        if let Ok(json) = serde_json::to_string(&details) {
+            append_group_label(
+                &mut staff_grp,
+                format!("{}{}", GROUP_DETAILS_LABEL_PREFIX, json),
+            );
+        }
+    }
+
     Ok(staff_grp)
+}
+
+/// Append a label segment to a staffGrp's common.label, using `|` separator.
+fn append_group_label(staff_grp: &mut StaffGrp, segment: String) {
+    match &mut staff_grp.common.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(&segment);
+        }
+        None => {
+            staff_grp.common.label = Some(segment);
+        }
+    }
 }
 
 /// Convert MusicXML GroupSymbol to MEI @symbol string.
@@ -678,6 +709,28 @@ pub fn convert_staff_def_from_score_part(
         }
     }
 
+    // Store extra score-part details as JSON-in-label for lossless roundtrip
+    let has_part_details = score_part.part_name_display.is_some()
+        || score_part.part_abbreviation_display.is_some()
+        || !score_part.players.is_empty()
+        || !score_part.part_links.is_empty()
+        || !score_part.groups.is_empty();
+    if has_part_details {
+        let details = PartExtraDetails {
+            part_name_display: score_part.part_name_display.clone(),
+            part_abbreviation_display: score_part.part_abbreviation_display.clone(),
+            players: score_part.players.clone(),
+            part_links: score_part.part_links.clone(),
+            groups: score_part.groups.clone(),
+        };
+        if let Ok(json) = serde_json::to_string(&details) {
+            crate::import::attributes::append_label(
+                &mut staff_def,
+                format!("{}{}", PART_DETAILS_LABEL_PREFIX, json),
+            );
+        }
+    }
+
     Ok(staff_def)
 }
 
@@ -686,6 +739,46 @@ pub(crate) const INSTRUMENT_LABEL_PREFIX: &str = "musicxml:instrument,";
 
 /// Label prefix for staff-details JSON stored on staffDef @label.
 const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
+
+/// Label prefix for extra score-part details JSON stored on staffDef @label.
+pub(crate) const PART_DETAILS_LABEL_PREFIX: &str = "musicxml:part-details,";
+
+/// Extra score-part details for JSON-in-label roundtrip.
+///
+/// Bundles part-name-display, part-abbreviation-display, players,
+/// part-links, and groups — fields without direct MEI equivalents.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(default)]
+pub(crate) struct PartExtraDetails {
+    #[serde(rename = "pnd", skip_serializing_if = "Option::is_none")]
+    pub part_name_display: Option<crate::model::elements::NameDisplay>,
+    #[serde(rename = "pad", skip_serializing_if = "Option::is_none")]
+    pub part_abbreviation_display: Option<crate::model::elements::NameDisplay>,
+    #[serde(rename = "pl", default, skip_serializing_if = "Vec::is_empty")]
+    pub players: Vec<crate::model::elements::Player>,
+    #[serde(rename = "plk", default, skip_serializing_if = "Vec::is_empty")]
+    pub part_links: Vec<crate::model::elements::PartLink>,
+    #[serde(rename = "grp", default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<String>,
+}
+
+/// Label prefix for extra part-group details JSON stored on staffGrp @label.
+pub(crate) const GROUP_DETAILS_LABEL_PREFIX: &str = "musicxml:group-details,";
+
+/// Extra part-group details for JSON-in-label roundtrip.
+///
+/// Bundles group-name-display, group-abbreviation-display, and group-time —
+/// fields without direct MEI equivalents.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(default)]
+pub(crate) struct GroupExtraDetails {
+    #[serde(rename = "gnd", skip_serializing_if = "Option::is_none")]
+    pub group_name_display: Option<crate::model::elements::NameDisplay>,
+    #[serde(rename = "gad", skip_serializing_if = "Option::is_none")]
+    pub group_abbreviation_display: Option<crate::model::elements::NameDisplay>,
+    #[serde(rename = "gt", skip_serializing_if = "Option::is_none")]
+    pub group_time: Option<bool>,
+}
 
 /// Label prefix for part-symbol JSON stored on multi-staff staffGrp @label.
 pub(crate) const PART_SYMBOL_LABEL_PREFIX: &str = "musicxml:part-symbol,";

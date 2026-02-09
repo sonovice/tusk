@@ -2,7 +2,11 @@
 <score-partwise version="4.1">
   <part-list>
     <score-part id="P1">
-      <part-name>Part 1</part-name>
+      <part-link xlink:href="flute-part.musicxml">
+        <instrument-link id="P1-I1"/>
+        <group-link>orchestral</group-link>
+      </part-link>
+      <part-name>Flute</part-name>
     </score-part>
   </part-list>
   <part id="P1">

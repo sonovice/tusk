@@ -888,6 +888,7 @@ pub struct Empty;
 
 /// Name display information with optional print-object control.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct NameDisplay {
     /// Whether to print the name
     #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]

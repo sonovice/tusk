@@ -200,7 +200,7 @@ fn parse_measure_numbering<R: BufRead>(
 }
 
 /// Parse a `<part-name-display>` or `<part-abbreviation-display>` element.
-fn parse_name_display<R: BufRead>(
+pub(super) fn parse_name_display<R: BufRead>(
     reader: &mut Reader<R>,
     start: &BytesStart,
     end_tag: &[u8],

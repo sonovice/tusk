@@ -743,12 +743,12 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 18.1 Part Name Display & Group Details
 
-- [ ] Parse and convert `part-name-display`/`part-abbreviation-display` → MEI `<label>` with `<rend>` formatting
-- [ ] Parse and convert `group-name-display`/`group-abbreviation-display` → MEI `<staffGrp>` `<label>` formatting
-- [ ] Parse and convert `group-time` → MEI time signature propagation
-- [ ] Parse `<player>` elements → MEI performer metadata
-- [ ] Export: reverse all mappings
-- [ ] Verify fragment examples: `part_name_display_element`, `part_abbreviation_display_element`, `group_name_display_element`, `group_abbreviation_display_element`, `group_time_element`, `part_link_element`
+- [x] Parse and convert `part-name-display`/`part-abbreviation-display` → MEI `<label>` with `<rend>` formatting
+- [x] Parse and convert `group-name-display`/`group-abbreviation-display` → MEI `<staffGrp>` `<label>` formatting
+- [x] Parse and convert `group-time` → MEI time signature propagation
+- [x] Parse `<player>` elements → MEI performer metadata
+- [x] Export: reverse all mappings
+- [x] Verify fragment examples: `part_name_display_element`, `part_abbreviation_display_element`, `group_name_display_element`, `group_abbreviation_display_element`, `group_time_element`, `part_link_element`
 
 ---
 

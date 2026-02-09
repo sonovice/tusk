@@ -696,8 +696,22 @@ fn parse_part_group<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => match e.name().as_ref() {
                 b"group-name" => group.group_name = Some(read_text(reader, b"group-name")?),
+                b"group-name-display" => {
+                    group.group_name_display = Some(parse_print::parse_name_display(
+                        reader,
+                        &e,
+                        b"group-name-display",
+                    )?);
+                }
                 b"group-abbreviation" => {
                     group.group_abbreviation = Some(read_text(reader, b"group-abbreviation")?)
+                }
+                b"group-abbreviation-display" => {
+                    group.group_abbreviation_display = Some(parse_print::parse_name_display(
+                        reader,
+                        &e,
+                        b"group-abbreviation-display",
+                    )?);
                 }
                 b"group-symbol" => {
                     let value = read_text(reader, b"group-symbol")?;
@@ -776,6 +790,27 @@ fn parse_score_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
                 b"midi-instrument" => part.midi_assignments.push(MidiAssignment::MidiInstrument(
                     parse_midi_instrument(reader, &e)?,
                 )),
+                b"part-name-display" => {
+                    part.part_name_display = Some(parse_print::parse_name_display(
+                        reader,
+                        &e,
+                        b"part-name-display",
+                    )?);
+                }
+                b"part-abbreviation-display" => {
+                    part.part_abbreviation_display = Some(parse_print::parse_name_display(
+                        reader,
+                        &e,
+                        b"part-abbreviation-display",
+                    )?);
+                }
+                b"player" => part
+                    .players
+                    .push(parse_part_list::parse_player(reader, &e)?),
+                b"part-link" => part
+                    .part_links
+                    .push(parse_part_list::parse_part_link(reader, &e)?),
+                b"group" => part.groups.push(read_text(reader, b"group")?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -785,6 +820,30 @@ fn parse_score_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
                 b"midi-instrument" => part.midi_assignments.push(MidiAssignment::MidiInstrument(
                     parse_midi_instrument_empty(&e)?,
                 )),
+                b"part-name-display" => {
+                    part.part_name_display = Some(NameDisplay {
+                        print_object: get_attr(&e, "print-object")?.and_then(|s| {
+                            match s.as_str() {
+                                "yes" => Some(YesNo::Yes),
+                                "no" => Some(YesNo::No),
+                                _ => None,
+                            }
+                        }),
+                        content: Vec::new(),
+                    });
+                }
+                b"part-abbreviation-display" => {
+                    part.part_abbreviation_display = Some(NameDisplay {
+                        print_object: get_attr(&e, "print-object")?.and_then(|s| {
+                            match s.as_str() {
+                                "yes" => Some(YesNo::Yes),
+                                "no" => Some(YesNo::No),
+                                _ => None,
+                            }
+                        }),
+                        content: Vec::new(),
+                    });
+                }
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"score-part" => break,
@@ -1138,6 +1197,7 @@ mod parse_figured_bass;
 mod parse_harmony;
 mod parse_notations;
 mod parse_note;
+mod parse_part_list;
 mod parse_print;
 mod parse_technical;
 

@@ -56,17 +56,22 @@ pub fn convert_mei_staff_grp_to_part_list(
     let mut current_group_num = group_num;
 
     // Only emit a part-group if this staffGrp has explicit grouping attributes
-    // (symbol, bar_thru, or a label). A plain staffGrp with multiple children
-    // does NOT need a part-group wrapper — it's just the root container.
+    // (symbol, bar_thru, label, or group-details label). A plain staffGrp with
+    // multiple children does NOT need a part-group wrapper — it's just the root container.
+    let has_group_details_label = staff_grp.common.label.as_ref().is_some_and(|l| {
+        l.split('|')
+            .any(|seg| seg.starts_with(crate::import::parts::GROUP_DETAILS_LABEL_PREFIX))
+    });
     let has_group_attrs = staff_grp.staff_grp_vis.symbol.is_some()
         || staff_grp.staff_grp_vis.bar_thru.is_some()
         || extract_label_text(staff_grp).is_some()
-        || extract_label_abbr_text(staff_grp).is_some();
+        || extract_label_abbr_text(staff_grp).is_some()
+        || has_group_details_label;
     let needs_group = has_group_attrs;
 
     // Emit part-group start if needed
     if needs_group {
-        let part_group = PartGroup {
+        let mut part_group = PartGroup {
             group_type: StartStop::Start,
             number: Some(current_group_num.to_string()),
             group_name: extract_label_text(staff_grp),
@@ -77,6 +82,8 @@ pub fn convert_mei_staff_grp_to_part_list(
             group_barline: convert_mei_staff_grp_barline(staff_grp),
             group_time: None,
         };
+        // Recover extra group details from JSON-in-label
+        extract_group_details_from_staff_grp(staff_grp, &mut part_group);
         part_list
             .items
             .push(PartListItem::PartGroup(Box::new(part_group)));
@@ -276,6 +283,9 @@ fn convert_multi_staff_grp_to_score_part(
     // Extract instrument definitions from first staffDef
     extract_instruments_from_staff_def(first_def, &mut score_part);
 
+    // Recover extra part details from JSON-in-label on first staffDef
+    extract_part_details_from_staff_def(first_def, &mut score_part);
+
     // Register all staffDefs in the context for staff number mapping
     for (idx, staff_def) in staff_defs.iter().enumerate() {
         let local_staff = (idx + 1) as u32;
@@ -325,6 +335,9 @@ pub fn convert_mei_staff_def_to_score_part(
 
     // Extract instrument definitions from instrDef children
     extract_instruments_from_staff_def(staff_def, &mut score_part);
+
+    // Recover extra part details from JSON-in-label
+    extract_part_details_from_staff_def(staff_def, &mut score_part);
 
     // Map MEI staffDef ID to MusicXML part ID
     if let Some(ref xml_id) = staff_def.basic.xml_id {
@@ -409,6 +422,53 @@ fn extract_instruments_from_staff_def(staff_def: &StaffDef, score_part: &mut Sco
                 }
             }
             // Fallback: no JSON label, skip (shouldn't happen in roundtrip)
+        }
+    }
+}
+
+/// Recover extra part details from JSON-in-label on a staffDef.
+///
+/// Reads `musicxml:part-details,{json}` from the staffDef @label and populates
+/// part-name-display, part-abbreviation-display, players, part-links, groups.
+fn extract_part_details_from_staff_def(staff_def: &StaffDef, score_part: &mut ScorePart) {
+    use crate::import::attributes::extract_label_segment;
+    use crate::import::parts::{PART_DETAILS_LABEL_PREFIX, PartExtraDetails};
+
+    if let Some(ref label) = staff_def.labelled.label {
+        if let Some(json) = extract_label_segment(label, PART_DETAILS_LABEL_PREFIX) {
+            if let Ok(details) = serde_json::from_str::<PartExtraDetails>(json) {
+                score_part.part_name_display = details.part_name_display;
+                score_part.part_abbreviation_display = details.part_abbreviation_display;
+                score_part.players = details.players;
+                score_part.part_links = details.part_links;
+                score_part.groups = details.groups;
+            }
+        }
+    }
+}
+
+/// Extract group extra details from JSON-in-label on a staffGrp.
+///
+/// Reads `musicxml:group-details,{json}` from the staffGrp @label and populates
+/// group-name-display, group-abbreviation-display, group-time on the PartGroup.
+fn extract_group_details_from_staff_grp(
+    staff_grp: &StaffGrp,
+    part_group: &mut crate::model::elements::PartGroup,
+) {
+    use crate::import::parts::{GROUP_DETAILS_LABEL_PREFIX, GroupExtraDetails};
+
+    if let Some(ref label) = staff_grp.common.label {
+        for segment in label.split('|') {
+            if let Some(json) = segment.strip_prefix(GROUP_DETAILS_LABEL_PREFIX) {
+                if let Ok(details) = serde_json::from_str::<GroupExtraDetails>(json) {
+                    part_group.group_name_display = details.group_name_display;
+                    part_group.group_abbreviation_display = details.group_abbreviation_display;
+                    if details.group_time == Some(true) {
+                        part_group.group_time = Some(crate::model::elements::Empty);
+                    }
+                }
+                return;
+            }
         }
     }
 }

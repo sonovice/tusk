@@ -122,7 +122,7 @@ fn serialize_measure_numbering<W: Write>(
     Ok(())
 }
 
-fn serialize_name_display<W: Write>(
+pub(super) fn serialize_name_display<W: Write>(
     w: &mut MusicXmlWriter<W>,
     element_name: &str,
     nd: &NameDisplay,

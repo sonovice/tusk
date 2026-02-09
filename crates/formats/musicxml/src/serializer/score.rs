@@ -723,7 +723,9 @@ impl MusicXmlSerialize for PartGroup {
 
     fn has_children(&self) -> bool {
         self.group_name.is_some()
+            || self.group_name_display.is_some()
             || self.group_abbreviation.is_some()
+            || self.group_abbreviation_display.is_some()
             || self.group_symbol.is_some()
             || self.group_barline.is_some()
             || self.group_time.is_some()
@@ -731,7 +733,13 @@ impl MusicXmlSerialize for PartGroup {
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         w.write_opt_text_element("group-name", &self.group_name)?;
+        if let Some(ref gnd) = self.group_name_display {
+            super::print::serialize_name_display(w, "group-name-display", gnd)?;
+        }
         w.write_opt_text_element("group-abbreviation", &self.group_abbreviation)?;
+        if let Some(ref gad) = self.group_abbreviation_display {
+            super::print::serialize_name_display(w, "group-abbreviation-display", gad)?;
+        }
         if let Some(ref gs) = self.group_symbol {
             let mut start = w.start_element("group-symbol");
             push_opt_attr_start(&mut start, "default-x", &gs.default_x);
@@ -770,17 +778,42 @@ impl MusicXmlSerialize for ScorePart {
     }
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        // part-link
+        for pl in &self.part_links {
+            serialize_part_link(w, pl)?;
+        }
+
         // part-name (required)
         serialize_part_name(w, "part-name", &self.part_name)?;
+
+        // part-name-display
+        if let Some(ref pnd) = self.part_name_display {
+            super::print::serialize_name_display(w, "part-name-display", pnd)?;
+        }
 
         // part-abbreviation
         if let Some(ref abbrev) = self.part_abbreviation {
             serialize_part_name(w, "part-abbreviation", abbrev)?;
         }
 
+        // part-abbreviation-display
+        if let Some(ref pad) = self.part_abbreviation_display {
+            super::print::serialize_name_display(w, "part-abbreviation-display", pad)?;
+        }
+
+        // group
+        for g in &self.groups {
+            w.write_text_element("group", g)?;
+        }
+
         // score-instrument
         for inst in &self.score_instruments {
             inst.serialize(w)?;
+        }
+
+        // player
+        for p in &self.players {
+            serialize_player(w, p)?;
         }
 
         // midi-device and midi-instrument
@@ -822,6 +855,41 @@ fn serialize_part_name<W: Write>(
     w.write_start(start)?;
     w.write_text(&pn.value)?;
     w.write_end(name)?;
+    Ok(())
+}
+
+fn serialize_player<W: Write>(w: &mut MusicXmlWriter<W>, p: &Player) -> SerializeResult<()> {
+    let mut start = w.start_element("player");
+    start.push_attribute(("id", p.id.as_str()));
+    w.write_start(start)?;
+    w.write_text_element("player-name", &p.player_name)?;
+    w.write_end("player")?;
+    Ok(())
+}
+
+fn serialize_part_link<W: Write>(w: &mut MusicXmlWriter<W>, pl: &PartLink) -> SerializeResult<()> {
+    let mut start = w.start_element("part-link");
+    start.push_attribute(("xlink:href", pl.href.as_str()));
+    push_opt_str_attr_start(&mut start, "xlink:type", &pl.xlink_type);
+    push_opt_str_attr_start(&mut start, "xlink:role", &pl.xlink_role);
+    push_opt_str_attr_start(&mut start, "xlink:title", &pl.xlink_title);
+    push_opt_str_attr_start(&mut start, "xlink:show", &pl.xlink_show);
+    push_opt_str_attr_start(&mut start, "xlink:actuate", &pl.xlink_actuate);
+
+    if pl.instrument_links.is_empty() && pl.group_links.is_empty() {
+        w.write_empty(start)?;
+    } else {
+        w.write_start(start)?;
+        for il in &pl.instrument_links {
+            let mut il_start = w.start_element("instrument-link");
+            il_start.push_attribute(("id", il.id.as_str()));
+            w.write_empty(il_start)?;
+        }
+        for gl in &pl.group_links {
+            w.write_text_element("group-link", gl)?;
+        }
+        w.write_end("part-link")?;
+    }
     Ok(())
 }
 
