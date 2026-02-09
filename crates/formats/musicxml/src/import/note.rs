@@ -148,6 +148,18 @@ pub fn convert_note(
     // Convert lyrics to MEI verse/syl children
     convert_lyrics(note, &mut mei_note);
 
+    // Store note-level instrument references in label for roundtrip
+    if !note.instruments.is_empty() {
+        let ids: Vec<&str> = note.instruments.iter().map(|i| i.id.as_str()).collect();
+        let segment = format!("musicxml:instruments,{}", ids.join(","));
+        if let Some(ref mut label) = mei_note.common.label {
+            label.push('|');
+            label.push_str(&segment);
+        } else {
+            mei_note.common.label = Some(segment);
+        }
+    }
+
     Ok(mei_note)
 }
 

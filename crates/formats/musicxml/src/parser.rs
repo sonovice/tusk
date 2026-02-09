@@ -845,7 +845,7 @@ fn parse_score_instrument<R: BufRead>(
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
-                b"solo" => instrument.solo = Some(Empty),
+                b"solo" => instrument.solo = Some(true),
                 b"ensemble" => instrument.ensemble = Some(Ensemble { value: None }),
                 _ => {}
             },

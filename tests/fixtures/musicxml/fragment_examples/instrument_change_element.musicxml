@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Clarinet</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Clarinet in Bb</instrument-name>
+        <instrument-sound>wind.reed.clarinet.bflat</instrument-sound>
+      </score-instrument>
+      <score-instrument id="P1-I2">
+        <instrument-name>Bass Clarinet</instrument-name>
+        <instrument-sound>wind.reed.clarinet.bass</instrument-sound>
+      </score-instrument>
+      <midi-instrument id="P1-I1">
+        <midi-channel>1</midi-channel>
+        <midi-program>72</midi-program>
+      </midi-instrument>
+      <midi-instrument id="P1-I2">
+        <midi-channel>1</midi-channel>
+        <midi-program>72</midi-program>
+      </midi-instrument>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <instrument id="P1-I1"/>
+        <type>whole</type>
+      </note>
+    </measure>
+    <measure number="2">
+      <direction placement="above">
+        <direction-type>
+          <words>To Bass Clarinet</words>
+        </direction-type>
+        <sound>
+          <instrument-change id="P1-I2">
+            <instrument-sound>wind.reed.clarinet.bass</instrument-sound>
+          </instrument-change>
+        </sound>
+      </direction>
+      <note>
+        <pitch><step>C</step><octave>3</octave></pitch>
+        <duration>4</duration>
+        <voice>1</voice>
+        <instrument id="P1-I2"/>
+        <type>whole</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>

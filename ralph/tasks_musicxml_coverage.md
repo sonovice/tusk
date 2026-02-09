@@ -729,13 +729,13 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 17.1 Import & Export
 
-- [ ] `score-instrument` → MEI `<instrDef>` with `@midi.instrname`
-- [ ] `midi-instrument` → MEI `<instrDef>` `@midi.channel`, `@midi.instrnum`, `@midi.volume`, `@midi.pan`
-- [ ] `instrument-sound` → MEI `<instrDef>` label or sound reference
-- [ ] `virtual-instrument` → MEI annotation
-- [ ] Note-level `<instrument>` → MEI note-level instrument reference
-- [ ] Export: reverse all mappings
-- [ ] Verify fragment examples: `midi_device_element`, `midi_instrument_element`, `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `virtual_instrument_element`, `ensemble_element`, `instrument_link_element`, `instrument_change_element`
+- [x] `score-instrument` → MEI `<instrDef>` with `@midi.instrname`
+- [x] `midi-instrument` → MEI `<instrDef>` `@midi.channel`, `@midi.instrnum`, `@midi.volume`, `@midi.pan`
+- [x] `instrument-sound` → MEI `<instrDef>` label or sound reference
+- [x] `virtual-instrument` → MEI annotation
+- [x] Note-level `<instrument>` → MEI note-level instrument reference
+- [x] Export: reverse all mappings
+- [x] Verify fragment examples: `midi_device_element`, `midi_instrument_element`, `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `virtual_instrument_element`, `ensemble_element`, `instrument_link_element`, `instrument_change_element`
 
 ---
 

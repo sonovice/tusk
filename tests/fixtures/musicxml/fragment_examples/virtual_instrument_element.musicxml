@@ -2,7 +2,19 @@
 <score-partwise version="4.1">
   <part-list>
     <score-part id="P1">
-      <part-name>Part 1</part-name>
+      <part-name>Violin</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Violin</instrument-name>
+        <instrument-sound>strings.violin</instrument-sound>
+        <virtual-instrument>
+          <virtual-library>Garritan Personal Orchestra</virtual-library>
+          <virtual-name>Solo Violin KS</virtual-name>
+        </virtual-instrument>
+      </score-instrument>
+      <midi-instrument id="P1-I1">
+        <midi-channel>1</midi-channel>
+        <midi-program>41</midi-program>
+      </midi-instrument>
     </score-part>
   </part-list>
   <part id="P1">
@@ -11,7 +23,7 @@
         <divisions>1</divisions>
       </attributes>
       <note>
-        <pitch><step>C</step><octave>4</octave></pitch>
+        <pitch><step>A</step><octave>4</octave></pitch>
         <duration>4</duration>
         <type>whole</type>
       </note>

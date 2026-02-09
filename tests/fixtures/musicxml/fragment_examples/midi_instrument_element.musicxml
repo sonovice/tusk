@@ -2,7 +2,17 @@
 <score-partwise version="4.1">
   <part-list>
     <score-part id="P1">
-      <part-name>Part 1</part-name>
+      <part-name>Flute</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Flute</instrument-name>
+        <instrument-sound>wind.flutes.flute</instrument-sound>
+      </score-instrument>
+      <midi-instrument id="P1-I1">
+        <midi-channel>1</midi-channel>
+        <midi-program>74</midi-program>
+        <volume>80</volume>
+        <pan>0</pan>
+      </midi-instrument>
     </score-part>
   </part-list>
   <part id="P1">
@@ -11,7 +21,7 @@
         <divisions>1</divisions>
       </attributes>
       <note>
-        <pitch><step>C</step><octave>4</octave></pitch>
+        <pitch><step>C</step><octave>5</octave></pitch>
         <duration>4</duration>
         <type>whole</type>
       </note>

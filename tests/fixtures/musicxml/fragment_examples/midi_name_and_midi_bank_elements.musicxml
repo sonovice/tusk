@@ -2,7 +2,16 @@
 <score-partwise version="4.1">
   <part-list>
     <score-part id="P1">
-      <part-name>Part 1</part-name>
+      <part-name>Synth</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Synth Pad</instrument-name>
+      </score-instrument>
+      <midi-instrument id="P1-I1">
+        <midi-channel>2</midi-channel>
+        <midi-name>Warm Pad</midi-name>
+        <midi-bank>8192</midi-bank>
+        <midi-program>90</midi-program>
+      </midi-instrument>
     </score-part>
   </part-list>
   <part id="P1">

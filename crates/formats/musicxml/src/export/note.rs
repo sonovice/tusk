@@ -131,6 +131,9 @@ pub fn convert_mei_note(
     // Convert verse/syl children to MusicXML lyrics
     convert_mei_lyrics(mei_note, &mut mxml_note);
 
+    // Restore note-level instrument references from label
+    convert_mei_note_label_instruments(mei_note, &mut mxml_note);
+
     // Add warnings for lossy attributes
     add_note_conversion_warnings(mei_note, ctx);
 
@@ -483,6 +486,29 @@ fn convert_mei_note_label_articulations(
     }
     if has_caesura {
         artics.caesura = Some(Caesura::default());
+    }
+}
+
+/// Restore note-level instrument references from MEI note label.
+fn convert_mei_note_label_instruments(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+) {
+    let label = match mei_note.common.label.as_deref() {
+        Some(l) => l,
+        None => return,
+    };
+    // Find the "musicxml:instruments,..." segment (may be separated by |)
+    for segment in label.split('|') {
+        if let Some(ids_str) = segment.strip_prefix("musicxml:instruments,") {
+            for id in ids_str.split(',') {
+                if !id.is_empty() {
+                    mxml_note
+                        .instruments
+                        .push(crate::model::note::Instrument::new(id));
+                }
+            }
+        }
     }
 }
 
@@ -1221,6 +1247,9 @@ pub fn convert_mei_chord(
 
         // Convert verse/syl children to MusicXML lyrics
         convert_mei_lyrics(mei_note, &mut mxml_note);
+
+        // Restore note-level instrument references from label
+        convert_mei_note_label_instruments(mei_note, &mut mxml_note);
 
         mxml_notes.push(mxml_note);
     }

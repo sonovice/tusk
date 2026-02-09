@@ -37,6 +37,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut duration: Option<f64> = None;
     let mut ties: Vec<Tie> = Vec::new();
     let mut voice: Option<String> = None;
+    let mut instruments: Vec<Instrument> = Vec::new();
     let mut note_type: Option<NoteType> = None;
     let mut dots: Vec<Dot> = Vec::new();
     let mut accidental: Option<Accidental> = None;
@@ -69,6 +70,12 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                     skip_to_end(reader, b"tie")?;
                 }
                 b"voice" => voice = Some(read_text(reader, b"voice")?),
+                b"instrument" => {
+                    if let Some(id) = get_attr(&e, "id")? {
+                        instruments.push(Instrument::new(&id));
+                    }
+                    skip_to_end(reader, b"instrument")?;
+                }
                 b"type" => note_type = Some(parse_note_type(reader, &e)?),
                 b"dot" => {
                     dots.push(parse_dot(&e)?);
@@ -96,6 +103,11 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"rest" => rest = Some(parse_rest_empty(&e)?),
                 b"tie" => ties.push(parse_tie(&e)?),
                 b"dot" => dots.push(parse_dot(&e)?),
+                b"instrument" => {
+                    if let Some(id) = get_attr(&e, "id")? {
+                        instruments.push(Instrument::new(&id));
+                    }
+                }
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"note" => break,
@@ -127,7 +139,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         footnote: None,
         level: None,
         voice,
-        instruments: Vec::new(),
+        instruments,
         note_type,
         dots,
         accidental,

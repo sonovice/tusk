@@ -97,6 +97,13 @@ impl MusicXmlSerialize for Note {
         // Voice
         w.write_opt_text_element("voice", &self.voice)?;
 
+        // Instrument references
+        for inst in &self.instruments {
+            let mut start = w.start_element("instrument");
+            start.push_attribute(("id", inst.id.as_str()));
+            w.write_empty(start)?;
+        }
+
         // Type
         if let Some(ref nt) = self.note_type {
             nt.serialize(w)?;

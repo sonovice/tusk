@@ -1121,9 +1121,9 @@ pub struct ScoreInstrument {
     #[serde(rename = "instrument-sound", skip_serializing_if = "Option::is_none")]
     pub instrument_sound: Option<String>,
 
-    /// Solo indication
+    /// Solo indication (true = present; uses bool for JSON roundtrip stability)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub solo: Option<Empty>,
+    pub solo: Option<bool>,
 
     /// Ensemble size
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1523,7 +1523,7 @@ mod tests {
             instrument_name: "Flute".to_string(),
             instrument_abbreviation: Some("Fl.".to_string()),
             instrument_sound: Some("wind.flutes.flute".to_string()),
-            solo: Some(Empty),
+            solo: Some(true),
             ensemble: None,
             virtual_instrument: None,
         });

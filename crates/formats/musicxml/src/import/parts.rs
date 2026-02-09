@@ -14,8 +14,8 @@ use crate::model::attributes::KeyContent;
 use crate::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
 use tusk_model::data::DataBoolean;
 use tusk_model::elements::{
-    Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild, StaffGrp,
-    StaffGrpChild,
+    InstrDef, Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild,
+    StaffGrp, StaffGrpChild,
 };
 
 /// Convert MusicXML part-list to MEI scoreDef.
@@ -324,7 +324,7 @@ pub fn convert_staff_grp(
                     staff_number += num_staves;
                 } else {
                     // Single-staff part: existing path
-                    let staff_def = convert_staff_def_from_score_part(
+                    let mut staff_def = convert_staff_def_from_score_part(
                         score_part,
                         staff_number,
                         initial_attrs,
@@ -332,6 +332,9 @@ pub fn convert_staff_grp(
                         true,
                         ctx,
                     )?;
+
+                    // Add instrument definitions
+                    apply_instruments_to_staff_def(score_part, &mut staff_def);
 
                     // Add to innermost open group, or root if none
                     if let Some((_, grp)) = group_stack.last_mut() {
@@ -678,6 +681,9 @@ pub fn convert_staff_def_from_score_part(
     Ok(staff_def)
 }
 
+/// Label prefix for instrument JSON stored on instrDef @label.
+pub(crate) const INSTRUMENT_LABEL_PREFIX: &str = "musicxml:instrument,";
+
 /// Label prefix for staff-details JSON stored on staffDef @label.
 const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
 
@@ -728,6 +734,155 @@ fn apply_staff_details_to_staff_def(
                 format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json),
             );
         }
+    }
+}
+
+/// JSON container for a single instrument's data (score-instrument + MIDI).
+///
+/// Stores the full ScoreInstrument and any matching MidiAssignment entries
+/// for lossless roundtrip.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct InstrumentData {
+    pub score_instrument: crate::model::elements::ScoreInstrument,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub midi_assignments: Vec<crate::model::elements::MidiAssignment>,
+}
+
+/// Convert score-instruments and MIDI assignments to MEI instrDef children.
+///
+/// Creates one `<instrDef>` per `<score-instrument>`, mapping:
+/// - instrument ID → `@xml:id`
+/// - instrument name → `@n`
+/// - MIDI channel → `@midi.channel`
+/// - MIDI program → `@midi.instrnum` (0-based)
+/// - MIDI instrument name → `@midi.instrname` (General MIDI name from instrument-sound)
+/// - MIDI volume → `@midi.volume`
+/// - MIDI pan → `@midi.pan`
+///
+/// Full data stored as JSON in `@label` for lossless roundtrip.
+fn apply_instruments_to_staff_def(score_part: &ScorePart, staff_def: &mut StaffDef) {
+    use crate::model::elements::MidiAssignment;
+    use tusk_model::data::{
+        DataMidichannel, DataMidivalue, DataMidivaluePan, DataMidivaluePercent,
+    };
+
+    if score_part.score_instruments.is_empty() && score_part.midi_assignments.is_empty() {
+        return;
+    }
+
+    // If there are score-instruments, create one instrDef per instrument
+    if !score_part.score_instruments.is_empty() {
+        for si in &score_part.score_instruments {
+            let mut instr_def = InstrDef::default();
+
+            // Set xml:id to instrument ID
+            instr_def.basic.xml_id = Some(si.id.clone());
+
+            // Set @n to instrument name for human readability
+            instr_def.n_integer.n = Some(si.instrument_name.clone());
+
+            // Find matching midi-instrument and midi-device
+            let mut matching_midi: Vec<MidiAssignment> = Vec::new();
+            for ma in &score_part.midi_assignments {
+                match ma {
+                    MidiAssignment::MidiInstrument(mi) if mi.id == si.id => {
+                        // Map MIDI attributes to instrDef gestural attributes
+                        if let Some(ch) = mi.midi_channel {
+                            instr_def.instr_def_ges.midi_channel =
+                                Some(DataMidichannel(ch.to_string()));
+                        }
+                        if let Some(prog) = mi.midi_program {
+                            // MusicXML program is 1-based; MEI instrnum is 0-based
+                            instr_def.instr_def_ges.midi_instrnum =
+                                Some(DataMidivalue((prog as u16 - 1).to_string()));
+                        }
+                        if let Some(vol) = mi.volume {
+                            // MEI volume: percentage (0-100)
+                            instr_def.instr_def_ges.midi_volume =
+                                Some(DataMidivaluePercent::MeiDataPercentLimited(
+                                    tusk_model::data::DataPercentLimited(format!("{vol}%")),
+                                ));
+                        }
+                        if let Some(pan) = mi.pan {
+                            // MEI pan: percentage (-100 to 100)
+                            instr_def.instr_def_ges.midi_pan =
+                                Some(DataMidivaluePan::MeiDataPercentLimitedSigned(
+                                    tusk_model::data::DataPercentLimitedSigned(format!("{pan}")),
+                                ));
+                        }
+                        matching_midi.push(ma.clone());
+                    }
+                    MidiAssignment::MidiDevice(md) if md.id.as_deref() == Some(&si.id) => {
+                        if let Some(port) = md.port {
+                            instr_def.instr_def_ges.midi_port =
+                                Some(tusk_model::data::DataMidivalueName::MeiDataMidivalue(
+                                    DataMidivalue(port.to_string()),
+                                ));
+                        }
+                        matching_midi.push(ma.clone());
+                    }
+                    _ => {}
+                }
+            }
+
+            // Store full instrument data as JSON in @label for lossless roundtrip
+            let data = InstrumentData {
+                score_instrument: si.clone(),
+                midi_assignments: matching_midi,
+            };
+            if let Ok(json) = serde_json::to_string(&data) {
+                instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
+            }
+
+            staff_def
+                .children
+                .push(StaffDefChild::InstrDef(Box::new(instr_def)));
+        }
+    } else {
+        // No score-instruments, but we have midi-assignments only.
+        // Store all assignments in a single instrDef with JSON label.
+        // This is unusual but the spec allows midi-device/midi-instrument
+        // without score-instrument.
+        let mut instr_def = InstrDef::default();
+
+        // Use first midi-instrument's id if available
+        for ma in &score_part.midi_assignments {
+            if let MidiAssignment::MidiInstrument(mi) = ma {
+                instr_def.basic.xml_id = Some(mi.id.clone());
+                if let Some(ch) = mi.midi_channel {
+                    instr_def.instr_def_ges.midi_channel = Some(DataMidichannel(ch.to_string()));
+                }
+                break;
+            }
+        }
+
+        // Store all midi assignments as JSON
+        // Use a dummy score-instrument with the ID
+        let dummy_id = instr_def
+            .basic
+            .xml_id
+            .clone()
+            .unwrap_or_else(|| format!("{}-I1", score_part.id));
+        let dummy_si = crate::model::elements::ScoreInstrument {
+            id: dummy_id,
+            instrument_name: score_part.part_name.value.clone(),
+            instrument_abbreviation: None,
+            instrument_sound: None,
+            solo: None,
+            ensemble: None,
+            virtual_instrument: None,
+        };
+        let data = InstrumentData {
+            score_instrument: dummy_si,
+            midi_assignments: score_part.midi_assignments.clone(),
+        };
+        if let Ok(json) = serde_json::to_string(&data) {
+            instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
+        }
+
+        staff_def
+            .children
+            .push(StaffDefChild::InstrDef(Box::new(instr_def)));
     }
 }
 
@@ -824,8 +979,10 @@ fn convert_multi_staff_part(
         staff_def.staff_def_ges.ppq = Some((divs as u64).to_string());
 
         // Set xml:id: first staff keeps original part ID, others get suffixed
+        // Instruments go on the first staffDef only
         if local_staff == 1 {
             staff_def.basic.xml_id = Some(score_part.id.clone());
+            apply_instruments_to_staff_def(score_part, &mut staff_def);
         } else {
             staff_def.basic.xml_id = Some(format!("{}-staff-{}", score_part.id, local_staff));
         }

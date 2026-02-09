@@ -9,7 +9,9 @@
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
 use crate::model::elements::{PartList, PartListItem, PartName, ScorePart};
-use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrpChild};
+use tusk_model::elements::{
+    ScoreDef, ScoreDefChild, StaffDef, StaffDefChild, StaffGrp, StaffGrpChild,
+};
 
 use super::utils::{
     extract_label_abbr_text, extract_label_text, extract_staff_def_label,
@@ -271,6 +273,9 @@ fn convert_multi_staff_grp_to_score_part(
     // Extract part-symbol for multi-staff part and store in context
     extract_part_symbol_from_staff_grp(staff_grp, &part_id, ctx);
 
+    // Extract instrument definitions from first staffDef
+    extract_instruments_from_staff_def(first_def, &mut score_part);
+
     // Register all staffDefs in the context for staff number mapping
     for (idx, staff_def) in staff_defs.iter().enumerate() {
         let local_staff = (idx + 1) as u32;
@@ -317,6 +322,9 @@ pub fn convert_mei_staff_def_to_score_part(
             ..Default::default()
         });
     }
+
+    // Extract instrument definitions from instrDef children
+    extract_instruments_from_staff_def(staff_def, &mut score_part);
 
     // Map MEI staffDef ID to MusicXML part ID
     if let Some(ref xml_id) = staff_def.basic.xml_id {
@@ -379,6 +387,28 @@ fn extract_part_symbol_from_staff_grp(
                     color: None,
                 },
             );
+        }
+    }
+}
+
+/// Extract instrument definitions from MEI instrDef children on a staffDef.
+///
+/// Recovers MusicXML score-instruments and midi-assignments from instrDef @label JSON.
+fn extract_instruments_from_staff_def(staff_def: &StaffDef, score_part: &mut ScorePart) {
+    use crate::import::parts::{INSTRUMENT_LABEL_PREFIX, InstrumentData};
+
+    for child in &staff_def.children {
+        if let StaffDefChild::InstrDef(instr_def) = child {
+            if let Some(ref label) = instr_def.labelled.label {
+                if let Some(json) = label.strip_prefix(INSTRUMENT_LABEL_PREFIX) {
+                    if let Ok(data) = serde_json::from_str::<InstrumentData>(json) {
+                        score_part.score_instruments.push(data.score_instrument);
+                        score_part.midi_assignments.extend(data.midi_assignments);
+                        continue;
+                    }
+                }
+            }
+            // Fallback: no JSON label, skip (shouldn't happen in roundtrip)
         }
     }
 }
