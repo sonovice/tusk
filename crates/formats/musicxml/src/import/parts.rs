@@ -33,6 +33,15 @@ pub fn convert_score_def(
         apply_defaults_to_score_def(defaults, &mut score_def);
     }
 
+    // Add pgHead for credits (human-readable text summary for MEI tools)
+    if let Some(pg_head) = convert_credits_to_pg_head(&score.credits) {
+        score_def
+            .children
+            .push(tusk_model::elements::ScoreDefChild::PgHead(Box::new(
+                pg_head,
+            )));
+    }
+
     // Create staffGrp containing staffDef for each part
     let staff_grp = convert_staff_grp(score, ctx)?;
     score_def
@@ -42,6 +51,41 @@ pub fn convert_score_def(
         )));
 
     Ok(score_def)
+}
+
+/// Convert MusicXML credits to MEI pgHead with text content.
+///
+/// Creates a pgHead containing AnchoredText elements for each credit-words
+/// entry. Credit-image entries are omitted (MEI pgHead doesn't support inline
+/// graphics). The full credit data is preserved in extMeta JSON for roundtrip.
+fn convert_credits_to_pg_head(
+    credits: &[crate::model::elements::Credit],
+) -> Option<tusk_model::elements::PgHead> {
+    use crate::model::elements::CreditContent;
+    use tusk_model::elements::{AnchoredText, AnchoredTextChild, PgHead, PgHeadChild};
+
+    let mut texts = Vec::new();
+    for credit in credits {
+        if let Some(CreditContent::Words(words)) = &credit.content {
+            for w in &words.words {
+                if !w.value.is_empty() {
+                    let mut anchored = AnchoredText::default();
+                    anchored
+                        .children
+                        .push(AnchoredTextChild::Text(w.value.clone()));
+                    texts.push(PgHeadChild::AnchoredText(Box::new(anchored)));
+                }
+            }
+        }
+    }
+
+    if texts.is_empty() {
+        return None;
+    }
+
+    let mut pg_head = PgHead::default();
+    pg_head.children = texts;
+    Some(pg_head)
 }
 
 /// Map MusicXML `<defaults>` fields to MEI scoreDef visual attributes.

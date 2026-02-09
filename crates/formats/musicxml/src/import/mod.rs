@@ -66,6 +66,8 @@ pub(crate) const MOVEMENT_NUMBER_LABEL_PREFIX: &str = "musicxml:movement-number,
 pub(crate) const MOVEMENT_TITLE_LABEL_PREFIX: &str = "musicxml:movement-title,";
 /// Label prefix for MEI extMeta carrying roundtrip defaults JSON.
 pub(crate) const DEFAULTS_LABEL_PREFIX: &str = "musicxml:defaults,";
+/// Label prefix for MEI extMeta carrying roundtrip credits JSON.
+pub(crate) const CREDITS_LABEL_PREFIX: &str = "musicxml:credits,";
 
 /// Convert a MusicXML score-partwise document to MEI.
 ///
@@ -213,6 +215,25 @@ fn convert_header(score: &ScorePartwise, ctx: &mut ConversionContext) -> Convers
         }
     }
 
+    // Store credits in extMeta for lossless roundtrip. MEI pgHead/pgFoot only
+    // support text and anchoredText children — no structured credit-type, font
+    // attributes, positioning, or images. The extMeta JSON preserves the full
+    // Vec<Credit> with all formatting, positioning, links, and bookmarks.
+    if !score.credits.is_empty() {
+        if let Ok(json) = serde_json::to_string(&score.credits) {
+            let ext_meta = create_ext_meta(
+                ctx,
+                "credits",
+                CREDITS_LABEL_PREFIX,
+                &json,
+                &credits_summary(&score.credits),
+            );
+            mei_head
+                .children
+                .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
+        }
+    }
+
     Ok(mei_head)
 }
 
@@ -348,6 +369,29 @@ fn defaults_summary(defaults: &crate::model::elements::Defaults) -> String {
     }
     if parts.is_empty() {
         "defaults".to_string()
+    } else {
+        parts.join("; ")
+    }
+}
+
+/// Build a human-readable summary of credits.
+fn credits_summary(credits: &[crate::model::elements::Credit]) -> String {
+    use crate::model::elements::CreditContent;
+    let mut parts = Vec::new();
+    for credit in credits {
+        if let Some(CreditContent::Words(words)) = &credit.content {
+            for w in &words.words {
+                if !w.value.is_empty() {
+                    let truncated: String = w.value.chars().take(40).collect();
+                    parts.push(truncated);
+                }
+            }
+        } else if let Some(CreditContent::Image(_)) = &credit.content {
+            parts.push("[image]".to_string());
+        }
+    }
+    if parts.is_empty() {
+        "credits".to_string()
     } else {
         parts.join("; ")
     }

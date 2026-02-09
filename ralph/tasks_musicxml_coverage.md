@@ -563,15 +563,30 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 12.1 Import & Export
 
-- [ ] Import `credit` → MEI `<pgHead>` / `<pgFoot>` with `<rend>` elements
-- [ ] Import `credit-words` positioning (justify, valign, default-x/y) → appropriate `<rend>` placement
-- [ ] Import `credit-image` → MEI `<graphic>`
-- [ ] Export: reverse credit mappings
+- [x] Import `credit` → MEI `<pgHead>` / `<pgFoot>` with `<rend>` elements
+  - Full `Vec<Credit>` serialized as JSON in extMeta `@analog` with `musicxml:credits,` prefix for lossless roundtrip
+  - Human-readable text from credit-words stored as `<anchoredText>` children in `<pgHead>` on scoreDef
+  - Added `CREDITS_LABEL_PREFIX`, `credits_summary()`, `convert_credits_to_pg_head()` in import/
+- [x] Import `credit-words` positioning (justify, valign, default-x/y) → appropriate `<rend>` placement
+  - All credit-words formatting (position, font, alignment) preserved in extMeta JSON
+  - Simplified text summary in pgHead/anchoredText for MEI tool compatibility
+- [x] Import `credit-image` → MEI `<graphic>`
+  - Credit-image data preserved in extMeta JSON for lossless roundtrip
+  - pgHead only contains text credits (MEI pgHead has no graphic child type)
+- [x] Export: reverse credit mappings
+  - Primary: recover full credits from extMeta JSON (`musicxml:credits,` prefix)
+  - Fallback: `credits_from_pg_head()` creates basic credits from scoreDef pgHead text (lossy)
+  - Added credits field to HeaderData, wired into convert_mei_to_timewise_with_context
 
 ### 12.2 Tests
 
-- [ ] Add roundtrip fixture with title page credits
-- [ ] Verify fragment example: `image_element`
+- [x] Add roundtrip fixture with title page credits
+  - `credits.musicxml`: 4 credits (title, subtitle, composer, rights) with positioning, fonts, credit-types
+  - All 4 roundtrip levels pass (conversion, full, triangle MEI, triangle MusicXML)
+  - 318/318 roundtrip tests pass (0 regressions), 492 unit tests, 31 integration tests
+- [x] Verify fragment example: `image_element`
+  - Existing direction-level `<image>` in `image_element.musicxml` unaffected by credit changes
+  - Passes all roundtrip levels
 
 ---
 
@@ -591,9 +606,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Import `staff-spacing` and inline layouts → MEI `<scoreDef>` overrides
 - [ ] Import `measure-numbering` → MEI `@mnum.visible`
 - [ ] Export: MEI `<sb>` → `<print new-system="yes">`, MEI `<pb>` → `<print new-page="yes">`
-
-### 13.3 Tests
-
 - [ ] Add roundtrip fixture with system/page breaks
 - [ ] Verify fragment examples: `system_attribute_only_top`, `system_attribute_also_top`, `staff_lines_element`, `staff_type_element`, `staves_element`
 
@@ -615,9 +627,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Repeat-related sound (dacapo, segno, coda, fine, etc.) → MEI repeat structure or labels
 - [ ] MIDI attributes → MEI `<midi>` elements or annotation
 - [ ] Export: reverse where MEI equivalents exist
-
-### 14.3 Tests
-
 - [ ] Add roundtrip fixture for standalone sound
 - [ ] Verify fragment examples: `swing_element`, `pan_and_elevation_elements`
 
@@ -659,9 +668,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Parse and convert barline `wavy-line` → MEI trill continuation
 - [ ] Serialize these barline children
 - [ ] Export: reverse mappings
-
-### 16.2 Tests
-
 - [ ] Add roundtrip fixture for decorated barlines
 - [ ] Verify fragment examples: `barline_element`, `repeat_element`, `ending_element`
 
@@ -677,9 +683,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] `virtual-instrument` → MEI annotation
 - [ ] Note-level `<instrument>` → MEI note-level instrument reference
 - [ ] Export: reverse all mappings
-
-### 17.2 Tests
-
 - [ ] Verify fragment examples: `midi_device_element`, `midi_instrument_element`, `midi_name_and_midi_bank_elements`, `midi_unpitched_element`, `virtual_instrument_element`, `ensemble_element`, `instrument_link_element`, `instrument_change_element`
 
 ---
@@ -693,9 +696,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Parse and convert `group-time` → MEI time signature propagation
 - [ ] Parse `<player>` elements → MEI performer metadata
 - [ ] Export: reverse all mappings
-
-### 18.2 Tests
-
 - [ ] Verify fragment examples: `part_name_display_element`, `part_abbreviation_display_element`, `group_name_display_element`, `group_abbreviation_display_element`, `group_time_element`, `part_link_element`
 
 ---
@@ -708,9 +708,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Add `Grouping` variant to `MeasureContent`, parse `<grouping>`, import → MEI `<expansion>` or annotation
 - [ ] Add `Link`/`Bookmark` variants to `MeasureContent`, parse, import → MEI `<ptr>`/`<ref>` or annotation
 - [ ] Export: reverse where possible
-
-### 19.2 Tests
-
 - [ ] Verify fragment examples: `sync_element`, `wait_element`, `assess_and_player_elements`, `grouping_element`, `link_element`, `bookmark_element`
 
 ---
@@ -723,9 +720,6 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 - [ ] Parse and convert `<play>` on notes (IPA, mute, semi-pitched); export reverse
 - [ ] Parse and convert `<listen>` on notes; export reverse
 - [ ] Parse `<footnote>` and `<level>` on notes → MEI `<annot>` / editorial attrs; export reverse
-
-### 20.2 Tests
-
 - [ ] Verify fragment examples: `notehead_text_element`, `ipa_element`, `level_element`
 
 ---
@@ -742,9 +736,6 @@ Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
 - [ ] Serialize `OctaveShift` → `<octave-shift>`, `HarpPedals` → `<harp-pedals>`
 - [ ] Serialize `Damp`, `DampAll`, `Eyeglasses`, `StringMute`, `Scordatura`
 - [ ] Serialize `PrincipalVoice`, `Percussion`, `AccordionRegistration`, `StaffDivide`, `Image`, `OtherDirection`
-
-### 21.2 Tests
-
 - [ ] Verify all direction type fragment examples serialize correctly without fallback to `<words>`
 
 ---
@@ -757,9 +748,6 @@ Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
 - [ ] Read `.mxl` archive → locate `META-INF/container.xml` → find rootfile → extract and parse MusicXML
 - [ ] Write `.mxl` archive → create `META-INF/container.xml` → compress MusicXML
 - [ ] Handle multiple rootfiles and accompanying files
-
-### 22.2 Tests
-
 - [ ] Add .mxl roundtrip tests
 - [ ] Test with real-world .mxl files
 
@@ -774,9 +762,6 @@ Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
 - [ ] Import `color` → MEI `@color`; `enclosure` → MEI `@enclose`
 - [ ] Import `print-object="no"` → MEI `@visible="false"`; `print-leger`, `print-spacing`
 - [ ] Export: reverse where MEI carries these attributes
-
-### 23.2 Tests
-
 - [ ] Add roundtrip fixture testing visual attribute preservation
 
 ---
@@ -790,9 +775,6 @@ Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
 - [ ] Import `ClefSign::Jianpu` → proper MEI numbered notation clef (currently mapped to G)
 - [ ] Import `concert-score` and `for-part` with `part-clef`/`part-transpose` → MEI per-part transposition
 - [ ] Export: reverse all mappings
-
-### 24.2 Tests
-
 - [ ] Verify fragment example: `concert_score_and_for_part_elements`
 - [ ] Verify edge case handling produces correct output
 
@@ -805,8 +787,5 @@ Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
 - [ ] Detect version from DOCTYPE or `version` attribute
 - [ ] Implement MusicXML 2.0 → 4.1, 3.0 → 4.1, 3.1 → 4.1, 4.0 → 4.1 migration
 - [ ] Add version-specific export option (e.g. export as MusicXML 3.1)
-
-### 25.2 Tests
-
 - [ ] Cross-version roundtrip tests
 - [ ] Test with real-world files from different MusicXML versions

@@ -797,6 +797,11 @@ fn test_roundtrip_defaults_layout() {
     assert_roundtrip("defaults_layout.musicxml");
 }
 
+#[test]
+fn test_roundtrip_credits() {
+    assert_roundtrip("credits.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

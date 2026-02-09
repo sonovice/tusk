@@ -131,6 +131,7 @@ pub fn convert_mei_to_timewise_with_context(
         score.work = header.work;
         score.identification = header.identification;
         score.defaults = header.defaults;
+        score.credits = header.credits;
         score.movement_number = header.movement_number;
         score.movement_title = header.movement_title;
     }
@@ -152,6 +153,12 @@ pub fn convert_mei_to_timewise_with_context(
                 if fallback.is_some() {
                     score.defaults = fallback;
                 }
+            }
+
+            // If no credits were recovered from extMeta JSON, try to build
+            // basic credits from scoreDef pgHead text (lossy fallback)
+            if score.credits.is_empty() {
+                score.credits = credits_from_pg_head(score_def);
             }
         } else {
             // No scoreDef, create minimal part-list
@@ -195,6 +202,7 @@ struct HeaderData {
     work: Option<Work>,
     identification: Option<Identification>,
     defaults: Option<Defaults>,
+    credits: Vec<crate::model::elements::Credit>,
     movement_number: Option<String>,
     movement_title: Option<String>,
 }
@@ -210,13 +218,14 @@ fn convert_header(
     _ctx: &mut ConversionContext,
 ) -> ConversionResult<HeaderData> {
     use crate::import::{
-        DEFAULTS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX, MOVEMENT_NUMBER_LABEL_PREFIX,
-        MOVEMENT_TITLE_LABEL_PREFIX, WORK_LABEL_PREFIX,
+        CREDITS_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX,
+        MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, WORK_LABEL_PREFIX,
     };
 
     let mut work: Option<Work> = None;
     let mut identification: Option<Identification> = None;
     let mut defaults: Option<Defaults> = None;
+    let mut credits: Vec<crate::model::elements::Credit> = Vec::new();
     let mut movement_number: Option<String> = None;
     let mut movement_title: Option<String> = None;
 
@@ -251,6 +260,11 @@ fn convert_header(
                 } else if let Some(json) = analog.strip_prefix(DEFAULTS_LABEL_PREFIX) {
                     if let Ok(d) = serde_json::from_str::<Defaults>(json) {
                         defaults = Some(d);
+                    }
+                } else if let Some(json) = analog.strip_prefix(CREDITS_LABEL_PREFIX) {
+                    if let Ok(c) = serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
+                    {
+                        credits = c;
                     }
                 }
             }
@@ -289,9 +303,64 @@ fn convert_header(
         work,
         identification,
         defaults,
+        credits,
         movement_number,
         movement_title,
     })
+}
+
+/// Build MusicXML credits from MEI scoreDef pgHead text (lossy fallback).
+///
+/// Used when no extMeta JSON roundtrip data is available (e.g. for MEI documents
+/// from external sources). Each anchoredText child becomes a separate credit.
+fn credits_from_pg_head(
+    score_def: &tusk_model::elements::ScoreDef,
+) -> Vec<crate::model::elements::Credit> {
+    use crate::model::elements::{Credit, CreditContent, CreditWords, FormattedTextId};
+    use tusk_model::elements::{AnchoredTextChild, PgHeadChild, ScoreDefChild};
+
+    let mut credits = Vec::new();
+
+    for child in &score_def.children {
+        if let ScoreDefChild::PgHead(pg_head) = child {
+            for pg_child in &pg_head.children {
+                let text = match pg_child {
+                    PgHeadChild::Text(t) => t.clone(),
+                    PgHeadChild::AnchoredText(at) => {
+                        let mut t = String::new();
+                        for at_child in &at.children {
+                            let AnchoredTextChild::Text(s) = at_child;
+                            t.push_str(s);
+                        }
+                        t
+                    }
+                };
+                if !text.is_empty() {
+                    credits.push(Credit {
+                        page: Some(1),
+                        content: Some(CreditContent::Words(CreditWords {
+                            words: vec![FormattedTextId {
+                                value: text,
+                                id: None,
+                                default_x: None,
+                                default_y: None,
+                                font_family: None,
+                                font_size: None,
+                                font_style: None,
+                                font_weight: None,
+                                justify: None,
+                                halign: None,
+                                valign: None,
+                            }],
+                        })),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+    }
+
+    credits
 }
 
 /// Build MusicXML `Defaults` from MEI scoreDef visual attributes (lossy fallback).
