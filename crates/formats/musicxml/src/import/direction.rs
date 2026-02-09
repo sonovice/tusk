@@ -349,7 +349,7 @@ pub fn convert_direction(
 }
 
 /// Convert MusicXML placement (above/below) to MEI DataStaffrel.
-fn convert_placement(placement: Option<&AboveBelow>) -> Option<DataStaffrel> {
+pub(crate) fn convert_placement(placement: Option<&AboveBelow>) -> Option<DataStaffrel> {
     placement.map(|p| match p {
         AboveBelow::Above => DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above),
         AboveBelow::Below => DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below),

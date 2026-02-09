@@ -124,6 +124,9 @@ pub fn convert_note(
     // Process tuplets (track pending, resolve completed)
     process_tuplets(note, &note_id, ctx);
 
+    // Process ornaments (create control events)
+    process_ornaments(note, &note_id, ctx);
+
     Ok(mei_note)
 }
 
@@ -596,6 +599,249 @@ fn process_tuplets(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionConte
             }
         }
     }
+}
+
+// ============================================================================
+// Ornament Processing
+// ============================================================================
+
+/// Process ornaments from note notations.
+///
+/// Creates MEI control events (trill, mordent, turn, ornam) from MusicXML ornament
+/// notations. These are collected in the context and emitted after all staves are
+/// processed, matching the pattern used for slurs and tuplets.
+///
+/// Mapping:
+/// - trill-mark → MEI `<trill>` with @startid, @staff, @place
+/// - mordent → MEI `<mordent>` with @form="lower", @long, @startid, @staff, @place
+/// - inverted-mordent → MEI `<mordent>` with @form="upper", @startid, @staff, @place
+/// - turn → MEI `<turn>` with @form="upper", @startid, @staff, @place
+/// - delayed-turn → MEI `<turn>` with @form="upper", @delayed="true"
+/// - inverted-turn → MEI `<turn>` with @form="lower"
+/// - delayed-inverted-turn → MEI `<turn>` with @form="lower", @delayed="true"
+/// - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn → MEI `<ornam>`
+///   with musicxml: label for lossless roundtrip
+/// - tremolo → MEI `<ornam>` with musicxml:tremolo label (bTrem/fTrem are containers)
+/// - wavy-line → MEI `<ornam>` with musicxml:wavy-line label
+/// - other-ornament → MEI `<ornam>` with musicxml:other-ornament label
+fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::import::direction::convert_placement;
+    use crate::model::data::AboveBelow;
+    use tusk_model::data::{DataBoolean, DataStaffrel, DataUri};
+    use tusk_model::elements::{
+        MeasureChild, Mordent as MeiMordent, Ornam, OrnamChild, Trill, Turn,
+    };
+
+    let ornaments = match note.notations {
+        Some(ref notations) => match notations.ornaments {
+            Some(ref orn) => orn,
+            None => return,
+        },
+        None => return,
+    };
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    // Helper: convert placement for ornaments
+    let place_for =
+        |p: Option<AboveBelow>| -> Option<DataStaffrel> { convert_placement(p.as_ref()) };
+
+    // trill-mark → MEI <trill>
+    if let Some(ref trill_mark) = ornaments.trill_mark {
+        let mut trill = Trill::default();
+        trill.common.xml_id = Some(ctx.generate_id_with_suffix("trill"));
+        trill.trill_log.startid = Some(startid.clone());
+        trill.trill_log.staff = Some(staff_str.clone());
+        trill.trill_vis.place = place_for(trill_mark.placement);
+        ctx.add_ornament_event(MeasureChild::Trill(Box::new(trill)));
+    }
+
+    // mordent → MEI <mordent> with @form="lower"
+    if let Some(ref mordent) = ornaments.mordent {
+        let mut mei_mordent = MeiMordent::default();
+        mei_mordent.common.xml_id = Some(ctx.generate_id_with_suffix("mordent"));
+        mei_mordent.mordent_log.startid = Some(startid.clone());
+        mei_mordent.mordent_log.staff = Some(staff_str.clone());
+        mei_mordent.mordent_log.form = Some("lower".to_string());
+        if let Some(crate::model::data::YesNo::Yes) = mordent.long {
+            mei_mordent.mordent_log.long = Some(DataBoolean::True);
+        }
+        mei_mordent.mordent_vis.place = place_for(mordent.placement);
+        ctx.add_ornament_event(MeasureChild::Mordent(Box::new(mei_mordent)));
+    }
+
+    // inverted-mordent → MEI <mordent> with @form="upper"
+    if let Some(ref inv_mordent) = ornaments.inverted_mordent {
+        let mut mei_mordent = MeiMordent::default();
+        mei_mordent.common.xml_id = Some(ctx.generate_id_with_suffix("mordent"));
+        mei_mordent.mordent_log.startid = Some(startid.clone());
+        mei_mordent.mordent_log.staff = Some(staff_str.clone());
+        mei_mordent.mordent_log.form = Some("upper".to_string());
+        if let Some(crate::model::data::YesNo::Yes) = inv_mordent.long {
+            mei_mordent.mordent_log.long = Some(DataBoolean::True);
+        }
+        mei_mordent.mordent_vis.place = place_for(inv_mordent.placement);
+        ctx.add_ornament_event(MeasureChild::Mordent(Box::new(mei_mordent)));
+    }
+
+    // turn → MEI <turn> with @form="upper"
+    if let Some(ref turn) = ornaments.turn {
+        let mut mei_turn = Turn::default();
+        mei_turn.common.xml_id = Some(ctx.generate_id_with_suffix("turn"));
+        mei_turn.turn_log.startid = Some(startid.clone());
+        mei_turn.turn_log.staff = Some(staff_str.clone());
+        mei_turn.turn_log.form = Some("upper".to_string());
+        mei_turn.turn_vis.place = place_for(turn.placement);
+        ctx.add_ornament_event(MeasureChild::Turn(Box::new(mei_turn)));
+    }
+
+    // delayed-turn → MEI <turn> with @form="upper", @delayed="true"
+    if let Some(ref delayed_turn) = ornaments.delayed_turn {
+        let mut mei_turn = Turn::default();
+        mei_turn.common.xml_id = Some(ctx.generate_id_with_suffix("turn"));
+        mei_turn.turn_log.startid = Some(startid.clone());
+        mei_turn.turn_log.staff = Some(staff_str.clone());
+        mei_turn.turn_log.form = Some("upper".to_string());
+        mei_turn.turn_log.delayed = Some(DataBoolean::True);
+        mei_turn.turn_vis.place = place_for(delayed_turn.placement);
+        ctx.add_ornament_event(MeasureChild::Turn(Box::new(mei_turn)));
+    }
+
+    // inverted-turn → MEI <turn> with @form="lower"
+    if let Some(ref inv_turn) = ornaments.inverted_turn {
+        let mut mei_turn = Turn::default();
+        mei_turn.common.xml_id = Some(ctx.generate_id_with_suffix("turn"));
+        mei_turn.turn_log.startid = Some(startid.clone());
+        mei_turn.turn_log.staff = Some(staff_str.clone());
+        mei_turn.turn_log.form = Some("lower".to_string());
+        mei_turn.turn_vis.place = place_for(inv_turn.placement);
+        ctx.add_ornament_event(MeasureChild::Turn(Box::new(mei_turn)));
+    }
+
+    // delayed-inverted-turn → MEI <turn> with @form="lower", @delayed="true"
+    if let Some(ref delayed_inv_turn) = ornaments.delayed_inverted_turn {
+        let mut mei_turn = Turn::default();
+        mei_turn.common.xml_id = Some(ctx.generate_id_with_suffix("turn"));
+        mei_turn.turn_log.startid = Some(startid.clone());
+        mei_turn.turn_log.staff = Some(staff_str.clone());
+        mei_turn.turn_log.form = Some("lower".to_string());
+        mei_turn.turn_log.delayed = Some(DataBoolean::True);
+        mei_turn.turn_vis.place = place_for(delayed_inv_turn.placement);
+        ctx.add_ornament_event(MeasureChild::Turn(Box::new(mei_turn)));
+    }
+
+    // vertical-turn → MEI <ornam> with label for roundtrip
+    if let Some(ref vt) = ornaments.vertical_turn {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:vertical-turn".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(vt.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // inverted-vertical-turn → MEI <ornam> with label
+    if let Some(ref ivt) = ornaments.inverted_vertical_turn {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:inverted-vertical-turn".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(ivt.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // shake → MEI <ornam> with label
+    if let Some(ref shake) = ornaments.shake {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:shake".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(shake.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // schleifer → MEI <ornam> with label
+    if ornaments.schleifer.is_some() {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:schleifer".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // tremolo → MEI <ornam> with label encoding type and value
+    if let Some(ref tremolo) = ornaments.tremolo {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        let type_str = match tremolo.tremolo_type {
+            crate::model::data::TremoloType::Single => "single",
+            crate::model::data::TremoloType::Start => "start",
+            crate::model::data::TremoloType::Stop => "stop",
+            crate::model::data::TremoloType::Unmeasured => "unmeasured",
+        };
+        let value_str = tremolo.value.unwrap_or(0).to_string();
+        ornam.common.label = Some(format!(
+            "musicxml:tremolo,type={},value={}",
+            type_str, value_str
+        ));
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(tremolo.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // haydn → MEI <ornam> with label
+    if let Some(ref haydn) = ornaments.haydn {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:haydn".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(haydn.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // wavy-line → MEI <ornam> with label encoding type and number
+    if let Some(ref wavy) = ornaments.wavy_line {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        let type_str = match wavy.wavy_line_type {
+            StartStopContinue::Start => "start",
+            StartStopContinue::Stop => "stop",
+            StartStopContinue::Continue => "continue",
+        };
+        let number_str = wavy.number.unwrap_or(1).to_string();
+        ornam.common.label = Some(format!(
+            "musicxml:wavy-line,type={},number={}",
+            type_str, number_str
+        ));
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(wavy.placement);
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // other-ornament → MEI <ornam> with label and text content
+    if let Some(ref other) = ornaments.other_ornament {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some("musicxml:other-ornament".to_string());
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        ornam.ornam_vis.place = place_for(other.placement);
+        if !other.value.is_empty() {
+            ornam.children.push(OrnamChild::Text(other.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+
+    // accidental-mark within ornaments → skip for now (rare, complex mapping)
 }
 
 /// Convert a MusicXML Articulations struct to MEI DataArticulation values.

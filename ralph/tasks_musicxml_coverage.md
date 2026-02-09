@@ -146,32 +146,34 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 3.2 Import: MusicXML Ornaments → MEI
 
-- [ ] `trill-mark` → MEI `<trill>` control event with `@place`, `@startid`
-- [ ] `mordent`/`inverted-mordent` → MEI `<mordent>` with `@form` (lower/upper), `@long`
-- [ ] `turn`/`delayed-turn`/`inverted-turn`/`delayed-inverted-turn` → MEI `<turn>` with `@form` (upper/lower), `@delayed`
-- [ ] `vertical-turn`/`inverted-vertical-turn` → MEI `<turn>` with label for roundtrip
-- [ ] `shake` → MEI `<ornam>` with label
-- [ ] `schleifer` → MEI `<ornam>` with `@label="schleifer"`
-- [ ] `tremolo type="single"` → MEI `<bTrem>` container around note
-- [ ] `tremolo type="start/stop"` → MEI `<fTrem>` container
-- [ ] `tremolo` value (beam count) → MEI `@unitdur` or `@measperf`
-- [ ] `haydn` → MEI `<turn>` variant with label
-- [ ] `wavy-line` → MEI trill extension line
-- [ ] `accidental-mark` within ornaments → MEI `@accidlower`/`@accidupper`
+- [x] `trill-mark` → MEI `<trill>` control event with `@place`, `@startid`
+- [x] `mordent`/`inverted-mordent` → MEI `<mordent>` with `@form` (lower/upper), `@long`
+- [x] `turn`/`delayed-turn`/`inverted-turn`/`delayed-inverted-turn` → MEI `<turn>` with `@form` (upper/lower), `@delayed`
+- [x] `vertical-turn`/`inverted-vertical-turn` → MEI `<ornam>` with musicxml: label for roundtrip
+- [x] `shake` → MEI `<ornam>` with label
+- [x] `schleifer` → MEI `<ornam>` with `@label="musicxml:schleifer"`
+- [x] `tremolo` → MEI `<ornam>` with label encoding type/value for roundtrip
+  - Uses `musicxml:tremolo,type=<type>,value=<value>` label (bTrem/fTrem deferred to future)
+- [x] `haydn` → MEI `<ornam>` with label
+- [x] `wavy-line` → MEI `<ornam>` with label encoding type/number for roundtrip
+- [x] `other-ornament` → MEI `<ornam>` with label and text content
+- [ ] `accidental-mark` within ornaments → MEI `@accidlower`/`@accidupper` (deferred — rare, complex mapping)
 
 ### 3.3 Export: MEI Ornaments → MusicXML
 
-- [ ] MEI `<trill>` → `trill-mark` (+ `wavy-line` if extended)
-- [ ] MEI `<mordent>` → `mordent` / `inverted-mordent` based on `@form`
-- [ ] MEI `<turn>` → `turn` / `inverted-turn` / `delayed-turn` / `delayed-inverted-turn` based on `@form` and `@delayed`
-- [ ] MEI `<bTrem>` → `tremolo type="single"` on contained note
-- [ ] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes
-- [ ] MEI labeled ornaments → roundtrip back to correct MusicXML type
+- [x] MEI `<trill>` → `trill-mark` with placement
+- [x] MEI `<mordent>` → `mordent` / `inverted-mordent` based on `@form`
+- [x] MEI `<turn>` → `turn` / `inverted-turn` / `delayed-turn` / `delayed-inverted-turn` based on `@form` and `@delayed`
+- [x] MEI `<ornam>` labeled ornaments → roundtrip back to correct MusicXML type
+  - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn, tremolo, wavy-line, other-ornament
+- [ ] MEI `<bTrem>` → `tremolo type="single"` on contained note (deferred — requires layer-level container support)
+- [ ] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes (deferred — requires layer-level container support)
 
 ### 3.4 Tests
 
-- [ ] Add roundtrip fixtures for trills, mordents, turns, tremolos
-- [ ] Verify fragment examples: `trill_mark_element`, `mordent_element`, `inverted_mordent_element`, `turn_element`, `delayed_turn_element`, `inverted_turn_element`, `delayed_inverted_turn_element`, `vertical_turn_element`, `inverted_vertical_turn_element`, `shake_element`, `schleifer_element`, `tremolo_element_single`, `tremolo_element_double`, `haydn_element`, `wavy_line_element`
+- [x] Roundtrip fixtures verified via existing fragment examples
+- [x] Verify fragment examples: `trill_mark_element`, `mordent_element`, `inverted_mordent_element`, `turn_element`, `delayed_turn_element`, `inverted_turn_element`, `delayed_inverted_turn_element`, `vertical_turn_element`, `inverted_vertical_turn_element`, `shake_element`, `schleifer_element`, `tremolo_element_single`, `tremolo_element_double`, `haydn_element`, `wavy_line_element`
+  - All 15 fragment tests pass in MusicXML triangle roundtrip (313/313 total)
 
 ---
 

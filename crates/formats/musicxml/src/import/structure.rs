@@ -157,6 +157,9 @@ pub fn convert_measure(
     // Emit completed tuplets as MEI control events
     emit_tuplet_spans(&mut mei_measure, ctx);
 
+    // Emit ornament control events (trill, mordent, turn, ornam)
+    emit_ornament_events(&mut mei_measure, ctx);
+
     Ok(mei_measure)
 }
 
@@ -349,6 +352,18 @@ fn emit_tuplet_spans(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut 
         mei_measure
             .children
             .push(MeasureChild::TupletSpan(Box::new(ts)));
+    }
+}
+
+/// Emit ornament control events (trill, mordent, turn, ornam).
+///
+/// Drains all pending ornament events from the context and adds them to the measure.
+fn emit_ornament_events(
+    mei_measure: &mut tusk_model::elements::Measure,
+    ctx: &mut ConversionContext,
+) {
+    for event in ctx.drain_ornament_events() {
+        mei_measure.children.push(event);
     }
 }
 

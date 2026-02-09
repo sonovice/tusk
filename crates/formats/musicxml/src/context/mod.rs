@@ -93,6 +93,9 @@ pub struct ConversionContext {
     /// Completed tuplets ready to be emitted as MEI control events.
     pub(super) completed_tuplets: Vec<CompletedTuplet>,
 
+    /// Ornament control events collected during note processing, emitted after all staves.
+    pub(super) pending_ornament_events: Vec<tusk_model::elements::MeasureChild>,
+
     /// Warnings generated during lossy conversion.
     pub(super) warnings: Vec<ConversionWarning>,
 
@@ -149,6 +152,7 @@ impl ConversionContext {
             deferred_slur_stops: Vec::new(),
             pending_tuplets: Vec::new(),
             completed_tuplets: Vec::new(),
+            pending_ornament_events: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
             key_fifths: 0,
@@ -255,6 +259,20 @@ impl ConversionContext {
     }
 
     // ========================================================================
+    // Ornament Events
+    // ========================================================================
+
+    /// Add an ornament control event to be emitted after all staves.
+    pub fn add_ornament_event(&mut self, event: tusk_model::elements::MeasureChild) {
+        self.pending_ornament_events.push(event);
+    }
+
+    /// Drain all pending ornament events.
+    pub fn drain_ornament_events(&mut self) -> Vec<tusk_model::elements::MeasureChild> {
+        std::mem::take(&mut self.pending_ornament_events)
+    }
+
+    // ========================================================================
     // Reset
     // ========================================================================
 
@@ -271,6 +289,7 @@ impl ConversionContext {
         self.pending_slurs.clear();
         self.pending_tuplets.clear();
         self.completed_tuplets.clear();
+        self.pending_ornament_events.clear();
         self.warnings.clear();
         self.position = DocumentPosition::default();
         self.key_fifths = 0;

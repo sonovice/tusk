@@ -598,7 +598,7 @@ fn convert_tstamp_to_offset(
 }
 
 /// Convert MEI placement (@place) to MusicXML AboveBelow.
-fn convert_place_to_placement(
+pub(crate) fn convert_place_to_placement(
     place: &Option<tusk_model::data::DataStaffrel>,
 ) -> Option<AboveBelow> {
     use tusk_model::data::{DataStaffrel, DataStaffrelBasic};

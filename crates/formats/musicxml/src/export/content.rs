@@ -360,6 +360,8 @@ pub fn convert_mei_score_content(
                 )?;
 
                 convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+
+                convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
             } else {
                 // Multi-staff part: merge multiple staves with <backup> between them
                 for local_staff in 1..=num_staves {
@@ -395,6 +397,9 @@ pub fn convert_mei_score_content(
 
                     // Tuplet events
                     convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+
+                    // Ornament events
+                    convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
                     // Insert <backup> between staves (not after the last one)
                     if local_staff < num_staves {
@@ -963,6 +968,261 @@ fn convert_tuplet_events(
                 let notations = note.notations.get_or_insert_with(Notations::default);
                 notations.tuplets.push(t);
             }
+        }
+    }
+    Ok(())
+}
+
+/// Convert MEI ornament control events to MusicXML ornament notations on notes.
+///
+/// For each trill/mordent/turn/ornam control event, finds the referenced note
+/// by startid and adds the appropriate ornament to its notations.
+fn convert_ornament_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use super::direction::convert_place_to_placement;
+    use crate::model::data::{StartStopContinue, TremoloType, YesNo};
+    use crate::model::notations::{
+        EmptyPlacement, EmptyTrillSound, HorizontalTurn, Mordent as MxmlMordent, Notations,
+        Ornaments, OtherOrnament, Tremolo, WavyLine,
+    };
+
+    for child in &mei_measure.children {
+        match child {
+            MeasureChild::Trill(trill) => {
+                let trill_staff = trill
+                    .trill_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if trill_staff != staff_n {
+                    continue;
+                }
+                let start_id = trill
+                    .trill_log
+                    .startid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+                let Some(sid) = start_id else { continue };
+                let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                    continue;
+                };
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
+                ornaments.trill_mark = Some(EmptyTrillSound {
+                    placement: convert_place_to_placement(&trill.trill_vis.place),
+                    ..Default::default()
+                });
+            }
+            MeasureChild::Mordent(mordent) => {
+                let mordent_staff = mordent
+                    .mordent_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if mordent_staff != staff_n {
+                    continue;
+                }
+                let start_id = mordent
+                    .mordent_log
+                    .startid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+                let Some(sid) = start_id else { continue };
+                let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                    continue;
+                };
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
+                let placement = convert_place_to_placement(&mordent.mordent_vis.place);
+                let long = mordent.mordent_log.long.as_ref().and_then(|b| {
+                    if matches!(b, tusk_model::data::DataBoolean::True) {
+                        Some(YesNo::Yes)
+                    } else {
+                        None
+                    }
+                });
+                let mxml_mordent = MxmlMordent {
+                    placement,
+                    long,
+                    ..Default::default()
+                };
+                let form = mordent.mordent_log.form.as_deref().unwrap_or("lower");
+                if form == "upper" {
+                    ornaments.inverted_mordent = Some(mxml_mordent);
+                } else {
+                    ornaments.mordent = Some(mxml_mordent);
+                }
+            }
+            MeasureChild::Turn(turn) => {
+                let turn_staff = turn
+                    .turn_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if turn_staff != staff_n {
+                    continue;
+                }
+                let start_id = turn
+                    .turn_log
+                    .startid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+                let Some(sid) = start_id else { continue };
+                let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                    continue;
+                };
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
+                let placement = convert_place_to_placement(&turn.turn_vis.place);
+                let form = turn.turn_log.form.as_deref().unwrap_or("upper");
+                let delayed = matches!(
+                    turn.turn_log.delayed,
+                    Some(tusk_model::data::DataBoolean::True)
+                );
+                let ht = HorizontalTurn {
+                    placement,
+                    ..Default::default()
+                };
+                match (form, delayed) {
+                    ("upper", false) => ornaments.turn = Some(ht),
+                    ("upper", true) => ornaments.delayed_turn = Some(ht),
+                    ("lower", false) => ornaments.inverted_turn = Some(ht),
+                    ("lower", true) => ornaments.delayed_inverted_turn = Some(ht),
+                    _ => ornaments.turn = Some(ht),
+                }
+            }
+            MeasureChild::Ornam(ornam) => {
+                let ornam_staff = ornam
+                    .ornam_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if ornam_staff != staff_n {
+                    continue;
+                }
+                let start_id = ornam
+                    .ornam_log
+                    .startid
+                    .as_ref()
+                    .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+                let Some(sid) = start_id else { continue };
+                let label = ornam.common.label.as_deref().unwrap_or("");
+                let placement = convert_place_to_placement(&ornam.ornam_vis.place);
+
+                let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                    continue;
+                };
+                let notations = note.notations.get_or_insert_with(Notations::default);
+                let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
+
+                if label == "musicxml:vertical-turn" {
+                    ornaments.vertical_turn = Some(EmptyTrillSound {
+                        placement,
+                        ..Default::default()
+                    });
+                } else if label == "musicxml:inverted-vertical-turn" {
+                    ornaments.inverted_vertical_turn = Some(EmptyTrillSound {
+                        placement,
+                        ..Default::default()
+                    });
+                } else if label == "musicxml:shake" {
+                    ornaments.shake = Some(EmptyTrillSound {
+                        placement,
+                        ..Default::default()
+                    });
+                } else if label == "musicxml:schleifer" {
+                    ornaments.schleifer = Some(EmptyPlacement {
+                        placement,
+                        ..Default::default()
+                    });
+                } else if label == "musicxml:haydn" {
+                    ornaments.haydn = Some(EmptyTrillSound {
+                        placement,
+                        ..Default::default()
+                    });
+                } else if label.starts_with("musicxml:tremolo,") {
+                    // Parse "musicxml:tremolo,type=<type>,value=<value>"
+                    let mut ttype = TremoloType::Single;
+                    let mut tvalue: Option<u8> = None;
+                    for part in label.trim_start_matches("musicxml:tremolo,").split(',') {
+                        if let Some(v) = part.strip_prefix("type=") {
+                            ttype = match v {
+                                "start" => TremoloType::Start,
+                                "stop" => TremoloType::Stop,
+                                "unmeasured" => TremoloType::Unmeasured,
+                                _ => TremoloType::Single,
+                            };
+                        } else if let Some(v) = part.strip_prefix("value=") {
+                            tvalue = v.parse().ok();
+                        }
+                    }
+                    ornaments.tremolo = Some(Tremolo {
+                        tremolo_type: ttype,
+                        value: tvalue,
+                        placement,
+                        default_x: None,
+                        default_y: None,
+                        color: None,
+                        smufl: None,
+                    });
+                } else if label.starts_with("musicxml:wavy-line,") {
+                    // Parse "musicxml:wavy-line,type=<type>,number=<num>"
+                    let mut wtype = StartStopContinue::Start;
+                    let mut wnumber: Option<u8> = None;
+                    for part in label.trim_start_matches("musicxml:wavy-line,").split(',') {
+                        if let Some(v) = part.strip_prefix("type=") {
+                            wtype = match v {
+                                "stop" => StartStopContinue::Stop,
+                                "continue" => StartStopContinue::Continue,
+                                _ => StartStopContinue::Start,
+                            };
+                        } else if let Some(v) = part.strip_prefix("number=") {
+                            wnumber = v.parse().ok();
+                        }
+                    }
+                    ornaments.wavy_line = Some(WavyLine {
+                        wavy_line_type: wtype,
+                        number: wnumber,
+                        placement,
+                        default_x: None,
+                        default_y: None,
+                        color: None,
+                        smufl: None,
+                        trill_sound: Default::default(),
+                    });
+                } else if label == "musicxml:other-ornament" {
+                    // Collect text content from ornam children
+                    let text: String = ornam
+                        .children
+                        .iter()
+                        .filter_map(|c| {
+                            if let tusk_model::elements::OrnamChild::Text(t) = c {
+                                Some(t.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("");
+                    ornaments.other_ornament = Some(OtherOrnament {
+                        value: text,
+                        placement,
+                    });
+                }
+            }
+            _ => {}
         }
     }
     Ok(())
