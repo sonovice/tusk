@@ -358,6 +358,137 @@ impl FromStr for StringNumber {
 // Notation-Specific Types
 // ============================================================================
 
+/// Tremolo type: single-note, double-note, or unmeasured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TremoloType {
+    Start,
+    Stop,
+    Single,
+    Unmeasured,
+}
+
+impl fmt::Display for TremoloType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TremoloType::Start => write!(f, "start"),
+            TremoloType::Stop => write!(f, "stop"),
+            TremoloType::Single => write!(f, "single"),
+            TremoloType::Unmeasured => write!(f, "unmeasured"),
+        }
+    }
+}
+
+impl FromStr for TremoloType {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "start" => Ok(TremoloType::Start),
+            "stop" => Ok(TremoloType::Stop),
+            "single" => Ok(TremoloType::Single),
+            "unmeasured" => Ok(TremoloType::Unmeasured),
+            _ => Err(ParseError::InvalidValue(s.to_string())),
+        }
+    }
+}
+
+/// Start note for trill-sound attribute group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum StartNote {
+    Upper,
+    Main,
+    Below,
+}
+
+impl fmt::Display for StartNote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StartNote::Upper => write!(f, "upper"),
+            StartNote::Main => write!(f, "main"),
+            StartNote::Below => write!(f, "below"),
+        }
+    }
+}
+
+impl FromStr for StartNote {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "upper" => Ok(StartNote::Upper),
+            "main" => Ok(StartNote::Main),
+            "below" => Ok(StartNote::Below),
+            _ => Err(ParseError::InvalidValue(s.to_string())),
+        }
+    }
+}
+
+/// Trill step for trill-sound attribute group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TrillStep {
+    Whole,
+    Half,
+    Unison,
+}
+
+impl fmt::Display for TrillStep {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TrillStep::Whole => write!(f, "whole"),
+            TrillStep::Half => write!(f, "half"),
+            TrillStep::Unison => write!(f, "unison"),
+        }
+    }
+}
+
+impl FromStr for TrillStep {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "whole" => Ok(TrillStep::Whole),
+            "half" => Ok(TrillStep::Half),
+            "unison" => Ok(TrillStep::Unison),
+            _ => Err(ParseError::InvalidValue(s.to_string())),
+        }
+    }
+}
+
+/// Two-note turn for trill-sound attribute group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TwoNoteTurn {
+    Whole,
+    Half,
+    None,
+}
+
+impl fmt::Display for TwoNoteTurn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TwoNoteTurn::Whole => write!(f, "whole"),
+            TwoNoteTurn::Half => write!(f, "half"),
+            TwoNoteTurn::None => write!(f, "none"),
+        }
+    }
+}
+
+impl FromStr for TwoNoteTurn {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "whole" => Ok(TwoNoteTurn::Whole),
+            "half" => Ok(TwoNoteTurn::Half),
+            "none" => Ok(TwoNoteTurn::None),
+            _ => Err(ParseError::InvalidValue(s.to_string())),
+        }
+    }
+}
+
 /// Tremolo marks (0-8).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]

@@ -7,6 +7,8 @@
 //!
 //! The serializer follows the same pattern as the MEI serializer for consistency.
 
+mod elements;
+mod notations;
 mod score;
 
 use quick_xml::Writer;

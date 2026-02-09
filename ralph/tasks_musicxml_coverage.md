@@ -134,11 +134,15 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 3.1 Model & Parser
 
-- [ ] Create `Ornaments` struct in `model/notations.rs` with all ornament types: `trill_mark`, `turn`, `delayed_turn`, `inverted_turn`, `delayed_inverted_turn`, `vertical_turn`, `inverted_vertical_turn`, `shake`, `mordent`, `inverted_mordent`, `wavy_line`, `schleifer`, `tremolo`, `haydn`, `other_ornament`, `accidental_marks`
-- [ ] Create supporting structs: `TrillMark` (placement, start-note, trill-step, two-note-turn, accelerate, beats, second-beat, last-beat), `Tremolo` (type single/start/stop, value 1-8), `WavyLine` (type, number, placement), `Mordent` (placement, long, approach, departure)
-- [ ] Add `ornaments: Option<Ornaments>` field to `Notations` struct
-- [ ] Parse `<ornaments>` inside `parse_notations()` → implement `parse_ornaments()` function
-- [ ] Serialize all ornament types in the serializer
+- [x] Create `Ornaments` struct in `model/notations.rs` with all ornament types: `trill_mark`, `turn`, `delayed_turn`, `inverted_turn`, `delayed_inverted_turn`, `vertical_turn`, `inverted_vertical_turn`, `shake`, `mordent`, `inverted_mordent`, `wavy_line`, `schleifer`, `tremolo`, `haydn`, `other_ornament`, `accidental_marks`
+  - Also created TrillSound, EmptyTrillSound, HorizontalTurn, Mordent structs and TremomoType/StartNote/TrillStep/TwoNoteTurn enums
+- [x] Create supporting structs: `TrillMark` (placement, start-note, trill-step, two-note-turn, accelerate, beats, second-beat, last-beat), `Tremolo` (type single/start/stop, value 1-8), `WavyLine` (type, number, placement), `Mordent` (placement, long, approach, departure)
+  - EmptyTrillSound covers trill-mark/vertical-turn/shake/haydn; HorizontalTurn covers turn variants; Mordent adds long/approach/departure
+- [x] Add `ornaments: Option<Ornaments>` field to `Notations` struct
+- [x] Parse `<ornaments>` inside `parse_notations()` → implement `parse_ornaments()` function
+  - Handles all 15+ ornament element types in Start+Empty events, with helpers for trill-sound, tremolo text content, etc.
+- [x] Serialize all ornament types in the serializer
+  - Extracted notations+ornaments serialization to serializer/notations.rs; also split Note/Attributes/Direction to serializer/elements.rs to keep score.rs under 1500 lines
 
 ### 3.2 Import: MusicXML Ornaments → MEI
 

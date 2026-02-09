@@ -1,12 +1,11 @@
-//! Serializer implementations for MusicXML score types.
+//! Serializer implementations for MusicXML score-level types.
 //!
 //! This module contains `MusicXmlSerialize` implementations for:
 //! - ScorePartwise, Part, Measure
 //! - Work, Identification, Defaults
 //! - PartList, ScorePart, PartGroup
-//! - Note, Pitch, Rest, and related types
-//! - Attributes, Direction
-//! - Backup, Forward
+//! - Barline
+//! - Helper functions for enum-to-string conversion
 
 use std::io::Write;
 
@@ -884,1189 +883,24 @@ impl MusicXmlSerialize for crate::model::elements::Barline {
 }
 
 // ============================================================================
-// Note
-// ============================================================================
-
-impl MusicXmlSerialize for Note {
-    fn element_name(&self) -> &'static str {
-        "note"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "default-x", self.default_x);
-        push_opt_attr!(attrs, "default-y", self.default_y);
-        push_opt_attr!(attrs, "relative-x", self.relative_x);
-        push_opt_attr!(attrs, "relative-y", self.relative_y);
-        if let Some(ref po) = self.print_object {
-            attrs.push(("print-object", yes_no_str(po).to_string()));
-        }
-        if let Some(ref pl) = self.print_leger {
-            attrs.push(("print-leger", yes_no_str(pl).to_string()));
-        }
-        if let Some(ref ps) = self.print_spacing {
-            attrs.push(("print-spacing", yes_no_str(ps).to_string()));
-        }
-        push_opt_attr!(attrs, "dynamics", self.dynamics);
-        push_opt_attr!(attrs, "end-dynamics", self.end_dynamics);
-        push_opt_attr!(attrs, "attack", self.attack);
-        push_opt_attr!(attrs, "release", self.release);
-        if let Some(ref piz) = self.pizzicato {
-            attrs.push(("pizzicato", yes_no_str(piz).to_string()));
-        }
-        push_opt_str_attr!(attrs, "color", self.color);
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        // Grace
-        if let Some(ref grace) = self.grace {
-            grace.serialize(w)?;
-        }
-
-        // Cue
-        if self.cue.is_some() {
-            w.write_empty(w.start_element("cue"))?;
-        }
-
-        // Chord
-        if self.chord.is_some() {
-            w.write_empty(w.start_element("chord"))?;
-        }
-
-        // Pitch/Unpitched/Rest
-        match &self.content {
-            FullNoteContent::Pitch(pitch) => pitch.serialize(w)?,
-            FullNoteContent::Unpitched(unpitched) => unpitched.serialize(w)?,
-            FullNoteContent::Rest(rest) => rest.serialize(w)?,
-        }
-
-        // Duration
-        if let Some(dur) = self.duration {
-            w.write_text_element("duration", &dur.to_string())?;
-        }
-
-        // Ties
-        for tie in &self.ties {
-            tie.serialize(w)?;
-        }
-
-        // Voice
-        w.write_opt_text_element("voice", &self.voice)?;
-
-        // Type
-        if let Some(ref nt) = self.note_type {
-            nt.serialize(w)?;
-        }
-
-        // Dots
-        for dot in &self.dots {
-            dot.serialize(w)?;
-        }
-
-        // Accidental
-        if let Some(ref acc) = self.accidental {
-            acc.serialize(w)?;
-        }
-
-        // Time modification
-        if let Some(ref tm) = self.time_modification {
-            tm.serialize(w)?;
-        }
-
-        // Stem
-        if let Some(ref stem) = self.stem {
-            stem.serialize(w)?;
-        }
-
-        // Notehead
-        if let Some(ref nh) = self.notehead {
-            nh.serialize(w)?;
-        }
-
-        // Staff
-        if let Some(staff) = self.staff {
-            w.write_text_element("staff", &staff.to_string())?;
-        }
-
-        // Beams
-        for beam in &self.beams {
-            beam.serialize(w)?;
-        }
-
-        // Notations
-        if let Some(ref notations) = self.notations {
-            notations.serialize(w)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Grace {
-    fn element_name(&self) -> &'static str {
-        "grace"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "steal-time-previous", self.steal_time_previous);
-        push_opt_attr!(attrs, "steal-time-following", self.steal_time_following);
-        push_opt_attr!(attrs, "make-time", self.make_time);
-        if let Some(ref s) = self.slash {
-            attrs.push(("slash", yes_no_str(s).to_string()));
-        }
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Pitch {
-    fn element_name(&self) -> &'static str {
-        "pitch"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text_element("step", step_str(&self.step))?;
-        if let Some(alter) = self.alter {
-            w.write_text_element("alter", &alter.to_string())?;
-        }
-        w.write_text_element("octave", &self.octave.to_string())?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Unpitched {
-    fn element_name(&self) -> &'static str {
-        "unpitched"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        self.display_step.is_some() || self.display_octave.is_some()
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        if let Some(ref step) = self.display_step {
-            w.write_text_element("display-step", step_str(step))?;
-        }
-        if let Some(oct) = self.display_octave {
-            w.write_text_element("display-octave", &oct.to_string())?;
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Rest {
-    fn element_name(&self) -> &'static str {
-        "rest"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref m) = self.measure {
-            attrs.push(("measure", yes_no_str(m).to_string()));
-        }
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        self.display_step.is_some() || self.display_octave.is_some()
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        if let Some(ref step) = self.display_step {
-            w.write_text_element("display-step", step_str(step))?;
-        }
-        if let Some(oct) = self.display_octave {
-            w.write_text_element("display-octave", &oct.to_string())?;
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Tie {
-    fn element_name(&self) -> &'static str {
-        "tie"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = vec![("type", start_stop_str(&self.tie_type).to_string())];
-        push_opt_str_attr!(attrs, "time-only", self.time_only);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for NoteType {
-    fn element_name(&self) -> &'static str {
-        "type"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref size) = self.size {
-            attrs.push(("size", symbol_size_str(size).to_string()));
-        }
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text(&self.value.to_string())?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Dot {
-    fn element_name(&self) -> &'static str {
-        "dot"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "default-x", self.default_x);
-        push_opt_attr!(attrs, "default-y", self.default_y);
-        push_opt_attr!(attrs, "relative-x", self.relative_x);
-        push_opt_attr!(attrs, "relative-y", self.relative_y);
-        if let Some(ref p) = self.placement {
-            attrs.push(("placement", above_below_str(p).to_string()));
-        }
-        push_opt_str_attr!(attrs, "color", self.color);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Accidental {
-    fn element_name(&self) -> &'static str {
-        "accidental"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref c) = self.cautionary {
-            attrs.push(("cautionary", yes_no_str(c).to_string()));
-        }
-        if let Some(ref e) = self.editorial {
-            attrs.push(("editorial", yes_no_str(e).to_string()));
-        }
-        if let Some(ref p) = self.parentheses {
-            attrs.push(("parentheses", yes_no_str(p).to_string()));
-        }
-        if let Some(ref b) = self.bracket {
-            attrs.push(("bracket", yes_no_str(b).to_string()));
-        }
-        if let Some(ref s) = self.size {
-            attrs.push(("size", symbol_size_str(s).to_string()));
-        }
-        push_opt_str_attr!(attrs, "smufl", self.smufl);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text(accidental_value_str(&self.value))?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for TimeModification {
-    fn element_name(&self) -> &'static str {
-        "time-modification"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text_element("actual-notes", &self.actual_notes.to_string())?;
-        w.write_text_element("normal-notes", &self.normal_notes.to_string())?;
-        if let Some(ref nt) = self.normal_type {
-            w.write_text_element("normal-type", &nt.to_string())?;
-        }
-        for _ in &self.normal_dots {
-            w.write_empty(w.start_element("normal-dot"))?;
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Stem {
-    fn element_name(&self) -> &'static str {
-        "stem"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "default-y", self.default_y);
-        push_opt_attr!(attrs, "relative-y", self.relative_y);
-        push_opt_str_attr!(attrs, "color", self.color);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text(stem_value_str(&self.value))?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Notehead {
-    fn element_name(&self) -> &'static str {
-        "notehead"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref f) = self.filled {
-            attrs.push(("filled", yes_no_str(f).to_string()));
-        }
-        if let Some(ref p) = self.parentheses {
-            attrs.push(("parentheses", yes_no_str(p).to_string()));
-        }
-        push_opt_str_attr!(attrs, "font-family", self.font_family);
-        if let Some(ref style) = self.font_style {
-            attrs.push(("font-style", font_style_str(style).to_string()));
-        }
-        if let Some(ref size) = self.font_size {
-            attrs.push(("font-size", font_size_str(size)));
-        }
-        if let Some(ref weight) = self.font_weight {
-            attrs.push(("font-weight", font_weight_str(weight).to_string()));
-        }
-        push_opt_str_attr!(attrs, "color", self.color);
-        push_opt_str_attr!(attrs, "smufl", self.smufl);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text(notehead_value_str(&self.value))?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Beam {
-    fn element_name(&self) -> &'static str {
-        "beam"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "number", self.number);
-        if let Some(ref r) = self.repeater {
-            attrs.push(("repeater", yes_no_str(r).to_string()));
-        }
-        if let Some(ref f) = self.fan {
-            attrs.push(("fan", fan_str(f).to_string()));
-        }
-        push_opt_str_attr!(attrs, "color", self.color);
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text(beam_value_str(&self.value))?;
-        Ok(())
-    }
-}
-
-// ============================================================================
-// Notations
-// ============================================================================
-
-impl MusicXmlSerialize for notations::Notations {
-    fn element_name(&self) -> &'static str {
-        "notations"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        for tied in &self.tied {
-            tied.serialize(w)?;
-        }
-        for slur in &self.slurs {
-            slur.serialize(w)?;
-        }
-        for tuplet in &self.tuplets {
-            tuplet.serialize(w)?;
-        }
-        if let Some(ref artics) = self.articulations {
-            artics.serialize(w)?;
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for notations::Tuplet {
-    fn element_name(&self) -> &'static str {
-        "tuplet"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        attrs.push(("type", start_stop_str(&self.tuplet_type).to_string()));
-        if let Some(n) = self.number {
-            attrs.push(("number", n.to_string()));
-        }
-        if let Some(ref b) = self.bracket {
-            attrs.push(("bracket", yes_no_str(b).to_string()));
-        }
-        if let Some(ref sn) = self.show_number {
-            attrs.push(("show-number", show_tuplet_str(sn).to_string()));
-        }
-        if let Some(ref st) = self.show_type {
-            attrs.push(("show-type", show_tuplet_str(st).to_string()));
-        }
-        if let Some(ref ls) = self.line_shape {
-            attrs.push(("line-shape", line_shape_str(ls).to_string()));
-        }
-        if let Some(ref p) = self.placement {
-            attrs.push(("placement", above_below_str(p).to_string()));
-        }
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        self.tuplet_actual.is_some() || self.tuplet_normal.is_some()
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        if let Some(ref actual) = self.tuplet_actual {
-            serialize_tuplet_portion(w, "tuplet-actual", actual)?;
-        }
-        if let Some(ref normal) = self.tuplet_normal {
-            serialize_tuplet_portion(w, "tuplet-normal", normal)?;
-        }
-        Ok(())
-    }
-}
-
-fn serialize_tuplet_portion<W: Write>(
-    w: &mut MusicXmlWriter<W>,
-    name: &str,
-    portion: &notations::TupletPortion,
-) -> SerializeResult<()> {
-    let start = w.start_element(name);
-    w.write_start(start)?;
-    if let Some(ref tn) = portion.tuplet_number {
-        w.write_text_element("tuplet-number", &tn.value.to_string())?;
-    }
-    if let Some(ref tt) = portion.tuplet_type {
-        w.write_text_element("tuplet-type", &tt.value.to_string())?;
-    }
-    for _ in &portion.tuplet_dots {
-        w.write_empty(w.start_element("tuplet-dot"))?;
-    }
-    w.write_end(name)?;
-    Ok(())
-}
-
-impl MusicXmlSerialize for notations::Slur {
-    fn element_name(&self) -> &'static str {
-        "slur"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        attrs.push(("type", start_stop_continue_str(&self.slur_type).to_string()));
-        if let Some(n) = self.number {
-            attrs.push(("number", n.to_string()));
-        }
-        if let Some(ref p) = self.placement {
-            attrs.push(("placement", above_below_str(p).to_string()));
-        }
-        if let Some(ref o) = self.orientation {
-            attrs.push(("orientation", over_under_str(o).to_string()));
-        }
-        push_opt_attr!(attrs, "default-x", self.default_x);
-        push_opt_attr!(attrs, "default-y", self.default_y);
-        push_opt_attr!(attrs, "bezier-x", self.bezier_x);
-        push_opt_attr!(attrs, "bezier-y", self.bezier_y);
-        push_opt_attr!(attrs, "bezier-x2", self.bezier_x2);
-        push_opt_attr!(attrs, "bezier-y2", self.bezier_y2);
-        push_opt_str_attr!(attrs, "color", self.color);
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for notations::Tied {
-    fn element_name(&self) -> &'static str {
-        "tied"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        attrs.push(("type", tied_type_str(&self.tied_type).to_string()));
-        if let Some(n) = self.number {
-            attrs.push(("number", n.to_string()));
-        }
-        if let Some(ref o) = self.orientation {
-            attrs.push(("orientation", over_under_str(o).to_string()));
-        }
-        push_opt_attr!(attrs, "default-x", self.default_x);
-        push_opt_attr!(attrs, "default-y", self.default_y);
-        push_opt_attr!(attrs, "bezier-x", self.bezier_x);
-        push_opt_attr!(attrs, "bezier-y", self.bezier_y);
-        push_opt_str_attr!(attrs, "color", self.color);
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for notations::Articulations {
-    fn element_name(&self) -> &'static str {
-        "articulations"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        if let Some(ref a) = self.accent {
-            serialize_empty_placement(w, "accent", a)?;
-        }
-        if let Some(ref a) = self.strong_accent {
-            serialize_strong_accent(w, a)?;
-        }
-        if let Some(ref a) = self.staccato {
-            serialize_empty_placement(w, "staccato", a)?;
-        }
-        if let Some(ref a) = self.tenuto {
-            serialize_empty_placement(w, "tenuto", a)?;
-        }
-        if let Some(ref a) = self.detached_legato {
-            serialize_empty_placement(w, "detached-legato", a)?;
-        }
-        if let Some(ref a) = self.staccatissimo {
-            serialize_empty_placement(w, "staccatissimo", a)?;
-        }
-        if let Some(ref a) = self.spiccato {
-            serialize_empty_placement(w, "spiccato", a)?;
-        }
-        if let Some(ref a) = self.scoop {
-            serialize_empty_placement(w, "scoop", a)?;
-        }
-        if let Some(ref a) = self.plop {
-            serialize_empty_placement(w, "plop", a)?;
-        }
-        if let Some(ref a) = self.doit {
-            serialize_empty_placement(w, "doit", a)?;
-        }
-        if let Some(ref a) = self.falloff {
-            serialize_empty_placement(w, "falloff", a)?;
-        }
-        if let Some(ref a) = self.stress {
-            serialize_empty_placement(w, "stress", a)?;
-        }
-        if let Some(ref a) = self.unstress {
-            serialize_empty_placement(w, "unstress", a)?;
-        }
-        if let Some(ref a) = self.soft_accent {
-            serialize_empty_placement(w, "soft-accent", a)?;
-        }
-        Ok(())
-    }
-}
-
-/// Serialize an empty-placement articulation element.
-fn serialize_empty_placement<W: Write>(
-    w: &mut MusicXmlWriter<W>,
-    name: &str,
-    ep: &notations::EmptyPlacement,
-) -> SerializeResult<()> {
-    let mut elem = w.start_element(name);
-    if let Some(ref p) = ep.placement {
-        elem.push_attribute(("placement", above_below_str(p)));
-    }
-    if let Some(dx) = ep.default_x {
-        let s = dx.to_string();
-        elem.push_attribute(("default-x", s.as_str()));
-    }
-    if let Some(dy) = ep.default_y {
-        let s = dy.to_string();
-        elem.push_attribute(("default-y", s.as_str()));
-    }
-    if let Some(ref c) = ep.color {
-        elem.push_attribute(("color", c.as_str()));
-    }
-    w.write_empty(elem)?;
-    Ok(())
-}
-
-/// Serialize a strong-accent element.
-fn serialize_strong_accent<W: Write>(
-    w: &mut MusicXmlWriter<W>,
-    sa: &notations::StrongAccent,
-) -> SerializeResult<()> {
-    let mut elem = w.start_element("strong-accent");
-    if let Some(ref t) = sa.accent_type {
-        elem.push_attribute(("type", up_down_str(t)));
-    }
-    if let Some(ref p) = sa.placement {
-        elem.push_attribute(("placement", above_below_str(p)));
-    }
-    if let Some(dx) = sa.default_x {
-        let s = dx.to_string();
-        elem.push_attribute(("default-x", s.as_str()));
-    }
-    if let Some(dy) = sa.default_y {
-        let s = dy.to_string();
-        elem.push_attribute(("default-y", s.as_str()));
-    }
-    w.write_empty(elem)?;
-    Ok(())
-}
-
-// ============================================================================
-// Backup and Forward
-// ============================================================================
-
-impl MusicXmlSerialize for Backup {
-    fn element_name(&self) -> &'static str {
-        "backup"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text_element("duration", &self.duration.to_string())?;
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Forward {
-    fn element_name(&self) -> &'static str {
-        "forward"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text_element("duration", &self.duration.to_string())?;
-        w.write_opt_text_element("voice", &self.voice)?;
-        if let Some(staff) = self.staff {
-            w.write_text_element("staff", &staff.to_string())?;
-        }
-        Ok(())
-    }
-}
-
-// ============================================================================
-// Attributes (stub - will be expanded)
-// ============================================================================
-
-impl MusicXmlSerialize for Attributes {
-    fn element_name(&self) -> &'static str {
-        "attributes"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        // Divisions
-        if let Some(div) = self.divisions {
-            w.write_text_element("divisions", &div.to_string())?;
-        }
-
-        // Key
-        for key in &self.keys {
-            key.serialize(w)?;
-        }
-
-        // Time
-        for time in &self.times {
-            time.serialize(w)?;
-        }
-
-        // Staves
-        if let Some(staves) = self.staves {
-            w.write_text_element("staves", &staves.to_string())?;
-        }
-
-        // Clef
-        for clef in &self.clefs {
-            clef.serialize(w)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Key {
-    fn element_name(&self) -> &'static str {
-        "key"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "number", self.number);
-        if let Some(ref po) = self.print_object {
-            attrs.push(("print-object", yes_no_str(po).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        match &self.content {
-            KeyContent::Traditional(trad) => {
-                if let Some(ref cancel) = trad.cancel {
-                    w.write_text_element("cancel", &cancel.fifths.to_string())?;
-                }
-                w.write_text_element("fifths", &trad.fifths.to_string())?;
-                if let Some(ref mode) = trad.mode {
-                    w.write_text_element("mode", mode_str(mode))?;
-                }
-            }
-            KeyContent::NonTraditional(nt) => {
-                for alt in &nt.alterations {
-                    w.write_text_element("key-step", step_str(&alt.key_step))?;
-                    w.write_text_element("key-alter", &alt.key_alter.to_string())?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Time {
-    fn element_name(&self) -> &'static str {
-        "time"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "number", self.number);
-        if let Some(ref sym) = self.symbol {
-            attrs.push(("symbol", time_symbol_str(sym).to_string()));
-        }
-        if let Some(ref po) = self.print_object {
-            attrs.push(("print-object", yes_no_str(po).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        match &self.content {
-            TimeContent::Standard(std) => {
-                for sig in &std.signatures {
-                    w.write_text_element("beats", &sig.beats)?;
-                    w.write_text_element("beat-type", &sig.beat_type)?;
-                }
-            }
-            TimeContent::SenzaMisura(sm) => {
-                if let Some(ref symbol) = sm.symbol {
-                    w.write_text_element("senza-misura", symbol)?;
-                } else {
-                    w.write_empty(w.start_element("senza-misura"))?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Clef {
-    fn element_name(&self) -> &'static str {
-        "clef"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        push_opt_attr!(attrs, "number", self.number);
-        if let Some(ref po) = self.print_object {
-            attrs.push(("print-object", yes_no_str(po).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        w.write_text_element("sign", clef_sign_str(&self.sign))?;
-        if let Some(line) = self.line {
-            w.write_text_element("line", &line.to_string())?;
-        }
-        if let Some(oct) = self.clef_octave_change {
-            w.write_text_element("clef-octave-change", &oct.to_string())?;
-        }
-        Ok(())
-    }
-}
-
-// ============================================================================
-// Direction (stub)
-// ============================================================================
-
-impl MusicXmlSerialize for Direction {
-    fn element_name(&self) -> &'static str {
-        "direction"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref p) = self.placement {
-            attrs.push(("placement", above_below_str(p).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        // Direction types
-        for dt in &self.direction_types {
-            dt.serialize(w)?;
-        }
-
-        // Offset
-        if let Some(ref offset) = self.offset {
-            let mut start = w.start_element("offset");
-            if let Some(ref sound) = offset.sound {
-                start.push_attribute(("sound", yes_no_str(sound)));
-            }
-            w.write_start(start)?;
-            w.write_text(&offset.value.to_string())?;
-            w.write_end("offset")?;
-        }
-
-        // Staff
-        if let Some(staff) = self.staff {
-            w.write_text_element("staff", &staff.to_string())?;
-        }
-
-        // Sound (if present, needs further implementation)
-
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for DirectionType {
-    fn element_name(&self) -> &'static str {
-        "direction-type"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        Vec::new()
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        match &self.content {
-            DirectionTypeContent::Dynamics(dynamics) => {
-                let start = w.start_element("dynamics");
-                w.write_start(start)?;
-                for d in &dynamics.values {
-                    serialize_dynamics_value(w, d)?;
-                }
-                w.write_end("dynamics")?;
-            }
-            DirectionTypeContent::Wedge(wedge) => {
-                wedge.serialize(w)?;
-            }
-            DirectionTypeContent::Metronome(metronome) => {
-                metronome.serialize(w)?;
-            }
-            DirectionTypeContent::Words(words) => {
-                for word in words {
-                    serialize_words(w, word)?;
-                }
-            }
-            _ => {
-                // TODO: implement other direction types (Rehearsal, Segno, Coda, etc.)
-            }
-        }
-        Ok(())
-    }
-}
-
-fn serialize_dynamics_value<W: Write>(
-    w: &mut MusicXmlWriter<W>,
-    value: &DynamicsValue,
-) -> SerializeResult<()> {
-    let name = match value {
-        DynamicsValue::P => "p",
-        DynamicsValue::Pp => "pp",
-        DynamicsValue::Ppp => "ppp",
-        DynamicsValue::Pppp => "pppp",
-        DynamicsValue::Ppppp => "ppppp",
-        DynamicsValue::Pppppp => "pppppp",
-        DynamicsValue::F => "f",
-        DynamicsValue::Ff => "ff",
-        DynamicsValue::Fff => "fff",
-        DynamicsValue::Ffff => "ffff",
-        DynamicsValue::Fffff => "fffff",
-        DynamicsValue::Ffffff => "ffffff",
-        DynamicsValue::Mp => "mp",
-        DynamicsValue::Mf => "mf",
-        DynamicsValue::Sf => "sf",
-        DynamicsValue::Sfp => "sfp",
-        DynamicsValue::Sfpp => "sfpp",
-        DynamicsValue::Fp => "fp",
-        DynamicsValue::Pf => "pf",
-        DynamicsValue::Rf => "rf",
-        DynamicsValue::Rfz => "rfz",
-        DynamicsValue::Sfz => "sfz",
-        DynamicsValue::Sffz => "sffz",
-        DynamicsValue::Fz => "fz",
-        DynamicsValue::N => "n",
-        DynamicsValue::Sfzp => "sfzp",
-        DynamicsValue::OtherDynamics(s) => {
-            let start = w.start_element("other-dynamics");
-            w.write_start(start)?;
-            w.write_text(s)?;
-            w.write_end("other-dynamics")?;
-            return Ok(());
-        }
-    };
-    w.write_empty(w.start_element(name))?;
-    Ok(())
-}
-
-fn serialize_words<W: Write>(w: &mut MusicXmlWriter<W>, words: &Words) -> SerializeResult<()> {
-    let mut start = w.start_element("words");
-    push_opt_str_attr_start(&mut start, "font-family", &words.font_family);
-    if let Some(ref style) = words.font_style {
-        start.push_attribute(("font-style", font_style_str(style)));
-    }
-    if let Some(ref size) = words.font_size {
-        start.push_attribute(("font-size", font_size_str(size).as_str()));
-    }
-    if let Some(ref weight) = words.font_weight {
-        start.push_attribute(("font-weight", font_weight_str(weight)));
-    }
-    push_opt_attr_start(&mut start, "default-x", &words.default_x);
-    push_opt_attr_start(&mut start, "default-y", &words.default_y);
-    if let Some(ref j) = words.justify {
-        start.push_attribute(("justify", left_center_right_str(j)));
-    }
-    if let Some(ref h) = words.halign {
-        start.push_attribute(("halign", left_center_right_str(h)));
-    }
-    if let Some(ref v) = words.valign {
-        start.push_attribute(("valign", valign_str(v)));
-    }
-    w.write_start(start)?;
-    w.write_text(&words.value)?;
-    w.write_end("words")?;
-    Ok(())
-}
-
-impl MusicXmlSerialize for Wedge {
-    fn element_name(&self) -> &'static str {
-        "wedge"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = vec![("type", wedge_type_str(&self.wedge_type).to_string())];
-        push_opt_attr!(attrs, "number", self.number);
-        push_opt_attr!(attrs, "spread", self.spread);
-        if let Some(ref niente) = self.niente {
-            attrs.push(("niente", yes_no_str(niente).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn serialize_children<W: Write>(&self, _w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        Ok(())
-    }
-}
-
-impl MusicXmlSerialize for Metronome {
-    fn element_name(&self) -> &'static str {
-        "metronome"
-    }
-
-    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
-        let mut attrs = Vec::new();
-        if let Some(ref p) = self.parentheses {
-            attrs.push(("parentheses", yes_no_str(p).to_string()));
-        }
-        push_opt_str_attr!(attrs, "id", self.id);
-        attrs
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        match &self.content {
-            MetronomeContent::BeatUnit {
-                beat_unit,
-                beat_unit_dots,
-                per_minute,
-            } => {
-                w.write_text_element("beat-unit", beat_unit)?;
-                for _ in beat_unit_dots {
-                    w.write_empty(w.start_element("beat-unit-dot"))?;
-                }
-                w.write_text_element("per-minute", per_minute)?;
-            }
-            MetronomeContent::BeatUnitEquivalent(modulation) => {
-                w.write_text_element("beat-unit", &modulation.beat_unit_1)?;
-                for _ in &modulation.beat_unit_dots_1 {
-                    w.write_empty(w.start_element("beat-unit-dot"))?;
-                }
-                w.write_text_element("beat-unit", &modulation.beat_unit_2)?;
-                for _ in &modulation.beat_unit_dots_2 {
-                    w.write_empty(w.start_element("beat-unit-dot"))?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-// ============================================================================
 // Helper functions for enum to string conversion
 // ============================================================================
 
-fn yes_no_str(yn: &YesNo) -> &'static str {
+pub(crate) fn yes_no_str(yn: &YesNo) -> &'static str {
     match yn {
         YesNo::Yes => "yes",
         YesNo::No => "no",
     }
 }
 
-fn start_stop_str(ss: &StartStop) -> &'static str {
+pub(crate) fn start_stop_str(ss: &StartStop) -> &'static str {
     match ss {
         StartStop::Start => "start",
         StartStop::Stop => "stop",
     }
 }
 
-fn show_tuplet_str(st: &notations::ShowTuplet) -> &'static str {
+pub(crate) fn show_tuplet_str(st: &notations::ShowTuplet) -> &'static str {
     match st {
         notations::ShowTuplet::Actual => "actual",
         notations::ShowTuplet::Both => "both",
@@ -2074,14 +908,14 @@ fn show_tuplet_str(st: &notations::ShowTuplet) -> &'static str {
     }
 }
 
-fn line_shape_str(ls: &LineShape) -> &'static str {
+pub(crate) fn line_shape_str(ls: &LineShape) -> &'static str {
     match ls {
         LineShape::Straight => "straight",
         LineShape::Curved => "curved",
     }
 }
 
-fn start_stop_continue_str(ssc: &StartStopContinue) -> &'static str {
+pub(crate) fn start_stop_continue_str(ssc: &StartStopContinue) -> &'static str {
     match ssc {
         StartStopContinue::Start => "start",
         StartStopContinue::Stop => "stop",
@@ -2089,7 +923,7 @@ fn start_stop_continue_str(ssc: &StartStopContinue) -> &'static str {
     }
 }
 
-fn tied_type_str(tt: &notations::TiedType) -> &'static str {
+pub(crate) fn tied_type_str(tt: &notations::TiedType) -> &'static str {
     match tt {
         notations::TiedType::Start => "start",
         notations::TiedType::Stop => "stop",
@@ -2098,14 +932,14 @@ fn tied_type_str(tt: &notations::TiedType) -> &'static str {
     }
 }
 
-fn over_under_str(ou: &OverUnder) -> &'static str {
+pub(crate) fn over_under_str(ou: &OverUnder) -> &'static str {
     match ou {
         OverUnder::Over => "over",
         OverUnder::Under => "under",
     }
 }
 
-fn up_down_str(ud: &UpDown) -> &'static str {
+pub(crate) fn up_down_str(ud: &UpDown) -> &'static str {
     match ud {
         UpDown::Up => "up",
         UpDown::Down => "down",
@@ -2138,7 +972,7 @@ fn group_barline_str(gb: &GroupBarline) -> &'static str {
     }
 }
 
-fn step_str(s: &Step) -> &'static str {
+pub(crate) fn step_str(s: &Step) -> &'static str {
     match s {
         Step::A => "A",
         Step::B => "B",
@@ -2150,28 +984,28 @@ fn step_str(s: &Step) -> &'static str {
     }
 }
 
-fn font_style_str(fs: &FontStyle) -> &'static str {
+pub(crate) fn font_style_str(fs: &FontStyle) -> &'static str {
     match fs {
         FontStyle::Normal => "normal",
         FontStyle::Italic => "italic",
     }
 }
 
-fn font_weight_str(fw: &FontWeight) -> &'static str {
+pub(crate) fn font_weight_str(fw: &FontWeight) -> &'static str {
     match fw {
         FontWeight::Normal => "normal",
         FontWeight::Bold => "bold",
     }
 }
 
-fn font_size_str(fs: &FontSize) -> String {
+pub(crate) fn font_size_str(fs: &FontSize) -> String {
     match fs {
         FontSize::Points(p) => p.to_string(),
         FontSize::Css(s) => s.to_string(),
     }
 }
 
-fn left_center_right_str(lcr: &LeftCenterRight) -> &'static str {
+pub(crate) fn left_center_right_str(lcr: &LeftCenterRight) -> &'static str {
     match lcr {
         LeftCenterRight::Left => "left",
         LeftCenterRight::Center => "center",
@@ -2179,7 +1013,7 @@ fn left_center_right_str(lcr: &LeftCenterRight) -> &'static str {
     }
 }
 
-fn valign_str(v: &Valign) -> &'static str {
+pub(crate) fn valign_str(v: &Valign) -> &'static str {
     match v {
         Valign::Top => "top",
         Valign::Middle => "middle",
@@ -2188,14 +1022,14 @@ fn valign_str(v: &Valign) -> &'static str {
     }
 }
 
-fn above_below_str(ab: &AboveBelow) -> &'static str {
+pub(crate) fn above_below_str(ab: &AboveBelow) -> &'static str {
     match ab {
         AboveBelow::Above => "above",
         AboveBelow::Below => "below",
     }
 }
 
-fn symbol_size_str(ss: &SymbolSize) -> &'static str {
+pub(crate) fn symbol_size_str(ss: &SymbolSize) -> &'static str {
     match ss {
         SymbolSize::Full => "full",
         SymbolSize::Cue => "cue",
@@ -2204,7 +1038,7 @@ fn symbol_size_str(ss: &SymbolSize) -> &'static str {
     }
 }
 
-fn stem_value_str(sv: &StemValue) -> &'static str {
+pub(crate) fn stem_value_str(sv: &StemValue) -> &'static str {
     match sv {
         StemValue::Down => "down",
         StemValue::Up => "up",
@@ -2213,7 +1047,7 @@ fn stem_value_str(sv: &StemValue) -> &'static str {
     }
 }
 
-fn beam_value_str(bv: &BeamValue) -> &'static str {
+pub(crate) fn beam_value_str(bv: &BeamValue) -> &'static str {
     match bv {
         BeamValue::Begin => "begin",
         BeamValue::Continue => "continue",
@@ -2223,7 +1057,7 @@ fn beam_value_str(bv: &BeamValue) -> &'static str {
     }
 }
 
-fn fan_str(f: &Fan) -> &'static str {
+pub(crate) fn fan_str(f: &Fan) -> &'static str {
     match f {
         Fan::Accel => "accel",
         Fan::Rit => "rit",
@@ -2231,7 +1065,7 @@ fn fan_str(f: &Fan) -> &'static str {
     }
 }
 
-fn notehead_value_str(nv: &NoteheadValue) -> &'static str {
+pub(crate) fn notehead_value_str(nv: &NoteheadValue) -> &'static str {
     match nv {
         NoteheadValue::Slash => "slash",
         NoteheadValue::Triangle => "triangle",
@@ -2264,7 +1098,7 @@ fn notehead_value_str(nv: &NoteheadValue) -> &'static str {
     }
 }
 
-fn accidental_value_str(av: &AccidentalValue) -> &'static str {
+pub(crate) fn accidental_value_str(av: &AccidentalValue) -> &'static str {
     match av {
         AccidentalValue::Sharp => "sharp",
         AccidentalValue::Natural => "natural",
@@ -2282,7 +1116,7 @@ fn accidental_value_str(av: &AccidentalValue) -> &'static str {
     }
 }
 
-fn clef_sign_str(cs: &ClefSign) -> &'static str {
+pub(crate) fn clef_sign_str(cs: &ClefSign) -> &'static str {
     match cs {
         ClefSign::G => "G",
         ClefSign::F => "F",
@@ -2294,7 +1128,7 @@ fn clef_sign_str(cs: &ClefSign) -> &'static str {
     }
 }
 
-fn time_symbol_str(ts: &TimeSymbol) -> &'static str {
+pub(crate) fn time_symbol_str(ts: &TimeSymbol) -> &'static str {
     match ts {
         TimeSymbol::Common => "common",
         TimeSymbol::Cut => "cut",
@@ -2305,7 +1139,7 @@ fn time_symbol_str(ts: &TimeSymbol) -> &'static str {
     }
 }
 
-fn wedge_type_str(wt: &WedgeType) -> &'static str {
+pub(crate) fn wedge_type_str(wt: &WedgeType) -> &'static str {
     match wt {
         WedgeType::Crescendo => "crescendo",
         WedgeType::Diminuendo => "diminuendo",
@@ -2314,7 +1148,7 @@ fn wedge_type_str(wt: &WedgeType) -> &'static str {
     }
 }
 
-fn mode_str(m: &Mode) -> &'static str {
+pub(crate) fn mode_str(m: &Mode) -> &'static str {
     match m {
         Mode::Major => "major",
         Mode::Minor => "minor",
@@ -2331,7 +1165,7 @@ fn mode_str(m: &Mode) -> &'static str {
 }
 
 // Helper to push optional attribute to BytesStart
-fn push_opt_attr_start<T: std::fmt::Display>(
+pub(crate) fn push_opt_attr_start<T: std::fmt::Display>(
     start: &mut quick_xml::events::BytesStart<'_>,
     name: &'static str,
     opt: &Option<T>,
@@ -2341,7 +1175,7 @@ fn push_opt_attr_start<T: std::fmt::Display>(
     }
 }
 
-fn push_opt_str_attr_start(
+pub(crate) fn push_opt_str_attr_start(
     start: &mut quick_xml::events::BytesStart<'_>,
     name: &'static str,
     opt: &Option<String>,

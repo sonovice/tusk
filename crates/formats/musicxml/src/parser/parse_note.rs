@@ -593,6 +593,9 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                 b"articulations" => {
                     notations.articulations = Some(parse_articulations(reader)?);
                 }
+                b"ornaments" => {
+                    notations.ornaments = Some(parse_ornaments(reader)?);
+                }
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -933,5 +936,376 @@ fn parse_articulation_element(e: &BytesStart, artics: &mut Articulations) {
             });
         }
         _ => {}
+    }
+}
+
+// ============================================================================
+// Ornaments Parsing
+// ============================================================================
+
+fn parse_ornaments<R: BufRead>(reader: &mut Reader<R>) -> Result<Ornaments> {
+    let mut buf = Vec::new();
+    let mut ornaments = Ornaments::default();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"trill-mark" => {
+                    ornaments.trill_mark = Some(parse_empty_trill_sound(&e));
+                    skip_to_end(reader, b"trill-mark")?;
+                }
+                b"turn" => {
+                    ornaments.turn = Some(parse_horizontal_turn(&e));
+                    skip_to_end(reader, b"turn")?;
+                }
+                b"delayed-turn" => {
+                    ornaments.delayed_turn = Some(parse_horizontal_turn(&e));
+                    skip_to_end(reader, b"delayed-turn")?;
+                }
+                b"inverted-turn" => {
+                    ornaments.inverted_turn = Some(parse_horizontal_turn(&e));
+                    skip_to_end(reader, b"inverted-turn")?;
+                }
+                b"delayed-inverted-turn" => {
+                    ornaments.delayed_inverted_turn = Some(parse_horizontal_turn(&e));
+                    skip_to_end(reader, b"delayed-inverted-turn")?;
+                }
+                b"vertical-turn" => {
+                    ornaments.vertical_turn = Some(parse_empty_trill_sound(&e));
+                    skip_to_end(reader, b"vertical-turn")?;
+                }
+                b"inverted-vertical-turn" => {
+                    ornaments.inverted_vertical_turn = Some(parse_empty_trill_sound(&e));
+                    skip_to_end(reader, b"inverted-vertical-turn")?;
+                }
+                b"shake" => {
+                    ornaments.shake = Some(parse_empty_trill_sound(&e));
+                    skip_to_end(reader, b"shake")?;
+                }
+                b"wavy-line" => {
+                    ornaments.wavy_line = Some(parse_wavy_line(&e)?);
+                    skip_to_end(reader, b"wavy-line")?;
+                }
+                b"mordent" => {
+                    ornaments.mordent = Some(parse_mordent(&e));
+                    skip_to_end(reader, b"mordent")?;
+                }
+                b"inverted-mordent" => {
+                    ornaments.inverted_mordent = Some(parse_mordent(&e));
+                    skip_to_end(reader, b"inverted-mordent")?;
+                }
+                b"schleifer" => {
+                    ornaments.schleifer = Some(parse_empty_placement_from(&e));
+                    skip_to_end(reader, b"schleifer")?;
+                }
+                b"tremolo" => {
+                    ornaments.tremolo = Some(parse_tremolo(reader, &e)?);
+                }
+                b"haydn" => {
+                    ornaments.haydn = Some(parse_empty_trill_sound(&e));
+                    skip_to_end(reader, b"haydn")?;
+                }
+                b"other-ornament" => {
+                    ornaments.other_ornament = Some(parse_other_ornament(reader, &e)?);
+                }
+                b"accidental-mark" => {
+                    ornaments
+                        .accidental_marks
+                        .push(parse_accidental_mark(reader, &e)?);
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) => match e.name().as_ref() {
+                b"trill-mark" => ornaments.trill_mark = Some(parse_empty_trill_sound(&e)),
+                b"turn" => ornaments.turn = Some(parse_horizontal_turn(&e)),
+                b"delayed-turn" => ornaments.delayed_turn = Some(parse_horizontal_turn(&e)),
+                b"inverted-turn" => ornaments.inverted_turn = Some(parse_horizontal_turn(&e)),
+                b"delayed-inverted-turn" => {
+                    ornaments.delayed_inverted_turn = Some(parse_horizontal_turn(&e));
+                }
+                b"vertical-turn" => {
+                    ornaments.vertical_turn = Some(parse_empty_trill_sound(&e));
+                }
+                b"inverted-vertical-turn" => {
+                    ornaments.inverted_vertical_turn = Some(parse_empty_trill_sound(&e));
+                }
+                b"shake" => ornaments.shake = Some(parse_empty_trill_sound(&e)),
+                b"wavy-line" => ornaments.wavy_line = Some(parse_wavy_line(&e)?),
+                b"mordent" => ornaments.mordent = Some(parse_mordent(&e)),
+                b"inverted-mordent" => ornaments.inverted_mordent = Some(parse_mordent(&e)),
+                b"schleifer" => ornaments.schleifer = Some(parse_empty_placement_from(&e)),
+                b"tremolo" => {
+                    ornaments.tremolo = Some(parse_tremolo_empty(&e)?);
+                }
+                b"haydn" => ornaments.haydn = Some(parse_empty_trill_sound(&e)),
+                _ => {}
+            },
+            Event::End(e) if e.name().as_ref() == b"ornaments" => break,
+            Event::Eof => return Err(ParseError::MissingElement("ornaments end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(ornaments)
+}
+
+/// Parse trill-sound attribute group from an element.
+fn parse_trill_sound(e: &BytesStart) -> TrillSound {
+    TrillSound {
+        start_note: get_attr(e, "start-note")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        trill_step: get_attr(e, "trill-step")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        two_note_turn: get_attr(e, "two-note-turn")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        accelerate: get_attr(e, "accelerate")
+            .ok()
+            .flatten()
+            .and_then(|s| parse_yes_no_opt(&s)),
+        beats: get_attr(e, "beats")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        second_beat: get_attr(e, "second-beat")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        last_beat: get_attr(e, "last-beat")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+    }
+}
+
+/// Parse placement + print-style + trill-sound from an element.
+fn parse_empty_trill_sound(e: &BytesStart) -> EmptyTrillSound {
+    EmptyTrillSound {
+        placement: get_attr(e, "placement")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        default_x: get_attr(e, "default-x")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color").ok().flatten(),
+        trill_sound: parse_trill_sound(e),
+    }
+}
+
+/// Parse horizontal-turn type (extends empty-trill-sound with slash).
+fn parse_horizontal_turn(e: &BytesStart) -> HorizontalTurn {
+    HorizontalTurn {
+        placement: get_attr(e, "placement")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        default_x: get_attr(e, "default-x")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color").ok().flatten(),
+        slash: get_attr(e, "slash")
+            .ok()
+            .flatten()
+            .and_then(|s| parse_yes_no_opt(&s)),
+        trill_sound: parse_trill_sound(e),
+    }
+}
+
+/// Parse mordent type (extends empty-trill-sound with long, approach, departure).
+fn parse_mordent(e: &BytesStart) -> Mordent {
+    Mordent {
+        placement: get_attr(e, "placement")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        default_x: get_attr(e, "default-x")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color").ok().flatten(),
+        long: get_attr(e, "long")
+            .ok()
+            .flatten()
+            .and_then(|s| parse_yes_no_opt(&s)),
+        approach: get_attr(e, "approach")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        departure: get_attr(e, "departure")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        trill_sound: parse_trill_sound(e),
+    }
+}
+
+/// Parse wavy-line element attributes.
+fn parse_wavy_line(e: &BytesStart) -> Result<WavyLine> {
+    let wavy_line_type = match get_attr_required(e, "type")?.as_str() {
+        "start" => StartStopContinue::Start,
+        "stop" => StartStopContinue::Stop,
+        "continue" => StartStopContinue::Continue,
+        s => {
+            return Err(ParseError::InvalidAttribute(
+                "type".to_string(),
+                s.to_string(),
+            ));
+        }
+    };
+
+    Ok(WavyLine {
+        wavy_line_type,
+        number: get_attr(e, "number")?.and_then(|s| s.parse().ok()),
+        placement: get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        }),
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+        smufl: get_attr(e, "smufl")?,
+        trill_sound: parse_trill_sound(e),
+    })
+}
+
+/// Parse tremolo element (has text content = marks count, type attribute).
+fn parse_tremolo<R: BufRead>(reader: &mut Reader<R>, e: &BytesStart) -> Result<Tremolo> {
+    let tremolo_type = get_attr(e, "type")?
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(TremoloType::Single);
+
+    let text = read_text(reader, b"tremolo")?;
+    let value = if text.is_empty() {
+        None
+    } else {
+        text.parse().ok()
+    };
+
+    Ok(Tremolo {
+        tremolo_type,
+        value,
+        placement: get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        }),
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+        smufl: get_attr(e, "smufl")?,
+    })
+}
+
+/// Parse a self-closing tremolo element (empty, no text content).
+fn parse_tremolo_empty(e: &BytesStart) -> Result<Tremolo> {
+    let tremolo_type = get_attr(e, "type")?
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(TremoloType::Single);
+
+    Ok(Tremolo {
+        tremolo_type,
+        value: None,
+        placement: get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        }),
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+        smufl: get_attr(e, "smufl")?,
+    })
+}
+
+/// Parse other-ornament element (has text content, placement attribute).
+fn parse_other_ornament<R: BufRead>(
+    reader: &mut Reader<R>,
+    e: &BytesStart,
+) -> Result<OtherOrnament> {
+    let placement = get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+        "above" => Some(AboveBelow::Above),
+        "below" => Some(AboveBelow::Below),
+        _ => None,
+    });
+    let value = read_text(reader, b"other-ornament")?;
+    Ok(OtherOrnament { value, placement })
+}
+
+/// Parse accidental-mark element within ornaments.
+fn parse_accidental_mark<R: BufRead>(
+    reader: &mut Reader<R>,
+    e: &BytesStart,
+) -> Result<AccidentalMark> {
+    let placement = get_attr(e, "placement")?.and_then(|s| match s.as_str() {
+        "above" => Some(AboveBelow::Above),
+        "below" => Some(AboveBelow::Below),
+        _ => None,
+    });
+    let value = read_text(reader, b"accidental-mark")?;
+    Ok(AccidentalMark { value, placement })
+}
+
+/// Parse an empty-placement from element attributes.
+fn parse_empty_placement_from(e: &BytesStart) -> EmptyPlacement {
+    EmptyPlacement {
+        placement: get_attr(e, "placement")
+            .ok()
+            .flatten()
+            .and_then(|s| match s.as_str() {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            }),
+        default_x: get_attr(e, "default-x")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color").ok().flatten(),
     }
 }

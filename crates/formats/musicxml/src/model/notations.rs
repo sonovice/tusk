@@ -1,11 +1,14 @@
 //! MusicXML 4.0 notations element types.
 //!
-//! Contains slurs, tied elements, articulations, tuplets, and other notation
-//! markings that appear within a note's <notations> element.
+//! Contains slurs, tied elements, articulations, tuplets, ornaments, and other
+//! notation markings that appear within a note's <notations> element.
 
 use serde::{Deserialize, Serialize};
 
-use super::data::{AboveBelow, LineShape, OverUnder, StartStop, StartStopContinue, UpDown};
+use super::data::{
+    AboveBelow, LineShape, OverUnder, StartNote, StartStop, StartStopContinue, TremoloType,
+    TrillStep, TwoNoteTurn, UpDown,
+};
 use super::note::NoteTypeValue;
 
 /// Container for notation elements on a note.
@@ -26,6 +29,10 @@ pub struct Notations {
     /// Articulation markings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub articulations: Option<Articulations>,
+
+    /// Ornament markings (trills, mordents, turns, tremolos, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ornaments: Option<Ornaments>,
 }
 
 // ============================================================================
@@ -468,6 +475,307 @@ pub struct Articulations {
     /// Soft accent.
     #[serde(rename = "soft-accent", skip_serializing_if = "Option::is_none")]
     pub soft_accent: Option<EmptyPlacement>,
+}
+
+// ============================================================================
+// Ornament Types
+// ============================================================================
+
+/// Trill-sound attribute group — shared by trill-mark, turns, mordent, shake, haydn.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct TrillSound {
+    /// Starting note (upper, main, below).
+    #[serde(rename = "@start-note", skip_serializing_if = "Option::is_none")]
+    pub start_note: Option<StartNote>,
+
+    /// Trill step (whole, half, unison).
+    #[serde(rename = "@trill-step", skip_serializing_if = "Option::is_none")]
+    pub trill_step: Option<TrillStep>,
+
+    /// Two-note turn (whole, half, none).
+    #[serde(rename = "@two-note-turn", skip_serializing_if = "Option::is_none")]
+    pub two_note_turn: Option<TwoNoteTurn>,
+
+    /// Whether the trill accelerates.
+    #[serde(rename = "@accelerate", skip_serializing_if = "Option::is_none")]
+    pub accelerate: Option<YesNo>,
+
+    /// Number of beats (minimum 2).
+    #[serde(rename = "@beats", skip_serializing_if = "Option::is_none")]
+    pub beats: Option<f64>,
+
+    /// Percentage of the way through the trill where the second beat falls.
+    #[serde(rename = "@second-beat", skip_serializing_if = "Option::is_none")]
+    pub second_beat: Option<f64>,
+
+    /// Percentage of the way through the trill where the last beat falls.
+    #[serde(rename = "@last-beat", skip_serializing_if = "Option::is_none")]
+    pub last_beat: Option<f64>,
+}
+
+/// Empty trill-sound type (used by trill-mark, vertical-turn, inverted-vertical-turn,
+/// shake, haydn).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct EmptyTrillSound {
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Trill-sound attributes.
+    #[serde(flatten)]
+    pub trill_sound: TrillSound,
+}
+
+/// Horizontal turn type (used by turn, delayed-turn, inverted-turn,
+/// delayed-inverted-turn). Extends empty-trill-sound with a slash attribute.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct HorizontalTurn {
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Whether to show a slash through the turn.
+    #[serde(rename = "@slash", skip_serializing_if = "Option::is_none")]
+    pub slash: Option<YesNo>,
+
+    /// Trill-sound attributes.
+    #[serde(flatten)]
+    pub trill_sound: TrillSound,
+}
+
+/// Mordent type. Extends empty-trill-sound with long, approach, departure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Mordent {
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// Long mordent (shows more than one wave).
+    #[serde(rename = "@long", skip_serializing_if = "Option::is_none")]
+    pub long: Option<YesNo>,
+
+    /// Approach direction (above/below).
+    #[serde(rename = "@approach", skip_serializing_if = "Option::is_none")]
+    pub approach: Option<AboveBelow>,
+
+    /// Departure direction (above/below).
+    #[serde(rename = "@departure", skip_serializing_if = "Option::is_none")]
+    pub departure: Option<AboveBelow>,
+
+    /// Trill-sound attributes.
+    #[serde(flatten)]
+    pub trill_sound: TrillSound,
+}
+
+/// Tremolo ornament element (single/start/stop/unmeasured, value 0-8 for measured).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tremolo {
+    /// Tremolo type (single, start, stop, unmeasured).
+    #[serde(rename = "@type")]
+    pub tremolo_type: TremoloType,
+
+    /// Number of tremolo marks (0-8). For measured tremolos.
+    #[serde(rename = "$value", skip_serializing_if = "Option::is_none")]
+    pub value: Option<u8>,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// SMuFL glyph name.
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
+    pub smufl: Option<String>,
+}
+
+/// Wavy-line element for trill/vibrato lines.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WavyLine {
+    /// Start, stop, or continue.
+    #[serde(rename = "@type")]
+    pub wavy_line_type: StartStopContinue,
+
+    /// Number (1-6) for distinguishing concurrent wavy lines.
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
+    pub number: Option<u8>,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+
+    /// SMuFL glyph name.
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
+    pub smufl: Option<String>,
+
+    /// Trill-sound attributes.
+    #[serde(flatten)]
+    pub trill_sound: TrillSound,
+}
+
+/// Accidental mark within ornaments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AccidentalMark {
+    /// The accidental value.
+    #[serde(rename = "$value")]
+    pub value: String,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+}
+
+/// Other ornament with text content.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OtherOrnament {
+    /// Text content.
+    #[serde(rename = "$value", default)]
+    pub value: String,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+}
+
+/// Container for all ornament types within <ornaments>.
+///
+/// Per the MusicXML schema, <ornaments> contains a sequence of ornament choices,
+/// each optionally followed by accidental-marks. We store each ornament type
+/// as an Option since at most one of each type typically appears, except
+/// accidental-marks which can appear multiple times.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Ornaments {
+    /// Trill mark.
+    #[serde(rename = "trill-mark", skip_serializing_if = "Option::is_none")]
+    pub trill_mark: Option<EmptyTrillSound>,
+
+    /// Turn.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub turn: Option<HorizontalTurn>,
+
+    /// Delayed turn.
+    #[serde(rename = "delayed-turn", skip_serializing_if = "Option::is_none")]
+    pub delayed_turn: Option<HorizontalTurn>,
+
+    /// Inverted turn.
+    #[serde(rename = "inverted-turn", skip_serializing_if = "Option::is_none")]
+    pub inverted_turn: Option<HorizontalTurn>,
+
+    /// Delayed inverted turn.
+    #[serde(
+        rename = "delayed-inverted-turn",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub delayed_inverted_turn: Option<HorizontalTurn>,
+
+    /// Vertical turn.
+    #[serde(rename = "vertical-turn", skip_serializing_if = "Option::is_none")]
+    pub vertical_turn: Option<EmptyTrillSound>,
+
+    /// Inverted vertical turn.
+    #[serde(
+        rename = "inverted-vertical-turn",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub inverted_vertical_turn: Option<EmptyTrillSound>,
+
+    /// Shake.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shake: Option<EmptyTrillSound>,
+
+    /// Wavy line (trill extension or vibrato).
+    #[serde(rename = "wavy-line", skip_serializing_if = "Option::is_none")]
+    pub wavy_line: Option<WavyLine>,
+
+    /// Mordent (with vertical line).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mordent: Option<Mordent>,
+
+    /// Inverted mordent (without vertical line).
+    #[serde(rename = "inverted-mordent", skip_serializing_if = "Option::is_none")]
+    pub inverted_mordent: Option<Mordent>,
+
+    /// Schleifer (German ornament).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schleifer: Option<EmptyPlacement>,
+
+    /// Tremolo (single, double, or unmeasured).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tremolo: Option<Tremolo>,
+
+    /// Haydn ornament.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub haydn: Option<EmptyTrillSound>,
+
+    /// Other ornament.
+    #[serde(rename = "other-ornament", skip_serializing_if = "Option::is_none")]
+    pub other_ornament: Option<OtherOrnament>,
+
+    /// Accidental marks within ornaments.
+    #[serde(
+        rename = "accidental-mark",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub accidental_marks: Vec<AccidentalMark>,
 }
 
 #[cfg(test)]
