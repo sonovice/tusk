@@ -26,7 +26,7 @@ mod direction;
 pub(crate) mod figured_bass;
 pub(crate) mod harmony;
 mod note;
-mod parts;
+pub(crate) mod parts;
 pub(crate) mod print;
 pub(crate) mod sound;
 mod structure;

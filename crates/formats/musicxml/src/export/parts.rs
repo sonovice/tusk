@@ -183,13 +183,14 @@ pub fn convert_mei_staff_grp_barline(
 /// Detect whether a nested staffGrp represents a multi-staff part (e.g., piano).
 ///
 /// A staffGrp is considered a multi-staff part if:
-/// 1. It has `@symbol="brace"` (keyboard/harp grouping)
+/// 1. It has `@bar.thru="true"` (staves share barlines — set during import for multi-staff parts)
 /// 2. All non-label children are StaffDef elements (no nested StaffGrp)
 /// 3. It has at least 2 StaffDef children
 /// 4. Individual staffDefs do NOT have their own labels (labels are on the staffGrp)
 ///    — this distinguishes from grouped separate instruments like "Trombones 1&2"
 fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
-    let has_brace = staff_grp.staff_grp_vis.symbol.as_deref() == Some("brace");
+    let has_bar_thru =
+        staff_grp.staff_grp_vis.bar_thru == Some(tusk_model::data::DataBoolean::True);
 
     let staff_defs: Vec<&StaffDef> = staff_grp
         .children
@@ -214,7 +215,7 @@ fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
         .iter()
         .any(|sd| extract_staff_def_label(sd).is_some());
 
-    has_brace && staff_defs.len() >= 2 && !has_nested_grp && !staff_defs_have_labels
+    has_bar_thru && staff_defs.len() >= 2 && !has_nested_grp && !staff_defs_have_labels
 }
 
 /// Convert a multi-staff MEI staffGrp (e.g., piano with brace) to a single MusicXML ScorePart.
@@ -266,6 +267,9 @@ fn convert_multi_staff_grp_to_score_part(
             ..Default::default()
         });
     }
+
+    // Extract part-symbol for multi-staff part and store in context
+    extract_part_symbol_from_staff_grp(staff_grp, &part_id, ctx);
 
     // Register all staffDefs in the context for staff number mapping
     for (idx, staff_def) in staff_defs.iter().enumerate() {
@@ -329,6 +333,54 @@ pub fn convert_mei_staff_def_to_score_part(
     ctx.register_part_staff(&part_id, 1, global_staff);
 
     Ok(score_part)
+}
+
+/// Extract MusicXML PartSymbol from a multi-staff MEI staffGrp and store in context.
+///
+/// Primary: recover full PartSymbol from JSON in @label (`musicxml:part-symbol,{json}`).
+/// Fallback: build PartSymbol from @symbol attribute only.
+fn extract_part_symbol_from_staff_grp(
+    staff_grp: &StaffGrp,
+    part_id: &str,
+    ctx: &mut ConversionContext,
+) {
+    use crate::import::parts::PART_SYMBOL_LABEL_PREFIX;
+    use crate::model::attributes::{PartSymbol, PartSymbolValue};
+
+    // Try JSON label first (lossless roundtrip)
+    if let Some(ref label) = staff_grp.common.label {
+        if let Some(json) = label.strip_prefix(PART_SYMBOL_LABEL_PREFIX) {
+            if let Ok(ps) = serde_json::from_str::<PartSymbol>(json) {
+                ctx.set_part_symbol(part_id, ps);
+                return;
+            }
+        }
+    }
+
+    // Fallback: build from @symbol attribute
+    if let Some(ref sym) = staff_grp.staff_grp_vis.symbol {
+        let value = match sym.as_str() {
+            "brace" => PartSymbolValue::Brace,
+            "bracket" => PartSymbolValue::Bracket,
+            "bracketsq" => PartSymbolValue::Square,
+            "line" => PartSymbolValue::Line,
+            "none" => PartSymbolValue::None,
+            _ => return, // Unknown symbol, don't set
+        };
+        // Only store non-default (brace is the default for multi-staff parts)
+        if value != PartSymbolValue::Brace {
+            ctx.set_part_symbol(
+                part_id,
+                PartSymbol {
+                    value,
+                    top_staff: None,
+                    bottom_staff: None,
+                    default_x: None,
+                    color: None,
+                },
+            );
+        }
+    }
 }
 
 #[cfg(test)]

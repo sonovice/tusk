@@ -135,6 +135,10 @@ pub struct ConversionContext {
     /// For single-staff parts, (part_id, 1) → global_n.
     /// For multi-staff parts (piano), (part_id, 1) → n, (part_id, 2) → n+1.
     part_staff_map: HashMap<(String, u32), u32>,
+
+    /// MusicXML part-symbol for multi-staff parts, keyed by part_id.
+    /// Set during export (MEI→MusicXML) when reading staffGrp labels.
+    part_symbols: HashMap<String, crate::model::attributes::PartSymbol>,
 }
 
 impl Default for ConversionContext {
@@ -171,6 +175,7 @@ impl ConversionContext {
             slur_number_map: HashMap::new(),
             part_divisions: HashMap::new(),
             part_staff_map: HashMap::new(),
+            part_symbols: HashMap::new(),
         }
     }
 
@@ -256,6 +261,16 @@ impl ConversionContext {
         self.part_staff_map
             .get(&(part_id.to_string(), local_staff))
             .copied()
+    }
+
+    /// Store a MusicXML part-symbol for a multi-staff part.
+    pub fn set_part_symbol(&mut self, part_id: &str, ps: crate::model::attributes::PartSymbol) {
+        self.part_symbols.insert(part_id.to_string(), ps);
+    }
+
+    /// Retrieve the MusicXML part-symbol for a multi-staff part.
+    pub fn part_symbol(&self, part_id: &str) -> Option<&crate::model::attributes::PartSymbol> {
+        self.part_symbols.get(part_id)
     }
 
     /// Return the number of staves registered for a given part.

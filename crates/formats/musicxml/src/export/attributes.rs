@@ -601,6 +601,9 @@ pub fn build_first_measure_attributes_multi(
     // Staves count
     attrs.staves = Some(num_staves);
 
+    // Part symbol for multi-staff parts (from context, set during part-list export)
+    attrs.part_symbol = ctx.part_symbol(part_id).cloned();
+
     // Key signature from scoreDef, fallback to first staffDef
     let keysig = score_def
         .and_then(|sd| sd.score_def_log.keysig.as_ref())

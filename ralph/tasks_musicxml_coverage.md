@@ -678,8 +678,13 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 15.2 Part Symbol
 
-- [ ] `part-symbol` → MEI `<staffGrp>` `@symbol`; export reverse
-- [ ] Verify fragment example: `part_symbol_element`
+- [x] `part-symbol` → MEI `<staffGrp>` `@symbol`; export reverse
+  - Parser: added `parse_part_symbol()` in `parser/parse_attributes.rs` (was falling through to skip_element)
+  - Import: already mapped `PartSymbolValue` → MEI `@symbol`; added JSON-in-label roundtrip for extra attrs (top-staff, bottom-staff, default-x, color) via `musicxml:part-symbol,` prefix on staffGrp `@label`
+  - Export: `extract_part_symbol_from_staff_grp()` in `export/parts.rs` recovers full PartSymbol from JSON label or builds from `@symbol`; stored in context via `set_part_symbol()`; emitted in `build_first_measure_attributes_multi()`
+  - Fixed `is_multi_staff_part()` to use `@bar.thru="true"` instead of `@symbol="brace"` — now detects multi-staff parts regardless of symbol value (bracket, line, square, none)
+- [x] Verify fragment example: `part_symbol_element`
+  - Passes all 4 roundtrip levels; 320/320 roundtrip tests pass, 494 unit tests, 31 integration tests
 
 ### 15.3 Measure Style
 

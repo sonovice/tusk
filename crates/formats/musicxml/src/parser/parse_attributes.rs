@@ -39,6 +39,7 @@ pub fn parse_attributes<R: BufRead>(reader: &mut Reader<R>) -> Result<Attributes
                     )
                 }
                 b"clef" => attrs.clefs.push(parse_clef(reader, &e)?),
+                b"part-symbol" => attrs.part_symbol = Some(parse_part_symbol(reader, &e)?),
                 b"staff-details" => attrs.staff_details.push(parse_staff_details(reader, &e)?),
                 b"transpose" => attrs.transposes.push(parse_transpose(reader, &e)?),
                 _ => skip_element(reader, &e)?,
@@ -452,6 +453,31 @@ fn parse_staff_tuning<R: BufRead>(
         tuning_step,
         tuning_alter,
         tuning_octave,
+    })
+}
+
+fn parse_part_symbol<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<PartSymbol> {
+    let top_staff = get_attr(start, "top-staff")?.and_then(|s| s.parse().ok());
+    let bottom_staff = get_attr(start, "bottom-staff")?.and_then(|s| s.parse().ok());
+    let default_x = get_attr(start, "default-x")?.and_then(|s| s.parse().ok());
+    let color = get_attr(start, "color")?;
+
+    let text = read_text(reader, b"part-symbol")?;
+    let value = match text.as_str() {
+        "none" => PartSymbolValue::None,
+        "brace" => PartSymbolValue::Brace,
+        "line" => PartSymbolValue::Line,
+        "bracket" => PartSymbolValue::Bracket,
+        "square" => PartSymbolValue::Square,
+        _ => PartSymbolValue::Brace, // default per spec
+    };
+
+    Ok(PartSymbol {
+        value,
+        top_staff,
+        bottom_staff,
+        default_x,
+        color,
     })
 }
 

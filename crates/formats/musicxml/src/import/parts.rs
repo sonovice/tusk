@@ -648,6 +648,9 @@ pub fn convert_staff_def_from_score_part(
 /// Label prefix for staff-details JSON stored on staffDef @label.
 const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
 
+/// Label prefix for part-symbol JSON stored on multi-staff staffGrp @label.
+pub(crate) const PART_SYMBOL_LABEL_PREFIX: &str = "musicxml:part-symbol,";
+
 /// Apply MusicXML StaffDetails to a MEI StaffDef.
 ///
 /// Maps semantic fields to MEI attributes:
@@ -721,6 +724,18 @@ fn convert_multi_staff_part(
             PartSymbolValue::Line => "line".to_string(),
             PartSymbolValue::None => "none".to_string(),
         });
+
+        // Store full PartSymbol as JSON in @label for lossless roundtrip
+        // (preserves top-staff, bottom-staff, default-x, color)
+        let has_extra = ps.top_staff.is_some()
+            || ps.bottom_staff.is_some()
+            || ps.default_x.is_some()
+            || ps.color.is_some();
+        if has_extra {
+            if let Ok(json) = serde_json::to_string(ps) {
+                nested_grp.common.label = Some(format!("{}{}", PART_SYMBOL_LABEL_PREFIX, json));
+            }
+        }
     } else {
         nested_grp.staff_grp_vis.symbol = Some("brace".to_string());
     }
