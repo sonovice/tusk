@@ -196,18 +196,31 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 4.2 Import & Export
 
-- [ ] `fermata` → MEI `<fermata>` control event with `@shape`, `@form`, `@place`, `@startid`
-- [ ] `arpeggiate` → MEI `<arpeg>` control event with `@order` (up/down)
-- [ ] `non-arpeggiate` → MEI `<arpeg>` with `@order="nonarp"`
-- [ ] `glissando` → MEI `<gliss>` control event with `@startid`/`@endid`, `@lform`
-- [ ] `slide` → MEI `<gliss>` with slide semantics or label for roundtrip
-- [ ] `accidental-mark` (standalone) → MEI `<accid>` element or attribute
-- [ ] Export: reverse all mappings
+- [x] `fermata` → MEI `<fermata>` control event with `@shape`, `@form`, `@place`, `@startid`
+  - Added `process_fermatas()` in import/note.rs; maps shape/type → MEI @shape/@form/@place
+  - Added `convert_fermata_events()` in export/content.rs; reverse mapping
+- [x] `arpeggiate` → MEI `<arpeg>` control event with `@order` (up/down)
+  - Added `process_arpeggiate()` in import/note.rs
+  - Added `convert_arpeg_events()` in export/content.rs
+- [x] `non-arpeggiate` → MEI `<arpeg>` with `@order="nonarp"` and label for roundtrip
+- [x] `glissando` → MEI `<gliss>` control event with `@startid`/`@endid`, `@lform`
+  - Added `process_glissandos()` in import/note.rs with pending/completed pattern
+  - Added `emit_gliss_events()` in import/structure.rs
+  - Added `convert_gliss_events()` in export/content.rs with cross-measure support
+  - Added context/glissandos.rs for PendingGliss/CompletedGliss tracking
+- [x] `slide` → MEI `<gliss>` with `musicxml:slide` label for roundtrip
+- [x] `accidental-mark` (standalone) → MEI `<ornam>` with label for roundtrip
+  - Added `process_accidental_marks()` in import/note.rs
+  - Export via label parsing in `convert_ornament_events()`
+- [x] Export: reverse all mappings
+- [x] Added Fermata/Arpeg/Gliss to MeasureChild via EXTRA_CHILDREN codegen
 
 ### 4.3 Tests
 
-- [ ] Add roundtrip fixtures for fermata, arpeggiate, glissando, slide
-- [ ] Verify fragment examples: `fermata_element`, `arpeggiate_element`, `non_arpeggiate_element`, `glissando_element_single`, `glissando_element_multiple`, `slide_element`, `accidental_mark_element_notation`
+- [x] Add roundtrip fixtures for fermata, arpeggiate, glissando, slide
+  - Fixtures already existed in tests/fixtures/musicxml/fragment_examples/
+- [x] Verify fragment examples: `fermata_element`, `arpeggiate_element`, `non_arpeggiate_element`, `glissando_element_single`, `glissando_element_multiple`, `slide_element`, `accidental_mark_element_notation`
+  - All 7 pass roundtrip (313 total pass, 0 fail)
 
 ---
 

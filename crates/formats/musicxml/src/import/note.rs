@@ -127,6 +127,18 @@ pub fn convert_note(
     // Process ornaments (create control events)
     process_ornaments(note, &note_id, ctx);
 
+    // Process fermatas
+    process_fermatas(note, &note_id, ctx);
+
+    // Process arpeggiate/non-arpeggiate
+    process_arpeggiate(note, &note_id, ctx);
+
+    // Process glissandos/slides
+    process_glissandos(note, &note_id, ctx);
+
+    // Process standalone accidental marks
+    process_accidental_marks(note, &note_id, ctx);
+
     Ok(mei_note)
 }
 
@@ -842,6 +854,243 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
     }
 
     // accidental-mark within ornaments → skip for now (rare, complex mapping)
+}
+
+// ============================================================================
+// Fermata Processing
+// ============================================================================
+
+/// Process fermata notations into MEI `<fermata>` control events.
+fn process_fermatas(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::model::data::UprightInverted;
+    use crate::model::notations::FermataShape;
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::{Fermata as MeiFermata, MeasureChild};
+
+    let fermatas = match note.notations {
+        Some(ref n) => &n.fermatas,
+        None => return,
+    };
+    if fermatas.is_empty() {
+        return;
+    }
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    for fermata in fermatas {
+        let mut f = MeiFermata::default();
+        f.common.xml_id = Some(ctx.generate_id_with_suffix("fermata"));
+        f.fermata_log.startid = Some(startid.clone());
+        f.fermata_log.staff = Some(staff_str.clone());
+
+        // Map MusicXML type → MEI @place (upright=above, inverted=below)
+        f.fermata_vis.place = match fermata.fermata_type {
+            Some(UprightInverted::Upright) => {
+                Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above))
+            }
+            Some(UprightInverted::Inverted) => {
+                Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below))
+            }
+            None => None,
+        };
+
+        // Map MusicXML shape → MEI @shape
+        f.fermata_vis.shape = fermata.shape.as_ref().and_then(|s| match s {
+            FermataShape::Normal | FermataShape::Empty => None,
+            FermataShape::Angled => Some("angular".to_string()),
+            FermataShape::Square => Some("square".to_string()),
+            FermataShape::DoubleAngled => Some("double-angular".to_string()),
+            FermataShape::DoubleSquare => Some("double-square".to_string()),
+            FermataShape::DoubleDot => Some("double-dot".to_string()),
+            FermataShape::HalfCurve => Some("half-curve".to_string()),
+            FermataShape::Curlew => Some("curlew".to_string()),
+        });
+
+        // Map MusicXML type → MEI @form (inv → inv, upright → default)
+        f.fermata_vis.form = match fermata.fermata_type {
+            Some(UprightInverted::Inverted) => Some("inv".to_string()),
+            _ => None,
+        };
+
+        ctx.add_ornament_event(MeasureChild::Fermata(Box::new(f)));
+    }
+}
+
+// ============================================================================
+// Arpeggiate Processing
+// ============================================================================
+
+/// Process arpeggiate/non-arpeggiate notations into MEI `<arpeg>` control events.
+fn process_arpeggiate(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::model::data::UpDown;
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{Arpeg, MeasureChild};
+
+    let notations = match note.notations {
+        Some(ref n) => n,
+        None => return,
+    };
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    // arpeggiate → MEI <arpeg>
+    if let Some(ref arp) = notations.arpeggiate {
+        let mut a = Arpeg::default();
+        a.common.xml_id = Some(ctx.generate_id_with_suffix("arpeg"));
+        a.arpeg_log.startid = Some(startid.clone());
+        a.arpeg_log.staff = Some(staff_str.clone());
+        a.arpeg_log.order = arp.direction.as_ref().map(|d| match d {
+            UpDown::Up => "up".to_string(),
+            UpDown::Down => "down".to_string(),
+        });
+        ctx.add_ornament_event(MeasureChild::Arpeg(Box::new(a)));
+    }
+
+    // non-arpeggiate → MEI <arpeg> with @order="nonarp"
+    if let Some(ref _nonarp) = notations.non_arpeggiate {
+        let mut a = Arpeg::default();
+        a.common.xml_id = Some(ctx.generate_id_with_suffix("arpeg"));
+        a.arpeg_log.startid = Some(startid.clone());
+        a.arpeg_log.staff = Some(staff_str.clone());
+        a.arpeg_log.order = Some("nonarp".to_string());
+        a.common.label = Some("musicxml:non-arpeggiate".to_string());
+        ctx.add_ornament_event(MeasureChild::Arpeg(Box::new(a)));
+    }
+}
+
+// ============================================================================
+// Glissando/Slide Processing
+// ============================================================================
+
+/// Process glissando and slide notations into MEI `<gliss>` control events.
+///
+/// Glissandos and slides are start/stop spanners. On start, a PendingGliss is created.
+/// On stop, the pending gliss is resolved into a completed gliss with both startid and endid.
+fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::context::PendingGliss;
+    use crate::model::data::LineType;
+
+    let notations = match note.notations {
+        Some(ref n) => n,
+        None => return,
+    };
+
+    let staff = note.staff.unwrap_or(1);
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let part_id = ctx.position().part_id.clone().unwrap_or_default();
+
+    let line_type_str = |lt: &LineType| match lt {
+        LineType::Solid => "solid",
+        LineType::Dashed => "dashed",
+        LineType::Dotted => "dotted",
+        LineType::Wavy => "wavy",
+    };
+
+    // glissando elements
+    for gliss in &notations.glissandos {
+        let number = gliss.number.unwrap_or(1);
+        match gliss.glissando_type {
+            StartStop::Start => {
+                ctx.add_pending_gliss(PendingGliss {
+                    start_id: note_id.to_string(),
+                    part_id: part_id.clone(),
+                    staff,
+                    number,
+                    mei_staff,
+                    line_type: gliss.line_type.as_ref().map(|lt| line_type_str(lt).to_string()),
+                    text: gliss.text.clone(),
+                    label: None,
+                });
+            }
+            StartStop::Stop => {
+                if let Some(pending) = ctx.resolve_gliss(&part_id, staff, number) {
+                    ctx.add_completed_gliss(crate::context::CompletedGliss {
+                        start_id: pending.start_id,
+                        end_id: note_id.to_string(),
+                        mei_staff: pending.mei_staff,
+                        line_type: pending.line_type,
+                        text: pending.text,
+                        label: None,
+                    });
+                }
+            }
+        }
+    }
+
+    // slide elements → same as glissando but with label for roundtrip
+    for slide in &notations.slides {
+        let number = slide.number.unwrap_or(1);
+        match slide.slide_type {
+            StartStop::Start => {
+                ctx.add_pending_gliss(PendingGliss {
+                    start_id: note_id.to_string(),
+                    part_id: part_id.clone(),
+                    staff,
+                    number,
+                    mei_staff,
+                    line_type: slide.line_type.as_ref().map(|lt| line_type_str(lt).to_string()),
+                    text: slide.text.clone(),
+                    label: Some("musicxml:slide".to_string()),
+                });
+            }
+            StartStop::Stop => {
+                if let Some(pending) = ctx.resolve_gliss(&part_id, staff, number) {
+                    ctx.add_completed_gliss(crate::context::CompletedGliss {
+                        start_id: pending.start_id,
+                        end_id: note_id.to_string(),
+                        mei_staff: pending.mei_staff,
+                        line_type: pending.line_type,
+                        text: pending.text,
+                        label: pending.label,
+                    });
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Standalone Accidental-Mark Processing
+// ============================================================================
+
+/// Process standalone accidental-mark notations (outside ornaments).
+///
+/// Maps to MEI `<ornam>` with label for roundtrip fidelity.
+fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+
+    let notations = match note.notations {
+        Some(ref n) => n,
+        None => return,
+    };
+    if notations.accidental_marks.is_empty() {
+        return;
+    }
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    for am in &notations.accidental_marks {
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some(format!("musicxml:accidental-mark,value={}", am.value));
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        if let Some(ref placement) = am.placement {
+            use crate::import::direction::convert_placement;
+            ornam.ornam_vis.place = convert_placement(Some(placement));
+        }
+        if !am.value.is_empty() {
+            ornam.children.push(OrnamChild::Text(am.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
 }
 
 /// Convert a MusicXML Articulations struct to MEI DataArticulation values.

@@ -362,6 +362,10 @@ pub fn convert_mei_score_content(
                 convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
                 convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+
+                convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                convert_gliss_events(mei_measure, global_staff_n, &mut mxml_measure, &mut part_prev_measures[part_idx], ctx)?;
             } else {
                 // Multi-staff part: merge multiple staves with <backup> between them
                 for local_staff in 1..=num_staves {
@@ -400,6 +404,11 @@ pub fn convert_mei_score_content(
 
                     // Ornament events
                     convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+
+                    // Fermata, arpeg, gliss events
+                    convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                    convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                    convert_gliss_events(mei_measure, global_staff_n, &mut mxml_measure, &mut part_prev_measures[part_idx], ctx)?;
 
                     // Insert <backup> between staves (not after the last one)
                     if local_staff < num_staves {
@@ -1220,12 +1229,311 @@ fn convert_ornament_events(
                         value: text,
                         placement,
                     });
+                } else if let Some(rest) = label.strip_prefix("musicxml:accidental-mark,") {
+                    // Standalone accidental-mark → goes on notations (not ornaments)
+                    let mut value = String::new();
+                    for part in rest.split(',') {
+                        if let Some(v) = part.strip_prefix("value=") {
+                            value = v.to_string();
+                        }
+                    }
+                    let notations = note.notations.get_or_insert_with(Notations::default);
+                    notations.accidental_marks.push(
+                        crate::model::notations::AccidentalMark {
+                            value,
+                            placement,
+                        },
+                    );
+                    // Skip adding to ornaments for accidental-mark
+                    continue;
                 }
             }
             _ => {}
         }
     }
     Ok(())
+}
+
+/// Convert MEI `<fermata>` control events to MusicXML fermata notations on notes.
+fn convert_fermata_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::data::UprightInverted;
+    use crate::model::notations::{Fermata as MxmlFermata, FermataShape, Notations};
+
+    for child in &mei_measure.children {
+        let MeasureChild::Fermata(fermata) = child else {
+            continue;
+        };
+        let fermata_staff = fermata
+            .fermata_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if fermata_staff != staff_n {
+            continue;
+        }
+        let start_id = fermata
+            .fermata_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+
+        // Map MEI @shape → MusicXML shape
+        let shape = fermata.fermata_vis.shape.as_deref().and_then(|s| match s {
+            "angular" => Some(FermataShape::Angled),
+            "square" => Some(FermataShape::Square),
+            "double-angular" => Some(FermataShape::DoubleAngled),
+            "double-square" => Some(FermataShape::DoubleSquare),
+            "double-dot" => Some(FermataShape::DoubleDot),
+            "half-curve" => Some(FermataShape::HalfCurve),
+            "curlew" => Some(FermataShape::Curlew),
+            _ => None,
+        });
+
+        // Map MEI @form → MusicXML type
+        let fermata_type = fermata.fermata_vis.form.as_deref().and_then(|f| match f {
+            "inv" => Some(UprightInverted::Inverted),
+            _ => None,
+        });
+        // If no explicit form but place=below, still set inverted
+        let fermata_type = fermata_type.or_else(|| {
+            use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+            match &fermata.fermata_vis.place {
+                Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below)) => {
+                    Some(UprightInverted::Inverted)
+                }
+                Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above)) => {
+                    Some(UprightInverted::Upright)
+                }
+                _ => None,
+            }
+        });
+
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        notations.fermatas.push(MxmlFermata {
+            shape,
+            fermata_type,
+            ..Default::default()
+        });
+    }
+    Ok(())
+}
+
+/// Convert MEI `<arpeg>` control events to MusicXML arpeggiate/non-arpeggiate notations.
+fn convert_arpeg_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::data::{TopBottom, UpDown};
+    use crate::model::notations::{Arpeggiate, NonArpeggiate, Notations};
+
+    for child in &mei_measure.children {
+        let MeasureChild::Arpeg(arpeg) = child else {
+            continue;
+        };
+        let arpeg_staff = arpeg
+            .arpeg_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if arpeg_staff != staff_n {
+            continue;
+        }
+        let start_id = arpeg
+            .arpeg_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+
+        let is_nonarp = arpeg.common.label.as_deref() == Some("musicxml:non-arpeggiate");
+        let notations = note.notations.get_or_insert_with(Notations::default);
+
+        if is_nonarp {
+            notations.non_arpeggiate = Some(NonArpeggiate {
+                non_arpeggiate_type: TopBottom::Top,
+                number: None,
+                default_x: None,
+                default_y: None,
+                placement: None,
+                color: None,
+            });
+        } else {
+            let direction = arpeg.arpeg_log.order.as_deref().and_then(|o| match o {
+                "up" => Some(UpDown::Up),
+                "down" => Some(UpDown::Down),
+                _ => None,
+            });
+            notations.arpeggiate = Some(Arpeggiate {
+                direction,
+                ..Default::default()
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Convert MEI `<gliss>` control events to MusicXML glissando/slide notations on notes.
+///
+/// For cross-measure glissandos, the start note may be in a previous measure.
+fn convert_gliss_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    prev_measures: &mut [MxmlMeasure],
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::data::LineType;
+    use crate::model::notations::{Glissando, Slide};
+    use tusk_model::data::DataLineform;
+
+    for child in &mei_measure.children {
+        let MeasureChild::Gliss(gliss) = child else {
+            continue;
+        };
+        let gliss_staff = gliss
+            .gliss_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if gliss_staff != staff_n {
+            continue;
+        }
+
+        let start_id = gliss
+            .gliss_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let end_id = gliss
+            .gliss_log
+            .endid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+
+        let line_type = gliss.gliss_vis.lform.as_ref().map(|lf| match lf {
+            DataLineform::Solid => LineType::Solid,
+            DataLineform::Dashed => LineType::Dashed,
+            DataLineform::Dotted => LineType::Dotted,
+            DataLineform::Wavy => LineType::Wavy,
+        });
+
+        // Get text content from children
+        let text: String = gliss
+            .children
+            .iter()
+            .map(|c| {
+                let tusk_model::elements::GlissChild::Text(t) = c;
+                t.as_str()
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let is_slide = gliss.common.label.as_deref() == Some("musicxml:slide");
+
+        // Helper to create start notation
+        let make_start = |line_type: &Option<LineType>, text: &str, is_slide: bool| {
+            if is_slide {
+                GlissNotation::Slide(Slide {
+                    slide_type: crate::model::StartStop::Start,
+                    number: Some(1),
+                    line_type: *line_type,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text: text.to_string(),
+                })
+            } else {
+                GlissNotation::Glissando(Glissando {
+                    glissando_type: crate::model::StartStop::Start,
+                    number: Some(1),
+                    line_type: *line_type,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text: text.to_string(),
+                })
+            }
+        };
+
+        // Start notation on the start note (may be in a previous measure)
+        if let Some(ref sid) = start_id {
+            let notation = make_start(&line_type, &text, is_slide);
+            if let Some(note) = find_note_by_id_mut(mxml_measure, sid) {
+                apply_gliss_notation(note, notation);
+            } else {
+                // Search previous measures
+                for prev in prev_measures.iter_mut().rev() {
+                    if let Some(note) = find_note_by_id_mut(prev, sid) {
+                        apply_gliss_notation(note, notation);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Stop notation on the end note
+        if let Some(ref eid) = end_id {
+            let notation = if is_slide {
+                GlissNotation::Slide(Slide {
+                    slide_type: crate::model::StartStop::Stop,
+                    number: Some(1),
+                    line_type: None,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text: String::new(),
+                })
+            } else {
+                GlissNotation::Glissando(Glissando {
+                    glissando_type: crate::model::StartStop::Stop,
+                    number: Some(1),
+                    line_type: None,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    text: String::new(),
+                })
+            };
+            if let Some(note) = find_note_by_id_mut(mxml_measure, eid) {
+                apply_gliss_notation(note, notation);
+            }
+        }
+    }
+    Ok(())
+}
+
+enum GlissNotation {
+    Glissando(crate::model::notations::Glissando),
+    Slide(crate::model::notations::Slide),
+}
+
+fn apply_gliss_notation(note: &mut crate::model::note::Note, notation: GlissNotation) {
+    use crate::model::notations::Notations;
+    let notations = note.notations.get_or_insert_with(Notations::default);
+    match notation {
+        GlissNotation::Glissando(g) => notations.glissandos.push(g),
+        GlissNotation::Slide(s) => notations.slides.push(s),
+    }
 }
 
 /// Find a MusicXML note in the measure by its ID (mutable).

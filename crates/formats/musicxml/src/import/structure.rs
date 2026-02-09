@@ -157,8 +157,11 @@ pub fn convert_measure(
     // Emit completed tuplets as MEI control events
     emit_tuplet_spans(&mut mei_measure, ctx);
 
-    // Emit ornament control events (trill, mordent, turn, ornam)
+    // Emit ornament control events (trill, mordent, turn, ornam, fermata, arpeg)
     emit_ornament_events(&mut mei_measure, ctx);
+
+    // Emit completed glissando/slide control events
+    emit_gliss_events(&mut mei_measure, ctx);
 
     Ok(mei_measure)
 }
@@ -355,7 +358,7 @@ fn emit_tuplet_spans(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut 
     }
 }
 
-/// Emit ornament control events (trill, mordent, turn, ornam).
+/// Emit ornament control events (trill, mordent, turn, ornam, fermata, arpeg).
 ///
 /// Drains all pending ornament events from the context and adds them to the measure.
 fn emit_ornament_events(
@@ -364,6 +367,48 @@ fn emit_ornament_events(
 ) {
     for event in ctx.drain_ornament_events() {
         mei_measure.children.push(event);
+    }
+}
+
+/// Emit completed glissando/slide events as MEI `<gliss>` control events.
+fn emit_gliss_events(
+    mei_measure: &mut tusk_model::elements::Measure,
+    ctx: &mut ConversionContext,
+) {
+    use tusk_model::data::{DataLineform, DataUri};
+    use tusk_model::elements::{Gliss, GlissChild, MeasureChild};
+
+    for completed in ctx.drain_completed_glisses() {
+        let mut gliss = Gliss::default();
+        gliss.common.xml_id = Some(ctx.generate_id_with_suffix("gliss"));
+        gliss.gliss_log.startid =
+            Some(DataUri::from(format!("#{}", completed.start_id)));
+        gliss.gliss_log.endid =
+            Some(DataUri::from(format!("#{}", completed.end_id)));
+        gliss.gliss_log.staff = Some((completed.mei_staff as u64).to_string());
+
+        // Map line-type → MEI @lform
+        gliss.gliss_vis.lform = completed.line_type.as_deref().and_then(|lt| match lt {
+            "solid" => Some(DataLineform::Solid),
+            "dashed" => Some(DataLineform::Dashed),
+            "dotted" => Some(DataLineform::Dotted),
+            "wavy" => Some(DataLineform::Wavy),
+            _ => None,
+        });
+
+        // Text content
+        if !completed.text.is_empty() {
+            gliss.children.push(GlissChild::Text(completed.text));
+        }
+
+        // Label for slide roundtrip
+        if let Some(label) = completed.label {
+            gliss.common.label = Some(label);
+        }
+
+        mei_measure
+            .children
+            .push(MeasureChild::Gliss(Box::new(gliss)));
     }
 }
 

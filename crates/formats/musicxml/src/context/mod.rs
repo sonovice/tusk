@@ -22,6 +22,7 @@
 //! assert_eq!(ctx.get_mei_id("P1"), Some("staff-1"));
 //! ```
 
+mod glissandos;
 mod ids;
 mod positions;
 mod slurs;
@@ -33,6 +34,7 @@ use std::collections::HashMap;
 use crate::model::duration::DurationContext;
 
 pub use positions::{ConversionWarning, DocumentPosition};
+pub use glissandos::{CompletedGliss, PendingGliss};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
 pub use tuplets::{CompletedTuplet, PendingTuplet};
@@ -93,6 +95,12 @@ pub struct ConversionContext {
     /// Completed tuplets ready to be emitted as MEI control events.
     pub(super) completed_tuplets: Vec<CompletedTuplet>,
 
+    /// Pending glissandos/slides waiting for their stop notes.
+    pub(super) pending_glisses: Vec<glissandos::PendingGliss>,
+
+    /// Completed glissandos/slides ready to be emitted as MEI control events.
+    pub(super) completed_glisses: Vec<glissandos::CompletedGliss>,
+
     /// Ornament control events collected during note processing, emitted after all staves.
     pub(super) pending_ornament_events: Vec<tusk_model::elements::MeasureChild>,
 
@@ -152,6 +160,8 @@ impl ConversionContext {
             deferred_slur_stops: Vec::new(),
             pending_tuplets: Vec::new(),
             completed_tuplets: Vec::new(),
+            pending_glisses: Vec::new(),
+            completed_glisses: Vec::new(),
             pending_ornament_events: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
@@ -289,6 +299,8 @@ impl ConversionContext {
         self.pending_slurs.clear();
         self.pending_tuplets.clear();
         self.completed_tuplets.clear();
+        self.pending_glisses.clear();
+        self.completed_glisses.clear();
         self.pending_ornament_events.clear();
         self.warnings.clear();
         self.position = DocumentPosition::default();
