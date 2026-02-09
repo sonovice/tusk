@@ -815,12 +815,35 @@ Resolved TODO at `serializer/elements.rs`: "implement other direction types".
 
 ### 22.1 Implementation
 
-- [ ] Add `zip` crate dependency
-- [ ] Read `.mxl` archive → locate `META-INF/container.xml` → find rootfile → extract and parse MusicXML
-- [ ] Write `.mxl` archive → create `META-INF/container.xml` → compress MusicXML
-- [ ] Handle multiple rootfiles and accompanying files
-- [ ] Add .mxl roundtrip tests
-- [ ] Test with real-world .mxl files
+- [x] Add `zip` crate dependency
+  - `zip = { version = "7.4.0", default-features = false, features = ["deflate-flate2", "deflate-flate2-zlib-rs"] }`
+  - Minimal feature set: DEFLATE compression only (no encryption, no exotic formats)
+- [x] Read `.mxl` archive → locate `META-INF/container.xml` → find rootfile → extract and parse MusicXML
+  - `mxl::read_mxl()` returns `MxlArchive` with score, rootfiles, and additional files
+  - `mxl::read_mxl_score()` convenience function returns just the parsed `ScorePartwise`
+  - Parses container.xml with quick-xml to extract rootfile paths and media types
+  - Handles both partwise and timewise MusicXML inside the archive
+- [x] Write `.mxl` archive → create `META-INF/container.xml` → compress MusicXML
+  - `mxl::write_mxl()` writes score as `score.musicxml` with default options
+  - `mxl::write_mxl_with_options()` supports custom score path and additional files
+  - `mxl::write_mxl_timewise()` writes timewise score
+  - Mimetype file written first, uncompressed (per MusicXML spec)
+  - MusicXML and container.xml compressed with DEFLATE
+- [x] Handle multiple rootfiles and accompanying files
+  - `MxlArchive.rootfiles` preserves all rootfile entries (not just primary)
+  - `MxlArchive.additional_files` preserves extra files (images, audio, etc.)
+  - `MxlWriteOptions` allows adding additional rootfiles and files to archive
+- [x] Add .mxl roundtrip tests
+  - 5 unit tests in `mxl.rs`: roundtrip, mimetype validation, container XML, parsing, additional files
+  - 13 roundtrip tests: hello_world, scale, chords_and_rests, tuplets, piano_two_staves,
+    Chopin prelude, Après un rêve, chord symbols, directions, figured bass, identification metadata
+  - 2 MEI roundtrip tests: MusicXML → MEI → .mxl → MEI comparison
+  - All 333 roundtrip tests pass (320 existing + 13 new)
+- [x] Test with real-world .mxl files
+  - Tested with all 12 spec example fixtures (tutorial_chopin_prelude, tutorial_apres_un_reve, etc.)
+  - Tested with complex fixtures (directions, figured_bass, identification_metadata, multi-staff piano)
+  - Public API: `import_mxl(bytes)` and `export_mxl(mei)` for end-to-end .mxl pipeline
+  - `detect()` updated to recognize ZIP magic bytes (PK\x03\x04) for .mxl file detection
 
 ---
 

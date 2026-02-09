@@ -1523,3 +1523,123 @@ fragment_roundtrip_test!(wood_element);
 fragment_roundtrip_test!(piano_two_staves);
 fragment_roundtrip_test!(organ_three_staves);
 fragment_roundtrip_test!(cross_staff_notes);
+
+// ============================================================================
+// .mxl Compressed MusicXML Roundtrip Tests (Phase 22)
+// ============================================================================
+
+/// Test: MusicXML XML → write .mxl → read .mxl → parse → compare ScoreTimewise.
+/// Verifies that compressing/decompressing preserves the score content exactly.
+fn assert_mxl_roundtrip(fixture_name: &str) {
+    let xml = load_fixture(fixture_name).unwrap();
+    let partwise = if is_timewise(&xml) {
+        parse_score_timewise(&xml).expect("parse timewise")
+    } else {
+        parse_score_partwise(&xml).expect("parse partwise")
+    };
+    let original_tw = import_timewise(&partwise);
+
+    // Compress to .mxl
+    let mxl_bytes = tusk_musicxml::mxl::write_mxl(&partwise).expect("write_mxl failed");
+
+    // Decompress and parse
+    let archive = tusk_musicxml::mxl::read_mxl(&mxl_bytes).expect("read_mxl failed");
+    let roundtripped_tw = import_timewise(&archive.score);
+
+    // Compare in timewise space
+    let diffs = compare_scores(&original_tw, &roundtripped_tw);
+    if !diffs.is_empty() {
+        panic!(
+            "MXL roundtrip failed for '{}' (compress/decompress mismatch):\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+}
+
+/// Test: MusicXML → MEI → export_mxl → import_mxl → MEI → compare.
+/// Full pipeline: conversion + compression + decompression + reconversion.
+fn assert_mxl_mei_roundtrip(fixture_name: &str) {
+    let xml = load_fixture(fixture_name).unwrap();
+    let partwise = if is_timewise(&xml) {
+        parse_score_timewise(&xml).expect("parse timewise")
+    } else {
+        parse_score_partwise(&xml).expect("parse partwise")
+    };
+    let mei1 = import(&partwise).expect("import to MEI");
+
+    // MEI → .mxl
+    let mxl_bytes = tusk_musicxml::export_mxl(&mei1).expect("export_mxl failed");
+
+    // .mxl → MEI
+    let mei2 = tusk_musicxml::import_mxl(&mxl_bytes).expect("import_mxl failed");
+
+    // Compare MEI documents
+    assert_mei_equal(&mei1, &mei2, &format!("mxl_mei_{}", fixture_name));
+}
+
+#[test]
+fn test_mxl_roundtrip_hello_world() {
+    assert_mxl_roundtrip("hello_world.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_scale() {
+    assert_mxl_roundtrip("scale.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_chords_and_rests() {
+    assert_mxl_roundtrip("chords_and_rests.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_tuplets() {
+    assert_mxl_roundtrip("fragment_examples/tuplet_element_regular.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_piano_two_staves() {
+    assert_mxl_roundtrip("fragment_examples/piano_two_staves.musicxml");
+}
+
+#[test]
+fn test_mxl_mei_roundtrip_hello_world() {
+    assert_mxl_mei_roundtrip("hello_world.musicxml");
+}
+
+#[test]
+fn test_mxl_mei_roundtrip_scale() {
+    assert_mxl_mei_roundtrip("scale.musicxml");
+}
+
+// Spec examples through .mxl compression
+#[test]
+fn test_mxl_roundtrip_tutorial_chopin() {
+    assert_mxl_roundtrip("spec_examples/tutorial_chopin_prelude.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_tutorial_apres_un_reve() {
+    assert_mxl_roundtrip("spec_examples/tutorial_apres_un_reve.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_tutorial_chord_symbols() {
+    assert_mxl_roundtrip("spec_examples/tutorial_chord_symbols.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_directions() {
+    assert_mxl_roundtrip("directions.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_figured_bass() {
+    assert_mxl_roundtrip("figured_bass.musicxml");
+}
+
+#[test]
+fn test_mxl_roundtrip_identification_metadata() {
+    assert_mxl_roundtrip("identification_metadata.musicxml");
+}

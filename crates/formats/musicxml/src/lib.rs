@@ -69,6 +69,7 @@ pub mod convert_error;
 pub mod export;
 pub mod import;
 pub mod model;
+pub mod mxl;
 pub mod parser;
 pub mod serializer;
 pub mod versions;
@@ -86,6 +87,9 @@ pub use convert_error::{ConversionError, ConversionResult};
 pub use serializer::{
     MusicXmlSerialize, MusicXmlWriter, SerializeConfig, SerializeError, SerializeResult,
 };
+
+// Re-export mxl types
+pub use mxl::{MxlArchive, MxlError, MxlResult, MxlWriteOptions, Rootfile};
 
 /// Import a MusicXML score-partwise document to MEI (lossless conversion).
 ///
@@ -144,6 +148,26 @@ pub fn export_timewise(
     export::convert_mei_to_timewise(mei)
 }
 
+/// Import a compressed .mxl archive to MEI (lossless conversion).
+///
+/// Reads the ZIP archive, extracts the primary MusicXML rootfile,
+/// parses it, and converts to MEI.
+pub fn import_mxl(data: &[u8]) -> Result<tusk_model::elements::Mei, MxlError> {
+    let score = mxl::read_mxl_score(data)?;
+    import::convert_score(&score)
+        .map_err(|e| MxlError::InvalidContainer(format!("conversion error: {}", e)))
+}
+
+/// Export an MEI document to a compressed .mxl archive.
+///
+/// Converts MEI to MusicXML, serializes it, and packages it
+/// into a ZIP archive with META-INF/container.xml.
+pub fn export_mxl(mei: &tusk_model::elements::Mei) -> Result<Vec<u8>, MxlError> {
+    let score =
+        export(mei).map_err(|e| MxlError::InvalidContainer(format!("conversion error: {}", e)))?;
+    mxl::write_mxl(&score)
+}
+
 /// Serialize a MusicXML score-partwise document to a partwise XML string.
 ///
 /// This is the main entry point for MusicXML serialization.
@@ -199,6 +223,10 @@ impl tusk_format::Format for MusicXmlFormat {
     }
 
     fn detect(&self, content: &[u8]) -> bool {
+        // ZIP magic bytes (PK\x03\x04) → likely .mxl
+        if content.len() >= 4 && content[..4] == [0x50, 0x4B, 0x03, 0x04] {
+            return true;
+        }
         // Only check the first 4 KB for efficiency with large files.
         let prefix = &content[..content.len().min(4096)];
         let s = std::str::from_utf8(prefix).unwrap_or("");
