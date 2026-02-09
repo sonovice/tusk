@@ -788,6 +788,20 @@ fn convert_direction_events(
                     continue;
                 }
 
+                // Measure-style elements — emit on first staff only
+                if dir.common.label.as_deref().is_some_and(|l| {
+                    l.starts_with(crate::import::measure_style::MEASURE_STYLE_LABEL_PREFIX)
+                }) {
+                    if local_staff_n == 1 {
+                        if let Some(content) =
+                            super::measure_style::convert_mei_measure_style_dir(dir, ctx)
+                        {
+                            mxml_measure.content.push(content);
+                        }
+                    }
+                    continue;
+                }
+
                 let event_staff = dir
                     .dir_log
                     .staff

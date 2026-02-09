@@ -300,6 +300,16 @@ fn convert_measure_directions(
                         .push(super::sound::convert_sound(sound, ctx));
                 }
             }
+            MeasureContent::Attributes(attrs) => {
+                // Import measure-style elements from attributes (first staff only)
+                if ctx.current_staff() == 1 && !attrs.measure_styles.is_empty() {
+                    for child in
+                        super::measure_style::convert_measure_styles(&attrs.measure_styles, ctx)
+                    {
+                        mei_measure.children.push(child);
+                    }
+                }
+            }
             _ => {}
         }
     }

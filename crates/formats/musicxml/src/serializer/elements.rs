@@ -582,6 +582,11 @@ impl MusicXmlSerialize for Attributes {
             transpose.serialize(w)?;
         }
 
+        // Measure style
+        for ms in &self.measure_styles {
+            serialize_measure_style(w, ms)?;
+        }
+
         Ok(())
     }
 }
@@ -849,6 +854,114 @@ fn serialize_part_symbol<W: Write>(
         PartSymbolValue::Square => "square",
     })?;
     w.write_end("part-symbol")?;
+    Ok(())
+}
+
+// ============================================================================
+// Measure Style
+// ============================================================================
+
+fn serialize_measure_style<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    ms: &MeasureStyle,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("measure-style");
+    if let Some(number) = ms.number {
+        start.push_attribute(("number", number.to_string().as_str()));
+    }
+    w.write_start(start)?;
+
+    match &ms.content {
+        MeasureStyleContent::MultipleRest(mr) => {
+            let mut child = w.start_element("multiple-rest");
+            if let Some(ref us) = mr.use_symbols {
+                child.push_attribute(("use-symbols", yes_no_str(us)));
+            }
+            w.write_start(child)?;
+            w.write_text(&mr.value.to_string())?;
+            w.write_end("multiple-rest")?;
+        }
+        MeasureStyleContent::MeasureRepeat(mr) => {
+            let mut child = w.start_element("measure-repeat");
+            child.push_attribute(("type", start_stop_str(&mr.repeat_type)));
+            if let Some(slashes) = mr.slashes {
+                child.push_attribute(("slashes", slashes.to_string().as_str()));
+            }
+            if let Some(value) = mr.value {
+                w.write_start(child)?;
+                w.write_text(&value.to_string())?;
+                w.write_end("measure-repeat")?;
+            } else {
+                w.write_empty(child)?;
+            }
+        }
+        MeasureStyleContent::BeatRepeat(br) => {
+            let mut child = w.start_element("beat-repeat");
+            child.push_attribute(("type", start_stop_continue_str(&br.repeat_type)));
+            if let Some(slashes) = br.slashes {
+                child.push_attribute(("slashes", slashes.to_string().as_str()));
+            }
+            if let Some(ref ud) = br.use_dots {
+                child.push_attribute(("use-dots", yes_no_str(ud)));
+            }
+            let has_children = br.slash_type.is_some()
+                || !br.slash_dots.is_empty()
+                || !br.except_voices.is_empty();
+            if has_children {
+                w.write_start(child)?;
+                serialize_slash_group(w, &br.slash_type, &br.slash_dots, &br.except_voices)?;
+                w.write_end("beat-repeat")?;
+            } else {
+                w.write_empty(child)?;
+            }
+        }
+        MeasureStyleContent::Slash(sl) => {
+            let mut child = w.start_element("slash");
+            child.push_attribute(("type", start_stop_str(&sl.slash_type)));
+            if let Some(ref us) = sl.use_stems {
+                child.push_attribute(("use-stems", yes_no_str(us)));
+            }
+            if let Some(ref ud) = sl.use_dots {
+                child.push_attribute(("use-dots", yes_no_str(ud)));
+            }
+            let has_children = sl.slash_type_element.is_some()
+                || !sl.slash_dots.is_empty()
+                || !sl.except_voices.is_empty();
+            if has_children {
+                w.write_start(child)?;
+                serialize_slash_group(
+                    w,
+                    &sl.slash_type_element,
+                    &sl.slash_dots,
+                    &sl.except_voices,
+                )?;
+                w.write_end("slash")?;
+            } else {
+                w.write_empty(child)?;
+            }
+        }
+    }
+
+    w.write_end("measure-style")?;
+    Ok(())
+}
+
+/// Serialize the shared slash-group children: slash-type, slash-dot, except-voice.
+fn serialize_slash_group<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    slash_type: &Option<NoteTypeValue>,
+    slash_dots: &[EmptyElement],
+    except_voices: &[String],
+) -> SerializeResult<()> {
+    if let Some(st) = slash_type {
+        w.write_text_element("slash-type", &st.to_string())?;
+    }
+    for _ in slash_dots {
+        w.write_empty(w.start_element("slash-dot"))?;
+    }
+    for voice in except_voices {
+        w.write_text_element("except-voice", voice)?;
+    }
     Ok(())
 }
 

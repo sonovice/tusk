@@ -688,9 +688,15 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 15.3 Measure Style
 
-- [ ] `multiple-rest` → MEI `<multiRest>`; `measure-repeat` → MEI `<mRpt>`/`<mRpt2>`; `beat-repeat` → MEI `<beatRpt>`; `slash` → MEI slash notation
-- [ ] Export: reverse mappings
-- [ ] Verify fragment examples: `multiple_rest_element`, `measure_repeat_element`, `beat_repeat_element`, `slash_element`, `slash_type_and_slash_dot_elements`
+- [x] `multiple-rest` → MEI `<multiRest>`; `measure-repeat` → MEI `<mRpt>`/`<mRpt2>`; `beat-repeat` → MEI `<beatRpt>`; `slash` → MEI slash notation
+  - JSON-in-label roundtrip on `<dir>` with `musicxml:measure-style,` prefix (same pattern as sound/print)
+  - Parser: `parse_measure_style` + helpers in `parse_attributes.rs`; serializer: `serialize_measure_style` in `elements.rs`
+  - Import: `import/measure_style.rs` — `convert_measure_styles()` with fixed tstamp=1 for stable roundtrip
+- [x] Export: reverse mappings
+  - `export/measure_style.rs` — intercepts measure-style dirs, emits `MeasureContent::Attributes` with measure_styles
+  - First-staff-only emission in `content.rs` (same pattern as sound)
+- [x] Verify fragment examples: `multiple_rest_element`, `measure_repeat_element`, `beat_repeat_element`, `slash_element`, `slash_type_and_slash_dot_elements`
+  - All 5 pass all 4 roundtrip levels; 320/320 roundtrip, 494 unit, 31 integration tests pass
 
 ### 15.4 Non-Traditional Keys & Interchangeable Time
 

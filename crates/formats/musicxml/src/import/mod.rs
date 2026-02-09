@@ -25,6 +25,7 @@ mod attributes;
 mod direction;
 pub(crate) mod figured_bass;
 pub(crate) mod harmony;
+pub(crate) mod measure_style;
 mod note;
 pub(crate) mod parts;
 pub(crate) mod print;

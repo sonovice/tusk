@@ -815,7 +815,7 @@ fn parse_tuplet_portion<R: BufRead>(
 }
 
 /// Parse a NoteTypeValue from a string.
-fn parse_note_type_value(s: &str) -> Result<NoteTypeValue> {
+pub(crate) fn parse_note_type_value(s: &str) -> Result<NoteTypeValue> {
     match s {
         "1024th" => Ok(NoteTypeValue::N1024th),
         "512th" => Ok(NoteTypeValue::N512th),

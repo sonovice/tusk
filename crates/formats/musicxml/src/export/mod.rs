@@ -26,6 +26,7 @@ mod content;
 mod direction;
 mod figured_bass;
 mod harmony;
+mod measure_style;
 mod note;
 mod parts;
 mod print;
