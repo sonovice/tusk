@@ -169,14 +169,24 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 - [x] MEI `<turn>` → `turn` / `inverted-turn` / `delayed-turn` / `delayed-inverted-turn` based on `@form` and `@delayed`
 - [x] MEI `<ornam>` labeled ornaments → roundtrip back to correct MusicXML type
   - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn, tremolo, wavy-line, other-ornament
-- [ ] MEI `<bTrem>` → `tremolo type="single"` on contained note
-- [ ] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes
+- [x] MEI `<bTrem>` → `tremolo type="single"` on contained note
+  - Added BTrem/FTrem to LayerChild and BeamChild via codegen EXTRA_CHILDREN
+  - `convert_btrem_content()` extracts note/chord, adds tremolo type="single" notation
+  - `unitdur_to_tremolo_marks()` maps MEI @unitdur → MusicXML tremolo value (8→1, 16→2, 32→3)
+  - Handles both note and chord children
+- [x] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes
+  - `convert_ftrem_content()` extracts two notes/chords from fTrem children
+  - First note gets tremolo type="start", second gets type="stop"
+  - Clef children in fTrem are skipped (only note/chord produce MusicXML output)
+  - Updated all export match statements: collect_note_ids, find_smallest_duration, collect_beam_events
 
 ### 3.4 Tests
 
 - [x] Roundtrip fixtures verified via existing fragment examples
 - [x] Verify fragment examples: `trill_mark_element`, `mordent_element`, `inverted_mordent_element`, `turn_element`, `delayed_turn_element`, `inverted_turn_element`, `delayed_inverted_turn_element`, `vertical_turn_element`, `inverted_vertical_turn_element`, `shake_element`, `schleifer_element`, `tremolo_element_single`, `tremolo_element_double`, `haydn_element`, `wavy_line_element`
   - All 15 fragment tests pass in MusicXML triangle roundtrip (313/313 total)
+- [x] Integration tests for bTrem/fTrem export (test_btrem_export_produces_tremolo_single, test_ftrem_export_produces_tremolo_start_stop)
+  - 486 unit tests, 31 integration tests, 314 roundtrip tests — all pass
 
 ---
 

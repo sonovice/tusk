@@ -169,12 +169,18 @@ fn collect_note_ids_from_layer(
             LayerChild::Beam(beam) => {
                 collect_note_ids_from_beam(&beam.children, measure_idx, map);
             }
+            LayerChild::BTrem(btrem) => {
+                collect_note_ids_from_btrem(&btrem.children, measure_idx, map);
+            }
+            LayerChild::FTrem(ftrem) => {
+                collect_note_ids_from_ftrem(&ftrem.children, measure_idx, map);
+            }
             LayerChild::MRest(mrest) => {
                 if let Some(ref id) = mrest.common.xml_id {
                     map.insert(id.clone(), measure_idx);
                 }
             }
-            _ => {}
+            LayerChild::DivLine(_) => {}
         }
     }
 }
@@ -213,6 +219,71 @@ fn collect_note_ids_from_beam(
             BeamChild::Beam(nested) => {
                 collect_note_ids_from_beam(&nested.children, measure_idx, map);
             }
+            BeamChild::BTrem(btrem) => {
+                collect_note_ids_from_btrem(&btrem.children, measure_idx, map);
+            }
+            BeamChild::FTrem(ftrem) => {
+                collect_note_ids_from_ftrem(&ftrem.children, measure_idx, map);
+            }
+        }
+    }
+}
+
+/// Collect note/chord xml:ids from bTrem children.
+fn collect_note_ids_from_btrem(
+    children: &[tusk_model::elements::BTremChild],
+    measure_idx: usize,
+    map: &mut HashMap<String, usize>,
+) {
+    use tusk_model::elements::BTremChild;
+    for child in children {
+        match child {
+            BTremChild::Note(note) => {
+                if let Some(ref id) = note.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            BTremChild::Chord(chord) => {
+                if let Some(ref id) = chord.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+                for note in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(n) = note;
+                    if let Some(ref id) = n.common.xml_id {
+                        map.insert(id.clone(), measure_idx);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Collect note/chord xml:ids from fTrem children.
+fn collect_note_ids_from_ftrem(
+    children: &[tusk_model::elements::FTremChild],
+    measure_idx: usize,
+    map: &mut HashMap<String, usize>,
+) {
+    use tusk_model::elements::FTremChild;
+    for child in children {
+        match child {
+            FTremChild::Note(note) => {
+                if let Some(ref id) = note.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+            }
+            FTremChild::Chord(chord) => {
+                if let Some(ref id) = chord.common.xml_id {
+                    map.insert(id.clone(), measure_idx);
+                }
+                for note in &chord.children {
+                    let tusk_model::elements::ChordChild::Note(n) = note;
+                    if let Some(ref id) = n.common.xml_id {
+                        map.insert(id.clone(), measure_idx);
+                    }
+                }
+            }
+            FTremChild::Clef(_) => {}
         }
     }
 }
@@ -1638,6 +1709,12 @@ fn convert_staff_content(
                     // Recursively process beam content
                     convert_beam_content(beam, staff_n, mxml_measure, ctx)?;
                 }
+                LayerChild::BTrem(btrem) => {
+                    convert_btrem_content(btrem, staff_n, mxml_measure, ctx)?;
+                }
+                LayerChild::FTrem(ftrem) => {
+                    convert_ftrem_content(ftrem, staff_n, mxml_measure, ctx)?;
+                }
                 LayerChild::MRest(mrest) => {
                     // Measure rest
                     let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
@@ -1748,9 +1825,184 @@ fn collect_beam_events(
                 let nested = collect_beam_events(nested_beam, staff_n, mxml_measure, ctx)?;
                 events.extend(nested);
             }
+            BeamChild::BTrem(btrem) => {
+                let first_idx = mxml_measure.content.len();
+                convert_btrem_content(btrem, staff_n, mxml_measure, ctx)?;
+                // bTrem has one note/chord
+                if mxml_measure.content.len() > first_idx {
+                    events.push((first_idx, false));
+                }
+            }
+            BeamChild::FTrem(ftrem) => {
+                let first_idx = mxml_measure.content.len();
+                convert_ftrem_content(ftrem, staff_n, mxml_measure, ctx)?;
+                // fTrem has two notes/chords; first is beamable
+                if mxml_measure.content.len() > first_idx {
+                    events.push((first_idx, false));
+                }
+            }
         }
     }
     Ok(events)
+}
+
+/// Derive tremolo mark count from MEI bTrem/fTrem @unitdur attribute.
+///
+/// MusicXML tremolo value = number of beams (1=8th, 2=16th, 3=32nd).
+/// MEI @unitdur gives the performed note duration: 8→1, 16→2, 32→3, 64→4.
+fn unitdur_to_tremolo_marks(unitdur: &tusk_model::DataDurationCmn) -> u8 {
+    use tusk_model::DataDurationCmn;
+    match unitdur {
+        DataDurationCmn::N8 => 1,
+        DataDurationCmn::N16 => 2,
+        DataDurationCmn::N32 => 3,
+        DataDurationCmn::N64 => 4,
+        DataDurationCmn::N128 => 5,
+        DataDurationCmn::N256 => 6,
+        _ => 3, // default
+    }
+}
+
+/// Add tremolo notation to a MusicXML note.
+fn add_tremolo_to_note(
+    note: &mut crate::model::note::Note,
+    tremolo_type: crate::model::data::TremoloType,
+    value: u8,
+) {
+    use crate::model::notations::{Notations, Ornaments, Tremolo};
+
+    let tremolo = Tremolo {
+        tremolo_type,
+        value: Some(value),
+        placement: None,
+        default_x: None,
+        default_y: None,
+        color: None,
+        smufl: None,
+    };
+
+    let notations = note.notations.get_or_insert_with(Notations::default);
+    let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
+    ornaments.tremolo = Some(tremolo);
+}
+
+/// Convert MEI bTrem (bowed tremolo) to MusicXML notes with tremolo type="single".
+///
+/// bTrem wraps a single note or chord. The contained note gets a
+/// `<tremolo type="single">N</tremolo>` ornament where N = number of marks.
+fn convert_btrem_content(
+    btrem: &tusk_model::elements::BTrem,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use tusk_model::elements::BTremChild;
+
+    // Determine tremolo marks from @unitdur or @num
+    let marks = if let Some(ref unitdur) = btrem.b_trem_ges.unitdur {
+        unitdur_to_tremolo_marks(unitdur)
+    } else if let Some(ref num) = btrem.b_trem_log.num {
+        num.parse::<u8>().unwrap_or(3)
+    } else {
+        3 // default: 3 marks (32nd note tremolo)
+    };
+
+    for child in &btrem.children {
+        match child {
+            BTremChild::Note(note) => {
+                let mut mxml_note = convert_mei_note(note, ctx)?;
+                mxml_note.staff = Some(staff_n as u32);
+                add_tremolo_to_note(
+                    &mut mxml_note,
+                    crate::model::data::TremoloType::Single,
+                    marks,
+                );
+                mxml_measure
+                    .content
+                    .push(MeasureContent::Note(Box::new(mxml_note)));
+            }
+            BTremChild::Chord(chord) => {
+                let mxml_notes = convert_mei_chord(chord, ctx)?;
+                let mut first = true;
+                for mut note in mxml_notes {
+                    note.staff = Some(staff_n as u32);
+                    if first {
+                        add_tremolo_to_note(
+                            &mut note,
+                            crate::model::data::TremoloType::Single,
+                            marks,
+                        );
+                        first = false;
+                    }
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(note)));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Convert MEI fTrem (fingered tremolo) to MusicXML notes with tremolo type="start/stop".
+///
+/// fTrem wraps two notes/chords. The first gets `<tremolo type="start">N</tremolo>`,
+/// the second gets `<tremolo type="stop">N</tremolo>`.
+fn convert_ftrem_content(
+    ftrem: &tusk_model::elements::FTrem,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use tusk_model::elements::FTremChild;
+
+    // Determine tremolo marks from @unitdur or @form
+    let marks = if let Some(ref unitdur) = ftrem.f_trem_ges.unitdur {
+        unitdur_to_tremolo_marks(unitdur)
+    } else {
+        2 // default: 2 marks (16th note fingered tremolo)
+    };
+
+    // Collect note/chord children (skip clefs)
+    let note_children: Vec<_> = ftrem
+        .children
+        .iter()
+        .filter(|c| !matches!(c, FTremChild::Clef(_)))
+        .collect();
+    for (i, child) in note_children.iter().enumerate() {
+        let ttype = if i == 0 {
+            crate::model::data::TremoloType::Start
+        } else {
+            crate::model::data::TremoloType::Stop
+        };
+
+        match child {
+            FTremChild::Note(note) => {
+                let mut mxml_note = convert_mei_note(note, ctx)?;
+                mxml_note.staff = Some(staff_n as u32);
+                add_tremolo_to_note(&mut mxml_note, ttype, marks);
+                mxml_measure
+                    .content
+                    .push(MeasureContent::Note(Box::new(mxml_note)));
+            }
+            FTremChild::Chord(chord) => {
+                let mxml_notes = convert_mei_chord(chord, ctx)?;
+                let mut first = true;
+                for mut note in mxml_notes {
+                    note.staff = Some(staff_n as u32);
+                    if first {
+                        add_tremolo_to_note(&mut note, ttype, marks);
+                        first = false;
+                    }
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Note(Box::new(note)));
+                }
+            }
+            FTremChild::Clef(_) => {} // already filtered
+        }
+    }
+    Ok(())
 }
 
 /// Create initial attributes for the first measure (divisions, etc.).
@@ -1822,6 +2074,12 @@ fn find_smallest_duration_in_layer(
             LayerChild::Beam(beam) => {
                 find_smallest_duration_in_beam(&beam.children, smallest);
             }
+            LayerChild::BTrem(btrem) => {
+                find_smallest_duration_in_btrem(&btrem.children, smallest);
+            }
+            LayerChild::FTrem(ftrem) => {
+                find_smallest_duration_in_ftrem(&ftrem.children, smallest);
+            }
             LayerChild::MRest(_) | LayerChild::DivLine(_) => {}
         }
     }
@@ -1864,6 +2122,71 @@ fn find_smallest_duration_in_beam(
             BeamChild::Beam(nested) => {
                 find_smallest_duration_in_beam(&nested.children, smallest);
             }
+            BeamChild::BTrem(btrem) => {
+                find_smallest_duration_in_btrem(&btrem.children, smallest);
+            }
+            BeamChild::FTrem(ftrem) => {
+                find_smallest_duration_in_ftrem(&ftrem.children, smallest);
+            }
+        }
+    }
+}
+
+/// Find smallest note duration in bTrem children.
+fn find_smallest_duration_in_btrem(
+    children: &[tusk_model::elements::BTremChild],
+    smallest: &mut f64,
+) {
+    use super::utils::duration_to_quarter_notes;
+    use tusk_model::elements::BTremChild;
+    for child in children {
+        match child {
+            BTremChild::Note(note) => {
+                if let Some(ref dur) = note.note_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            BTremChild::Chord(chord) => {
+                if let Some(ref dur) = chord.chord_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Find smallest note duration in fTrem children.
+fn find_smallest_duration_in_ftrem(
+    children: &[tusk_model::elements::FTremChild],
+    smallest: &mut f64,
+) {
+    use super::utils::duration_to_quarter_notes;
+    use tusk_model::elements::FTremChild;
+    for child in children {
+        match child {
+            FTremChild::Note(note) => {
+                if let Some(ref dur) = note.note_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            FTremChild::Chord(chord) => {
+                if let Some(ref dur) = chord.chord_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
+            FTremChild::Clef(_) => {}
         }
     }
 }
@@ -2490,5 +2813,160 @@ mod tests {
         assert!(find_staff_in_measure(&measure, 1).is_some());
         assert!(find_staff_in_measure(&measure, 2).is_some());
         assert!(find_staff_in_measure(&measure, 3).is_none());
+    }
+
+    #[test]
+    fn test_btrem_export_produces_tremolo_single() {
+        use tusk_model::data::{
+            DataDuration, DataDurationCmn, DataOctave, DataPitchname, DataWord,
+        };
+        use tusk_model::elements::{BTrem, BTremChild};
+
+        let mut score = MeiScore::default();
+        let mut section = Section::default();
+        let mut measure = MeiMeasure::default();
+        measure.common.n = Some(DataWord("1".to_string()));
+
+        let mut staff = Staff::default();
+        staff.n_integer.n = Some("1".to_string());
+
+        // Build a bTrem wrapping a quarter note C4 with unitdur=32 (3 marks)
+        let mut btrem = BTrem::default();
+        btrem.b_trem_ges.unitdur = Some(DataDurationCmn::N32);
+
+        let mut note = MeiNote::default();
+        note.common.xml_id = Some("n1".to_string());
+        note.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note.note_log.oct = Some(DataOctave::from(4u64));
+        note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+        btrem.children.push(BTremChild::Note(Box::new(note)));
+
+        let mut layer = Layer::default();
+        layer.children.push(LayerChild::BTrem(Box::new(btrem)));
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+        section
+            .children
+            .push(SectionChild::Measure(Box::new(measure)));
+        score.children.push(ScoreChild::Section(Box::new(section)));
+
+        let part_ids = vec!["P1".to_string()];
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(1.0);
+
+        let tw_measures = convert_mei_score_content(&score, &part_ids, &mut ctx).unwrap();
+        assert_eq!(tw_measures.len(), 1);
+
+        // Find the note in measure content (skip attributes)
+        let part = &tw_measures[0].parts[0];
+        let notes: Vec<_> = part
+            .content
+            .iter()
+            .filter_map(|c| {
+                if let crate::model::elements::MeasureContent::Note(n) = c {
+                    Some(n.as_ref())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(notes.len(), 1, "should have one note from bTrem");
+
+        // Verify tremolo notation
+        let notations = notes[0]
+            .notations
+            .as_ref()
+            .expect("note should have notations");
+        let ornaments = notations.ornaments.as_ref().expect("should have ornaments");
+        let tremolo = ornaments.tremolo.as_ref().expect("should have tremolo");
+        assert_eq!(
+            tremolo.tremolo_type,
+            crate::model::data::TremoloType::Single
+        );
+        assert_eq!(tremolo.value, Some(3)); // 32nd → 3 marks
+    }
+
+    #[test]
+    fn test_ftrem_export_produces_tremolo_start_stop() {
+        use tusk_model::data::{
+            DataDuration, DataDurationCmn, DataOctave, DataPitchname, DataWord,
+        };
+        use tusk_model::elements::{FTrem, FTremChild};
+
+        let mut score = MeiScore::default();
+        let mut section = Section::default();
+        let mut measure = MeiMeasure::default();
+        measure.common.n = Some(DataWord("1".to_string()));
+
+        let mut staff = Staff::default();
+        staff.n_integer.n = Some("1".to_string());
+
+        // Build an fTrem with two eighth notes (C4 and E4) with unitdur=16 (2 marks)
+        let mut ftrem = FTrem::default();
+        ftrem.f_trem_ges.unitdur = Some(DataDurationCmn::N16);
+
+        let mut note1 = MeiNote::default();
+        note1.common.xml_id = Some("n1".to_string());
+        note1.note_log.pname = Some(DataPitchname::from("c".to_string()));
+        note1.note_log.oct = Some(DataOctave::from(4u64));
+        note1.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N8));
+        ftrem.children.push(FTremChild::Note(Box::new(note1)));
+
+        let mut note2 = MeiNote::default();
+        note2.common.xml_id = Some("n2".to_string());
+        note2.note_log.pname = Some(DataPitchname::from("e".to_string()));
+        note2.note_log.oct = Some(DataOctave::from(4u64));
+        note2.note_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N8));
+        ftrem.children.push(FTremChild::Note(Box::new(note2)));
+
+        let mut layer = Layer::default();
+        layer.children.push(LayerChild::FTrem(Box::new(ftrem)));
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+        section
+            .children
+            .push(SectionChild::Measure(Box::new(measure)));
+        score.children.push(ScoreChild::Section(Box::new(section)));
+
+        let part_ids = vec!["P1".to_string()];
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(2.0);
+
+        let tw_measures = convert_mei_score_content(&score, &part_ids, &mut ctx).unwrap();
+        assert_eq!(tw_measures.len(), 1);
+
+        let part = &tw_measures[0].parts[0];
+        let notes: Vec<_> = part
+            .content
+            .iter()
+            .filter_map(|c| {
+                if let crate::model::elements::MeasureContent::Note(n) = c {
+                    Some(n.as_ref())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(notes.len(), 2, "should have two notes from fTrem");
+
+        // First note: tremolo start
+        let n1 = notes[0]
+            .notations
+            .as_ref()
+            .expect("note 1 should have notations");
+        let orn1 = n1.ornaments.as_ref().expect("should have ornaments");
+        let t1 = orn1.tremolo.as_ref().expect("should have tremolo");
+        assert_eq!(t1.tremolo_type, crate::model::data::TremoloType::Start);
+        assert_eq!(t1.value, Some(2)); // 16th → 2 marks
+
+        // Second note: tremolo stop
+        let n2 = notes[1]
+            .notations
+            .as_ref()
+            .expect("note 2 should have notations");
+        let orn2 = n2.ornaments.as_ref().expect("should have ornaments");
+        let t2 = orn2.tremolo.as_ref().expect("should have tremolo");
+        assert_eq!(t2.tremolo_type, crate::model::data::TremoloType::Stop);
+        assert_eq!(t2.value, Some(2));
     }
 }
