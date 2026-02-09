@@ -812,6 +812,11 @@ fn test_roundtrip_standalone_sound() {
     assert_roundtrip("standalone_sound.musicxml");
 }
 
+#[test]
+fn test_roundtrip_visual_attributes() {
+    assert_roundtrip("visual_attributes.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

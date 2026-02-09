@@ -851,12 +851,32 @@ Resolved TODO at `serializer/elements.rs`: "implement other direction types".
 
 ### 23.1 Position, Font, Color, Print Attributes
 
-- [ ] Import position attributes (default-x/y, relative-x/y) → MEI `@ho`, `@vo`
-- [ ] Import font attributes → MEI `@fontfam`, `@fontsize`, `@fontstyle`, `@fontweight`
-- [ ] Import `color` → MEI `@color`; `enclosure` → MEI `@enclose`
-- [ ] Import `print-object="no"` → MEI `@visible="false"`; `print-leger`, `print-spacing`
-- [ ] Export: reverse where MEI carries these attributes
-- [ ] Add roundtrip fixture testing visual attribute preservation
+- [x] Import position attributes (default-x/y, relative-x/y) → MEI `@ho`, `@vo`
+  - Position attrs stored via JSON-in-label (`musicxml:visual,{json}`) on MEI notes for lossless roundtrip
+  - `NoteVisualAttrs` struct in `model/note.rs` captures all note-level visual/position/print/playback attrs
+  - Compact JSON keys: dx, dy, rx, ry, po, pl, ps, col, dyn, ed, att, rel, piz
+  - Words direction position attrs (default-x/y, relative-x/y) stored via `musicxml:words-vis,{json}` on MEI dir
+  - Pipe chars in JSON escaped as `\u007c` to avoid breaking label segment splitting
+- [x] Import font attributes → MEI `@fontfam`, `@fontsize`, `@fontstyle`, `@fontweight`
+  - Words font attrs (font-family, font-style, font-size, font-weight, enclosure, halign, valign, justify) preserved in `musicxml:words-vis,{json}` on MEI dir
+  - Full `Vec<Words>` serialized as JSON for multi-words-per-direction support
+  - Export restores complete Words structs from JSON label when available
+- [x] Import `color` → MEI `@color`; `enclosure` → MEI `@enclose`
+  - Note color → MEI `note_vis.color` (DataColor::MeiDataColorvalues)
+  - Words color → MEI `dir_vis.color`
+  - Wedge color → MEI `hairpin_vis.color`
+  - All colors also preserved in JSON-in-label for lossless roundtrip
+- [x] Import `print-object="no"` → MEI `@visible="false"`; `print-leger`, `print-spacing`
+  - `print-object="no"` → MEI `note_vis.visible = DataBoolean::False`
+  - `print-leger`, `print-spacing` preserved in JSON-in-label for roundtrip
+- [x] Export: reverse where MEI carries these attributes
+  - Note visual attrs restored from `musicxml:visual,{json}` label via `NoteVisualAttrs::apply_to_note()`
+  - Words visual attrs restored from `musicxml:words-vis,{json}` label
+  - Hairpin color restored from MEI `hairpin_vis.color` via `convert_mei_color_to_string()`
+  - Complete note parser: now parses all note-level attrs (relative-x/y, color, print-leger, print-spacing, end-dynamics, attack, release, pizzicato) — previously these were hardcoded to None
+- [x] Add roundtrip fixture testing visual attribute preservation
+  - `visual_attributes.musicxml`: 4 notes with position, color, print, dynamics, attack/release, pizzicato attrs + words with fonts/color/enclosure + colored wedge
+  - All 4 roundtrip levels pass (334/334 total, 0 regressions)
 
 ---
 

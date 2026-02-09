@@ -564,6 +564,10 @@ fn restore_note_label_elements(
                     .get_or_insert_with(crate::model::notations::Notations::default);
                 notations.level = Some(lv);
             }
+        } else if let Some(json) = segment.strip_prefix("musicxml:visual,") {
+            if let Ok(vis) = serde_json::from_str::<crate::model::note::NoteVisualAttrs>(json) {
+                vis.apply_to_note(mxml_note);
+            }
         }
     }
 }

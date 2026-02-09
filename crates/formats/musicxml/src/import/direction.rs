@@ -489,6 +489,7 @@ fn convert_wedge(
     ctx: &mut ConversionContext,
 ) -> Option<Hairpin> {
     use crate::model::data::YesNo;
+    use tusk_model::data::{DataColor, DataColorvalues};
 
     match wedge.wedge_type {
         WedgeType::Crescendo | WedgeType::Diminuendo => {
@@ -521,6 +522,13 @@ fn convert_wedge(
 
             // Set placement
             hairpin.hairpin_vis.place = place;
+
+            // Map color
+            if let Some(ref color) = wedge.color {
+                hairpin.hairpin_vis.color = Some(DataColor::MeiDataColorvalues(DataColorvalues(
+                    color.clone(),
+                )));
+            }
 
             Some(hairpin)
         }
@@ -610,6 +618,8 @@ fn convert_words(
     place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Dir {
+    use tusk_model::data::{DataColor, DataColorvalues};
+
     let mut dir = Dir::default();
 
     // Generate and set xml:id
@@ -623,10 +633,56 @@ fn convert_words(
     // Set placement
     dir.dir_vis.place = place;
 
+    // Map color from first words element to MEI @color
+    if let Some(first) = words.first() {
+        if let Some(ref color) = first.color {
+            dir.dir_vis.color = Some(DataColor::MeiDataColorvalues(DataColorvalues(
+                color.clone(),
+            )));
+        }
+    }
+
     // Combine all words text into dir content
     for word in words {
         dir.children.push(DirChild::Text(word.value.clone()));
     }
 
+    // Store full words visual attrs as JSON-in-label for lossless roundtrip
+    let has_visual_attrs = words.iter().any(|w| {
+        w.font_family.is_some()
+            || w.font_style.is_some()
+            || w.font_size.is_some()
+            || w.font_weight.is_some()
+            || w.color.is_some()
+            || w.enclosure.is_some()
+            || w.halign.is_some()
+            || w.valign.is_some()
+            || w.justify.is_some()
+            || w.default_x.is_some()
+            || w.default_y.is_some()
+            || w.relative_x.is_some()
+            || w.relative_y.is_some()
+    });
+    if has_visual_attrs {
+        if let Ok(json) = serde_json::to_string(words) {
+            // Escape pipe characters in JSON to avoid breaking label segment splitting
+            let escaped = json.replace('|', "\\u007c");
+            append_dir_label(&mut dir, &format!("musicxml:words-vis,{escaped}"));
+        }
+    }
+
     dir
+}
+
+/// Append a label segment to a Dir element using '|' separator.
+fn append_dir_label(dir: &mut Dir, segment: &str) {
+    match &mut dir.common.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(segment);
+        }
+        None => {
+            dir.common.label = Some(segment.to_string());
+        }
+    }
 }

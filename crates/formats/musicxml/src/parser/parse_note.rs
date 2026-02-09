@@ -27,8 +27,17 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     // Parse attributes
     let default_x = get_attr(start, "default-x")?.and_then(|s| s.parse().ok());
     let default_y = get_attr(start, "default-y")?.and_then(|s| s.parse().ok());
+    let relative_x = get_attr(start, "relative-x")?.and_then(|s| s.parse().ok());
+    let relative_y = get_attr(start, "relative-y")?.and_then(|s| s.parse().ok());
     let dynamics = get_attr(start, "dynamics")?.and_then(|s| s.parse().ok());
+    let end_dynamics = get_attr(start, "end-dynamics")?.and_then(|s| s.parse().ok());
+    let attack = get_attr(start, "attack")?.and_then(|s| s.parse().ok());
+    let release = get_attr(start, "release")?.and_then(|s| s.parse().ok());
     let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    let print_leger = get_attr(start, "print-leger")?.and_then(|s| parse_yes_no_opt(&s));
+    let print_spacing = get_attr(start, "print-spacing")?.and_then(|s| parse_yes_no_opt(&s));
+    let pizzicato = get_attr(start, "pizzicato")?.and_then(|s| parse_yes_no_opt(&s));
+    let color = get_attr(start, "color")?;
     let note_id = get_attr(start, "id")?;
 
     let mut grace: Option<Grace> = None;
@@ -170,17 +179,17 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         listen,
         default_x,
         default_y,
-        relative_x: None,
-        relative_y: None,
+        relative_x,
+        relative_y,
         print_object,
-        print_leger: None,
-        print_spacing: None,
+        print_leger,
+        print_spacing,
         dynamics,
-        end_dynamics: None,
-        attack: None,
-        release: None,
-        pizzicato: None,
-        color: None,
+        end_dynamics,
+        attack,
+        release,
+        pizzicato,
+        color,
         id: note_id,
     })
 }

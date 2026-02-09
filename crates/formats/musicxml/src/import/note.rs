@@ -214,6 +214,9 @@ pub fn convert_note(
         }
     }
 
+    // Import visual/position/print attributes
+    convert_note_visual_attrs(note, &mut mei_note);
+
     Ok(mei_note)
 }
 
@@ -1847,6 +1850,42 @@ fn append_note_label(mei_note: &mut tusk_model::elements::Note, segment: &str) {
         }
         None => {
             mei_note.common.label = Some(segment.to_string());
+        }
+    }
+}
+
+/// Import note-level visual/position/print attributes to MEI.
+///
+/// Maps semantically equivalent attributes to MEI visual fields:
+/// - `color` → MEI `@color`
+/// - `print-object="no"` → MEI `@visible="false"`
+///
+/// All visual attributes (position, color, print, dynamics, attack/release,
+/// pizzicato) are stored as JSON-in-label for lossless roundtrip.
+fn convert_note_visual_attrs(
+    note: &crate::model::note::Note,
+    mei_note: &mut tusk_model::elements::Note,
+) {
+    use crate::model::note::NoteVisualAttrs;
+    use tusk_model::data::{DataBoolean, DataColor, DataColorvalues};
+
+    // Map color to MEI @color
+    if let Some(ref color) = note.color {
+        mei_note.note_vis.color = Some(DataColor::MeiDataColorvalues(DataColorvalues(
+            color.clone(),
+        )));
+    }
+
+    // Map print-object="no" to MEI @visible="false"
+    if note.print_object == Some(crate::model::data::YesNo::No) {
+        mei_note.note_vis.visible = Some(DataBoolean::False);
+    }
+
+    // Store full visual attrs as JSON-in-label for lossless roundtrip
+    let vis = NoteVisualAttrs::from_note(note);
+    if !vis.is_empty() {
+        if let Ok(json) = serde_json::to_string(&vis) {
+            append_note_label(mei_note, &format!("musicxml:visual,{json}"));
         }
     }
 }

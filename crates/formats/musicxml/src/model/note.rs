@@ -1588,3 +1588,122 @@ mod tests {
         assert!(matches!(NoteheadValue::Diamond, NoteheadValue::Diamond));
     }
 }
+
+// ============================================================================
+// Visual Attribute Roundtrip
+// ============================================================================
+
+/// Lightweight struct capturing note-level visual/position/print attributes
+/// for lossless JSON-in-label roundtrip. Only serialized when at least one
+/// field is non-None.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NoteVisualAttrs {
+    #[serde(rename = "dx", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+    #[serde(rename = "dy", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+    #[serde(rename = "rx", skip_serializing_if = "Option::is_none")]
+    pub relative_x: Option<f64>,
+    #[serde(rename = "ry", skip_serializing_if = "Option::is_none")]
+    pub relative_y: Option<f64>,
+    #[serde(rename = "po", skip_serializing_if = "Option::is_none")]
+    pub print_object: Option<YesNo>,
+    #[serde(rename = "pl", skip_serializing_if = "Option::is_none")]
+    pub print_leger: Option<YesNo>,
+    #[serde(rename = "ps", skip_serializing_if = "Option::is_none")]
+    pub print_spacing: Option<YesNo>,
+    #[serde(rename = "col", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(rename = "dyn", skip_serializing_if = "Option::is_none")]
+    pub dynamics: Option<f64>,
+    #[serde(rename = "ed", skip_serializing_if = "Option::is_none")]
+    pub end_dynamics: Option<f64>,
+    #[serde(rename = "att", skip_serializing_if = "Option::is_none")]
+    pub attack: Option<f64>,
+    #[serde(rename = "rel", skip_serializing_if = "Option::is_none")]
+    pub release: Option<f64>,
+    #[serde(rename = "piz", skip_serializing_if = "Option::is_none")]
+    pub pizzicato: Option<YesNo>,
+}
+
+impl NoteVisualAttrs {
+    /// Build from a MusicXML Note's visual attributes.
+    pub fn from_note(note: &Note) -> Self {
+        Self {
+            default_x: note.default_x,
+            default_y: note.default_y,
+            relative_x: note.relative_x,
+            relative_y: note.relative_y,
+            print_object: note.print_object,
+            print_leger: note.print_leger,
+            print_spacing: note.print_spacing,
+            color: note.color.clone(),
+            dynamics: note.dynamics,
+            end_dynamics: note.end_dynamics,
+            attack: note.attack,
+            release: note.release,
+            pizzicato: note.pizzicato,
+        }
+    }
+
+    /// Returns true if all fields are None (nothing to store).
+    pub fn is_empty(&self) -> bool {
+        self.default_x.is_none()
+            && self.default_y.is_none()
+            && self.relative_x.is_none()
+            && self.relative_y.is_none()
+            && self.print_object.is_none()
+            && self.print_leger.is_none()
+            && self.print_spacing.is_none()
+            && self.color.is_none()
+            && self.dynamics.is_none()
+            && self.end_dynamics.is_none()
+            && self.attack.is_none()
+            && self.release.is_none()
+            && self.pizzicato.is_none()
+    }
+
+    /// Apply stored attributes back to a MusicXML note.
+    pub fn apply_to_note(&self, note: &mut Note) {
+        if self.default_x.is_some() {
+            note.default_x = self.default_x;
+        }
+        if self.default_y.is_some() {
+            note.default_y = self.default_y;
+        }
+        if self.relative_x.is_some() {
+            note.relative_x = self.relative_x;
+        }
+        if self.relative_y.is_some() {
+            note.relative_y = self.relative_y;
+        }
+        if self.print_object.is_some() {
+            note.print_object = self.print_object;
+        }
+        if self.print_leger.is_some() {
+            note.print_leger = self.print_leger;
+        }
+        if self.print_spacing.is_some() {
+            note.print_spacing = self.print_spacing;
+        }
+        if self.color.is_some() {
+            note.color.clone_from(&self.color);
+        }
+        if self.dynamics.is_some() {
+            note.dynamics = self.dynamics;
+        }
+        if self.end_dynamics.is_some() {
+            note.end_dynamics = self.end_dynamics;
+        }
+        if self.attack.is_some() {
+            note.attack = self.attack;
+        }
+        if self.release.is_some() {
+            note.release = self.release;
+        }
+        if self.pizzicato.is_some() {
+            note.pizzicato = self.pizzicato;
+        }
+    }
+}

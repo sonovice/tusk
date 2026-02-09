@@ -175,6 +175,11 @@ pub fn convert_mei_hairpin(
         wedge.niente = Some(YesNo::Yes);
     }
 
+    // Restore color from MEI @color
+    if let Some(ref color) = hairpin.hairpin_vis.color {
+        wedge.color = Some(convert_mei_color_to_string(color));
+    }
+
     // Preserve ID
     if let Some(ref xml_id) = hairpin.common.xml_id {
         wedge.id = Some(xml_id.clone());
@@ -337,7 +342,20 @@ pub fn convert_mei_dir(
                 id: None,
             })
         }
-        _ => DirectionTypeContent::Words(vec![Words::new(&text_content)]),
+        _ => {
+            // Check for stored words visual attrs in label
+            let restored_words = dir.common.label.as_deref().and_then(|label| {
+                label.split('|').find_map(|seg| {
+                    seg.strip_prefix("musicxml:words-vis,")
+                        .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
+                })
+            });
+            if let Some(words) = restored_words {
+                DirectionTypeContent::Words(words)
+            } else {
+                DirectionTypeContent::Words(vec![Words::new(&text_content)])
+            }
+        }
     };
 
     let direction_type = DirectionType {
@@ -608,6 +626,15 @@ pub(crate) fn convert_place_to_placement(
         DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below) => Some(AboveBelow::Below),
         _ => None,
     })
+}
+
+/// Convert MEI DataColor to a MusicXML color string.
+pub(crate) fn convert_mei_color_to_string(color: &tusk_model::data::DataColor) -> String {
+    use tusk_model::data::DataColor;
+    match color {
+        DataColor::MeiDataColorvalues(v) => v.0.clone(),
+        DataColor::MeiDataColornames(n) => format!("{n:?}").to_lowercase(),
+    }
 }
 
 // ============================================================================
