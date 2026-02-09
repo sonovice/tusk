@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <defaults>
+    <scaling>
+      <millimeters>7.2</millimeters>
+      <tenths>40</tenths>
+    </scaling>
+    <page-layout>
+      <page-height>1584</page-height>
+      <page-width>1224</page-width>
+      <page-margins type="both">
+        <left-margin>72</left-margin>
+        <right-margin>72</right-margin>
+        <top-margin>88</top-margin>
+        <bottom-margin>88</bottom-margin>
+      </page-margins>
+    </page-layout>
+    <system-layout>
+      <system-margins>
+        <left-margin>48</left-margin>
+        <right-margin>0</right-margin>
+      </system-margins>
+      <system-distance>121</system-distance>
+      <top-system-distance>70</top-system-distance>
+      <system-dividers>
+        <left-divider print-object="yes"/>
+        <right-divider print-object="no"/>
+      </system-dividers>
+    </system-layout>
+    <staff-layout number="1">
+      <staff-distance>80</staff-distance>
+    </staff-layout>
+    <staff-layout number="2">
+      <staff-distance>65</staff-distance>
+    </staff-layout>
+    <appearance>
+      <line-width type="stem">0.8333</line-width>
+      <line-width type="beam">5</line-width>
+      <line-width type="staff">1.25</line-width>
+      <line-width type="light barline">1.4583</line-width>
+      <line-width type="heavy barline">5</line-width>
+      <line-width type="leger">1.875</line-width>
+      <line-width type="ending">1.5</line-width>
+      <line-width type="wedge">1.25</line-width>
+      <note-size type="grace">60</note-size>
+      <note-size type="cue">60</note-size>
+      <distance type="hyphen">120</distance>
+      <distance type="beam">8</distance>
+      <glyph type="f-clef">fClef19thCentury</glyph>
+      <glyph type="quarter-rest">restQuarterOld</glyph>
+      <other-appearance type="custom-spacing">tight</other-appearance>
+    </appearance>
+    <music-font font-family="Bravura" font-size="20"/>
+    <word-font font-family="Times New Roman" font-size="10" font-style="normal" font-weight="normal"/>
+    <lyric-font number="1" name="verse" font-family="Times New Roman" font-size="11" font-style="italic"/>
+    <lyric-font number="2" name="chorus" font-family="Arial" font-size="10" font-weight="bold"/>
+    <lyric-language number="1" name="verse" xml:lang="en"/>
+    <lyric-language number="2" name="chorus" xml:lang="de"/>
+  </defaults>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key>
+          <fifths>0</fifths>
+        </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+      </attributes>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>4</duration>
+        <type>whole</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>

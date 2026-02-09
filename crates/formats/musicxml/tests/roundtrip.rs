@@ -792,6 +792,11 @@ fn test_roundtrip_identification_metadata() {
     assert_roundtrip("identification_metadata.musicxml");
 }
 
+#[test]
+fn test_roundtrip_defaults_layout() {
+    assert_roundtrip("defaults_layout.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

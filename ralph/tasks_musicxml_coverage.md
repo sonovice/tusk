@@ -550,8 +550,12 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 11.3 Tests
 
-- [ ] Add roundtrip fixture with layout information
-- [ ] Verify fragment examples: `measure_distance_element`, `staff_distance_element`, `system_distance_element`, `staff_size_element`, `line_detail_element`, `line_element`, `measure_numbering_element`, `system_dividers_element`, `glyph_element`
+- [x] Add roundtrip fixture with layout information
+  - `defaults_layout.musicxml`: comprehensive fixture with scaling, page-layout (height/width/margins), system-layout (margins/distance/top-distance/dividers), 2 staff-layouts, appearance (8 line-widths, 2 note-sizes, 2 distances, 2 glyphs, 1 other-appearance), music-font, word-font, 2 lyric-fonts, 2 lyric-languages
+  - All 4 roundtrip levels pass (conversion, full, triangle MEI, triangle MusicXML)
+  - 317/317 roundtrip tests pass (0 regressions), 492 unit tests, 31 integration tests
+- [x] Verify fragment examples: `measure_distance_element`, `staff_distance_element`, `system_distance_element`, `staff_size_element`, `line_detail_element`, `line_element`, `measure_numbering_element`, `system_dividers_element`, `glyph_element`
+  - All 9 fragment tests pass MusicXML triangle roundtrip
 
 ---
 
