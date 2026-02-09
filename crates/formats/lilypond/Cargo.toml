@@ -1,0 +1,18 @@
+[package]
+name = "tusk-lilypond"
+description = "LilyPond parsing, serialization, and conversion for Tusk"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+tusk-model = { workspace = true }
+tusk-format = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tusk-mei = { workspace = true }
+tusk-model = { workspace = true }

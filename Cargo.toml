@@ -5,6 +5,7 @@ members = [
     "crates/core/format",
     "crates/formats/mei",
     "crates/formats/musicxml",
+    "crates/formats/lilypond",
     "crates/bindings/cli",
     "crates/bindings/wasm",
 
@@ -27,6 +28,7 @@ tusk-model = { path = "crates/core/model" }
 tusk-format = { path = "crates/core/format" }
 tusk-mei = { path = "crates/formats/mei" }
 tusk-musicxml = { path = "crates/formats/musicxml" }
+tusk-lilypond = { path = "crates/formats/lilypond" }
 
 # External dependencies
 derive_more = { version = "2.1.1", features = ["full"] }

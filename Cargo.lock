@@ -611,6 +611,7 @@ dependencies = [
  "indicatif",
  "tracing",
  "tusk-format",
+ "tusk-lilypond",
  "tusk-mei",
  "tusk-musicxml",
 ]
@@ -620,6 +621,17 @@ name = "tusk-format"
 version = "0.1.0"
 dependencies = [
  "thiserror",
+ "tusk-model",
+]
+
+[[package]]
+name = "tusk-lilypond"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "tracing",
+ "tusk-format",
+ "tusk-mei",
  "tusk-model",
 ]
 

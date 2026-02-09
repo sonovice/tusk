@@ -33,6 +33,10 @@ fn build_registry() -> FormatRegistry {
     registry.register_importer(Box::new(tusk_musicxml::MusicXmlFormat));
     registry.register_exporter(Box::new(tusk_musicxml::MusicXmlFormat));
 
+    // LilyPond
+    registry.register_importer(Box::new(tusk_lilypond::LilyPondFormat));
+    registry.register_exporter(Box::new(tusk_lilypond::LilyPondFormat));
+
     registry
 }
 
