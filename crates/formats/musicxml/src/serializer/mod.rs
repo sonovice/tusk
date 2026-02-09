@@ -205,7 +205,7 @@ impl<W: Write> MusicXmlWriter<W> {
             // quotes in the DOCTYPE declaration (BytesText::new would turn " into &quot;).
             self.writer.write_event(Event::DocType(
                 BytesText::from_escaped(
-                    "score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"",
+                    "score-partwise PUBLIC \"-//Recordare//DTD MusicXML 4.1 Partwise//EN\" \"http://www.musicxml.org/dtds/partwise.dtd\"",
                 ),
             ))?;
             self.doctype_written = true;
@@ -218,7 +218,7 @@ impl<W: Write> MusicXmlWriter<W> {
         if self.config.include_doctype && !self.doctype_written {
             self.writer.write_event(Event::DocType(
                 BytesText::from_escaped(
-                    "score-timewise PUBLIC \"-//Recordare//DTD MusicXML 4.0 Timewise//EN\" \"http://www.musicxml.org/dtds/timewise.dtd\"",
+                    "score-timewise PUBLIC \"-//Recordare//DTD MusicXML 4.1 Timewise//EN\" \"http://www.musicxml.org/dtds/timewise.dtd\"",
                 ),
             ))?;
             self.doctype_written = true;

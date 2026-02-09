@@ -1648,3 +1648,115 @@ fn test_mxl_roundtrip_figured_bass() {
 fn test_mxl_roundtrip_identification_metadata() {
     assert_mxl_roundtrip("identification_metadata.musicxml");
 }
+
+// ============================================================================
+// Cross-Version Roundtrip Tests (Phase 25)
+// ============================================================================
+
+/// Verify that older-version MusicXML files parse, convert, and roundtrip correctly.
+/// The output always uses version 4.1 regardless of input version.
+///
+/// `expected_attr_version` is what `ScorePartwise.version` should be after parsing
+/// (the `@version` attribute value, or `None` if missing).
+/// `expected_detected_version` is what `detect_version_string` should return
+/// (uses DOCTYPE fallback when attribute is absent).
+fn assert_version_upgrade_roundtrip(
+    fixture_name: &str,
+    expected_attr_version: Option<&str>,
+    expected_detected_version: Option<&str>,
+) {
+    let xml = load_fixture(fixture_name).unwrap();
+
+    // Verify version detection (attribute + DOCTYPE fallback)
+    let detected = tusk_musicxml::versions::detect_version_string(&xml);
+    assert_eq!(
+        detected, expected_detected_version,
+        "Version detection mismatch for {}",
+        fixture_name
+    );
+
+    // Parse should succeed regardless of version
+    let partwise = parse_score_partwise(&xml)
+        .unwrap_or_else(|e| panic!("Parse failed for {}: {}", fixture_name, e));
+
+    // Parsed version reflects the @version attribute only
+    assert_eq!(
+        partwise.version.as_deref(),
+        expected_attr_version,
+        "Parsed version mismatch for {}",
+        fixture_name
+    );
+
+    // Full roundtrip through MEI: import → export → serialize → reparse
+    let mei =
+        import(&partwise).unwrap_or_else(|e| panic!("Import failed for {}: {}", fixture_name, e));
+    let exported =
+        export(&mei).unwrap_or_else(|e| panic!("Export failed for {}: {}", fixture_name, e));
+
+    // Output should always be 4.1
+    assert_eq!(
+        exported.version.as_deref(),
+        Some(tusk_musicxml::versions::OUTPUT_VERSION),
+        "Export version should be {} for {}",
+        tusk_musicxml::versions::OUTPUT_VERSION,
+        fixture_name
+    );
+
+    // Serialize and verify version in XML output
+    let xml_out = serialize(&exported)
+        .unwrap_or_else(|e| panic!("Serialize failed for {}: {}", fixture_name, e));
+    assert!(
+        xml_out.contains(&format!(
+            "version=\"{}\"",
+            tusk_musicxml::versions::OUTPUT_VERSION
+        )),
+        "Serialized XML should contain version=\"{}\" for {}",
+        tusk_musicxml::versions::OUTPUT_VERSION,
+        fixture_name
+    );
+    assert!(
+        xml_out.contains(&format!(
+            "MusicXML {}",
+            tusk_musicxml::versions::OUTPUT_VERSION
+        )),
+        "DOCTYPE should contain MusicXML {} for {}",
+        tusk_musicxml::versions::OUTPUT_VERSION,
+        fixture_name
+    );
+
+    // Reparse and verify content roundtrips
+    let reparsed = parse_score_partwise(&xml_out)
+        .unwrap_or_else(|e| panic!("Reparse failed for {}: {}", fixture_name, e));
+    let original_tw = import_timewise(&partwise);
+    let roundtripped_tw = import_timewise(&reparsed);
+    let diffs = compare_scores(&original_tw, &roundtripped_tw);
+    if !diffs.is_empty() {
+        panic!(
+            "Cross-version roundtrip failed for {}:\n{}",
+            fixture_name,
+            diffs.report()
+        );
+    }
+}
+
+#[test]
+fn test_version_2_0_roundtrip() {
+    assert_version_upgrade_roundtrip("version_2_0.musicxml", Some("2.0"), Some("2.0"));
+}
+
+#[test]
+fn test_version_3_1_roundtrip() {
+    assert_version_upgrade_roundtrip("version_3_1.musicxml", Some("3.1"), Some("3.1"));
+}
+
+#[test]
+fn test_version_no_attr_roundtrip() {
+    // MusicXML 1.0 files lack version attr; DOCTYPE says 1.0
+    assert_version_upgrade_roundtrip("version_no_attr.musicxml", None, Some("1.0"));
+}
+
+#[test]
+fn test_existing_4_0_upgraded_to_4_1() {
+    // Existing 4.0 fixtures should export as 4.1
+    assert_version_upgrade_roundtrip("hello_world.musicxml", Some("4.0"), Some("4.0"));
+}

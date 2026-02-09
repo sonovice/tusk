@@ -114,7 +114,7 @@ pub fn convert_mei_to_timewise_with_context(
     ctx: &mut ConversionContext,
 ) -> ConversionResult<ScoreTimewise> {
     let mut score = ScoreTimewise {
-        version: Some("4.0".to_string()),
+        version: Some(crate::versions::OUTPUT_VERSION.to_string()),
         ..Default::default()
     };
 
@@ -580,7 +580,10 @@ mod tests {
         assert!(result.is_ok());
 
         let score = result.unwrap();
-        assert_eq!(score.version.as_deref(), Some("4.0"));
+        assert_eq!(
+            score.version.as_deref(),
+            Some(crate::versions::OUTPUT_VERSION)
+        );
         // Should have at least one part in part_list
         assert!(!score.part_list.items.is_empty());
     }
@@ -592,7 +595,10 @@ mod tests {
         assert!(result.is_ok());
 
         let score = result.unwrap();
-        assert_eq!(score.version.as_deref(), Some("4.0"));
+        assert_eq!(
+            score.version.as_deref(),
+            Some(crate::versions::OUTPUT_VERSION)
+        );
         assert!(!score.part_list.items.is_empty());
         // Partwise gets parts from timewise_to_partwise
         assert!(!score.parts.is_empty());

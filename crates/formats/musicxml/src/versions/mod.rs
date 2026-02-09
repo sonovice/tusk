@@ -6,6 +6,9 @@
 
 use std::borrow::Cow;
 
+/// The version string our output always uses.
+pub const OUTPUT_VERSION: &str = "4.1";
+
 /// Supported MusicXML version labels (module names).
 /// Versions 1.0 and 1.1 are DTD-only; 2.0–4.1 have XSD.
 pub const MUSICXML_VERSION_LABELS: &[&str] = &["v2_0", "v3_0", "v3_1", "v4_0", "v4_1"];
@@ -27,6 +30,24 @@ pub fn detect_musicxml_version(xml: &str) -> Option<Cow<'static, str>> {
     version_string_to_label(version).map(Cow::Borrowed)
 }
 
+/// Detect the raw version string from a MusicXML document.
+///
+/// Checks (in order):
+/// 1. `@version` attribute on `<score-partwise>` / `<score-timewise>`
+/// 2. DOCTYPE public identifier (e.g. "MusicXML 3.1 Partwise" → "3.1")
+///
+/// Returns `None` if neither source provides a recognized version.
+pub fn detect_version_string(xml: &str) -> Option<&'static str> {
+    // Try @version attribute first
+    if let Some(root) = find_musicxml_root(xml) {
+        if let Some(v) = get_version_attr(&root) {
+            return version_string_to_canonical(v);
+        }
+    }
+    // Fall back to DOCTYPE
+    detect_version_from_doctype(xml)
+}
+
 /// Map version string (e.g. "2.0", "4.0", "4.1") to versioned module label (e.g. "v2_0", "v4_0").
 pub fn version_string_to_label(version: &str) -> Option<&'static str> {
     let v = version.trim();
@@ -40,6 +61,45 @@ pub fn version_string_to_label(version: &str) -> Option<&'static str> {
         "4.1" => Some("v4_1"),
         _ => None,
     }
+}
+
+/// Map version string to a canonical static str (validates it is known).
+fn version_string_to_canonical(version: &str) -> Option<&'static str> {
+    let v = version.trim();
+    match v {
+        "1.0" => Some("1.0"),
+        "1.1" => Some("1.1"),
+        "2.0" => Some("2.0"),
+        "3.0" => Some("3.0"),
+        "3.1" => Some("3.1"),
+        "4.0" => Some("4.0"),
+        "4.1" => Some("4.1"),
+        _ => None,
+    }
+}
+
+/// Detect version from a DOCTYPE declaration.
+///
+/// MusicXML DOCTYPEs contain the version in the public identifier, e.g.:
+/// `<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" ...>`
+fn detect_version_from_doctype(xml: &str) -> Option<&'static str> {
+    // Find DOCTYPE declaration (case-insensitive)
+    let upper = xml.to_ascii_uppercase();
+    let dt_start = upper.find("<!DOCTYPE")?;
+    // Find the end of the DOCTYPE
+    let dt_end = xml[dt_start..].find('>')? + dt_start;
+    let doctype = &xml[dt_start..=dt_end];
+
+    // Look for "MusicXML X.Y" in the public ID
+    let upper_dt = doctype.to_ascii_uppercase();
+    let mxml_pos = upper_dt.find("MUSICXML ")?;
+    let after = &doctype[mxml_pos + 9..]; // skip "MusicXML "
+    // Extract version: digits, dot, digits
+    let ver_end = after
+        .find(|c: char| !c.is_ascii_digit() && c != '.')
+        .unwrap_or(after.len());
+    let ver_str = &after[..ver_end];
+    version_string_to_canonical(ver_str)
 }
 
 /// Return the first opening tag that is "score-partwise" or "score-timewise" (slice from '<' to '>' inclusive).
@@ -129,10 +189,51 @@ mod tests {
 
     #[test]
     fn test_version_string_to_label() {
-        assert_eq!(super::version_string_to_label("4.0"), Some("v4_0"));
-        assert_eq!(super::version_string_to_label("2.0"), Some("v2_0"));
-        assert_eq!(super::version_string_to_label("4.1"), Some("v4_1"));
-        assert_eq!(super::version_string_to_label(" 3.1 "), Some("v3_1"));
-        assert_eq!(super::version_string_to_label("5.0"), None);
+        assert_eq!(version_string_to_label("4.0"), Some("v4_0"));
+        assert_eq!(version_string_to_label("2.0"), Some("v2_0"));
+        assert_eq!(version_string_to_label("4.1"), Some("v4_1"));
+        assert_eq!(version_string_to_label(" 3.1 "), Some("v3_1"));
+        assert_eq!(version_string_to_label("5.0"), None);
+    }
+
+    #[test]
+    fn detect_version_string_from_attr() {
+        let xml = r#"<?xml version="1.0"?><score-partwise version="3.1">"#;
+        assert_eq!(detect_version_string(xml), Some("3.1"));
+    }
+
+    #[test]
+    fn detect_version_string_from_doctype() {
+        let xml = r#"<?xml version="1.0"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise>"#;
+        assert_eq!(detect_version_string(xml), Some("3.1"));
+    }
+
+    #[test]
+    fn detect_version_string_doctype_2_0() {
+        let xml = r#"<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 2.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise>"#;
+        assert_eq!(detect_version_string(xml), Some("2.0"));
+    }
+
+    #[test]
+    fn detect_version_attr_takes_priority_over_doctype() {
+        let xml = r#"<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">"#;
+        assert_eq!(detect_version_string(xml), Some("4.0"));
+    }
+
+    #[test]
+    fn detect_version_string_unknown() {
+        let xml = r#"<score-partwise version="99.0">"#;
+        assert_eq!(detect_version_string(xml), None);
+    }
+
+    #[test]
+    fn detect_version_string_no_version() {
+        // MusicXML 1.0 files may lack version attribute entirely
+        let xml = r#"<score-partwise>"#;
+        assert_eq!(detect_version_string(xml), None);
     }
 }

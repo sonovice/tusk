@@ -899,7 +899,21 @@ Resolved TODO at `serializer/elements.rs`: "implement other direction types".
 ### 25.1 MusicXML Version Detection & Upgrade
 Output is always version 4.1
 
-- [ ] Detect version from DOCTYPE or `version` attribute
-- [ ] Implement MusicXML 2.0 → 4.1, 3.0 → 4.1, 3.1 → 4.1, 4.0 → 4.1 migration
-- [ ] Cross-version roundtrip tests (output is always 4.1)
-- [ ] Test with real-world files from different MusicXML versions
+- [x] Detect version from DOCTYPE or `version` attribute
+  - Enhanced `versions/mod.rs` with `detect_version_string()`: checks `@version` attr first, then DOCTYPE public ID fallback
+  - `detect_version_from_doctype()` parses "MusicXML X.Y" from DOCTYPE declaration
+  - `version_string_to_canonical()` validates and returns static str for known versions (1.0–4.1)
+  - 7 unit tests covering attr detection, DOCTYPE detection, priority, unknown versions
+- [x] Implement MusicXML 2.0 → 4.1, 3.0 → 4.1, 3.1 → 4.1, 4.0 → 4.1 migration
+  - Export always sets `version: Some("4.1")` via `versions::OUTPUT_VERSION` constant
+  - DOCTYPE updated to "MusicXML 4.1 Partwise/Timewise" in serializer
+  - Parser preserves input version (no migration needed — our parser handles all versions natively)
+  - No element-level migration required: MusicXML 2.0–4.1 elements are backward-compatible
+- [x] Cross-version roundtrip tests (output is always 4.1)
+  - `assert_version_upgrade_roundtrip()` verifies: version detection, parse, import→export→serialize→reparse content
+  - Tests: version_2_0 (attr "2.0"), version_3_1 (attr "3.1"), version_no_attr (DOCTYPE "1.0"), hello_world (4.0→4.1)
+  - All verify output has version="4.1" in both struct and serialized XML/DOCTYPE
+- [x] Test with real-world files from different MusicXML versions
+  - All 338 existing roundtrip tests pass with version upgrade (many were version 4.0, now export as 4.1)
+  - New fixtures: version_2_0.musicxml, version_3_1.musicxml, version_no_attr.musicxml
+  - 505 unit tests, 31 integration tests, 338 roundtrip tests — all pass, 0 regressions
