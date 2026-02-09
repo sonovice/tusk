@@ -766,7 +766,7 @@ impl MusicXmlSerialize for DirectionType {
     }
 }
 
-fn serialize_dynamics_value<W: Write>(
+pub(crate) fn serialize_dynamics_value<W: Write>(
     w: &mut MusicXmlWriter<W>,
     value: &DynamicsValue,
 ) -> SerializeResult<()> {

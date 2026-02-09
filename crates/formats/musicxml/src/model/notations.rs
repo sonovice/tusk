@@ -39,6 +39,10 @@ pub struct Notations {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub technical: Option<super::technical::Technical>,
 
+    /// Dynamics within notations (note-level dynamics, as opposed to direction-level).
+    #[serde(rename = "dynamics", default, skip_serializing_if = "Vec::is_empty")]
+    pub dynamics: Vec<super::direction::Dynamics>,
+
     /// Fermata markings (up to 2 per note).
     #[serde(rename = "fermata", default, skip_serializing_if = "Vec::is_empty")]
     pub fermatas: Vec<Fermata>,

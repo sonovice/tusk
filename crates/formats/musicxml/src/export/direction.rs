@@ -58,6 +58,7 @@ pub fn convert_mei_dynam(
 
     let dynamics = Dynamics {
         values: vec![dynamics_value],
+        placement: None,
     };
 
     let direction_type = DirectionType {
@@ -94,7 +95,7 @@ pub fn convert_mei_dynam(
 }
 
 /// Parse dynamics text to a MusicXML DynamicsValue.
-fn parse_dynamics_text(text: &str) -> crate::model::direction::DynamicsValue {
+pub(crate) fn parse_dynamics_text(text: &str) -> crate::model::direction::DynamicsValue {
     use crate::model::direction::DynamicsValue;
 
     match text.trim() {

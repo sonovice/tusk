@@ -82,7 +82,10 @@ impl Direction {
     /// Create a direction with dynamics.
     pub fn dynamics(dynamics: Vec<DynamicsValue>) -> Self {
         Self::new(vec![DirectionType {
-            content: DirectionTypeContent::Dynamics(Dynamics { values: dynamics }),
+            content: DirectionTypeContent::Dynamics(Dynamics {
+                values: dynamics,
+                placement: None,
+            }),
             id: None,
         }])
     }

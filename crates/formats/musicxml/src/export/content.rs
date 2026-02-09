@@ -373,6 +373,7 @@ pub fn convert_mei_score_content(
                     ctx,
                 )?;
                 convert_technical_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                convert_notation_dynamics(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
             } else {
                 // Multi-staff part: merge multiple staves with <backup> between them
                 for local_staff in 1..=num_staves {
@@ -423,6 +424,7 @@ pub fn convert_mei_score_content(
                         ctx,
                     )?;
                     convert_technical_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                    convert_notation_dynamics(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
                     // Insert <backup> between staves (not after the last one)
                     if local_staff < num_staves {
@@ -657,6 +659,15 @@ fn convert_direction_events(
     for child in &mei_measure.children {
         match child {
             MeasureChild::Dynam(dynam) => {
+                // Skip notation-level dynamics — handled by convert_notation_dynamics()
+                if dynam
+                    .common
+                    .label
+                    .as_deref()
+                    .is_some_and(|l| l == "musicxml:notation-dynamics")
+                {
+                    continue;
+                }
                 let event_staff = dynam
                     .dynam_log
                     .staff
@@ -2304,6 +2315,75 @@ fn is_technical_label(name: &str) -> bool {
             | "harmonic"
             | "other-technical"
     )
+}
+
+/// Convert MEI `<dynam>` control events with `musicxml:notation-dynamics` label back to
+/// MusicXML `<dynamics>` within `<notations>` on the referenced notes.
+fn convert_notation_dynamics(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use super::direction::{convert_place_to_placement, parse_dynamics_text};
+    use crate::model::direction::Dynamics;
+    use crate::model::notations::Notations;
+    use tusk_model::elements::DynamChild;
+
+    for child in &mei_measure.children {
+        let MeasureChild::Dynam(dynam) = child else {
+            continue;
+        };
+        // Only process notation-level dynamics
+        if dynam
+            .common
+            .label
+            .as_deref()
+            .is_none_or(|l| l != "musicxml:notation-dynamics")
+        {
+            continue;
+        }
+        let event_staff = dynam
+            .dynam_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if event_staff != staff_n {
+            continue;
+        }
+        let start_id = dynam
+            .dynam_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+
+        // Extract text content
+        let text_content: String = dynam
+            .children
+            .iter()
+            .map(|child| {
+                let DynamChild::Text(t) = child;
+                t.as_str()
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let dynamics_value = parse_dynamics_text(&text_content);
+        let placement = convert_place_to_placement(&dynam.dynam_vis.place);
+
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        notations.dynamics.push(Dynamics {
+            values: vec![dynamics_value],
+            placement,
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -139,6 +139,9 @@ pub fn convert_note(
     // Process standalone accidental marks
     process_accidental_marks(note, &note_id, ctx);
 
+    // Process notation-level dynamics
+    process_notation_dynamics(note, &note_id, ctx);
+
     // Process technical notations
     process_technical(note, &note_id, ctx);
 
@@ -1099,6 +1102,55 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
             ornam.children.push(OrnamChild::Text(am.value.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+}
+
+// ============================================================================
+// Notation-Level Dynamics Processing
+// ============================================================================
+
+/// Process dynamics within `<notations>` into MEI `<dynam>` control events with `@startid`.
+///
+/// Unlike direction-level dynamics (which use `@tstamp`), notation-level dynamics
+/// are attached to a specific note via `@startid`. We add a `musicxml:notation-dynamics`
+/// label to distinguish them from direction-level dynamics during export.
+fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::import::direction::convert_placement;
+    use crate::import::utils::dynamics_value_to_string;
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{Dynam, DynamChild, MeasureChild};
+
+    let notations = match note.notations {
+        Some(ref n) => n,
+        None => return,
+    };
+    if notations.dynamics.is_empty() {
+        return;
+    }
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    for dyn_elem in &notations.dynamics {
+        let mut dynam = Dynam::default();
+        dynam.common.xml_id = Some(ctx.generate_id_with_suffix("dynam"));
+        dynam.common.label = Some("musicxml:notation-dynamics".to_string());
+        dynam.dynam_log.startid = Some(startid.clone());
+        dynam.dynam_log.staff = Some(staff_str.clone());
+        dynam.dynam_vis.place = convert_placement(dyn_elem.placement.as_ref());
+
+        let text_content = dyn_elem
+            .values
+            .iter()
+            .map(dynamics_value_to_string)
+            .collect::<Vec<_>>()
+            .join("");
+        if !text_content.is_empty() {
+            dynam.children.push(DynamChild::Text(text_content));
+        }
+
+        ctx.add_ornament_event(MeasureChild::Dynam(Box::new(dynam)));
     }
 }
 

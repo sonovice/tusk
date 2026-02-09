@@ -2,12 +2,20 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::super::data::AboveBelow;
+
 /// Dynamic marking container.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Dynamics {
     /// Dynamic values (ppp, pp, p, mp, mf, f, ff, fff, etc.)
     #[serde(rename = "$value")]
     pub values: Vec<DynamicsValue>,
+
+    /// Placement (above/below). Used when dynamics are associated with a note
+    /// (within `<notations>`). Ignored for direction-level dynamics where the
+    /// parent `<direction>` element's placement attribute is used instead.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
 }
 
 /// Individual dynamic marking.
@@ -79,6 +87,7 @@ mod tests {
     fn test_dynamics_values() {
         let dynamics = Dynamics {
             values: vec![DynamicsValue::Mf],
+            placement: None,
         };
         assert_eq!(dynamics.values.len(), 1);
     }
@@ -87,6 +96,7 @@ mod tests {
     fn test_dynamics_multiple_values() {
         let dynamics = Dynamics {
             values: vec![DynamicsValue::Sf, DynamicsValue::P],
+            placement: None,
         };
         assert_eq!(dynamics.values.len(), 2);
     }
@@ -95,6 +105,7 @@ mod tests {
     fn test_dynamics_other() {
         let dynamics = Dynamics {
             values: vec![DynamicsValue::OtherDynamics("sfffz".to_string())],
+            placement: None,
         };
         if let DynamicsValue::OtherDynamics(s) = &dynamics.values[0] {
             assert_eq!(s, "sfffz");

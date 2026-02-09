@@ -181,7 +181,7 @@ fn parse_wedge(e: &BytesStart) -> Result<Wedge> {
     })
 }
 
-fn parse_dynamics<R: BufRead>(reader: &mut Reader<R>) -> Result<Dynamics> {
+pub(crate) fn parse_dynamics<R: BufRead>(reader: &mut Reader<R>) -> Result<Dynamics> {
     let mut buf = Vec::new();
     let mut values: Vec<DynamicsValue> = Vec::new();
 
@@ -208,7 +208,10 @@ fn parse_dynamics<R: BufRead>(reader: &mut Reader<R>) -> Result<Dynamics> {
         buf.clear();
     }
 
-    Ok(Dynamics { values })
+    Ok(Dynamics {
+        values,
+        placement: None,
+    })
 }
 
 fn parse_dynamics_element(name: &[u8]) -> Option<DynamicsValue> {

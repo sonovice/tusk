@@ -4,6 +4,7 @@ use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
+use super::parse_direction::parse_dynamics;
 use super::parse_notations::{
     parse_arpeggiate, parse_fermata_empty, parse_fermata_start, parse_glissando,
     parse_glissando_empty, parse_non_arpeggiate, parse_other_notation_empty,
@@ -605,6 +606,12 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                 b"technical" => {
                     notations.technical = Some(parse_technical(reader)?);
                 }
+                b"dynamics" => {
+                    let placement = parse_placement_attr(&e);
+                    let mut dyn_elem = parse_dynamics(reader)?;
+                    dyn_elem.placement = placement;
+                    notations.dynamics.push(dyn_elem);
+                }
                 b"fermata" => {
                     notations.fermatas.push(parse_fermata_start(reader, &e)?);
                 }
@@ -631,6 +638,12 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
                 b"tied" => notations.tied.push(parse_tied(&e)?),
                 b"tuplet" => notations.tuplets.push(parse_tuplet_empty(&e)?),
                 b"fermata" => notations.fermatas.push(parse_fermata_empty(&e)?),
+                b"dynamics" => {
+                    notations.dynamics.push(crate::model::direction::Dynamics {
+                        values: Vec::new(),
+                        placement: parse_placement_attr(&e),
+                    });
+                }
                 b"arpeggiate" => {
                     notations.arpeggiate = Some(parse_arpeggiate(&e)?);
                 }

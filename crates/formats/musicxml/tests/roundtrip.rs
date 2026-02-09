@@ -1234,6 +1234,7 @@ fragment_roundtrip_test!(dot_element);
 fragment_roundtrip_test!(double_element);
 fragment_roundtrip_test!(double_tongue_element);
 fragment_roundtrip_test!(down_bow_element);
+fragment_roundtrip_test!(dynamics_element_notation);
 fragment_roundtrip_test!(effect_element);
 fragment_roundtrip_test!(elision_element);
 // Batch 14

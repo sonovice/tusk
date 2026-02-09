@@ -55,6 +55,9 @@ impl MusicXmlSerialize for notations::Notations {
         if let Some(ref ornaments) = self.ornaments {
             ornaments.serialize(w)?;
         }
+        for dyn_elem in &self.dynamics {
+            serialize_dynamics_notation(w, dyn_elem)?;
+        }
         for fermata in &self.fermatas {
             serialize_fermata(w, fermata)?;
         }
@@ -572,6 +575,31 @@ fn tremolo_type_str(tt: &TremoloType) -> &'static str {
         TremoloType::Stop => "stop",
         TremoloType::Unmeasured => "unmeasured",
     }
+}
+
+// ============================================================================
+// Dynamics (within notations)
+// ============================================================================
+
+/// Serialize a `<dynamics>` element within `<notations>`.
+fn serialize_dynamics_notation<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    dynamics: &crate::model::direction::Dynamics,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("dynamics");
+    if let Some(ref p) = dynamics.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    if dynamics.values.is_empty() {
+        w.write_empty(elem)?;
+    } else {
+        w.write_start(elem)?;
+        for d in &dynamics.values {
+            super::elements::serialize_dynamics_value(w, d)?;
+        }
+        w.write_end("dynamics")?;
+    }
+    Ok(())
 }
 
 // ============================================================================

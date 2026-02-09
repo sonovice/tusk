@@ -254,16 +254,33 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 6.1 Model, Parser, Import, Export
 
-- [ ] Add `dynamics: Vec<Dynamics>` field to `Notations` struct (reuse existing `Dynamics`/`DynamicsValue` from `model/direction/dynamics.rs`)
-- [ ] Parse `<dynamics>` within `parse_notations()` (currently only parsed within `<direction-type>`)
-- [ ] Serialize dynamics within notations
-- [ ] Import: notation-level dynamics → MEI `<dynam>` with `@startid` referencing the note
-- [ ] Export: MEI `<dynam>` attached to specific note → notation-level dynamics
+- [x] Add `dynamics: Vec<Dynamics>` field to `Notations` struct (reuse existing `Dynamics`/`DynamicsValue` from `model/direction/dynamics.rs`)
+  - Added `placement: Option<AboveBelow>` to `Dynamics` struct (per XSD: placement used when dynamics associated with note)
+  - Added `dynamics: Vec<super::direction::Dynamics>` to `Notations` struct in `model/notations.rs`
+- [x] Parse `<dynamics>` within `parse_notations()` (currently only parsed within `<direction-type>`)
+  - Made `parse_dynamics()` in `parser/parse_direction.rs` pub(crate) for reuse
+  - Added `b"dynamics"` cases in both `Event::Start` and `Event::Empty` branches of `parse_notations()`
+  - Extracts placement attribute from `<dynamics>` element for notation-level usage
+- [x] Serialize dynamics within notations
+  - Added `serialize_dynamics_notation()` in `serializer/notations.rs`
+  - Made `serialize_dynamics_value()` in `serializer/elements.rs` pub(crate) for reuse
+  - Serializes dynamics with placement attr + value children, per XSD schema order
+- [x] Import: notation-level dynamics → MEI `<dynam>` with `@startid` referencing the note
+  - Added `process_notation_dynamics()` in `import/note.rs`
+  - Creates MEI `<dynam>` with `@startid`, `@staff`, `@place`; text = dynamics value
+  - Uses `musicxml:notation-dynamics` label to distinguish from direction-level dynamics
+- [x] Export: MEI `<dynam>` attached to specific note → notation-level dynamics
+  - Added `convert_notation_dynamics()` in `export/content.rs`
+  - Skips notation-level dynams in `convert_direction_events()` (by label check)
+  - Finds note by startid, adds `Dynamics` to note's `Notations`
+  - Made `parse_dynamics_text()` in `export/direction.rs` pub(crate) for reuse
 
 ### 6.2 Tests
 
-- [ ] Add roundtrip fixture with notation-level dynamics
-- [ ] Verify dynamics in notations context produce correct output
+- [x] Add roundtrip fixture with notation-level dynamics
+  - `dynamics_element_notation.musicxml`: 3 notes with ff, p, sfz dynamics in `<notations>`
+- [x] Verify dynamics in notations context produce correct output
+  - 314/314 roundtrip tests pass (1 ignored debug helper), 481 unit tests pass, 31 integration tests pass
 
 ---
 
