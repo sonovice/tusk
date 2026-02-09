@@ -555,9 +555,37 @@ pub fn convert_staff_def_from_score_part(
         // Apply key signature
         if let Some(key) = attrs.keys.first() {
             convert_key_to_context(key, ctx);
-            if let KeyContent::Traditional(trad) = &key.content {
-                let keysig = convert_key_fifths(trad.fifths);
-                staff_def.staff_def_log.keysig = Some(keysig);
+            match &key.content {
+                KeyContent::Traditional(trad) => {
+                    let keysig = convert_key_fifths(trad.fifths);
+                    staff_def.staff_def_log.keysig = Some(keysig);
+                    // Store full Key as JSON if it has key_octaves
+                    if !key.key_octaves.is_empty() {
+                        if let Ok(json) = serde_json::to_string(key) {
+                            crate::import::attributes::append_label(
+                                &mut staff_def,
+                                format!(
+                                    "{}{}",
+                                    crate::import::attributes::KEY_LABEL_PREFIX,
+                                    json
+                                ),
+                            );
+                        }
+                    }
+                }
+                KeyContent::NonTraditional(_) => {
+                    // No MEI @keysig equivalent; store full Key as JSON
+                    if let Ok(json) = serde_json::to_string(key) {
+                        crate::import::attributes::append_label(
+                            &mut staff_def,
+                            format!(
+                                "{}{}",
+                                crate::import::attributes::KEY_LABEL_PREFIX,
+                                json
+                            ),
+                        );
+                    }
+                }
             }
         }
 
@@ -567,6 +595,19 @@ pub fn convert_staff_def_from_score_part(
             staff_def.staff_def_log.meter_count = count;
             staff_def.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             staff_def.staff_def_log.meter_sym = sym;
+
+            // Store full Time as JSON if it has interchangeable or separator
+            let has_extra = matches!(&time.content,
+                crate::model::attributes::TimeContent::Standard(std) if std.interchangeable.is_some())
+                || time.separator.is_some();
+            if has_extra {
+                if let Ok(json) = serde_json::to_string(time) {
+                    crate::import::attributes::append_label(
+                        &mut staff_def,
+                        format!("{}{}", crate::import::attributes::TIME_LABEL_PREFIX, json),
+                    );
+                }
+            }
         }
 
         // Apply clef (overrides default)
@@ -690,7 +731,10 @@ fn apply_staff_details_to_staff_def(
         let mut sd_for_json = sd.clone();
         sd_for_json.number = None;
         if let Ok(json) = serde_json::to_string(&sd_for_json) {
-            staff_def.labelled.label = Some(format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json));
+            crate::import::attributes::append_label(
+                staff_def,
+                format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json),
+            );
         }
     }
 }

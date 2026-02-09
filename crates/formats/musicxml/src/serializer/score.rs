@@ -1320,7 +1320,35 @@ pub(crate) fn accidental_value_str(av: &AccidentalValue) -> &'static str {
         AccidentalValue::QuarterSharp => "quarter-sharp",
         AccidentalValue::ThreeQuartersFlat => "three-quarters-flat",
         AccidentalValue::ThreeQuartersSharp => "three-quarters-sharp",
-        _ => "other", // Simplified for now
+        AccidentalValue::SharpDown => "sharp-down",
+        AccidentalValue::SharpUp => "sharp-up",
+        AccidentalValue::NaturalDown => "natural-down",
+        AccidentalValue::NaturalUp => "natural-up",
+        AccidentalValue::FlatDown => "flat-down",
+        AccidentalValue::FlatUp => "flat-up",
+        AccidentalValue::DoubleSharpDown => "double-sharp-down",
+        AccidentalValue::DoubleSharpUp => "double-sharp-up",
+        AccidentalValue::FlatFlatDown => "flat-flat-down",
+        AccidentalValue::FlatFlatUp => "flat-flat-up",
+        AccidentalValue::ArrowDown => "arrow-down",
+        AccidentalValue::ArrowUp => "arrow-up",
+        AccidentalValue::TripleSharp => "triple-sharp",
+        AccidentalValue::TripleFlat => "triple-flat",
+        AccidentalValue::SlashQuarterSharp => "slash-quarter-sharp",
+        AccidentalValue::SlashSharp => "slash-sharp",
+        AccidentalValue::SlashFlat => "slash-flat",
+        AccidentalValue::DoubleSlashFlat => "double-slash-flat",
+        AccidentalValue::Sharp1 => "sharp-1",
+        AccidentalValue::Sharp2 => "sharp-2",
+        AccidentalValue::Sharp3 => "sharp-3",
+        AccidentalValue::Sharp5 => "sharp-5",
+        AccidentalValue::Flat1 => "flat-1",
+        AccidentalValue::Flat2 => "flat-2",
+        AccidentalValue::Flat3 => "flat-3",
+        AccidentalValue::Flat4 => "flat-4",
+        AccidentalValue::Sori => "sori",
+        AccidentalValue::Koron => "koron",
+        AccidentalValue::Other => "other",
     }
 }
 
@@ -1344,6 +1372,27 @@ pub(crate) fn time_symbol_str(ts: &TimeSymbol) -> &'static str {
         TimeSymbol::Note => "note",
         TimeSymbol::DottedNote => "dotted-note",
         TimeSymbol::Normal => "normal",
+    }
+}
+
+pub(crate) fn time_separator_str(ts: &TimeSeparator) -> &'static str {
+    match ts {
+        TimeSeparator::None => "none",
+        TimeSeparator::Horizontal => "horizontal",
+        TimeSeparator::Diagonal => "diagonal",
+        TimeSeparator::Vertical => "vertical",
+        TimeSeparator::Adjacent => "adjacent",
+    }
+}
+
+pub(crate) fn time_relation_str(tr: &TimeRelation) -> &'static str {
+    match tr {
+        TimeRelation::Parentheses => "parentheses",
+        TimeRelation::Bracket => "bracket",
+        TimeRelation::Equals => "equals",
+        TimeRelation::Slash => "slash",
+        TimeRelation::Space => "space",
+        TimeRelation::Hyphen => "hyphen",
     }
 }
 

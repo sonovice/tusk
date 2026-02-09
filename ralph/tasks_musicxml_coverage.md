@@ -700,9 +700,14 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 15.4 Non-Traditional Keys & Interchangeable Time
 
-- [ ] Non-traditional key → MEI `@keysig` with `<keyAccid>` children; export reverse
-- [ ] Interchangeable time → MEI `<meterSigGrp>` with multiple `<meterSig>`; export reverse
-- [ ] Verify fragment examples: `key_element_non_traditional`, `key_octave_element`, `interchangeable_element`
+- [x] Non-traditional key → MEI `@keysig` with `<keyAccid>` children; export reverse
+  - Parser: key-step/key-alter/key-accidental + key-octave; Serializer: key-accidental + key-octave output
+  - Import: JSON-in-label on staffDef for non-traditional keys; Export: recover from label
+- [x] Interchangeable time → MEI `<meterSigGrp>` with multiple `<meterSig>`; export reverse
+  - Parser: multiple signatures, separator attr, interchangeable child; Serializer: interchangeable + separator
+  - Import: JSON-in-label on staffDef for interchangeable/separator; Export: recover from label
+- [x] Verify fragment examples: `key_element_non_traditional`, `key_octave_element`, `interchangeable_element`
+  - All 3 pass all 4 roundtrip levels; 320/320 roundtrip, 494 unit, 31 integration tests pass
 
 ---
 

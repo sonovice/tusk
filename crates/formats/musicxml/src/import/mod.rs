@@ -21,7 +21,7 @@
 //! let mei = convert_score(&score)?;
 //! ```
 
-mod attributes;
+pub(crate) mod attributes;
 mod direction;
 pub(crate) mod figured_bass;
 pub(crate) mod harmony;

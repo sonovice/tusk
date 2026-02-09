@@ -9,6 +9,9 @@
 //! - Staff details (lines)
 
 use crate::context::ConversionContext;
+use crate::import::attributes::{
+    KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment,
+};
 use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
 
@@ -20,9 +23,9 @@ const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
 /// Primary: recover full StaffDetails from JSON in @label (lossless roundtrip).
 /// Fallback: build minimal StaffDetails from @lines only.
 fn extract_staff_details(staff_def: &StaffDef) -> Option<StaffDetails> {
-    // Try JSON label first
+    // Try JSON label first (supports |‐separated multi-segment labels)
     if let Some(ref label) = staff_def.labelled.label {
-        if let Some(json) = label.strip_prefix(STAFF_DETAILS_LABEL_PREFIX) {
+        if let Some(json) = extract_label_segment(label, STAFF_DETAILS_LABEL_PREFIX) {
             if let Ok(sd) = serde_json::from_str::<StaffDetails>(json) {
                 return Some(sd);
             }
@@ -41,6 +44,21 @@ fn extract_staff_details(staff_def: &StaffDef) -> Option<StaffDetails> {
         ..Default::default()
     })
 }
+
+/// Extract MusicXML Key from a MEI StaffDef label (non-traditional or key-octave roundtrip).
+fn extract_key_from_label(staff_def: &StaffDef) -> Option<crate::model::attributes::Key> {
+    let label = staff_def.labelled.label.as_ref()?;
+    let json = extract_label_segment(label, KEY_LABEL_PREFIX)?;
+    serde_json::from_str(json).ok()
+}
+
+/// Extract MusicXML Time from a MEI StaffDef label (interchangeable/separator roundtrip).
+fn extract_time_from_label(staff_def: &StaffDef) -> Option<crate::model::attributes::Time> {
+    let label = staff_def.labelled.label.as_ref()?;
+    let json = extract_label_segment(label, TIME_LABEL_PREFIX)?;
+    serde_json::from_str(json).ok()
+}
+
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
 ///
@@ -289,8 +307,10 @@ pub fn convert_mei_staff_def_to_attributes(
 
     let mut attrs = Attributes::default();
 
-    // Convert key signature
-    if let Some(keysig) = staff_def.staff_def_log.keysig.as_ref()
+    // Convert key signature — try JSON label first for lossless roundtrip
+    if let Some(key) = extract_key_from_label(staff_def) {
+        attrs.keys.push(key);
+    } else if let Some(keysig) = staff_def.staff_def_log.keysig.as_ref()
         && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
     {
         attrs.keys.push(Key {
@@ -306,8 +326,12 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert time signature
-    if staff_def.staff_def_log.meter_sym.as_ref() == Some(&tusk_model::data::DataMetersign::Open) {
+    // Convert time signature — try JSON label first for lossless roundtrip
+    if let Some(time) = extract_time_from_label(staff_def) {
+        attrs.times.push(time);
+    } else if staff_def.staff_def_log.meter_sym.as_ref()
+        == Some(&tusk_model::data::DataMetersign::Open)
+    {
         // Senza misura
         attrs.times.push(Time {
             number: None,
@@ -429,69 +453,77 @@ pub fn build_first_measure_attributes(
     let divisions = ctx.divisions();
     attrs.divisions = Some(divisions);
 
-    // Get key signature from scoreDef first, then staffDef as fallback (@keysig is Option<String>)
-    let keysig = score_def
-        .and_then(|sd| sd.score_def_log.keysig.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
+    // Key signature — try JSON label on staffDef for lossless roundtrip
+    if let Some(key) = staff_def.and_then(extract_key_from_label) {
+        attrs.keys.push(key);
+    } else {
+        let keysig = score_def
+            .and_then(|sd| sd.score_def_log.keysig.as_ref())
+            .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
 
-    if let Some(keysig) = keysig
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
-    {
-        attrs.keys.push(Key {
-            number: None,
-            print_object: None,
-            id: None,
-            content: KeyContent::Traditional(TraditionalKey {
-                cancel: None,
-                fifths,
-                mode: None,
-            }),
-            key_octaves: Vec::new(),
-        });
+        if let Some(keysig) = keysig
+            && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
+        {
+            attrs.keys.push(Key {
+                number: None,
+                print_object: None,
+                id: None,
+                content: KeyContent::Traditional(TraditionalKey {
+                    cancel: None,
+                    fifths,
+                    mode: None,
+                }),
+                key_octaves: Vec::new(),
+            });
+        }
     }
 
-    // Get time signature from scoreDef first, then staffDef as fallback
-    let meter_sym = score_def
-        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
-    let meter_count = score_def
-        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
-    let meter_unit = score_def
-        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
+    // Time signature — try JSON label on staffDef for lossless roundtrip
+    if let Some(time) = staff_def.and_then(extract_time_from_label) {
+        attrs.times.push(time);
+    } else {
+        let meter_sym = score_def
+            .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
+            .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
+        let meter_count = score_def
+            .and_then(|sd| sd.score_def_log.meter_count.as_ref())
+            .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
+        let meter_unit = score_def
+            .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
+            .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
 
-    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
-        // Senza misura
-        attrs.times.push(Time {
-            number: None,
-            symbol: None,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
-        });
-    } else if meter_count.is_some() || meter_unit.is_some() {
-        let beats = meter_count
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "4".to_string());
-        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
+        if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+            // Senza misura
+            attrs.times.push(Time {
+                number: None,
+                symbol: None,
+                separator: None,
+                print_object: None,
+                id: None,
+                content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
+            });
+        } else if meter_count.is_some() || meter_unit.is_some() {
+            let beats = meter_count
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "4".to_string());
+            let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
 
-        let symbol = meter_sym
-            .as_ref()
-            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
+            let symbol = meter_sym
+                .as_ref()
+                .and_then(|s| convert_mei_meter_sym_to_mxml(s));
 
-        attrs.times.push(Time {
-            number: None,
-            symbol,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::Standard(StandardTime {
-                signatures: vec![TimeSignature { beats, beat_type }],
-                interchangeable: None,
-            }),
-        });
+            attrs.times.push(Time {
+                number: None,
+                symbol,
+                separator: None,
+                print_object: None,
+                id: None,
+                content: TimeContent::Standard(StandardTime {
+                    signatures: vec![TimeSignature { beats, beat_type }],
+                    interchangeable: None,
+                }),
+            });
+        }
     }
 
     // Get clef from staffDef (per-staff attribute)
@@ -604,65 +636,73 @@ pub fn build_first_measure_attributes_multi(
     // Part symbol for multi-staff parts (from context, set during part-list export)
     attrs.part_symbol = ctx.part_symbol(part_id).cloned();
 
-    // Key signature from scoreDef, fallback to first staffDef
-    let keysig = score_def
-        .and_then(|sd| sd.score_def_log.keysig.as_ref())
-        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
-    if let Some(keysig) = keysig
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
-    {
-        attrs.keys.push(Key {
-            number: None,
-            print_object: None,
-            id: None,
-            content: KeyContent::Traditional(TraditionalKey {
-                cancel: None,
-                fifths,
-                mode: None,
-            }),
-            key_octaves: Vec::new(),
-        });
+    // Key signature — try JSON label on first staffDef for lossless roundtrip
+    if let Some(key) = first_def.and_then(extract_key_from_label) {
+        attrs.keys.push(key);
+    } else {
+        let keysig = score_def
+            .and_then(|sd| sd.score_def_log.keysig.as_ref())
+            .or_else(|| first_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
+        if let Some(keysig) = keysig
+            && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
+        {
+            attrs.keys.push(Key {
+                number: None,
+                print_object: None,
+                id: None,
+                content: KeyContent::Traditional(TraditionalKey {
+                    cancel: None,
+                    fifths,
+                    mode: None,
+                }),
+                key_octaves: Vec::new(),
+            });
+        }
     }
 
-    // Time signature from scoreDef, fallback to first staffDef
-    let meter_sym = score_def
-        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
-        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
-    let meter_count = score_def
-        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
-        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
-    let meter_unit = score_def
-        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
-        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
+    // Time signature — try JSON label on first staffDef for lossless roundtrip
+    if let Some(time) = first_def.and_then(extract_time_from_label) {
+        attrs.times.push(time);
+    } else {
+        let meter_sym = score_def
+            .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
+            .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
+        let meter_count = score_def
+            .and_then(|sd| sd.score_def_log.meter_count.as_ref())
+            .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
+        let meter_unit = score_def
+            .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
+            .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
 
-    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
-        attrs.times.push(Time {
-            number: None,
-            symbol: None,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
-        });
-    } else if meter_count.is_some() || meter_unit.is_some() {
-        let beats = meter_count
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "4".to_string());
-        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
-        let symbol = meter_sym
-            .as_ref()
-            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
-        attrs.times.push(Time {
-            number: None,
-            symbol,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::Standard(StandardTime {
-                signatures: vec![TimeSignature { beats, beat_type }],
-                interchangeable: None,
-            }),
-        });
+        if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+            attrs.times.push(Time {
+                number: None,
+                symbol: None,
+                separator: None,
+                print_object: None,
+                id: None,
+                content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
+            });
+        } else if meter_count.is_some() || meter_unit.is_some() {
+            let beats = meter_count
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "4".to_string());
+            let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
+            let symbol = meter_sym
+                .as_ref()
+                .and_then(|s| convert_mei_meter_sym_to_mxml(s));
+            attrs.times.push(Time {
+                number: None,
+                symbol,
+                separator: None,
+                print_object: None,
+                id: None,
+                content: TimeContent::Standard(StandardTime {
+                    signatures: vec![TimeSignature { beats, beat_type }],
+                    interchangeable: None,
+                }),
+            });
+        }
     }
 
     // Per-staff clefs with number attribute

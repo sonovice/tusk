@@ -17,8 +17,8 @@ use super::score::{
     above_below_str, accidental_value_str, beam_value_str, clef_sign_str, fan_str, font_size_str,
     font_style_str, font_weight_str, left_center_right_str, line_type_str, mode_str,
     notehead_value_str, push_opt_attr_start, push_opt_str_attr_start, start_stop_continue_str,
-    start_stop_str, stem_value_str, step_str, symbol_size_str, time_symbol_str, valign_str,
-    wedge_type_str, yes_no_str,
+    start_stop_str, stem_value_str, step_str, symbol_size_str, time_relation_str,
+    time_separator_str, time_symbol_str, valign_str, wedge_type_str, yes_no_str,
 };
 
 // ============================================================================
@@ -625,8 +625,28 @@ impl MusicXmlSerialize for Key {
                 for alt in &nt.alterations {
                     w.write_text_element("key-step", step_str(&alt.key_step))?;
                     w.write_text_element("key-alter", &alt.key_alter.to_string())?;
+                    if let Some(ref ka) = alt.key_accidental {
+                        let mut start = w.start_element("key-accidental");
+                        if let Some(ref smufl) = ka.smufl {
+                            start.push_attribute(("smufl", smufl.as_str()));
+                        }
+                        w.write_start(start)?;
+                        w.write_text(accidental_value_str(&ka.value))?;
+                        w.write_end("key-accidental")?;
+                    }
                 }
             }
+        }
+        // Key octaves (shared by traditional and non-traditional)
+        for ko in &self.key_octaves {
+            let mut start = w.start_element("key-octave");
+            start.push_attribute(("number", ko.number.to_string().as_str()));
+            if let Some(ref cancel) = ko.cancel {
+                start.push_attribute(("cancel", yes_no_str(cancel)));
+            }
+            w.write_start(start)?;
+            w.write_text(&ko.octave.to_string())?;
+            w.write_end("key-octave")?;
         }
         Ok(())
     }
@@ -642,6 +662,9 @@ impl MusicXmlSerialize for Time {
         push_opt_attr!(attrs, "number", self.number);
         if let Some(ref sym) = self.symbol {
             attrs.push(("symbol", time_symbol_str(sym).to_string()));
+        }
+        if let Some(ref sep) = self.separator {
+            attrs.push(("separator", time_separator_str(sep).to_string()));
         }
         if let Some(ref po) = self.print_object {
             attrs.push(("print-object", yes_no_str(po).to_string()));
@@ -661,6 +684,9 @@ impl MusicXmlSerialize for Time {
                     w.write_text_element("beats", &sig.beats)?;
                     w.write_text_element("beat-type", &sig.beat_type)?;
                 }
+                if let Some(ref inter) = std.interchangeable {
+                    serialize_interchangeable(w, inter)?;
+                }
             }
             TimeContent::SenzaMisura(sm) => {
                 if let Some(ref symbol) = sm.symbol {
@@ -672,6 +698,29 @@ impl MusicXmlSerialize for Time {
         }
         Ok(())
     }
+}
+
+fn serialize_interchangeable<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    inter: &Interchangeable,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("interchangeable");
+    if let Some(ref sym) = inter.symbol {
+        start.push_attribute(("symbol", time_symbol_str(sym)));
+    }
+    if let Some(ref sep) = inter.separator {
+        start.push_attribute(("separator", time_separator_str(sep)));
+    }
+    w.write_start(start)?;
+    if let Some(ref tr) = inter.time_relation {
+        w.write_text_element("time-relation", time_relation_str(tr))?;
+    }
+    for sig in &inter.signatures {
+        w.write_text_element("beats", &sig.beats)?;
+        w.write_text_element("beat-type", &sig.beat_type)?;
+    }
+    w.write_end("interchangeable")?;
+    Ok(())
 }
 
 impl MusicXmlSerialize for Clef {

@@ -62,9 +62,18 @@ fn parse_key<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<K
     let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
     let id = get_attr(start, "id")?;
 
+    // Traditional key fields
     let mut fifths: Option<i8> = None;
     let mut mode: Option<Mode> = None;
     let mut cancel: Option<Cancel> = None;
+
+    // Non-traditional key fields
+    let mut alterations: Vec<KeyAlteration> = Vec::new();
+    let mut pending_step: Option<Step> = None;
+    let mut pending_alter: Option<f64> = None;
+
+    // Key octaves (shared by both traditional and non-traditional)
+    let mut key_octaves: Vec<KeyOctave> = Vec::new();
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -93,6 +102,55 @@ fn parse_key<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<K
                     });
                 }
                 b"cancel" => cancel = Some(parse_cancel(reader, &e)?),
+                b"key-step" => {
+                    // Flush any pending alteration before starting a new one
+                    if let Some(step) = pending_step.take() {
+                        alterations.push(KeyAlteration {
+                            key_step: step,
+                            key_alter: pending_alter.take().unwrap_or(0.0),
+                            key_accidental: None,
+                        });
+                    }
+                    let s = read_text(reader, b"key-step")?;
+                    pending_step = Some(super::parse_harmony::parse_step_value(&s)?);
+                }
+                b"key-alter" => {
+                    pending_alter = Some(
+                        read_text(reader, b"key-alter")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("key-alter".to_string()))?,
+                    );
+                }
+                b"key-accidental" => {
+                    let smufl = get_attr(&e, "smufl")?;
+                    let text = read_text(reader, b"key-accidental")?;
+                    let value = super::parse_note::parse_accidental_value(&text)?;
+                    // Flush the pending step+alter with this accidental
+                    if let Some(step) = pending_step.take() {
+                        alterations.push(KeyAlteration {
+                            key_step: step,
+                            key_alter: pending_alter.take().unwrap_or(0.0),
+                            key_accidental: Some(KeyAccidental { value, smufl }),
+                        });
+                    }
+                }
+                b"key-octave" => {
+                    let num: u32 = get_attr(&e, "number")?
+                        .ok_or_else(|| {
+                            ParseError::MissingAttribute("key-octave @number".to_string())
+                        })?
+                        .parse()
+                        .map_err(|_| ParseError::ParseNumber("key-octave number".to_string()))?;
+                    let cancel_attr = get_attr(&e, "cancel")?.and_then(|s| parse_yes_no_opt(&s));
+                    let octave: u8 = read_text(reader, b"key-octave")?
+                        .parse()
+                        .map_err(|_| ParseError::ParseNumber("key-octave".to_string()))?;
+                    key_octaves.push(KeyOctave {
+                        octave,
+                        number: num,
+                        cancel: cancel_attr,
+                    });
+                }
                 _ => skip_element(reader, &e)?,
             },
             Event::End(e) if e.name().as_ref() == b"key" => break,
@@ -102,18 +160,31 @@ fn parse_key<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<K
         buf.clear();
     }
 
-    let content = KeyContent::Traditional(TraditionalKey {
-        cancel,
-        fifths: fifths.unwrap_or(0),
-        mode,
-    });
+    // Flush any remaining pending alteration
+    if let Some(step) = pending_step.take() {
+        alterations.push(KeyAlteration {
+            key_step: step,
+            key_alter: pending_alter.take().unwrap_or(0.0),
+            key_accidental: None,
+        });
+    }
+
+    let content = if !alterations.is_empty() {
+        KeyContent::NonTraditional(NonTraditionalKey { alterations })
+    } else {
+        KeyContent::Traditional(TraditionalKey {
+            cancel,
+            fifths: fifths.unwrap_or(0),
+            mode,
+        })
+    };
 
     Ok(Key {
         number,
         print_object,
         id,
         content,
-        key_octaves: Vec::new(),
+        key_octaves,
     })
 }
 
@@ -130,10 +201,8 @@ fn parse_cancel<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resul
     Ok(Cancel { fifths, location })
 }
 
-fn parse_time<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Time> {
-    let mut buf = Vec::new();
-    let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
-    let symbol = get_attr(start, "symbol")?.and_then(|s| match s.as_str() {
+fn parse_time_symbol(s: &str) -> Option<TimeSymbol> {
+    match s {
         "common" => Some(TimeSymbol::Common),
         "cut" => Some(TimeSymbol::Cut),
         "single-number" => Some(TimeSymbol::SingleNumber),
@@ -141,19 +210,51 @@ fn parse_time<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
         "dotted-note" => Some(TimeSymbol::DottedNote),
         "normal" => Some(TimeSymbol::Normal),
         _ => None,
-    });
-    let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    }
+}
 
-    let mut beats: Option<String> = None;
-    let mut beat_type: Option<String> = None;
+fn parse_time_separator(s: &str) -> Option<TimeSeparator> {
+    match s {
+        "none" => Some(TimeSeparator::None),
+        "horizontal" => Some(TimeSeparator::Horizontal),
+        "diagonal" => Some(TimeSeparator::Diagonal),
+        "vertical" => Some(TimeSeparator::Vertical),
+        "adjacent" => Some(TimeSeparator::Adjacent),
+        _ => None,
+    }
+}
+
+fn parse_time<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Time> {
+    let mut buf = Vec::new();
+    let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
+    let symbol = get_attr(start, "symbol")?.and_then(|s| parse_time_symbol(&s));
+    let separator = get_attr(start, "separator")?.and_then(|s| parse_time_separator(&s));
+    let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    let id = get_attr(start, "id")?;
+
+    let mut signatures: Vec<TimeSignature> = Vec::new();
+    let mut pending_beats: Option<String> = None;
     let mut senza_misura: Option<String> = None;
+    let mut interchangeable: Option<Interchangeable> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => match e.name().as_ref() {
-                b"beats" => beats = Some(read_text(reader, b"beats")?),
-                b"beat-type" => beat_type = Some(read_text(reader, b"beat-type")?),
+                b"beats" => {
+                    pending_beats = Some(read_text(reader, b"beats")?);
+                }
+                b"beat-type" => {
+                    let bt = read_text(reader, b"beat-type")?;
+                    let beats = pending_beats.take().unwrap_or_else(|| "4".to_string());
+                    signatures.push(TimeSignature {
+                        beats,
+                        beat_type: bt,
+                    });
+                }
                 b"senza-misura" => senza_misura = Some(read_text(reader, b"senza-misura")?),
+                b"interchangeable" => {
+                    interchangeable = Some(parse_interchangeable(reader, &e)?);
+                }
                 _ => skip_element(reader, &e)?,
             },
             Event::End(e) if e.name().as_ref() == b"time" => break,
@@ -168,22 +269,84 @@ fn parse_time<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
             symbol: senza_misura,
         })
     } else {
+        if signatures.is_empty() {
+            signatures.push(TimeSignature {
+                beats: "4".to_string(),
+                beat_type: "4".to_string(),
+            });
+        }
         TimeContent::Standard(StandardTime {
-            signatures: vec![TimeSignature {
-                beats: beats.unwrap_or_else(|| "4".to_string()),
-                beat_type: beat_type.unwrap_or_else(|| "4".to_string()),
-            }],
-            interchangeable: None,
+            signatures,
+            interchangeable,
         })
     };
 
     Ok(Time {
         number,
         symbol,
-        separator: None,
+        separator,
         print_object,
-        id: None,
+        id,
         content,
+    })
+}
+
+fn parse_interchangeable<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<Interchangeable> {
+    let mut buf = Vec::new();
+    let symbol = get_attr(start, "symbol")?.and_then(|s| parse_time_symbol(&s));
+    let separator = get_attr(start, "separator")?.and_then(|s| parse_time_separator(&s));
+
+    let mut time_relation: Option<TimeRelation> = None;
+    let mut signatures: Vec<TimeSignature> = Vec::new();
+    let mut pending_beats: Option<String> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"time-relation" => {
+                    let s = read_text(reader, b"time-relation")?;
+                    time_relation = Some(match s.as_str() {
+                        "parentheses" => TimeRelation::Parentheses,
+                        "bracket" => TimeRelation::Bracket,
+                        "equals" => TimeRelation::Equals,
+                        "slash" => TimeRelation::Slash,
+                        "space" => TimeRelation::Space,
+                        "hyphen" => TimeRelation::Hyphen,
+                        _ => TimeRelation::Equals,
+                    });
+                }
+                b"beats" => {
+                    pending_beats = Some(read_text(reader, b"beats")?);
+                }
+                b"beat-type" => {
+                    let bt = read_text(reader, b"beat-type")?;
+                    let beats = pending_beats.take().unwrap_or_else(|| "4".to_string());
+                    signatures.push(TimeSignature {
+                        beats,
+                        beat_type: bt,
+                    });
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"interchangeable" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement(
+                    "interchangeable end".to_string(),
+                ))
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Interchangeable {
+        symbol,
+        separator,
+        time_relation,
+        signatures,
     })
 }
 

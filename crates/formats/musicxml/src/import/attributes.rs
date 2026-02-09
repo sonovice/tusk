@@ -12,6 +12,35 @@ use tusk_model::data::{
 };
 use tusk_model::elements::StaffDef;
 
+/// Label prefix for non-traditional key JSON stored on staffDef @label.
+pub const KEY_LABEL_PREFIX: &str = "musicxml:key,";
+
+/// Label prefix for interchangeable/complex time JSON stored on staffDef @label.
+pub const TIME_LABEL_PREFIX: &str = "musicxml:time,";
+
+/// Append a prefixed JSON segment to a staffDef label, using `|` separator.
+pub fn append_label(staff_def: &mut StaffDef, segment: String) {
+    match &mut staff_def.labelled.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(&segment);
+        }
+        None => {
+            staff_def.labelled.label = Some(segment);
+        }
+    }
+}
+
+/// Extract a label segment by prefix from a `|`-separated label string.
+pub fn extract_label_segment<'a>(label: &'a str, prefix: &str) -> Option<&'a str> {
+    for segment in label.split('|') {
+        if let Some(json) = segment.strip_prefix(prefix) {
+            return Some(json);
+        }
+    }
+    None
+}
+
 // ============================================================================
 // Attributes Conversion (Key, Time, Clef)
 // ============================================================================
@@ -174,11 +203,25 @@ pub fn process_attributes(
         convert_key_to_context(key, ctx);
 
         // Update staffDef if provided
-        if let Some(sd) = staff_def.as_deref_mut()
-            && let KeyContent::Traditional(trad) = &key.content
-        {
-            let keysig = convert_key_fifths(trad.fifths);
-            sd.staff_def_log.keysig = Some(keysig);
+        if let Some(sd) = staff_def.as_deref_mut() {
+            match &key.content {
+                KeyContent::Traditional(trad) => {
+                    let keysig = convert_key_fifths(trad.fifths);
+                    sd.staff_def_log.keysig = Some(keysig);
+                    // Store full Key as JSON if it has key_octaves (extra data beyond keysig)
+                    if !key.key_octaves.is_empty() {
+                        if let Ok(json) = serde_json::to_string(key) {
+                            append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
+                        }
+                    }
+                }
+                KeyContent::NonTraditional(_) => {
+                    // No MEI @keysig equivalent; store full Key as JSON
+                    if let Ok(json) = serde_json::to_string(key) {
+                        append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
+                    }
+                }
+            }
         }
     }
 
@@ -189,6 +232,15 @@ pub fn process_attributes(
             sd.staff_def_log.meter_count = count;
             sd.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             sd.staff_def_log.meter_sym = sym;
+
+            // Store full Time as JSON if it has interchangeable or separator (extra data)
+            let has_extra = matches!(&time.content, TimeContent::Standard(std) if std.interchangeable.is_some())
+                || time.separator.is_some();
+            if has_extra {
+                if let Ok(json) = serde_json::to_string(time) {
+                    append_label(sd, format!("{}{}", TIME_LABEL_PREFIX, json));
+                }
+            }
         }
     }
 

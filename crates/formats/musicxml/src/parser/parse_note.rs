@@ -363,14 +363,9 @@ fn parse_dot(e: &BytesStart) -> Result<Dot> {
     })
 }
 
-fn parse_accidental<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Accidental> {
-    let cautionary = get_attr(start, "cautionary")?.and_then(|s| parse_yes_no_opt(&s));
-    let editorial = get_attr(start, "editorial")?.and_then(|s| parse_yes_no_opt(&s));
-    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
-    let bracket = get_attr(start, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
-
-    let value_str = read_text(reader, b"accidental")?;
-    let value = match value_str.as_str() {
+/// Parse an accidental value string into AccidentalValue enum.
+pub(crate) fn parse_accidental_value(s: &str) -> Result<AccidentalValue> {
+    Ok(match s {
         "sharp" => AccidentalValue::Sharp,
         "natural" => AccidentalValue::Natural,
         "flat" => AccidentalValue::Flat,
@@ -383,8 +378,46 @@ fn parse_accidental<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
         "quarter-sharp" => AccidentalValue::QuarterSharp,
         "three-quarters-flat" => AccidentalValue::ThreeQuartersFlat,
         "three-quarters-sharp" => AccidentalValue::ThreeQuartersSharp,
+        "sharp-down" => AccidentalValue::SharpDown,
+        "sharp-up" => AccidentalValue::SharpUp,
+        "natural-down" => AccidentalValue::NaturalDown,
+        "natural-up" => AccidentalValue::NaturalUp,
+        "flat-down" => AccidentalValue::FlatDown,
+        "flat-up" => AccidentalValue::FlatUp,
+        "double-sharp-down" => AccidentalValue::DoubleSharpDown,
+        "double-sharp-up" => AccidentalValue::DoubleSharpUp,
+        "flat-flat-down" => AccidentalValue::FlatFlatDown,
+        "flat-flat-up" => AccidentalValue::FlatFlatUp,
+        "arrow-down" => AccidentalValue::ArrowDown,
+        "arrow-up" => AccidentalValue::ArrowUp,
+        "triple-sharp" => AccidentalValue::TripleSharp,
+        "triple-flat" => AccidentalValue::TripleFlat,
+        "slash-quarter-sharp" => AccidentalValue::SlashQuarterSharp,
+        "slash-sharp" => AccidentalValue::SlashSharp,
+        "slash-flat" => AccidentalValue::SlashFlat,
+        "double-slash-flat" => AccidentalValue::DoubleSlashFlat,
+        "sharp-1" => AccidentalValue::Sharp1,
+        "sharp-2" => AccidentalValue::Sharp2,
+        "sharp-3" => AccidentalValue::Sharp3,
+        "sharp-5" => AccidentalValue::Sharp5,
+        "flat-1" => AccidentalValue::Flat1,
+        "flat-2" => AccidentalValue::Flat2,
+        "flat-3" => AccidentalValue::Flat3,
+        "flat-4" => AccidentalValue::Flat4,
+        "sori" => AccidentalValue::Sori,
+        "koron" => AccidentalValue::Koron,
         _ => AccidentalValue::Other,
-    };
+    })
+}
+
+fn parse_accidental<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Accidental> {
+    let cautionary = get_attr(start, "cautionary")?.and_then(|s| parse_yes_no_opt(&s));
+    let editorial = get_attr(start, "editorial")?.and_then(|s| parse_yes_no_opt(&s));
+    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
+    let bracket = get_attr(start, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
+
+    let value_str = read_text(reader, b"accidental")?;
+    let value = parse_accidental_value(&value_str)?;
 
     Ok(Accidental {
         value,
