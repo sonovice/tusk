@@ -472,14 +472,27 @@ prefix. Human-readable text summary stored as ExtMeta text child. Same pattern a
 
 ### 10.2 Work Element
 
-- [ ] Import `work-number` → MEI `<workList>/<work>/<identifier>`
-- [ ] Import `opus` → MEI `<workList>/<work>/<identifier type="opus">`
-- [ ] Export: reverse work mappings
+**Note**: Original plan proposed `<workList>/<work>/<identifier>` mapping, but Phase 10.1
+already implemented work-number and opus via the extMeta JSON-in-label pattern (same as
+identification). This is simpler and achieves lossless roundtrip for all Work fields.
+
+- [x] Import `work-number` → MEI extMeta JSON (implemented in 10.1 via `musicxml:work,` label)
+  - Full `Work` struct (work_number, work_title, opus) serialized as JSON in extMeta `@analog`
+  - Human-readable summary text in extMeta body
+- [x] Import `opus` → MEI extMeta JSON (implemented in 10.1 via `musicxml:work,` label)
+  - Opus `href` and `xlink_type` preserved in Work JSON
+  - Added `<opus>` element to `identification_metadata.musicxml` fixture for coverage
+- [x] Export: reverse work mappings (implemented in 10.1)
+  - Scans extMeta for `musicxml:work,` prefix, deserializes JSON to `Work` struct
+  - Merges work-title from titleStmt (canonical source)
 
 ### 10.3 Tests
 
-- [ ] Add roundtrip fixture with rich metadata (all identification fields)
-- [ ] Verify metadata roundtrips correctly
+- [x] Add roundtrip fixture with rich metadata (all identification fields)
+  - `identification_metadata.musicxml` covers: work-number, work-title, opus, movement-number,
+    movement-title, 3 creators, rights, encoding with supports, source, relation, miscellaneous
+- [x] Verify metadata roundtrips correctly
+  - All 4 roundtrip levels pass (conversion, full, triangle MEI, triangle MusicXML)
 
 ---
 

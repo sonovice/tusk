@@ -3,6 +3,7 @@
   <work>
     <work-number>Op. 27, No. 2</work-number>
     <work-title>Piano Sonata No. 14</work-title>
+    <opus xlink:href="beethoven_piano_sonatas.xml"/>
   </work>
   <movement-number>1</movement-number>
   <movement-title>Adagio sostenuto</movement-title>
