@@ -639,7 +639,7 @@ fn parse_instrument_change<R: BufRead>(
                 }
                 b"solo" => {
                     read_text(reader, b"solo").ok();
-                    solo = Some(());
+                    solo = Some(true);
                 }
                 b"ensemble" => ensemble = Some(read_text(reader, b"ensemble")?),
                 b"virtual-library" => {
@@ -650,7 +650,7 @@ fn parse_instrument_change<R: BufRead>(
             },
             Event::Empty(ref e) => {
                 if e.name().as_ref() == b"solo" {
-                    solo = Some(());
+                    solo = Some(true);
                 }
             }
             Event::End(ref e) if e.name().as_ref() == b"instrument-change" => break,

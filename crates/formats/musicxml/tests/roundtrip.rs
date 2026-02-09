@@ -807,6 +807,11 @@ fn test_roundtrip_print_breaks() {
     assert_roundtrip("print_breaks.musicxml");
 }
 
+#[test]
+fn test_roundtrip_standalone_sound() {
+    assert_roundtrip("standalone_sound.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

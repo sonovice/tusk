@@ -773,6 +773,21 @@ fn convert_direction_events(
                 }
             }
             MeasureChild::Dir(dir) => {
+                // Standalone sound elements — emit on first staff only
+                if dir
+                    .common
+                    .label
+                    .as_deref()
+                    .is_some_and(|l| l.starts_with(crate::import::sound::SOUND_LABEL_PREFIX))
+                {
+                    if local_staff_n == 1 {
+                        if let Some(content) = super::sound::convert_mei_sound_dir(dir, ctx) {
+                            mxml_measure.content.push(content);
+                        }
+                    }
+                    continue;
+                }
+
                 let event_staff = dir
                     .dir_log
                     .staff

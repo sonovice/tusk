@@ -643,12 +643,28 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 14.2 Import & Export
 
-- [ ] Playback sound → MEI `<tempo>` or annotation
-- [ ] Repeat-related sound (dacapo, segno, coda, fine, etc.) → MEI repeat structure or labels
-- [ ] MIDI attributes → MEI `<midi>` elements or annotation
-- [ ] Export: reverse where MEI equivalents exist
-- [ ] Add roundtrip fixture for standalone sound
-- [ ] Verify fragment examples: `swing_element`, `pan_and_elevation_elements`
+- [x] Playback sound → MEI `<dir>` with `musicxml:sound,{json}` label (JSON-in-label roundtrip)
+  - Standalone `MeasureContent::Sound` now handled in `import/structure.rs` → `import/sound.rs`
+  - Full `Sound` struct serialized as JSON in dir `@label` for lossless roundtrip
+  - Human-readable summary (tempo, dynamics, repeat marks, etc.) stored as dir text child
+  - Only imported from first staff (measure-level element, same pattern as print)
+- [x] Repeat-related sound (dacapo, segno, coda, fine, etc.) → preserved in JSON label
+  - All Sound attributes (segno, dalsegno, coda, tocoda, fine, dacapo, forward-repeat, etc.) roundtrip via JSON
+- [x] MIDI attributes → preserved in JSON label
+  - MIDI instrument changes, swing, offset all serialized in Sound JSON
+  - Fixed `InstrumentChange.solo` from `Option<()>` to `Option<bool>` for JSON roundtrip stability
+- [x] Export: `<dir>` with `musicxml:sound,` label → `MeasureContent::Sound`
+  - Added `export/sound.rs` with `convert_mei_sound_dir()` function
+  - Standalone sound dirs intercepted in `export/content.rs` before general dir dispatch
+  - First-staff-only emission (consistent with import)
+- [x] Add roundtrip fixture for standalone sound
+  - `tests/fixtures/musicxml/standalone_sound.musicxml`: 3 measures with tempo/dynamics, segno/forward-repeat, dalsegno/fine
+  - All 4 roundtrip levels pass (320/320 total)
+- [x] Verify fragment examples: `swing_element`, `pan_and_elevation_elements`
+  - Both pass all roundtrip levels (direction-level sound, not standalone)
+  - Direction-level `direction.sound` is not preserved on import (lossy) — only standalone sound roundtrips
+- [x] Added `@label` prefix to `control_event_type_key` for `dir` elements in xml_compare
+  - Disambiguates `musicxml:sound,*` dirs from plain text dirs at same position
 
 ---
 

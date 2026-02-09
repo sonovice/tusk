@@ -29,6 +29,7 @@ mod harmony;
 mod note;
 mod parts;
 mod print;
+mod sound;
 mod structure;
 mod utils;
 

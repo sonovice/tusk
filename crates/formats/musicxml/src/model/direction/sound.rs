@@ -165,9 +165,9 @@ pub struct InstrumentChange {
     #[serde(rename = "instrument-sound", skip_serializing_if = "Option::is_none")]
     pub instrument_sound: Option<String>,
 
-    /// Solo performance
+    /// Solo performance (true = `<solo/>` present)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub solo: Option<()>,
+    pub solo: Option<bool>,
 
     /// Ensemble with optional size
     #[serde(skip_serializing_if = "Option::is_none")]

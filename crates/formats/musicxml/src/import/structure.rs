@@ -292,6 +292,14 @@ fn convert_measure_directions(
                     }
                 }
             }
+            MeasureContent::Sound(sound) => {
+                // Sound is measure-level — only import from first staff
+                if ctx.current_staff() == 1 {
+                    mei_measure
+                        .children
+                        .push(super::sound::convert_sound(sound, ctx));
+                }
+            }
             _ => {}
         }
     }

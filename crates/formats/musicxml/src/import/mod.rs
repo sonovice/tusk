@@ -28,6 +28,7 @@ pub(crate) mod harmony;
 mod note;
 mod parts;
 pub(crate) mod print;
+pub(crate) mod sound;
 mod structure;
 mod utils;
 
