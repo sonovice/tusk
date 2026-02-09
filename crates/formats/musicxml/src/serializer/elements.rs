@@ -8,6 +8,7 @@
 
 use std::io::Write;
 
+use crate::model::note::{AccidentalText, FormattedText, Level, NoteheadText, NoteheadTextChild};
 use crate::model::*;
 use crate::serializer::{
     MusicXmlSerialize, MusicXmlWriter, SerializeResult, push_opt_attr, push_opt_str_attr,
@@ -94,6 +95,14 @@ impl MusicXmlSerialize for Note {
             tie.serialize(w)?;
         }
 
+        // Editorial: footnote and level (before voice per XSD)
+        if let Some(ref ft) = self.footnote {
+            serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            serialize_level(w, lv)?;
+        }
+
         // Voice
         w.write_opt_text_element("voice", &self.voice)?;
 
@@ -134,6 +143,11 @@ impl MusicXmlSerialize for Note {
             nh.serialize(w)?;
         }
 
+        // Notehead text
+        if let Some(ref nht) = self.notehead_text {
+            serialize_notehead_text(w, nht)?;
+        }
+
         // Staff
         if let Some(staff) = self.staff {
             w.write_text_element("staff", &staff.to_string())?;
@@ -152,6 +166,11 @@ impl MusicXmlSerialize for Note {
         // Lyrics
         for lyric in &self.lyrics {
             lyric.serialize(w)?;
+        }
+
+        // Play (note-level)
+        if let Some(ref play) = self.play {
+            super::sound::serialize_play_element(w, play)?;
         }
 
         // Listen
@@ -1443,4 +1462,117 @@ impl MusicXmlSerialize for Lyric {
         }
         Ok(())
     }
+}
+
+// ============================================================================
+// Editorial Serialization Helpers (footnote, level)
+// ============================================================================
+
+pub(crate) fn serialize_formatted_text<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    tag: &str,
+    ft: &FormattedText,
+) -> SerializeResult<()> {
+    let mut start = w.start_element(tag);
+    if let Some(ref lang) = ft.lang {
+        start.push_attribute(("xml:lang", lang.as_str()));
+    }
+    if let Some(ref dir) = ft.dir {
+        start.push_attribute((
+            "dir",
+            match dir {
+                TextDirection::Ltr => "ltr",
+                TextDirection::Rtl => "rtl",
+                TextDirection::Lro => "lro",
+                TextDirection::Rlo => "rlo",
+            },
+        ));
+    }
+    if let Some(ref enc) = ft.enclosure {
+        start.push_attribute(("enclosure", enclosure_shape_str(enc)));
+    }
+    w.write_start(start)?;
+    w.write_text(&ft.value)?;
+    w.write_end(tag)?;
+    Ok(())
+}
+
+fn enclosure_shape_str(e: &EnclosureShape) -> &'static str {
+    match e {
+        EnclosureShape::Rectangle => "rectangle",
+        EnclosureShape::Square => "square",
+        EnclosureShape::Oval => "oval",
+        EnclosureShape::Circle => "circle",
+        EnclosureShape::Bracket => "bracket",
+        EnclosureShape::InvertedBracket => "inverted-bracket",
+        EnclosureShape::Triangle => "triangle",
+        EnclosureShape::Diamond => "diamond",
+        EnclosureShape::Pentagon => "pentagon",
+        EnclosureShape::Hexagon => "hexagon",
+        EnclosureShape::Heptagon => "heptagon",
+        EnclosureShape::Octagon => "octagon",
+        EnclosureShape::Nonagon => "nonagon",
+        EnclosureShape::Decagon => "decagon",
+        EnclosureShape::None => "none",
+    }
+}
+
+pub(crate) fn serialize_level<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    lv: &Level,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("level");
+    if let Some(ref p) = lv.parentheses {
+        start.push_attribute(("parentheses", yes_no_str(p)));
+    }
+    if let Some(ref b) = lv.bracket {
+        start.push_attribute(("bracket", yes_no_str(b)));
+    }
+    if let Some(ref r) = lv.reference {
+        start.push_attribute(("reference", yes_no_str(r)));
+    }
+    w.write_start(start)?;
+    w.write_text(&lv.value)?;
+    w.write_end("level")?;
+    Ok(())
+}
+
+// ============================================================================
+// Notehead Text Serialization
+// ============================================================================
+
+fn serialize_notehead_text<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    nht: &NoteheadText,
+) -> SerializeResult<()> {
+    let start = w.start_element("notehead-text");
+    w.write_start(start)?;
+
+    for child in &nht.children {
+        match child {
+            NoteheadTextChild::DisplayText(ft) => {
+                serialize_formatted_text(w, "display-text", ft)?;
+            }
+            NoteheadTextChild::AccidentalText(at) => {
+                serialize_accidental_text(w, at)?;
+            }
+        }
+    }
+
+    w.write_end("notehead-text")?;
+    Ok(())
+}
+
+fn serialize_accidental_text<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    at: &AccidentalText,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("accidental-text");
+    if let Some(ref smufl) = at.smufl {
+        start.push_attribute(("smufl", smufl.as_str()));
+    }
+    w.write_start(start)?;
+    w.write_text(accidental_value_str(&at.value))?;
+    w.write_end("accidental-text")?;
+    Ok(())
 }

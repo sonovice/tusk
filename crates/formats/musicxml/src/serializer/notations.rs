@@ -40,6 +40,14 @@ impl MusicXmlSerialize for notations::Notations {
     }
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        // Editorial: footnote and level (before other notations per XSD)
+        if let Some(ref ft) = self.footnote {
+            super::elements::serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            super::elements::serialize_level(w, lv)?;
+        }
+
         for tied in &self.tied {
             tied.serialize(w)?;
         }

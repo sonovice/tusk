@@ -187,7 +187,8 @@ pub struct InstrumentChange {
 // ============================================================================
 
 /// Playback techniques for an instrument.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Play {
     /// Instrument ID reference
     #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]

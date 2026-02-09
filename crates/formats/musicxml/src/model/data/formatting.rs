@@ -857,12 +857,14 @@ impl FromStr for SymbolSize {
     }
 }
 
-/// Text direction (ltr or rtl).
+/// Text direction (ltr, rtl, lro, rlo).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TextDirection {
     Ltr,
     Rtl,
+    Lro,
+    Rlo,
 }
 
 impl fmt::Display for TextDirection {
@@ -870,6 +872,8 @@ impl fmt::Display for TextDirection {
         match self {
             TextDirection::Ltr => write!(f, "ltr"),
             TextDirection::Rtl => write!(f, "rtl"),
+            TextDirection::Lro => write!(f, "lro"),
+            TextDirection::Rlo => write!(f, "rlo"),
         }
     }
 }
@@ -881,6 +885,8 @@ impl FromStr for TextDirection {
         match s {
             "ltr" => Ok(TextDirection::Ltr),
             "rtl" => Ok(TextDirection::Rtl),
+            "lro" => Ok(TextDirection::Lro),
+            "rlo" => Ok(TextDirection::Rlo),
             _ => Err(ParseError::InvalidValue(s.to_string())),
         }
     }

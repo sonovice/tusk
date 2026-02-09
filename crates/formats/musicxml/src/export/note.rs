@@ -134,6 +134,9 @@ pub fn convert_mei_note(
     // Restore note-level instrument references from label
     convert_mei_note_label_instruments(mei_note, &mut mxml_note);
 
+    // Restore notehead, notehead-text, play, listen, footnote, level from label
+    restore_note_label_elements(mei_note, &mut mxml_note);
+
     // Add warnings for lossy attributes
     add_note_conversion_warnings(mei_note, ctx);
 
@@ -507,6 +510,59 @@ fn convert_mei_note_label_instruments(
                         .instruments
                         .push(crate::model::note::Instrument::new(id));
                 }
+            }
+        }
+    }
+}
+
+/// Restore notehead, notehead-text, play, listen, footnote, level from MEI note label.
+fn restore_note_label_elements(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+) {
+    let label = match mei_note.common.label.as_deref() {
+        Some(l) => l,
+        None => return,
+    };
+
+    for segment in label.split('|') {
+        if let Some(json) = segment.strip_prefix("musicxml:notehead,") {
+            if let Ok(nh) = serde_json::from_str::<crate::model::note::Notehead>(json) {
+                mxml_note.notehead = Some(nh);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:notehead-text,") {
+            if let Ok(nht) = serde_json::from_str::<crate::model::note::NoteheadText>(json) {
+                mxml_note.notehead_text = Some(nht);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:play,") {
+            if let Ok(play) = serde_json::from_str::<crate::model::direction::Play>(json) {
+                mxml_note.play = Some(play);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:listen,") {
+            if let Ok(listen) = serde_json::from_str::<crate::model::listening::Listen>(json) {
+                mxml_note.listen = Some(listen);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:footnote,") {
+            if let Ok(ft) = serde_json::from_str::<crate::model::note::FormattedText>(json) {
+                mxml_note.footnote = Some(ft);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:level,") {
+            if let Ok(lv) = serde_json::from_str::<crate::model::note::Level>(json) {
+                mxml_note.level = Some(lv);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:notations-footnote,") {
+            if let Ok(ft) = serde_json::from_str::<crate::model::note::FormattedText>(json) {
+                let notations = mxml_note
+                    .notations
+                    .get_or_insert_with(crate::model::notations::Notations::default);
+                notations.footnote = Some(ft);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:notations-level,") {
+            if let Ok(lv) = serde_json::from_str::<crate::model::note::Level>(json) {
+                let notations = mxml_note
+                    .notations
+                    .get_or_insert_with(crate::model::notations::Notations::default);
+                notations.level = Some(lv);
             }
         }
     }
@@ -1250,6 +1306,9 @@ pub fn convert_mei_chord(
 
         // Restore note-level instrument references from label
         convert_mei_note_label_instruments(mei_note, &mut mxml_note);
+
+        // Restore notehead, notehead-text, play, listen, footnote, level from label
+        restore_note_label_elements(mei_note, &mut mxml_note);
 
         mxml_notes.push(mxml_note);
     }

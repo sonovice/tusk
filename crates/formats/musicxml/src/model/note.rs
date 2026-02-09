@@ -552,6 +552,7 @@ pub enum Fan {
 
 /// Notehead element.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Notehead {
     /// Notehead value.
     #[serde(rename = "$value")]
@@ -588,6 +589,22 @@ pub struct Notehead {
     /// SMuFL glyph name.
     #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
     pub smufl: Option<String>,
+}
+
+impl Default for Notehead {
+    fn default() -> Self {
+        Self {
+            value: NoteheadValue::Normal,
+            filled: None,
+            parentheses: None,
+            font_family: None,
+            font_style: None,
+            font_size: None,
+            font_weight: None,
+            color: None,
+            smufl: None,
+        }
+    }
 }
 
 impl Notehead {
@@ -639,6 +656,48 @@ pub enum NoteheadValue {
     La,
     Ti,
     Other,
+}
+
+// ============================================================================
+// Notehead Text
+// ============================================================================
+
+/// Text displayed inside a notehead (for educational music).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NoteheadText {
+    /// Sequence of display-text and accidental-text children.
+    pub children: Vec<NoteheadTextChild>,
+}
+
+/// Child element of notehead-text.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum NoteheadTextChild {
+    /// Display text with optional formatting.
+    DisplayText(FormattedText),
+    /// Accidental text.
+    AccidentalText(AccidentalText),
+}
+
+/// Accidental text element used in notehead-text.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AccidentalText {
+    /// The accidental value.
+    #[serde(rename = "$value")]
+    pub value: AccidentalValue,
+
+    /// SMuFL glyph name.
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
+    pub smufl: Option<String>,
+}
+
+impl Default for AccidentalText {
+    fn default() -> Self {
+        Self {
+            value: AccidentalValue::Natural,
+            smufl: None,
+        }
+    }
 }
 
 // ============================================================================
@@ -773,6 +832,10 @@ pub struct Note {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notehead: Option<Notehead>,
 
+    /// Notehead text (display text/accidental text inside notehead).
+    #[serde(rename = "notehead-text", skip_serializing_if = "Option::is_none")]
+    pub notehead_text: Option<NoteheadText>,
+
     /// Staff number (for multi-staff parts).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staff: Option<u32>,
@@ -788,6 +851,10 @@ pub struct Note {
     /// Lyrics (verse text, syllables).
     #[serde(rename = "lyric", default, skip_serializing_if = "Vec::is_empty")]
     pub lyrics: Vec<super::lyric::Lyric>,
+
+    /// Play (playback techniques: IPA, mute, semi-pitched, other).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub play: Option<super::direction::Play>,
 
     /// Listen (interactive performance note assessment/waiting).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -871,10 +938,12 @@ impl Note {
             time_modification: None,
             stem: None,
             notehead: None,
+            notehead_text: None,
             staff: None,
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            play: None,
             listen: None,
             default_x: None,
             default_y: None,
@@ -912,10 +981,12 @@ impl Note {
             time_modification: None,
             stem: None,
             notehead: None,
+            notehead_text: None,
             staff: None,
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            play: None,
             listen: None,
             default_x: None,
             default_y: None,
@@ -953,10 +1024,12 @@ impl Note {
             time_modification: None,
             stem: None,
             notehead: None,
+            notehead_text: None,
             staff: None,
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            play: None,
             listen: None,
             default_x: None,
             default_y: None,
@@ -994,10 +1067,12 @@ impl Note {
             time_modification: None,
             stem: None,
             notehead: None,
+            notehead_text: None,
             staff: None,
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            play: None,
             listen: None,
             default_x: None,
             default_y: None,
@@ -1035,10 +1110,12 @@ impl Note {
             time_modification: None,
             stem: None,
             notehead: None,
+            notehead_text: None,
             staff: None,
             beams: Vec::new(),
             notations: None,
             lyrics: Vec::new(),
+            play: None,
             listen: None,
             default_x: None,
             default_y: None,
@@ -1174,7 +1251,8 @@ impl Forward {
 // ============================================================================
 
 /// Formatted text element.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct FormattedText {
     /// Text content.
     #[serde(rename = "$value")]
@@ -1194,7 +1272,8 @@ pub struct FormattedText {
 }
 
 /// Level element for editorial markup.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Level {
     /// Level text.
     #[serde(rename = "$value")]

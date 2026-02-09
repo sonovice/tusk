@@ -768,11 +768,11 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 20.1 Notehead, Play, Listen, Editorial
 
-- [ ] Convert `notehead` value → MEI `@head.shape`, `@head.fill`, parentheses; export reverse
-- [ ] Parse and convert `<play>` on notes (IPA, mute, semi-pitched); export reverse
-- [ ] Parse and convert `<listen>` on notes; export reverse
-- [ ] Parse `<footnote>` and `<level>` on notes → MEI `<annot>` / editorial attrs; export reverse
-- [ ] Verify fragment examples: `notehead_text_element`, `ipa_element`, `level_element`
+- [x] Convert `notehead` value → MEI `@head.shape`, `@head.fill`, parentheses; export reverse
+- [x] Parse and convert `<play>` on notes (IPA, mute, semi-pitched); export reverse
+- [x] Parse and convert `<listen>` on notes; export reverse
+- [x] Parse `<footnote>` and `<level>` on notes → MEI `<annot>` / editorial attrs; export reverse
+- [x] Verify fragment examples: `notehead_text_element`, `ipa_element`, `level_element`
 
 ---
 

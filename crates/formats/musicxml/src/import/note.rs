@@ -151,12 +151,66 @@ pub fn convert_note(
     // Store note-level instrument references in label for roundtrip
     if !note.instruments.is_empty() {
         let ids: Vec<&str> = note.instruments.iter().map(|i| i.id.as_str()).collect();
-        let segment = format!("musicxml:instruments,{}", ids.join(","));
-        if let Some(ref mut label) = mei_note.common.label {
-            label.push('|');
-            label.push_str(&segment);
-        } else {
-            mei_note.common.label = Some(segment);
+        append_note_label(
+            &mut mei_note,
+            &format!("musicxml:instruments,{}", ids.join(",")),
+        );
+    }
+
+    // Store notehead in MEI head_shape/head_fill and label for lossless roundtrip
+    if let Some(ref nh) = note.notehead {
+        convert_notehead_to_mei(nh, &mut mei_note);
+    }
+
+    // Store notehead-text as JSON-in-label
+    if let Some(ref nht) = note.notehead_text {
+        if let Ok(json) = serde_json::to_string(nht) {
+            append_note_label(&mut mei_note, &format!("musicxml:notehead-text,{json}"));
+        }
+    }
+
+    // Store note-level play as JSON-in-label
+    if let Some(ref play) = note.play {
+        if let Ok(json) = serde_json::to_string(play) {
+            append_note_label(&mut mei_note, &format!("musicxml:play,{json}"));
+        }
+    }
+
+    // Store note-level listen as JSON-in-label
+    if let Some(ref listen) = note.listen {
+        if let Ok(json) = serde_json::to_string(listen) {
+            append_note_label(&mut mei_note, &format!("musicxml:listen,{json}"));
+        }
+    }
+
+    // Store note-level footnote as JSON-in-label
+    if let Some(ref ft) = note.footnote {
+        if let Ok(json) = serde_json::to_string(ft) {
+            append_note_label(&mut mei_note, &format!("musicxml:footnote,{json}"));
+        }
+    }
+
+    // Store note-level level as JSON-in-label
+    if let Some(ref lv) = note.level {
+        if let Ok(json) = serde_json::to_string(lv) {
+            append_note_label(&mut mei_note, &format!("musicxml:level,{json}"));
+        }
+    }
+
+    // Store notations-level footnote/level as JSON-in-label
+    if let Some(ref notations) = note.notations {
+        if let Some(ref ft) = notations.footnote {
+            if let Ok(json) = serde_json::to_string(ft) {
+                append_note_label(
+                    &mut mei_note,
+                    &format!("musicxml:notations-footnote,{json}"),
+                );
+            }
+        }
+        if let Some(ref lv) = notations.level {
+            if let Ok(json) = serde_json::to_string(lv) {
+                append_note_label(&mut mei_note, &format!("musicxml:notations-level,{json}"));
+            }
         }
     }
 
@@ -1782,6 +1836,75 @@ fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
     // breath_mark and caesura are stored via note common.label in convert_articulations
 
     result
+}
+
+/// Append a segment to the MEI note's @label, using '|' separator.
+fn append_note_label(mei_note: &mut tusk_model::elements::Note, segment: &str) {
+    match &mut mei_note.common.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(segment);
+        }
+        None => {
+            mei_note.common.label = Some(segment.to_string());
+        }
+    }
+}
+
+/// Convert MusicXML Notehead to MEI head_shape/head_fill + JSON-in-label for lossless roundtrip.
+fn convert_notehead_to_mei(
+    nh: &crate::model::note::Notehead,
+    mei_note: &mut tusk_model::elements::Note,
+) {
+    use crate::model::note::NoteheadValue;
+    use tusk_model::data::{DataFill, DataHeadshape, DataHeadshapeList};
+
+    // Map notehead value to MEI head_shape where possible
+    let head_shape = match nh.value {
+        NoteheadValue::Diamond => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Diamond,
+        )),
+        NoteheadValue::Triangle => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Isotriangle,
+        )),
+        NoteheadValue::Square => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Rectangle,
+        )),
+        NoteheadValue::Slash => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Slash,
+        )),
+        NoteheadValue::Cross | NoteheadValue::X => {
+            Some(DataHeadshape::MeiDataHeadshapeList(DataHeadshapeList::X))
+        }
+        NoteheadValue::Circled | NoteheadValue::CircleX => Some(
+            DataHeadshape::MeiDataHeadshapeList(DataHeadshapeList::Circle),
+        ),
+        NoteheadValue::Rectangle => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Rectangle,
+        )),
+        NoteheadValue::BackSlashed => Some(DataHeadshape::MeiDataHeadshapeList(
+            DataHeadshapeList::Backslash,
+        )),
+        _ => None,
+    };
+
+    if let Some(shape) = head_shape {
+        mei_note.note_vis.head_shape = Some(shape);
+    }
+
+    // Map filled attribute to MEI head_fill
+    if let Some(ref filled) = nh.filled {
+        use crate::model::data::YesNo;
+        mei_note.note_vis.head_fill = Some(match filled {
+            YesNo::Yes => DataFill::Solid,
+            YesNo::No => DataFill::Void,
+        });
+    }
+
+    // Store full notehead as JSON for lossless roundtrip
+    if let Ok(json) = serde_json::to_string(nh) {
+        append_note_label(mei_note, &format!("musicxml:notehead,{json}"));
+    }
 }
 
 #[cfg(test)]

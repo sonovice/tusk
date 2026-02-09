@@ -15,6 +15,14 @@ use super::note::NoteTypeValue;
 /// Container for notation elements on a note.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Notations {
+    /// Editorial footnote (appears before other notation children per XSD).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level (appears before other notation children per XSD).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<super::note::Level>,
+
     /// Slur elements (curved lines connecting notes).
     #[serde(rename = "slur", default, skip_serializing_if = "Vec::is_empty")]
     pub slurs: Vec<Slur>,

@@ -14,6 +14,7 @@ use super::parse_notations::{
 use super::parse_technical::parse_technical;
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
+use crate::model::direction::Play;
 use crate::model::elements::Empty;
 use crate::model::listening::Listen;
 use crate::model::lyric::*;
@@ -47,9 +48,14 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut stem: Option<Stem> = None;
     let mut staff: Option<u32> = None;
     let mut beams: Vec<Beam> = Vec::new();
+    let mut notehead: Option<Notehead> = None;
+    let mut notehead_text: Option<NoteheadText> = None;
     let mut notations: Option<Notations> = None;
     let mut lyrics: Vec<Lyric> = Vec::new();
+    let mut play: Option<Play> = None;
     let mut listen: Option<Listen> = None;
+    let mut footnote: Option<FormattedText> = None;
+    let mut level: Option<Level> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -87,6 +93,8 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"accidental" => accidental = Some(parse_accidental(reader, &e)?),
                 b"time-modification" => time_modification = Some(parse_time_modification(reader)?),
                 b"stem" => stem = Some(parse_stem(reader, &e)?),
+                b"notehead" => notehead = Some(parse_notehead(reader, &e)?),
+                b"notehead-text" => notehead_text = Some(parse_notehead_text(reader)?),
                 b"staff" => {
                     staff = Some(
                         read_text(reader, b"staff")?
@@ -97,7 +105,10 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"beam" => beams.push(parse_beam(reader, &e)?),
                 b"notations" => notations = Some(parse_notations(reader)?),
                 b"lyric" => lyrics.push(parse_lyric(reader, &e)?),
+                b"play" => play = Some(parse_note_play(reader, &e)?),
                 b"listen" => listen = Some(parse_listen(reader)?),
+                b"footnote" => footnote = Some(parse_formatted_text(reader, &e, b"footnote")?),
+                b"level" => level = Some(parse_level(reader, &e)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -140,8 +151,8 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         content,
         duration,
         ties,
-        footnote: None,
-        level: None,
+        footnote,
+        level,
         voice,
         instruments,
         note_type,
@@ -149,11 +160,13 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         accidental,
         time_modification,
         stem,
-        notehead: None,
+        notehead,
+        notehead_text,
         staff,
         beams,
         notations,
         lyrics,
+        play,
         listen,
         default_x,
         default_y,
@@ -621,6 +634,216 @@ fn skip_to_end<R: BufRead>(reader: &mut Reader<R>, tag: &[u8]) -> Result<()> {
     Ok(())
 }
 
+// ============================================================================
+// Notehead Parsing
+// ============================================================================
+
+fn parse_notehead<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Notehead> {
+    let filled = get_attr(start, "filled")?.and_then(|s| parse_yes_no_opt(&s));
+    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
+    let font_family = get_attr(start, "font-family")?;
+    let font_style = get_attr(start, "font-style")?.and_then(|s| match s.as_str() {
+        "normal" => Some(FontStyle::Normal),
+        "italic" => Some(FontStyle::Italic),
+        _ => None,
+    });
+    let font_size =
+        get_attr(start, "font-size")?.and_then(|s| s.parse::<f64>().ok().map(FontSize::Points));
+    let font_weight = get_attr(start, "font-weight")?.and_then(|s| match s.as_str() {
+        "normal" => Some(FontWeight::Normal),
+        "bold" => Some(FontWeight::Bold),
+        _ => None,
+    });
+    let color = get_attr(start, "color")?;
+    let smufl = get_attr(start, "smufl")?;
+
+    let value_str = read_text(reader, b"notehead")?;
+    let value = parse_notehead_value(&value_str);
+
+    Ok(Notehead {
+        value,
+        filled,
+        parentheses,
+        font_family,
+        font_style,
+        font_size,
+        font_weight,
+        color,
+        smufl,
+    })
+}
+
+fn parse_notehead_value(s: &str) -> NoteheadValue {
+    match s {
+        "slash" => NoteheadValue::Slash,
+        "triangle" => NoteheadValue::Triangle,
+        "diamond" => NoteheadValue::Diamond,
+        "square" => NoteheadValue::Square,
+        "cross" => NoteheadValue::Cross,
+        "x" => NoteheadValue::X,
+        "circle-x" => NoteheadValue::CircleX,
+        "inverted triangle" => NoteheadValue::InvertedTriangle,
+        "arrow down" => NoteheadValue::ArrowDown,
+        "arrow up" => NoteheadValue::ArrowUp,
+        "circled" => NoteheadValue::Circled,
+        "slashed" => NoteheadValue::Slashed,
+        "back slashed" => NoteheadValue::BackSlashed,
+        "normal" => NoteheadValue::Normal,
+        "cluster" => NoteheadValue::Cluster,
+        "circle dot" => NoteheadValue::CircleDot,
+        "left triangle" => NoteheadValue::LeftTriangle,
+        "rectangle" => NoteheadValue::Rectangle,
+        "none" => NoteheadValue::None,
+        "do" => NoteheadValue::Do,
+        "re" => NoteheadValue::Re,
+        "mi" => NoteheadValue::Mi,
+        "fa" => NoteheadValue::Fa,
+        "fa up" => NoteheadValue::FaUp,
+        "so" => NoteheadValue::So,
+        "la" => NoteheadValue::La,
+        "ti" => NoteheadValue::Ti,
+        _ => NoteheadValue::Other,
+    }
+}
+
+// ============================================================================
+// Notehead Text Parsing
+// ============================================================================
+
+fn parse_notehead_text<R: BufRead>(reader: &mut Reader<R>) -> Result<NoteheadText> {
+    let mut buf = Vec::new();
+    let mut children = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"display-text" => {
+                    let ft = parse_formatted_text(reader, &e, b"display-text")?;
+                    children.push(NoteheadTextChild::DisplayText(ft));
+                }
+                b"accidental-text" => {
+                    let value_str = read_text(reader, b"accidental-text")?;
+                    let value = parse_accidental_value(&value_str)?;
+                    let smufl = get_attr(&e, "smufl")?;
+                    children.push(NoteheadTextChild::AccidentalText(AccidentalText {
+                        value,
+                        smufl,
+                    }));
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"notehead-text" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement("notehead-text end".to_string()));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(NoteheadText { children })
+}
+
+// ============================================================================
+// Play Parsing (note-level)
+// ============================================================================
+
+fn parse_note_play<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Play> {
+    use crate::model::direction::{OtherPlay, PlayEntry};
+
+    let id = get_attr(start, "id")?;
+    let mut entries = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"ipa" => {
+                    entries.push(PlayEntry::Ipa(read_text(reader, b"ipa")?));
+                }
+                b"mute" => {
+                    entries.push(PlayEntry::Mute(read_text(reader, b"mute")?));
+                }
+                b"semi-pitched" => {
+                    entries.push(PlayEntry::SemiPitched(read_text(reader, b"semi-pitched")?));
+                }
+                b"other-play" => {
+                    let play_type = get_attr(&e, "type")?.unwrap_or_default();
+                    let value = read_text(reader, b"other-play")?;
+                    entries.push(PlayEntry::OtherPlay(OtherPlay { play_type, value }));
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::End(e) if e.name().as_ref() == b"play" => break,
+            Event::Eof => return Err(ParseError::MissingElement("play end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Play { id, entries })
+}
+
+// ============================================================================
+// Editorial Parsing (footnote, level)
+// ============================================================================
+
+fn parse_formatted_text<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+    end_tag: &[u8],
+) -> Result<FormattedText> {
+    let lang = get_attr(start, "xml:lang")?;
+    let dir = get_attr(start, "dir")?.and_then(|s| match s.as_str() {
+        "ltr" => Some(TextDirection::Ltr),
+        "rtl" => Some(TextDirection::Rtl),
+        "lro" => Some(TextDirection::Lro),
+        "rlo" => Some(TextDirection::Rlo),
+        _ => None,
+    });
+    let enclosure = get_attr(start, "enclosure")?.and_then(|s| match s.as_str() {
+        "rectangle" => Some(EnclosureShape::Rectangle),
+        "square" => Some(EnclosureShape::Square),
+        "oval" => Some(EnclosureShape::Oval),
+        "circle" => Some(EnclosureShape::Circle),
+        "bracket" => Some(EnclosureShape::Bracket),
+        "inverted-bracket" => Some(EnclosureShape::InvertedBracket),
+        "triangle" => Some(EnclosureShape::Triangle),
+        "diamond" => Some(EnclosureShape::Diamond),
+        "pentagon" => Some(EnclosureShape::Pentagon),
+        "hexagon" => Some(EnclosureShape::Hexagon),
+        "heptagon" => Some(EnclosureShape::Heptagon),
+        "octagon" => Some(EnclosureShape::Octagon),
+        "nonagon" => Some(EnclosureShape::Nonagon),
+        "decagon" => Some(EnclosureShape::Decagon),
+        "none" => Some(EnclosureShape::None),
+        _ => None,
+    });
+
+    let value = read_text(reader, end_tag)?;
+
+    Ok(FormattedText {
+        value,
+        lang,
+        dir,
+        enclosure,
+    })
+}
+
+fn parse_level<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Level> {
+    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
+    let bracket = get_attr(start, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
+    let reference = get_attr(start, "reference")?.and_then(|s| parse_yes_no_opt(&s));
+    let value = read_text(reader, b"level")?;
+
+    Ok(Level {
+        value,
+        parentheses,
+        bracket,
+        reference,
+    })
+}
+
 fn parse_yes_no_opt(s: &str) -> Option<YesNo> {
     match s {
         "yes" => Some(YesNo::Yes),
@@ -640,6 +863,12 @@ fn parse_notations<R: BufRead>(reader: &mut Reader<R>) -> Result<Notations> {
     loop {
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => match e.name().as_ref() {
+                b"footnote" => {
+                    notations.footnote = Some(parse_formatted_text(reader, &e, b"footnote")?);
+                }
+                b"level" => {
+                    notations.level = Some(parse_level(reader, &e)?);
+                }
                 b"slur" => {
                     notations.slurs.push(parse_slur(&e)?);
                     skip_to_end(reader, b"slur")?;

@@ -184,6 +184,14 @@ fn serialize_midi_instrument<W: Write>(
     Ok(())
 }
 
+/// Serialize a `<play>` element (used by both sound and note-level serialization).
+pub(crate) fn serialize_play_element<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    play: &Play,
+) -> SerializeResult<()> {
+    serialize_play(w, play)
+}
+
 fn serialize_play<W: Write>(w: &mut MusicXmlWriter<W>, play: &Play) -> SerializeResult<()> {
     let mut start = w.start_element("play");
     if let Some(ref id) = play.id {
