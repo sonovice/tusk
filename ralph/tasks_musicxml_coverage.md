@@ -433,8 +433,12 @@ kind, bass, degrees, frame, numeral, function, and all styling attributes).
 
 ### 9.2 Tests
 
-- [ ] Add roundtrip fixture for figured bass
-- [ ] Verify fragment examples: `figure_number_element`, `prefix_element`, `suffix_element`, `extend_element_figure`
+- [x] Add roundtrip fixture for figured bass
+  - `tests/fixtures/musicxml/figured_bass.musicxml`: 2 measures, bass clef, multiple figured-bass elements with single/stacked figures, prefixes (flat, natural, double-sharp), suffixes (sharp, natural, flat), parentheses, and extend start/stop
+  - Roundtrip test added in `roundtrip.rs` — all 4 levels pass (315/315 total)
+- [x] Verify fragment examples: `figure_number_element`, `prefix_element`, `suffix_element`, `extend_element_figure`
+  - All 4 fragment tests pass MusicXML triangle roundtrip
+  - 492 unit tests, 31 integration tests, 315 roundtrip tests — all pass
 
 ---
 
