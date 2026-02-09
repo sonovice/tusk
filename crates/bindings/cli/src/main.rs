@@ -145,6 +145,26 @@ mod tests {
     }
 
     #[test]
+    fn registry_finds_lilypond_by_extension() {
+        let reg = build_registry();
+        let imp = reg.find_importer("ly", None);
+        assert!(imp.is_some());
+        assert_eq!(imp.unwrap().id(), "lilypond");
+        let exp = reg.find_exporter("ly");
+        assert!(exp.is_some());
+        assert_eq!(exp.unwrap().id(), "lilypond");
+    }
+
+    #[test]
+    fn registry_detects_lilypond_from_content() {
+        let reg = build_registry();
+        let content = b"\\version \"2.24.0\"\n\\score { { c4 } }";
+        let imp = reg.find_importer("unknown", Some(content.as_slice()));
+        assert!(imp.is_some());
+        assert_eq!(imp.unwrap().id(), "lilypond");
+    }
+
+    #[test]
     fn xml_extension_with_mei_content_detects_mei() {
         let reg = build_registry();
         let content =

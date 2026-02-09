@@ -29,16 +29,58 @@ Each task covers: `[L]` Lexer, `[P]` Parser, `[S]` Serializer, `[I]` Import (Lil
 
 ---
 
+## Retaining element IDs (MEI xml:id ↔ LilyPond)
+
+When exporting MEI (or the internal model) to LilyPond we must **retain element IDs** so that roundtrip and external tooling (e.g. linking, SVG/HTML export) can refer to the same elements. LilyPond supports this natively; comments can be used as a fallback.
+
+### LilyPond mechanisms
+
+1. **Grob `id` property** (primary): Every grob (graphical object) has an `id` property (string) on the [grob-interface](https://lilypond.org/doc/v2.24/Documentation/internals/grob_002dinterface). It is user-settable via:
+   - **`\tweak GrobType.id #"value"`** for note/event-attached elements (e.g. `c4 \tweak NoteHead.id #"mei-note-42"`, `r2 \tweak Rest.id #"mei-rest-1"`, slurs/ties via `\tweak Slur.id #"..."`).
+   - **`\override Context.GrobType.id = #"value"`** for context-level overrides when a single grob is targeted.
+   - In **SVG output**, this id is assigned to the `<g>` group for that grob; in PostScript/PDF the property exists in the .ly source and can be recovered on re-parse.
+   - Reference: `specs/lilypond/repo/scm/define-grob-properties.scm` (`(id ,string? "An id string for the grob.")`), and grob-interface docs (`output-attributes` for SVG).
+
+2. **`output-attributes`** (SVG): For SVG backend, grobs also support `output-attributes` (alist), e.g. `'((id . "xyz"))`, which becomes `<g id="xyz">` in the SVG. Setting `id` on the grob is the standard way; output-attributes can carry additional attributes.
+
+3. **Comments** (fallback for roundtrip): Emitting a comment like `% @id mei-note-42` immediately before or after an element gives a parseable anchor when re-importing .ly so that IDs are preserved even if we do not yet emit `\tweak id` for every element type, or if the backend does not expose grob id in the output format.
+
+### Mapping by element type
+
+| MEI element / concept | LilyPond grob / placement |
+|------------------------|----------------------------|
+| note (xml:id) | `\tweak NoteHead.id #"id"` (or Rest for rest) |
+| chord (multiple note heads) | One NoteHead per pitch; use same or per-note ids as in MEI |
+| rest | `\tweak Rest.id #"id"` |
+| slur, tie, phrasing slur | `\tweak Slur.id` / `\tweak Tie.id` / `\tweak PhrasingSlur.id` |
+| beam | `\tweak Beam.id #"id"` |
+| dynamics, hairpin | `\tweak DynamicText.id` / `\tweak Hairpin.id` |
+| articulations, ornaments | Script/Articulation grobs; `\tweak Script.id` etc. |
+| control events (tempo, mark, etc.) | Corresponding grob (MetronomeMark, RehearsalMark, etc.) with `\tweak GrobType.id` |
+| lyrics (syl) | `\tweak LyricText.id` (or LyricHyphen / LyricExtender where applicable) |
+
+### Tasks (see Phase 26, 31, 32)
+
+- **Parser/Serializer** (Phase 26 or when implementing \tweak): Parse and serialize `\tweak #'id #"string"` so the AST can carry an optional id per event/grob.
+- **Import** (Phase 31): When building MEI from LilyPond AST, set `xml:id` on the MEI element from the AST’s tweak id (and optionally from `% @id` comment when present).
+- **Export** (Phase 32): For every MEI element that has `xml:id`, emit the appropriate `\tweak GrobType.id #"xml:id-value"`; optionally also emit `% @id xml:id-value` for robustness. Ensure spanners (slur, tie, hairpin, etc.) get id on the corresponding span grob.
+
+---
+
 ## Phase 1: Crate Scaffolding & Lexer Foundation
 
 ### 1.1 Crate & Format Trait
 
-- [ ] [P] Create `crates/formats/lilypond/` with `Cargo.toml` (deps: tusk-model, tusk-format, thiserror, tracing)
-- [ ] [P] Add `crates/formats/lilypond` to workspace `members` in root `Cargo.toml`
-- [ ] [P] Add `tusk-lilypond` to `[workspace.dependencies]` if needed for CLI
-- [ ] [P] Implement `Format` trait: id `lilypond`, name `LilyPond`, extensions `["ly"]`, `detect()` via content sniff (e.g. `\version` or `\score` or `{` after optional BOM/whitespace)
-- [ ] [P] Implement `Importer` and `Exporter` (stub: return error "not implemented" or parse empty score)
-- [ ] [T] Register format in `crates/bindings/cli` and add basic test that format is detected
+- [x] [P] Create `crates/formats/lilypond/` with `Cargo.toml` (deps: tusk-model, tusk-format, thiserror, tracing)
+  - Cargo.toml with workspace deps; module stubs for model, lexer, parser, serializer, import, export, validator
+- [x] [P] Add `crates/formats/lilypond` to workspace `members` in root `Cargo.toml`
+- [x] [P] Add `tusk-lilypond` to `[workspace.dependencies]` if needed for CLI
+- [x] [P] Implement `Format` trait: id `lilypond`, name `LilyPond`, extensions `["ly"]`, `detect()` via content sniff (e.g. `\version` or `\score` or `{` after optional BOM/whitespace)
+  - detect() checks first 4KB for `\version`, `\score`, or leading `{`
+- [x] [P] Implement `Importer` and `Exporter` (stub: return error "not implemented" or parse empty score)
+  - ImportError::NotImplemented and ExportError::NotImplemented
+- [x] [T] Register format in `crates/bindings/cli` and add basic test that format is detected
+  - Added registry_finds_lilypond_by_extension and registry_detects_lilypond_from_content tests
 
 ### 1.2 Lexer Foundation
 
@@ -587,10 +629,11 @@ Each task covers: `[L]` Lexer, `[P]` Parser, `[S]` Serializer, `[I]` Import (Lil
 ### 26.1 Model & Parser
 
 - [ ] [P] Parse `\override Grob.property = value`, `\revert Grob.property`, `\set context.prop = value`, `\unset context.prop`; property path (grob path, context path)
-- [ ] [P] Add `Override`, `Revert`, `Set`, `Unset`, `PropertyPath`, `GrobPropSpec`, `ContextPropSpec`
-- [ ] [S] Serialize override, revert, set, unset
+- [ ] [P] Parse `\tweak property value` (post-event and standalone), including `\tweak #'id #"string"` for element ID retention (see "Retaining element IDs" section)
+- [ ] [P] Add `Override`, `Revert`, `Set`, `Unset`, `Tweak`, `PropertyPath`, `GrobPropSpec`, `ContextPropSpec`; AST nodes that carry optional `id` (from tweak id) for export/roundtrip
+- [ ] [S] Serialize override, revert, set, unset, tweak (including `\tweak #'id #"..."`)
 - [ ] [V] Property path and value types valid
-- [ ] [T] Fragment: `\override NoteHead.color = #red`, `\set Staff.instrumentName = "Piano"`
+- [ ] [T] Fragment: `\override NoteHead.color = #red`, `\set Staff.instrumentName = "Piano"`, `c4 \tweak NoteHead.id #"mei-n1"`
 
 ### 26.2 Import & Export
 
@@ -697,6 +740,7 @@ Each task covers: `[L]` Lexer, `[P]` Parser, `[S]` Serializer, `[I]` Import (Lil
 ### 31.1 Import Completion
 
 - [ ] [I] Wire all AST node types to MEI: notes, rests, chords, lyrics, figured bass, chord names, dynamics, articulations, ornaments, spanners, repeats, tuplets, grace, multi-rest, bar lines, tempo, marks, staff/voice structure, header/metadata
+- [ ] [I] **Retain element IDs**: When AST has `\tweak #'id #"value"` (or equivalent) on an event/grob, set MEI `xml:id` on the corresponding created element; optionally parse `% @id value` comments and assign to the following element for roundtrip
 - [ ] [I] Handle edge cases: cross-staff, multiple voices, nested repeats, nested tuplets
 - [ ] [I] Use MEI extended/label patterns for concepts without direct MEI equivalent (e.g. LilyPond-specific overrides)
 - [ ] [T] All fixture categories import without error; compare structure to reference MEI where available
@@ -717,8 +761,10 @@ Each task covers: `[L]` Lexer, `[P]` Parser, `[S]` Serializer, `[I]` Import (Lil
 ### 32.1 Export Completion
 
 - [ ] [E] Wire all MEI elements to LilyPond AST: generate idiomatic \relative where possible, proper indentation, \new Staff/Voice structure, all notation types
+- [ ] [E] **Retain element IDs**: For every MEI element with `xml:id`, emit the appropriate `\tweak GrobType.id #"xml:id-value"` (see "Retaining element IDs" section; e.g. NoteHead, Rest, Slur, Tie, Hairpin, DynamicText, RehearsalMark, etc.). Optionally emit `% @id value` comments for robustness on re-import
 - [ ] [E] Preserve roundtrip data from import (labels, extended) so LilyPond → MEI → LilyPond matches where intended
 - [ ] [T] Export all fixture MEI (from Phase 31) back to .ly; compare to original or validate with parser
+- [ ] [T] Roundtrip ID test: MEI with xml:id on notes/rests/slurs → LilyPond → MEI; verify same xml:id values on corresponding elements
 
 ### 32.2 Roundtrip Tests
 
