@@ -166,8 +166,8 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 - [x] MEI `<turn>` → `turn` / `inverted-turn` / `delayed-turn` / `delayed-inverted-turn` based on `@form` and `@delayed`
 - [x] MEI `<ornam>` labeled ornaments → roundtrip back to correct MusicXML type
   - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn, tremolo, wavy-line, other-ornament
-- [ ] MEI `<bTrem>` → `tremolo type="single"` on contained note (deferred — requires layer-level container support)
-- [ ] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes (deferred — requires layer-level container support)
+- [ ] MEI `<bTrem>` → `tremolo type="single"` on contained note
+- [ ] MEI `<fTrem>` → `tremolo type="start/stop"` on contained notes
 
 ### 3.4 Tests
 
@@ -331,10 +331,10 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 8.1 Model & Parser
 
-- [ ] Add `Harmony` variant to `MeasureContent` enum
-- [ ] Create `model/harmony.rs` with: `Harmony`, `HarmonyChord`, `Root`, `Bass`, `Kind`, `Degree`, `Numeral`, `Frame`, `FrameNote`
-- [ ] Parse `<harmony>` in `parse_measure()` (currently falls through to `skip_element`)
-- [ ] Serialize all harmony elements
+- [x] Add `Harmony` variant to `MeasureContent` enum
+- [x] Create `model/harmony.rs` with: `Harmony`, `HarmonyChord`, `Root`, `Bass`, `Kind`, `Degree`, `Numeral`, `Frame`, `FrameNote`
+- [x] Parse `<harmony>` in `parse_measure()` (currently falls through to `skip_element`)
+- [x] Serialize all harmony elements
 
 ### 8.2 Import & Export
 

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::data::YesNo;
 
 use super::barline::Barline;
+use crate::model::harmony::Harmony;
 
 /// A measure in a part.
 ///
@@ -69,6 +70,8 @@ pub enum MeasureContent {
     Attributes(Box<crate::model::attributes::Attributes>),
     /// Direction (dynamics, tempo, pedals, wedges, etc.).
     Direction(Box<crate::model::direction::Direction>),
+    /// Harmony (chord symbols, Roman numerals, fretboard diagrams).
+    Harmony(Box<Harmony>),
     /// Barline (location and style).
     Barline(Box<Barline>),
 }

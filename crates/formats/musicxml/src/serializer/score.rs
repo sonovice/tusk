@@ -846,6 +846,7 @@ impl MusicXmlSerialize for Measure {
                 MeasureContent::Forward(forward) => forward.serialize(w)?,
                 MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
                 MeasureContent::Direction(dir) => dir.serialize(w)?,
+                MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
         }
@@ -1026,6 +1027,13 @@ pub(crate) fn above_below_str(ab: &AboveBelow) -> &'static str {
     match ab {
         AboveBelow::Above => "above",
         AboveBelow::Below => "below",
+    }
+}
+
+pub(crate) fn left_right_str(lr: &LeftRight) -> &'static str {
+    match lr {
+        LeftRight::Left => "left",
+        LeftRight::Right => "right",
     }
 }
 
@@ -1313,6 +1321,7 @@ impl TimewisePart {
                 MeasureContent::Forward(forward) => forward.serialize(w)?,
                 MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
                 MeasureContent::Direction(dir) => dir.serialize(w)?,
+                MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
                 MeasureContent::Barline(barline) => barline.serialize(w)?,
             }
         }
