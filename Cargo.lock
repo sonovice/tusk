@@ -634,6 +634,7 @@ dependencies = [
  "anyhow",
  "quick-xml 0.39.0",
  "serde",
+ "serde_json",
  "thiserror",
  "tracing",
  "tusk-format",

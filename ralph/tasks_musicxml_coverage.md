@@ -383,26 +383,40 @@ the generated MEI model is insufficient for lossless roundtrip, follow this appr
 
 ### 8.2 Import & Export
 
-**Strategy**: MEI `<harm>` only has `Text(String)` children — it cannot structurally
-represent root/bass/kind/degree/frame. Use the `extended` module to create structured
-companion types. Store a human-readable chord label as the `<harm>` text child and
-attach structured `HarmonyData` as a sidecar (keyed by `xml:id`) in the conversion
-context, or as a field in a wrapper type.
+**Strategy**: Instead of the `extended/` sidecar approach originally proposed, uses
+JSON-in-label roundtrip. The full MusicXML `Harmony` struct (which already derives
+`Serialize`/`Deserialize`) is serialized to JSON and stored in the MEI `<harm>` `@label`
+attribute with a `musicxml:harmony,` prefix. A human-readable chord symbol text is
+stored as the `<harm>` text child. On export, the JSON is deserialized back to the
+original `Harmony` struct. This approach is simpler, avoids duplicating type definitions
+in an `extended/` module, and achieves lossless roundtrip for all harmony data (root,
+kind, bass, degrees, frame, numeral, function, and all styling attributes).
 
-- [ ] Create `crates/core/model/src/extended/mod.rs` + `harmony.rs` with `HarmonyData`, `HarmRoot`, `HarmBass`, `HarmKind`, `HarmDegree`, `HarmFrame` structs
-- [ ] Wire `pub mod extended;` into `crates/core/model/src/lib.rs`
-- [ ] `harmony` → MEI `<harm>` control event + `HarmonyData` sidecar
-- [ ] `root` + `kind` → chord label text + structured `HarmRoot`/`HarmKind` in sidecar
-- [ ] `bass` → slash notation text + structured `HarmBass` in sidecar
-- [ ] `degree` → structured `HarmDegree` list in sidecar
-- [ ] `frame` → structured `HarmFrame` in sidecar (and/or MEI `<chordDef>` with `<chordMember>`)
-- [ ] `function` → MEI `<harm>` with function text (no sidecar needed — text is sufficient)
-- [ ] Export: read `HarmonyData` sidecar to reconstruct full MusicXML `Harmony` elements
+- [x] Import: `harmony` → MEI `<harm>` control event with `@tstamp`, `@staff`, `@place`
+  - Added `import/harmony.rs` with `convert_harmony()` function
+  - Full MusicXML `Harmony` serialized as JSON in `@label` for lossless roundtrip
+  - Beat position canonicalized into `offset` field so tstamp is correct after re-export
+  - Staff cleared from JSON (handled via MEI `@staff`), restored on export
+  - Human-readable chord text from `harmony_to_text()` as `HarmChild::Text`
+- [x] Import: `root` + `kind` → chord label text + JSON-encoded root/kind in label
+- [x] Import: `bass` → slash notation text + JSON-encoded bass in label
+- [x] Import: `degree` → JSON-encoded degree list in label
+- [x] Import: `frame` → JSON-encoded frame in label
+- [x] Import: `function` → function text in `HarmChild::Text` + JSON in label
+- [x] Export: parse `musicxml:harmony,` label JSON to reconstruct full `Harmony`
+  - Added `export/harmony.rs` with `convert_mei_harm()` function
+  - Handles roundtrip (JSON label) and fallback (text-only, function-based) paths
+  - Staff number set from `local_staff_n` parameter
+  - Wired into `convert_direction_events()` via `MeasureChild::Harm` match arm
+- [x] Added `serde_json` dependency to `tusk-musicxml` for JSON serialization
+- [x] Wired `import/harmony` as `pub(crate)` module for cross-module access
 
 ### 8.3 Tests
 
-- [ ] Add roundtrip fixtures for chord symbols, Roman numerals, Nashville numbers
-- [ ] Verify fragment examples: `kind_element`, `root_step_element`, `root_alter_element`, `bass_step_element`, `bass_alter_element`, `bass_separator_element`, `degree_value_element`, `degree_alter_element`, `degree_type_element`, `inversion_element`, `numeral_root_element`, `numeral_alter_element`, `numeral_key_element`
+- [x] Existing roundtrip fixtures for chord symbols pass: `tutorial_chord_symbols.musicxml` (13 chord types), `BrookeWestSample.musicxml` (multi-staff with harmonies)
+- [x] Verify fragment examples: `kind_element`, `root_step_element`, `root_alter_element`, `bass_step_element`, `bass_alter_element`, `bass_separator_element`, `degree_value_element`, `degree_alter_element`, `degree_type_element`, `inversion_element`, `numeral_root_element`, `numeral_alter_element`, `numeral_key_element`
+  - All 13 fragment tests pass MusicXML triangle roundtrip
+- [x] All 314 roundtrip tests pass (0 regressions), 490 unit tests pass, 31 integration tests pass
 
 ---
 

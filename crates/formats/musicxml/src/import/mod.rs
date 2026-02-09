@@ -23,6 +23,7 @@
 
 mod attributes;
 mod direction;
+pub(crate) mod harmony;
 mod note;
 mod parts;
 mod structure;

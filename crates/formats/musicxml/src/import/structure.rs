@@ -239,6 +239,21 @@ fn convert_measure_directions(
                     }
                 }
             }
+            MeasureContent::Harmony(harmony) => {
+                // For multi-staff parts, resolve within-part staff to global MEI staff
+                if num_staves > 1 {
+                    if let Some(ref pid) = part_id {
+                        let harm_local_staff = harmony.staff.unwrap_or(1);
+                        if let Some(global) = ctx.global_staff_for_part(pid, harm_local_staff) {
+                            ctx.set_staff(global);
+                        }
+                    }
+                }
+                let harm = super::harmony::convert_harmony(harmony, ctx);
+                mei_measure
+                    .children
+                    .push(MeasureChild::Harm(Box::new(harm)));
+            }
             MeasureContent::Note(note) => {
                 // Advance beat position for non-chord, non-grace notes
                 if !note.is_chord()

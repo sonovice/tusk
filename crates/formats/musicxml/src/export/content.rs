@@ -806,6 +806,22 @@ fn convert_direction_events(
                         .push(MeasureContent::Direction(Box::new(direction)));
                 }
             }
+            MeasureChild::Harm(harm) => {
+                let event_staff = harm
+                    .harm_log
+                    .staff
+                    .as_ref()
+                    .and_then(|s| s.split_whitespace().next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(1) as usize;
+                if event_staff == staff_n {
+                    if let Some(content) =
+                        super::harmony::convert_mei_harm(harm, local_staff_n, ctx)
+                    {
+                        mxml_measure.content.push(content);
+                    }
+                }
+            }
             _ => {}
         }
     }
