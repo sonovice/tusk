@@ -119,6 +119,11 @@ pub struct ConversionContext {
     /// MusicXML divisions persist across measures, so we cache the last-seen value
     /// per part to restore in Phase 2 direction processing.
     part_divisions: HashMap<String, f64>,
+
+    /// Maps (part_id, within-part-staff-number) → global MEI staff number.
+    /// For single-staff parts, (part_id, 1) → global_n.
+    /// For multi-staff parts (piano), (part_id, 1) → n, (part_id, 2) → n+1.
+    part_staff_map: HashMap<(String, u32), u32>,
 }
 
 impl Default for ConversionContext {
@@ -151,6 +156,7 @@ impl ConversionContext {
             measure_accidentals: HashMap::new(),
             slur_number_map: HashMap::new(),
             part_divisions: HashMap::new(),
+            part_staff_map: HashMap::new(),
         }
     }
 
@@ -219,6 +225,33 @@ impl ConversionContext {
     /// Get a mutable reference to the duration context.
     pub fn duration_context_mut(&mut self) -> &mut DurationContext {
         &mut self.duration_ctx
+    }
+
+    // ========================================================================
+    // Multi-Staff Part Mapping
+    // ========================================================================
+
+    /// Register a mapping from (part_id, within-part staff number) to global MEI staff number.
+    pub fn register_part_staff(&mut self, part_id: &str, local_staff: u32, global_staff: u32) {
+        self.part_staff_map
+            .insert((part_id.to_string(), local_staff), global_staff);
+    }
+
+    /// Look up the global MEI staff number for a (part_id, within-part staff number) pair.
+    pub fn global_staff_for_part(&self, part_id: &str, local_staff: u32) -> Option<u32> {
+        self.part_staff_map
+            .get(&(part_id.to_string(), local_staff))
+            .copied()
+    }
+
+    /// Return the number of staves registered for a given part.
+    pub fn staves_for_part(&self, part_id: &str) -> u32 {
+        self.part_staff_map
+            .keys()
+            .filter(|(pid, _)| pid == part_id)
+            .map(|(_, local)| *local)
+            .max()
+            .unwrap_or(1)
     }
 
     // ========================================================================

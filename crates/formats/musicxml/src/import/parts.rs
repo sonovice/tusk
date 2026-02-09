@@ -12,6 +12,7 @@ use crate::import::{
 };
 use crate::model::attributes::KeyContent;
 use crate::model::elements::{PartGroup, PartListItem, ScorePart, ScorePartwise};
+use tusk_model::data::DataBoolean;
 use tusk_model::elements::{
     Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild, StaffGrp,
     StaffGrpChild,
@@ -61,26 +62,65 @@ pub fn convert_staff_grp(
             PartListItem::ScorePart(score_part) => {
                 // Extract initial attributes from the first measure of this part
                 let initial_attrs = extract_first_measure_attributes(score, &score_part.id);
-                let staff_def = convert_staff_def_from_score_part(
-                    score_part,
-                    staff_number,
-                    initial_attrs,
-                    ctx,
-                )?;
 
-                // Add to innermost open group, or root if none
-                if let Some((_, grp)) = group_stack.last_mut() {
-                    grp.children
-                        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                // Detect multi-staff parts (e.g., piano with <staves>2</staves>)
+                let multi_staff_attrs = extract_attributes_with_staves(score, &score_part.id);
+                let num_staves = multi_staff_attrs
+                    .and_then(|a| a.staves)
+                    .or_else(|| initial_attrs.and_then(|a| a.staves))
+                    .unwrap_or(1);
+
+                if num_staves > 1 {
+                    // Multi-staff part: create a nested staffGrp with multiple staffDefs
+                    // Use the staves-containing attrs for clefs, but prefer initial_attrs
+                    // for divisions (the first attributes block has the operational divisions).
+                    let clef_attrs = multi_staff_attrs.or(initial_attrs);
+                    let div_attrs = initial_attrs.or(multi_staff_attrs);
+                    let child = convert_multi_staff_part(
+                        score_part,
+                        staff_number,
+                        num_staves,
+                        clef_attrs,
+                        div_attrs,
+                        ctx,
+                    )?;
+
+                    // Add nested staffGrp to innermost open group, or root
+                    if let Some((_, grp)) = group_stack.last_mut() {
+                        grp.children.push(child);
+                    } else {
+                        root_grp.children.push(child);
+                    }
+
+                    // Map part ID to first staff number
+                    ctx.map_id(&score_part.id, format!("staff-{}", staff_number));
+                    staff_number += num_staves;
                 } else {
-                    root_grp
-                        .children
-                        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
-                }
+                    // Single-staff part: existing path
+                    let staff_def = convert_staff_def_from_score_part(
+                        score_part,
+                        staff_number,
+                        initial_attrs,
+                        None,
+                        true,
+                        ctx,
+                    )?;
 
-                // Map part ID to staff number
-                ctx.map_id(&score_part.id, format!("staff-{}", staff_number));
-                staff_number += 1;
+                    // Add to innermost open group, or root if none
+                    if let Some((_, grp)) = group_stack.last_mut() {
+                        grp.children
+                            .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                    } else {
+                        root_grp
+                            .children
+                            .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+                    }
+
+                    // Map part ID to staff number, register in part-staff map
+                    ctx.map_id(&score_part.id, format!("staff-{}", staff_number));
+                    ctx.register_part_staff(&score_part.id, 1, staff_number);
+                    staff_number += 1;
+                }
             }
             PartListItem::PartGroup(part_group) => {
                 let group_number = part_group.number.clone().unwrap_or_else(|| "1".to_string());
@@ -162,7 +202,7 @@ fn convert_staff_grp_from_part_group(
 
     // Convert group symbol
     if let Some(ref symbol_value) = part_group.group_symbol {
-        staff_grp.staff_grp_vis.symbol = Some(convert_group_symbol(symbol_value.value.clone()));
+        staff_grp.staff_grp_vis.symbol = Some(convert_group_symbol(symbol_value.value));
     }
 
     // Convert group barline → bar.thru
@@ -250,15 +290,24 @@ fn extract_first_measure_attributes<'a>(
 /// Convert a MusicXML ScorePart to MEI staffDef with full metadata.
 ///
 /// Maps:
-/// - part-name → `<label>` child
-/// - part-abbreviation → `<labelAbbr>` child
+/// - part-name → `<label>` child (when `include_label` is true)
+/// - part-abbreviation → `<labelAbbr>` child (when `include_label` is true)
 /// - Staff number → `@n`
 /// - Default clef and lines
 /// - Initial key/time/clef from first measure attributes
+///
+/// `clef_number`: which MusicXML clef `@number` to select from attributes.
+/// For single-staff parts, pass `None` (selects number=1 or unnumbered).
+/// For multi-staff parts, pass `Some(local_staff)` to pick the right clef.
+///
+/// `include_label`: whether to add label/labelAbbr children to this staffDef.
+/// For multi-staff parts, labels go on the containing staffGrp instead.
 pub fn convert_staff_def_from_score_part(
     score_part: &ScorePart,
     staff_number: u32,
     initial_attrs: Option<&crate::model::attributes::Attributes>,
+    clef_number: Option<u32>,
+    include_label: bool,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<StaffDef> {
     let mut staff_def = StaffDef::default();
@@ -294,14 +343,20 @@ pub fn convert_staff_def_from_score_part(
         }
 
         // Apply clef (overrides default)
-        // For single-staff parts or first staff of multi-staff parts, use clef number=1 or None
-        // Note: MusicXML clef@number is 1-based within the part, not global across all parts
-        // TODO: Multi-staff parts (like piano) should create multiple staffDef elements
-        let clef = attrs
-            .clefs
-            .iter()
-            .find(|c| c.number.is_none() || c.number == Some(1))
-            .or_else(|| attrs.clefs.first());
+        // MusicXML clef@number is 1-based within the part, not global across all parts.
+        // For multi-staff parts, each staff has its own clef identified by @number.
+        let clef = match clef_number {
+            Some(n) => attrs
+                .clefs
+                .iter()
+                .find(|c| c.number == Some(n) || (n == 1 && c.number.is_none()))
+                .or_else(|| attrs.clefs.first()),
+            None => attrs
+                .clefs
+                .iter()
+                .find(|c| c.number.is_none() || c.number == Some(1))
+                .or_else(|| attrs.clefs.first()),
+        };
 
         if let Some(clef) = clef {
             let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
@@ -316,18 +371,83 @@ pub fn convert_staff_def_from_score_part(
     // This preserves the ID through the roundtrip conversion
     staff_def.basic.xml_id = Some(score_part.id.clone());
 
-    // Convert part-name → label (if not empty)
+    if include_label {
+        // Convert part-name → label (if not empty)
+        if !score_part.part_name.value.is_empty() {
+            let mut label = Label::default();
+            label
+                .children
+                .push(LabelChild::Text(score_part.part_name.value.clone()));
+            staff_def
+                .children
+                .push(StaffDefChild::Label(Box::new(label)));
+        }
+
+        // Convert part-abbreviation → labelAbbr
+        if let Some(ref abbr) = score_part.part_abbreviation
+            && !abbr.value.is_empty()
+        {
+            let mut label_abbr = LabelAbbr::default();
+            label_abbr
+                .children
+                .push(LabelAbbrChild::Text(abbr.value.clone()));
+            staff_def
+                .children
+                .push(StaffDefChild::LabelAbbr(Box::new(label_abbr)));
+        }
+    }
+
+    Ok(staff_def)
+}
+
+/// Convert a multi-staff MusicXML part to a nested MEI staffGrp with multiple staffDefs.
+///
+/// For parts with `<staves>N</staves>` (N > 1), creates:
+/// - A `<staffGrp>` with `@symbol="brace"` and `@bar.thru="true"`
+/// - N `<staffDef>` children, each with the appropriate clef
+/// - Label/labelAbbr on the staffGrp (not individual staffDefs)
+fn convert_multi_staff_part(
+    score_part: &ScorePart,
+    first_staff_number: u32,
+    num_staves: u32,
+    clef_attrs: Option<&crate::model::attributes::Attributes>,
+    div_attrs: Option<&crate::model::attributes::Attributes>,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<StaffGrpChild> {
+    let mut nested_grp = StaffGrp::default();
+
+    // Set symbol and bar.thru for the multi-staff group
+    // Default to brace (piano/keyboard style) — can be overridden by part-symbol in attributes
+    if let Some(attrs) = clef_attrs
+        && let Some(ref ps) = attrs.part_symbol
+    {
+        use crate::model::attributes::PartSymbolValue;
+        nested_grp.staff_grp_vis.symbol = Some(match ps.value {
+            PartSymbolValue::Brace => "brace".to_string(),
+            PartSymbolValue::Bracket => "bracket".to_string(),
+            PartSymbolValue::Square => "bracketsq".to_string(),
+            PartSymbolValue::Line => "line".to_string(),
+            PartSymbolValue::None => "none".to_string(),
+        });
+    } else {
+        nested_grp.staff_grp_vis.symbol = Some("brace".to_string());
+    }
+    nested_grp.staff_grp_vis.bar_thru = Some(DataBoolean::True);
+
+    // Generate ID for the staffGrp
+    let grp_id = ctx.generate_id_with_suffix("staffgrp");
+    nested_grp.common.xml_id = Some(grp_id);
+
+    // Add label/labelAbbr to the staffGrp (not individual staffDefs)
     if !score_part.part_name.value.is_empty() {
         let mut label = Label::default();
         label
             .children
             .push(LabelChild::Text(score_part.part_name.value.clone()));
-        staff_def
+        nested_grp
             .children
-            .push(StaffDefChild::Label(Box::new(label)));
+            .push(StaffGrpChild::Label(Box::new(label)));
     }
-
-    // Convert part-abbreviation → labelAbbr
     if let Some(ref abbr) = score_part.part_abbreviation
         && !abbr.value.is_empty()
     {
@@ -335,12 +455,73 @@ pub fn convert_staff_def_from_score_part(
         label_abbr
             .children
             .push(LabelAbbrChild::Text(abbr.value.clone()));
-        staff_def
+        nested_grp
             .children
-            .push(StaffDefChild::LabelAbbr(Box::new(label_abbr)));
+            .push(StaffGrpChild::LabelAbbr(Box::new(label_abbr)));
     }
 
-    Ok(staff_def)
+    // Set divisions from div_attrs (the first attributes block has operational divisions)
+    let divs = div_attrs.and_then(|a| a.divisions).unwrap_or(1.0);
+    ctx.set_divisions(divs);
+
+    // Create staffDefs for each staff in the part
+    for local_staff in 1..=num_staves {
+        let global_staff = first_staff_number + local_staff - 1;
+
+        let mut staff_def = convert_staff_def_from_score_part(
+            score_part,
+            global_staff,
+            clef_attrs,
+            Some(local_staff),
+            false, // labels go on the staffGrp, not individual staffDefs
+            ctx,
+        )?;
+
+        // Override ppq with the operational divisions (from first attributes block)
+        staff_def.staff_def_ges.ppq = Some((divs as u64).to_string());
+
+        // Set xml:id: first staff keeps original part ID, others get suffixed
+        if local_staff == 1 {
+            staff_def.basic.xml_id = Some(score_part.id.clone());
+        } else {
+            staff_def.basic.xml_id = Some(format!("{}-staff-{}", score_part.id, local_staff));
+        }
+
+        nested_grp
+            .children
+            .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+        // Register in part-staff map
+        ctx.register_part_staff(&score_part.id, local_staff, global_staff);
+    }
+
+    Ok(StaffGrpChild::StaffGrp(Box::new(nested_grp)))
+}
+
+/// Extract the Attributes element from a part's first measure that contains a `<staves>` value.
+///
+/// Unlike `extract_first_measure_attributes` which returns the first Attributes block,
+/// this scans ALL Attributes blocks in the first measure to find one with `staves` set.
+/// This is needed because multi-staff declarations may appear in a later Attributes block
+/// (e.g., `staves_element.musicxml` has staves in the second `<attributes>` element).
+fn extract_attributes_with_staves<'a>(
+    score: &'a ScorePartwise,
+    part_id: &str,
+) -> Option<&'a crate::model::attributes::Attributes> {
+    use crate::model::elements::MeasureContent;
+
+    let part = score.parts.iter().find(|p| p.id == part_id)?;
+    let first_measure = part.measures.first()?;
+
+    for content in &first_measure.content {
+        if let MeasureContent::Attributes(attrs) = content {
+            if attrs.staves.is_some() {
+                return Some(attrs.as_ref());
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -392,8 +573,9 @@ mod tests {
     fn convert_staff_def_sets_staff_number() {
         let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
-            .expect("conversion should succeed");
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, None, None, true, &mut ctx)
+                .expect("conversion should succeed");
 
         assert_eq!(staff_def.n_integer.n.as_deref(), Some("1"));
     }
@@ -402,8 +584,9 @@ mod tests {
     fn convert_staff_def_sets_default_lines() {
         let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
-            .expect("conversion should succeed");
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, None, None, true, &mut ctx)
+                .expect("conversion should succeed");
 
         assert_eq!(staff_def.staff_def_log.lines.as_deref(), Some("5"));
     }
@@ -412,8 +595,9 @@ mod tests {
     fn convert_staff_def_sets_default_clef() {
         let score_part = make_score_part("P1", "");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
-            .expect("conversion should succeed");
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, None, None, true, &mut ctx)
+                .expect("conversion should succeed");
 
         assert_eq!(
             staff_def.staff_def_log.clef_shape,
@@ -429,8 +613,9 @@ mod tests {
     fn convert_staff_def_from_score_part_includes_label() {
         let score_part = make_score_part("P1", "Violin I");
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
-            .expect("should succeed");
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, None, None, true, &mut ctx)
+                .expect("should succeed");
 
         // Should have a label child with the part name
         let label = staff_def.children.iter().find_map(|c| {
@@ -444,10 +629,14 @@ mod tests {
 
         // Check label text
         let label = label.unwrap();
-        let text = label.children.iter().find_map(|c| {
-            let LabelChild::Text(t) = c;
-            Some(t.as_str())
-        });
+        let text = label
+            .children
+            .iter()
+            .map(|c| {
+                let LabelChild::Text(t) = c;
+                t.as_str()
+            })
+            .next();
         assert_eq!(text, Some("Violin I"));
     }
 
@@ -460,8 +649,9 @@ mod tests {
         });
 
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let staff_def = convert_staff_def_from_score_part(&score_part, 1, None, &mut ctx)
-            .expect("should succeed");
+        let staff_def =
+            convert_staff_def_from_score_part(&score_part, 1, None, None, true, &mut ctx)
+                .expect("should succeed");
 
         // Should have a labelAbbr child
         let label_abbr = staff_def.children.iter().find_map(|c| {
@@ -475,10 +665,14 @@ mod tests {
 
         // Check labelAbbr text
         let label_abbr = label_abbr.unwrap();
-        let text = label_abbr.children.iter().find_map(|c| {
-            let LabelAbbrChild::Text(t) = c;
-            Some(t.as_str())
-        });
+        let text = label_abbr
+            .children
+            .iter()
+            .map(|c| {
+                let LabelAbbrChild::Text(t) = c;
+                t.as_str()
+            })
+            .next();
         assert_eq!(text, Some("Vln. I"));
     }
 

@@ -118,13 +118,17 @@ pub fn convert_measure(
     }
 
     // Phase 1: Create staff elements for each part (notes, rests, chords)
-    for (part_idx, part) in score.parts.iter().enumerate() {
-        let staff_number = (part_idx + 1) as u32;
+    // Multi-staff parts (e.g., piano with <staves>2</staves>) keep all notes
+    // in a single MEI staff (the first global staff). This preserves the
+    // original voice/backup ordering which is essential for roundtrip fidelity,
+    // especially with cross-staff notes.
+    for part in &score.parts {
         ctx.set_part(&part.id);
-        ctx.set_staff(staff_number);
 
         if let Some(musicxml_measure) = part.measures.get(measure_idx) {
-            let staff = convert_staff(musicxml_measure, staff_number, ctx)?;
+            let global_staff = ctx.global_staff_for_part(&part.id, 1).unwrap_or(1);
+            ctx.set_staff(global_staff);
+            let staff = convert_staff(musicxml_measure, global_staff, ctx)?;
             mei_measure
                 .children
                 .push(MeasureChild::Staff(Box::new(staff)));
@@ -134,13 +138,16 @@ pub fn convert_measure(
     // Phase 2: Convert directions to control events (after all staves).
     // Separate from staff creation to ensure canonical MEI ordering:
     // all <staff> children first, then all control events.
-    for (part_idx, part) in score.parts.iter().enumerate() {
-        let staff_number = (part_idx + 1) as u32;
+    // For multi-staff parts, direction.staff (within-part) is resolved to global MEI staff.
+    for part in &score.parts {
         ctx.set_part(&part.id);
-        ctx.set_staff(staff_number);
+        let num_staves = ctx.staves_for_part(&part.id);
+        // Default to global staff for local staff 1
+        let default_global_staff = ctx.global_staff_for_part(&part.id, 1).unwrap_or(1);
+        ctx.set_staff(default_global_staff);
 
         if let Some(musicxml_measure) = part.measures.get(measure_idx) {
-            convert_measure_directions(musicxml_measure, &mut mei_measure, ctx)?;
+            convert_measure_directions(musicxml_measure, &mut mei_measure, num_staves, ctx)?;
         }
     }
 
@@ -158,9 +165,13 @@ pub fn convert_measure(
 /// Iterates all measure content to track beat position correctly.
 /// Notes/rests advance beat_position, backup/forward adjust it,
 /// so directions get the correct tstamp based on their position in the stream.
+///
+/// For multi-staff parts (`num_staves > 1`), the direction's within-part
+/// `@staff` is resolved to the global MEI staff number before conversion.
 fn convert_measure_directions(
     musicxml_measure: &crate::model::elements::Measure,
     mei_measure: &mut tusk_model::elements::Measure,
+    num_staves: u32,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::elements::MeasureContent;
@@ -182,9 +193,21 @@ fn convert_measure_directions(
     // Reset beat position so directions get correct tstamp
     ctx.reset_beat_position();
 
+    // Save the part ID for multi-staff staff resolution
+    let part_id = ctx.position().part_id.clone();
+
     for content in &musicxml_measure.content {
         match content {
             MeasureContent::Direction(direction) => {
+                // For multi-staff parts, resolve within-part staff to global MEI staff
+                if num_staves > 1 {
+                    if let Some(ref pid) = part_id {
+                        let dir_local_staff = direction.staff.unwrap_or(1);
+                        if let Some(global) = ctx.global_staff_for_part(pid, dir_local_staff) {
+                            ctx.set_staff(global);
+                        }
+                    }
+                }
                 let results = convert_direction(direction, ctx)?;
 
                 for result in results {

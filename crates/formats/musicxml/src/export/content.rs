@@ -300,14 +300,27 @@ pub fn convert_mei_score_content(
             width: mxml_measure_base.width,
         });
 
-        // For each part/staff, extract that staff's content
-        for (staff_idx, _part_id) in part_ids.iter().enumerate() {
-            let global_staff_n = staff_idx + 1; // MEI staff numbers are 1-based global
-            let local_staff_n = 1_usize; // MusicXML: part-local staff number
+        // For each MusicXML part, extract its staff/staves content from the MEI measure.
+        // Multi-staff parts (e.g., piano) have multiple MEI staves that must be merged
+        // into a single MusicXML part with <backup> elements between staves.
+        for (part_idx, part_id) in part_ids.iter().enumerate() {
+            let num_staves = ctx.staves_for_part(part_id);
 
-            // Set per-part divisions from the staffDef so that direction offset
-            // calculations use the correct value for this part.
-            if let Some(staff_def) = staff_defs.get(staff_idx) {
+            // Set per-part divisions from the first staffDef of this part
+            let first_global_staff = ctx
+                .global_staff_for_part(part_id, 1)
+                .unwrap_or((part_idx + 1) as u32) as usize;
+            let first_staff_def_idx = staff_defs
+                .iter()
+                .position(|sd| {
+                    sd.n_integer
+                        .n
+                        .as_ref()
+                        .and_then(|n| n.parse::<usize>().ok())
+                        == Some(first_global_staff)
+                })
+                .unwrap_or(part_idx);
+            if let Some(staff_def) = staff_defs.get(first_staff_def_idx) {
                 if let Some(ppq) = staff_def
                     .staff_def_ges
                     .ppq
@@ -321,39 +334,108 @@ pub fn convert_mei_score_content(
             // Build a MxmlMeasure to collect content
             let mut mxml_measure = MxmlMeasure::new(&measure_metas[measure_idx].number);
 
-            // Convert direction events BEFORE notes
-            convert_direction_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+            if num_staves <= 1 {
+                // Single-staff part: existing logic
+                let global_staff_n = first_global_staff;
+                let local_staff_n = 1_usize;
 
-            // Find the staff with matching global @n in this MEI measure
-            if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
-                // Convert staff content with part-LOCAL staff number
-                convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
+                convert_direction_events(
+                    mei_measure,
+                    global_staff_n,
+                    local_staff_n,
+                    &mut mxml_measure,
+                    ctx,
+                )?;
+
+                if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
+                    convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
+                }
+
+                convert_slur_events(
+                    mei_measure,
+                    global_staff_n,
+                    &mut mxml_measure,
+                    &mut part_prev_measures[part_idx],
+                    ctx,
+                )?;
+
+                convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+            } else {
+                // Multi-staff part: merge multiple staves with <backup> between them
+                for local_staff in 1..=num_staves {
+                    let global_staff_n =
+                        ctx.global_staff_for_part(part_id, local_staff).unwrap() as usize;
+                    let local_staff_n = local_staff as usize;
+
+                    // Direction events for this staff
+                    convert_direction_events(
+                        mei_measure,
+                        global_staff_n,
+                        local_staff_n,
+                        &mut mxml_measure,
+                        ctx,
+                    )?;
+
+                    // Content offset before adding this staff's notes
+                    let content_before = mxml_measure.content.len();
+
+                    // Staff content
+                    if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
+                        convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
+                    }
+
+                    // Slur events
+                    convert_slur_events(
+                        mei_measure,
+                        global_staff_n,
+                        &mut mxml_measure,
+                        &mut part_prev_measures[part_idx],
+                        ctx,
+                    )?;
+
+                    // Tuplet events
+                    convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+
+                    // Insert <backup> between staves (not after the last one)
+                    if local_staff < num_staves {
+                        let staff_duration =
+                            calculate_staff_duration(&mxml_measure, content_before);
+                        if staff_duration > 0.0 {
+                            mxml_measure.content.push(MeasureContent::Backup(Box::new(
+                                crate::model::note::Backup {
+                                    duration: staff_duration,
+                                    footnote: None,
+                                    level: None,
+                                },
+                            )));
+                        }
+                    }
+                }
             }
-
-            // Convert slur events AFTER notes (need note IDs to attach notations).
-            // This may retroactively modify notes in part_prev_measures to attach
-            // cross-measure slur start notations.
-            convert_slur_events(
-                mei_measure,
-                global_staff_n,
-                &mut mxml_measure,
-                &mut part_prev_measures[staff_idx],
-                ctx,
-            )?;
-
-            // Convert tupletSpan events to time-modification and tuplet notations
-            convert_tuplet_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
             // Add attributes to first measure of each part
             if measure_idx == 0 {
-                let attrs = build_first_measure_attributes(
-                    score_def,
-                    staff_defs.get(staff_idx).copied(),
-                    ctx,
-                );
-                mxml_measure
-                    .content
-                    .insert(0, MeasureContent::Attributes(Box::new(attrs)));
+                if num_staves <= 1 {
+                    let attrs = super::attributes::build_first_measure_attributes(
+                        score_def,
+                        staff_defs.get(first_staff_def_idx).copied(),
+                        ctx,
+                    );
+                    mxml_measure
+                        .content
+                        .insert(0, MeasureContent::Attributes(Box::new(attrs)));
+                } else {
+                    let attrs = super::attributes::build_first_measure_attributes_multi(
+                        score_def,
+                        part_id,
+                        num_staves,
+                        &staff_defs,
+                        ctx,
+                    );
+                    mxml_measure
+                        .content
+                        .insert(0, MeasureContent::Attributes(Box::new(attrs)));
+                }
             }
 
             // Prepend left barline if present (MusicXML: first element in measure)
@@ -372,7 +454,7 @@ pub fn convert_mei_score_content(
             }
 
             // Store the measure for future cross-measure slur resolution
-            part_prev_measures[staff_idx].push(mxml_measure);
+            part_prev_measures[part_idx].push(mxml_measure);
         }
     }
 
@@ -496,7 +578,7 @@ fn find_staff_in_measure(
                 .as_ref()
                 .and_then(|s| s.parse::<usize>().ok())
             {
-                if n as usize == staff_n {
+                if n == staff_n {
                     return Some(staff);
                 }
             }
@@ -540,6 +622,7 @@ fn mei_barrendition_to_barline(
 fn convert_direction_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
+    local_staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
@@ -554,8 +637,9 @@ fn convert_direction_events(
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(1) as usize;
                 if event_staff == staff_n
-                    && let Some(direction) = convert_mei_dynam(dynam, ctx)
+                    && let Some(mut direction) = convert_mei_dynam(dynam, ctx)
                 {
+                    direction.staff = Some(local_staff_n as u32);
                     mxml_measure
                         .content
                         .push(MeasureContent::Direction(Box::new(direction)));
@@ -570,7 +654,8 @@ fn convert_direction_events(
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(1) as usize;
                 if event_staff == staff_n {
-                    for direction in convert_mei_hairpin(hairpin, ctx) {
+                    for mut direction in convert_mei_hairpin(hairpin, ctx) {
+                        direction.staff = Some(local_staff_n as u32);
                         mxml_measure
                             .content
                             .push(MeasureContent::Direction(Box::new(direction)));
@@ -586,8 +671,9 @@ fn convert_direction_events(
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(1) as usize;
                 if event_staff == staff_n
-                    && let Some(direction) = convert_mei_dir(dir, ctx)
+                    && let Some(mut direction) = convert_mei_dir(dir, ctx)
                 {
+                    direction.staff = Some(local_staff_n as u32);
                     mxml_measure
                         .content
                         .push(MeasureContent::Direction(Box::new(direction)));
@@ -602,8 +688,9 @@ fn convert_direction_events(
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(1) as usize;
                 if event_staff == staff_n
-                    && let Some(direction) = convert_mei_tempo(tempo, ctx)
+                    && let Some(mut direction) = convert_mei_tempo(tempo, ctx)
                 {
+                    direction.staff = Some(local_staff_n as u32);
                     mxml_measure
                         .content
                         .push(MeasureContent::Direction(Box::new(direction)));
@@ -1169,174 +1256,34 @@ fn find_smallest_duration_in_beam(
     }
 }
 
-/// Build MusicXML Attributes for the first measure by merging scoreDef and staffDef.
+/// Calculate the total duration of notes/rests added to a measure from a given content offset.
 ///
-/// - scoreDef provides: key signature, time signature (global)
-/// - staffDef provides: clef, transposition, staff lines (per-staff)
-fn build_first_measure_attributes(
-    score_def: Option<&tusk_model::elements::ScoreDef>,
-    staff_def: Option<&tusk_model::elements::StaffDef>,
-    ctx: &mut ConversionContext,
-) -> crate::model::attributes::Attributes {
-    use super::attributes::{
-        convert_mei_clef_shape_to_mxml, convert_mei_keysig_to_fifths, convert_mei_meter_sym_to_mxml,
-    };
-    use crate::model::attributes::{
-        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
-        TimeContent, TimeSignature, TraditionalKey, Transpose,
-    };
-
-    let mut attrs = Attributes::default();
-
-    // Set divisions from context
-    let divisions = ctx.divisions();
-    attrs.divisions = Some(divisions);
-
-    // Get key signature from scoreDef first, then staffDef as fallback (@keysig is Option<String>)
-    let keysig = score_def
-        .and_then(|sd| sd.score_def_log.keysig.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
-
-    if let Some(keysig) = keysig
-        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
-    {
-        attrs.keys.push(Key {
-            number: None,
-            print_object: None,
-            id: None,
-            content: KeyContent::Traditional(TraditionalKey {
-                cancel: None,
-                fifths,
-                mode: None,
-            }),
-            key_octaves: Vec::new(),
-        });
-    }
-
-    // Get time signature from scoreDef first, then staffDef as fallback
-    let meter_sym = score_def
-        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
-    let meter_count = score_def
-        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
-    let meter_unit = score_def
-        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
-        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
-
-    if meter_sym.as_deref() == Some(&tusk_model::data::DataMetersign::Open) {
-        // Senza misura
-        attrs.times.push(Time {
-            number: None,
-            symbol: None,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
-        });
-    } else if meter_count.is_some() || meter_unit.is_some() {
-        let beats = meter_count
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "4".to_string());
-        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
-
-        let symbol = meter_sym
-            .as_ref()
-            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
-
-        attrs.times.push(Time {
-            number: None,
-            symbol,
-            separator: None,
-            print_object: None,
-            id: None,
-            content: TimeContent::Standard(StandardTime {
-                signatures: vec![TimeSignature { beats, beat_type }],
-                interchangeable: None,
-            }),
-        });
-    }
-
-    // Get clef from staffDef (per-staff attribute)
-    if let Some(staff_def) = staff_def {
-        if let Some(shape) = &staff_def.staff_def_log.clef_shape {
-            let sign = convert_mei_clef_shape_to_mxml(shape);
-            let line = staff_def
-                .staff_def_log
-                .clef_line
-                .as_ref()
-                .map(|c| c.0 as u32);
-
-            // Convert octave displacement
-            let octave_change = super::attributes::convert_mei_clef_dis_to_octave_change(
-                staff_def.staff_def_log.clef_dis.as_ref(),
-                staff_def.staff_def_log.clef_dis_place.as_ref(),
-            );
-
-            attrs.clefs.push(Clef {
-                number: None,
-                additional: None,
-                size: None,
-                after_barline: None,
-                print_object: None,
-                id: None,
-                sign,
-                line,
-                clef_octave_change: octave_change,
-            });
-        }
-
-        // Get transposition from staffDef (MEI uses Option<String>)
-        if staff_def.staff_def_log.trans_diat.is_some()
-            || staff_def.staff_def_log.trans_semi.is_some()
-        {
-            let chromatic = staff_def
-                .staff_def_log
-                .trans_semi
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0) as f64;
-            let diatonic = staff_def
-                .staff_def_log
-                .trans_diat
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .map(|d: i32| d);
-
-            attrs.transposes.push(Transpose {
-                number: None,
-                id: None,
-                diatonic,
-                chromatic,
-                octave_change: None,
-                double: None,
-            });
-        }
-
-        // Get staff lines from staffDef (MEI uses Option<String>)
-        if let Some(lines) = staff_def
-            .staff_def_log
-            .lines
-            .as_ref()
-            .and_then(|s| s.parse::<u64>().ok())
-        {
-            attrs.staff_details.push(StaffDetails {
-                number: None,
-                show_frets: None,
-                print_object: None,
-                print_spacing: None,
-                staff_type: None,
-                staff_lines: Some(lines as u32), // lines is u64 from parse
-                line_details: Vec::new(),
-                staff_tunings: Vec::new(),
-                capo: None,
-                staff_size: None,
-            });
+/// Used to compute the `<backup>` duration between staves in multi-staff parts.
+/// Chord notes (note.chord.is_some()) don't advance time, nor do grace notes.
+fn calculate_staff_duration(mxml_measure: &MxmlMeasure, content_from: usize) -> f64 {
+    let mut total = 0.0;
+    for item in &mxml_measure.content[content_from..] {
+        match item {
+            MeasureContent::Note(note) => {
+                // Chord notes and grace notes don't advance time
+                if note.chord.is_none() && note.grace.is_none() {
+                    total += note.duration.unwrap_or(0.0);
+                }
+            }
+            MeasureContent::Forward(fwd) => {
+                total += fwd.duration;
+            }
+            MeasureContent::Backup(bk) => {
+                total -= bk.duration;
+            }
+            _ => {}
         }
     }
-
-    attrs
+    total.max(0.0)
 }
+
+// build_first_measure_attributes and build_first_measure_attributes_multi
+// are in super::attributes to keep this module under the line limit.
 
 #[cfg(test)]
 mod tests {
@@ -1403,7 +1350,7 @@ mod tests {
         assert_eq!(tw_measures[0].parts.len(), 1);
         assert_eq!(tw_measures[0].parts[0].id, "P1");
         // Should have attributes + note
-        assert!(tw_measures[0].parts[0].content.len() >= 1);
+        assert!(!tw_measures[0].parts[0].content.is_empty());
     }
 
     #[test]

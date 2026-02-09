@@ -394,6 +394,355 @@ pub fn convert_mei_staff_def_to_attributes(
     attrs
 }
 
+/// Build MusicXML Attributes for the first measure by merging scoreDef and staffDef.
+///
+/// - scoreDef provides: key signature, time signature (global)
+/// - staffDef provides: clef, transposition, staff lines (per-staff)
+pub fn build_first_measure_attributes(
+    score_def: Option<&tusk_model::elements::ScoreDef>,
+    staff_def: Option<&tusk_model::elements::StaffDef>,
+    ctx: &mut ConversionContext,
+) -> crate::model::attributes::Attributes {
+    use crate::model::attributes::{
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
+        TimeContent, TimeSignature, TraditionalKey, Transpose,
+    };
+
+    let mut attrs = Attributes::default();
+
+    // Set divisions from context
+    let divisions = ctx.divisions();
+    attrs.divisions = Some(divisions);
+
+    // Get key signature from scoreDef first, then staffDef as fallback (@keysig is Option<String>)
+    let keysig = score_def
+        .and_then(|sd| sd.score_def_log.keysig.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
+
+    if let Some(keysig) = keysig
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
+    {
+        attrs.keys.push(Key {
+            number: None,
+            print_object: None,
+            id: None,
+            content: KeyContent::Traditional(TraditionalKey {
+                cancel: None,
+                fifths,
+                mode: None,
+            }),
+            key_octaves: Vec::new(),
+        });
+    }
+
+    // Get time signature from scoreDef first, then staffDef as fallback
+    let meter_sym = score_def
+        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
+    let meter_count = score_def
+        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
+    let meter_unit = score_def
+        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
+        .or_else(|| staff_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
+
+    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+        // Senza misura
+        attrs.times.push(Time {
+            number: None,
+            symbol: None,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
+        });
+    } else if meter_count.is_some() || meter_unit.is_some() {
+        let beats = meter_count
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "4".to_string());
+        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
+
+        let symbol = meter_sym
+            .as_ref()
+            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
+
+        attrs.times.push(Time {
+            number: None,
+            symbol,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::Standard(StandardTime {
+                signatures: vec![TimeSignature { beats, beat_type }],
+                interchangeable: None,
+            }),
+        });
+    }
+
+    // Get clef from staffDef (per-staff attribute)
+    if let Some(staff_def) = staff_def {
+        if let Some(shape) = &staff_def.staff_def_log.clef_shape {
+            let sign = convert_mei_clef_shape_to_mxml(shape);
+            let line = staff_def
+                .staff_def_log
+                .clef_line
+                .as_ref()
+                .map(|c| c.0 as u32);
+
+            // Convert octave displacement
+            let octave_change = convert_mei_clef_dis_to_octave_change(
+                staff_def.staff_def_log.clef_dis.as_ref(),
+                staff_def.staff_def_log.clef_dis_place.as_ref(),
+            );
+
+            attrs.clefs.push(Clef {
+                number: None,
+                additional: None,
+                size: None,
+                after_barline: None,
+                print_object: None,
+                id: None,
+                sign,
+                line,
+                clef_octave_change: octave_change,
+            });
+        }
+
+        // Get transposition from staffDef (MEI uses Option<String>)
+        if staff_def.staff_def_log.trans_diat.is_some()
+            || staff_def.staff_def_log.trans_semi.is_some()
+        {
+            let chromatic = staff_def
+                .staff_def_log
+                .trans_semi
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0) as f64;
+            let diatonic = staff_def
+                .staff_def_log
+                .trans_diat
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .map(|d: i32| d);
+
+            attrs.transposes.push(Transpose {
+                number: None,
+                id: None,
+                diatonic,
+                chromatic,
+                octave_change: None,
+                double: None,
+            });
+        }
+
+        // Get staff lines from staffDef (MEI uses Option<String>)
+        if let Some(lines) = staff_def
+            .staff_def_log
+            .lines
+            .as_ref()
+            .and_then(|s| s.parse::<u64>().ok())
+        {
+            attrs.staff_details.push(StaffDetails {
+                number: None,
+                show_frets: None,
+                print_object: None,
+                print_spacing: None,
+                staff_type: None,
+                staff_lines: Some(lines as u32),
+                line_details: Vec::new(),
+                staff_tunings: Vec::new(),
+                capo: None,
+                staff_size: None,
+            });
+        }
+    }
+
+    attrs
+}
+
+/// Build MusicXML Attributes for a multi-staff part's first measure.
+///
+/// Like `build_first_measure_attributes()` but:
+/// - Sets `staves = Some(num_staves)`
+/// - Emits one clef per staff with `clef.number = Some(local_staff)`
+/// - Key/time from scoreDef (shared across staves)
+/// - Transposition and staff-details from first staffDef only
+pub fn build_first_measure_attributes_multi(
+    score_def: Option<&tusk_model::elements::ScoreDef>,
+    part_id: &str,
+    num_staves: u32,
+    staff_defs: &[&tusk_model::elements::StaffDef],
+    ctx: &mut ConversionContext,
+) -> crate::model::attributes::Attributes {
+    use crate::model::attributes::{
+        Attributes, Clef, Key, KeyContent, SenzaMisura, StaffDetails, StandardTime, Time,
+        TimeContent, TimeSignature, TraditionalKey, Transpose,
+    };
+
+    // Find the staffDefs belonging to this part via context mapping
+    let part_staff_defs: Vec<&tusk_model::elements::StaffDef> = (1..=num_staves)
+        .filter_map(|local| {
+            let global = ctx.global_staff_for_part(part_id, local)?;
+            staff_defs
+                .iter()
+                .find(|sd| {
+                    sd.n_integer.n.as_ref().and_then(|n| n.parse::<u32>().ok()) == Some(global)
+                })
+                .copied()
+        })
+        .collect();
+
+    let first_def = part_staff_defs.first().copied();
+
+    let mut attrs = Attributes::default();
+
+    // Divisions
+    attrs.divisions = Some(ctx.divisions());
+
+    // Staves count
+    attrs.staves = Some(num_staves);
+
+    // Key signature from scoreDef, fallback to first staffDef
+    let keysig = score_def
+        .and_then(|sd| sd.score_def_log.keysig.as_ref())
+        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.keysig.as_ref()));
+    if let Some(keysig) = keysig
+        && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
+    {
+        attrs.keys.push(Key {
+            number: None,
+            print_object: None,
+            id: None,
+            content: KeyContent::Traditional(TraditionalKey {
+                cancel: None,
+                fifths,
+                mode: None,
+            }),
+            key_octaves: Vec::new(),
+        });
+    }
+
+    // Time signature from scoreDef, fallback to first staffDef
+    let meter_sym = score_def
+        .and_then(|sd| sd.score_def_log.meter_sym.as_ref())
+        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_sym.as_ref()));
+    let meter_count = score_def
+        .and_then(|sd| sd.score_def_log.meter_count.as_ref())
+        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_count.as_ref()));
+    let meter_unit = score_def
+        .and_then(|sd| sd.score_def_log.meter_unit.as_ref().cloned())
+        .or_else(|| first_def.and_then(|sd| sd.staff_def_log.meter_unit.as_ref().cloned()));
+
+    if meter_sym == Some(&tusk_model::data::DataMetersign::Open) {
+        attrs.times.push(Time {
+            number: None,
+            symbol: None,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::SenzaMisura(SenzaMisura { symbol: None }),
+        });
+    } else if meter_count.is_some() || meter_unit.is_some() {
+        let beats = meter_count
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "4".to_string());
+        let beat_type = meter_unit.unwrap_or_else(|| "4".to_string());
+        let symbol = meter_sym
+            .as_ref()
+            .and_then(|s| convert_mei_meter_sym_to_mxml(s));
+        attrs.times.push(Time {
+            number: None,
+            symbol,
+            separator: None,
+            print_object: None,
+            id: None,
+            content: TimeContent::Standard(StandardTime {
+                signatures: vec![TimeSignature { beats, beat_type }],
+                interchangeable: None,
+            }),
+        });
+    }
+
+    // Per-staff clefs with number attribute
+    for (idx, staff_def) in part_staff_defs.iter().enumerate() {
+        let local_staff = (idx + 1) as u32;
+        if let Some(shape) = &staff_def.staff_def_log.clef_shape {
+            let sign = convert_mei_clef_shape_to_mxml(shape);
+            let line = staff_def
+                .staff_def_log
+                .clef_line
+                .as_ref()
+                .map(|c| c.0 as u32);
+            let octave_change = convert_mei_clef_dis_to_octave_change(
+                staff_def.staff_def_log.clef_dis.as_ref(),
+                staff_def.staff_def_log.clef_dis_place.as_ref(),
+            );
+            attrs.clefs.push(Clef {
+                number: Some(local_staff),
+                additional: None,
+                size: None,
+                after_barline: None,
+                print_object: None,
+                id: None,
+                sign,
+                line,
+                clef_octave_change: octave_change,
+            });
+        }
+    }
+
+    // Transposition from first staffDef
+    if let Some(staff_def) = first_def {
+        if staff_def.staff_def_log.trans_diat.is_some()
+            || staff_def.staff_def_log.trans_semi.is_some()
+        {
+            let chromatic = staff_def
+                .staff_def_log
+                .trans_semi
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0) as f64;
+            let diatonic = staff_def
+                .staff_def_log
+                .trans_diat
+                .as_ref()
+                .and_then(|s| s.parse().ok())
+                .map(|d: i32| d);
+            attrs.transposes.push(Transpose {
+                number: None,
+                id: None,
+                diatonic,
+                chromatic,
+                octave_change: None,
+                double: None,
+            });
+        }
+
+        // Staff details from first staffDef
+        if let Some(lines) = staff_def
+            .staff_def_log
+            .lines
+            .as_ref()
+            .and_then(|s| s.parse::<u64>().ok())
+        {
+            attrs.staff_details.push(StaffDetails {
+                number: None,
+                show_frets: None,
+                print_object: None,
+                print_spacing: None,
+                staff_type: None,
+                staff_lines: Some(lines as u32),
+                line_details: Vec::new(),
+                staff_tunings: Vec::new(),
+                capo: None,
+                staff_size: None,
+            });
+        }
+    }
+
+    attrs
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

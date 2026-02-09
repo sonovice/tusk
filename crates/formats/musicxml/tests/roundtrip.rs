@@ -1488,3 +1488,7 @@ fragment_roundtrip_test!(wavy_line_element);
 fragment_roundtrip_test!(wedge_element);
 fragment_roundtrip_test!(with_bar_element);
 fragment_roundtrip_test!(wood_element);
+// Multi-staff parts (Phase 2)
+fragment_roundtrip_test!(piano_two_staves);
+fragment_roundtrip_test!(organ_three_staves);
+fragment_roundtrip_test!(cross_staff_notes);

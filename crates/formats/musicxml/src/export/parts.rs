@@ -91,12 +91,20 @@ pub fn convert_mei_staff_grp_to_part_list(
                     .push(PartListItem::ScorePart(Box::new(score_part)));
             }
             StaffGrpChild::StaffGrp(nested_grp) => {
-                current_group_num = convert_mei_staff_grp_to_part_list(
-                    nested_grp,
-                    part_list,
-                    ctx,
-                    current_group_num,
-                )?;
+                if is_multi_staff_part(nested_grp) {
+                    // Multi-staff part: merge all staffDefs into a single ScorePart
+                    let score_part = convert_multi_staff_grp_to_score_part(nested_grp, ctx)?;
+                    part_list
+                        .items
+                        .push(PartListItem::ScorePart(Box::new(score_part)));
+                } else {
+                    current_group_num = convert_mei_staff_grp_to_part_list(
+                        nested_grp,
+                        part_list,
+                        ctx,
+                        current_group_num,
+                    )?;
+                }
             }
             StaffGrpChild::Label(_) | StaffGrpChild::LabelAbbr(_) => {
                 // Already handled above
@@ -162,18 +170,122 @@ pub fn convert_mei_staff_grp_barline(
 ) -> Option<crate::model::elements::GroupBarlineValue> {
     use crate::model::elements::{GroupBarline, GroupBarlineValue};
 
-    staff_grp
-        .staff_grp_vis
-        .bar_thru
-        .as_ref()
-        .and_then(|bar_thru| {
-            use tusk_model::data::DataBoolean;
-            let value = match bar_thru {
-                DataBoolean::True => GroupBarline::Yes,
-                DataBoolean::False => GroupBarline::No,
-            };
-            Some(GroupBarlineValue { value, color: None })
+    staff_grp.staff_grp_vis.bar_thru.as_ref().map(|bar_thru| {
+        use tusk_model::data::DataBoolean;
+        let value = match bar_thru {
+            DataBoolean::True => GroupBarline::Yes,
+            DataBoolean::False => GroupBarline::No,
+        };
+        GroupBarlineValue { value, color: None }
+    })
+}
+
+/// Detect whether a nested staffGrp represents a multi-staff part (e.g., piano).
+///
+/// A staffGrp is considered a multi-staff part if:
+/// 1. It has `@symbol="brace"` (keyboard/harp grouping)
+/// 2. All non-label children are StaffDef elements (no nested StaffGrp)
+/// 3. It has at least 2 StaffDef children
+/// 4. Individual staffDefs do NOT have their own labels (labels are on the staffGrp)
+///    — this distinguishes from grouped separate instruments like "Trombones 1&2"
+fn is_multi_staff_part(staff_grp: &StaffGrp) -> bool {
+    let has_brace = staff_grp.staff_grp_vis.symbol.as_deref() == Some("brace");
+
+    let staff_defs: Vec<&StaffDef> = staff_grp
+        .children
+        .iter()
+        .filter_map(|c| {
+            if let StaffGrpChild::StaffDef(sd) = c {
+                Some(sd.as_ref())
+            } else {
+                None
+            }
         })
+        .collect();
+
+    let has_nested_grp = staff_grp
+        .children
+        .iter()
+        .any(|c| matches!(c, StaffGrpChild::StaffGrp(_)));
+
+    // Check that individual staffDefs don't have labels
+    // (multi-staff parts have labels on the staffGrp, not individual staves)
+    let staff_defs_have_labels = staff_defs
+        .iter()
+        .any(|sd| extract_staff_def_label(sd).is_some());
+
+    has_brace && staff_defs.len() >= 2 && !has_nested_grp && !staff_defs_have_labels
+}
+
+/// Convert a multi-staff MEI staffGrp (e.g., piano with brace) to a single MusicXML ScorePart.
+///
+/// Uses the first staffDef's ID and label for the part identity.
+/// Registers all staffDefs in the context for staff number mapping.
+fn convert_multi_staff_grp_to_score_part(
+    staff_grp: &StaffGrp,
+    ctx: &mut ConversionContext,
+) -> ConversionResult<ScorePart> {
+    // Collect all staffDefs in order
+    let staff_defs: Vec<&StaffDef> = staff_grp
+        .children
+        .iter()
+        .filter_map(|c| {
+            if let StaffGrpChild::StaffDef(sd) = c {
+                Some(sd.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let first_def = staff_defs
+        .first()
+        .expect("multi-staff part must have at least one staffDef");
+
+    // Use the first staffDef's ID as the part ID
+    let part_id = first_def
+        .basic
+        .xml_id
+        .clone()
+        .or_else(|| first_def.n_integer.n.as_ref().map(|n| format!("P{}", n)))
+        .unwrap_or_else(|| ctx.generate_id_with_suffix("part"));
+
+    // Extract label from the staffGrp itself (not individual staffDefs)
+    let part_name = extract_label_text(staff_grp)
+        .or_else(|| extract_staff_def_label(first_def))
+        .unwrap_or_default();
+
+    let mut score_part = ScorePart::new(&part_id, &part_name);
+
+    // Extract abbreviation from the staffGrp
+    if let Some(abbr) =
+        extract_label_abbr_text(staff_grp).or_else(|| extract_staff_def_label_abbr(first_def))
+    {
+        score_part.part_abbreviation = Some(PartName {
+            value: abbr,
+            ..Default::default()
+        });
+    }
+
+    // Register all staffDefs in the context for staff number mapping
+    for (idx, staff_def) in staff_defs.iter().enumerate() {
+        let local_staff = (idx + 1) as u32;
+        let global_staff = staff_def
+            .n_integer
+            .n
+            .as_ref()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(local_staff);
+
+        ctx.register_part_staff(&part_id, local_staff, global_staff);
+
+        // Map each staffDef's xml:id to the part ID
+        if let Some(ref xml_id) = staff_def.basic.xml_id {
+            ctx.map_id(xml_id.clone(), part_id.clone());
+        }
+    }
+
+    Ok(score_part)
 }
 
 /// Convert MEI staffDef to MusicXML score-part.
@@ -206,6 +318,15 @@ pub fn convert_mei_staff_def_to_score_part(
     if let Some(ref xml_id) = staff_def.basic.xml_id {
         ctx.map_id(xml_id.clone(), part_id.clone());
     }
+
+    // Register single-staff part in the part-staff map so export can find global staff number
+    let global_staff = staff_def
+        .n_integer
+        .n
+        .as_ref()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(1);
+    ctx.register_part_staff(&part_id, 1, global_staff);
 
     Ok(score_part)
 }

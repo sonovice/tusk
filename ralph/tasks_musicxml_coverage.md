@@ -89,26 +89,44 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 2.1 Import: Multi-Staff Detection & Mapping
 
-- [ ] Detect `<staves>` element in `<attributes>` to determine multi-staff parts in `import/parts.rs`
-- [ ] Create multiple `<staffDef>` elements within a single `<staffGrp>` for multi-staff parts (resolve the TODO at `import/parts.rs:299`)
-- [ ] Route notes to correct MEI `<staff>` based on `<staff>` child in MusicXML notes
-- [ ] Propagate clefs, key signatures, and time signatures to all staves in the part
-- [ ] Handle cross-staff notation (`<staff>` element on notes placing them on a different staff)
-- [ ] Handle `<backup>`/`<forward>` across staves within a part
+- [x] Detect `<staves>` element in `<attributes>` to determine multi-staff parts in `import/parts.rs`
+  - Added `extract_attributes_with_staves()` to detect `<staves>N</staves>` in first measure attributes
+- [x] Create multiple `<staffDef>` elements within a single `<staffGrp>` for multi-staff parts (resolve the TODO at `import/parts.rs:299`)
+  - Added `convert_multi_staff_part()` creating nested `<staffGrp symbol="brace">` with multiple `<staffDef>` elements
+  - Extended `convert_staff_def_from_score_part()` with `clef_number` and `include_label` params
+- [x] Route notes to correct MEI `<staff>` based on `<staff>` child in MusicXML notes
+  - All notes from multi-staff parts go into first MEI staff for roundtrip fidelity (notes carry `@staff` attribute)
+- [x] Propagate clefs, key signatures, and time signatures to all staves in the part
+  - Each `<staffDef>` gets its own clef from `<clef number="N">`; key/time shared across staves
+- [x] Handle cross-staff notation (`<staff>` element on notes placing them on a different staff)
+  - Notes with `<staff>` differing from voice default get `@staff` attribute in MEI referencing global staff number
+- [x] Handle `<backup>`/`<forward>` across staves within a part
+  - Backup/forward durations tracked per-part; `register_part_staff()` maps (part_id, local_staff) → global_staff
 
 ### 2.2 Export: Multi-Staff → MusicXML
 
-- [ ] Detect multi-`<staffDef>` within a single part `<staffGrp>` in `export/parts.rs`
-- [ ] Emit `<staves>` in `<attributes>` in `export/attributes.rs`
-- [ ] Route notes from multiple `<staff>` elements into the same `<part>` with proper `<staff>` tags
-- [ ] Manage `<backup>` for cross-staff voice movement in `export/content.rs`
+- [x] Detect multi-`<staffDef>` within a single part `<staffGrp>` in `export/parts.rs`
+  - Added `is_multi_staff_part()` detecting brace symbol + ≥2 staffDefs + no nested staffGrp + no individual labels
+  - Added `convert_multi_staff_grp_to_score_part()` for multi-staff part export
+- [x] Emit `<staves>` in `<attributes>` in `export/attributes.rs`
+  - `build_first_measure_attributes_multi()` emits `<staves>`, multiple `<clef number="N">`, key/time
+  - Extracted from `content.rs` to `attributes.rs` to keep file under 1500 lines
+- [x] Route notes from multiple `<staff>` elements into the same `<part>` with proper `<staff>` tags
+  - Multi-staff export branch merges MEI staves into single MusicXML part with `<staff>` tags
+- [x] Manage `<backup>` for cross-staff voice movement in `export/content.rs`
+  - `calculate_staff_duration()` computes backup duration; `<backup>` inserted between staves
+  - Fixed single-staff parts not calling `register_part_staff()` (caused ActorPreludeSample regression)
 
 ### 2.3 Tests
 
-- [ ] Add roundtrip fixture: `piano_two_staves.musicxml`
-- [ ] Add roundtrip fixture: `organ_three_staves.musicxml`
-- [ ] Add roundtrip fixture: `cross_staff_notes.musicxml`
-- [ ] Verify existing spec examples with multi-staff parts roundtrip correctly (MozartPianoSonata, Telemann, etc.)
+- [x] Add roundtrip fixture: `piano_two_staves.musicxml`
+  - Piano with 2 staves, treble/bass clef, half notes + whole note with backup
+- [x] Add roundtrip fixture: `organ_three_staves.musicxml`
+  - Organ with 3 staves (2 manuals + pedal), treble/treble/bass clefs
+- [x] Add roundtrip fixture: `cross_staff_notes.musicxml`
+  - Piano with voice 1 notes crossing between staves (staff 1 → staff 2 → staff 1)
+- [x] Verify existing spec examples with multi-staff parts roundtrip correctly (MozartPianoSonata, Telemann, etc.)
+  - 313/313 roundtrip tests pass including ActorPreludeSample (21 parts with multi-staff harp)
 
 ---
 
