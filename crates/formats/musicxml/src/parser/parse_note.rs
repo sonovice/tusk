@@ -14,6 +14,7 @@ use super::parse_technical::parse_technical;
 use super::{ParseError, Result, get_attr, get_attr_required, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::elements::Empty;
+use crate::model::lyric::*;
 use crate::model::notations::*;
 use crate::model::note::*;
 
@@ -44,6 +45,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut staff: Option<u32> = None;
     let mut beams: Vec<Beam> = Vec::new();
     let mut notations: Option<Notations> = None;
+    let mut lyrics: Vec<Lyric> = Vec::new();
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -84,6 +86,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 }
                 b"beam" => beams.push(parse_beam(reader, &e)?),
                 b"notations" => notations = Some(parse_notations(reader)?),
+                b"lyric" => lyrics.push(parse_lyric(reader, &e)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -134,6 +137,7 @@ pub fn parse_note<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
         staff,
         beams,
         notations,
+        lyrics,
         default_x,
         default_y,
         relative_x: None,
@@ -1373,4 +1377,189 @@ fn parse_empty_placement_from(e: &BytesStart) -> EmptyPlacement {
             .and_then(|s| s.parse().ok()),
         color: get_attr(e, "color").ok().flatten(),
     }
+}
+
+// ============================================================================
+// Lyric Parsing
+// ============================================================================
+
+fn parse_lyric_attrs(start: &BytesStart) -> Result<Lyric> {
+    Ok(Lyric {
+        number: get_attr(start, "number")?,
+        name: get_attr(start, "name")?,
+        justify: get_attr(start, "justify")?.and_then(|s| match s.as_str() {
+            "left" => Some(LeftCenterRight::Left),
+            "center" => Some(LeftCenterRight::Center),
+            "right" => Some(LeftCenterRight::Right),
+            _ => None,
+        }),
+        default_x: get_attr(start, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(start, "default-y")?.and_then(|s| s.parse().ok()),
+        relative_x: get_attr(start, "relative-x")?.and_then(|s| s.parse().ok()),
+        relative_y: get_attr(start, "relative-y")?.and_then(|s| s.parse().ok()),
+        placement: get_attr(start, "placement")?.and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        }),
+        color: get_attr(start, "color")?,
+        print_object: get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s)),
+        time_only: get_attr(start, "time-only")?,
+        id: get_attr(start, "id")?,
+        content: LyricContent::Laughing, // placeholder, will be replaced
+        end_line: false,
+        end_paragraph: false,
+    })
+}
+
+fn parse_syllabic_value(s: &str) -> Option<Syllabic> {
+    match s {
+        "single" => Some(Syllabic::Single),
+        "begin" => Some(Syllabic::Begin),
+        "middle" => Some(Syllabic::Middle),
+        "end" => Some(Syllabic::End),
+        _ => None,
+    }
+}
+
+/// Parse a `<lyric>` element with children.
+fn parse_lyric<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Lyric> {
+    let mut lyric = parse_lyric_attrs(start)?;
+    let mut buf = Vec::new();
+
+    // State for parsing the choice content
+    let mut syllable_groups: Vec<SyllableGroup> = Vec::new();
+    let mut current_syllabic: Option<Syllabic> = None;
+    let mut current_elision: Option<Elision> = None;
+    let mut extend: Option<Extend> = None;
+    let mut is_laughing = false;
+    let mut is_humming = false;
+    let mut has_text = false;
+    let mut end_line = false;
+    let mut end_paragraph = false;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"syllabic" => {
+                    let s = read_text(reader, b"syllabic")?;
+                    current_syllabic = parse_syllabic_value(&s);
+                }
+                b"text" => {
+                    let font_family = get_attr(&e, "font-family")?;
+                    let font_size = get_attr(&e, "font-size")?
+                        .and_then(|s| s.parse::<f64>().ok().map(FontSize::Points));
+                    let font_style = get_attr(&e, "font-style")?.and_then(|s| match s.as_str() {
+                        "normal" => Some(FontStyle::Normal),
+                        "italic" => Some(FontStyle::Italic),
+                        _ => None,
+                    });
+                    let font_weight = get_attr(&e, "font-weight")?.and_then(|s| match s.as_str() {
+                        "normal" => Some(FontWeight::Normal),
+                        "bold" => Some(FontWeight::Bold),
+                        _ => None,
+                    });
+                    let color = get_attr(&e, "color")?;
+                    let value = read_text(reader, b"text")?;
+                    syllable_groups.push(SyllableGroup {
+                        elision: current_elision.take(),
+                        syllabic: current_syllabic.take(),
+                        text: LyricText {
+                            value,
+                            font_family,
+                            font_size,
+                            font_style,
+                            font_weight,
+                            color,
+                        },
+                    });
+                    has_text = true;
+                }
+                b"elision" => {
+                    let font_family = get_attr(&e, "font-family")?;
+                    let font_size = get_attr(&e, "font-size")?
+                        .and_then(|s| s.parse::<f64>().ok().map(FontSize::Points));
+                    let font_style = get_attr(&e, "font-style")?.and_then(|s| match s.as_str() {
+                        "normal" => Some(FontStyle::Normal),
+                        "italic" => Some(FontStyle::Italic),
+                        _ => None,
+                    });
+                    let font_weight = get_attr(&e, "font-weight")?.and_then(|s| match s.as_str() {
+                        "normal" => Some(FontWeight::Normal),
+                        "bold" => Some(FontWeight::Bold),
+                        _ => None,
+                    });
+                    let color = get_attr(&e, "color")?;
+                    let value = read_text(reader, b"elision")?;
+                    current_elision = Some(Elision {
+                        value,
+                        font_family,
+                        font_size,
+                        font_style,
+                        font_weight,
+                        color,
+                    });
+                }
+                b"extend" => {
+                    let ext_type = get_attr(&e, "type")?.and_then(|s| match s.as_str() {
+                        "start" => Some(StartStopContinue::Start),
+                        "stop" => Some(StartStopContinue::Stop),
+                        "continue" => Some(StartStopContinue::Continue),
+                        _ => None,
+                    });
+                    extend = Some(Extend {
+                        extend_type: ext_type,
+                    });
+                    skip_to_end(reader, b"extend")?;
+                }
+                _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) => match e.name().as_ref() {
+                b"laughing" => is_laughing = true,
+                b"humming" => is_humming = true,
+                b"end-line" => end_line = true,
+                b"end-paragraph" => end_paragraph = true,
+                b"extend" => {
+                    let ext_type = get_attr(&e, "type")?.and_then(|s| match s.as_str() {
+                        "start" => Some(StartStopContinue::Start),
+                        "stop" => Some(StartStopContinue::Stop),
+                        "continue" => Some(StartStopContinue::Continue),
+                        _ => None,
+                    });
+                    extend = Some(Extend {
+                        extend_type: ext_type,
+                    });
+                }
+                _ => {}
+            },
+            Event::End(e) if e.name().as_ref() == b"lyric" => break,
+            Event::Eof => return Err(ParseError::MissingElement("lyric end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    // Determine content type
+    lyric.content = if is_laughing {
+        LyricContent::Laughing
+    } else if is_humming {
+        LyricContent::Humming
+    } else if has_text {
+        LyricContent::Text {
+            syllable_groups,
+            extend,
+        }
+    } else if let Some(ext) = extend {
+        LyricContent::ExtendOnly(ext)
+    } else {
+        // Default to empty text
+        LyricContent::Text {
+            syllable_groups: Vec::new(),
+            extend: None,
+        }
+    };
+    lyric.end_line = end_line;
+    lyric.end_paragraph = end_paragraph;
+
+    Ok(lyric)
 }

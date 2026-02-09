@@ -16,8 +16,9 @@ use crate::serializer::{
 use super::score::{
     above_below_str, accidental_value_str, beam_value_str, clef_sign_str, fan_str, font_size_str,
     font_style_str, font_weight_str, left_center_right_str, mode_str, notehead_value_str,
-    push_opt_attr_start, push_opt_str_attr_start, start_stop_str, stem_value_str, step_str,
-    symbol_size_str, time_symbol_str, valign_str, wedge_type_str, yes_no_str,
+    push_opt_attr_start, push_opt_str_attr_start, start_stop_continue_str, start_stop_str,
+    stem_value_str, step_str, symbol_size_str, time_symbol_str, valign_str, wedge_type_str,
+    yes_no_str,
 };
 
 // ============================================================================
@@ -139,6 +140,11 @@ impl MusicXmlSerialize for Note {
         // Notations
         if let Some(ref notations) = self.notations {
             notations.serialize(w)?;
+        }
+
+        // Lyrics
+        for lyric in &self.lyrics {
+            lyric.serialize(w)?;
         }
 
         Ok(())
@@ -904,6 +910,143 @@ impl MusicXmlSerialize for Metronome {
                     w.write_empty(w.start_element("beat-unit-dot"))?;
                 }
             }
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Lyric
+// ============================================================================
+
+fn syllabic_str(s: &Syllabic) -> &'static str {
+    match s {
+        Syllabic::Single => "single",
+        Syllabic::Begin => "begin",
+        Syllabic::Middle => "middle",
+        Syllabic::End => "end",
+    }
+}
+
+fn serialize_lyric_text<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    text: &LyricText,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("text");
+    push_opt_str_attr_start(&mut start, "font-family", &text.font_family);
+    if let Some(ref fs) = text.font_size {
+        start.push_attribute(("font-size", font_size_str(fs).as_str()));
+    }
+    if let Some(ref fs) = text.font_style {
+        start.push_attribute(("font-style", font_style_str(fs)));
+    }
+    if let Some(ref fw) = text.font_weight {
+        start.push_attribute(("font-weight", font_weight_str(fw)));
+    }
+    push_opt_str_attr_start(&mut start, "color", &text.color);
+    w.write_start(start)?;
+    w.write_text(&text.value)?;
+    w.write_end("text")?;
+    Ok(())
+}
+
+fn serialize_elision<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    elision: &Elision,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("elision");
+    push_opt_str_attr_start(&mut start, "font-family", &elision.font_family);
+    if let Some(ref fs) = elision.font_size {
+        start.push_attribute(("font-size", font_size_str(fs).as_str()));
+    }
+    if let Some(ref fs) = elision.font_style {
+        start.push_attribute(("font-style", font_style_str(fs)));
+    }
+    if let Some(ref fw) = elision.font_weight {
+        start.push_attribute(("font-weight", font_weight_str(fw)));
+    }
+    push_opt_str_attr_start(&mut start, "color", &elision.color);
+    w.write_start(start)?;
+    w.write_text(&elision.value)?;
+    w.write_end("elision")?;
+    Ok(())
+}
+
+fn serialize_extend<W: Write>(w: &mut MusicXmlWriter<W>, extend: &Extend) -> SerializeResult<()> {
+    let mut start = w.start_element("extend");
+    if let Some(ref t) = extend.extend_type {
+        start.push_attribute(("type", start_stop_continue_str(t)));
+    }
+    w.write_empty(start)?;
+    Ok(())
+}
+
+impl MusicXmlSerialize for Lyric {
+    fn element_name(&self) -> &'static str {
+        "lyric"
+    }
+
+    fn collect_attributes(&self) -> Vec<(&'static str, String)> {
+        let mut attrs = Vec::new();
+        push_opt_str_attr!(attrs, "number", self.number);
+        push_opt_str_attr!(attrs, "name", self.name);
+        if let Some(ref j) = self.justify {
+            attrs.push(("justify", left_center_right_str(j).to_string()));
+        }
+        push_opt_attr!(attrs, "default-x", self.default_x);
+        push_opt_attr!(attrs, "default-y", self.default_y);
+        push_opt_attr!(attrs, "relative-x", self.relative_x);
+        push_opt_attr!(attrs, "relative-y", self.relative_y);
+        if let Some(ref p) = self.placement {
+            attrs.push(("placement", above_below_str(p).to_string()));
+        }
+        push_opt_str_attr!(attrs, "color", self.color);
+        if let Some(ref po) = self.print_object {
+            attrs.push(("print-object", yes_no_str(po).to_string()));
+        }
+        push_opt_str_attr!(attrs, "time-only", self.time_only);
+        push_opt_str_attr!(attrs, "id", self.id);
+        attrs
+    }
+
+    fn has_children(&self) -> bool {
+        true
+    }
+
+    fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        match &self.content {
+            LyricContent::Text {
+                syllable_groups,
+                extend,
+            } => {
+                for group in syllable_groups {
+                    if let Some(ref elision) = group.elision {
+                        serialize_elision(w, elision)?;
+                    }
+                    if let Some(ref syl) = group.syllabic {
+                        w.write_text_element("syllabic", syllabic_str(syl))?;
+                    }
+                    serialize_lyric_text(w, &group.text)?;
+                }
+                if let Some(ext) = extend {
+                    serialize_extend(w, ext)?;
+                }
+            }
+            LyricContent::ExtendOnly(ext) => {
+                serialize_extend(w, ext)?;
+            }
+            LyricContent::Laughing => {
+                w.write_empty(w.start_element("laughing"))?;
+            }
+            LyricContent::Humming => {
+                w.write_empty(w.start_element("humming"))?;
+            }
+        }
+        if self.end_line {
+            w.write_empty(w.start_element("end-line"))?;
+        }
+        if self.end_paragraph {
+            w.write_empty(w.start_element("end-paragraph"))?;
         }
         Ok(())
     }

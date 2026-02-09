@@ -1169,6 +1169,8 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     ("mdiv", "score"),
     ("chord", "note"),
     ("note", "accid"),
+    ("note", "verse"),
+    ("verse", "syl"),
     ("measure", "staff"),
     ("measure", "layer"),
     ("measure", "dir"),

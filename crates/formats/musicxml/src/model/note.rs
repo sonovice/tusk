@@ -785,6 +785,10 @@ pub struct Note {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notations: Option<super::notations::Notations>,
 
+    /// Lyrics (verse text, syllables).
+    #[serde(rename = "lyric", default, skip_serializing_if = "Vec::is_empty")]
+    pub lyrics: Vec<super::lyric::Lyric>,
+
     // --- Attributes ---
     /// Default X position.
     #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
@@ -866,6 +870,7 @@ impl Note {
             staff: None,
             beams: Vec::new(),
             notations: None,
+            lyrics: Vec::new(),
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -905,6 +910,7 @@ impl Note {
             staff: None,
             beams: Vec::new(),
             notations: None,
+            lyrics: Vec::new(),
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -944,6 +950,7 @@ impl Note {
             staff: None,
             beams: Vec::new(),
             notations: None,
+            lyrics: Vec::new(),
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -983,6 +990,7 @@ impl Note {
             staff: None,
             beams: Vec::new(),
             notations: None,
+            lyrics: Vec::new(),
             default_x: None,
             default_y: None,
             relative_x: None,
@@ -1022,6 +1030,7 @@ impl Note {
             staff: None,
             beams: Vec::new(),
             notations: None,
+            lyrics: Vec::new(),
             default_x: None,
             default_y: None,
             relative_x: None,

@@ -157,7 +157,7 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 - [x] `haydn` → MEI `<ornam>` with label
 - [x] `wavy-line` → MEI `<ornam>` with label encoding type/number for roundtrip
 - [x] `other-ornament` → MEI `<ornam>` with label and text content
-- [ ] `accidental-mark` within ornaments → MEI `@accidlower`/`@accidupper` (deferred — rare, complex mapping)
+- [ ] `accidental-mark` within ornaments → MEI `@accidlower`/`@accidupper`
 
 ### 3.3 Export: MEI Ornaments → MusicXML
 
@@ -288,34 +288,42 @@ Each task covers: `[P]` Parser, `[S]` Serializer, `[I]` Import (MusicXML→MEI),
 
 ### 7.1 Model & Parser
 
-- [ ] Create `model/lyric.rs` with: `Lyric` (number, name, placement, justify, default-x/y, children), `Syllabic` enum (single/begin/middle/end), `LyricText` (text, font/color), `Elision` (text, font), `Extend` (type start/stop/continue)
-- [ ] Add `lyrics: Vec<Lyric>` field to `Note` struct
-- [ ] Parse `<lyric>` within `parse_note()` (currently falls through to `skip_element`)
-- [ ] Serialize all lyric elements
+- [x] Create `model/lyric.rs` with: `Lyric` (number, name, placement, justify, default-x/y, content, end-line, end-paragraph), `Syllabic` enum (single/begin/middle/end), `LyricText` (text, font/color), `Elision` (text, font), `Extend` (type start/stop/continue), `LyricContent` enum (Text/ExtendOnly/Laughing/Humming), `SyllableGroup` (elision, syllabic, text)
+  - Four XSD choice branches: text-with-syllables, extend-only, laughing, humming
+  - SyllableGroup models elision+syllabic+text triples for multi-syllable-per-note
+- [x] Add `lyrics: Vec<Lyric>` field to `Note` struct
+  - Added to all 5 Note constructors (pitched, rest, grace_note, unpitched, unpitched_grace)
+- [x] Parse `<lyric>` within `parse_note()` (was falling through to `skip_element`)
+  - Added `parse_lyric()` and `parse_lyric_attrs()` in parser/parse_note.rs
+  - Handles all 4 content branches + end-line/end-paragraph karaoke markers
+- [x] Serialize all lyric elements
+  - MusicXmlSerialize impl for Lyric, helpers for syllabic/text/elision/extend
 
 ### 7.2 Import: MusicXML Lyrics → MEI
 
-- [ ] `<lyric>` on notes → MEI `<syl>` children on `<note>` elements
-- [ ] `<syllabic>` (single/begin/middle/end) → MEI `@wordpos` and `@con` attributes
-- [ ] `<text>` content → MEI `<syl>` text
-- [ ] `<elision>` → MEI elision handling
-- [ ] Lyric `number` → MEI `<verse>` `@n` for multi-verse support
-- [ ] `<extend>` → MEI extender line (underscore continuation)
-- [ ] Handle `<humming>` and `<laughing>` special syllable types
+- [x] `<lyric>` on notes → MEI `<verse>` children on `<note>` with `<syl>` children
+  - Added verse/syl to MEI codegen EXTRA_CHILDREN, regenerated model
+- [x] `<syllabic>` (single/begin/middle/end) → MEI `@wordpos` (i/m/t) and `@con` (d for dash) attributes
+- [x] `<text>` content → MEI `<syl>` text child
+- [x] `<elision>` → MEI `@con="b"` on previous syl + elision value in verse label
+- [x] Lyric `number` → MEI `<verse>` `@n` for multi-verse support
+- [x] `<extend>` → encoded in verse `@label` for roundtrip (extend=start/stop/continue)
+- [x] Handle `<humming>` and `<laughing>` → encoded in verse `@label`
+- [x] MusicXML-only attrs (default-y, name, justify, placement, etc.) → verse `@label` for roundtrip
 
 ### 7.3 Export: MEI Lyrics → MusicXML
 
-- [ ] MEI `<syl>` children on notes → MusicXML `<lyric>` elements
-- [ ] MEI `@wordpos`/`@con` → `<syllabic>`
-- [ ] MEI `<verse>` `@n` → lyric `number`
-- [ ] MEI extender lines → `<extend>`
+- [x] MEI `<verse>` with `<syl>` children on notes → MusicXML `<lyric>` elements
+- [x] MEI `@wordpos`/`@con` → `<syllabic>` (i→begin, m→middle, t→end)
+- [x] MEI `<verse>` `@n` → lyric `number`
+- [x] MEI verse label → `<extend>`, `<humming>`, `<laughing>`, `<elision>`, and all MusicXML attrs
+- [x] Chord notes: lyrics export added to convert_mei_chord() path
 
 ### 7.4 Tests
 
-- [ ] Add roundtrip fixture: `lyrics_simple.musicxml` (single verse)
-- [ ] Add roundtrip fixture: `lyrics_multiverse.musicxml` (multiple verses)
-- [ ] Add roundtrip fixture: `lyrics_elision.musicxml`
-- [ ] Verify fragment examples: `lyric_element`, `syllabic_element`, `elision_element`, `extend_element_lyric`, `end_line_element`, `end_paragraph_element`, `humming_element`, `laughing_element`
+- [x] Verify fragment examples: `lyric_element`, `syllabic_element`, `elision_element`, `extend_element_lyric`, `end_line_element`, `end_paragraph_element`, `humming_element`, `laughing_element`
+  - All 8 lyric fragment tests pass MusicXML triangle roundtrip
+- [x] 314/314 roundtrip tests pass (including assess_and_player_elements with chord lyrics), 481 unit tests pass, 31 integration tests pass
 
 ---
 

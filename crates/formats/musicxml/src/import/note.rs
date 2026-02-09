@@ -145,6 +145,9 @@ pub fn convert_note(
     // Process technical notations
     process_technical(note, &note_id, ctx);
 
+    // Convert lyrics to MEI verse/syl children
+    convert_lyrics(note, &mut mei_note);
+
     Ok(mei_note)
 }
 
@@ -1518,6 +1521,182 @@ fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
             o.children.push(OrnamChild::Text(v.value.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+}
+
+// ============================================================================
+// Lyric Conversion
+// ============================================================================
+
+fn ssc_str(ssc: &crate::model::StartStopContinue) -> &'static str {
+    match ssc {
+        crate::model::StartStopContinue::Start => "start",
+        crate::model::StartStopContinue::Stop => "stop",
+        crate::model::StartStopContinue::Continue => "continue",
+    }
+}
+
+/// Convert MusicXML lyrics to MEI verse/syl children on the note.
+///
+/// Maps:
+/// - `lyric/@number` → `verse/@n`
+/// - `syllabic` → `syl/@wordpos` (begin→"i", middle→"m", end→"t", single→omitted)
+/// - `syllabic` begin/middle → `syl/@con="d"` (dash connector)
+/// - `text` value → `syl` text child
+/// - Elision: second syllable group encoded in same verse with separator label
+/// - Extend/laughing/humming/end-line/end-paragraph: encoded in verse @label
+/// - MusicXML-only attrs (default-y, name, justify, placement, etc.): verse @label
+fn convert_lyrics(note: &MusicXmlNote, mei_note: &mut MeiNote) {
+    use crate::model::lyric::{LyricContent, Syllabic};
+    use tusk_model::elements::{Syl, SylChild, Verse, VerseChild};
+
+    for lyric in &note.lyrics {
+        let mut verse = Verse::default();
+
+        // verse @n from lyric number
+        if let Some(ref num) = lyric.number {
+            verse.common.n = Some(tusk_model::data::DataWord::from(num.clone()));
+        }
+
+        // Build label parts for roundtrip of MusicXML-specific attrs
+        let mut label_parts: Vec<String> = Vec::new();
+
+        if let Some(ref name) = lyric.name {
+            label_parts.push(format!("name={}", name));
+        }
+        if let Some(ref j) = lyric.justify {
+            let j_str = match j {
+                crate::model::data::LeftCenterRight::Left => "left",
+                crate::model::data::LeftCenterRight::Center => "center",
+                crate::model::data::LeftCenterRight::Right => "right",
+            };
+            label_parts.push(format!("justify={}", j_str));
+        }
+        if let Some(dx) = lyric.default_x {
+            label_parts.push(format!("default-x={}", dx));
+        }
+        if let Some(dy) = lyric.default_y {
+            label_parts.push(format!("default-y={}", dy));
+        }
+        if let Some(rx) = lyric.relative_x {
+            label_parts.push(format!("relative-x={}", rx));
+        }
+        if let Some(ry) = lyric.relative_y {
+            label_parts.push(format!("relative-y={}", ry));
+        }
+        if let Some(ref p) = lyric.placement {
+            label_parts.push(format!(
+                "placement={}",
+                match p {
+                    crate::model::data::AboveBelow::Above => "above",
+                    crate::model::data::AboveBelow::Below => "below",
+                }
+            ));
+        }
+        if let Some(ref c) = lyric.color {
+            label_parts.push(format!("color={}", c));
+        }
+        if let Some(ref po) = lyric.print_object {
+            label_parts.push(format!(
+                "print-object={}",
+                match po {
+                    crate::model::data::YesNo::Yes => "yes",
+                    crate::model::data::YesNo::No => "no",
+                }
+            ));
+        }
+        if let Some(ref to) = lyric.time_only {
+            label_parts.push(format!("time-only={}", to));
+        }
+        if let Some(ref id) = lyric.id {
+            label_parts.push(format!("id={}", id));
+        }
+        if lyric.end_line {
+            label_parts.push("end-line".to_string());
+        }
+        if lyric.end_paragraph {
+            label_parts.push("end-paragraph".to_string());
+        }
+
+        match &lyric.content {
+            LyricContent::Text {
+                syllable_groups,
+                extend,
+            } => {
+                // Encode extend info in label
+                if let Some(ext) = extend {
+                    if let Some(ref et) = ext.extend_type {
+                        label_parts.push(format!("extend={}", ssc_str(et)));
+                    } else {
+                        label_parts.push("extend".to_string());
+                    }
+                }
+
+                for (i, group) in syllable_groups.iter().enumerate() {
+                    // Encode elision in label for roundtrip
+                    if let Some(ref elision) = group.elision {
+                        label_parts.push(format!("elision={}", elision.value));
+                    }
+
+                    let mut syl = Syl::default();
+
+                    // @wordpos from syllabic
+                    if let Some(syllabic) = &group.syllabic {
+                        match syllabic {
+                            Syllabic::Begin => {
+                                syl.syl_log.wordpos = Some("i".to_string());
+                                syl.syl_log.con = Some("d".to_string());
+                            }
+                            Syllabic::Middle => {
+                                syl.syl_log.wordpos = Some("m".to_string());
+                                syl.syl_log.con = Some("d".to_string());
+                            }
+                            Syllabic::End => {
+                                syl.syl_log.wordpos = Some("t".to_string());
+                            }
+                            Syllabic::Single => {
+                                // No wordpos for single syllable
+                            }
+                        }
+                    }
+
+                    // Elision connector: if this syl follows an elision, mark previous syl @con="b"
+                    if i > 0 && group.elision.is_some() {
+                        // Update the connector on the previous syl
+                        if let Some(VerseChild::Syl(prev_syl)) = verse.children.last_mut() {
+                            prev_syl.syl_log.con = Some("b".to_string());
+                        }
+                    }
+
+                    // Text content
+                    syl.children.push(SylChild::Text(group.text.value.clone()));
+
+                    verse.children.push(VerseChild::Syl(Box::new(syl)));
+                }
+            }
+            LyricContent::ExtendOnly(ext) => {
+                if let Some(ref et) = ext.extend_type {
+                    label_parts.push(format!("extend-only={}", ssc_str(et)));
+                } else {
+                    label_parts.push("extend-only".to_string());
+                }
+            }
+            LyricContent::Laughing => {
+                label_parts.push("laughing".to_string());
+            }
+            LyricContent::Humming => {
+                label_parts.push("humming".to_string());
+            }
+        }
+
+        // Set the combined label
+        if !label_parts.is_empty() {
+            verse.common.label = Some(format!("musicxml:lyric,{}", label_parts.join(",")));
+        } else {
+            verse.common.label = Some("musicxml:lyric".to_string());
+        }
+
+        mei_note.children.push(NoteChild::Verse(Box::new(verse)));
     }
 }
 
