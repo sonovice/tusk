@@ -780,15 +780,34 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 21.1 Structured Direction Serialization
 
-Resolve TODO at `serializer/score.rs:1833`: "implement other direction types".
+Resolved TODO at `serializer/elements.rs`: "implement other direction types".
 
-- [ ] Serialize `Rehearsal` → `<rehearsal>` with enclosure
-- [ ] Serialize `Segno` → `<segno>`, `Coda` → `<coda>`, `Symbol` → `<symbol>`
-- [ ] Serialize `Bracket` → `<bracket>`, `Dashes` → `<dashes>`, `Pedal` → `<pedal>`
-- [ ] Serialize `OctaveShift` → `<octave-shift>`, `HarpPedals` → `<harp-pedals>`
-- [ ] Serialize `Damp`, `DampAll`, `Eyeglasses`, `StringMute`, `Scordatura`
-- [ ] Serialize `PrincipalVoice`, `Percussion`, `AccordionRegistration`, `StaffDivide`, `Image`, `OtherDirection`
-- [ ] Verify all direction type fragment examples serialize correctly without fallback to `<words>`
+- [x] Serialize `Rehearsal` → `<rehearsal>` with enclosure, font attrs, halign, valign
+  - Created `serializer/directions.rs` with `serialize_rehearsal()` — text content + all style/position attrs
+- [x] Serialize `Segno` → `<segno>`, `Coda` → `<coda>`, `Symbol` → `<symbol>`
+  - Segno/Coda: empty elements with smufl, default-x/y, color, halign, valign, id
+  - Symbol: text content element with font-family, font-size, color, halign, valign
+- [x] Serialize `Bracket` → `<bracket>`, `Dashes` → `<dashes>`, `Pedal` → `<pedal>`
+  - Dashes: empty element with type (start/stop/continue), number, dash-length, space-length
+  - Bracket: empty element with type, line-end (required), number, end-length, line-type, dash/space-length
+  - Pedal: empty element with type (7 variants: start/stop/sostenuto/change/continue/discontinue/resume), line, sign, abbreviated
+- [x] Serialize `OctaveShift` → `<octave-shift>`, `HarpPedals` → `<harp-pedals>`
+  - OctaveShift: empty element with type (up/down/stop/continue), number, size, dash/space-length, font attrs
+  - HarpPedals: container element with pedal-tuning children (pedal-step + pedal-alter)
+- [x] Serialize `Damp`, `DampAll`, `Eyeglasses`, `StringMute`, `Scordatura`
+  - Damp/DampAll/Eyeglasses: simple empty elements with default-x/y, halign, valign, id
+  - StringMute: empty element with type (on/off) + positioning
+  - Scordatura: container element with accord children (string attr, tuning-step, tuning-alter, tuning-octave)
+- [x] Serialize `PrincipalVoice`, `Percussion`, `AccordionRegistration`, `StaffDivide`, `Image`, `OtherDirection`
+  - PrincipalVoice: element with type (start/stop), symbol (Hauptstimme/Nebenstimme/plain/none), optional text
+  - Percussion: container with content enum (glass/metal/wood/pitched/membrane/effect/timpani/beater/stick/stick-location/other-percussion)
+  - AccordionRegistration: container with optional accordion-high (empty), accordion-middle (u8), accordion-low (empty)
+  - StaffDivide: empty element with type (down/up/up-down)
+  - Image: empty element with source (required), type (required), height, width, halign, valign
+  - OtherDirection: element with optional text, print-object, smufl
+- [x] Verify all direction type fragment examples serialize correctly without fallback to `<words>`
+  - Replaced wildcard `_ => {}` catch-all with exhaustive match for all 18 `DirectionTypeContent` variants
+  - All 320/320 roundtrip tests pass, 494 unit tests, 31 integration tests — zero regressions
 
 ---
 

@@ -1176,8 +1176,75 @@ impl MusicXmlSerialize for DirectionType {
                     serialize_words(w, word)?;
                 }
             }
-            _ => {
-                // TODO: implement other direction types (Rehearsal, Segno, Coda, etc.)
+            DirectionTypeContent::Rehearsal(rehearsals) => {
+                for r in rehearsals {
+                    super::directions::serialize_rehearsal(w, r)?;
+                }
+            }
+            DirectionTypeContent::Segno(segnos) => {
+                for s in segnos {
+                    super::directions::serialize_segno(w, s)?;
+                }
+            }
+            DirectionTypeContent::Coda(codas) => {
+                for c in codas {
+                    super::directions::serialize_coda(w, c)?;
+                }
+            }
+            DirectionTypeContent::Symbol(symbols) => {
+                for s in symbols {
+                    super::directions::serialize_symbol(w, s)?;
+                }
+            }
+            DirectionTypeContent::Dashes(dashes) => {
+                super::directions::serialize_dashes(w, dashes)?;
+            }
+            DirectionTypeContent::Bracket(bracket) => {
+                super::directions::serialize_bracket(w, bracket)?;
+            }
+            DirectionTypeContent::Pedal(pedal) => {
+                super::directions::serialize_pedal(w, pedal)?;
+            }
+            DirectionTypeContent::OctaveShift(os) => {
+                super::directions::serialize_octave_shift(w, os)?;
+            }
+            DirectionTypeContent::HarpPedals(hp) => {
+                super::directions::serialize_harp_pedals(w, hp)?;
+            }
+            DirectionTypeContent::Damp(damp) => {
+                super::directions::serialize_damp(w, damp)?;
+            }
+            DirectionTypeContent::DampAll(damp_all) => {
+                super::directions::serialize_damp_all(w, damp_all)?;
+            }
+            DirectionTypeContent::Eyeglasses(eg) => {
+                super::directions::serialize_eyeglasses(w, eg)?;
+            }
+            DirectionTypeContent::StringMute(sm) => {
+                super::directions::serialize_string_mute(w, sm)?;
+            }
+            DirectionTypeContent::Scordatura(sc) => {
+                super::directions::serialize_scordatura(w, sc)?;
+            }
+            DirectionTypeContent::Image(img) => {
+                super::directions::serialize_image(w, img)?;
+            }
+            DirectionTypeContent::PrincipalVoice(pv) => {
+                super::directions::serialize_principal_voice(w, pv)?;
+            }
+            DirectionTypeContent::Percussion(percs) => {
+                for p in percs {
+                    super::directions::serialize_percussion(w, p)?;
+                }
+            }
+            DirectionTypeContent::AccordionRegistration(ar) => {
+                super::directions::serialize_accordion_registration(w, ar)?;
+            }
+            DirectionTypeContent::StaffDivide(sd) => {
+                super::directions::serialize_staff_divide(w, sd)?;
+            }
+            DirectionTypeContent::OtherDirection(od) => {
+                super::directions::serialize_other_direction(w, od)?;
             }
         }
         Ok(())
@@ -1497,7 +1564,7 @@ pub(crate) fn serialize_formatted_text<W: Write>(
     Ok(())
 }
 
-fn enclosure_shape_str(e: &EnclosureShape) -> &'static str {
+pub(crate) fn enclosure_shape_str(e: &EnclosureShape) -> &'static str {
     match e {
         EnclosureShape::Rectangle => "rectangle",
         EnclosureShape::Square => "square",
