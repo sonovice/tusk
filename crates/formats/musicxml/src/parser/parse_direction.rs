@@ -453,7 +453,7 @@ fn parse_bracket(e: &BytesStart) -> Result<Bracket> {
     })
 }
 
-fn parse_segno(e: &BytesStart) -> Result<Segno> {
+pub(crate) fn parse_segno(e: &BytesStart) -> Result<Segno> {
     Ok(Segno {
         smufl: get_attr(e, "smufl")?,
         default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
@@ -465,7 +465,7 @@ fn parse_segno(e: &BytesStart) -> Result<Segno> {
     })
 }
 
-fn parse_coda(e: &BytesStart) -> Result<Coda> {
+pub(crate) fn parse_coda(e: &BytesStart) -> Result<Coda> {
     Ok(Coda {
         smufl: get_attr(e, "smufl")?,
         default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),

@@ -493,7 +493,7 @@ fn serialize_mordent<W: Write>(
 }
 
 /// Serialize a wavy-line element.
-fn serialize_wavy_line<W: Write>(
+pub(crate) fn serialize_wavy_line<W: Write>(
     w: &mut MusicXmlWriter<W>,
     wl: &notations::WavyLine,
 ) -> SerializeResult<()> {
@@ -607,7 +607,7 @@ fn serialize_dynamics_notation<W: Write>(
 // ============================================================================
 
 /// Serialize a fermata element (may have text content for shape).
-fn serialize_fermata<W: Write>(
+pub(crate) fn serialize_fermata<W: Write>(
     w: &mut MusicXmlWriter<W>,
     f: &notations::Fermata,
 ) -> SerializeResult<()> {

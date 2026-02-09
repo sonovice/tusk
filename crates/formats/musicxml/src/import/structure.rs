@@ -113,7 +113,7 @@ pub fn convert_measure(
         // Convert measure attributes
         convert_measure_attributes(musicxml_measure, &mut mei_measure, ctx);
         // Convert barlines (left/right) from first part's measure content
-        convert_measure_barlines(musicxml_measure, &mut mei_measure);
+        convert_measure_barlines(musicxml_measure, &mut mei_measure, ctx);
         ctx.set_measure(&musicxml_measure.number);
     }
 
@@ -468,15 +468,21 @@ fn emit_gliss_events(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut 
 /// Iterates measure content for Barline elements and sets mei_measure.measure_log.left
 /// and measure_log.right from location (left/right). Middle barlines are not represented
 /// in MEI and are skipped.
+///
+/// Barlines with extra children (repeat, ending, fermata, segno, coda, wavy-line) or
+/// extra attributes (segno, coda, divisions) are also stored as JSON-in-label on
+/// `<dir>` control events for lossless roundtrip.
 fn convert_measure_barlines(
     musicxml_measure: &crate::model::elements::Measure,
     mei_measure: &mut tusk_model::elements::Measure,
+    ctx: &mut ConversionContext,
 ) {
     use crate::model::elements::{BarlineLocation, MeasureContent};
     use tusk_model::data::DataBarrendition;
 
     for content in &musicxml_measure.content {
         if let MeasureContent::Barline(barline) = content {
+            // Basic bar-style → MEI @left/@right
             let rend = barline
                 .bar_style
                 .map(bar_style_to_mei_barrendition)
@@ -486,6 +492,12 @@ fn convert_measure_barlines(
                 BarlineLocation::Left => mei_measure.measure_log.left = Some(rend),
                 BarlineLocation::Right => mei_measure.measure_log.right = Some(rend),
                 BarlineLocation::Middle => {}
+            }
+
+            // Extra children/attrs → JSON-in-label <dir>
+            if barline.has_extra_children() || barline.has_extra_attrs() {
+                let dir_child = super::barline::convert_barline(barline, ctx);
+                mei_measure.children.push(dir_child);
             }
         }
     }

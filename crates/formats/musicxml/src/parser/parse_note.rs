@@ -1283,7 +1283,7 @@ fn parse_mordent(e: &BytesStart) -> Mordent {
 }
 
 /// Parse wavy-line element attributes.
-fn parse_wavy_line(e: &BytesStart) -> Result<WavyLine> {
+pub(crate) fn parse_wavy_line(e: &BytesStart) -> Result<WavyLine> {
     let wavy_line_type = match get_attr_required(e, "type")?.as_str() {
         "start" => StartStopContinue::Start,
         "stop" => StartStopContinue::Stop,

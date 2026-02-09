@@ -564,11 +564,7 @@ pub fn convert_staff_def_from_score_part(
                         if let Ok(json) = serde_json::to_string(key) {
                             crate::import::attributes::append_label(
                                 &mut staff_def,
-                                format!(
-                                    "{}{}",
-                                    crate::import::attributes::KEY_LABEL_PREFIX,
-                                    json
-                                ),
+                                format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                             );
                         }
                     }
@@ -578,11 +574,7 @@ pub fn convert_staff_def_from_score_part(
                     if let Ok(json) = serde_json::to_string(key) {
                         crate::import::attributes::append_label(
                             &mut staff_def,
-                            format!(
-                                "{}{}",
-                                crate::import::attributes::KEY_LABEL_PREFIX,
-                                json
-                            ),
+                            format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                         );
                     }
                 }

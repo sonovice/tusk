@@ -22,6 +22,7 @@
 //! ```
 
 pub(crate) mod attributes;
+pub(crate) mod barline;
 mod direction;
 pub(crate) mod figured_bass;
 pub(crate) mod harmony;

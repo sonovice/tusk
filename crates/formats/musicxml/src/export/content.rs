@@ -554,6 +554,24 @@ pub fn convert_mei_score_content(
                     .push(MeasureContent::Barline(Box::new(barline)));
             }
 
+            // Replace basic barlines with decorated versions from barline dirs
+            for child in &mei_measure.children {
+                if let MeasureChild::Dir(dir) = child {
+                    if let Some(label) = dir.common.label.as_deref() {
+                        if let Some(full_barline) =
+                            crate::import::barline::barline_from_label(label)
+                        {
+                            let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
+                            replace_barline_at_location(
+                                &mut mxml_measure.content,
+                                &full_barline,
+                                loc,
+                            );
+                        }
+                    }
+                }
+            }
+
             // Store the measure for future cross-measure slur resolution
             part_prev_measures[part_idx].push(mxml_measure);
         }
@@ -709,6 +727,38 @@ fn mei_barrendition_to_barline(
     Barline {
         location: Some(location),
         bar_style: Some(bar_style),
+        ..Barline::default()
+    }
+}
+
+/// Replace a basic barline in the measure content with the full decorated barline.
+///
+/// During export, basic barlines are generated from MEI @left/@right attributes.
+/// When a barline dir carries the full JSON, the decorated version replaces
+/// the basic one at the same location.
+fn replace_barline_at_location(
+    content: &mut Vec<MeasureContent>,
+    full_barline: &Barline,
+    location: BarlineLocation,
+) {
+    // Find and replace the existing barline at this location
+    let mut found = false;
+    for item in content.iter_mut() {
+        if let MeasureContent::Barline(bl) = item {
+            if bl.location == Some(location) {
+                **bl = full_barline.clone();
+                found = true;
+                break;
+            }
+        }
+    }
+    // If no existing barline at this location, append/prepend
+    if !found {
+        let barline_content = MeasureContent::Barline(Box::new(full_barline.clone()));
+        match location {
+            BarlineLocation::Left => content.insert(0, barline_content),
+            _ => content.push(barline_content),
+        }
     }
 }
 
@@ -799,6 +849,16 @@ fn convert_direction_events(
                             mxml_measure.content.push(content);
                         }
                     }
+                    continue;
+                }
+
+                // Barline children — skip here, handled after basic barlines are added
+                if dir
+                    .common
+                    .label
+                    .as_deref()
+                    .is_some_and(|l| l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX))
+                {
                     continue;
                 }
 

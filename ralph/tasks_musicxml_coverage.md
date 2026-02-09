@@ -715,13 +715,13 @@ identification). This is simpler and achieves lossless roundtrip for all Work fi
 
 ### 16.1 Barline Children
 
-- [ ] Parse and convert barline `fermata` (up to 2) → MEI `<fermata>` control event
-- [ ] Parse and convert barline `segno`/`coda` → MEI repeat marks
-- [ ] Parse and convert barline `wavy-line` → MEI trill continuation
-- [ ] Serialize these barline children
-- [ ] Export: reverse mappings
-- [ ] Add roundtrip fixture for decorated barlines
-- [ ] Verify fragment examples: `barline_element`, `repeat_element`, `ending_element`
+- [x] Parse and convert barline `fermata` (up to 2) → MEI `<fermata>` control event
+- [x] Parse and convert barline `segno`/`coda` → MEI repeat marks
+- [x] Parse and convert barline `wavy-line` → MEI trill continuation
+- [x] Serialize these barline children
+- [x] Export: reverse mappings
+- [x] Add roundtrip fixture for decorated barlines
+- [x] Verify fragment examples: `barline_element`, `repeat_element`, `ending_element`
 
 ---
 

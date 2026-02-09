@@ -335,7 +335,7 @@ fn parse_interchangeable<R: BufRead>(
             Event::Eof => {
                 return Err(ParseError::MissingElement(
                     "interchangeable end".to_string(),
-                ))
+                ));
             }
             _ => {}
         }

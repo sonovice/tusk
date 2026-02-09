@@ -1201,8 +1201,41 @@ fn read_text_for_tag<R: BufRead>(reader: &mut Reader<R>, end_tag: &[u8]) -> Resu
     read_text(reader, end_tag)
 }
 
-/// Parse barline from an empty element (attributes only).
-fn parse_barline_empty(e: &BytesStart) -> Result<crate::model::elements::Barline> {
+fn parse_yes_no_opt(s: &str) -> Option<YesNo> {
+    match s {
+        "yes" => Some(YesNo::Yes),
+        "no" => Some(YesNo::No),
+        _ => None,
+    }
+}
+
+/// Read past all remaining content until a matching end tag.
+fn skip_to_end_tag<R: BufRead>(reader: &mut Reader<R>, tag: &[u8]) -> Result<()> {
+    let mut buf = Vec::new();
+    let mut depth = 1u32;
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) if e.name().as_ref() == tag => depth += 1,
+            Event::End(e) if e.name().as_ref() == tag => {
+                depth -= 1;
+                if depth == 0 {
+                    return Ok(());
+                }
+            }
+            Event::Eof => {
+                return Err(ParseError::MissingElement(format!(
+                    "{} end",
+                    String::from_utf8_lossy(tag)
+                )));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+}
+
+/// Parse barline attributes from an element start/empty tag.
+fn parse_barline_attrs(e: &BytesStart) -> Result<crate::model::elements::Barline> {
     use crate::model::elements::{Barline, BarlineLocation};
     let location = get_attr(e, "location")?.and_then(|s| match s.to_lowercase().as_str() {
         "left" => Some(BarlineLocation::Left),
@@ -1212,17 +1245,29 @@ fn parse_barline_empty(e: &BytesStart) -> Result<crate::model::elements::Barline
     });
     Ok(Barline {
         location,
-        bar_style: None,
+        segno_attr: get_attr(e, "segno")?,
+        coda_attr: get_attr(e, "coda")?,
+        divisions: get_attr(e, "divisions")?.and_then(|s| s.parse().ok()),
+        ..Barline::default()
     })
 }
 
-/// Parse barline element with optional bar-style child.
+/// Parse barline from an empty element (attributes only).
+fn parse_barline_empty(e: &BytesStart) -> Result<crate::model::elements::Barline> {
+    parse_barline_attrs(e)
+}
+
+/// Parse barline element with all XSD children.
+///
+/// XSD sequence: bar-style, editorial, wavy-line, segno, coda,
+/// fermata (0-2), ending, repeat.
 fn parse_barline<R: BufRead>(
     reader: &mut Reader<R>,
     start: &BytesStart,
 ) -> Result<crate::model::elements::Barline> {
-    use crate::model::elements::BarStyle;
-    let mut barline = parse_barline_empty(start)?;
+    use crate::model::StartStopDiscontinue;
+    use crate::model::elements::{BackwardForward, BarStyle, Ending, Repeat, Winged};
+    let mut barline = parse_barline_attrs(start)?;
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -1233,7 +1278,114 @@ fn parse_barline<R: BufRead>(
                         barline.bar_style = Some(style);
                     }
                 }
+                b"fermata" => {
+                    barline
+                        .fermatas
+                        .push(parse_notations::parse_fermata_start(reader, &e)?);
+                }
+                b"ending" => {
+                    let text = read_text(reader, b"ending")?;
+                    barline.ending = Some(Ending {
+                        number: get_attr_required(&e, "number")?,
+                        ending_type: match get_attr_required(&e, "type")?.as_str() {
+                            "start" => StartStopDiscontinue::Start,
+                            "stop" => StartStopDiscontinue::Stop,
+                            "discontinue" => StartStopDiscontinue::Discontinue,
+                            s => {
+                                return Err(ParseError::InvalidAttribute(
+                                    "type".to_string(),
+                                    s.to_string(),
+                                ));
+                            }
+                        },
+                        text: if text.is_empty() { None } else { Some(text) },
+                        default_y: get_attr(&e, "default-y")?.and_then(|s| s.parse().ok()),
+                        end_length: get_attr(&e, "end-length")?.and_then(|s| s.parse().ok()),
+                        print_object: get_attr(&e, "print-object")?
+                            .and_then(|s| parse_yes_no_opt(&s)),
+                        default_x: get_attr(&e, "default-x")?.and_then(|s| s.parse().ok()),
+                        text_x: get_attr(&e, "text-x")?.and_then(|s| s.parse().ok()),
+                        text_y: get_attr(&e, "text-y")?.and_then(|s| s.parse().ok()),
+                    });
+                }
+                b"segno" => {
+                    barline.segno = Some(parse_direction::parse_segno(&e)?);
+                    skip_to_end_tag(reader, b"segno")?;
+                }
+                b"coda" => {
+                    barline.coda = Some(parse_direction::parse_coda(&e)?);
+                    skip_to_end_tag(reader, b"coda")?;
+                }
+                b"wavy-line" => {
+                    barline.wavy_line = Some(parse_note::parse_wavy_line(&e)?);
+                    skip_to_end_tag(reader, b"wavy-line")?;
+                }
                 _ => skip_element(reader, &e)?,
+            },
+            Event::Empty(e) => match e.name().as_ref() {
+                b"repeat" => {
+                    barline.repeat = Some(Repeat {
+                        direction: match get_attr_required(&e, "direction")?.as_str() {
+                            "forward" => BackwardForward::Forward,
+                            "backward" => BackwardForward::Backward,
+                            s => {
+                                return Err(ParseError::InvalidAttribute(
+                                    "direction".to_string(),
+                                    s.to_string(),
+                                ));
+                            }
+                        },
+                        times: get_attr(&e, "times")?.and_then(|s| s.parse().ok()),
+                        after_jump: get_attr(&e, "after-jump")?.and_then(|s| parse_yes_no_opt(&s)),
+                        winged: get_attr(&e, "winged")?.and_then(|s| match s.as_str() {
+                            "none" => Some(Winged::None),
+                            "straight" => Some(Winged::Straight),
+                            "curved" => Some(Winged::Curved),
+                            "double-straight" => Some(Winged::DoubleStraight),
+                            "double-curved" => Some(Winged::DoubleCurved),
+                            _ => None,
+                        }),
+                    });
+                }
+                b"fermata" => {
+                    barline
+                        .fermatas
+                        .push(parse_notations::parse_fermata_empty(&e)?);
+                }
+                b"ending" => {
+                    barline.ending = Some(Ending {
+                        number: get_attr_required(&e, "number")?,
+                        ending_type: match get_attr_required(&e, "type")?.as_str() {
+                            "start" => StartStopDiscontinue::Start,
+                            "stop" => StartStopDiscontinue::Stop,
+                            "discontinue" => StartStopDiscontinue::Discontinue,
+                            s => {
+                                return Err(ParseError::InvalidAttribute(
+                                    "type".to_string(),
+                                    s.to_string(),
+                                ));
+                            }
+                        },
+                        text: None,
+                        default_y: get_attr(&e, "default-y")?.and_then(|s| s.parse().ok()),
+                        end_length: get_attr(&e, "end-length")?.and_then(|s| s.parse().ok()),
+                        print_object: get_attr(&e, "print-object")?
+                            .and_then(|s| parse_yes_no_opt(&s)),
+                        default_x: get_attr(&e, "default-x")?.and_then(|s| s.parse().ok()),
+                        text_x: get_attr(&e, "text-x")?.and_then(|s| s.parse().ok()),
+                        text_y: get_attr(&e, "text-y")?.and_then(|s| s.parse().ok()),
+                    });
+                }
+                b"segno" => {
+                    barline.segno = Some(parse_direction::parse_segno(&e)?);
+                }
+                b"coda" => {
+                    barline.coda = Some(parse_direction::parse_coda(&e)?);
+                }
+                b"wavy-line" => {
+                    barline.wavy_line = Some(parse_note::parse_wavy_line(&e)?);
+                }
+                _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"barline" => break,
             Event::Eof => {

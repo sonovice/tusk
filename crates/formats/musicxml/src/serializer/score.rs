@@ -1023,18 +1023,164 @@ impl MusicXmlSerialize for crate::model::elements::Barline {
         if let Some(ref loc) = self.location {
             attrs.push(("location", loc.to_musicxml_str().to_string()));
         }
+        if let Some(ref s) = self.segno_attr {
+            attrs.push(("segno", s.clone()));
+        }
+        if let Some(ref c) = self.coda_attr {
+            attrs.push(("coda", c.clone()));
+        }
+        if let Some(d) = self.divisions {
+            attrs.push(("divisions", d.to_string()));
+        }
         attrs
     }
 
     fn has_children(&self) -> bool {
-        self.bar_style.is_some()
+        self.bar_style.is_some() || self.has_extra_children()
     }
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        // XSD order: bar-style, editorial, wavy-line, segno, coda, fermata(0-2), ending, repeat
         if let Some(ref style) = self.bar_style {
             w.write_text_element("bar-style", style.to_musicxml_str())?;
         }
+        if let Some(ref wl) = self.wavy_line {
+            super::notations::serialize_wavy_line(w, wl)?;
+        }
+        if let Some(ref segno) = self.segno {
+            serialize_segno_coda(
+                w,
+                "segno",
+                segno.default_x,
+                segno.default_y,
+                &segno.color,
+                segno.halign.as_ref(),
+                segno.valign.as_ref(),
+                &segno.smufl,
+                &segno.id,
+            )?;
+        }
+        if let Some(ref coda) = self.coda {
+            serialize_segno_coda(
+                w,
+                "coda",
+                coda.default_x,
+                coda.default_y,
+                &coda.color,
+                coda.halign.as_ref(),
+                coda.valign.as_ref(),
+                &coda.smufl,
+                &coda.id,
+            )?;
+        }
+        for fermata in &self.fermatas {
+            super::notations::serialize_fermata(w, fermata)?;
+        }
+        if let Some(ref ending) = self.ending {
+            serialize_ending(w, ending)?;
+        }
+        if let Some(ref repeat) = self.repeat {
+            serialize_repeat(w, repeat)?;
+        }
         Ok(())
+    }
+}
+
+/// Serialize a segno or coda empty element with position attributes.
+fn serialize_segno_coda<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    tag: &str,
+    default_x: Option<f64>,
+    default_y: Option<f64>,
+    color: &Option<String>,
+    halign: Option<&LeftCenterRight>,
+    valign: Option<&Valign>,
+    smufl: &Option<String>,
+    id: &Option<String>,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element(tag);
+    push_opt_attr_start(&mut elem, "default-x", &default_x);
+    push_opt_attr_start(&mut elem, "default-y", &default_y);
+    push_opt_str_attr_start(&mut elem, "color", color);
+    if let Some(h) = halign {
+        elem.push_attribute(("halign", left_center_right_str(h)));
+    }
+    if let Some(v) = valign {
+        elem.push_attribute(("valign", valign_str(v)));
+    }
+    push_opt_str_attr_start(&mut elem, "smufl", smufl);
+    push_opt_str_attr_start(&mut elem, "id", id);
+    w.write_empty(elem)?;
+    Ok(())
+}
+
+/// Serialize an ending element.
+fn serialize_ending<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    ending: &crate::model::elements::Ending,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("ending");
+    elem.push_attribute(("number", ending.number.as_str()));
+    elem.push_attribute(("type", start_stop_discontinue_str(&ending.ending_type)));
+    push_opt_attr_start(&mut elem, "default-y", &ending.default_y);
+    push_opt_attr_start(&mut elem, "end-length", &ending.end_length);
+    if let Some(ref po) = ending.print_object {
+        elem.push_attribute(("print-object", yes_no_str(po)));
+    }
+    push_opt_attr_start(&mut elem, "default-x", &ending.default_x);
+    push_opt_attr_start(&mut elem, "text-x", &ending.text_x);
+    push_opt_attr_start(&mut elem, "text-y", &ending.text_y);
+    if let Some(ref text) = ending.text {
+        w.write_start(elem)?;
+        w.write_text(text)?;
+        w.write_end("ending")?;
+    } else {
+        w.write_empty(elem)?;
+    }
+    Ok(())
+}
+
+/// Serialize a repeat element.
+fn serialize_repeat<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    repeat: &crate::model::elements::Repeat,
+) -> SerializeResult<()> {
+    use crate::model::elements::{BackwardForward, Winged};
+    let mut elem = w.start_element("repeat");
+    elem.push_attribute((
+        "direction",
+        match repeat.direction {
+            BackwardForward::Forward => "forward",
+            BackwardForward::Backward => "backward",
+        },
+    ));
+    if let Some(t) = repeat.times {
+        elem.push_attribute(("times", t.to_string().as_str()));
+    }
+    if let Some(ref aj) = repeat.after_jump {
+        elem.push_attribute(("after-jump", yes_no_str(aj)));
+    }
+    if let Some(ref w_val) = repeat.winged {
+        elem.push_attribute((
+            "winged",
+            match w_val {
+                Winged::None => "none",
+                Winged::Straight => "straight",
+                Winged::Curved => "curved",
+                Winged::DoubleStraight => "double-straight",
+                Winged::DoubleCurved => "double-curved",
+            },
+        ));
+    }
+    w.write_empty(elem)?;
+    Ok(())
+}
+
+fn start_stop_discontinue_str(ssd: &StartStopDiscontinue) -> &'static str {
+    match ssd {
+        StartStopDiscontinue::Start => "start",
+        StartStopDiscontinue::Stop => "stop",
+        StartStopDiscontinue::Discontinue => "discontinue",
     }
 }
 

@@ -9,9 +9,7 @@
 //! - Staff details (lines)
 
 use crate::context::ConversionContext;
-use crate::import::attributes::{
-    KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment,
-};
+use crate::import::attributes::{KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment};
 use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
 
@@ -58,7 +56,6 @@ fn extract_time_from_label(staff_def: &StaffDef) -> Option<crate::model::attribu
     let json = extract_label_segment(label, TIME_LABEL_PREFIX)?;
     serde_json::from_str(json).ok()
 }
-
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
 ///
