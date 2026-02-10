@@ -1,24 +1,29 @@
 //! Conversion from LilyPond AST to MEI.
 
+mod conversion;
+mod signatures;
+
+#[cfg(test)]
+mod tests;
+
 use thiserror::Error;
 use tusk_model::elements::{
-    Accid, Body, BodyChild, Chord, ChordChild, FileDesc, FileDescChild, Layer, LayerChild, MRest,
-    Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Note, NoteChild,
-    Rest, Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Staff, StaffChild,
-    StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
+    Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild, Measure,
+    MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild,
+    Section, SectionChild, Slur, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
 };
-use tusk_model::generated::data::{
-    DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataAugmentdot, DataClefline, DataClefshape, DataDuration,
-    DataDurationCmn, DataDurationrests, DataKeyfifths, DataOctave, DataOctaveDis, DataPitchname,
-    DataStaffrelBasic,
-};
+use tusk_model::generated::data::{DataTie, DataUri, DataWord};
 
 use crate::model::{
-    self, ContextKeyword, ContextModItem, Duration, LilyPondFile, Music, NoteEvent, RestEvent,
-    ScoreItem, ToplevelExpression,
+    self, ContextKeyword, ContextModItem, Music, NoteEvent, PostEvent, RestEvent, ScoreItem,
+    ToplevelExpression,
 };
 use crate::serializer;
+
+use signatures::apply_signatures_to_staff_def;
+pub use signatures::{fifths_to_key, mei_clef_to_name};
+
+use conversion::{convert_chord, convert_mrest, convert_note, convert_pitched_rest, convert_rest};
 
 #[derive(Debug, Error)]
 pub enum ImportError {
@@ -31,7 +36,7 @@ pub enum ImportError {
 }
 
 /// Convert a parsed LilyPond AST to an MEI document.
-pub fn import(file: &LilyPondFile) -> Result<Mei, ImportError> {
+pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     let music = find_music(file).ok_or(ImportError::NoMusic)?;
 
     let mut mei = Mei::default();
@@ -41,7 +46,7 @@ pub fn import(file: &LilyPondFile) -> Result<Mei, ImportError> {
     let mei_head = build_mei_head();
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
-    // Music → Body → Mdiv → Score
+    // Music -> Body -> Mdiv -> Score
     let mei_music = build_music(music)?;
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
@@ -49,7 +54,7 @@ pub fn import(file: &LilyPondFile) -> Result<Mei, ImportError> {
 }
 
 /// Find the first music expression in the LilyPond file.
-fn find_music(file: &LilyPondFile) -> Option<&Music> {
+fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
     for item in &file.items {
         match item {
             ToplevelExpression::Score(score) => {
@@ -79,7 +84,7 @@ fn build_mei_head() -> MeiHead {
     head
 }
 
-/// Build MEI Music → Body → Mdiv → Score from LilyPond music.
+/// Build MEI Music -> Body -> Mdiv -> Score from LilyPond music.
 fn build_music(ly_music: &Music) -> Result<tusk_model::elements::Music, ImportError> {
     let mut score = Score::default();
 
@@ -111,7 +116,7 @@ fn build_music(ly_music: &Music) -> Result<tusk_model::elements::Music, ImportEr
 }
 
 // ---------------------------------------------------------------------------
-// Context analysis — extract staff structure from LilyPond AST
+// Context analysis -- extract staff structure from LilyPond AST
 // ---------------------------------------------------------------------------
 
 /// Information about a single staff extracted from the LilyPond AST.
@@ -192,7 +197,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             };
         }
 
-        // Unknown context type — treat inner music as bare
+        // Unknown context type -- treat inner music as bare
         return analyze_staves(inner);
     }
 
@@ -207,7 +212,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
         }
     }
 
-    // Bare music — single staff, possibly multiple voices
+    // Bare music -- single staff, possibly multiple voices
     let voices = extract_voices(music);
     StaffLayout {
         group: None,
@@ -496,12 +501,20 @@ fn find_matching_brace(s: &str) -> Option<usize> {
 // Section building from staff layout
 // ---------------------------------------------------------------------------
 
+/// A pending slur or phrasing slur waiting for its end note.
+struct PendingSpanner {
+    start_id: String,
+    is_phrase: bool,
+    staff_n: u32,
+}
+
 /// Build a Section from analyzed staff layout.
 fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, ImportError> {
     let mut section = Section::default();
     let mut id_counter = 0u32;
     let mut measure = Measure::default();
-    measure.common.n = Some(tusk_model::generated::data::DataWord("1".to_string()));
+    measure.common.n = Some(DataWord("1".to_string()));
+    let mut slur_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -517,37 +530,155 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 collect_events(m, &mut events, &mut voice_ctx);
             }
 
+            // Track IDs of notes for tie/slur resolution
+            let mut pending_slurs: Vec<PendingSpanner> = Vec::new();
+            let mut tie_pending = false;
+
             for event in &events {
-                match event {
+                let (post_events, current_id) = match event {
                     LyEvent::Note(note) => {
                         id_counter += 1;
-                        let mei_note = convert_note(note, id_counter);
+                        let mut mei_note = convert_note(note, id_counter);
+                        // If a tie was pending from the previous note, mark this as tie end
+                        if tie_pending {
+                            mei_note.note_anl.tie = Some(DataTie::from("t".to_string()));
+                            tie_pending = false;
+                        }
+                        let id_str = format!("ly-note-{}", id_counter);
+                        let pe = note.post_events.clone();
+                        // Check if this note starts a tie
+                        if pe.contains(&PostEvent::Tie) {
+                            match &mei_note.note_anl.tie {
+                                Some(t) if t.0 == "t" => {
+                                    // Already has terminal tie → medial
+                                    mei_note.note_anl.tie = Some(DataTie::from("m".to_string()));
+                                }
+                                _ => {
+                                    mei_note.note_anl.tie = Some(DataTie::from("i".to_string()));
+                                }
+                            }
+                            tie_pending = true;
+                        }
                         layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                        (pe, id_str)
                     }
                     LyEvent::Rest(rest) => {
                         id_counter += 1;
                         let mei_rest = convert_rest(rest, id_counter);
+                        let id_str = format!("ly-rest-{}", id_counter);
+                        let pe = rest.post_events.clone();
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                        (pe, id_str)
                     }
                     LyEvent::PitchedRest(note) => {
                         id_counter += 1;
                         let mei_rest = convert_pitched_rest(note, id_counter);
+                        let id_str = format!("ly-rest-{}", id_counter);
+                        let pe = note.post_events.clone();
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                        (pe, id_str)
                     }
-                    LyEvent::Chord { pitches, duration } => {
+                    LyEvent::Chord {
+                        pitches,
+                        duration,
+                        post_events,
+                    } => {
                         id_counter += 1;
-                        let mei_chord = convert_chord(pitches, duration.as_ref(), &mut id_counter);
+                        let mut mei_chord =
+                            convert_chord(pitches, duration.as_ref(), &mut id_counter);
+                        // If a tie was pending, mark all chord notes as tie end
+                        if tie_pending {
+                            for child in &mut mei_chord.children {
+                                let tusk_model::elements::ChordChild::Note(n) = child;
+                                n.note_anl.tie = Some(DataTie::from("t".to_string()));
+                            }
+                            tie_pending = false;
+                        }
+                        let id_str = mei_chord
+                            .common
+                            .xml_id
+                            .clone()
+                            .unwrap_or_else(|| format!("ly-chord-{}", id_counter));
+                        let pe = post_events.clone();
+                        // Chord ties: set @tie on all child notes
+                        if pe.contains(&PostEvent::Tie) {
+                            for child in &mut mei_chord.children {
+                                let tusk_model::elements::ChordChild::Note(n) = child;
+                                match &n.note_anl.tie {
+                                    Some(t) if t.0 == "t" => {
+                                        n.note_anl.tie = Some(DataTie::from("m".to_string()));
+                                    }
+                                    _ => {
+                                        n.note_anl.tie = Some(DataTie::from("i".to_string()));
+                                    }
+                                }
+                            }
+                            tie_pending = true;
+                        }
                         layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
+                        (pe, id_str)
                     }
                     LyEvent::MeasureRest(rest) => {
                         id_counter += 1;
                         let mei_mrest = convert_mrest(rest, id_counter);
                         layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
+                        continue;
                     }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
-                    | LyEvent::TimeSig(_) => {}
+                    | LyEvent::TimeSig(_) => continue,
+                };
+
+                // Process slur/phrasing slur post-events
+                for pe in &post_events {
+                    match pe {
+                        PostEvent::SlurStart => {
+                            pending_slurs.push(PendingSpanner {
+                                start_id: current_id.clone(),
+                                is_phrase: false,
+                                staff_n: staff_info.n,
+                            });
+                        }
+                        PostEvent::SlurEnd => {
+                            // Find most recent pending regular slur
+                            if let Some(pos) = pending_slurs.iter().rposition(|s| !s.is_phrase) {
+                                let pending = pending_slurs.remove(pos);
+                                slur_counter += 1;
+                                let slur = make_slur(
+                                    &pending.start_id,
+                                    &current_id,
+                                    pending.staff_n,
+                                    slur_counter,
+                                    false,
+                                );
+                                measure.children.push(MeasureChild::Slur(Box::new(slur)));
+                            }
+                        }
+                        PostEvent::PhrasingSlurStart => {
+                            pending_slurs.push(PendingSpanner {
+                                start_id: current_id.clone(),
+                                is_phrase: true,
+                                staff_n: staff_info.n,
+                            });
+                        }
+                        PostEvent::PhrasingSlurEnd => {
+                            // Find most recent pending phrasing slur
+                            if let Some(pos) = pending_slurs.iter().rposition(|s| s.is_phrase) {
+                                let pending = pending_slurs.remove(pos);
+                                slur_counter += 1;
+                                let slur = make_slur(
+                                    &pending.start_id,
+                                    &current_id,
+                                    pending.staff_n,
+                                    slur_counter,
+                                    true,
+                                );
+                                measure.children.push(MeasureChild::Slur(Box::new(slur)));
+                            }
+                        }
+                        PostEvent::Tie => {} // handled above
+                    }
                 }
             }
 
@@ -562,6 +693,19 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         .push(SectionChild::Measure(Box::new(measure)));
 
     Ok(section)
+}
+
+/// Create an MEI Slur control event.
+fn make_slur(start_id: &str, end_id: &str, staff_n: u32, slur_id: u32, is_phrase: bool) -> Slur {
+    let mut slur = Slur::default();
+    slur.common.xml_id = Some(format!("ly-slur-{slur_id}"));
+    slur.slur_log.startid = Some(DataUri(format!("#{start_id}")));
+    slur.slur_log.endid = Some(DataUri(format!("#{end_id}")));
+    slur.slur_log.staff = Some(staff_n.to_string());
+    if is_phrase {
+        slur.common.label = Some("lilypond:phrase".to_string());
+    }
+    slur
 }
 
 /// Extract voice streams from LilyPond music.
@@ -609,6 +753,7 @@ enum LyEvent {
     Chord {
         pitches: Vec<crate::model::Pitch>,
         duration: Option<crate::model::Duration>,
+        post_events: Vec<PostEvent>,
     },
     Rest(RestEvent),
     PitchedRest(NoteEvent),
@@ -636,7 +781,7 @@ impl PitchContext {
         }
     }
 
-    /// Resolve a pitch through the current context (relative → absolute, then transpose).
+    /// Resolve a pitch through the current context (relative -> absolute, then transpose).
     fn resolve(&mut self, pitch: &crate::model::Pitch) -> crate::model::Pitch {
         let mut resolved = if let Some((ref_step, ref_oct)) = self.relative {
             let abs = pitch.resolve_relative(ref_step, ref_oct);
@@ -670,12 +815,11 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
             }
         }
         Music::Chord(chord) => {
-            // Resolve each pitch and emit individual note events for now.
-            // Full chord import will be done in Phase 8.2.
             let resolved_pitches: Vec<_> = chord.pitches.iter().map(|p| ctx.resolve(p)).collect();
             events.push(LyEvent::Chord {
                 pitches: resolved_pitches,
                 duration: chord.duration.clone(),
+                post_events: chord.post_events.clone(),
             });
         }
         Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
@@ -701,7 +845,7 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         }
         Music::Fixed { pitch: _, body } => {
             // Fixed mode: pitches are already absolute relative to the given pitch.
-            // The pitch argument is the "origin" — notes are absolute in that octave.
+            // The pitch argument is the "origin" -- notes are absolute in that octave.
             // For now, just collect from body (pitches are written absolute).
             collect_events(body, events, ctx);
         }
@@ -713,7 +857,7 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
                 inner_ctx.transpositions.push((fp, tp));
                 collect_events(body, events, &mut inner_ctx);
             } else {
-                // Can't extract pitches — collect without transposing
+                // Can't extract pitches -- collect without transposing
                 collect_events(body, events, ctx);
             }
         }
@@ -735,1245 +879,5 @@ fn extract_pitch_from_music(music: &Music) -> Option<crate::model::Pitch> {
     match music {
         Music::Note(n) => Some(n.pitch.clone()),
         _ => None,
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Clef / key / time signature → staffDef attributes
-// ---------------------------------------------------------------------------
-
-/// Apply clef/key/time from the event stream onto a staffDef and return
-/// a label segment encoding the full event sequence for roundtrip.
-///
-/// The label format is `lilypond:events,TYPE@POS;TYPE@POS;...` where:
-/// - TYPE is `clef:NAME`, `key:STEP.ALTER.MODE`, or `time:N+M/D`
-/// - POS is the 0-based index in the note/rest event stream
-fn apply_signatures_to_staff_def(events: &[LyEvent], staff_def: &mut StaffDef) -> String {
-    let mut first_clef = true;
-    let mut first_key = true;
-    let mut first_time = true;
-    let mut note_index = 0u32;
-    let mut entries = Vec::new();
-
-    for event in events {
-        match event {
-            LyEvent::Clef(c) => {
-                entries.push(format!("clef:{}@{note_index}", c.name));
-                if first_clef {
-                    apply_clef_to_staff_def(c, staff_def);
-                    first_clef = false;
-                }
-            }
-            LyEvent::KeySig(ks) => {
-                let fifths = key_to_fifths(&ks.pitch, &ks.mode);
-                entries.push(format!(
-                    "key:{}.{}.{}@{note_index}",
-                    ks.pitch.step,
-                    ks.pitch.alter,
-                    ks.mode.as_str()
-                ));
-                if first_key {
-                    staff_def.staff_def_log.keysig = Some(DataKeyfifths(fifths.to_string()));
-                    first_key = false;
-                }
-            }
-            LyEvent::TimeSig(ts) => {
-                let count: String = ts
-                    .numerators
-                    .iter()
-                    .map(|n| n.to_string())
-                    .collect::<Vec<_>>()
-                    .join("+");
-                entries.push(format!("time:{}/{}@{note_index}", count, ts.denominator));
-                if first_time {
-                    staff_def.staff_def_log.meter_count = Some(count);
-                    staff_def.staff_def_log.meter_unit = Some(ts.denominator.to_string());
-                    first_time = false;
-                }
-            }
-            LyEvent::Note(_)
-            | LyEvent::Chord { .. }
-            | LyEvent::Rest(_)
-            | LyEvent::PitchedRest(_)
-            | LyEvent::MeasureRest(_) => {
-                note_index += 1;
-            }
-            LyEvent::Skip(_) => {}
-        }
-    }
-
-    if entries.is_empty() {
-        String::new()
-    } else {
-        format!("lilypond:events,{}", entries.join(";"))
-    }
-}
-
-/// Apply a LilyPond clef to MEI staffDef attributes.
-fn apply_clef_to_staff_def(clef: &model::Clef, staff_def: &mut StaffDef) {
-    let (shape, line, dis, dis_place) = clef_name_to_mei(&clef.name);
-    staff_def.staff_def_log.clef_shape = Some(shape);
-    staff_def.staff_def_log.clef_line = Some(DataClefline(line));
-    if let Some(d) = dis {
-        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis(d));
-    }
-    if let Some(dp) = dis_place {
-        staff_def.staff_def_log.clef_dis_place = Some(dp);
-    }
-}
-
-/// Map LilyPond clef name to MEI clef attributes (shape, line, dis, dis.place).
-fn clef_name_to_mei(name: &str) -> (DataClefshape, u64, Option<u64>, Option<DataStaffrelBasic>) {
-    // Split off transposition suffix (_8, ^15, _15, ^8)
-    let (base, dis, dis_place) = parse_clef_transposition(name);
-
-    let (shape, line) = match base {
-        "treble" | "violin" | "G" | "G2" => (DataClefshape::G, 2),
-        "french" => (DataClefshape::G, 1),
-        "GG" => (DataClefshape::Gg, 2),
-        "tenorG" => (DataClefshape::G, 2), // tenor G clef (octave transposed)
-        "soprano" => (DataClefshape::C, 1),
-        "mezzosoprano" => (DataClefshape::C, 2),
-        "alto" | "C" => (DataClefshape::C, 3),
-        "tenor" => (DataClefshape::C, 4),
-        "baritone" => (DataClefshape::C, 5),
-        "varbaritone" => (DataClefshape::F, 3),
-        "bass" | "F" => (DataClefshape::F, 4),
-        "subbass" => (DataClefshape::F, 5),
-        "percussion" | "varpercussion" => (DataClefshape::Perc, 3),
-        "tab" => (DataClefshape::Tab, 5),
-        // Variant C clefs
-        "varC" | "altovarC" => (DataClefshape::C, 3),
-        "tenorvarC" => (DataClefshape::C, 4),
-        "baritonevarC" => (DataClefshape::C, 5),
-        _ => (DataClefshape::G, 2), // fallback to treble
-    };
-
-    // tenorG has implicit 8vb transposition
-    let (dis, dis_place) = if base == "tenorG" && dis.is_none() {
-        (Some(8), Some(DataStaffrelBasic::Below))
-    } else {
-        (dis, dis_place)
-    };
-
-    (shape, line, dis, dis_place)
-}
-
-/// Parse clef transposition suffix: `_8`, `^8`, `_15`, `^15`.
-fn parse_clef_transposition(name: &str) -> (&str, Option<u64>, Option<DataStaffrelBasic>) {
-    for (suffix, dis, place) in [
-        ("_8", 8u64, DataStaffrelBasic::Below),
-        ("^8", 8, DataStaffrelBasic::Above),
-        ("_15", 15, DataStaffrelBasic::Below),
-        ("^15", 15, DataStaffrelBasic::Above),
-    ] {
-        if let Some(base) = name.strip_suffix(suffix) {
-            return (base, Some(dis), Some(place));
-        }
-    }
-    (name, None, None)
-}
-
-/// Convert a LilyPond key (pitch + mode) to circle-of-fifths count.
-///
-/// Positive = sharps, negative = flats.
-fn key_to_fifths(pitch: &crate::model::pitch::Pitch, mode: &crate::model::Mode) -> i32 {
-    // Major keys: C=0, G=1, D=2, A=3, E=4, B=5, F#=6, Cb=-7, Gb=-6, Db=-5, Ab=-4, Eb=-3, Bb=-2, F=-1
-    // The fifths value for a major key is based on the pitch's position on the circle of fifths.
-    let base_fifths = pitch_to_major_fifths(pitch.step, pitch.alter);
-
-    // Mode offsets relative to major: minor = -3, dorian = -2, phrygian = -4, etc.
-    let mode_offset = match mode {
-        crate::model::Mode::Major | crate::model::Mode::Ionian => 0,
-        crate::model::Mode::Minor | crate::model::Mode::Aeolian => -3,
-        crate::model::Mode::Dorian => -2,
-        crate::model::Mode::Phrygian => -4,
-        crate::model::Mode::Lydian => 1,
-        crate::model::Mode::Mixolydian => -1,
-        crate::model::Mode::Locrian => -5,
-    };
-
-    base_fifths + mode_offset
-}
-
-/// Convert a pitch (step + alter) to its major-key position on the circle of fifths.
-fn pitch_to_major_fifths(step: char, alter: f32) -> i32 {
-    // Natural note positions on circle of fifths (for major keys):
-    // F=-1, C=0, G=1, D=2, A=3, E=4, B=5
-    let natural_fifths = match step {
-        'c' => 0,
-        'd' => 2,
-        'e' => 4,
-        'f' => -1,
-        'g' => 1,
-        'a' => 3,
-        'b' => 5,
-        _ => 0,
-    };
-    // Each sharp adds 7 fifths, each flat subtracts 7
-    let alter_offset = (alter * 2.0) as i32; // half-steps → alter units
-    // Sharp = +1.0 alter = +7 fifths, flat = -1.0 alter = -7 fifths
-    natural_fifths + alter_offset * 7 / 2
-}
-
-/// Convert MEI clef attributes back to LilyPond clef name.
-pub(crate) fn mei_clef_to_name(
-    shape: &DataClefshape,
-    line: u64,
-    dis: Option<u64>,
-    dis_place: Option<&DataStaffrelBasic>,
-) -> String {
-    let base = match (shape, line) {
-        (DataClefshape::G, 2) => "treble",
-        (DataClefshape::G, 1) => "french",
-        (DataClefshape::Gg, 2) => "GG",
-        (DataClefshape::C, 1) => "soprano",
-        (DataClefshape::C, 2) => "mezzosoprano",
-        (DataClefshape::C, 3) => "alto",
-        (DataClefshape::C, 4) => "tenor",
-        (DataClefshape::C, 5) => "baritone",
-        (DataClefshape::F, 3) => "varbaritone",
-        (DataClefshape::F, 4) => "bass",
-        (DataClefshape::F, 5) => "subbass",
-        (DataClefshape::Perc, _) => "percussion",
-        (DataClefshape::Tab, _) => "tab",
-        _ => "treble",
-    };
-
-    // Check for tenorG special case
-    if base == "treble" && dis == Some(8) && dis_place == Some(&DataStaffrelBasic::Below) {
-        return "tenorG".to_string();
-    }
-
-    // Append transposition suffix
-    match (dis, dis_place) {
-        (Some(8), Some(DataStaffrelBasic::Below)) => format!("{base}_8"),
-        (Some(8), Some(DataStaffrelBasic::Above)) => format!("{base}^8"),
-        (Some(15), Some(DataStaffrelBasic::Below)) => format!("{base}_15"),
-        (Some(15), Some(DataStaffrelBasic::Above)) => format!("{base}^15"),
-        _ => base.to_string(),
-    }
-}
-
-/// Convert MEI key fifths value back to LilyPond pitch + mode.
-pub(crate) fn fifths_to_key(fifths: i32) -> (crate::model::pitch::Pitch, crate::model::Mode) {
-    // For simplicity, always export as major key.
-    // The event sequence label preserves the original mode.
-    let (step, alter) = major_fifths_to_pitch(fifths);
-    let pitch = crate::model::pitch::Pitch {
-        step,
-        alter,
-        octave: 0,
-        force_accidental: false,
-        cautionary: false,
-        octave_check: None,
-    };
-    (pitch, crate::model::Mode::Major)
-}
-
-/// Convert circle-of-fifths position to a major key tonic.
-fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
-    match fifths {
-        0 => ('c', 0.0),
-        1 => ('g', 0.0),
-        2 => ('d', 0.0),
-        3 => ('a', 0.0),
-        4 => ('e', 0.0),
-        5 => ('b', 0.0),
-        6 => ('f', 1.0), // F#
-        7 => ('c', 1.0), // C#
-        -1 => ('f', 0.0),
-        -2 => ('b', -1.0), // Bb
-        -3 => ('e', -1.0), // Eb
-        -4 => ('a', -1.0), // Ab
-        -5 => ('d', -1.0), // Db
-        -6 => ('g', -1.0), // Gb
-        -7 => ('c', -1.0), // Cb
-        _ => ('c', 0.0),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Pitch / duration / accidental conversion
-// ---------------------------------------------------------------------------
-
-/// Convert LilyPond step char to MEI pitch name string.
-fn step_to_pname(step: char) -> DataPitchname {
-    DataPitchname(step.to_string())
-}
-
-/// Convert LilyPond octave marks to MEI absolute octave.
-///
-/// LilyPond absolute octave convention: c (no marks) = octave 3,
-/// c' = 4, c'' = 5, c, = 2, c,, = 1.
-fn octave_to_mei(octave_marks: i8) -> DataOctave {
-    DataOctave((3 + octave_marks as i64).max(0) as u64)
-}
-
-/// Convert LilyPond alter (half-steps) to MEI gestural accidental.
-fn alter_to_accid_ges(alter: f32) -> Option<DataAccidentalGestural> {
-    let key = (alter * 2.0) as i32;
-    match key {
-        0 => None,
-        2 => Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
-            DataAccidentalGesturalBasic::S,
-        )),
-        4 => Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
-            DataAccidentalGesturalBasic::Ss,
-        )),
-        -2 => Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
-            DataAccidentalGesturalBasic::F,
-        )),
-        -4 => Some(DataAccidentalGestural::MeiDataAccidentalGesturalBasic(
-            DataAccidentalGesturalBasic::Ff,
-        )),
-        _ => None,
-    }
-}
-
-/// Convert LilyPond alter (half-steps) to MEI written accidental.
-fn alter_to_accid_written(alter: f32) -> Option<DataAccidentalWritten> {
-    let key = (alter * 2.0) as i32;
-    match key {
-        0 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
-            DataAccidentalWrittenBasic::N,
-        )),
-        2 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
-            DataAccidentalWrittenBasic::S,
-        )),
-        4 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
-            DataAccidentalWrittenBasic::Ss,
-        )),
-        -2 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
-            DataAccidentalWrittenBasic::F,
-        )),
-        -4 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
-            DataAccidentalWrittenBasic::Ff,
-        )),
-        _ => None,
-    }
-}
-
-/// Convert LilyPond duration base to MEI DataDurationCmn.
-fn duration_base_to_mei(base: u32) -> Option<DataDurationCmn> {
-    match base {
-        1 => Some(DataDurationCmn::N1),
-        2 => Some(DataDurationCmn::N2),
-        4 => Some(DataDurationCmn::N4),
-        8 => Some(DataDurationCmn::N8),
-        16 => Some(DataDurationCmn::N16),
-        32 => Some(DataDurationCmn::N32),
-        64 => Some(DataDurationCmn::N64),
-        128 => Some(DataDurationCmn::N128),
-        _ => None,
-    }
-}
-
-/// Apply duration to an MEI note's @dur and @dots.
-fn apply_duration_to_note(dur: &Duration, note: &mut Note) {
-    if let Some(cmn) = duration_base_to_mei(dur.base) {
-        note.note_log.dur = Some(DataDuration::MeiDataDurationCmn(cmn));
-    }
-    if dur.dots > 0 {
-        note.note_log.dots = Some(DataAugmentdot(dur.dots as u64));
-    }
-}
-
-/// Apply duration to an MEI rest's @dur and @dots.
-fn apply_duration_to_rest(dur: &Duration, rest: &mut Rest) {
-    if let Some(cmn) = duration_base_to_mei(dur.base) {
-        rest.rest_log.dur = Some(DataDurationrests::MeiDataDurationCmn(cmn));
-    }
-    if dur.dots > 0 {
-        rest.rest_log.dots = Some(DataAugmentdot(dur.dots as u64));
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Event conversion
-// ---------------------------------------------------------------------------
-
-/// Convert a LilyPond pitch to an MEI Note (for use inside a chord — no duration).
-fn convert_pitch_to_note(pitch: &crate::model::Pitch, id: u32) -> Note {
-    let mut mei_note = Note::default();
-    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
-
-    mei_note.note_log.pname = Some(step_to_pname(pitch.step));
-    mei_note.note_log.oct = Some(octave_to_mei(pitch.octave));
-
-    if let Some(accid_ges) = alter_to_accid_ges(pitch.alter) {
-        mei_note.note_ges.accid_ges = Some(accid_ges);
-    }
-
-    if (pitch.force_accidental || pitch.cautionary)
-        && let Some(accid_written) = alter_to_accid_written(pitch.alter)
-    {
-        let mut accid = Accid::default();
-        accid.accid_log.accid = Some(accid_written);
-        if pitch.cautionary {
-            accid.accid_log.func = Some("cautionary".to_string());
-        }
-        mei_note.children.push(NoteChild::Accid(Box::new(accid)));
-    }
-
-    mei_note
-}
-
-/// Convert a LilyPond chord (multiple pitches + shared duration) to an MEI Chord.
-fn convert_chord(
-    pitches: &[crate::model::Pitch],
-    duration: Option<&Duration>,
-    id_counter: &mut u32,
-) -> Chord {
-    let chord_id = *id_counter;
-    let mut mei_chord = Chord::default();
-    mei_chord.common.xml_id = Some(format!("ly-chord-{chord_id}"));
-
-    // Duration on the chord element
-    if let Some(dur) = duration {
-        if let Some(cmn) = duration_base_to_mei(dur.base) {
-            mei_chord.chord_log.dur = Some(DataDuration::MeiDataDurationCmn(cmn));
-        }
-        if dur.dots > 0 {
-            mei_chord.chord_log.dots = Some(DataAugmentdot(dur.dots as u64));
-        }
-    }
-
-    // Child notes (one per pitch, no individual duration)
-    for pitch in pitches {
-        *id_counter += 1;
-        let mei_note = convert_pitch_to_note(pitch, *id_counter);
-        mei_chord
-            .children
-            .push(ChordChild::Note(Box::new(mei_note)));
-    }
-
-    mei_chord
-}
-
-/// Convert a LilyPond NoteEvent to an MEI Note.
-fn convert_note(note: &NoteEvent, id: u32) -> Note {
-    let mut mei_note = Note::default();
-    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
-
-    // Pitch
-    mei_note.note_log.pname = Some(step_to_pname(note.pitch.step));
-    mei_note.note_log.oct = Some(octave_to_mei(note.pitch.octave));
-
-    // Gestural accidental
-    if let Some(accid_ges) = alter_to_accid_ges(note.pitch.alter) {
-        mei_note.note_ges.accid_ges = Some(accid_ges);
-    }
-
-    // Written accidental (force or cautionary)
-    if (note.pitch.force_accidental || note.pitch.cautionary)
-        && let Some(accid_written) = alter_to_accid_written(note.pitch.alter)
-    {
-        let mut accid = Accid::default();
-        accid.accid_log.accid = Some(accid_written);
-        if note.pitch.cautionary {
-            accid.accid_log.func = Some("cautionary".to_string());
-        }
-        mei_note.children.push(NoteChild::Accid(Box::new(accid)));
-    }
-
-    // Duration
-    if let Some(ref dur) = note.duration {
-        apply_duration_to_note(dur, &mut mei_note);
-    }
-
-    mei_note
-}
-
-/// Convert a LilyPond RestEvent to an MEI Rest.
-fn convert_rest(rest: &RestEvent, id: u32) -> Rest {
-    let mut mei_rest = Rest::default();
-    mei_rest.common.xml_id = Some(format!("ly-rest-{id}"));
-
-    if let Some(ref dur) = rest.duration {
-        apply_duration_to_rest(dur, &mut mei_rest);
-    }
-
-    mei_rest
-}
-
-/// Convert a pitched rest (note with \rest) to an MEI Rest with label.
-fn convert_pitched_rest(note: &NoteEvent, id: u32) -> Rest {
-    let mut mei_rest = Rest::default();
-    mei_rest.common.xml_id = Some(format!("ly-rest-{id}"));
-
-    // Store pitch position as label for roundtrip
-    mei_rest.common.label = Some(format!(
-        "lilypond:pitched-rest,{}{}",
-        note.pitch.to_note_name(),
-        note.pitch.octave_marks()
-    ));
-
-    if let Some(ref dur) = note.duration {
-        apply_duration_to_rest(dur, &mut mei_rest);
-    }
-
-    mei_rest
-}
-
-/// Convert a LilyPond MultiMeasureRestEvent to an MEI MRest.
-fn convert_mrest(rest: &model::MultiMeasureRestEvent, id: u32) -> MRest {
-    let mut mei_mrest = MRest::default();
-    mei_mrest.common.xml_id = Some(format!("ly-mrest-{id}"));
-
-    // Store full duration info in label for lossless roundtrip
-    if let Some(ref dur) = rest.duration {
-        let mut label_parts = Vec::new();
-        label_parts.push(format!("dur={}", dur.base));
-        if dur.dots > 0 {
-            label_parts.push(format!("dots={}", dur.dots));
-        }
-        for (num, den) in &dur.multipliers {
-            if *den == 1 {
-                label_parts.push(format!("mul={num}"));
-            } else {
-                label_parts.push(format!("mul={num}/{den}"));
-            }
-        }
-        mei_mrest.common.label = Some(format!("lilypond:mrest,{}", label_parts.join(",")));
-    }
-
-    mei_mrest
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::Parser;
-
-    fn parse_and_import(src: &str) -> Mei {
-        let file = Parser::new(src).unwrap().parse().unwrap();
-        import(&file).unwrap()
-    }
-
-    /// Walk MEI to find the first staff in the first measure.
-    fn first_staff(mei: &Mei) -> Option<&Staff> {
-        for child in &mei.children {
-            if let MeiChild::Music(music) = child {
-                for mc in &music.children {
-                    let tusk_model::elements::MusicChild::Body(body) = mc;
-                    for bc in &body.children {
-                        let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
-                        for dc in &mdiv.children {
-                            let tusk_model::elements::MdivChild::Score(score) = dc;
-                            for sc in &score.children {
-                                if let ScoreChild::Section(section) = sc {
-                                    for sec_c in &section.children {
-                                        if let SectionChild::Measure(measure) = sec_c {
-                                            for mc2 in &measure.children {
-                                                if let MeasureChild::Staff(staff) = mc2 {
-                                                    return Some(staff);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    /// Walk MEI to find all staves in the first measure.
-    fn all_staves(mei: &Mei) -> Vec<&Staff> {
-        let mut staves = Vec::new();
-        for child in &mei.children {
-            if let MeiChild::Music(music) = child {
-                for mc in &music.children {
-                    let tusk_model::elements::MusicChild::Body(body) = mc;
-                    for bc in &body.children {
-                        let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
-                        for dc in &mdiv.children {
-                            let tusk_model::elements::MdivChild::Score(score) = dc;
-                            for sc in &score.children {
-                                if let ScoreChild::Section(section) = sc {
-                                    for sec_c in &section.children {
-                                        if let SectionChild::Measure(measure) = sec_c {
-                                            for mc2 in &measure.children {
-                                                if let MeasureChild::Staff(staff) = mc2 {
-                                                    staves.push(staff.as_ref());
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        staves
-    }
-
-    /// Walk MEI to find the scoreDef.
-    fn find_score_def(mei: &Mei) -> Option<&ScoreDef> {
-        for child in &mei.children {
-            if let MeiChild::Music(music) = child {
-                for mc in &music.children {
-                    let tusk_model::elements::MusicChild::Body(body) = mc;
-                    for bc in &body.children {
-                        let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
-                        for dc in &mdiv.children {
-                            let tusk_model::elements::MdivChild::Score(score) = dc;
-                            for sc in &score.children {
-                                if let ScoreChild::ScoreDef(sd) = sc {
-                                    return Some(sd);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    /// Walk MEI to find layer children (first layer of first staff).
-    fn layer_children(mei: &Mei) -> &[LayerChild] {
-        if let Some(staff) = first_staff(mei)
-            && let Some(StaffChild::Layer(layer)) = staff.children.first()
-        {
-            return &layer.children;
-        }
-        &[]
-    }
-
-    /// Count the number of layers in the first staff.
-    fn layer_count(mei: &Mei) -> usize {
-        first_staff(mei).map(|s| s.children.len()).unwrap_or(0)
-    }
-
-    /// Get layer children for a specific layer index (0-based).
-    fn nth_layer_children(mei: &Mei, idx: usize) -> &[LayerChild] {
-        if let Some(staff) = first_staff(mei)
-            && let Some(StaffChild::Layer(layer)) = staff.children.get(idx)
-        {
-            return &layer.children;
-        }
-        &[]
-    }
-
-    #[test]
-    fn import_single_note() {
-        let mei = parse_and_import("{ c'4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Note(note) = &children[0] {
-            assert_eq!(note.note_log.pname.as_ref().unwrap().0, "c");
-            assert_eq!(note.note_log.oct.as_ref().unwrap().0, 4); // c' = oct 4
-            assert!(matches!(
-                note.note_log.dur,
-                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4))
-            ));
-        } else {
-            panic!("expected Note");
-        }
-    }
-
-    #[test]
-    fn import_note_with_accidental() {
-        let mei = parse_and_import("{ cis''2 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Note(note) = &children[0] {
-            assert_eq!(note.note_log.pname.as_ref().unwrap().0, "c");
-            assert_eq!(note.note_log.oct.as_ref().unwrap().0, 5); // c'' = oct 5
-            assert!(note.note_ges.accid_ges.is_some()); // sharp
-            assert!(matches!(
-                note.note_log.dur,
-                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2))
-            ));
-        } else {
-            panic!("expected Note");
-        }
-    }
-
-    #[test]
-    fn import_rest() {
-        let mei = parse_and_import("{ r4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Rest(rest) = &children[0] {
-            assert!(matches!(
-                rest.rest_log.dur,
-                Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N4))
-            ));
-        } else {
-            panic!("expected Rest");
-        }
-    }
-
-    #[test]
-    fn import_dotted_rest() {
-        let mei = parse_and_import("{ r2. }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Rest(rest) = &children[0] {
-            assert!(matches!(
-                rest.rest_log.dur,
-                Some(DataDurationrests::MeiDataDurationCmn(DataDurationCmn::N2))
-            ));
-            assert_eq!(rest.rest_log.dots.as_ref().unwrap().0, 1);
-        } else {
-            panic!("expected Rest");
-        }
-    }
-
-    #[test]
-    fn import_multi_measure_rest() {
-        let mei = parse_and_import("{ R1*4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::MRest(mrest) = &children[0] {
-            assert!(mrest.common.label.is_some());
-            let label = mrest.common.label.as_ref().unwrap();
-            assert!(label.starts_with("lilypond:mrest,"));
-            assert!(label.contains("dur=1"));
-            assert!(label.contains("mul=4"));
-        } else {
-            panic!("expected MRest");
-        }
-    }
-
-    #[test]
-    fn import_pitched_rest() {
-        let mei = parse_and_import("{ c4\\rest }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Rest(rest) = &children[0] {
-            assert!(rest.common.label.is_some());
-            assert!(
-                rest.common
-                    .label
-                    .as_ref()
-                    .unwrap()
-                    .starts_with("lilypond:pitched-rest,")
-            );
-        } else {
-            panic!("expected Rest for pitched rest");
-        }
-    }
-
-    #[test]
-    fn import_multiple_events() {
-        let mei = parse_and_import("{ c4 d8 r4 e16 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 4);
-        assert!(matches!(&children[0], LayerChild::Note(_)));
-        assert!(matches!(&children[1], LayerChild::Note(_)));
-        assert!(matches!(&children[2], LayerChild::Rest(_)));
-        assert!(matches!(&children[3], LayerChild::Note(_)));
-    }
-
-    #[test]
-    fn import_skip_ignored() {
-        let mei = parse_and_import("{ c4 s4 d4 }");
-        let children = layer_children(&mei);
-        // Skip is ignored, so only c4 and d4
-        assert_eq!(children.len(), 2);
-    }
-
-    #[test]
-    fn import_from_score_block() {
-        let mei = parse_and_import("\\score { { c4 d4 } }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 2);
-    }
-
-    #[test]
-    fn import_nested_relative() {
-        let mei = parse_and_import("\\relative c' { c4 d e f }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 4);
-    }
-
-    #[test]
-    fn import_simultaneous_two_voices() {
-        let mei = parse_and_import("<< { c'4 d'4 } { e'4 f'4 } >>");
-        assert_eq!(layer_count(&mei), 2);
-        let voice1 = nth_layer_children(&mei, 0);
-        let voice2 = nth_layer_children(&mei, 1);
-        assert_eq!(voice1.len(), 2);
-        assert_eq!(voice2.len(), 2);
-        // Voice 1: c d
-        if let LayerChild::Note(n) = &voice1[0] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
-        } else {
-            panic!("expected Note");
-        }
-        // Voice 2: e f
-        if let LayerChild::Note(n) = &voice2[0] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
-        } else {
-            panic!("expected Note");
-        }
-    }
-
-    #[test]
-    fn import_simultaneous_three_voices() {
-        let mei = parse_and_import("<< { c'4 } { e'4 } { g'4 } >>");
-        assert_eq!(layer_count(&mei), 3);
-        assert_eq!(nth_layer_children(&mei, 0).len(), 1);
-        assert_eq!(nth_layer_children(&mei, 1).len(), 1);
-        assert_eq!(nth_layer_children(&mei, 2).len(), 1);
-    }
-
-    #[test]
-    fn import_sequential_single_layer() {
-        let mei = parse_and_import("{ c'4 d'4 e'4 }");
-        assert_eq!(layer_count(&mei), 1);
-        assert_eq!(layer_children(&mei).len(), 3);
-    }
-
-    #[test]
-    fn import_nested_sequential_in_simultaneous() {
-        // Outer sequential wrapping simultaneous
-        let mei = parse_and_import("{ << { c'4 } { e'4 } >> }");
-        // The outer sequential contains a simultaneous — but find_music
-        // walks into it and finds the simultaneous at the section level
-        // The top-level is Sequential([Simultaneous([...])]) — the
-        // collect_events will flatten both voices into one layer since
-        // extract_voices sees a Sequential at top level
-        assert_eq!(layer_count(&mei), 1);
-    }
-
-    // --- Phase 5.2: Context import tests ---
-
-    #[test]
-    fn import_new_staff_creates_staff() {
-        let mei = parse_and_import("\\new Staff { c'4 d'4 }");
-        let staves = all_staves(&mei);
-        assert_eq!(staves.len(), 1);
-        assert_eq!(staves[0].n_integer.n.as_deref(), Some("1"));
-        // Should have one layer with 2 notes
-        assert_eq!(staves[0].children.len(), 1);
-    }
-
-    #[test]
-    fn import_staff_group_creates_multiple_staves() {
-        let mei = parse_and_import(
-            "\\new StaffGroup << \\new Staff { c'4 d'4 } \\new Staff { e'4 f'4 } >>",
-        );
-        let staves = all_staves(&mei);
-        assert_eq!(staves.len(), 2);
-        assert_eq!(staves[0].n_integer.n.as_deref(), Some("1"));
-        assert_eq!(staves[1].n_integer.n.as_deref(), Some("2"));
-    }
-
-    #[test]
-    fn import_staff_group_symbol() {
-        let mei =
-            parse_and_import("\\new StaffGroup << \\new Staff { c'4 } \\new Staff { e'4 } >>");
-        let sd = find_score_def(&mei).unwrap();
-        let sg = &sd.children[0];
-        if let ScoreDefChild::StaffGrp(grp) = sg {
-            assert_eq!(grp.staff_grp_vis.symbol.as_deref(), Some("bracket"));
-        } else {
-            panic!("expected StaffGrp");
-        }
-    }
-
-    #[test]
-    fn import_piano_staff_symbol() {
-        let mei =
-            parse_and_import("\\new PianoStaff << \\new Staff { c'4 } \\new Staff { e'4 } >>");
-        let sd = find_score_def(&mei).unwrap();
-        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
-            assert_eq!(grp.staff_grp_vis.symbol.as_deref(), Some("brace"));
-        } else {
-            panic!("expected StaffGrp");
-        }
-    }
-
-    #[test]
-    fn import_named_staff_label() {
-        let mei = parse_and_import("\\new Staff = \"violin\" { c'4 }");
-        let sd = find_score_def(&mei).unwrap();
-        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
-            if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
-                let label = sdef.labelled.label.as_deref().unwrap();
-                assert!(label.contains("name=violin"), "label: {label}");
-            } else {
-                panic!("expected StaffDef");
-            }
-        }
-    }
-
-    #[test]
-    fn import_group_label() {
-        let mei = parse_and_import("\\new StaffGroup = \"orch\" << \\new Staff { c'4 } >>");
-        let sd = find_score_def(&mei).unwrap();
-        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
-            let label = grp.common.label.as_deref().unwrap();
-            assert!(
-                label.contains("lilypond:group,StaffGroup"),
-                "label: {label}"
-            );
-            assert!(label.contains("name=orch"), "label: {label}");
-        }
-    }
-
-    #[test]
-    fn import_staff_count_from_fixture() {
-        let src = std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../tests/fixtures/lilypond/fragment_contexts.ly"
-        ))
-        .unwrap();
-        let mei = parse_and_import(&src);
-        let staves = all_staves(&mei);
-        assert_eq!(staves.len(), 2, "fragment_contexts.ly should have 2 staves");
-    }
-
-    /// Find the first staffDef in the scoreDef.
-    fn first_staff_def(mei: &Mei) -> Option<&StaffDef> {
-        let sd = find_score_def(mei)?;
-        for child in &sd.children {
-            if let ScoreDefChild::StaffGrp(grp) = child {
-                for gc in &grp.children {
-                    if let StaffGrpChild::StaffDef(sdef) = gc {
-                        return Some(sdef);
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    // --- Phase 6.2: Clef/key/time import tests ---
-
-    #[test]
-    fn import_clef_sets_staff_def() {
-        let mei = parse_and_import("{ \\clef \"treble\" c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(
-            sdef.staff_def_log.clef_shape,
-            Some(DataClefshape::G),
-            "treble clef should be G shape"
-        );
-        assert_eq!(
-            sdef.staff_def_log.clef_line.as_ref().map(|l| l.0),
-            Some(2),
-            "treble clef should be on line 2"
-        );
-    }
-
-    #[test]
-    fn import_bass_clef_sets_staff_def() {
-        let mei = parse_and_import("{ \\clef \"bass\" c4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::F));
-        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(4));
-    }
-
-    #[test]
-    fn import_alto_clef_sets_staff_def() {
-        let mei = parse_and_import("{ \\clef \"alto\" c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::C));
-        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(3));
-    }
-
-    #[test]
-    fn import_key_sets_staff_def() {
-        let mei = parse_and_import("{ \\key d \\major c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        // D major = 2 sharps
-        assert_eq!(
-            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
-            Some("2")
-        );
-    }
-
-    #[test]
-    fn import_key_minor_sets_staff_def() {
-        let mei = parse_and_import("{ \\key a \\minor c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        // A minor = 0 sharps/flats
-        assert_eq!(
-            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
-            Some("0")
-        );
-    }
-
-    #[test]
-    fn import_key_flat_sets_staff_def() {
-        let mei = parse_and_import("{ \\key bes \\major c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        // Bb major = -2
-        assert_eq!(
-            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
-            Some("-2")
-        );
-    }
-
-    #[test]
-    fn import_time_sets_staff_def() {
-        let mei = parse_and_import("{ \\time 3/4 c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("3"));
-        assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("4"));
-    }
-
-    #[test]
-    fn import_time_compound_sets_staff_def() {
-        let mei = parse_and_import("{ \\time 2+3/8 c'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("2+3"));
-        assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("8"));
-    }
-
-    #[test]
-    fn import_clef_key_time_label_stored() {
-        let mei = parse_and_import("{ \\clef \"treble\" \\key d \\major \\time 4/4 c'4 d'4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        let label = sdef.labelled.label.as_deref().unwrap();
-        assert!(label.contains("lilypond:events,"), "label: {label}");
-        assert!(label.contains("clef:treble@0"), "label: {label}");
-        assert!(label.contains("key:d.0.major@0"), "label: {label}");
-        assert!(label.contains("time:4/4@0"), "label: {label}");
-    }
-
-    #[test]
-    fn import_clef_change_mid_stream() {
-        let mei = parse_and_import("{ \\clef \"treble\" c'4 d'4 \\clef \"bass\" e4 f4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        // First clef is treble
-        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
-        // Label has both clefs
-        let label = sdef.labelled.label.as_deref().unwrap();
-        assert!(label.contains("clef:treble@0"), "label: {label}");
-        assert!(label.contains("clef:bass@2"), "label: {label}");
-    }
-
-    #[test]
-    fn import_transposed_clef() {
-        let mei = parse_and_import("{ \\clef \"treble_8\" c4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
-        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(2));
-        assert_eq!(sdef.staff_def_log.clef_dis.as_ref().map(|d| d.0), Some(8));
-        assert_eq!(
-            sdef.staff_def_log.clef_dis_place,
-            Some(DataStaffrelBasic::Below)
-        );
-    }
-
-    #[test]
-    fn import_staff_with_block_label() {
-        let mei = parse_and_import(
-            "\\new Staff \\with { \\consists \"Span_arpeggio_engraver\" } { c'4 }",
-        );
-        let sd = find_score_def(&mei).unwrap();
-        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
-            if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
-                let label = sdef.labelled.label.as_deref().unwrap();
-                assert!(
-                    label.contains("with="),
-                    "label should contain with block: {label}"
-                );
-                assert!(label.contains("Span_arpeggio_engraver"), "label: {label}");
-            } else {
-                panic!("expected StaffDef");
-            }
-        }
-    }
-
-    // --- Phase 7.2: Relative / transpose import tests ---
-
-    #[test]
-    fn import_relative_resolves_pitches() {
-        // \relative c' { c d e f } → absolute: c' d' e' f'
-        let mei = parse_and_import("\\relative c' { c4 d e f }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 4);
-
-        // c' (octave 4)
-        if let LayerChild::Note(n) = &children[0] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-        } else {
-            panic!("expected Note");
-        }
-        // d' (octave 4)
-        if let LayerChild::Note(n) = &children[1] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "d");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-        } else {
-            panic!("expected Note");
-        }
-        // e' (octave 4)
-        if let LayerChild::Note(n) = &children[2] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-        } else {
-            panic!("expected Note");
-        }
-        // f' (octave 4)
-        if let LayerChild::Note(n) = &children[3] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "f");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-        } else {
-            panic!("expected Note");
-        }
-    }
-
-    #[test]
-    fn import_relative_descending() {
-        // \relative c' { c b a g } → c'=4, b=3, a=3, g=3
-        let mei = parse_and_import("\\relative c' { c4 b a g }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 4);
-
-        if let LayerChild::Note(n) = &children[0] {
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4); // c'
-        }
-        if let LayerChild::Note(n) = &children[1] {
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // b (below c')
-        }
-        if let LayerChild::Note(n) = &children[2] {
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // a (below b)
-        }
-        if let LayerChild::Note(n) = &children[3] {
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // g (below a)
-        }
-    }
-
-    #[test]
-    fn import_relative_label_stored() {
-        let mei = parse_and_import("\\relative c' { c4 d e f }");
-        let sdef = first_staff_def(&mei).unwrap();
-        let label = sdef.labelled.label.as_deref().unwrap();
-        assert!(
-            label.contains("lilypond:relative,"),
-            "label should contain relative context: {label}"
-        );
-    }
-
-    #[test]
-    fn import_transpose_applies() {
-        // \transpose c d { c4 } → c transposed up a whole step = d
-        let mei = parse_and_import("\\transpose c d { c4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Note(n) = &children[0] {
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "d");
-        } else {
-            panic!("expected Note");
-        }
-    }
-
-    #[test]
-    fn import_transpose_label_stored() {
-        let mei = parse_and_import("\\transpose c d { c4 }");
-        let sdef = first_staff_def(&mei).unwrap();
-        let label = sdef.labelled.label.as_deref().unwrap();
-        assert!(
-            label.contains("lilypond:transpose,"),
-            "label should contain transpose context: {label}"
-        );
-    }
-
-    #[test]
-    fn import_chord_basic() {
-        let mei = parse_and_import("{ <c' e' g'>4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Chord(chord) = &children[0] {
-            assert!(matches!(
-                chord.chord_log.dur,
-                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4))
-            ));
-            assert_eq!(chord.children.len(), 3);
-            // First note: c'
-            let ChordChild::Note(n) = &chord.children[0];
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-            // Second note: e'
-            let ChordChild::Note(n) = &chord.children[1];
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-            // Third note: g'
-            let ChordChild::Note(n) = &chord.children[2];
-            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "g");
-            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
-        } else {
-            panic!("expected Chord, got: {:?}", children[0]);
-        }
-    }
-
-    #[test]
-    fn import_chord_dotted() {
-        let mei = parse_and_import("{ <c' e'>2. }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Chord(chord) = &children[0] {
-            assert!(matches!(
-                chord.chord_log.dur,
-                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2))
-            ));
-            assert_eq!(chord.chord_log.dots.as_ref().unwrap().0, 1);
-            assert_eq!(chord.children.len(), 2);
-        } else {
-            panic!("expected Chord");
-        }
-    }
-
-    #[test]
-    fn import_chord_with_accidentals() {
-        let mei = parse_and_import("{ <cis' es' g'>4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Chord(chord) = &children[0] {
-            assert_eq!(chord.children.len(), 3);
-            // cis' — sharp
-            let ChordChild::Note(n) = &chord.children[0];
-            assert!(n.note_ges.accid_ges.is_some());
-            // es' — flat
-            let ChordChild::Note(n) = &chord.children[1];
-            assert!(n.note_ges.accid_ges.is_some());
-            // g' — natural (no accidental)
-            let ChordChild::Note(n) = &chord.children[2];
-            assert!(n.note_ges.accid_ges.is_none());
-        } else {
-            panic!("expected Chord");
-        }
-    }
-
-    #[test]
-    fn import_chord_force_cautionary() {
-        let mei = parse_and_import("{ <cis'! e'?>4 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 1);
-        if let LayerChild::Chord(chord) = &children[0] {
-            assert_eq!(chord.children.len(), 2);
-            // cis'! — forced accidental
-            let ChordChild::Note(n) = &chord.children[0];
-            assert!(!n.children.is_empty(), "should have Accid child");
-            // e'? — cautionary
-            let ChordChild::Note(n) = &chord.children[1];
-            assert!(!n.children.is_empty(), "should have Accid child");
-        } else {
-            panic!("expected Chord");
-        }
-    }
-
-    #[test]
-    fn import_chord_mixed_with_notes() {
-        let mei = parse_and_import("{ c'4 <d' f'>8 e'2 }");
-        let children = layer_children(&mei);
-        assert_eq!(children.len(), 3);
-        assert!(matches!(children[0], LayerChild::Note(_)));
-        assert!(matches!(children[1], LayerChild::Chord(_)));
-        assert!(matches!(children[2], LayerChild::Note(_)));
     }
 }

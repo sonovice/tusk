@@ -406,10 +406,21 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 9.2 Import & Export
 
-- [ ] [I] Tie → MEI `<tie>`; slur → MEI `<slur>`; phrasing slur → MEI `<phrase>` or equivalent
-- [ ] [E] MEI tie/slur/phrase → LilyPond `~`, `( )`, `\( \)`
-- [ ] [T] Roundtrip tied and slurred phrases
-- [ ] [T] Tie, slur, phrasing slur fixtures; roundtrip
+- [x] [I] Tie → MEI `@tie` attr; slur → MEI `<slur>` control event; phrasing slur → `<slur label="lilypond:phrase">`
+  - Tie: `@tie="i"` (initial), `"t"` (terminal), `"m"` (medial) on notes/chord-notes
+  - Slurs: `MeasureChild::Slur` with `@startid`/`@endid` referencing note xml:ids
+  - Phrasing slurs: same as slurs but with `@label="lilypond:phrase"` to distinguish
+  - PendingSpanner pattern for tracking open slurs; make_slur() helper
+- [x] [E] MEI tie/slur/phrase → LilyPond `~`, `( )`, `\( \)`
+  - Ties: `@tie="i"/"m"` on notes → PostEvent::Tie; chord ties via any child note
+  - Slurs: collect_slur_post_events() builds note-id→PostEvent map from MeasureChild::Slur
+  - append_post_events() injects SlurStart/SlurEnd/PhrasingSlurStart/PhrasingSlurEnd
+- [x] [T] Roundtrip tied and slurred phrases
+  - 5 import tests: tie attr, slur control event, phrase labeled event, chord tie, combined
+  - 6 roundtrip tests: tie, slur, phrasing slur, chord tie, combined, fixture
+- [x] [T] Tie, slur, phrasing slur fixtures; roundtrip
+  - fragment_ties_slurs.ly fixture roundtrip verified
+  - 302 total tests pass
 
 ---
 
