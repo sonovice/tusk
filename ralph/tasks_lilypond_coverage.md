@@ -231,11 +231,25 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 5.2 Import & Export
 
-- [ ] [I] `\new Staff` / `\new Voice` → MEI staff/voice structure; map context type to MEI staffDef/scoreDef
-- [ ] [I] `\with { }` overrides → store in conversion context or MEI extensions for roundtrip
-- [ ] [E] MEI staff/part → `\new Staff` / `\new Voice` with optional `\with`
-- [ ] [T] Roundtrip score with multiple staves
-- [ ] [T] Piano-style score fixture; roundtrip
+- [x] [I] `\new Staff` / `\new Voice` → MEI staff/voice structure; map context type to MEI staffDef/scoreDef
+  - analyze_staves() detects context hierarchy: StaffGroup/PianoStaff/ChoirStaff wrapping \new Staff children
+  - Maps context types to MEI staffGrp @symbol (bracket/brace) and creates separate MEI staves with staffDefs
+  - Staff names stored in staffDef @label; group metadata in staffGrp @label (lilypond:group,/lilypond:staff, prefix)
+  - Supports StaffGroup, PianoStaff, GrandStaff, ChoirStaff + 8 staff context types
+- [x] [I] `\with { }` overrides → store in conversion context or MEI extensions for roundtrip
+  - \with blocks serialized to compact string and stored in staffDef/staffGrp @label for lossless roundtrip
+  - Re-parsed from label on export using serialize_with_block/parse_with_block_str
+- [x] [E] MEI staff/part → `\new Staff` / `\new Voice` with optional `\with`
+  - extract_group_meta/extract_staff_metas reconstruct context hierarchy from MEI labels and @symbol
+  - build_music_with_contexts wraps per-staff music in \new Staff/\new StaffGroup with names and \with blocks
+  - Single unnamed staff with no group produces flat output (backward compatible)
+- [x] [T] Roundtrip score with multiple staves
+  - roundtrip_staff_group, roundtrip_piano_staff, roundtrip_named_staves, roundtrip_single_named_staff, roundtrip_staff_with_block
+  - Import tests: import_staff_group_creates_multiple_staves, import_staff_group_symbol, import_piano_staff_symbol, import_named_staff_label, import_group_label, import_staff_with_block_label
+- [x] [T] Piano-style score fixture; roundtrip
+  - Fixture: fragment_piano.ly (PianoStaff with right/left named staves)
+  - roundtrip_contexts_fixture validates fragment_contexts.ly (StaffGroup with violin/viola)
+  - 169 total tests pass
 
 ---
 

@@ -1,13 +1,15 @@
 //! Conversion from MEI to LilyPond AST.
 
 use thiserror::Error;
-use tusk_model::elements::{LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, SectionChild};
+use tusk_model::elements::{
+    LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
+};
 use tusk_model::generated::data::{DataAccidentalGesturalBasic, DataDurationCmn};
 
 use crate::model::pitch::Pitch;
 use crate::model::{
-    Duration, LilyPondFile, MultiMeasureRestEvent, Music, NoteEvent, RestEvent, ScoreBlock,
-    ScoreItem, ToplevelExpression, Version,
+    ContextKeyword, Duration, LilyPondFile, MultiMeasureRestEvent, Music, NoteEvent, RestEvent,
+    ScoreBlock, ScoreItem, ToplevelExpression, Version,
 };
 
 #[derive(Debug, Error)]
@@ -24,6 +26,10 @@ pub enum ExportError {
 pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     // Find the Music → Body → Mdiv → Score path
     let score = find_score(mei).ok_or(ExportError::NoMusic)?;
+
+    // Extract staffGrp metadata for context reconstruction
+    let group_meta = extract_group_meta(score);
+    let staff_metas = extract_staff_metas(score);
 
     // Walk section → measures → staves → layers → notes/rests
     let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new(); // staff → layer → items
@@ -53,8 +59,8 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }
     }
 
-    // Build music expression from collected layers
-    let music = build_music_from_layers(staff_music);
+    // Build music expression from collected layers, wrapping in contexts
+    let music = build_music_with_contexts(staff_music, &group_meta, &staff_metas);
 
     let score_block = ScoreBlock {
         items: vec![ScoreItem::Music(music)],
@@ -68,25 +74,249 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     })
 }
 
-/// Build a Music expression from staff/layer structure.
+// ---------------------------------------------------------------------------
+// Context metadata extraction from scoreDef
+// ---------------------------------------------------------------------------
+
+/// Metadata for a staff group, extracted from staffGrp label/symbol.
+struct GroupMeta {
+    context_type: String,
+    name: Option<String>,
+    with_block_str: Option<String>,
+}
+
+/// Metadata for a single staff, extracted from staffDef label.
+struct StaffMeta {
+    context_type: String,
+    name: Option<String>,
+    with_block_str: Option<String>,
+}
+
+/// Extract group metadata from scoreDef's staffGrp.
+fn extract_group_meta(score: &tusk_model::elements::Score) -> Option<GroupMeta> {
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child {
+            for sd_child in &score_def.children {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    // Check label for group info
+                    if let Some(rest) = grp
+                        .common
+                        .label
+                        .as_deref()
+                        .and_then(|l| l.strip_prefix("lilypond:group,"))
+                    {
+                        return Some(parse_context_label(rest));
+                    }
+                    // Fallback: infer from symbol
+                    if let Some(symbol) = &grp.staff_grp_vis.symbol {
+                        let context_type = match symbol.as_str() {
+                            "brace" => "PianoStaff",
+                            "bracket" => "StaffGroup",
+                            _ => "StaffGroup",
+                        };
+                        return Some(GroupMeta {
+                            context_type: context_type.to_string(),
+                            name: None,
+                            with_block_str: None,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract staff metadata from scoreDef's staffDef labels.
+fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
+    let mut metas = Vec::new();
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child {
+            for sd_child in &score_def.children {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    for grp_child in &grp.children {
+                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
+                            let meta = if let Some(label) = &sdef.labelled.label {
+                                if let Some(rest) = label.strip_prefix("lilypond:staff,") {
+                                    let gm = parse_context_label(rest);
+                                    StaffMeta {
+                                        context_type: gm.context_type,
+                                        name: gm.name,
+                                        with_block_str: gm.with_block_str,
+                                    }
+                                } else {
+                                    StaffMeta {
+                                        context_type: "Staff".to_string(),
+                                        name: None,
+                                        with_block_str: None,
+                                    }
+                                }
+                            } else {
+                                StaffMeta {
+                                    context_type: "Staff".to_string(),
+                                    name: None,
+                                    with_block_str: None,
+                                }
+                            };
+                            metas.push(meta);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    metas
+}
+
+/// Parse a context label string into metadata.
 ///
-/// Single layer → `{ notes... }` (sequential).
-/// Multiple layers → `<< { voice1 } { voice2 } >>` (simultaneous).
-fn build_music_from_layers(staff_music: Vec<Vec<Vec<Music>>>) -> Music {
-    // Flatten all staves (for now we handle single-staff)
+/// Format: `ContextType[,name=Name][,with=...]`
+fn parse_context_label(s: &str) -> GroupMeta {
+    let mut context_type = String::new();
+    let mut name = None;
+    let mut with_block_str = None;
+
+    // Split carefully — the "with=" part may contain commas in its content
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut in_with = false;
+
+    for c in s.chars() {
+        if in_with {
+            current.push(c);
+        } else if c == ',' {
+            parts.push(std::mem::take(&mut current));
+        } else {
+            current.push(c);
+            if current == "with=" {
+                in_with = true;
+            }
+        }
+    }
+    if !current.is_empty() {
+        parts.push(current);
+    }
+
+    for (i, part) in parts.iter().enumerate() {
+        if i == 0 {
+            context_type = part.clone();
+        } else if let Some(n) = part.strip_prefix("name=") {
+            name = Some(n.to_string());
+        } else if let Some(w) = part.strip_prefix("with=") {
+            with_block_str = Some(w.to_string());
+        }
+    }
+
+    GroupMeta {
+        context_type,
+        name,
+        with_block_str,
+    }
+}
+
+/// Parse a stored \with block string back into ContextModItems.
+///
+/// Re-parses the serialized content by wrapping it in a parseable form.
+fn parse_with_block_str(with_str: &str) -> Option<Vec<crate::model::ContextModItem>> {
+    use crate::parser::Parser;
+
+    // Wrap in a form the parser can handle:
+    // \new X \with { <content> } { }
+    let src = format!("\\new X \\with {{\n{with_str}\n}} {{ }}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let ToplevelExpression::Music(Music::ContextedMusic { with_block, .. }) = item {
+            return with_block.clone();
+        }
+    }
+    None
+}
+
+/// Build a Music expression from staff/layer structure, wrapping in context.
+fn build_music_with_contexts(
+    staff_music: Vec<Vec<Vec<Music>>>,
+    group_meta: &Option<GroupMeta>,
+    staff_metas: &[StaffMeta],
+) -> Music {
+    let num_staves = staff_music.len();
+
+    // Single staff, no group, no explicit staff context → flat output
+    if num_staves <= 1
+        && group_meta.is_none()
+        && (staff_metas.is_empty()
+            || (staff_metas.len() == 1
+                && staff_metas[0].name.is_none()
+                && staff_metas[0].with_block_str.is_none()
+                && staff_metas[0].context_type == "Staff"))
+    {
+        return build_flat_music(staff_music);
+    }
+
+    // Build per-staff music with \new Staff wrappers
+    let mut staff_exprs: Vec<Music> = Vec::new();
+    for (i, layers) in staff_music.into_iter().enumerate() {
+        let inner = build_layers_music(layers);
+        let meta = staff_metas.get(i);
+
+        let with_block = meta
+            .and_then(|m| m.with_block_str.as_deref())
+            .and_then(parse_with_block_str);
+
+        let staff_music_expr = Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: meta
+                .map(|m| m.context_type.clone())
+                .unwrap_or_else(|| "Staff".to_string()),
+            name: meta.and_then(|m| m.name.clone()),
+            with_block,
+            music: Box::new(inner),
+        };
+        staff_exprs.push(staff_music_expr);
+    }
+
+    // Wrap in simultaneous if multiple staves
+    let inner = if staff_exprs.len() == 1 {
+        staff_exprs.into_iter().next().unwrap()
+    } else {
+        Music::Simultaneous(staff_exprs)
+    };
+
+    // Wrap in group context if present
+    if let Some(group) = group_meta {
+        let with_block = group
+            .with_block_str
+            .as_deref()
+            .and_then(parse_with_block_str);
+
+        Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: group.context_type.clone(),
+            name: group.name.clone(),
+            with_block,
+            music: Box::new(inner),
+        }
+    } else {
+        inner
+    }
+}
+
+/// Build flat music (no context wrappers) from staff/layer structure.
+fn build_flat_music(staff_music: Vec<Vec<Vec<Music>>>) -> Music {
     let mut all_layers: Vec<Vec<Music>> = Vec::new();
     for layers in staff_music {
         all_layers.extend(layers);
     }
+    build_layers_music(all_layers)
+}
 
-    // Filter out empty layers
-    let non_empty: Vec<Vec<Music>> = all_layers.into_iter().filter(|l| !l.is_empty()).collect();
+/// Build music from a set of layers (voices).
+fn build_layers_music(layers: Vec<Vec<Music>>) -> Music {
+    let non_empty: Vec<Vec<Music>> = layers.into_iter().filter(|l| !l.is_empty()).collect();
 
     match non_empty.len() {
         0 => Music::Sequential(Vec::new()),
         1 => Music::Sequential(non_empty.into_iter().next().unwrap()),
         _ => {
-            // Multiple layers → simultaneous with each as sequential
             let voices: Vec<Music> = non_empty.into_iter().map(Music::Sequential).collect();
             Music::Simultaneous(voices)
         }
@@ -449,6 +679,69 @@ mod tests {
         // Single voice should stay sequential, no << >>
         let output = roundtrip("{ c'4 d'4 e'4 }");
         assert!(!output.contains("<<"), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
+    }
+
+    // --- Phase 5.2: Context export/roundtrip tests ---
+
+    #[test]
+    fn roundtrip_staff_group() {
+        let output =
+            roundtrip("\\new StaffGroup << \\new Staff { c'4 d'4 } \\new Staff { e'4 f'4 } >>");
+        assert!(output.contains("\\new StaffGroup"), "output: {output}");
+        assert!(output.contains("\\new Staff"), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
+        assert!(output.contains("e'4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_piano_staff() {
+        let output = roundtrip("\\new PianoStaff << \\new Staff { c'4 } \\new Staff { e4 } >>");
+        assert!(output.contains("\\new PianoStaff"), "output: {output}");
+        assert!(output.contains("\\new Staff"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_named_staves() {
+        let output = roundtrip(
+            "\\new StaffGroup << \\new Staff = \"violin\" { c'4 } \\new Staff = \"viola\" { e4 } >>",
+        );
+        assert!(output.contains("\"violin\""), "output: {output}");
+        assert!(output.contains("\"viola\""), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_single_named_staff() {
+        let output = roundtrip("\\new Staff = \"piano\" { c'4 d'4 }");
+        assert!(output.contains("\\new Staff"), "output: {output}");
+        assert!(output.contains("\"piano\""), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_staff_with_block() {
+        let output =
+            roundtrip("\\new Staff \\with { \\consists \"Span_arpeggio_engraver\" } { c'4 }");
+        assert!(output.contains("\\new Staff"), "output: {output}");
+        assert!(output.contains("\\with"), "output: {output}");
+        assert!(
+            output.contains("Span_arpeggio_engraver"),
+            "output: {output}"
+        );
+    }
+
+    #[test]
+    fn roundtrip_contexts_fixture() {
+        let src = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/fixtures/lilypond/fragment_contexts.ly"
+        ))
+        .unwrap();
+        let output = roundtrip(&src);
+        assert!(output.contains("\\new StaffGroup"), "output: {output}");
+        assert!(output.contains("\\new Staff"), "output: {output}");
+        assert!(output.contains("\"violin\""), "output: {output}");
+        assert!(output.contains("\"viola\""), "output: {output}");
         assert!(output.contains("c'4"), "output: {output}");
     }
 }

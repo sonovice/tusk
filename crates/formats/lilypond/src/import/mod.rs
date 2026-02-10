@@ -14,8 +14,10 @@ use tusk_model::generated::data::{
 };
 
 use crate::model::{
-    self, Duration, LilyPondFile, Music, NoteEvent, RestEvent, ScoreItem, ToplevelExpression,
+    self, ContextKeyword, ContextModItem, Duration, LilyPondFile, Music, NoteEvent, RestEvent,
+    ScoreItem, ToplevelExpression,
 };
+use crate::serializer;
 
 #[derive(Debug, Error)]
 pub enum ImportError {
@@ -80,14 +82,17 @@ fn build_mei_head() -> MeiHead {
 fn build_music(ly_music: &Music) -> Result<tusk_model::elements::Music, ImportError> {
     let mut score = Score::default();
 
-    // ScoreDef with one staffDef
-    let score_def = build_score_def();
+    // Analyze context structure to determine staves
+    let staff_infos = analyze_staves(ly_music);
+
+    // Build ScoreDef with staffDef(s)
+    let score_def = build_score_def_from_staves(&staff_infos);
     score
         .children
         .push(ScoreChild::ScoreDef(Box::new(score_def)));
 
     // Section with measure(s) containing the notes
-    let section = build_section(ly_music)?;
+    let section = build_section_from_staves(&staff_infos)?;
     score.children.push(ScoreChild::Section(Box::new(section)));
 
     let mut mdiv = Mdiv::default();
@@ -104,15 +109,227 @@ fn build_music(ly_music: &Music) -> Result<tusk_model::elements::Music, ImportEr
     Ok(music)
 }
 
-/// Build a minimal ScoreDef with one staff.
-fn build_score_def() -> ScoreDef {
-    let mut staff_def = StaffDef::default();
-    staff_def.n_integer.n = Some("1".to_string());
+// ---------------------------------------------------------------------------
+// Context analysis — extract staff structure from LilyPond AST
+// ---------------------------------------------------------------------------
 
+/// Information about a single staff extracted from the LilyPond AST.
+struct StaffInfo<'a> {
+    /// Staff number (1-based).
+    n: u32,
+    /// Context name (e.g. "violin") if `\new Staff = "violin"`.
+    name: Option<String>,
+    /// Context type (e.g. "Staff").
+    context_type: String,
+    /// `\with { ... }` block items, if present.
+    with_block: Option<Vec<ContextModItem>>,
+    /// The music content for this staff (one or more voice streams).
+    voices: Vec<Vec<&'a Music>>,
+}
+
+/// Information about a staff group wrapping multiple staves.
+struct GroupInfo {
+    /// Context type (e.g. "StaffGroup", "PianoStaff").
+    context_type: String,
+    /// Context name, if any.
+    name: Option<String>,
+    /// `\with { ... }` block items, if present.
+    with_block: Option<Vec<ContextModItem>>,
+}
+
+/// Result of analyzing the context hierarchy.
+struct StaffLayout<'a> {
+    group: Option<GroupInfo>,
+    staves: Vec<StaffInfo<'a>>,
+}
+
+/// Analyze the LilyPond music tree to extract staff structure.
+///
+/// Detects patterns like:
+/// - `\new StaffGroup << \new Staff { } \new Staff { } >>`
+/// - `\new PianoStaff << \new Staff { } \new Staff { } >>`
+/// - `\new Staff { ... }` (single staff)
+/// - `{ ... }` (bare music, single staff)
+fn analyze_staves(music: &Music) -> StaffLayout<'_> {
+    // Unwrap score-level context (e.g. \new StaffGroup << ... >>)
+    if let Music::ContextedMusic {
+        keyword: _,
+        context_type,
+        name,
+        with_block,
+        music: inner,
+    } = music
+    {
+        // Check if this is a group context wrapping staves
+        if is_staff_group_context(context_type) {
+            let group = GroupInfo {
+                context_type: context_type.clone(),
+                name: name.clone(),
+                with_block: with_block.clone(),
+            };
+            let staves = extract_staves_from_group(inner);
+            if !staves.is_empty() {
+                return StaffLayout {
+                    group: Some(group),
+                    staves,
+                };
+            }
+        }
+
+        // Single contexted staff (e.g. \new Staff { ... })
+        if is_staff_context(context_type) {
+            let voices = extract_voices(inner);
+            return StaffLayout {
+                group: None,
+                staves: vec![StaffInfo {
+                    n: 1,
+                    name: name.clone(),
+                    context_type: context_type.clone(),
+                    with_block: with_block.clone(),
+                    voices,
+                }],
+            };
+        }
+
+        // Unknown context type — treat inner music as bare
+        return analyze_staves(inner);
+    }
+
+    // Check if simultaneous music contains \new Staff children
+    if let Music::Simultaneous(items) = music {
+        let staves = extract_staves_from_simultaneous(items);
+        if !staves.is_empty() {
+            return StaffLayout {
+                group: None,
+                staves,
+            };
+        }
+    }
+
+    // Bare music — single staff, possibly multiple voices
+    let voices = extract_voices(music);
+    StaffLayout {
+        group: None,
+        staves: vec![StaffInfo {
+            n: 1,
+            name: None,
+            context_type: "Staff".to_string(),
+            with_block: None,
+            voices,
+        }],
+    }
+}
+
+/// Check if a context type is a staff group (StaffGroup, PianoStaff, etc.)
+fn is_staff_group_context(ctx: &str) -> bool {
+    matches!(
+        ctx,
+        "StaffGroup"
+            | "PianoStaff"
+            | "GrandStaff"
+            | "ChoirStaff"
+            | "InnerStaffGroup"
+            | "InnerChoirStaff"
+    )
+}
+
+/// Check if a context type is a staff-level context.
+fn is_staff_context(ctx: &str) -> bool {
+    matches!(
+        ctx,
+        "Staff"
+            | "RhythmicStaff"
+            | "TabStaff"
+            | "DrumStaff"
+            | "GregorianTranscriptionStaff"
+            | "MensuralStaff"
+            | "PetrucciStaff"
+            | "VaticanaStaff"
+    )
+}
+
+/// Extract staff infos from the inner music of a group context.
+fn extract_staves_from_group(music: &Music) -> Vec<StaffInfo<'_>> {
+    match music {
+        Music::Simultaneous(items) => extract_staves_from_simultaneous(items),
+        _ => Vec::new(),
+    }
+}
+
+/// Extract staff infos from a simultaneous music list that contains \new Staff children.
+fn extract_staves_from_simultaneous<'a>(items: &'a [Music]) -> Vec<StaffInfo<'a>> {
+    let mut staves = Vec::new();
+    let mut n = 1u32;
+
+    for item in items {
+        if let Music::ContextedMusic {
+            context_type,
+            name,
+            with_block,
+            music: inner,
+            ..
+        } = item
+            && is_staff_context(context_type)
+        {
+            let voices = extract_voices(inner);
+            staves.push(StaffInfo {
+                n,
+                name: name.clone(),
+                context_type: context_type.clone(),
+                with_block: with_block.clone(),
+                voices,
+            });
+            n += 1;
+        }
+    }
+
+    staves
+}
+
+// ---------------------------------------------------------------------------
+// ScoreDef building from staff layout
+// ---------------------------------------------------------------------------
+
+/// Map LilyPond group context type to MEI staffGrp @symbol.
+fn group_context_to_symbol(context_type: &str) -> Option<&'static str> {
+    match context_type {
+        "StaffGroup" => Some("bracket"),
+        "PianoStaff" | "GrandStaff" => Some("brace"),
+        "ChoirStaff" => Some("bracket"),
+        _ => None,
+    }
+}
+
+/// Build a ScoreDef from analyzed staff structure.
+fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
     let mut staff_grp = StaffGrp::default();
-    staff_grp
-        .children
-        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+    // Set group symbol if present
+    if let Some(group) = &layout.group {
+        staff_grp.staff_grp_vis.symbol =
+            group_context_to_symbol(&group.context_type).map(String::from);
+
+        // Store group context metadata in label for roundtrip
+        let label = build_group_label(group);
+        if !label.is_empty() {
+            staff_grp.common.label = Some(label);
+        }
+    }
+
+    for staff_info in &layout.staves {
+        let mut staff_def = StaffDef::default();
+        staff_def.n_integer.n = Some(staff_info.n.to_string());
+
+        // Store context metadata in label for roundtrip
+        let label = build_staff_label(staff_info);
+        if !label.is_empty() {
+            staff_def.labelled.label = Some(label);
+        }
+
+        staff_grp
+            .children
+            .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+    }
 
     let mut score_def = ScoreDef::default();
     score_def
@@ -121,61 +338,140 @@ fn build_score_def() -> ScoreDef {
     score_def
 }
 
-/// Build a Section from LilyPond music.
+/// Build a label string for group context metadata.
 ///
-/// Simultaneous music (`<< { voice1 } { voice2 } >>`) maps to multiple
-/// layers on the same staff. Sequential music maps to a single layer.
-fn build_section(ly_music: &Music) -> Result<Section, ImportError> {
+/// Format: `lilypond:group,ContextType[,name=Name][,with={serialized}]`
+fn build_group_label(group: &GroupInfo) -> String {
+    let mut parts = vec![format!("lilypond:group,{}", group.context_type)];
+    if let Some(name) = &group.name {
+        parts.push(format!("name={name}"));
+    }
+    if let Some(with_items) = &group.with_block
+        && !with_items.is_empty()
+    {
+        let with_str = serialize_with_block(with_items);
+        parts.push(format!("with={with_str}"));
+    }
+    parts.join(",")
+}
+
+/// Build a label string for staff context metadata.
+///
+/// Format: `lilypond:staff,ContextType[,name=Name][,with={serialized}]`
+fn build_staff_label(staff: &StaffInfo<'_>) -> String {
+    let mut parts = vec![format!("lilypond:staff,{}", staff.context_type)];
+    if let Some(name) = &staff.name {
+        parts.push(format!("name={name}"));
+    }
+    if let Some(with_items) = &staff.with_block
+        && !with_items.is_empty()
+    {
+        let with_str = serialize_with_block(with_items);
+        parts.push(format!("with={with_str}"));
+    }
+    parts.join(",")
+}
+
+/// Serialize a \with { ... } block to a compact string for label storage.
+///
+/// Uses the LilyPond serializer to produce the block content.
+fn serialize_with_block(items: &[ContextModItem]) -> String {
+    // Create a minimal AST with a ContextedMusic to serialize the with block
+    let file = model::LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: "X".to_string(),
+            name: None,
+            with_block: Some(items.to_vec()),
+            music: Box::new(Music::Sequential(Vec::new())),
+        })],
+    };
+    let serialized = serializer::serialize(&file);
+    // Extract just the \with block content from the serialized output
+    // Format: "\new X \with {\n  ...\n} {\n}\n"
+    if let Some(start) = serialized.find("\\with {") {
+        let with_part = &serialized[start + 7..]; // skip "\with {"
+        if let Some(end) = find_matching_brace(with_part) {
+            return with_part[..end].trim().to_string();
+        }
+    }
+    String::new()
+}
+
+/// Find the position of the matching closing brace, handling nesting.
+fn find_matching_brace(s: &str) -> Option<usize> {
+    let mut depth = 1;
+    for (i, c) in s.char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+// ---------------------------------------------------------------------------
+// Section building from staff layout
+// ---------------------------------------------------------------------------
+
+/// Build a Section from analyzed staff layout.
+fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, ImportError> {
     let mut section = Section::default();
     let mut id_counter = 0u32;
-
-    // Determine voice structure: simultaneous top-level → multiple layers
-    let voices = extract_voices(ly_music);
-
-    let mut staff = Staff::default();
-    staff.n_integer.n = Some("1".to_string());
-
-    for (voice_idx, voice_music) in voices.iter().enumerate() {
-        let mut layer = Layer::default();
-        layer.n_integer.n = Some((voice_idx + 1).to_string());
-
-        let mut events = Vec::new();
-        for m in voice_music {
-            collect_events(m, &mut events);
-        }
-
-        for event in &events {
-            match event {
-                LyEvent::Note(note) => {
-                    id_counter += 1;
-                    let mei_note = convert_note(note, id_counter);
-                    layer.children.push(LayerChild::Note(Box::new(mei_note)));
-                }
-                LyEvent::Rest(rest) => {
-                    id_counter += 1;
-                    let mei_rest = convert_rest(rest, id_counter);
-                    layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
-                }
-                LyEvent::PitchedRest(note) => {
-                    id_counter += 1;
-                    let mei_rest = convert_pitched_rest(note, id_counter);
-                    layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
-                }
-                LyEvent::MeasureRest(rest) => {
-                    id_counter += 1;
-                    let mei_mrest = convert_mrest(rest, id_counter);
-                    layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
-                }
-                LyEvent::Skip(_) => {}
-            }
-        }
-
-        staff.children.push(StaffChild::Layer(Box::new(layer)));
-    }
-
     let mut measure = Measure::default();
     measure.common.n = Some(tusk_model::generated::data::DataWord("1".to_string()));
-    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+
+    for staff_info in &layout.staves {
+        let mut staff = Staff::default();
+        staff.n_integer.n = Some(staff_info.n.to_string());
+
+        for (voice_idx, voice_music) in staff_info.voices.iter().enumerate() {
+            let mut layer = Layer::default();
+            layer.n_integer.n = Some((voice_idx + 1).to_string());
+
+            let mut events = Vec::new();
+            for m in voice_music {
+                collect_events(m, &mut events);
+            }
+
+            for event in &events {
+                match event {
+                    LyEvent::Note(note) => {
+                        id_counter += 1;
+                        let mei_note = convert_note(note, id_counter);
+                        layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                    }
+                    LyEvent::Rest(rest) => {
+                        id_counter += 1;
+                        let mei_rest = convert_rest(rest, id_counter);
+                        layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                    }
+                    LyEvent::PitchedRest(note) => {
+                        id_counter += 1;
+                        let mei_rest = convert_pitched_rest(note, id_counter);
+                        layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                    }
+                    LyEvent::MeasureRest(rest) => {
+                        id_counter += 1;
+                        let mei_mrest = convert_mrest(rest, id_counter);
+                        layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
+                    }
+                    LyEvent::Skip(_) => {}
+                }
+            }
+
+            staff.children.push(StaffChild::Layer(Box::new(layer)));
+        }
+
+        measure.children.push(MeasureChild::Staff(Box::new(staff)));
+    }
 
     section
         .children
@@ -193,7 +489,7 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     match music {
         Music::Simultaneous(items) if items.len() > 1 => {
             // Check if children look like separate voice streams
-            // (each is a Sequential block or a single event)
+            // (each is a Sequential block or a single event, NOT \new Staff)
             let all_voice_like = items.iter().all(|item| {
                 matches!(
                     item,
@@ -203,7 +499,9 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
                         | Music::MultiMeasureRest(_)
                         | Music::Relative { .. }
                         | Music::Fixed { .. }
-                        | Music::ContextedMusic { .. }
+                ) || matches!(
+                    item,
+                    Music::ContextedMusic { context_type, .. } if !is_staff_context(context_type) && !is_staff_group_context(context_type)
                 )
             });
             if all_voice_like {
@@ -485,6 +783,61 @@ mod tests {
         None
     }
 
+    /// Walk MEI to find all staves in the first measure.
+    fn all_staves(mei: &Mei) -> Vec<&Staff> {
+        let mut staves = Vec::new();
+        for child in &mei.children {
+            if let MeiChild::Music(music) = child {
+                for mc in &music.children {
+                    let tusk_model::elements::MusicChild::Body(body) = mc;
+                    for bc in &body.children {
+                        let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                        for dc in &mdiv.children {
+                            let tusk_model::elements::MdivChild::Score(score) = dc;
+                            for sc in &score.children {
+                                if let ScoreChild::Section(section) = sc {
+                                    for sec_c in &section.children {
+                                        if let SectionChild::Measure(measure) = sec_c {
+                                            for mc2 in &measure.children {
+                                                if let MeasureChild::Staff(staff) = mc2 {
+                                                    staves.push(staff.as_ref());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        staves
+    }
+
+    /// Walk MEI to find the scoreDef.
+    fn find_score_def(mei: &Mei) -> Option<&ScoreDef> {
+        for child in &mei.children {
+            if let MeiChild::Music(music) = child {
+                for mc in &music.children {
+                    let tusk_model::elements::MusicChild::Body(body) = mc;
+                    for bc in &body.children {
+                        let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                        for dc in &mdiv.children {
+                            let tusk_model::elements::MdivChild::Score(score) = dc;
+                            for sc in &score.children {
+                                if let ScoreChild::ScoreDef(sd) = sc {
+                                    return Some(sd);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// Walk MEI to find layer children (first layer of first staff).
     fn layer_children(mei: &Mei) -> &[LayerChild] {
         if let Some(staff) = first_staff(mei)
@@ -692,5 +1045,113 @@ mod tests {
         // collect_events will flatten both voices into one layer since
         // extract_voices sees a Sequential at top level
         assert_eq!(layer_count(&mei), 1);
+    }
+
+    // --- Phase 5.2: Context import tests ---
+
+    #[test]
+    fn import_new_staff_creates_staff() {
+        let mei = parse_and_import("\\new Staff { c'4 d'4 }");
+        let staves = all_staves(&mei);
+        assert_eq!(staves.len(), 1);
+        assert_eq!(staves[0].n_integer.n.as_deref(), Some("1"));
+        // Should have one layer with 2 notes
+        assert_eq!(staves[0].children.len(), 1);
+    }
+
+    #[test]
+    fn import_staff_group_creates_multiple_staves() {
+        let mei = parse_and_import(
+            "\\new StaffGroup << \\new Staff { c'4 d'4 } \\new Staff { e'4 f'4 } >>",
+        );
+        let staves = all_staves(&mei);
+        assert_eq!(staves.len(), 2);
+        assert_eq!(staves[0].n_integer.n.as_deref(), Some("1"));
+        assert_eq!(staves[1].n_integer.n.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn import_staff_group_symbol() {
+        let mei =
+            parse_and_import("\\new StaffGroup << \\new Staff { c'4 } \\new Staff { e'4 } >>");
+        let sd = find_score_def(&mei).unwrap();
+        let sg = &sd.children[0];
+        if let ScoreDefChild::StaffGrp(grp) = sg {
+            assert_eq!(grp.staff_grp_vis.symbol.as_deref(), Some("bracket"));
+        } else {
+            panic!("expected StaffGrp");
+        }
+    }
+
+    #[test]
+    fn import_piano_staff_symbol() {
+        let mei =
+            parse_and_import("\\new PianoStaff << \\new Staff { c'4 } \\new Staff { e'4 } >>");
+        let sd = find_score_def(&mei).unwrap();
+        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
+            assert_eq!(grp.staff_grp_vis.symbol.as_deref(), Some("brace"));
+        } else {
+            panic!("expected StaffGrp");
+        }
+    }
+
+    #[test]
+    fn import_named_staff_label() {
+        let mei = parse_and_import("\\new Staff = \"violin\" { c'4 }");
+        let sd = find_score_def(&mei).unwrap();
+        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
+            if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
+                let label = sdef.labelled.label.as_deref().unwrap();
+                assert!(label.contains("name=violin"), "label: {label}");
+            } else {
+                panic!("expected StaffDef");
+            }
+        }
+    }
+
+    #[test]
+    fn import_group_label() {
+        let mei = parse_and_import("\\new StaffGroup = \"orch\" << \\new Staff { c'4 } >>");
+        let sd = find_score_def(&mei).unwrap();
+        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
+            let label = grp.common.label.as_deref().unwrap();
+            assert!(
+                label.contains("lilypond:group,StaffGroup"),
+                "label: {label}"
+            );
+            assert!(label.contains("name=orch"), "label: {label}");
+        }
+    }
+
+    #[test]
+    fn import_staff_count_from_fixture() {
+        let src = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/fixtures/lilypond/fragment_contexts.ly"
+        ))
+        .unwrap();
+        let mei = parse_and_import(&src);
+        let staves = all_staves(&mei);
+        assert_eq!(staves.len(), 2, "fragment_contexts.ly should have 2 staves");
+    }
+
+    #[test]
+    fn import_staff_with_block_label() {
+        let mei = parse_and_import(
+            "\\new Staff \\with { \\consists \"Span_arpeggio_engraver\" } { c'4 }",
+        );
+        let sd = find_score_def(&mei).unwrap();
+        if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
+            if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
+                let label = sdef.labelled.label.as_deref().unwrap();
+                assert!(
+                    label.contains("with="),
+                    "label should contain with block: {label}"
+                );
+                assert!(label.contains("Span_arpeggio_engraver"), "label: {label}");
+            } else {
+                panic!("expected StaffDef");
+            }
+        }
     }
 }
