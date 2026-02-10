@@ -7,6 +7,7 @@ mod events;
 pub(crate) mod lyrics;
 mod output_defs;
 pub(crate) mod signatures;
+pub(crate) mod variables;
 
 #[cfg(test)]
 mod tests;
@@ -24,6 +25,8 @@ mod tests_output_defs;
 mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
+#[cfg(test)]
+mod tests_variables;
 
 use thiserror::Error;
 use tusk_model::elements::{
@@ -34,7 +37,8 @@ use tusk_model::elements::{
 use tusk_model::generated::data::{DataTie, DataWord};
 
 use crate::model::{
-    self, ContextKeyword, ContextModItem, Music, PostEvent, ScoreItem, ToplevelExpression,
+    self, Assignment, ContextKeyword, ContextModItem, Music, PostEvent, ScoreItem,
+    ToplevelExpression,
 };
 use crate::serializer;
 
@@ -62,7 +66,13 @@ pub enum ImportError {
 
 /// Convert a parsed LilyPond AST to an MEI document.
 pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
-    let music = find_music(file).ok_or(ImportError::NoMusic)?;
+    // Collect top-level assignments for variable resolution
+    let assignments = collect_assignments(file);
+    let var_map = build_variable_map(&assignments);
+
+    // Find music, resolving identifier references through variable map
+    let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
+    let music = resolve_identifiers(raw_music, &var_map);
 
     let mut mei = Mei::default();
     mei.mei_version.meiversion = Some("6.0-dev".to_string());
@@ -72,7 +82,7 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
     // Music -> Body -> Mdiv -> Score
-    let mei_music = build_music(music, file)?;
+    let mei_music = build_music_owned(music, file, &assignments)?;
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
     Ok(mei)
@@ -96,15 +106,20 @@ fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
     None
 }
 
-/// Build MEI Music -> Body -> Mdiv -> Score from LilyPond music.
-fn build_music(
-    ly_music: &Music,
+use variables::{
+    build_assignments_label, build_variable_map, collect_assignments, resolve_identifiers,
+};
+
+/// Build MEI Music from an owned (identifier-resolved) LilyPond music tree.
+fn build_music_owned(
+    ly_music: Music,
     file: &model::LilyPondFile,
+    assignments: &[Assignment],
 ) -> Result<tusk_model::elements::Music, ImportError> {
     let mut score = Score::default();
 
     // Analyze context structure to determine staves
-    let staff_infos = analyze_staves(ly_music);
+    let staff_infos = analyze_staves(&ly_music);
 
     // Build ScoreDef with staffDef(s)
     let mut score_def = build_score_def_from_staves(&staff_infos);
@@ -112,13 +127,13 @@ fn build_music(
     // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
     let score_blocks_label = output_defs::build_score_blocks_label(file);
     if !score_blocks_label.is_empty() {
-        match &mut score_def.common.label {
-            Some(existing) => {
-                existing.push('|');
-                existing.push_str(&score_blocks_label);
-            }
-            None => score_def.common.label = Some(score_blocks_label),
-        }
+        append_label(&mut score_def.common.label, &score_blocks_label);
+    }
+
+    // Store top-level assignments in ScoreDef label for roundtrip
+    let vars_label = build_assignments_label(assignments);
+    if !vars_label.is_empty() {
+        append_label(&mut score_def.common.label, &vars_label);
     }
 
     score
@@ -141,6 +156,17 @@ fn build_music(
         .push(tusk_model::elements::MusicChild::Body(Box::new(body)));
 
     Ok(music)
+}
+
+/// Append a label segment to an existing label, using `|` separator.
+fn append_label(label: &mut Option<String>, segment: &str) {
+    match label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(segment);
+        }
+        None => *label = Some(segment.to_string()),
+    }
 }
 
 // ---------------------------------------------------------------------------

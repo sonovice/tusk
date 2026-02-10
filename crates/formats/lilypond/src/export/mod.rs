@@ -23,6 +23,8 @@ mod tests_output_defs;
 mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
+#[cfg(test)]
+mod tests_variables;
 
 use std::collections::HashMap;
 use thiserror::Error;
@@ -178,8 +180,14 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
 
     let score_block = ScoreBlock { items: score_items };
 
-    // Build top-level items: header, paper, layout, midi, then score
+    // Build top-level items: assignments, header, paper, layout, midi, then score
     let mut items = Vec::new();
+
+    // Extract stored variable assignments from scoreDef label
+    let assignments = extract_assignments(score);
+    for a in assignments {
+        items.push(ToplevelExpression::Assignment(a));
+    }
 
     // Extract top-level blocks from MeiHead ExtMeta
     let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
@@ -204,6 +212,27 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }),
         items,
     })
+}
+
+/// Extract stored variable assignments from scoreDef label.
+///
+/// Looks for `lilypond:vars,...` segments in the scoreDef's `@label` attribute
+/// and parses them back into `Assignment` items.
+fn extract_assignments(score: &tusk_model::elements::Score) -> Vec<crate::model::Assignment> {
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child
+            && let Some(label) = &score_def.common.label
+        {
+            for segment in label.split('|') {
+                if let Some(assignments) =
+                    crate::import::variables::parse_assignments_label(segment)
+                {
+                    return assignments;
+                }
+            }
+        }
+    }
+    Vec::new()
 }
 
 /// Extract lyrics export info from all staffDef labels.

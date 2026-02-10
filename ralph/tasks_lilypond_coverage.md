@@ -1201,10 +1201,16 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 28.2 Import & Export
 
-- [ ] [I] Inline expanded music for MEI; optionally preserve variable names in label for roundtrip
-- [ ] [E] MEI → LilyPond; optional variable extraction for repeated blocks
-- [ ] [T] Roundtrip score with variables
-- [ ] [T] Variable and assignment fixtures; roundtrip
+- [x] [I] Inline expanded music for MEI; optionally preserve variable names in label for roundtrip
+  - `variables.rs` submodule: `collect_assignments()`, `build_variable_map()`, `resolve_identifiers()` (recursive tree walk), `build_assignments_label()` (serialized→escaped→label)
+  - Import resolves `Music::Identifier` references via variable map before `analyze_staves`; stores original assignments in scoreDef `@label` as `lilypond:vars,{escaped}`
+- [x] [E] MEI → LilyPond; optional variable extraction for repeated blocks
+  - `extract_assignments()` in export reads `lilypond:vars,` label segment, `parse_assignments_label()` re-parses serialized text back to `Assignment` items
+  - Assignments emitted as `ToplevelExpression::Assignment` before score block
+- [x] [T] Roundtrip score with variables
+  - 8 import tests: variable expansion, transitive refs, label storage, fixture
+- [x] [T] Variable and assignment fixtures; roundtrip
+  - 9 export/roundtrip tests: music/string/number/identifier assignment roundtrip, ordering, fixture
 
 ---
 

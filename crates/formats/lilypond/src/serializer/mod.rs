@@ -129,6 +129,14 @@ pub fn serialize_midi_block(mb: &MidiBlock) -> String {
     out
 }
 
+/// Serialize an assignment to a string (e.g. `melody = { c4 d e f }`).
+pub fn serialize_assignment(a: &Assignment) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_assignment(a);
+    out
+}
+
 /// Serialize a tweak post-event to a string (e.g. `\tweak color #red`).
 pub fn serialize_tweak(path: &property::PropertyPath, value: &property::PropertyValue) -> String {
     let mut out = String::new();
