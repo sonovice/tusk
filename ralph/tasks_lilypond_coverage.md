@@ -428,11 +428,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 10.1 Model & Parser
 
-- [ ] [P] Parse beam start/end `[` and `]` (as event identifiers or post-events); parse `\autoBeamOn`, `\autoBeamOff`
-- [ ] [P] Add `BeamEvent`, auto-beam setting in context
-- [ ] [S] Serialize explicit beams and auto-beam commands
-- [ ] [V] Beam brackets balanced
-- [ ] [T] Fragment: `c8[ d e f]`, `\autoBeamOff c8 d e f`
+- [x] [P] Parse beam start/end `[` and `]` (as event identifiers or post-events); parse `\autoBeamOn`, `\autoBeamOff`
+  - BracketOpen/BracketClose → PostEvent::BeamStart/BeamEnd in parse_post_events()
+  - \autoBeamOn/\autoBeamOff → Music::AutoBeamOn/AutoBeamOff in parse_music()
+- [x] [P] Add `BeamEvent`, auto-beam setting in context
+  - BeamStart/BeamEnd variants on PostEvent enum; AutoBeamOn/AutoBeamOff on Music enum
+  - Split parser/mod.rs (2758→1389 LOC) by extracting tests to parser/tests.rs
+- [x] [S] Serialize explicit beams and auto-beam commands
+  - write_post_events: BeamStart→`[`, BeamEnd→`]`; write_music: AutoBeamOn/Off
+- [x] [V] Beam brackets balanced
+  - Refactored slur validation to SpanCounts struct; added UnmatchedBeam error
+- [x] [T] Fragment: `c8[ d e f]`, `\autoBeamOff c8 d e f`
+  - fragment_beams.ly fixture; 8 parser tests + 3 validator tests; 313 total pass
 
 ### 10.2 Import & Export
 

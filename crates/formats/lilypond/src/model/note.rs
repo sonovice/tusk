@@ -23,6 +23,10 @@ pub enum PostEvent {
     PhrasingSlurStart,
     /// Phrasing slur end: `\)`
     PhrasingSlurEnd,
+    /// Beam start: `[`
+    BeamStart,
+    /// Beam end: `]`
+    BeamEnd,
 }
 
 /// A note event: pitch + optional duration + post-events.

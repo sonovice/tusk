@@ -256,6 +256,10 @@ pub enum Music {
     KeySignature(KeySignature),
     /// `\time n/m` — set the time signature.
     TimeSignature(TimeSignature),
+    /// `\autoBeamOn` — enable automatic beaming.
+    AutoBeamOn,
+    /// `\autoBeamOff` — disable automatic beaming.
+    AutoBeamOff,
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

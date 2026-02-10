@@ -52,6 +52,9 @@ pub enum ValidationError {
     #[error("unmatched phrasing slur: {0} open, {1} close")]
     UnmatchedPhrasingSlur(usize, usize),
 
+    #[error("unmatched beam: {0} open, {1} close")]
+    UnmatchedBeam(usize, usize),
+
     #[error("{0}")]
     Other(String),
 }
@@ -119,7 +122,7 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
         ToplevelExpression::Assignment(_) => {}
         ToplevelExpression::Music(m) => {
             validate_music(m, errors);
-            validate_slur_balance(m, errors);
+            validate_span_balance(m, errors);
         }
     }
 }
@@ -135,7 +138,7 @@ fn validate_score(sb: &ScoreBlock, errors: &mut Vec<ValidationError>) {
         match item {
             ScoreItem::Music(m) => {
                 validate_music(m, errors);
-                validate_slur_balance(m, errors);
+                validate_span_balance(m, errors);
             }
             ScoreItem::Header(hb) => validate_header(hb, errors),
             ScoreItem::Layout(_) | ScoreItem::Midi(_) => {}
@@ -176,91 +179,88 @@ fn validate_post_events(events: &[note::PostEvent], _errors: &mut Vec<Validation
     let _ = events;
 }
 
-fn count_slurs(
-    m: &Music,
-    slur_opens: &mut usize,
-    slur_closes: &mut usize,
-    phr_opens: &mut usize,
-    phr_closes: &mut usize,
-) {
-    let check_post = |events: &[note::PostEvent],
-                      so: &mut usize,
-                      sc: &mut usize,
-                      po: &mut usize,
-                      pc: &mut usize| {
+/// Counters for paired post-events (slurs, phrasing slurs, beams).
+struct SpanCounts {
+    slur_opens: usize,
+    slur_closes: usize,
+    phr_opens: usize,
+    phr_closes: usize,
+    beam_opens: usize,
+    beam_closes: usize,
+}
+
+impl SpanCounts {
+    fn new() -> Self {
+        Self {
+            slur_opens: 0,
+            slur_closes: 0,
+            phr_opens: 0,
+            phr_closes: 0,
+            beam_opens: 0,
+            beam_closes: 0,
+        }
+    }
+
+    fn count_post_events(&mut self, events: &[note::PostEvent]) {
         for ev in events {
             match ev {
-                note::PostEvent::SlurStart => *so += 1,
-                note::PostEvent::SlurEnd => *sc += 1,
-                note::PostEvent::PhrasingSlurStart => *po += 1,
-                note::PostEvent::PhrasingSlurEnd => *pc += 1,
+                note::PostEvent::SlurStart => self.slur_opens += 1,
+                note::PostEvent::SlurEnd => self.slur_closes += 1,
+                note::PostEvent::PhrasingSlurStart => self.phr_opens += 1,
+                note::PostEvent::PhrasingSlurEnd => self.phr_closes += 1,
+                note::PostEvent::BeamStart => self.beam_opens += 1,
+                note::PostEvent::BeamEnd => self.beam_closes += 1,
                 note::PostEvent::Tie => {}
             }
         }
-    };
+    }
+}
 
+fn count_spans(m: &Music, counts: &mut SpanCounts) {
     match m {
-        Music::Note(n) => check_post(
-            &n.post_events,
-            slur_opens,
-            slur_closes,
-            phr_opens,
-            phr_closes,
-        ),
-        Music::Chord(c) => check_post(
-            &c.post_events,
-            slur_opens,
-            slur_closes,
-            phr_opens,
-            phr_closes,
-        ),
-        Music::Rest(r) => check_post(
-            &r.post_events,
-            slur_opens,
-            slur_closes,
-            phr_opens,
-            phr_closes,
-        ),
-        Music::Skip(s) => check_post(
-            &s.post_events,
-            slur_opens,
-            slur_closes,
-            phr_opens,
-            phr_closes,
-        ),
-        Music::MultiMeasureRest(r) => check_post(
-            &r.post_events,
-            slur_opens,
-            slur_closes,
-            phr_opens,
-            phr_closes,
-        ),
+        Music::Note(n) => counts.count_post_events(&n.post_events),
+        Music::Chord(c) => counts.count_post_events(&c.post_events),
+        Music::Rest(r) => counts.count_post_events(&r.post_events),
+        Music::Skip(s) => counts.count_post_events(&s.post_events),
+        Music::MultiMeasureRest(r) => counts.count_post_events(&r.post_events),
         Music::Sequential(items) | Music::Simultaneous(items) => {
             for item in items {
-                count_slurs(item, slur_opens, slur_closes, phr_opens, phr_closes);
+                count_spans(item, counts);
             }
         }
         Music::Relative { body, .. } | Music::Fixed { body, .. } => {
-            count_slurs(body, slur_opens, slur_closes, phr_opens, phr_closes);
+            count_spans(body, counts);
         }
         Music::Transpose { body, .. } => {
-            count_slurs(body, slur_opens, slur_closes, phr_opens, phr_closes);
+            count_spans(body, counts);
         }
         Music::ContextedMusic { music, .. } => {
-            count_slurs(music, slur_opens, slur_closes, phr_opens, phr_closes);
+            count_spans(music, counts);
         }
         _ => {}
     }
 }
 
-fn validate_slur_balance(m: &Music, errors: &mut Vec<ValidationError>) {
-    let (mut so, mut sc, mut po, mut pc) = (0, 0, 0, 0);
-    count_slurs(m, &mut so, &mut sc, &mut po, &mut pc);
-    if so != sc {
-        errors.push(ValidationError::UnmatchedSlur(so, sc));
+fn validate_span_balance(m: &Music, errors: &mut Vec<ValidationError>) {
+    let mut counts = SpanCounts::new();
+    count_spans(m, &mut counts);
+    if counts.slur_opens != counts.slur_closes {
+        errors.push(ValidationError::UnmatchedSlur(
+            counts.slur_opens,
+            counts.slur_closes,
+        ));
     }
-    if po != pc {
-        errors.push(ValidationError::UnmatchedPhrasingSlur(po, pc));
+    if counts.phr_opens != counts.phr_closes {
+        errors.push(ValidationError::UnmatchedPhrasingSlur(
+            counts.phr_opens,
+            counts.phr_closes,
+        ));
+    }
+    if counts.beam_opens != counts.beam_closes {
+        errors.push(ValidationError::UnmatchedBeam(
+            counts.beam_opens,
+            counts.beam_closes,
+        ));
     }
 }
 
@@ -361,6 +361,7 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             }
             validate_post_events(&r.post_events, errors);
         }
+        Music::AutoBeamOn | Music::AutoBeamOff => {}
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }
@@ -974,5 +975,52 @@ mod tests {
             ]))],
         };
         assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 10 validator tests ────────────────────────────────────
+
+    #[test]
+    fn balanced_beams_pass() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::BeamStart]),
+                make_note(vec![]),
+                make_note(vec![PostEvent::BeamEnd]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn unmatched_beam_start_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::BeamStart]),
+                make_note(vec![]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedBeam(1, 0)))
+        );
+    }
+
+    #[test]
+    fn unmatched_beam_end_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![]),
+                make_note(vec![PostEvent::BeamEnd]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedBeam(0, 1)))
+        );
     }
 }

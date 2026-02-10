@@ -405,6 +405,8 @@ impl<'a> Serializer<'a> {
             Music::Clef(c) => self.write_clef(c),
             Music::KeySignature(ks) => self.write_key_signature(ks),
             Music::TimeSignature(ts) => self.write_time_signature(ts),
+            Music::AutoBeamOn => self.out.push_str("\\autoBeamOn"),
+            Music::AutoBeamOff => self.out.push_str("\\autoBeamOff"),
             Music::Note(n) => self.write_note_event(n),
             Music::Chord(c) => self.write_chord_event(c),
             Music::Rest(r) => self.write_rest_event(r),
@@ -510,6 +512,8 @@ impl<'a> Serializer<'a> {
                 PostEvent::SlurEnd => self.out.push(')'),
                 PostEvent::PhrasingSlurStart => self.out.push_str("\\("),
                 PostEvent::PhrasingSlurEnd => self.out.push_str("\\)"),
+                PostEvent::BeamStart => self.out.push('['),
+                PostEvent::BeamEnd => self.out.push(']'),
             }
         }
     }

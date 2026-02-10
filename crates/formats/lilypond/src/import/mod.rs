@@ -678,6 +678,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             }
                         }
                         PostEvent::Tie => {} // handled above
+                        PostEvent::BeamStart | PostEvent::BeamEnd => {
+                            // Beams handled at export; not represented as MEI control events
+                        }
                     }
                 }
             }
@@ -870,6 +873,9 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         Music::Clef(c) => events.push(LyEvent::Clef(c.clone())),
         Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks.clone())),
         Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts.clone())),
+        Music::AutoBeamOn | Music::AutoBeamOff => {
+            // Auto-beam commands don't produce note events; handled at export
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }
