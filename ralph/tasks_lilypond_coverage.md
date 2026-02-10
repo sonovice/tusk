@@ -919,10 +919,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 21.2 Import & Export
 
-- [ ] [I] Markup → MEI text/dir or annot with label for roundtrip
-- [ ] [E] MEI text/dir → LilyPond \markup where applicable
-- [ ] [T] Roundtrip markup fixtures
-- [ ] [T] Markup fixtures; roundtrip
+- [x] [I] Markup → MEI text/dir or annot with label for roundtrip
+  - Music::Markup serialized via `serialize_markup()` and stored in staffDef event sequence label as `markup:{escaped}@POS`
+  - Music::MarkupList serialized via `serialize_markuplist()` and stored as `markuplist:{escaped}@POS`
+  - Percent-encoding for label-unsafe chars (`|`→`%7C`, `@`→`%40`, `;`→`%3B`, `%`→`%25`)
+  - Markup does not create layer children (handled purely via label roundtrip)
+  - Extracted events.rs submodule from import/mod.rs (was 1502 LOC, now 1170 + 355)
+- [x] [E] MEI text/dir → LilyPond \markup where applicable
+  - `markup:` and `markuplist:` entries in event sequence label parsed back via `parse_markup_from_label()` / `parse_markuplist_from_label()`
+  - Re-parses serialized string through full LilyPond parser for lossless AST reconstruction
+  - Injected at correct position via `inject_signature_events()` mechanism
+  - Extracted export/tests_markup.rs to keep tests.rs under 1500 LOC
+- [x] [T] Roundtrip markup fixtures
+  - 8 roundtrip tests: simple, bold, nested commands, column, at-start, markuplist, multiple, fixture
+  - 3 lyrics roundtrip tests moved to tests_markup.rs
+- [x] [T] Markup fixtures; roundtrip
+  - 5 import tests: encoded in label, no layer children, markuplist encoded, position correct, command preserved
+  - 752 total tests pass (was 693)
 
 ---
 

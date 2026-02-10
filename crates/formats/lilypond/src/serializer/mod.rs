@@ -17,6 +17,22 @@ pub fn serialize(file: &LilyPondFile) -> String {
     out
 }
 
+/// Serialize a single `\markup` expression to a string (without leading `\markup`).
+pub fn serialize_markup(m: &markup::Markup) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_markup(m);
+    out
+}
+
+/// Serialize a `\markuplist` expression's items to a string (without leading `\markuplist`).
+pub fn serialize_markuplist(ml: &markup::MarkupList) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_markup_list(ml);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,

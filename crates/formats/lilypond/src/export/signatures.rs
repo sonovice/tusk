@@ -113,6 +113,22 @@ fn parse_event_sequence_label(staff_def: &tusk_model::elements::StaffDef) -> Vec
                 position,
                 music: Music::BarLine { bar_type },
             });
+        } else if let Some(markup_str) = type_str.strip_prefix("markup:") {
+            let unescaped = crate::import::signatures::unescape_label_value(markup_str);
+            if let Some(m) = parse_markup_from_label(&unescaped) {
+                events.push(SignatureEvent {
+                    position,
+                    music: Music::Markup(m),
+                });
+            }
+        } else if let Some(markuplist_str) = type_str.strip_prefix("markuplist:") {
+            let unescaped = crate::import::signatures::unescape_label_value(markuplist_str);
+            if let Some(ml) = parse_markuplist_from_label(&unescaped) {
+                events.push(SignatureEvent {
+                    position,
+                    music: Music::MarkupList(ml),
+                });
+            }
         }
     }
 
@@ -255,4 +271,34 @@ pub(super) fn inject_signature_events(layers: &mut [Vec<Music>], events: &[Signa
         new_items.extend(to_insert);
     }
     *layer = new_items;
+}
+
+/// Re-parse a serialized markup string back into a `Markup` AST node.
+///
+/// The string is the serialized form produced by `serialize_markup()` — i.e.
+/// the content after `\markup`, not including the keyword itself.
+fn parse_markup_from_label(s: &str) -> Option<crate::model::markup::Markup> {
+    use crate::parser::Parser;
+    // Wrap in a form the parser can handle
+    let src = format!("\\markup {s}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Markup(m) = item {
+            return Some(m.clone());
+        }
+    }
+    None
+}
+
+/// Re-parse a serialized markuplist string back into a `MarkupList` AST node.
+fn parse_markuplist_from_label(s: &str) -> Option<crate::model::markup::MarkupList> {
+    use crate::parser::Parser;
+    let src = format!("\\markuplist {s}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::MarkupList(ml) = item {
+            return Some(ml.clone());
+        }
+    }
+    None
 }

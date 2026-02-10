@@ -1092,3 +1092,108 @@ fn import_chord_repetition_with_dynamics() {
     }
     assert_eq!(dynam_count, 2, "expected 2 dynam control events");
 }
+
+// ---------------------------------------------------------------------------
+// Markup import tests
+// ---------------------------------------------------------------------------
+
+/// Helper: find the first staffDef from MEI.
+fn first_staff_def_ctrl(mei: &Mei) -> Option<&tusk_model::elements::StaffDef> {
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::ScoreDef(score_def) = sc {
+                                for sd_child in &score_def.children {
+                                    if let tusk_model::elements::ScoreDefChild::StaffGrp(grp) =
+                                        sd_child
+                                    {
+                                        for gc in &grp.children {
+                                            if let tusk_model::elements::StaffGrpChild::StaffDef(
+                                                sdef,
+                                            ) = gc
+                                            {
+                                                return Some(sdef);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn import_markup_encoded_in_label() {
+    let mei = parse_and_import(r#"{ c'4 \markup { Hello } d'4 }"#);
+    let sdef = first_staff_def_ctrl(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap();
+    assert!(
+        label.contains("lilypond:events,"),
+        "should have events label: {label}"
+    );
+    assert!(
+        label.contains("markup:"),
+        "should contain markup entry: {label}"
+    );
+}
+
+#[test]
+fn import_markup_does_not_create_layer_children() {
+    let mei = parse_and_import(r#"{ c'4 \markup \bold "text" d'4 }"#);
+    let children = layer_children(&mei);
+    // Only 2 notes, no markup child
+    assert_eq!(
+        children.len(),
+        2,
+        "should have 2 layer children, got {}",
+        children.len()
+    );
+}
+
+#[test]
+fn import_markuplist_encoded_in_label() {
+    let mei = parse_and_import(r#"{ c'4 \markuplist { "one" "two" } d'4 }"#);
+    let sdef = first_staff_def_ctrl(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap();
+    assert!(
+        label.contains("markuplist:"),
+        "should contain markuplist entry: {label}"
+    );
+}
+
+#[test]
+fn import_markup_position_correct() {
+    // Markup between notes at position 1 (after first note)
+    let mei = parse_and_import(r#"{ c'4 \markup "between" d'4 }"#);
+    let sdef = first_staff_def_ctrl(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap();
+    // After first note (index 1), markup should be at @1
+    assert!(
+        label.contains("markup:\"between\"@1"),
+        "markup at position 1: {label}"
+    );
+}
+
+#[test]
+fn import_markup_with_command() {
+    let mei = parse_and_import(r#"{ c'4 \markup \bold \italic "styled" d'4 }"#);
+    let sdef = first_staff_def_ctrl(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap();
+    assert!(
+        label.contains("markup:"),
+        "should contain markup entry: {label}"
+    );
+    // Serialized form should contain \bold and \italic
+    assert!(label.contains("\\bold"), "should contain bold: {label}");
+}

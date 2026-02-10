@@ -75,6 +75,14 @@ pub(super) fn apply_signatures_to_staff_def(
                 let escaped = bar_type.replace('|', "\\u007c");
                 entries.push(format!("barline:{}@{note_index}", escaped));
             }
+            LyEvent::Markup(serialized) => {
+                let escaped = escape_label_value(serialized);
+                entries.push(format!("markup:{}@{note_index}", escaped));
+            }
+            LyEvent::MarkupList(serialized) => {
+                let escaped = escape_label_value(serialized);
+                entries.push(format!("markuplist:{}@{note_index}", escaped));
+            }
             LyEvent::Note(_)
             | LyEvent::Chord { .. }
             | LyEvent::Rest(_)
@@ -283,4 +291,31 @@ fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
         -7 => ('c', -1.0), // Cb
         _ => ('c', 0.0),
     }
+}
+
+/// Escape a string for safe inclusion in the label event sequence.
+///
+/// Characters that conflict with the label format (`|`, `@`, `;`) are
+/// percent-encoded to `%7C`, `%40`, `%3B` respectively. `%` itself is
+/// encoded as `%25` to make the encoding reversible.
+fn escape_label_value(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '%' => out.push_str("%25"),
+            '|' => out.push_str("%7C"),
+            '@' => out.push_str("%40"),
+            ';' => out.push_str("%3B"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// Reverse the percent-encoding applied by `escape_label_value`.
+pub(crate) fn unescape_label_value(s: &str) -> String {
+    s.replace("%7C", "|")
+        .replace("%40", "@")
+        .replace("%3B", ";")
+        .replace("%25", "%")
 }

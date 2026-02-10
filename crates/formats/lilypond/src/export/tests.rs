@@ -1378,18 +1378,3 @@ fn roundtrip_lyricsto() {
     assert!(output.contains("do"), "do: {output}");
     assert!(output.contains("re"), "re: {output}");
 }
-
-#[test]
-fn roundtrip_lyrics_fixture() {
-    let src = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../tests/fixtures/lilypond/fragment_lyrics.ly"
-    ))
-    .unwrap();
-    let output = roundtrip(&src);
-    // Should contain lyric text
-    assert!(output.contains("do"), "lyric 'do': {output}");
-    assert!(output.contains("re"), "lyric 're': {output}");
-    assert!(output.contains("mi"), "lyric 'mi': {output}");
-    assert!(output.contains("fa"), "lyric 'fa': {output}");
-}

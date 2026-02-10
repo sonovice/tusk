@@ -8,6 +8,8 @@ mod signatures;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_markup;
 
 use std::collections::HashMap;
 use thiserror::Error;
