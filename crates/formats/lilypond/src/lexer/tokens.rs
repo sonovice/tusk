@@ -174,6 +174,10 @@ pub enum Token {
     /// Stored without the leading backslash.
     EscapedWord(String),
 
+    /// An escaped digit, e.g. `\1`, `\2` — used for string numbers.
+    /// Stored as the numeric value (0–9).
+    EscapedUnsigned(u64),
+
     // ── Note names ───────────────────────────────────────────────────
     /// A note name like `c`, `d`, `eis`, `bes`, `fisis`, etc.
     /// Stored as the raw name string (e.g. `"cis"`, `"bes"`).

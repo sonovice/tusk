@@ -1192,6 +1192,20 @@ mod tests {
         assert!(validate(&file).is_ok());
     }
 
+    #[test]
+    fn valid_string_number_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::StringNumber {
+                    direction: Direction::Neutral,
+                    number: 1,
+                }]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
     // ── Phase 13 validator tests ──────────────────────────────────
 
     #[test]

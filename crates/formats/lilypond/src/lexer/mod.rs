@@ -355,6 +355,15 @@ impl<'src> Lexer<'src> {
                     Span::new(start, self.pos),
                 ))
             }
+            // Escaped digit → string number (e.g. \1, \2)
+            b'0'..=b'9' => {
+                let digit = (b - b'0') as u64;
+                self.pos += 1;
+                Ok(SpannedToken::new(
+                    Token::EscapedUnsigned(digit),
+                    Span::new(start, self.pos),
+                ))
+            }
             // Escaped word (keyword or identifier)
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let word_start = self.pos;
@@ -594,6 +603,21 @@ mod tests {
     fn escaped_word_not_keyword() {
         let toks = tokens("\\major").unwrap();
         assert_eq!(toks, vec![Token::EscapedWord("major".into()), Token::Eof]);
+    }
+
+    #[test]
+    fn escaped_digit_string_number() {
+        let toks = tokens("\\1").unwrap();
+        assert_eq!(toks, vec![Token::EscapedUnsigned(1), Token::Eof]);
+    }
+
+    #[test]
+    fn escaped_digits_all() {
+        for d in 0..=9u64 {
+            let input = format!("\\{d}");
+            let toks = tokens(&input).unwrap();
+            assert_eq!(toks, vec![Token::EscapedUnsigned(d), Token::Eof]);
+        }
     }
 
     // ── Note names ───────────────────────────────────────────────────

@@ -886,6 +886,15 @@ impl<'src> Parser<'src> {
                         name: s,
                     });
                 }
+                // Undirected string number: \1, \2, etc.
+                Token::EscapedUnsigned(n) if *n <= 9 => {
+                    let number = *n as u8;
+                    let _ = self.advance();
+                    events.push(PostEvent::StringNumber {
+                        direction: note::Direction::Neutral,
+                        number,
+                    });
+                }
                 // Direction prefixes: -, ^, _ followed by script/fingering/articulation
                 Token::Dash | Token::Caret | Token::Underscore => {
                     if let Some(ev) = self.try_parse_directed_post_event() {
@@ -980,8 +989,12 @@ impl<'src> Parser<'src> {
                 let _ = self.advance();
                 Some(PostEvent::NamedArticulation { direction, name })
             }
-            // String number after \N escape — handled as EscapedWord above
-            // if it's a string_number_event; for now treat as named articulation
+            // String number: \1, \2, etc.
+            Token::EscapedUnsigned(n) if *n <= 9 => {
+                let number = *n as u8;
+                let _ = self.advance();
+                Some(PostEvent::StringNumber { direction, number })
+            }
             _ => {
                 // Not a valid post-event after direction — backtrack
                 self.current = saved;

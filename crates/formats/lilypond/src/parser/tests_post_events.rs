@@ -1088,3 +1088,177 @@ fn roundtrip_ornaments() {
 fn roundtrip_fragment_ornaments_tremolo() {
     roundtrip_fixture("fragment_ornaments_tremolo.ly");
 }
+
+// ── Phase 14 (technical notations: string numbers, open, harmonic) ──
+
+#[test]
+fn parse_string_number_neutral() {
+    let ast = parse("{ c4-\\1 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::StringNumber {
+                        direction: Direction::Neutral,
+                        number: 1,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_string_number_up() {
+    let ast = parse("{ c4^\\2 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::StringNumber {
+                        direction: Direction::Up,
+                        number: 2,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_string_number_down() {
+    let ast = parse("{ c4_\\3 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::StringNumber {
+                        direction: Direction::Down,
+                        number: 3,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_string_number_undirected() {
+    // \1 without direction prefix
+    let ast = parse("{ c4\\1 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::StringNumber {
+                        direction: Direction::Neutral,
+                        number: 1,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_open_string() {
+    let ast = parse("{ c4\\open }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "open".into(),
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_harmonic() {
+    let ast = parse("{ c4\\harmonic }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "harmonic".into(),
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_string_number_with_open() {
+    let ast = parse("{ c4-\\1 -\\open }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events.len(), 2);
+                assert_eq!(
+                    n.post_events[0],
+                    PostEvent::StringNumber {
+                        direction: Direction::Neutral,
+                        number: 1,
+                    }
+                );
+                assert_eq!(
+                    n.post_events[1],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "open".into(),
+                    }
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_string_numbers() {
+    let input = "{ c4-\\1 d4-\\2 e4^\\3 f4_\\4 }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_technical_notations() {
+    let input = "{ c4\\open d4\\harmonic e4\\upbow f4\\downbow g4\\flageolet }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_technical() {
+    roundtrip_fixture("fragment_technical.ly");
+}

@@ -176,6 +176,7 @@ pub const KNOWN_ORNAMENTS: &[&str] = &[
     // Harmonics
     "flageolet",
     "open",
+    "harmonic",
     // Articulation scripts
     "espressivo",
     "staccatissimo",

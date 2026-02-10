@@ -594,11 +594,28 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 14.1 Model & Parser
 
-- [ ] [P] Parse full fingering/string number syntax; other technical events (e.g. `\downbow`, `\upbow`, `\open`, `\harmonic`) as music/event functions
-- [ ] [P] Add or extend technical event types in expression model
-- [ ] [S] Serialize technical notations
-- [ ] [V] String/fingering numbers in range
-- [ ] [T] Fragment: `c4-3`, `c4\downbow`
+- [x] [P] Parse full fingering/string number syntax; other technical events (e.g. `\downbow`, `\upbow`, `\open`, `\harmonic`) as music/event functions
+  - Lexer: `EscapedUnsigned(u64)` token for `\1`–`\9` (backslash + digit)
+  - Parser: `EscapedUnsigned` → `PostEvent::StringNumber` in both directed (`-\1`, `^\2`, `_\3`) and undirected (`\1`) contexts
+  - `\open`, `\harmonic`, `\upbow`, `\downbow`, `\flageolet` already parsed as `NamedArticulation` via KNOWN_ORNAMENTS
+  - Added `harmonic` to KNOWN_ORNAMENTS (was missing)
+  - Fingering (`-1`, `^3`, `_4`) already fully implemented from Phase 12
+- [x] [P] Add or extend technical event types in expression model
+  - `PostEvent::StringNumber { direction, number }` already existed from Phase 12
+  - `PostEvent::NamedArticulation` covers all technical events (open, harmonic, upbow, downbow, flageolet, snappizzicato)
+- [x] [S] Serialize technical notations
+  - StringNumber serialized as `{dir}\{N}` (e.g. `-\1`, `^\2`); already existed
+  - Technical events serialize via NamedArticulation path
+- [x] [V] String/fingering numbers in range
+  - Validator already checks StringNumber > 9 → InvalidStringNumber, Fingering > 9 → InvalidFingeringDigit
+  - Added `valid_string_number_passes` test
+- [x] [T] Fragment: `c4-3`, `c4\downbow`
+  - Fixture: fragment_technical.ly (string numbers with directions, open, harmonic, upbow, downbow, flageolet, combined)
+  - 11 parser tests: string number neutral/up/down/undirected, open string, harmonic, string+open combined, roundtrip string numbers, roundtrip technical, fixture roundtrip
+  - 2 serializer tests: string number neutral, string number with direction
+  - 2 lexer tests: escaped digit, all digits 0–9
+  - 1 validator test: valid string number
+  - 462 total tests pass
 
 ### 14.2 Import & Export
 

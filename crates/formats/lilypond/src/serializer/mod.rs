@@ -1250,6 +1250,70 @@ mod tests {
         assert!(!output.contains("c4:0"));
     }
 
+    // ── Phase 14 serializer tests ────────────────────────────
+
+    #[test]
+    fn serialize_string_number() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::StringNumber {
+                        direction: Direction::Neutral,
+                        number: 2,
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4-\\2"));
+    }
+
+    #[test]
+    fn serialize_string_number_direction() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::StringNumber {
+                        direction: Direction::Up,
+                        number: 3,
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4^\\3"));
+    }
+
     #[test]
     fn serialize_chord_no_duration() {
         let file = LilyPondFile {
