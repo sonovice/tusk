@@ -1052,3 +1052,105 @@ fn import_hairpin_on_chord() {
     assert_eq!(hairpins.len(), 1);
     assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("cres"));
 }
+
+// ---------------------------------------------------------------------------
+// Articulation, fingering, string number import tests
+// ---------------------------------------------------------------------------
+
+/// Walk MEI to find all Dir elements in the first measure.
+fn measure_dirs(mei: &Mei) -> Vec<&tusk_model::elements::Dir> {
+    let mut dirs = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Dir(d) = mc2 {
+                                                dirs.push(d.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    dirs
+}
+
+#[test]
+fn import_articulation_creates_dir() {
+    let mei = parse_and_import("{ c4-. d4-> }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 2, "expected 2 dir control events for artics");
+    assert_eq!(
+        dirs[0].common.label.as_deref(),
+        Some("lilypond:artic,staccato")
+    );
+    assert!(dirs[0].dir_log.startid.is_some());
+    assert_eq!(
+        dirs[1].common.label.as_deref(),
+        Some("lilypond:artic,accent")
+    );
+}
+
+#[test]
+fn import_articulation_with_direction() {
+    let mei = parse_and_import("{ c4^. d4_- }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 2);
+    assert_eq!(
+        dirs[0].common.label.as_deref(),
+        Some("lilypond:artic,staccato,dir=up")
+    );
+    assert_eq!(
+        dirs[1].common.label.as_deref(),
+        Some("lilypond:artic,tenuto,dir=down")
+    );
+}
+
+#[test]
+fn import_fingering_creates_dir() {
+    let mei = parse_and_import("{ c4-1 d4^3 }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 2, "expected 2 fingering dir events");
+    assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:fing,1"));
+    assert_eq!(
+        dirs[1].common.label.as_deref(),
+        Some("lilypond:fing,3,dir=up")
+    );
+}
+
+#[test]
+fn import_named_articulation() {
+    let mei = parse_and_import("{ c4-\\staccato }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 1);
+    assert_eq!(
+        dirs[0].common.label.as_deref(),
+        Some("lilypond:artic,staccato")
+    );
+}
+
+#[test]
+fn import_multiple_artics_on_one_note() {
+    let mei = parse_and_import("{ c4-. -3 }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 2, "expected staccato + fingering");
+    assert_eq!(
+        dirs[0].common.label.as_deref(),
+        Some("lilypond:artic,staccato")
+    );
+    assert_eq!(dirs[1].common.label.as_deref(), Some("lilypond:fing,3"));
+}

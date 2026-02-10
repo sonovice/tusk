@@ -630,3 +630,165 @@ fn roundtrip_dynamics_fixture() {
     assert!(output.contains("\\sfz"), "output: {output}");
     assert!(output.contains("\\fp"), "output: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Articulation & fingering roundtrip tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_staccato() {
+    let output = roundtrip("{ c4-. }");
+    assert!(
+        output.contains("-."),
+        "output should contain staccato: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_accent() {
+    let output = roundtrip("{ c4-> }");
+    assert!(
+        output.contains("->"),
+        "output should contain accent: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_tenuto() {
+    let output = roundtrip("{ c4-- }");
+    assert!(
+        output.contains("--"),
+        "output should contain tenuto: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_marcato() {
+    let output = roundtrip("{ c4-^ }");
+    assert!(
+        output.contains("-^"),
+        "output should contain marcato: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_staccatissimo() {
+    let output = roundtrip("{ c4-! }");
+    assert!(
+        output.contains("-!"),
+        "output should contain staccatissimo: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_portato() {
+    let output = roundtrip("{ c4-_ }");
+    assert!(
+        output.contains("-_"),
+        "output should contain portato: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_stopped() {
+    let output = roundtrip("{ c4-+ }");
+    assert!(
+        output.contains("-+"),
+        "output should contain stopped: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_artic_with_direction_up() {
+    let output = roundtrip("{ c4^. }");
+    assert!(
+        output.contains("^."),
+        "output should contain up-staccato: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_artic_with_direction_down() {
+    let output = roundtrip("{ c4_- }");
+    assert!(
+        output.contains("_-"),
+        "output should contain down-tenuto: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_fingering() {
+    let output = roundtrip("{ c4-1 d4-2 }");
+    assert!(
+        output.contains("-1"),
+        "output should contain fingering 1: {output}"
+    );
+    assert!(
+        output.contains("-2"),
+        "output should contain fingering 2: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_fingering_with_direction() {
+    let output = roundtrip("{ c4^3 d4_4 }");
+    assert!(
+        output.contains("^3"),
+        "output should contain up-fingering: {output}"
+    );
+    assert!(
+        output.contains("_4"),
+        "output should contain down-fingering: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_named_articulation() {
+    let output = roundtrip("{ c4-\\staccato }");
+    // Named artics with a known script abbreviation get roundtripped as the abbreviation
+    assert!(
+        output.contains("-."),
+        "named staccato should roundtrip as abbreviation: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_multiple_artics_on_note() {
+    let output = roundtrip("{ c4-. -3 }");
+    assert!(
+        output.contains("-."),
+        "output should contain staccato: {output}"
+    );
+    assert!(
+        output.contains("-3"),
+        "output should contain fingering: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_artics_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_articulations.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    // Check all 7 script abbreviations
+    assert!(output.contains("-."), "staccato: {output}");
+    assert!(output.contains("->"), "accent: {output}");
+    assert!(output.contains("-+"), "stopped: {output}");
+    assert!(output.contains("--"), "tenuto: {output}");
+    assert!(output.contains("-!"), "staccatissimo: {output}");
+    assert!(output.contains("-_"), "portato: {output}");
+    assert!(output.contains("-^"), "marcato: {output}");
+    // Check directional articulations
+    assert!(output.contains("^."), "up-staccato: {output}");
+    assert!(output.contains("^>"), "up-accent: {output}");
+    assert!(output.contains("_."), "down-staccato: {output}");
+    assert!(output.contains("_-"), "down-tenuto: {output}");
+    // Check fingerings
+    assert!(output.contains("-1"), "fingering 1: {output}");
+    assert!(output.contains("-2"), "fingering 2: {output}");
+    assert!(output.contains("^3"), "up-fingering 3: {output}");
+    assert!(output.contains("_4"), "down-fingering 4: {output}");
+}

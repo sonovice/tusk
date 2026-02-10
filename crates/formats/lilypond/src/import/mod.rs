@@ -8,13 +8,14 @@ mod tests;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, Dynam, DynamChild, FileDesc, FileDescChild, Hairpin, Layer,
-    LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild,
-    Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Staff, StaffChild,
-    StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
+    Beam, BeamChild, Body, BodyChild, Dir, DirChild, Dynam, DynamChild, FileDesc, FileDescChild,
+    Hairpin, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead,
+    MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Staff,
+    StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
 };
 use tusk_model::generated::data::{DataTie, DataUri, DataWord};
 
+use crate::model::note::Direction;
 use crate::model::{
     self, ContextKeyword, ContextModItem, Music, NoteEvent, PostEvent, RestEvent, ScoreItem,
     ToplevelExpression,
@@ -527,6 +528,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut beam_counter = 0u32;
     let mut dynam_counter = 0u32;
     let mut hairpin_counter = 0u32;
+    let mut artic_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -722,12 +724,58 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                     .push(MeasureChild::Hairpin(Box::new(hairpin)));
                             }
                         }
-                        PostEvent::Tie
-                        | PostEvent::Articulation { .. }
-                        | PostEvent::Fingering { .. }
-                        | PostEvent::NamedArticulation { .. }
-                        | PostEvent::StringNumber { .. } => {
-                            // Articulations/fingerings will be handled in Phase 12.2
+                        PostEvent::Tie => {}
+                        PostEvent::Articulation {
+                            direction, script, ..
+                        } => {
+                            artic_counter += 1;
+                            let dir = make_artic_dir(
+                                script.articulation_name(),
+                                *direction,
+                                &current_id,
+                                staff_info.n,
+                                artic_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        PostEvent::NamedArticulation {
+                            direction, name, ..
+                        } => {
+                            artic_counter += 1;
+                            let dir = make_artic_dir(
+                                name,
+                                *direction,
+                                &current_id,
+                                staff_info.n,
+                                artic_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        PostEvent::Fingering {
+                            direction, digit, ..
+                        } => {
+                            artic_counter += 1;
+                            let dir = make_fing_dir(
+                                *digit,
+                                *direction,
+                                &current_id,
+                                staff_info.n,
+                                artic_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        PostEvent::StringNumber {
+                            direction, number, ..
+                        } => {
+                            artic_counter += 1;
+                            let dir = make_string_dir(
+                                *number,
+                                *direction,
+                                &current_id,
+                                staff_info.n,
+                                artic_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
                         PostEvent::BeamStart => {
                             // Record position of this note in the layer
@@ -841,6 +889,63 @@ fn make_hairpin(
     hairpin.hairpin_log.staff = Some(staff_n.to_string());
     hairpin.hairpin_log.form = Some(form.to_string());
     hairpin
+}
+
+/// Encode a Direction into a label suffix.
+fn direction_label_suffix(dir: Direction) -> &'static str {
+    match dir {
+        Direction::Up => ",dir=up",
+        Direction::Down => ",dir=down",
+        Direction::Neutral => "",
+    }
+}
+
+/// Create an MEI Dir for a LilyPond articulation.
+///
+/// Label format: `lilypond:artic,NAME[,dir=up|down]`
+fn make_artic_dir(name: &str, direction: Direction, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!(
+        "lilypond:artic,{name}{}",
+        direction_label_suffix(direction)
+    ));
+    dir.children.push(DirChild::Text(name.to_string()));
+    dir
+}
+
+/// Create an MEI Dir for a LilyPond fingering.
+///
+/// Label format: `lilypond:fing,DIGIT[,dir=up|down]`
+fn make_fing_dir(digit: u8, direction: Direction, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!(
+        "lilypond:fing,{digit}{}",
+        direction_label_suffix(direction)
+    ));
+    dir.children.push(DirChild::Text(digit.to_string()));
+    dir
+}
+
+/// Create an MEI Dir for a LilyPond string number.
+///
+/// Label format: `lilypond:string,NUMBER[,dir=up|down]`
+fn make_string_dir(number: u8, direction: Direction, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-artic-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!(
+        "lilypond:string,{number}{}",
+        direction_label_suffix(direction)
+    ));
+    dir.children.push(DirChild::Text(number.to_string()));
+    dir
 }
 
 /// Extract voice streams from LilyPond music.

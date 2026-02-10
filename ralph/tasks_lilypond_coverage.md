@@ -525,10 +525,22 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 12.2 Import & Export
 
-- [ ] [I] Articulations → MEI `<artic>`, fingerings → MEI fingering; script placement → @place
-- [ ] [E] MEI artic/fingering → LilyPond abbreviations and fingerings
-- [ ] [T] Roundtrip articulations and fingerings
-- [ ] [T] Articulation and fingering fixtures; roundtrip
+- [x] [I] Articulations → MEI `<artic>`, fingerings → MEI fingering; script placement → @place
+  - Uses `<dir>` with label as carrier (Artic/Fing not MeasureChild variants in generated model)
+  - Label formats: `lilypond:artic,NAME[,dir=up|down]`, `lilypond:fing,DIGIT[,dir=up|down]`, `lilypond:string,NUMBER[,dir=up|down]`
+  - All 7 script abbreviations map to named artic via `articulation_name()`; NamedArticulation uses name directly
+  - Direction::Up/Down/Neutral → label suffix `,dir=up`/`,dir=down`/none
+  - 5 import tests: artic creates dir, artic with direction, fingering, named artic, multiple artics on one note
+- [x] [E] MEI artic/fingering → LilyPond abbreviations and fingerings
+  - `collect_artic_post_events()` walks `MeasureChild::Dir` with `lilypond:artic/fing/string` label prefixes
+  - Artic names map back to `ScriptAbbreviation` via `name_to_script_abbreviation()` for abbreviation output
+  - Named artics without abbreviation roundtrip as `PostEvent::NamedArticulation`
+  - Direction parsed from label suffix back to `Direction` enum
+- [x] [T] Roundtrip articulations and fingerings
+  - 14 roundtrip tests: all 7 script abbreviations, direction up/down, fingering, fingering with direction, named artic, multiple artics, fixture
+- [x] [T] Articulation and fingering fixtures; roundtrip
+  - `roundtrip_artics_fixture` validates fragment_articulations.ly (all abbreviations, directions, fingerings)
+  - 399 total tests pass (380 existing + 5 import + 14 roundtrip)
 
 ---
 

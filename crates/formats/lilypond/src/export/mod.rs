@@ -13,7 +13,7 @@ use tusk_model::elements::{
     LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
 };
 
-use crate::model::note::PostEvent;
+use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
 use crate::model::{
     ContextKeyword, LilyPondFile, Music, ScoreBlock, ScoreItem, ToplevelExpression, Version,
 };
@@ -58,6 +58,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     let mut post_event_map = collect_slur_post_events(&measure.children);
                     collect_dynam_post_events(&measure.children, &mut post_event_map);
                     collect_hairpin_post_events(&measure.children, &mut post_event_map);
+                    collect_artic_post_events(&measure.children, &mut post_event_map);
 
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
@@ -565,6 +566,112 @@ fn collect_hairpin_post_events(
                 map.entry(id).or_default().push(PostEvent::HairpinEnd);
             }
         }
+    }
+}
+
+/// Collect articulation/fingering/string-number control events from `<dir>` elements
+/// with `lilypond:artic,`, `lilypond:fing,`, or `lilypond:string,` labels.
+fn collect_artic_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<PostEvent>>,
+) {
+    for mc in measure_children {
+        if let MeasureChild::Dir(dir) = mc {
+            let label = match dir.common.label.as_deref() {
+                Some(l) => l,
+                None => continue,
+            };
+            let startid = match dir.dir_log.startid.as_ref() {
+                Some(s) => s.0.trim_start_matches('#').to_string(),
+                None => continue,
+            };
+
+            if let Some(rest) = label.strip_prefix("lilypond:artic,")
+                && let Some(pe) = parse_artic_label(rest)
+            {
+                map.entry(startid).or_default().push(pe);
+            } else if let Some(rest) = label.strip_prefix("lilypond:fing,")
+                && let Some(pe) = parse_fing_label(rest)
+            {
+                map.entry(startid).or_default().push(pe);
+            } else if let Some(rest) = label.strip_prefix("lilypond:string,")
+                && let Some(pe) = parse_string_label(rest)
+            {
+                map.entry(startid).or_default().push(pe);
+            }
+        }
+    }
+}
+
+/// Parse direction suffix from a label part.
+fn parse_direction(s: &str) -> Direction {
+    match s {
+        "up" => Direction::Up,
+        "down" => Direction::Down,
+        _ => Direction::Neutral,
+    }
+}
+
+/// Parse an `artic` label: `NAME[,dir=up|down]` → PostEvent.
+fn parse_artic_label(label: &str) -> Option<PostEvent> {
+    let (name, dir) = split_label_direction(label);
+    // Try to map to script abbreviation first
+    if let Some(script) = name_to_script_abbreviation(name) {
+        Some(PostEvent::Articulation {
+            direction: dir,
+            script,
+        })
+    } else {
+        Some(PostEvent::NamedArticulation {
+            direction: dir,
+            name: name.to_string(),
+        })
+    }
+}
+
+/// Parse a `fing` label: `DIGIT[,dir=up|down]` → PostEvent::Fingering.
+fn parse_fing_label(label: &str) -> Option<PostEvent> {
+    let (digit_str, dir) = split_label_direction(label);
+    let digit: u8 = digit_str.parse().ok()?;
+    Some(PostEvent::Fingering {
+        direction: dir,
+        digit,
+    })
+}
+
+/// Parse a `string` label: `NUMBER[,dir=up|down]` → PostEvent::StringNumber.
+fn parse_string_label(label: &str) -> Option<PostEvent> {
+    let (num_str, dir) = split_label_direction(label);
+    let number: u8 = num_str.parse().ok()?;
+    Some(PostEvent::StringNumber {
+        direction: dir,
+        number,
+    })
+}
+
+/// Split a label value into (main_value, Direction).
+///
+/// Input: `"staccato,dir=up"` → `("staccato", Direction::Up)`
+/// Input: `"staccato"` → `("staccato", Direction::Neutral)`
+fn split_label_direction(label: &str) -> (&str, Direction) {
+    if let Some((main, rest)) = label.split_once(",dir=") {
+        (main, parse_direction(rest))
+    } else {
+        (label, Direction::Neutral)
+    }
+}
+
+/// Map a LilyPond articulation name to its ScriptAbbreviation, if one exists.
+fn name_to_script_abbreviation(name: &str) -> Option<ScriptAbbreviation> {
+    match name {
+        "staccato" => Some(ScriptAbbreviation::Dot),
+        "tenuto" => Some(ScriptAbbreviation::Dash),
+        "accent" => Some(ScriptAbbreviation::Accent),
+        "marcato" => Some(ScriptAbbreviation::Marcato),
+        "stopped" => Some(ScriptAbbreviation::Stopped),
+        "staccatissimo" => Some(ScriptAbbreviation::Staccatissimo),
+        "portato" => Some(ScriptAbbreviation::Portato),
+        _ => None,
     }
 }
 
