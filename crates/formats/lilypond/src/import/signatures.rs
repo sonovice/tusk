@@ -83,6 +83,18 @@ pub(super) fn apply_signatures_to_staff_def(
                 let escaped = escape_label_value(serialized);
                 entries.push(format!("markuplist:{}@{note_index}", escaped));
             }
+            LyEvent::Tempo(serialized) => {
+                let escaped = escape_label_value(serialized);
+                entries.push(format!("tempo:{}@{note_index}", escaped));
+            }
+            LyEvent::Mark(serialized) => {
+                let escaped = escape_label_value(serialized);
+                entries.push(format!("mark:{}@{note_index}", escaped));
+            }
+            LyEvent::TextMark(serialized) => {
+                let escaped = escape_label_value(serialized);
+                entries.push(format!("textmark:{}@{note_index}", escaped));
+            }
             LyEvent::Note(_)
             | LyEvent::Chord { .. }
             | LyEvent::Rest(_)
@@ -310,6 +322,11 @@ fn escape_label_value(s: &str) -> String {
         }
     }
     out
+}
+
+/// Public wrapper for `escape_label_value` used by control_events.
+pub(super) fn escape_label_value_pub(s: &str) -> String {
+    escape_label_value(s)
 }
 
 /// Reverse the percent-encoding applied by `escape_label_value`.

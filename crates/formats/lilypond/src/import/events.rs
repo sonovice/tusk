@@ -63,6 +63,12 @@ pub(super) enum LyEvent {
     Markup(String),
     /// A serialized `\markuplist { ... }` expression.
     MarkupList(String),
+    /// A serialized `\tempo ...` expression.
+    Tempo(String),
+    /// A serialized `\mark ...` expression.
+    Mark(String),
+    /// A serialized `\textMark ...` expression.
+    TextMark(String),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -288,8 +294,18 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_markuplist(ml);
             events.push(LyEvent::MarkupList(serialized));
         }
-        // Tempo, mark, textMark — import handled in Phase 22.2
-        Music::Tempo(_) | Music::Mark(_) | Music::TextMark(_) => {}
+        Music::Tempo(t) => {
+            let serialized = crate::serializer::serialize_tempo(t);
+            events.push(LyEvent::Tempo(serialized));
+        }
+        Music::Mark(m) => {
+            let serialized = crate::serializer::serialize_mark(m);
+            events.push(LyEvent::Mark(serialized));
+        }
+        Music::TextMark(tm) => {
+            let serialized = crate::serializer::serialize_text_mark(tm);
+            events.push(LyEvent::TextMark(serialized));
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

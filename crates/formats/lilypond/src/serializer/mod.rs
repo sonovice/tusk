@@ -33,6 +33,30 @@ pub fn serialize_markuplist(ml: &markup::MarkupList) -> String {
     out
 }
 
+/// Serialize a `\tempo` expression to a string (e.g. `\tempo "Allegro" 4 = 120`).
+pub fn serialize_tempo(t: &signature::Tempo) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_tempo(t);
+    out
+}
+
+/// Serialize a `\mark` expression to a string (e.g. `\mark \default`).
+pub fn serialize_mark(m: &signature::Mark) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_mark(m);
+    out
+}
+
+/// Serialize a `\textMark` expression to a string (e.g. `\textMark "Fine"`).
+pub fn serialize_text_mark(tm: &signature::TextMark) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_text_mark(tm);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,

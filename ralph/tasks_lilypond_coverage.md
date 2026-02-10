@@ -977,10 +977,22 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 22.2 Import & Export
 
-- [ ] [I] Tempo → MEI tempo; rehearsal/mark → MEI dir or rehearsal
-- [ ] [E] MEI tempo/rehearsal → LilyPond \tempo, \mark
-- [ ] [T] Roundtrip tempo and mark fixtures
-- [ ] [T] Tempo and mark fixtures; roundtrip
+- [x] [I] Tempo → MEI tempo; rehearsal/mark → MEI dir or rehearsal
+  - Tempo → MEI `<tempo>` with @mm, @mm.unit, @mm.dots, @startid, text children, label roundtrip
+  - Mark → MEI `<dir>` with `lilypond:mark,` label prefix + serialized form
+  - TextMark → MEI `<dir>` with `lilypond:textmark,` label prefix + serialized form
+  - All three stored in event sequence label (tempo:/mark:/textmark: entries) for lossless roundtrip
+  - PendingTempoMark queue flushes on next note for @startid assignment
+- [x] [E] MEI tempo/rehearsal → LilyPond \tempo, \mark
+  - Event sequence label parsing: tempo:/mark:/textmark: entries → re-parse serialized forms
+  - parse_tempo_from_label, parse_mark_from_label, parse_textmark_from_label
+  - Injected at correct positions via inject_signature_events
+- [x] [T] Roundtrip tempo and mark fixtures
+  - 12 import tests: tempo (4), mark (3), textMark (1), event sequence label (3), fixture (1)
+  - 12 export roundtrip tests: tempo (5), mark (3), textMark (1), combined (1), fixture (1)
+  - 811 total tests pass (was 789)
+- [x] [T] Tempo and mark fixtures; roundtrip
+  - Covered by above tests + existing fixture fragment_tempo_marks.ly
 
 ---
 

@@ -129,6 +129,30 @@ fn parse_event_sequence_label(staff_def: &tusk_model::elements::StaffDef) -> Vec
                     music: Music::MarkupList(ml),
                 });
             }
+        } else if let Some(tempo_str) = type_str.strip_prefix("tempo:") {
+            let unescaped = crate::import::signatures::unescape_label_value(tempo_str);
+            if let Some(t) = parse_tempo_from_label(&unescaped) {
+                events.push(SignatureEvent {
+                    position,
+                    music: Music::Tempo(t),
+                });
+            }
+        } else if let Some(mark_str) = type_str.strip_prefix("mark:") {
+            let unescaped = crate::import::signatures::unescape_label_value(mark_str);
+            if let Some(m) = parse_mark_from_label(&unescaped) {
+                events.push(SignatureEvent {
+                    position,
+                    music: Music::Mark(m),
+                });
+            }
+        } else if let Some(textmark_str) = type_str.strip_prefix("textmark:") {
+            let unescaped = crate::import::signatures::unescape_label_value(textmark_str);
+            if let Some(tm) = parse_textmark_from_label(&unescaped) {
+                events.push(SignatureEvent {
+                    position,
+                    music: Music::TextMark(tm),
+                });
+            }
         }
     }
 
@@ -298,6 +322,67 @@ fn parse_markuplist_from_label(s: &str) -> Option<crate::model::markup::MarkupLi
     for item in &file.items {
         if let crate::model::ToplevelExpression::MarkupList(ml) = item {
             return Some(ml.clone());
+        }
+    }
+    None
+}
+
+/// Re-parse a serialized `\tempo ...` string back into a Tempo AST node.
+fn parse_tempo_from_label(s: &str) -> Option<crate::model::signature::Tempo> {
+    use crate::parser::Parser;
+    // Append a dummy note so the parser can consume the tempo
+    let src = format!("{s}\nc4");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                if let Music::Tempo(t) = m {
+                    return Some(t.clone());
+                }
+            }
+        }
+        if let crate::model::ToplevelExpression::Music(Music::Tempo(t)) = item {
+            return Some(t.clone());
+        }
+    }
+    None
+}
+
+/// Re-parse a serialized `\mark ...` string back into a Mark AST node.
+fn parse_mark_from_label(s: &str) -> Option<crate::model::signature::Mark> {
+    use crate::parser::Parser;
+    let src = format!("{s}\nc4");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                if let Music::Mark(m) = m {
+                    return Some(m.clone());
+                }
+            }
+        }
+        if let crate::model::ToplevelExpression::Music(Music::Mark(m)) = item {
+            return Some(m.clone());
+        }
+    }
+    None
+}
+
+/// Re-parse a serialized `\textMark ...` string back into a TextMark AST node.
+fn parse_textmark_from_label(s: &str) -> Option<crate::model::signature::TextMark> {
+    use crate::parser::Parser;
+    let src = format!("{s}\nc4");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                if let Music::TextMark(tm) = m {
+                    return Some(tm.clone());
+                }
+            }
+        }
+        if let crate::model::ToplevelExpression::Music(Music::TextMark(tm)) = item {
+            return Some(tm.clone());
         }
     }
     None

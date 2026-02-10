@@ -389,6 +389,105 @@ pub(super) fn make_string_dir(
     dir
 }
 
+/// Create an MEI Tempo control event from a LilyPond `\tempo`.
+///
+/// Maps metronome data to `@mm`, `@mm.unit`, `@mm.dots`.
+/// Display text goes to children. The full serialized form is stored in
+/// `@label` for lossless roundtrip.
+pub(super) fn make_tempo(
+    tempo: &crate::model::signature::Tempo,
+    startid: &str,
+    staff_n: u32,
+    id: u32,
+) -> tusk_model::elements::Tempo {
+    use tusk_model::elements::{Tempo, TempoChild};
+    use tusk_model::generated::data::{
+        DataAugmentdot, DataDuration, DataDurationCmn, DataTempovalue,
+    };
+
+    let mut mei_tempo = Tempo::default();
+    mei_tempo.common.xml_id = Some(format!("ly-tempo-{id}"));
+    mei_tempo.tempo_log.startid = Some(DataUri(format!("#{startid}")));
+    mei_tempo.tempo_log.staff = Some(staff_n.to_string());
+
+    // Map metronome mark to @mm, @mm.unit, @mm.dots
+    if let Some(dur) = &tempo.duration {
+        let mm_unit = match dur.base {
+            1 => Some(DataDurationCmn::N1),
+            2 => Some(DataDurationCmn::N2),
+            4 => Some(DataDurationCmn::N4),
+            8 => Some(DataDurationCmn::N8),
+            16 => Some(DataDurationCmn::N16),
+            32 => Some(DataDurationCmn::N32),
+            64 => Some(DataDurationCmn::N64),
+            128 => Some(DataDurationCmn::N128),
+            _ => None,
+        };
+        if let Some(unit) = mm_unit {
+            mei_tempo.tempo_log.mm_unit = Some(DataDuration::MeiDataDurationCmn(unit));
+        }
+        if dur.dots > 0 {
+            mei_tempo.tempo_log.mm_dots = Some(DataAugmentdot(dur.dots as u64));
+        }
+    }
+    if let Some(bpm) = &tempo.bpm {
+        let bpm_val = match bpm {
+            crate::model::signature::TempoRange::Single(v) => *v as f64,
+            crate::model::signature::TempoRange::Range(lo, _) => *lo as f64,
+        };
+        mei_tempo.tempo_log.mm = Some(DataTempovalue(bpm_val));
+    }
+
+    // Text content
+    if let Some(text) = &tempo.text {
+        let text_str = crate::serializer::serialize_markup(text);
+        mei_tempo
+            .children
+            .push(TempoChild::Text(text_str.trim().to_string()));
+    }
+
+    // Store full serialized form in label for lossless roundtrip
+    let serialized = crate::serializer::serialize_tempo(tempo);
+    mei_tempo.common.label = Some(format!(
+        "lilypond:tempo,{}",
+        super::signatures::escape_label_value_pub(&serialized)
+    ));
+
+    mei_tempo
+}
+
+/// Create an MEI Dir for a LilyPond `\mark`.
+///
+/// Label format: `lilypond:mark,SERIALIZED`
+pub(super) fn make_mark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-mark-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!(
+        "lilypond:mark,{}",
+        super::signatures::escape_label_value_pub(serialized)
+    ));
+    dir.children.push(DirChild::Text(serialized.to_string()));
+    dir
+}
+
+/// Create an MEI Dir for a LilyPond `\textMark`.
+///
+/// Label format: `lilypond:textmark,SERIALIZED`
+pub(super) fn make_textmark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-mark-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!(
+        "lilypond:textmark,{}",
+        super::signatures::escape_label_value_pub(serialized)
+    ));
+    dir.children.push(DirChild::Text(serialized.to_string()));
+    dir
+}
+
 /// Create an MEI Dir for a LilyPond repeat structure.
 ///
 /// Label format: `lilypond:repeat,TYPE,COUNT[,alts=N]`

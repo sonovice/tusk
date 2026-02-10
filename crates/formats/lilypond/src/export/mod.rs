@@ -10,6 +10,8 @@ mod signatures;
 mod tests;
 #[cfg(test)]
 mod tests_markup;
+#[cfg(test)]
+mod tests_tempo_marks;
 
 use std::collections::HashMap;
 use thiserror::Error;

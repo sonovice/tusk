@@ -10,6 +10,8 @@ pub(crate) mod signatures;
 mod tests;
 #[cfg(test)]
 mod tests_control;
+#[cfg(test)]
+mod tests_tempo_marks;
 
 use thiserror::Error;
 use tusk_model::elements::{
@@ -627,6 +629,13 @@ struct PendingTuplet {
     staff_n: u32,
 }
 
+/// A pending tempo/mark/textMark waiting for next note's startid.
+enum PendingTempoMark {
+    Tempo(crate::model::signature::Tempo),
+    Mark(String),
+    TextMark(String),
+}
+
 /// Build a Section from analyzed staff layout.
 fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, ImportError> {
     let mut section = Section::default();
@@ -641,6 +650,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut ornam_counter = 0u32;
     let mut tuplet_counter = 0u32;
     let mut repeat_counter = 0u32;
+    let mut tempo_mark_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -670,6 +680,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut last_note_id: Option<String> = None;
             // Track current grace context for setting @grace on notes
             let mut current_grace: Option<GraceType> = None;
+            // Pending tempo/mark/textMark waiting for next note's startid
+            let mut pending_tempo_marks: Vec<PendingTempoMark> = Vec::new();
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -867,6 +879,20 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         current_grace = None;
                         continue;
                     }
+                    LyEvent::Tempo(serialized) => {
+                        if let Some(tempo) = parse_tempo_from_serialized(serialized) {
+                            pending_tempo_marks.push(PendingTempoMark::Tempo(tempo));
+                        }
+                        continue;
+                    }
+                    LyEvent::Mark(serialized) => {
+                        pending_tempo_marks.push(PendingTempoMark::Mark(serialized.clone()));
+                        continue;
+                    }
+                    LyEvent::TextMark(serialized) => {
+                        pending_tempo_marks.push(PendingTempoMark::TextMark(serialized.clone()));
+                        continue;
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -896,6 +922,34 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                 }
                 last_note_id = Some(current_id.clone());
+
+                // Flush pending tempo/mark/textMark events
+                for ptm in pending_tempo_marks.drain(..) {
+                    tempo_mark_counter += 1;
+                    match ptm {
+                        PendingTempoMark::Tempo(t) => {
+                            let mei_tempo =
+                                make_tempo(&t, &current_id, staff_info.n, tempo_mark_counter);
+                            measure
+                                .children
+                                .push(MeasureChild::Tempo(Box::new(mei_tempo)));
+                        }
+                        PendingTempoMark::Mark(s) => {
+                            let dir =
+                                make_mark_dir(&s, &current_id, staff_info.n, tempo_mark_counter);
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        PendingTempoMark::TextMark(s) => {
+                            let dir = make_textmark_dir(
+                                &s,
+                                &current_id,
+                                staff_info.n,
+                                tempo_mark_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                    }
+                }
 
                 // Process post-events
                 for pe in &post_events {
@@ -1127,10 +1181,31 @@ fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
 }
 
 use control_events::{
-    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin,
-    make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir, make_tuplet_span,
-    wrap_last_in_btrem,
+    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin, make_mark_dir,
+    make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir, make_tempo,
+    make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };
+
+/// Parse a serialized `\tempo ...` string back into a Tempo AST node.
+fn parse_tempo_from_serialized(s: &str) -> Option<crate::model::signature::Tempo> {
+    use crate::parser::Parser;
+    // Wrap in a parseable form: the serialized string is the full \tempo expression
+    let src = format!("{s}\nc4");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                if let Music::Tempo(t) = m {
+                    return Some(t.clone());
+                }
+            }
+        }
+        if let ToplevelExpression::Music(Music::Tempo(t)) = item {
+            return Some(t.clone());
+        }
+    }
+    None
+}
 
 /// Extract voice streams from LilyPond music.
 ///
