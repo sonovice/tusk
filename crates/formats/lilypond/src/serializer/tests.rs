@@ -966,3 +966,58 @@ fn serialize_bar_line_double() {
     let output = serialize(&file);
     assert!(output.contains(r#"\bar "||""#), "got: {output}");
 }
+
+// ── Chord repetition (Phase 19) ───────────────────────────────────────
+
+#[test]
+fn serialize_chord_rep_no_duration() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ChordRepetition(
+            ChordRepetitionEvent {
+                duration: None,
+                post_events: vec![],
+            },
+        ))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "q");
+}
+
+#[test]
+fn serialize_chord_rep_with_duration() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ChordRepetition(
+            ChordRepetitionEvent {
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            },
+        ))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "q4");
+}
+
+#[test]
+fn serialize_chord_rep_with_post_events() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ChordRepetition(
+            ChordRepetitionEvent {
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![PostEvent::Tie],
+            },
+        ))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "q4~");
+}

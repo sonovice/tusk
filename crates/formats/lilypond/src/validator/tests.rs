@@ -1194,3 +1194,68 @@ fn bar_line_empty_type_fails() {
             .any(|e| matches!(e, ValidationError::EmptyBarLineType))
     );
 }
+
+// ── Chord repetition (Phase 19) ───────────────────────────────────────
+
+#[test]
+fn chord_rep_valid_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ChordRepetition(
+            ChordRepetitionEvent {
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            },
+        ))],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn chord_rep_invalid_duration_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::ChordRepetition(
+            ChordRepetitionEvent {
+                duration: Some(Duration {
+                    base: 3, // invalid
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            },
+        ))],
+    };
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+    );
+}
+
+#[test]
+fn chord_rep_span_balance() {
+    // ChordRepetition with slur open should be counted in span balance
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::ChordRepetition(ChordRepetitionEvent {
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![PostEvent::SlurStart],
+            }),
+            Music::ChordRepetition(ChordRepetitionEvent {
+                duration: None,
+                post_events: vec![PostEvent::SlurEnd],
+            }),
+        ]))],
+    };
+    assert!(validate(&file).is_ok());
+}

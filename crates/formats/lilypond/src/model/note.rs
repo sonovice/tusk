@@ -263,3 +263,15 @@ pub struct MultiMeasureRestEvent {
     /// Post-events attached after the duration.
     pub post_events: Vec<PostEvent>,
 }
+
+/// A chord repetition event (`q` with optional duration + post-events).
+///
+/// Repeats the pitches of the most recent chord. Corresponds to
+/// `EVENT_CHORD → note_chord_element` when the element is `q`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChordRepetitionEvent {
+    /// Duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+    /// Post-events (ties, slurs, etc.) attached after the duration.
+    pub post_events: Vec<PostEvent>,
+}

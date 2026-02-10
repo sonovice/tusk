@@ -1054,6 +1054,7 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
                     Music::Sequential(_)
                         | Music::Note(_)
                         | Music::Chord(_)
+                        | Music::ChordRepetition(_)
                         | Music::Rest(_)
                         | Music::MultiMeasureRest(_)
                         | Music::Relative { .. }
@@ -1146,6 +1147,8 @@ struct PitchContext {
     relative: Option<(char, i8)>,
     /// Stack of transpositions to apply: (from, to) pairs.
     transpositions: Vec<(crate::model::Pitch, crate::model::Pitch)>,
+    /// Last chord pitches for `q` (chord repetition) expansion.
+    last_chord_pitches: Vec<crate::model::Pitch>,
 }
 
 impl PitchContext {
@@ -1153,6 +1156,7 @@ impl PitchContext {
         PitchContext {
             relative: None,
             transpositions: Vec::new(),
+            last_chord_pitches: Vec::new(),
         }
     }
 
@@ -1191,11 +1195,22 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         }
         Music::Chord(chord) => {
             let resolved_pitches: Vec<_> = chord.pitches.iter().map(|p| ctx.resolve(p)).collect();
+            ctx.last_chord_pitches = resolved_pitches.clone();
             events.push(LyEvent::Chord {
                 pitches: resolved_pitches,
                 duration: chord.duration.clone(),
                 post_events: chord.post_events.clone(),
             });
+        }
+        Music::ChordRepetition(cr) => {
+            // Expand `q` to the most recent chord's pitches
+            if !ctx.last_chord_pitches.is_empty() {
+                events.push(LyEvent::Chord {
+                    pitches: ctx.last_chord_pitches.clone(),
+                    duration: cr.duration.clone(),
+                    post_events: cr.post_events.clone(),
+                });
+            }
         }
         Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
         Music::Skip(_) => events.push(LyEvent::Skip(())),

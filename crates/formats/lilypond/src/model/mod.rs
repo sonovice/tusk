@@ -9,8 +9,8 @@ pub mod signature;
 
 pub use duration::Duration;
 pub use note::{
-    ChordEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, MultiMeasureRestEvent, NoteEvent,
-    PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
+    ChordEvent, ChordRepetitionEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS,
+    MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
 };
 pub use pitch::Pitch;
 pub use signature::{Clef, KeySignature, Mode, TimeSignature};
@@ -304,6 +304,8 @@ pub enum Music {
     Skip(SkipEvent),
     /// A multi-measure rest (`R`).
     MultiMeasureRest(MultiMeasureRestEvent),
+    /// A chord repetition (`q`): repeats the pitches of the most recent chord.
+    ChordRepetition(ChordRepetitionEvent),
     /// `\clef "treble"` — set the clef.
     Clef(Clef),
     /// `\key pitch \mode` — set the key signature.

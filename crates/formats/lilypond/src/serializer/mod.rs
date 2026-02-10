@@ -486,6 +486,7 @@ impl<'a> Serializer<'a> {
             Music::Rest(r) => self.write_rest_event(r),
             Music::Skip(s) => self.write_skip_event(s),
             Music::MultiMeasureRest(r) => self.write_multi_measure_rest(r),
+            Music::ChordRepetition(cr) => self.write_chord_repetition(cr),
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');
@@ -576,6 +577,14 @@ impl<'a> Serializer<'a> {
             self.write_duration(dur);
         }
         self.write_post_events(&r.post_events);
+    }
+
+    fn write_chord_repetition(&mut self, cr: &ChordRepetitionEvent) {
+        self.out.push('q');
+        if let Some(dur) = &cr.duration {
+            self.write_duration(dur);
+        }
+        self.write_post_events(&cr.post_events);
     }
 
     fn write_post_events(&mut self, events: &[PostEvent]) {

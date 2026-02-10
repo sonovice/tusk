@@ -649,6 +649,7 @@ impl<'src> Parser<'src> {
             }
             Token::NoteName(_) => self.parse_note_event(),
             Token::Symbol(s) if s == "r" || s == "s" || s == "R" => self.parse_rest_or_skip(),
+            Token::Symbol(s) if s == "q" => self.parse_chord_repetition(),
             _ => Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
@@ -820,6 +821,24 @@ impl<'src> Parser<'src> {
             })),
             _ => unreachable!(),
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Chord repetition: q
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_chord_repetition(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume `q`
+        let duration = self.parse_optional_duration()?;
+        let tremolo = self.parse_optional_tremolo();
+        let mut post_events = self.parse_post_events();
+        if let Some(t) = tremolo {
+            post_events.insert(0, t);
+        }
+        Ok(Music::ChordRepetition(ChordRepetitionEvent {
+            duration,
+            post_events,
+        }))
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -1399,6 +1418,8 @@ pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
 mod tests;
 #[cfg(test)]
 mod tests_barcheck;
+#[cfg(test)]
+mod tests_chord_rep;
 #[cfg(test)]
 mod tests_grace;
 #[cfg(test)]

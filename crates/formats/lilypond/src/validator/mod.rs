@@ -291,6 +291,7 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::Rest(r) => counts.count_post_events(&r.post_events),
         Music::Skip(s) => counts.count_post_events(&s.post_events),
         Music::MultiMeasureRest(r) => counts.count_post_events(&r.post_events),
+        Music::ChordRepetition(cr) => counts.count_post_events(&cr.post_events),
         Music::Sequential(items) | Music::Simultaneous(items) => {
             for item in items {
                 count_spans(item, counts);
@@ -467,6 +468,12 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 validate_duration(dur, errors);
             }
             validate_post_events(&r.post_events, errors);
+        }
+        Music::ChordRepetition(cr) => {
+            if let Some(dur) = &cr.duration {
+                validate_duration(dur, errors);
+            }
+            validate_post_events(&cr.post_events, errors);
         }
         Music::Repeat {
             count,

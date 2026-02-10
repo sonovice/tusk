@@ -821,11 +821,28 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 19.1 Model & Parser
 
-- [ ] [P] Parse chord repetition `q` (repeats previous chord)
-- [ ] [P] Add chord repetition to event chord handling
-- [ ] [S] Serialize `q` with duration
-- [ ] [V] Previous chord exists in context
-- [ ] [T] Fragment: `<c e g>4 q q`
+- [x] [P] Parse chord repetition `q` (repeats previous chord)
+  - `Music::ChordRepetition(ChordRepetitionEvent)` variant in model
+  - `ChordRepetitionEvent` struct with `duration: Option<Duration>` + `post_events: Vec<PostEvent>`
+  - `parse_chord_repetition()` in parser: consumes `q` symbol, parses optional duration/tremolo/post-events
+  - Dispatched from `parse_music()` via `Token::Symbol(s) if s == "q"`
+- [x] [P] Add chord repetition to event chord handling
+  - Import `collect_events()`: expands `q` to `LyEvent::Chord` using `PitchContext::last_chord_pitches`
+  - `PitchContext` tracks `last_chord_pitches` from most recent `Music::Chord`
+  - `extract_voices()` includes `Music::ChordRepetition` in voice-like match
+- [x] [S] Serialize `q` with duration
+  - `write_chord_repetition()`: emits `q` + optional duration + post-events
+  - 3 serializer tests: no duration, with duration, with post-events
+- [x] [V] Previous chord exists in context
+  - `validate_music()`: validates duration and post-events on ChordRepetition
+  - `count_spans()`: counts paired post-events for span balance
+  - 3 validator tests: valid passes, invalid duration fails, span balance with slurs
+- [x] [T] Fragment: `<c e g>4 q q`
+  - Fixture: fragment_chord_repetition.ly (basic, dotted, slurred, dynamics, tied)
+  - 9 parser tests: basic, duration, dotted, post-events, dynamics, tie, tremolo, no duration, mixed
+  - 7 roundtrip tests: basic, duration, dotted, post-events, dynamics, tie, fixture
+  - parser/tests_chord_rep.rs test module
+  - 640 total tests pass (was 618)
 
 ### 19.2 Import & Export
 
