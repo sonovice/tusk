@@ -323,22 +323,32 @@ fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
 
         // Collect events from all voices to find initial clef/key/time
         let mut events = Vec::new();
+        let mut sig_ctx = PitchContext::new();
         for voice_music in &staff_info.voices {
             for m in voice_music {
-                collect_events(m, &mut events);
+                collect_events(m, &mut events, &mut sig_ctx);
             }
         }
 
         // Set initial clef/key/time on staffDef and collect event sequence for label
         let event_sequence = apply_signatures_to_staff_def(&events, &mut staff_def);
 
-        // Build label: start with context metadata, append event sequence
+        // Detect relative/transpose context from the music tree
+        let pitch_context_label = build_pitch_context_label(&staff_info.voices);
+
+        // Build label: start with context metadata, append event sequence and pitch context
         let mut label = build_staff_label(staff_info);
         if !event_sequence.is_empty() {
             if !label.is_empty() {
                 label.push('|');
             }
             label.push_str(&event_sequence);
+        }
+        if !pitch_context_label.is_empty() {
+            if !label.is_empty() {
+                label.push('|');
+            }
+            label.push_str(&pitch_context_label);
         }
         if !label.is_empty() {
             staff_def.labelled.label = Some(label);
@@ -417,6 +427,53 @@ fn serialize_with_block(items: &[ContextModItem]) -> String {
     String::new()
 }
 
+/// Build a label segment encoding the outermost relative/transpose context.
+///
+/// Detects the first `\relative` or `\transpose` wrapper in the music tree for
+/// a staff's voices and encodes it as:
+/// - `lilypond:relative,STEP.ALTER.OCT` (with reference pitch) or `lilypond:relative` (no pitch)
+/// - `lilypond:transpose,FROM_STEP.FROM_ALTER.FROM_OCT,TO_STEP.TO_ALTER.TO_OCT`
+fn build_pitch_context_label(voices: &[Vec<&Music>]) -> String {
+    // Look at each voice's music to find the outermost relative/transpose
+    for voice in voices {
+        for m in voice {
+            if let Some(label) = detect_pitch_context(m) {
+                return label;
+            }
+        }
+    }
+    String::new()
+}
+
+/// Detect the outermost relative/transpose wrapper in a music tree.
+fn detect_pitch_context(music: &Music) -> Option<String> {
+    match music {
+        Music::Relative { pitch, .. } => {
+            if let Some(ref_pitch_music) = pitch
+                && let Some(p) = extract_pitch_from_music(ref_pitch_music)
+            {
+                Some(format!(
+                    "lilypond:relative,{}.{}.{}",
+                    p.step, p.alter, p.octave
+                ))
+            } else {
+                Some("lilypond:relative".to_string())
+            }
+        }
+        Music::Transpose { from, to, .. } => {
+            let fp = extract_pitch_from_music(from)?;
+            let tp = extract_pitch_from_music(to)?;
+            Some(format!(
+                "lilypond:transpose,{}.{}.{},{}.{}.{}",
+                fp.step, fp.alter, fp.octave, tp.step, tp.alter, tp.octave
+            ))
+        }
+        // Unwrap transparent wrappers to find nested relative/transpose
+        Music::ContextedMusic { music, .. } => detect_pitch_context(music),
+        _ => None,
+    }
+}
+
 /// Find the position of the matching closing brace, handling nesting.
 fn find_matching_brace(s: &str) -> Option<usize> {
     let mut depth = 1;
@@ -455,8 +512,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             layer.n_integer.n = Some((voice_idx + 1).to_string());
 
             let mut events = Vec::new();
+            let mut voice_ctx = PitchContext::new();
             for m in voice_music {
-                collect_events(m, &mut events);
+                collect_events(m, &mut events, &mut voice_ctx);
             }
 
             for event in &events {
@@ -537,50 +595,127 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
 }
 
 /// Internal event representation for collecting from the AST.
-enum LyEvent<'a> {
-    Note(&'a NoteEvent),
-    Rest(&'a RestEvent),
-    PitchedRest(&'a NoteEvent),
-    MeasureRest(&'a model::MultiMeasureRestEvent),
+///
+/// Events own resolved copies of notes (not references) because relative/transpose
+/// resolution produces new Pitch values.
+enum LyEvent {
+    Note(NoteEvent),
+    Rest(RestEvent),
+    PitchedRest(NoteEvent),
+    MeasureRest(model::MultiMeasureRestEvent),
     Skip(()),
-    Clef(&'a model::Clef),
-    KeySig(&'a model::KeySignature),
-    TimeSig(&'a model::TimeSignature),
+    Clef(model::Clef),
+    KeySig(model::KeySignature),
+    TimeSig(model::TimeSignature),
 }
 
-/// Recursively collect note/rest/skip events from LilyPond music.
-fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
+/// Pitch context tracking for relative mode and transposition.
+#[derive(Clone)]
+struct PitchContext {
+    /// If in relative mode, (ref_step, ref_oct in marks format).
+    relative: Option<(char, i8)>,
+    /// Stack of transpositions to apply: (from, to) pairs.
+    transpositions: Vec<(crate::model::Pitch, crate::model::Pitch)>,
+}
+
+impl PitchContext {
+    fn new() -> Self {
+        PitchContext {
+            relative: None,
+            transpositions: Vec::new(),
+        }
+    }
+
+    /// Resolve a pitch through the current context (relative → absolute, then transpose).
+    fn resolve(&mut self, pitch: &crate::model::Pitch) -> crate::model::Pitch {
+        let mut resolved = if let Some((ref_step, ref_oct)) = self.relative {
+            let abs = pitch.resolve_relative(ref_step, ref_oct);
+            // Update reference for next note
+            self.relative = Some((abs.step, abs.octave));
+            abs
+        } else {
+            pitch.clone()
+        };
+
+        // Apply transpositions (innermost first)
+        for (from, to) in &self.transpositions {
+            resolved = resolved.transpose(from, to);
+        }
+
+        resolved
+    }
+}
+
+/// Recursively collect note/rest/skip events from LilyPond music,
+/// resolving relative pitches and transpositions to absolute.
+fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchContext) {
     match music {
         Music::Note(note) => {
+            let mut resolved = note.clone();
+            resolved.pitch = ctx.resolve(&note.pitch);
             if note.pitched_rest {
-                events.push(LyEvent::PitchedRest(note));
+                events.push(LyEvent::PitchedRest(resolved));
             } else {
-                events.push(LyEvent::Note(note));
+                events.push(LyEvent::Note(resolved));
             }
         }
-        Music::Rest(rest) => events.push(LyEvent::Rest(rest)),
+        Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
         Music::Skip(_) => events.push(LyEvent::Skip(())),
-        Music::MultiMeasureRest(mrest) => events.push(LyEvent::MeasureRest(mrest)),
+        Music::MultiMeasureRest(mrest) => events.push(LyEvent::MeasureRest(mrest.clone())),
         Music::Sequential(items) | Music::Simultaneous(items) => {
             for item in items {
-                collect_events(item, events);
+                collect_events(item, events, ctx);
             }
         }
-        Music::Relative { body, .. }
-        | Music::Fixed { body, .. }
-        | Music::Transpose { body, .. } => {
-            collect_events(body, events);
+        Music::Relative { pitch, body } => {
+            let mut inner_ctx = ctx.clone();
+            // Set the reference pitch for relative mode
+            let (ref_step, ref_oct) = if let Some(ref_pitch_music) = pitch {
+                extract_pitch_from_music(ref_pitch_music)
+                    .map(|p| (p.step, p.octave))
+                    .unwrap_or(('f', 0)) // default: f (middle of keyboard)
+            } else {
+                ('f', 0) // LilyPond default: f (below middle C)
+            };
+            inner_ctx.relative = Some((ref_step, ref_oct));
+            collect_events(body, events, &mut inner_ctx);
+        }
+        Music::Fixed { pitch: _, body } => {
+            // Fixed mode: pitches are already absolute relative to the given pitch.
+            // The pitch argument is the "origin" — notes are absolute in that octave.
+            // For now, just collect from body (pitches are written absolute).
+            collect_events(body, events, ctx);
+        }
+        Music::Transpose { from, to, body } => {
+            let from_pitch = extract_pitch_from_music(from);
+            let to_pitch = extract_pitch_from_music(to);
+            if let (Some(fp), Some(tp)) = (from_pitch, to_pitch) {
+                let mut inner_ctx = ctx.clone();
+                inner_ctx.transpositions.push((fp, tp));
+                collect_events(body, events, &mut inner_ctx);
+            } else {
+                // Can't extract pitches — collect without transposing
+                collect_events(body, events, ctx);
+            }
         }
         Music::ContextedMusic { music, .. } => {
-            collect_events(music, events);
+            collect_events(music, events, ctx);
         }
         Music::ContextChange { .. } => {
             // Context changes don't produce note events
         }
-        Music::Clef(c) => events.push(LyEvent::Clef(c)),
-        Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks)),
-        Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts)),
+        Music::Clef(c) => events.push(LyEvent::Clef(c.clone())),
+        Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks.clone())),
+        Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts.clone())),
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+    }
+}
+
+/// Extract a Pitch from a Music node (for \relative and \transpose arguments).
+fn extract_pitch_from_music(music: &Music) -> Option<crate::model::Pitch> {
+    match music {
+        Music::Note(n) => Some(n.pitch.clone()),
+        _ => None,
     }
 }
 
@@ -594,7 +729,7 @@ fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
 /// The label format is `lilypond:events,TYPE@POS;TYPE@POS;...` where:
 /// - TYPE is `clef:NAME`, `key:STEP.ALTER.MODE`, or `time:N+M/D`
 /// - POS is the 0-based index in the note/rest event stream
-fn apply_signatures_to_staff_def(events: &[LyEvent<'_>], staff_def: &mut StaffDef) -> String {
+fn apply_signatures_to_staff_def(events: &[LyEvent], staff_def: &mut StaffDef) -> String {
     let mut first_clef = true;
     let mut first_key = true;
     let mut first_time = true;
@@ -1571,5 +1706,100 @@ mod tests {
                 panic!("expected StaffDef");
             }
         }
+    }
+
+    // --- Phase 7.2: Relative / transpose import tests ---
+
+    #[test]
+    fn import_relative_resolves_pitches() {
+        // \relative c' { c d e f } → absolute: c' d' e' f'
+        let mei = parse_and_import("\\relative c' { c4 d e f }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 4);
+
+        // c' (octave 4)
+        if let LayerChild::Note(n) = &children[0] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Note");
+        }
+        // d' (octave 4)
+        if let LayerChild::Note(n) = &children[1] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "d");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Note");
+        }
+        // e' (octave 4)
+        if let LayerChild::Note(n) = &children[2] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Note");
+        }
+        // f' (octave 4)
+        if let LayerChild::Note(n) = &children[3] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "f");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Note");
+        }
+    }
+
+    #[test]
+    fn import_relative_descending() {
+        // \relative c' { c b a g } → c'=4, b=3, a=3, g=3
+        let mei = parse_and_import("\\relative c' { c4 b a g }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 4);
+
+        if let LayerChild::Note(n) = &children[0] {
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4); // c'
+        }
+        if let LayerChild::Note(n) = &children[1] {
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // b (below c')
+        }
+        if let LayerChild::Note(n) = &children[2] {
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // a (below b)
+        }
+        if let LayerChild::Note(n) = &children[3] {
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 3); // g (below a)
+        }
+    }
+
+    #[test]
+    fn import_relative_label_stored() {
+        let mei = parse_and_import("\\relative c' { c4 d e f }");
+        let sdef = first_staff_def(&mei).unwrap();
+        let label = sdef.labelled.label.as_deref().unwrap();
+        assert!(
+            label.contains("lilypond:relative,"),
+            "label should contain relative context: {label}"
+        );
+    }
+
+    #[test]
+    fn import_transpose_applies() {
+        // \transpose c d { c4 } → c transposed up a whole step = d
+        let mei = parse_and_import("\\transpose c d { c4 }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 1);
+        if let LayerChild::Note(n) = &children[0] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "d");
+        } else {
+            panic!("expected Note");
+        }
+    }
+
+    #[test]
+    fn import_transpose_label_stored() {
+        let mei = parse_and_import("\\transpose c d { c4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        let label = sdef.labelled.label.as_deref().unwrap();
+        assert!(
+            label.contains("lilypond:transpose,"),
+            "label should contain transpose context: {label}"
+        );
     }
 }

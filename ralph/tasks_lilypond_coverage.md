@@ -318,10 +318,25 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 7.2 Import & Export
 
-- [ ] [I] Relative/transpose → MEI as written (or expand to absolute); store relative/transpose in context for roundtrip
-- [ ] [E] When exporting, prefer `\relative` when all notes in a voice can be expressed relative to a single reference
-- [ ] [T] Roundtrip relative-mode score
-- [ ] [T] Relative and transpose fixtures; roundtrip
+- [x] [I] Relative/transpose → MEI as written (or expand to absolute); store relative/transpose in context for roundtrip
+  - PitchContext struct tracks relative mode (ref_step/ref_oct) and transposition stack
+  - collect_events() resolves relative pitches to absolute via Pitch::resolve_relative()
+  - Transpose applied via Pitch::transpose() during collection
+  - Pitch model extended with resolve_relative(), to_relative_marks(), transpose(), untranspose()
+  - Labels stored: `lilypond:relative,STEP.ALTER.OCT` and `lilypond:transpose,FROM,TO` on staffDef
+  - detect_pitch_context() walks music tree to find outermost relative/transpose wrapper
+  - 5 import tests: resolves ascending/descending, label stored, transpose applies, transpose label
+- [x] [E] When exporting, prefer `\relative` when all notes in a voice can be expressed relative to a single reference
+  - extract_pitch_contexts() reads lilypond:relative/transpose labels from staffDefs
+  - apply_pitch_contexts() converts absolute pitches back to relative marks or un-transposes
+  - convert_to_relative() and untranspose_items() transform Music items
+  - Wraps output in Music::Relative or Music::Transpose with original parameters
+  - 9 roundtrip tests: relative basic/no-pitch/octave-jump/accidentals/descending, transpose basic/accidentals, relative-in-staff, fixture
+- [x] [T] Roundtrip relative-mode score
+  - roundtrip_relative_basic, roundtrip_relative_no_pitch, roundtrip_relative_octave_jump, roundtrip_relative_descending, roundtrip_relative_with_accidentals
+- [x] [T] Relative and transpose fixtures; roundtrip
+  - roundtrip_transpose_basic, roundtrip_transpose_with_accidentals, roundtrip_relative_in_staff, roundtrip_relative_transpose_fixture
+  - 249 total tests pass
 
 ---
 
