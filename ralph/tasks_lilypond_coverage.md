@@ -363,10 +363,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 8.2 Import & Export
 
-- [ ] [I] Chord → MEI chord (multiple note elements with same @dur, chord attribute)
-- [ ] [E] MEI chord → LilyPond `< ... >` chord
-- [ ] [T] Roundtrip chord fixture
-- [ ] [T] Chord fixtures; roundtrip
+- [x] [I] Chord → MEI chord (multiple note elements with same @dur, chord attribute)
+  - `convert_chord()` creates MEI `<chord>` with `@dur`/`@dots` and Note children (one per pitch)
+  - `convert_pitch_to_note()` creates MEI Note with pname/oct/accid (no duration) for chord children
+  - Fixed `alter_to_accid_written()` to return `N` (natural) for alter=0 — enables force/cautionary on naturals
+  - 5 import tests: basic, dotted, accidentals, force/cautionary, mixed with notes
+- [x] [E] MEI chord → LilyPond `< ... >` chord
+  - `convert_mei_chord()` extracts pitches from ChordChild::Note children + chord-level duration
+  - `extract_pitch_from_note()` shared helper (also used by `convert_mei_note()` to reduce duplication)
+  - `extract_chord_duration()` reads chord @dur/@dots → LilyPond Duration
+- [x] [T] Roundtrip chord fixture
+  - `roundtrip_chord_fixture` validates fragment_chords.ly (5 chords incl. accidentals, octaves, force/cautionary)
+- [x] [T] Chord fixtures; roundtrip
+  - 6 roundtrip tests: basic, dotted, accidentals, force/cautionary, mixed with notes, fixture
+  - 276 total tests pass
 
 ---
 

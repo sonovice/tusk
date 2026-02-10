@@ -2,10 +2,12 @@
 
 use thiserror::Error;
 use tusk_model::elements::{
-    LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
+    ChordChild, LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild,
+    StaffGrpChild,
 };
 use tusk_model::generated::data::{DataAccidentalGesturalBasic, DataDurationCmn};
 
+use crate::model::note::ChordEvent;
 use crate::model::pitch::Pitch;
 use crate::model::signature::{Clef, KeySignature, TimeSignature};
 use crate::model::{
@@ -826,6 +828,7 @@ fn convert_layer_child(child: &LayerChild) -> Option<Music> {
         LayerChild::Note(note) => Some(convert_mei_note(note)),
         LayerChild::Rest(rest) => Some(convert_mei_rest(rest)),
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest)),
+        LayerChild::Chord(chord) => Some(convert_mei_chord(chord)),
         _ => None,
     }
 }
@@ -904,8 +907,8 @@ fn extract_rest_duration(rest: &tusk_model::elements::Rest) -> Option<Duration> 
 // Event conversion
 // ---------------------------------------------------------------------------
 
-/// Convert an MEI Note to a LilyPond NoteEvent.
-fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
+/// Extract a LilyPond Pitch from an MEI Note (for use inside chords — no duration).
+fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
     let step = note
         .note_log
         .pname
@@ -920,7 +923,6 @@ fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         .map(|o| mei_oct_to_marks(o.0))
         .unwrap_or(0);
 
-    // Determine alter from gestural accidental
     let alter = note
         .note_ges
         .accid_ges
@@ -933,7 +935,6 @@ fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         })
         .unwrap_or(0.0);
 
-    // Check for written accidental (force/cautionary)
     let mut force_accidental = false;
     let mut cautionary = false;
     for child in &note.children {
@@ -946,15 +947,55 @@ fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         }
     }
 
-    let pitch = Pitch {
+    Pitch {
         step,
         alter,
         octave,
         force_accidental,
         cautionary,
         octave_check: None,
-    };
+    }
+}
 
+/// Convert an MEI Chord to a LilyPond ChordEvent.
+fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
+    let pitches: Vec<Pitch> = chord
+        .children
+        .iter()
+        .map(|child| {
+            let ChordChild::Note(note) = child;
+            extract_pitch_from_note(note)
+        })
+        .collect();
+
+    let duration = extract_chord_duration(chord);
+
+    Music::Chord(ChordEvent { pitches, duration })
+}
+
+/// Extract duration from an MEI chord.
+fn extract_chord_duration(chord: &tusk_model::elements::Chord) -> Option<Duration> {
+    let dur = chord.chord_log.dur.as_ref()?;
+    let base = match dur {
+        tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
+        _ => return None,
+    };
+    let dots = chord
+        .chord_log
+        .dots
+        .as_ref()
+        .map(|d| d.0 as u8)
+        .unwrap_or(0);
+    Some(Duration {
+        base,
+        dots,
+        multipliers: Vec::new(),
+    })
+}
+
+/// Convert an MEI Note to a LilyPond NoteEvent.
+fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
+    let pitch = extract_pitch_from_note(note);
     let duration = extract_note_duration(note);
 
     Music::Note(NoteEvent {
@@ -1413,5 +1454,56 @@ mod tests {
         // The fixture has multiple top-level expressions; the importer picks the first.
         // The first is \relative c' { c4 d e f }
         assert!(output.contains("\\relative"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_basic() {
+        let output = roundtrip("{ <c' e' g'>4 }");
+        assert!(output.contains("<c' e' g'>4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_dotted() {
+        let output = roundtrip("{ <c' e'>2. }");
+        assert!(output.contains("<c' e'>2."), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_with_accidentals() {
+        let output = roundtrip("{ <cis' es' g'>4 }");
+        // es → ees canonical form (both valid LilyPond)
+        assert!(output.contains("<cis' ees' g'>4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_force_cautionary() {
+        let output = roundtrip("{ <cis'! e'?>4 }");
+        assert!(output.contains("cis'!"), "output: {output}");
+        assert!(output.contains("e'?"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_mixed_with_notes() {
+        let output = roundtrip("{ c'4 <d' f'>8 e'2 }");
+        assert!(output.contains("c'4"), "output: {output}");
+        assert!(output.contains("<d' f'>8"), "output: {output}");
+        assert!(output.contains("e'2"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_chord_fixture() {
+        let src = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/fixtures/lilypond/fragment_chords.ly"
+        ))
+        .unwrap();
+        let output = roundtrip(&src);
+        assert!(output.contains("<c e g>4"), "output: {output}");
+        // es → ees canonical form (both valid LilyPond)
+        assert!(output.contains("<c ees g>2."), "output: {output}");
+        assert!(output.contains("<d' fis' a'>8"), "output: {output}");
+        assert!(output.contains("<bes, d f>1"), "output: {output}");
+        assert!(output.contains("cis''!"), "output: {output}");
+        assert!(output.contains("e''?"), "output: {output}");
     }
 }

@@ -2,10 +2,10 @@
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Accid, Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, MRest, Mdiv, MdivChild,
-    Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Note, NoteChild, Rest, Score,
-    ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Staff, StaffChild, StaffDef,
-    StaffGrp, StaffGrpChild, TitleStmt,
+    Accid, Body, BodyChild, Chord, ChordChild, FileDesc, FileDescChild, Layer, LayerChild, MRest,
+    Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Note, NoteChild,
+    Rest, Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Staff, StaffChild,
+    StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
 };
 use tusk_model::generated::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
@@ -535,17 +535,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
                     }
                     LyEvent::Chord { pitches, duration } => {
-                        // Stub: emit first pitch as a note (full chord import in Phase 8.2)
-                        if let Some(first_pitch) = pitches.first() {
-                            id_counter += 1;
-                            let note_event = NoteEvent {
-                                pitch: first_pitch.clone(),
-                                duration: duration.clone(),
-                                pitched_rest: false,
-                            };
-                            let mei_note = convert_note(&note_event, id_counter);
-                            layer.children.push(LayerChild::Note(Box::new(mei_note)));
-                        }
+                        id_counter += 1;
+                        let mei_chord = convert_chord(pitches, duration.as_ref(), &mut id_counter);
+                        layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
                     }
                     LyEvent::MeasureRest(rest) => {
                         id_counter += 1;
@@ -1043,7 +1035,9 @@ fn alter_to_accid_ges(alter: f32) -> Option<DataAccidentalGestural> {
 fn alter_to_accid_written(alter: f32) -> Option<DataAccidentalWritten> {
     let key = (alter * 2.0) as i32;
     match key {
-        0 => None,
+        0 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
+            DataAccidentalWrittenBasic::N,
+        )),
         2 => Some(DataAccidentalWritten::MeiDataAccidentalWrittenBasic(
             DataAccidentalWrittenBasic::S,
         )),
@@ -1098,6 +1092,64 @@ fn apply_duration_to_rest(dur: &Duration, rest: &mut Rest) {
 // ---------------------------------------------------------------------------
 // Event conversion
 // ---------------------------------------------------------------------------
+
+/// Convert a LilyPond pitch to an MEI Note (for use inside a chord — no duration).
+fn convert_pitch_to_note(pitch: &crate::model::Pitch, id: u32) -> Note {
+    let mut mei_note = Note::default();
+    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
+
+    mei_note.note_log.pname = Some(step_to_pname(pitch.step));
+    mei_note.note_log.oct = Some(octave_to_mei(pitch.octave));
+
+    if let Some(accid_ges) = alter_to_accid_ges(pitch.alter) {
+        mei_note.note_ges.accid_ges = Some(accid_ges);
+    }
+
+    if (pitch.force_accidental || pitch.cautionary)
+        && let Some(accid_written) = alter_to_accid_written(pitch.alter)
+    {
+        let mut accid = Accid::default();
+        accid.accid_log.accid = Some(accid_written);
+        if pitch.cautionary {
+            accid.accid_log.func = Some("cautionary".to_string());
+        }
+        mei_note.children.push(NoteChild::Accid(Box::new(accid)));
+    }
+
+    mei_note
+}
+
+/// Convert a LilyPond chord (multiple pitches + shared duration) to an MEI Chord.
+fn convert_chord(
+    pitches: &[crate::model::Pitch],
+    duration: Option<&Duration>,
+    id_counter: &mut u32,
+) -> Chord {
+    let chord_id = *id_counter;
+    let mut mei_chord = Chord::default();
+    mei_chord.common.xml_id = Some(format!("ly-chord-{chord_id}"));
+
+    // Duration on the chord element
+    if let Some(dur) = duration {
+        if let Some(cmn) = duration_base_to_mei(dur.base) {
+            mei_chord.chord_log.dur = Some(DataDuration::MeiDataDurationCmn(cmn));
+        }
+        if dur.dots > 0 {
+            mei_chord.chord_log.dots = Some(DataAugmentdot(dur.dots as u64));
+        }
+    }
+
+    // Child notes (one per pitch, no individual duration)
+    for pitch in pitches {
+        *id_counter += 1;
+        let mei_note = convert_pitch_to_note(pitch, *id_counter);
+        mei_chord
+            .children
+            .push(ChordChild::Note(Box::new(mei_note)));
+    }
+
+    mei_chord
+}
 
 /// Convert a LilyPond NoteEvent to an MEI Note.
 fn convert_note(note: &NoteEvent, id: u32) -> Note {
@@ -1829,5 +1881,99 @@ mod tests {
             label.contains("lilypond:transpose,"),
             "label should contain transpose context: {label}"
         );
+    }
+
+    #[test]
+    fn import_chord_basic() {
+        let mei = parse_and_import("{ <c' e' g'>4 }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 1);
+        if let LayerChild::Chord(chord) = &children[0] {
+            assert!(matches!(
+                chord.chord_log.dur,
+                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4))
+            ));
+            assert_eq!(chord.children.len(), 3);
+            // First note: c'
+            let ChordChild::Note(n) = &chord.children[0];
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+            // Second note: e'
+            let ChordChild::Note(n) = &chord.children[1];
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+            // Third note: g'
+            let ChordChild::Note(n) = &chord.children[2];
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "g");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Chord, got: {:?}", children[0]);
+        }
+    }
+
+    #[test]
+    fn import_chord_dotted() {
+        let mei = parse_and_import("{ <c' e'>2. }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 1);
+        if let LayerChild::Chord(chord) = &children[0] {
+            assert!(matches!(
+                chord.chord_log.dur,
+                Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2))
+            ));
+            assert_eq!(chord.chord_log.dots.as_ref().unwrap().0, 1);
+            assert_eq!(chord.children.len(), 2);
+        } else {
+            panic!("expected Chord");
+        }
+    }
+
+    #[test]
+    fn import_chord_with_accidentals() {
+        let mei = parse_and_import("{ <cis' es' g'>4 }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 1);
+        if let LayerChild::Chord(chord) = &children[0] {
+            assert_eq!(chord.children.len(), 3);
+            // cis' — sharp
+            let ChordChild::Note(n) = &chord.children[0];
+            assert!(n.note_ges.accid_ges.is_some());
+            // es' — flat
+            let ChordChild::Note(n) = &chord.children[1];
+            assert!(n.note_ges.accid_ges.is_some());
+            // g' — natural (no accidental)
+            let ChordChild::Note(n) = &chord.children[2];
+            assert!(n.note_ges.accid_ges.is_none());
+        } else {
+            panic!("expected Chord");
+        }
+    }
+
+    #[test]
+    fn import_chord_force_cautionary() {
+        let mei = parse_and_import("{ <cis'! e'?>4 }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 1);
+        if let LayerChild::Chord(chord) = &children[0] {
+            assert_eq!(chord.children.len(), 2);
+            // cis'! — forced accidental
+            let ChordChild::Note(n) = &chord.children[0];
+            assert!(!n.children.is_empty(), "should have Accid child");
+            // e'? — cautionary
+            let ChordChild::Note(n) = &chord.children[1];
+            assert!(!n.children.is_empty(), "should have Accid child");
+        } else {
+            panic!("expected Chord");
+        }
+    }
+
+    #[test]
+    fn import_chord_mixed_with_notes() {
+        let mei = parse_and_import("{ c'4 <d' f'>8 e'2 }");
+        let children = layer_children(&mei);
+        assert_eq!(children.len(), 3);
+        assert!(matches!(children[0], LayerChild::Note(_)));
+        assert!(matches!(children[1], LayerChild::Chord(_)));
+        assert!(matches!(children[2], LayerChild::Note(_)));
     }
 }
