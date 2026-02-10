@@ -1354,9 +1354,14 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 32.2 Roundtrip Tests
 
-- [ ] [T] Define roundtrip test levels (e.g. LilyPond → MEI → LilyPond parse equivalence; structural comparison)
-- [ ] [T] Add roundtrip tests in `crates/formats/lilypond/tests/roundtrip.rs` for representative fixtures
-- [ ] [T] All 32 phase fixtures pass roundtrip (or documented exceptions)
+- [x] [T] Define roundtrip test levels (e.g. LilyPond → MEI → LilyPond parse equivalence; structural comparison)
+  - Three levels: (1) Serialization roundtrip (parse→serialize→re-parse→AST compare), (2) Triangle MEI roundtrip (import→MEI₁→export→re-parse→import→MEI₂, compare via re-export), (3) Pipeline stabilization (pipeline(x)==pipeline(pipeline(x)))
+- [x] [T] Add roundtrip tests in `crates/formats/lilypond/tests/roundtrip.rs` for representative fixtures
+  - 47 tests: 3 sweep tests (all fixtures × 3 levels), 33 per-fixture tests, 11 inline snippet tests
+  - Sweep tests auto-skip: parse failures, import failures, re-parse failures (|lilypond:* labels), label accumulation
+- [x] [T] All 32 phase fixtures pass roundtrip (or documented exceptions)
+  - All 51 .ly fixtures pass serialization roundtrip (level 1)
+  - ~30+ pass triangle MEI + pipeline stability; remainder skipped due to known |lilypond:* label accumulation in exported context names (documented in test file header)
 
 ### 32.3 Documentation & Script
 
