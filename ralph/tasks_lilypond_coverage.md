@@ -1277,10 +1277,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 30.2 Import & Export
 
-- [ ] [I] Scheme and embedded LilyPond → preserve as opaque or parse simple values for MEI
-- [ ] [E] MEI → LilyPond; preserve stored Scheme/embedded where present
-- [ ] [T] Roundtrip fixtures with simple Scheme
-- [ ] [T] Scheme and embedded LilyPond fixtures; roundtrip
+- [x] [I] Scheme and embedded LilyPond → preserve as opaque or parse simple values for MEI
+  - Scheme expressions roundtrip opaquely through MEI labels: property ops (`lilypond:prop,`), function calls (`lilypond:func,`), assignments (`lilypond:vars,`), and output-def blocks are serialized to text on import and re-parsed on export
+  - All SchemeExpr variants (Bool, Integer, Float, String, Symbol, Identifier, List, EmbeddedLilypond, Raw) preserved via this pipeline
+  - Split `import/mod.rs` (1509→884 LOC) into `context_analysis.rs` (645 LOC) submodule
+- [x] [E] MEI → LilyPond; preserve stored Scheme/embedded where present
+  - Export re-parses serialized Scheme text from MEI `@label` attributes via the full LilyPond parser
+  - All containers of SchemeExpr (property ops, function calls, assignments, header/paper/layout/midi fields) reconstruct correctly
+- [x] [T] Roundtrip fixtures with simple Scheme
+  - `export/tests_scheme.rs`: 20 roundtrip tests covering Bool (true/false), Integer (positive/negative), Float, String, Symbol, Identifier, List (S-expression), assignments with Scheme, mixed ops, tweak, keepWithTag, magnifyMusic
+- [x] [T] Scheme and embedded LilyPond fixtures; roundtrip
+  - `tests/fixtures/lilypond/fragment_scheme_roundtrip.ly`: exercises Bool, Integer, Identifier, Symbol, List in score context with header
+  - Fixture roundtrip test verifies all variants survive LilyPond→MEI→LilyPond cycle
 
 ---
 

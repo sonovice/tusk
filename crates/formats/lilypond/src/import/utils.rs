@@ -4,7 +4,7 @@ use tusk_model::elements::{Layer, LayerChild};
 
 use crate::model::{Music, ToplevelExpression};
 
-use super::{is_staff_context, is_staff_group_context};
+use super::context_analysis::{is_staff_context, is_staff_group_context};
 
 /// Parse a serialized `\tempo ...` string back into a Tempo AST node.
 pub(super) fn parse_tempo_from_serialized(s: &str) -> Option<crate::model::signature::Tempo> {

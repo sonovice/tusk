@@ -24,6 +24,8 @@ mod tests_output_defs;
 #[cfg(test)]
 mod tests_properties;
 #[cfg(test)]
+mod tests_scheme;
+#[cfg(test)]
 mod tests_tempo_marks;
 #[cfg(test)]
 mod tests_variables;
