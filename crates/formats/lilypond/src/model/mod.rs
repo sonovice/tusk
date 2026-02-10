@@ -3,11 +3,13 @@
 //! Types are added incrementally per phase (score, music, note, pitch, duration, etc.).
 
 pub mod duration;
+pub mod markup;
 pub mod note;
 pub mod pitch;
 pub mod signature;
 
 pub use duration::Duration;
+pub use markup::{Markup, MarkupList};
 pub use note::{
     ChordEvent, ChordRepetitionEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent,
     MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
@@ -55,6 +57,10 @@ pub enum ToplevelExpression {
     Assignment(Assignment),
     /// Standalone music at the top level (e.g. `\relative { c d e f }`).
     Music(Music),
+    /// Top-level `\markup { ... }`.
+    Markup(Markup),
+    /// Top-level `\markuplist { ... }`.
+    MarkupList(MarkupList),
 }
 
 // ---------------------------------------------------------------------------
@@ -196,8 +202,10 @@ pub enum AssignmentValue {
     Identifier(String),
     /// A Scheme-like expression stored as raw text (for now).
     SchemeExpr(String),
-    /// A markup expression stored as raw text (for now).
-    Markup(String),
+    /// A structured markup expression.
+    Markup(Markup),
+    /// A structured markup list expression.
+    MarkupList(MarkupList),
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +365,10 @@ pub enum Music {
     },
     /// A lyric event: a syllable with optional duration and post-events.
     Lyric(LyricEvent),
+    /// A `\markup { ... }` expression in a music context.
+    Markup(Markup),
+    /// A `\markuplist { ... }` expression in a music context.
+    MarkupList(MarkupList),
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

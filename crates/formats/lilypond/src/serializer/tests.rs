@@ -1155,3 +1155,90 @@ fn serialize_lyric_with_duration() {
     let output = serialize(&file);
     assert_eq!(output.trim(), "\\lyricmode { word4. }");
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Markup serialization (Phase 21)
+// ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn serialize_markup_string() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::String(
+            "Hello".into(),
+        ))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\markup \"Hello\"");
+}
+
+#[test]
+fn serialize_markup_word() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::Word(
+            "Hello".into(),
+        ))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\markup Hello");
+}
+
+#[test]
+fn serialize_markup_command() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::Command {
+            name: "bold".into(),
+            args: vec![markup::Markup::String("text".into())],
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\markup \\bold \"text\"");
+}
+
+#[test]
+fn serialize_markup_list() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::List(vec![
+            markup::Markup::Word("Hello".into()),
+            markup::Markup::Word("World".into()),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\markup { Hello World }");
+}
+
+#[test]
+fn serialize_markuplist() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::MarkupList(markup::MarkupList {
+            items: vec![
+                markup::Markup::String("one".into()),
+                markup::Markup::String("two".into()),
+            ],
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\markuplist { \"one\" \"two\" }");
+}
+
+#[test]
+fn serialize_markup_assignment() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Header(HeaderBlock {
+            fields: vec![Assignment {
+                name: "title".into(),
+                value: AssignmentValue::Markup(markup::Markup::String("My Title".into())),
+            }],
+        })],
+    };
+    let output = serialize(&file);
+    assert!(
+        output.contains("title = \\markup \"My Title\""),
+        "got: {output}"
+    );
+}

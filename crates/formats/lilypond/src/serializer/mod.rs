@@ -74,6 +74,14 @@ impl<'a> Serializer<'a> {
             ToplevelExpression::Header(hb) => self.write_header_block(hb),
             ToplevelExpression::Assignment(a) => self.write_assignment(a),
             ToplevelExpression::Music(m) => self.write_music(m),
+            ToplevelExpression::Markup(m) => {
+                self.out.push_str("\\markup ");
+                self.write_markup(m);
+            }
+            ToplevelExpression::MarkupList(ml) => {
+                self.out.push_str("\\markuplist ");
+                self.write_markup_list(ml);
+            }
         }
     }
 
@@ -310,7 +318,14 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(s);
             }
             AssignmentValue::SchemeExpr(s) => self.out.push_str(s),
-            AssignmentValue::Markup(s) => self.out.push_str(s),
+            AssignmentValue::Markup(m) => {
+                self.out.push_str("\\markup ");
+                self.write_markup(m);
+            }
+            AssignmentValue::MarkupList(ml) => {
+                self.out.push_str("\\markuplist ");
+                self.write_markup_list(ml);
+            }
         }
     }
 
@@ -505,6 +520,14 @@ impl<'a> Serializer<'a> {
                 self.write_music(lyrics);
             }
             Music::Lyric(le) => self.write_lyric_event(le),
+            Music::Markup(m) => {
+                self.out.push_str("\\markup ");
+                self.write_markup(m);
+            }
+            Music::MarkupList(ml) => {
+                self.out.push_str("\\markuplist ");
+                self.write_markup_list(ml);
+            }
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');
@@ -701,6 +724,107 @@ impl<'a> Serializer<'a> {
             }
         }
     }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Markup
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_markup(&mut self, m: &markup::Markup) {
+        match m {
+            markup::Markup::Word(w) => self.out.push_str(w),
+            markup::Markup::String(s) => {
+                self.out.push('"');
+                for ch in s.chars() {
+                    match ch {
+                        '"' => self.out.push_str("\\\""),
+                        '\\' => self.out.push_str("\\\\"),
+                        _ => self.out.push(ch),
+                    }
+                }
+                self.out.push('"');
+            }
+            markup::Markup::Command { name, args } => {
+                self.out.push('\\');
+                self.out.push_str(name);
+                if is_markup_list_command(name) && args.len() > 1 {
+                    // List commands: wrap args in braces
+                    self.out.push_str(" { ");
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            self.out.push(' ');
+                        }
+                        self.write_markup(arg);
+                    }
+                    self.out.push_str(" }");
+                } else {
+                    for arg in args {
+                        self.out.push(' ');
+                        self.write_markup(arg);
+                    }
+                }
+            }
+            markup::Markup::List(items) => {
+                self.out.push_str("{ ");
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 {
+                        self.out.push(' ');
+                    }
+                    self.write_markup(item);
+                }
+                self.out.push_str(" }");
+            }
+            markup::Markup::Score(sb) => self.write_score_block(sb),
+            markup::Markup::MarkupList(ml) => {
+                self.out.push_str("\\markuplist ");
+                self.write_markup_list(ml);
+            }
+            markup::Markup::Identifier(name) => {
+                self.out.push('\\');
+                self.out.push_str(name);
+            }
+            markup::Markup::Scheme(raw) => self.out.push_str(raw),
+            markup::Markup::Number(n) => {
+                if *n == (*n as i64) as f64 {
+                    self.out.push_str(&(*n as i64).to_string());
+                } else {
+                    self.out.push_str(&n.to_string());
+                }
+            }
+        }
+    }
+
+    fn write_markup_list(&mut self, ml: &markup::MarkupList) {
+        self.out.push_str("{ ");
+        for (i, item) in ml.items.iter().enumerate() {
+            if i > 0 {
+                self.out.push(' ');
+            }
+            self.write_markup(item);
+        }
+        self.out.push_str(" }");
+    }
+}
+
+/// Known markup list commands that serialize their args with braces.
+fn is_markup_list_command(name: &str) -> bool {
+    matches!(
+        name,
+        "center-column"
+            | "column"
+            | "concat"
+            | "dir-column"
+            | "fill-line"
+            | "general-align"
+            | "justify"
+            | "left-column"
+            | "line"
+            | "overlay"
+            | "right-column"
+            | "table"
+            | "wordwrap"
+            | "string-lines"
+            | "wordwrap-lines"
+    )
 }
 
 #[cfg(test)]

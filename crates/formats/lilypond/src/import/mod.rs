@@ -1432,6 +1432,9 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         Music::Lyric(_) => {
             // Lyric events handled in lyrics module
         }
+        Music::Markup(_) | Music::MarkupList(_) => {
+            // Markup in music context — not a music event
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

@@ -1376,3 +1376,75 @@ fn lyric_hyphen_extender_dont_affect_span_balance() {
     };
     assert!(validate(&file).is_ok());
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Markup validation (Phase 21)
+// ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn valid_markup_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::String(
+            "Hello".into(),
+        ))],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn valid_markup_command_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::Command {
+            name: "bold".into(),
+            args: vec![markup::Markup::String("text".into())],
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn valid_markup_list_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::List(vec![
+            markup::Markup::Word("Hello".into()),
+            markup::Markup::Word("World".into()),
+        ]))],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn valid_markuplist_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::MarkupList(markup::MarkupList {
+            items: vec![
+                markup::Markup::String("one".into()),
+                markup::Markup::String("two".into()),
+            ],
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn markup_score_validates_inner() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Markup(markup::Markup::Score(
+            ScoreBlock { items: vec![] },
+        ))],
+    };
+    // Score with no music should produce ScoreNoMusic error
+    let result = validate(&file);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(
+        errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::ScoreNoMusic))
+    );
+}

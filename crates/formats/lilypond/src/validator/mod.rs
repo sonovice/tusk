@@ -156,6 +156,12 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
         ToplevelExpression::BookPart(bp) => validate_bookpart(bp, errors),
         ToplevelExpression::Header(hb) => validate_header(hb, errors),
         ToplevelExpression::Assignment(_) => {}
+        ToplevelExpression::Markup(m) => validate_markup(m, errors),
+        ToplevelExpression::MarkupList(ml) => {
+            for item in &ml.items {
+                validate_markup(item, errors);
+            }
+        }
         ToplevelExpression::Music(m) => {
             validate_music(m, errors);
             validate_span_balance(m, errors);
@@ -342,7 +348,7 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
             count_spans(lyrics, counts);
         }
         Music::Lyric(le) => counts.count_post_events(&le.post_events),
-        Music::BarCheck | Music::BarLine { .. } => {}
+        Music::BarCheck | Music::BarLine { .. } | Music::Markup(_) | Music::MarkupList(_) => {}
         _ => {}
     }
 }
@@ -550,7 +556,39 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 errors.push(ValidationError::EmptyBarLineType);
             }
         }
+        Music::Markup(m) => validate_markup(m, errors),
+        Music::MarkupList(ml) => {
+            for item in &ml.items {
+                validate_markup(item, errors);
+            }
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+    }
+}
+
+fn validate_markup(m: &markup::Markup, errors: &mut Vec<ValidationError>) {
+    match m {
+        markup::Markup::Command { args, .. } => {
+            for arg in args {
+                validate_markup(arg, errors);
+            }
+        }
+        markup::Markup::List(items) => {
+            for item in items {
+                validate_markup(item, errors);
+            }
+        }
+        markup::Markup::Score(sb) => validate_score(sb, errors),
+        markup::Markup::MarkupList(ml) => {
+            for item in &ml.items {
+                validate_markup(item, errors);
+            }
+        }
+        markup::Markup::Word(_)
+        | markup::Markup::String(_)
+        | markup::Markup::Identifier(_)
+        | markup::Markup::Scheme(_)
+        | markup::Markup::Number(_) => {}
     }
 }
 

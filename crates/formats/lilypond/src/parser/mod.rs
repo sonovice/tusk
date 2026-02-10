@@ -155,6 +155,14 @@ impl<'src> Parser<'src> {
             Token::Book => Ok(ToplevelExpression::Book(self.parse_book_block()?)),
             Token::BookPart => Ok(ToplevelExpression::BookPart(self.parse_bookpart_block()?)),
             Token::Header => Ok(ToplevelExpression::Header(self.parse_header_block()?)),
+            Token::Markup => {
+                let m = self.parse_markup()?;
+                Ok(ToplevelExpression::Markup(m))
+            }
+            Token::MarkupList => {
+                let ml = self.parse_markuplist()?;
+                Ok(ToplevelExpression::MarkupList(ml))
+            }
             // Assignment: symbol = ...
             Token::Symbol(_) | Token::NoteName(_) => {
                 // Peek ahead for `=` to distinguish assignment from music
@@ -254,8 +262,12 @@ impl<'src> Parser<'src> {
                 }
             }
             Token::Markup => {
-                let raw = self.parse_markup_raw()?;
-                Ok(AssignmentValue::Markup(raw))
+                let m = self.parse_markup()?;
+                Ok(AssignmentValue::Markup(m))
+            }
+            Token::MarkupList => {
+                let ml = self.parse_markuplist()?;
+                Ok(AssignmentValue::MarkupList(ml))
             }
             Token::Hash => {
                 let raw = self.parse_scheme_raw()?;
@@ -458,8 +470,12 @@ impl<'src> Parser<'src> {
                 Ok(AssignmentValue::Number(n))
             }
             Token::Markup => {
-                let raw = self.parse_markup_raw()?;
-                Ok(AssignmentValue::Markup(raw))
+                let m = self.parse_markup()?;
+                Ok(AssignmentValue::Markup(m))
+            }
+            Token::MarkupList => {
+                let ml = self.parse_markuplist()?;
+                Ok(AssignmentValue::MarkupList(ml))
             }
             Token::Hash => {
                 let raw = self.parse_scheme_raw()?;
@@ -646,6 +662,14 @@ impl<'src> Parser<'src> {
             Token::EscapedWord(s) if s == "acciaccatura" => self.parse_acciaccatura(),
             Token::EscapedWord(s) if s == "appoggiatura" => self.parse_appoggiatura(),
             Token::EscapedWord(s) if s == "afterGrace" => self.parse_after_grace(),
+            Token::Markup => {
+                let m = self.parse_markup()?;
+                Ok(Music::Markup(m))
+            }
+            Token::MarkupList => {
+                let ml = self.parse_markuplist()?;
+                Ok(Music::MarkupList(ml))
+            }
             Token::LyricMode => self.parse_lyric_mode(),
             Token::Lyrics => self.parse_lyrics_shorthand(),
             Token::LyricsTo => self.parse_lyricsto(),
@@ -1429,6 +1453,7 @@ impl<'src> Parser<'src> {
     }
 }
 mod lyrics;
+mod markup;
 mod raw_blocks;
 mod signatures;
 
@@ -1451,6 +1476,8 @@ mod tests_chord_rep;
 mod tests_grace;
 #[cfg(test)]
 mod tests_lyrics;
+#[cfg(test)]
+mod tests_markup;
 #[cfg(test)]
 mod tests_post_events;
 #[cfg(test)]

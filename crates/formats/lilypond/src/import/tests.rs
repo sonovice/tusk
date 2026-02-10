@@ -1066,11 +1066,11 @@ fn get_verse_text(note: &tusk_model::elements::Note, verse_n: &str) -> Option<St
             && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n)
         {
             for vc in &verse.children {
-                if let VerseChild::Syl(syl) = vc {
-                    for sc in &syl.children {
-                        let SylChild::Text(t) = sc;
-                        return Some(t.clone());
-                    }
+                if let VerseChild::Syl(syl) = vc
+                    && let Some(sc) = syl.children.first()
+                {
+                    let SylChild::Text(t) = sc;
+                    return Some(t.clone());
                 }
             }
         }

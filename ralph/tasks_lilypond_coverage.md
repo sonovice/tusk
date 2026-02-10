@@ -911,11 +911,11 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 21.1 Model & Parser
 
-- [ ] [P] Parse `\markup { ... }`, `\markuplist { ... }`; markup functions (e.g. \bold, \italic, \larger), markup list; `\score { ... }` inside markup
-- [ ] [P] Add `Markup`, `MarkupList`, `MarkupFunction`, markup word/identifier
-- [ ] [S] Serialize markup and markuplist
-- [ ] [V] Markup braces balanced
-- [ ] [T] Fragment: `\markup { \bold Hello }`, `\markup \score { { c4 } }`
+- [x] [P] Parse `\markup { ... }`, `\markuplist { ... }`; markup functions (e.g. \bold, \italic, \larger), markup list; `\score { ... }` inside markup
+- [x] [P] Add `Markup`, `MarkupList`, `MarkupFunction`, markup word/identifier
+- [x] [S] Serialize markup and markuplist
+- [x] [V] Markup braces balanced
+- [x] [T] Fragment: `\markup { \bold Hello }`, `\markup \score { { c4 } }`
 
 ### 21.2 Import & Export
 
