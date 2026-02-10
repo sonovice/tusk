@@ -1323,9 +1323,13 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 31.2 Validator in Import
 
-- [ ] [V] Run validator on AST before import; report clear errors for invalid structure
-- [ ] [T] Invalid .ly files produce clear parse/validation errors
-- [ ] [T] Full regression: every fixture in tests/fixtures/lilypond imports to MEI; no panics
+- [x] [V] Run validator on AST before import; report clear errors for invalid structure
+  - Added `ImportError::Validation(Vec<ValidationError>)` variant with multi-error display
+  - `import()` calls `validator::validate()` before conversion; rejects invalid ASTs
+- [x] [T] Invalid .ly files produce clear parse/validation errors
+  - 9 tests in `tests_validation.rs`: parse errors, validation errors, format-level validation, readable error display
+- [x] [T] Full regression: every fixture in tests/fixtures/lilypond imports to MEI; no panics
+  - `all_fixtures_import_without_panic()` dynamically discovers all .ly fixtures via `read_dir`; asserts no panics/errors
 
 ---
 

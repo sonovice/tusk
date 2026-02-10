@@ -31,6 +31,8 @@ mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
 #[cfg(test)]
+mod tests_validation;
+#[cfg(test)]
 mod tests_variables;
 
 use thiserror::Error;
@@ -63,12 +65,22 @@ pub enum ImportError {
     NotImplemented,
     #[error("no music found in LilyPond file")]
     NoMusic,
+    #[error("validation errors:\n{}", .0.iter().map(|e| format!("  - {e}")).collect::<Vec<_>>().join("\n"))]
+    Validation(Vec<crate::validator::ValidationError>),
     #[error("import error: {0}")]
     Other(String),
 }
 
 /// Convert a parsed LilyPond AST to an MEI document.
+///
+/// Runs structural validation before conversion; returns
+/// [`ImportError::Validation`] if the AST has problems.
 pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
+    // Validate structure before import
+    if let Err(errors) = crate::validator::validate(file) {
+        return Err(ImportError::Validation(errors));
+    }
+
     // Collect top-level assignments for variable resolution
     let assignments = collect_assignments(file);
     let var_map = build_variable_map(&assignments);

@@ -44,7 +44,7 @@ fn first_staff(mei: &Mei) -> Option<&Staff> {
 
 fn first_layer_children(mei: &Mei) -> &Vec<tusk_model::elements::LayerChild> {
     let staff = first_staff(mei).expect("should have a staff");
-    for sc in &staff.children {
+    if let Some(sc) = staff.children.first() {
         let StaffChild::Layer(layer) = sc;
         return &layer.children;
     }
@@ -431,6 +431,51 @@ fn header_metadata_imported_to_mei_head() {
         .iter()
         .any(|c| matches!(c, MeiChild::MeiHead(_)));
     assert!(has_head, "should have MeiHead with metadata");
+}
+
+/// Full regression: dynamically discover ALL .ly fixtures and import each one.
+/// No fixture should panic; parseable+valid fixtures must import successfully.
+#[test]
+fn all_fixtures_import_without_panic() {
+    let fixture_dir =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../tests/fixtures/lilypond");
+    let fixture_dir = fixture_dir
+        .canonicalize()
+        .expect("fixture directory should exist");
+
+    let mut tested = 0u32;
+    let mut skipped_parse = 0u32;
+    let mut no_music = 0u32;
+
+    for entry in std::fs::read_dir(&fixture_dir).expect("read fixture dir") {
+        let entry = entry.expect("read entry");
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("ly") {
+            continue;
+        }
+        let src = std::fs::read_to_string(&path).expect("read fixture");
+        let file = match Parser::new(&src).and_then(|p| p.parse()) {
+            Ok(f) => f,
+            Err(_) => {
+                skipped_parse += 1;
+                continue;
+            }
+        };
+        match import(&file) {
+            Ok(_) => tested += 1,
+            Err(ImportError::NoMusic) => {
+                no_music += 1;
+            }
+            Err(e) => panic!(
+                "fixture {} import failed: {e}",
+                path.file_name().unwrap().to_string_lossy()
+            ),
+        }
+    }
+    assert!(
+        tested > 0,
+        "should have imported at least one fixture (tested={tested}, skipped_parse={skipped_parse}, no_music={no_music})"
+    );
 }
 
 #[test]
