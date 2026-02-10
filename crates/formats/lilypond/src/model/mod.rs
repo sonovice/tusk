@@ -60,6 +60,12 @@ pub enum ToplevelExpression {
     Book(BookBlock),
     BookPart(BookPartBlock),
     Header(HeaderBlock),
+    /// Top-level `\paper { ... }` block.
+    Paper(PaperBlock),
+    /// Top-level `\layout { ... }` block.
+    Layout(LayoutBlock),
+    /// Top-level `\midi { ... }` block.
+    Midi(MidiBlock),
     /// Top-level assignment: `name = expr`.
     Assignment(Assignment),
     /// Standalone music at the top level (e.g. `\relative { c d e f }`).
@@ -158,10 +164,17 @@ pub enum LayoutItem {
     ContextBlock(ContextModBlock),
 }
 
-/// `\midi { ... }` block (body opaque for now).
+/// `\midi { ... }` block.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MidiBlock {
-    pub body: Vec<Assignment>,
+    pub body: Vec<MidiItem>,
+}
+
+/// Item inside `\midi { ... }`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MidiItem {
+    Assignment(Assignment),
+    ContextBlock(ContextModBlock),
 }
 
 /// `\paper { ... }` block (body opaque for now).

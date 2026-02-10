@@ -155,6 +155,9 @@ impl<'src> Parser<'src> {
             Token::Book => Ok(ToplevelExpression::Book(self.parse_book_block()?)),
             Token::BookPart => Ok(ToplevelExpression::BookPart(self.parse_bookpart_block()?)),
             Token::Header => Ok(ToplevelExpression::Header(self.parse_header_block()?)),
+            Token::Paper => Ok(ToplevelExpression::Paper(self.parse_paper_block()?)),
+            Token::Layout => Ok(ToplevelExpression::Layout(self.parse_layout_block()?)),
+            Token::Midi => Ok(ToplevelExpression::Midi(self.parse_midi_block()?)),
             Token::Markup => {
                 let m = self.parse_markup()?;
                 Ok(ToplevelExpression::Markup(m))
@@ -529,10 +532,20 @@ impl<'src> Parser<'src> {
         self.expect(&Token::BraceOpen)?;
         let mut body = Vec::new();
         while *self.peek() != Token::BraceClose && !self.at_eof() {
-            body.push(self.parse_output_def_assignment()?);
+            body.push(self.parse_midi_item()?);
         }
         self.expect(&Token::BraceClose)?;
         Ok(MidiBlock { body })
+    }
+
+    fn parse_midi_item(&mut self) -> Result<MidiItem, ParseError> {
+        match self.peek() {
+            Token::Context => Ok(MidiItem::ContextBlock(self.parse_context_mod_block()?)),
+            _ => {
+                let a = self.parse_output_def_assignment()?;
+                Ok(MidiItem::Assignment(a))
+            }
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -1451,6 +1464,8 @@ mod tests_grace;
 mod tests_lyrics;
 #[cfg(test)]
 mod tests_markup;
+#[cfg(test)]
+mod tests_output_defs;
 #[cfg(test)]
 mod tests_post_events;
 #[cfg(test)]

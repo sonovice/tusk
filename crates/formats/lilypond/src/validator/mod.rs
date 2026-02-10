@@ -179,6 +179,9 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
         ToplevelExpression::Book(bb) => validate_book(bb, errors),
         ToplevelExpression::BookPart(bp) => validate_bookpart(bp, errors),
         ToplevelExpression::Header(hb) => validate_header(hb, errors),
+        ToplevelExpression::Paper(pb) => validate_paper(pb, errors),
+        ToplevelExpression::Layout(lb) => validate_layout(lb, errors),
+        ToplevelExpression::Midi(mb) => validate_midi(mb, errors),
         ToplevelExpression::Assignment(_) => {}
         ToplevelExpression::Markup(m) => validate_markup(m, errors),
         ToplevelExpression::MarkupList(ml) => {
@@ -207,7 +210,8 @@ fn validate_score(sb: &ScoreBlock, errors: &mut Vec<ValidationError>) {
                 validate_span_balance(m, errors);
             }
             ScoreItem::Header(hb) => validate_header(hb, errors),
-            ScoreItem::Layout(_) | ScoreItem::Midi(_) => {}
+            ScoreItem::Layout(lb) => validate_layout(lb, errors),
+            ScoreItem::Midi(mb) => validate_midi(mb, errors),
         }
     }
 }
@@ -235,8 +239,102 @@ fn validate_bookpart(bp: &BookPartBlock, errors: &mut Vec<ValidationError>) {
     }
 }
 
-fn validate_header(_hb: &HeaderBlock, _errors: &mut Vec<ValidationError>) {
-    // Header field validation can be extended later
+/// Well-known LilyPond header fields.
+const KNOWN_HEADER_FIELDS: &[&str] = &[
+    "title",
+    "subtitle",
+    "subsubtitle",
+    "instrument",
+    "composer",
+    "arranger",
+    "poet",
+    "lyricist",
+    "meter",
+    "opus",
+    "piece",
+    "dedication",
+    "copyright",
+    "tagline",
+    "texidoc",
+    "enteredby",
+    "source",
+    "maintainer",
+    "maintainerEmail",
+    "maintainerWeb",
+    "mutopiacomposer",
+    "mutopiapoet",
+    "mutopiainstrument",
+    "mutopiaopus",
+    "date",
+    "style",
+    "license",
+    "footer",
+    "breakbefore",
+    "head",
+];
+
+fn validate_header(hb: &HeaderBlock, errors: &mut Vec<ValidationError>) {
+    for field in &hb.fields {
+        if !KNOWN_HEADER_FIELDS.contains(&field.name.as_str()) {
+            // Custom header fields are allowed — LilyPond is permissive,
+            // so we only warn for truly suspicious names (empty).
+            if field.name.is_empty() {
+                errors.push(ValidationError::Other("empty header field name".into()));
+            }
+        }
+    }
+}
+
+fn validate_paper(pb: &PaperBlock, errors: &mut Vec<ValidationError>) {
+    for a in &pb.body {
+        if a.name.is_empty() {
+            errors.push(ValidationError::Other("empty paper variable name".into()));
+        }
+    }
+}
+
+fn validate_layout(lb: &LayoutBlock, errors: &mut Vec<ValidationError>) {
+    for item in &lb.body {
+        match item {
+            LayoutItem::Assignment(a) => {
+                if a.name.is_empty() {
+                    errors.push(ValidationError::Other("empty layout variable name".into()));
+                }
+            }
+            LayoutItem::ContextBlock(cb) => validate_context_mod_block(cb, errors),
+        }
+    }
+}
+
+fn validate_midi(mb: &MidiBlock, errors: &mut Vec<ValidationError>) {
+    for item in &mb.body {
+        match item {
+            MidiItem::Assignment(a) => {
+                if a.name.is_empty() {
+                    errors.push(ValidationError::Other("empty midi variable name".into()));
+                }
+            }
+            MidiItem::ContextBlock(cb) => validate_context_mod_block(cb, errors),
+        }
+    }
+}
+
+fn validate_context_mod_block(cb: &ContextModBlock, errors: &mut Vec<ValidationError>) {
+    for item in &cb.items {
+        match item {
+            ContextModItem::Override { path, .. } | ContextModItem::Set { path, .. } => {
+                if path.segments.is_empty() {
+                    errors.push(ValidationError::EmptyPropertyPath);
+                }
+            }
+            ContextModItem::Revert { path } | ContextModItem::Unset { path } => {
+                if path.segments.is_empty() {
+                    errors.push(ValidationError::EmptyPropertyPath);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 fn validate_post_events(events: &[note::PostEvent], errors: &mut Vec<ValidationError>) {

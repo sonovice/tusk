@@ -163,6 +163,9 @@ impl<'a> Serializer<'a> {
             ToplevelExpression::Book(bb) => self.write_book_block(bb),
             ToplevelExpression::BookPart(bp) => self.write_bookpart_block(bp),
             ToplevelExpression::Header(hb) => self.write_header_block(hb),
+            ToplevelExpression::Paper(pb) => self.write_paper_block(pb),
+            ToplevelExpression::Layout(lb) => self.write_layout_block(lb),
+            ToplevelExpression::Midi(mb) => self.write_midi_block(mb),
             ToplevelExpression::Assignment(a) => self.write_assignment(a),
             ToplevelExpression::Music(m) => self.write_music(m),
             ToplevelExpression::Markup(m) => {
@@ -310,9 +313,12 @@ impl<'a> Serializer<'a> {
         }
         self.write_newline();
         self.indent += 1;
-        for a in &mb.body {
+        for item in &mb.body {
             self.write_indent();
-            self.write_assignment(a);
+            match item {
+                MidiItem::Assignment(a) => self.write_assignment(a),
+                MidiItem::ContextBlock(cb) => self.write_context_mod_block(cb),
+            }
             self.write_newline();
         }
         self.indent -= 1;

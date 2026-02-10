@@ -1142,11 +1142,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 27.1 Model & Parser
 
-- [ ] [P] Parse `\header { title = "..." composer = "..." }` (all standard fields); `\paper { ... }`, `\layout { ... }`, `\midi { ... }` with assignment lists
-- [ ] [P] Add full header field set; `PaperBlock`, `LayoutBlock`, `MidiBlock` with body (assignments)
-- [ ] [S] Serialize header, paper, layout, midi
-- [ ] [V] Header keys and paper/layout/midi options valid
-- [ ] [T] Fragment: full header; `\paper { indent = 0\mm }`
+- [x] [P] Parse `\header { title = "..." composer = "..." }` (all standard fields); `\paper { ... }`, `\layout { ... }`, `\midi { ... }` with assignment lists
+  - Parser already handled all four block types inside score/book/bookpart; added `Paper`/`Layout`/`Midi` to `ToplevelExpression` and `parse_toplevel_expression`
+  - Refactored `MidiBlock` to use `Vec<MidiItem>` (matching `LayoutBlock`'s `Vec<LayoutItem>`) with `Assignment` and `ContextBlock` variants
+  - Added `parse_midi_item()` to support `\context { ... }` blocks inside `\midi`
+- [x] [P] Add full header field set; `PaperBlock`, `LayoutBlock`, `MidiBlock` with body (assignments)
+  - `MidiItem` enum added (parallels `LayoutItem`); `MidiBlock.body` now `Vec<MidiItem>`
+  - All block types support assignments, scheme expressions, markup values; layout/midi support `\context { ... }` blocks
+- [x] [S] Serialize header, paper, layout, midi
+  - Serializer updated for new `ToplevelExpression::{Paper,Layout,Midi}` variants and `MidiItem` enum
+- [x] [V] Header keys and paper/layout/midi options valid
+  - Added `validate_header()`, `validate_paper()`, `validate_layout()`, `validate_midi()`, `validate_context_mod_block()`
+  - Validates empty field/variable names, empty property paths in context modifications
+  - `KNOWN_HEADER_FIELDS` constant for reference (custom fields still allowed)
+- [x] [T] Fragment: full header; `\paper { indent = 0\mm }`
+  - `fragment_header.ly`: full header with 10 fields + nested score header + layout/midi
+  - `fragment_paper_layout_midi.ly`: top-level paper/layout/midi with context blocks + score with output defs
+  - 18 parser tests in `tests_output_defs.rs`: parse, roundtrip, fixture validation
 
 ### 27.2 Import & Export
 
