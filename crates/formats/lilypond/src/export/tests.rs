@@ -794,6 +794,73 @@ fn roundtrip_artics_fixture() {
 }
 
 // ---------------------------------------------------------------------------
+// Technical notation roundtrip tests (Phase 14.2)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_string_number() {
+    let output = roundtrip("{ c4-\\1 d4-\\2 }");
+    assert!(output.contains("\\1"), "output: {output}");
+    assert!(output.contains("\\2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_string_number_with_direction() {
+    let output = roundtrip("{ c4^\\3 d4_\\4 }");
+    assert!(output.contains("^\\3"), "up-string: {output}");
+    assert!(output.contains("_\\4"), "down-string: {output}");
+}
+
+#[test]
+fn roundtrip_open_string() {
+    let output = roundtrip("{ c4\\open }");
+    assert!(output.contains("\\open"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_harmonic() {
+    let output = roundtrip("{ c4\\harmonic }");
+    assert!(output.contains("\\harmonic"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_flageolet() {
+    let output = roundtrip("{ c4\\flageolet }");
+    assert!(output.contains("\\flageolet"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_string_with_open() {
+    let output = roundtrip("{ c4-\\1 -\\open }");
+    assert!(output.contains("\\1"), "string number: {output}");
+    assert!(output.contains("\\open"), "open: {output}");
+}
+
+#[test]
+fn roundtrip_string_with_downbow() {
+    let output = roundtrip("{ c4^\\2 \\downbow }");
+    assert!(output.contains("\\2"), "string number: {output}");
+    assert!(output.contains("\\downbow"), "downbow: {output}");
+}
+
+#[test]
+fn roundtrip_technical_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_technical.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(output.contains("\\1"), "string 1: {output}");
+    assert!(output.contains("\\2"), "string 2: {output}");
+    assert!(output.contains("\\open"), "open: {output}");
+    assert!(output.contains("\\harmonic"), "harmonic: {output}");
+    assert!(output.contains("\\upbow"), "upbow: {output}");
+    assert!(output.contains("\\downbow"), "downbow: {output}");
+    assert!(output.contains("\\flageolet"), "flageolet: {output}");
+}
+
+// ---------------------------------------------------------------------------
 // Ornament & tremolo roundtrip tests (Phase 13.2)
 // ---------------------------------------------------------------------------
 

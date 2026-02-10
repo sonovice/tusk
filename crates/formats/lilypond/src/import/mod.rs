@@ -5,6 +5,8 @@ mod signatures;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_control;
 
 use thiserror::Error;
 use tusk_model::elements::{

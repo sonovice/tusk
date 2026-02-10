@@ -619,10 +619,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 14.2 Import & Export
 
-- [ ] [I] Technical → MEI technical elements or ornam labels
-- [ ] [E] MEI technical → LilyPond
-- [ ] [T] Roundtrip technical fixtures
-- [ ] [T] Technical notation fixtures; roundtrip
+- [x] [I] Technical → MEI technical elements or ornam labels
+  - String numbers (`\1`–`\9`) → `<dir>` with `lilypond:string,N[,dir=up|down]` label (already implemented in Phase 12.2)
+  - `\open`, `\harmonic`, `\flageolet` → `<dir>` with `lilypond:artic,NAME` label (NamedArticulation fallthrough, no native MEI equivalent)
+  - `\upbow`, `\downbow` → `<dir>` with `lilypond:artic,NAME` label (same pattern)
+  - Split import/tests.rs → tests.rs (1056 LOC) + tests_control.rs (512 LOC) to stay under 1500 limit
+  - 5 import tests: string_number, open, harmonic, flageolet, combined_string_and_open
+- [x] [E] MEI technical → LilyPond
+  - `collect_artic_post_events()` already handles `lilypond:artic,*` → `PostEvent::NamedArticulation` and `lilypond:string,*` → `PostEvent::StringNumber`
+  - No new export code needed — all paths already existed from Phase 12.2
+- [x] [T] Roundtrip technical fixtures
+  - 8 roundtrip tests: string_number, string_number_with_direction, open_string, harmonic, flageolet, string_with_open, string_with_downbow, technical_fixture
+- [x] [T] Technical notation fixtures; roundtrip
+  - `roundtrip_technical_fixture` validates fragment_technical.ly (string numbers, open, harmonic, upbow, downbow, flageolet, combined)
+  - 475 total tests pass
 
 ---
 
