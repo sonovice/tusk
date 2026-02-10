@@ -73,6 +73,10 @@ pub(super) enum LyEvent {
     ChordName(model::note::ChordModeEvent),
     /// A figured bass event.
     FigureEvent(model::note::FigureEvent),
+    /// A drum note event.
+    DrumEvent(model::note::DrumNoteEvent),
+    /// A drum chord event.
+    DrumChordEvent(model::note::DrumChordEvent),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -325,12 +329,19 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             events.push(LyEvent::ChordName(resolved));
         }
         Music::DrumMode { body } => collect_events(body, events, ctx),
-        Music::DrumNote(_) | Music::DrumChord(_) => {
-            // Drum events handled in dedicated drum import (Phase 25.2)
+        Music::DrumNote(dn) => {
+            events.push(LyEvent::DrumEvent(dn.clone()));
+        }
+        Music::DrumChord(dc) => {
+            events.push(LyEvent::DrumChordEvent(dc.clone()));
         }
         Music::FigureMode { body } => collect_events(body, events, ctx),
         Music::Figure(fe) => {
             events.push(LyEvent::FigureEvent(fe.clone()));
+        }
+        Music::Once { music } => collect_events(music, events, ctx),
+        Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
+            // Property operations don't produce note events
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

@@ -520,67 +520,6 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn parse_context_mod_block(&mut self) -> Result<ContextModBlock, ParseError> {
-        self.expect(&Token::Context)?;
-        self.expect(&Token::BraceOpen)?;
-        let mut items = Vec::new();
-        while *self.peek() != Token::BraceClose && !self.at_eof() {
-            items.push(self.parse_context_mod_item()?);
-        }
-        self.expect(&Token::BraceClose)?;
-        Ok(ContextModBlock { items })
-    }
-
-    fn parse_context_mod_item(&mut self) -> Result<ContextModItem, ParseError> {
-        match self.peek() {
-            Token::Consists => {
-                self.advance()?;
-                let name = self.parse_engraver_name()?;
-                Ok(ContextModItem::Consists(name))
-            }
-            Token::Remove => {
-                self.advance()?;
-                let name = self.parse_engraver_name()?;
-                Ok(ContextModItem::Remove(name))
-            }
-            Token::EscapedWord(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::EscapedWord(s) => Ok(ContextModItem::ContextRef(s)),
-                    _ => unreachable!(),
-                }
-            }
-            Token::Symbol(_) | Token::NoteName(_) => {
-                let a = self.parse_output_def_assignment()?;
-                Ok(ContextModItem::Assignment(a))
-            }
-            _ => Err(ParseError::Unexpected {
-                found: self.current.token.clone(),
-                offset: self.offset(),
-                expected: "context modifier (\\consists, \\remove, \\ContextName, or assignment)"
-                    .into(),
-            }),
-        }
-    }
-
-    fn parse_engraver_name(&mut self) -> Result<String, ParseError> {
-        match &self.current.token {
-            Token::String(_) => self.expect_string(),
-            Token::Symbol(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::Symbol(s) => Ok(s),
-                    _ => unreachable!(),
-                }
-            }
-            _ => Err(ParseError::Unexpected {
-                found: self.current.token.clone(),
-                offset: self.offset(),
-                expected: "engraver name (string or symbol)".into(),
-            }),
-        }
-    }
-
     // ──────────────────────────────────────────────────────────────────
     // \midi { ... }
     // ──────────────────────────────────────────────────────────────────
@@ -696,6 +635,11 @@ impl<'src> Parser<'src> {
                     expected: "music expression before \\addlyrics".into(),
                 })
             }
+            Token::Override => self.parse_override(),
+            Token::Revert => self.parse_revert(),
+            Token::Set => self.parse_set(),
+            Token::Unset => self.parse_unset(),
+            Token::Once => self.parse_once(),
             Token::EscapedWord(s) if s == "bar" => self.parse_bar_line(),
             Token::Pipe => {
                 self.advance()?;
@@ -972,6 +916,14 @@ impl<'src> Parser<'src> {
                     let s = s.clone();
                     let _ = self.advance();
                     events.push(PostEvent::Dynamic(s));
+                }
+                // Tweak: \tweak path value
+                Token::Tweak => {
+                    if let Ok(ev) = self.parse_tweak_post_event() {
+                        events.push(ev);
+                    } else {
+                        break;
+                    }
                 }
                 // Undirected ornaments/scripts: \trill, \mordent, \turn, etc.
                 Token::EscapedWord(s) if note::is_ornament_or_script(s) => {
@@ -1472,6 +1424,7 @@ mod drums;
 mod figures;
 mod lyrics;
 mod markup;
+mod properties;
 mod raw_blocks;
 mod signatures;
 
@@ -1500,6 +1453,8 @@ mod tests_lyrics;
 mod tests_markup;
 #[cfg(test)]
 mod tests_post_events;
+#[cfg(test)]
+mod tests_properties;
 #[cfg(test)]
 mod tests_repeats;
 #[cfg(test)]

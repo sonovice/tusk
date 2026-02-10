@@ -126,6 +126,8 @@ pub enum Token {
     New,
     /// `\notemode`
     NoteMode,
+    /// `\once`
+    Once,
     /// `\override`
     Override,
     /// `\paper`
@@ -160,6 +162,8 @@ pub enum Token {
     Transpose,
     /// `\tuplet`
     Tuplet,
+    /// `\tweak`
+    Tweak,
     /// `\type`
     Type,
     /// `\unset`
@@ -307,6 +311,7 @@ impl Token {
                 | Token::Name
                 | Token::New
                 | Token::NoteMode
+                | Token::Once
                 | Token::Override
                 | Token::Paper
                 | Token::Partial
@@ -324,6 +329,7 @@ impl Token {
                 | Token::Times
                 | Token::Transpose
                 | Token::Tuplet
+                | Token::Tweak
                 | Token::Type
                 | Token::Unset
                 | Token::Version
@@ -370,6 +376,7 @@ pub fn keyword_from_str(word: &str) -> Option<Token> {
         "name" => Some(Token::Name),
         "new" => Some(Token::New),
         "notemode" => Some(Token::NoteMode),
+        "once" => Some(Token::Once),
         "override" => Some(Token::Override),
         "paper" => Some(Token::Paper),
         "partial" => Some(Token::Partial),
@@ -387,6 +394,7 @@ pub fn keyword_from_str(word: &str) -> Option<Token> {
         "times" => Some(Token::Times),
         "transpose" => Some(Token::Transpose),
         "tuplet" => Some(Token::Tuplet),
+        "tweak" => Some(Token::Tweak),
         "type" => Some(Token::Type),
         "unset" => Some(Token::Unset),
         "version" => Some(Token::Version),

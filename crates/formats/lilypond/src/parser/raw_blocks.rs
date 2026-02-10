@@ -39,6 +39,12 @@ impl<'src> Parser<'src> {
                 self.expect(&Token::ParenClose)?;
                 Ok(self.src[start..self.lexer.position()].to_string())
             }
+            Token::Hash => {
+                // ##value — Scheme boolean or other double-hash form (e.g. ##t, ##f)
+                self.advance()?; // consume second #
+                let tok = self.advance()?;
+                Ok(self.src[start..tok.span.end].to_string())
+            }
             _ => {
                 // #value — single token
                 let tok = self.advance()?;

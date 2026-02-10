@@ -1336,6 +1336,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         PostEvent::Tremolo(value) => {
                             wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
                         }
+                        PostEvent::Tweak { .. } => {
+                            // Tweak post-events preserved in roundtrip via labels (Phase 26.2)
+                        }
                         PostEvent::LyricHyphen | PostEvent::LyricExtender => {
                             // Lyric post-events handled in Phase 20.2
                         }

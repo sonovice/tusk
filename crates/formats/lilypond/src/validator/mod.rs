@@ -112,6 +112,9 @@ pub enum ValidationError {
     #[error("tempo BPM range: low ({low}) must be less than high ({high})")]
     InvalidTempoRange { low: u32, high: u32 },
 
+    #[error("empty property path")]
+    EmptyPropertyPath,
+
     #[error("{0}")]
     Other(String),
 }
@@ -251,6 +254,9 @@ fn validate_post_events(events: &[note::PostEvent], errors: &mut Vec<ValidationE
             note::PostEvent::Tremolo(n) if !is_valid_tremolo(*n) => {
                 errors.push(ValidationError::InvalidTremoloType { value: *n });
             }
+            note::PostEvent::Tweak { path, .. } if path.segments.is_empty() => {
+                errors.push(ValidationError::EmptyPropertyPath);
+            }
             _ => {}
         }
     }
@@ -309,6 +315,7 @@ impl SpanCounts {
                 | note::PostEvent::NamedArticulation { .. }
                 | note::PostEvent::StringNumber { .. }
                 | note::PostEvent::Tremolo(_)
+                | note::PostEvent::Tweak { .. }
                 | note::PostEvent::LyricHyphen
                 | note::PostEvent::LyricExtender => {}
             }
@@ -382,6 +389,11 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
             count_spans(lyrics, counts);
         }
         Music::Lyric(le) => counts.count_post_events(&le.post_events),
+        Music::Once { music } => {
+            count_spans(music, counts);
+        }
+        Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
+        }
         Music::BarCheck | Music::BarLine { .. } | Music::Markup(_) | Music::MarkupList(_) => {}
         _ => {}
     }
@@ -674,6 +686,19 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 validate_duration(dur, errors);
             }
             validate_post_events(&le.post_events, errors);
+        }
+        Music::Override { path, .. } | Music::Set { path, .. } => {
+            if path.segments.is_empty() {
+                errors.push(ValidationError::EmptyPropertyPath);
+            }
+        }
+        Music::Revert { path } | Music::Unset { path } => {
+            if path.segments.is_empty() {
+                errors.push(ValidationError::EmptyPropertyPath);
+            }
+        }
+        Music::Once { music } => {
+            validate_music(music, errors);
         }
         Music::AutoBeamOn | Music::AutoBeamOff => {}
         Music::BarCheck => {}

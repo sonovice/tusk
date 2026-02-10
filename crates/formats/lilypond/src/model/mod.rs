@@ -6,6 +6,7 @@ pub mod duration;
 pub mod markup;
 pub mod note;
 pub mod pitch;
+pub mod property;
 pub mod signature;
 
 pub use duration::Duration;
@@ -18,6 +19,7 @@ pub use note::{
     StepAlteration,
 };
 pub use pitch::Pitch;
+pub use property::{PropertyPath, PropertyValue};
 pub use signature::{
     Clef, KeySignature, Mark, MarkLabel, Mode, Tempo, TempoRange, TextMark, TimeSignature,
 };
@@ -174,7 +176,7 @@ pub struct ContextModBlock {
     pub items: Vec<ContextModItem>,
 }
 
-/// Item inside a `\context { ... }` block.
+/// Item inside a `\context { ... }` or `\with { ... }` block.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContextModItem {
     /// `\ContextName` (e.g. `\Score`, `\Staff`).
@@ -184,6 +186,24 @@ pub enum ContextModItem {
     /// `\remove "Engraver_name"` or `\remove EngraverName`.
     Remove(String),
     Assignment(Assignment),
+    /// `\override path = value` inside a context block.
+    Override {
+        path: PropertyPath,
+        value: PropertyValue,
+    },
+    /// `\revert path` inside a context block.
+    Revert {
+        path: PropertyPath,
+    },
+    /// `\set property = value` inside a context block.
+    Set {
+        path: PropertyPath,
+        value: PropertyValue,
+    },
+    /// `\unset property` inside a context block.
+    Unset {
+        path: PropertyPath,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +379,22 @@ pub enum Music {
     BarCheck,
     /// Bar line command: `\bar "type"` — sets explicit bar line style.
     BarLine { bar_type: String },
+    /// `\override path = value` — set a grob property.
+    Override {
+        path: PropertyPath,
+        value: PropertyValue,
+    },
+    /// `\revert path` — revert a grob property to default.
+    Revert { path: PropertyPath },
+    /// `\set path = value` — set a context property.
+    Set {
+        path: PropertyPath,
+        value: PropertyValue,
+    },
+    /// `\unset path` — unset a context property.
+    Unset { path: PropertyPath },
+    /// `\once music` — apply the following property operation once.
+    Once { music: Box<Music> },
     /// `\chordmode { ... }` — chord mode music.
     ChordMode { body: Box<Music> },
     /// A chord-mode event: `root[:quality][/inversion][/+bass]`.

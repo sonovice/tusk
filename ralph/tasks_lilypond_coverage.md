@@ -1104,12 +1104,22 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 26.1 Model & Parser
 
-- [ ] [P] Parse `\override Grob.property = value`, `\revert Grob.property`, `\set context.prop = value`, `\unset context.prop`; property path (grob path, context path)
-- [ ] [P] Parse `\tweak property value` (post-event and standalone), including `\tweak #'id #"string"` for element ID retention (see "Retaining element IDs" section)
-- [ ] [P] Add `Override`, `Revert`, `Set`, `Unset`, `Tweak`, `PropertyPath`, `GrobPropSpec`, `ContextPropSpec`; AST nodes that carry optional `id` (from tweak id) for export/roundtrip
-- [ ] [S] Serialize override, revert, set, unset, tweak (including `\tweak #'id #"..."`)
-- [ ] [V] Property path and value types valid
-- [ ] [T] Fragment: `\override NoteHead.color = #red`, `\set Staff.instrumentName = "Piano"`, `c4 \tweak NoteHead.id #"mei-n1"`
+- [x] [P] Parse `\override Grob.property = value`, `\revert Grob.property`, `\set context.prop = value`, `\unset context.prop`; property path (grob path, context path)
+  - Added `Token::Once`, `Token::Tweak` to lexer; `Override/Revert/Set/Unset/Once` Music variants; `Tweak` PostEvent; `Override/Revert/Set/Unset` ContextModItem variants
+  - Parser: `parse_override`, `parse_revert`, `parse_set`, `parse_unset`, `parse_once` in `parser/properties.rs`
+  - Dot-separated `PropertyPath` and `PropertyValue` (scheme/string/number/identifier) types
+  - Fixed `parse_scheme_raw` to handle `##t`/`##f` double-hash booleans
+- [x] [P] Parse `\tweak property value` (post-event and standalone), including `\tweak #'id #"string"` for element ID retention (see "Retaining element IDs" section)
+  - `parse_tweak_post_event` in parser/properties.rs; integrated into `parse_post_events` loop
+- [x] [P] Add `Override`, `Revert`, `Set`, `Unset`, `Tweak`, `PropertyPath`, `GrobPropSpec`, `ContextPropSpec`; AST nodes that carry optional `id` (from tweak id) for export/roundtrip
+  - `model/property.rs`: `PropertyPath`, `PropertyValue` types
+  - Music: Override, Revert, Set, Unset, Once variants; PostEvent::Tweak; ContextModItem: Override, Revert, Set, Unset
+- [x] [S] Serialize override, revert, set, unset, tweak (including `\tweak #'id #"..."`)
+  - `write_property_path`, `write_property_value` helpers; Music/PostEvent/ContextModItem serialization
+- [x] [V] Property path and value types valid
+  - `EmptyPropertyPath` validation error; validated in music and post-event contexts
+- [x] [T] Fragment: `\override NoteHead.color = #red`, `\set Staff.instrumentName = "Piano"`, `c4 \tweak NoteHead.id #"mei-n1"`
+  - 22 tests in `parser/tests_properties.rs`; fixture `tests/fixtures/lilypond/fragment_properties.ly`
 
 ### 26.2 Import & Export
 

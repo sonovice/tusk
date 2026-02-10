@@ -130,6 +130,11 @@ pub enum PostEvent {
     /// The value is the subdivision (8, 16, 32, 64, etc.).
     /// `:` alone (no number) means "default" tremolo, stored as 0.
     Tremolo(u32),
+    /// `\tweak property value` — tweak a grob property on the following event.
+    Tweak {
+        path: super::PropertyPath,
+        value: super::PropertyValue,
+    },
     /// Lyric hyphen: `--` (syllable continuation).
     LyricHyphen,
     /// Lyric extender: `__` (melisma/note hold).

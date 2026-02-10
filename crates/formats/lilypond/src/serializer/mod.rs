@@ -73,6 +73,22 @@ pub fn serialize_figure_event(fe: &note::FigureEvent) -> String {
     out
 }
 
+/// Serialize a drum note event to a string (e.g. `bd4`).
+pub fn serialize_drum_note_event(dn: &note::DrumNoteEvent) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_drum_note_event(dn);
+    out
+}
+
+/// Serialize a drum chord event to a string (e.g. `<bd sn>4`).
+pub fn serialize_drum_chord_event(dc: &note::DrumChordEvent) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_drum_chord_event(dc);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,
@@ -332,6 +348,26 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(name);
             }
             ContextModItem::Assignment(a) => self.write_assignment(a),
+            ContextModItem::Override { path, value } => {
+                self.out.push_str("\\override ");
+                self.write_property_path(path);
+                self.out.push_str(" = ");
+                self.write_property_value(value);
+            }
+            ContextModItem::Revert { path } => {
+                self.out.push_str("\\revert ");
+                self.write_property_path(path);
+            }
+            ContextModItem::Set { path, value } => {
+                self.out.push_str("\\set ");
+                self.write_property_path(path);
+                self.out.push_str(" = ");
+                self.write_property_value(value);
+            }
+            ContextModItem::Unset { path } => {
+                self.out.push_str("\\unset ");
+                self.write_property_path(path);
+            }
         }
     }
 
@@ -546,6 +582,30 @@ impl<'a> Serializer<'a> {
                     }
                     self.out.push_str(" }");
                 }
+            }
+            Music::Override { path, value } => {
+                self.out.push_str("\\override ");
+                self.write_property_path(path);
+                self.out.push_str(" = ");
+                self.write_property_value(value);
+            }
+            Music::Revert { path } => {
+                self.out.push_str("\\revert ");
+                self.write_property_path(path);
+            }
+            Music::Set { path, value } => {
+                self.out.push_str("\\set ");
+                self.write_property_path(path);
+                self.out.push_str(" = ");
+                self.write_property_value(value);
+            }
+            Music::Unset { path } => {
+                self.out.push_str("\\unset ");
+                self.write_property_path(path);
+            }
+            Music::Once { music } => {
+                self.out.push_str("\\once ");
+                self.write_music(music);
             }
             Music::AutoBeamOn => self.out.push_str("\\autoBeamOn"),
             Music::AutoBeamOff => self.out.push_str("\\autoBeamOff"),
@@ -903,6 +963,12 @@ impl<'a> Serializer<'a> {
                     self.out.push('\\');
                     self.out.push_str(&number.to_string());
                 }
+                PostEvent::Tweak { path, value } => {
+                    self.out.push_str("\\tweak ");
+                    self.write_property_path(path);
+                    self.out.push(' ');
+                    self.write_property_value(value);
+                }
                 PostEvent::Tremolo(n) => {
                     self.out.push(':');
                     if *n > 0 {
@@ -920,6 +986,43 @@ impl<'a> Serializer<'a> {
             Direction::Neutral => self.out.push('-'),
             Direction::Up => self.out.push('^'),
             Direction::Down => self.out.push('_'),
+        }
+    }
+
+    fn write_property_path(&mut self, path: &property::PropertyPath) {
+        for (i, seg) in path.segments.iter().enumerate() {
+            if i > 0 {
+                self.out.push('.');
+            }
+            self.out.push_str(seg);
+        }
+    }
+
+    fn write_property_value(&mut self, v: &property::PropertyValue) {
+        match v {
+            property::PropertyValue::SchemeExpr(s) => self.out.push_str(s),
+            property::PropertyValue::String(s) => {
+                self.out.push('"');
+                for ch in s.chars() {
+                    match ch {
+                        '"' => self.out.push_str("\\\""),
+                        '\\' => self.out.push_str("\\\\"),
+                        _ => self.out.push(ch),
+                    }
+                }
+                self.out.push('"');
+            }
+            property::PropertyValue::Number(n) => {
+                if *n == (*n as i64) as f64 {
+                    self.out.push_str(&(*n as i64).to_string());
+                } else {
+                    self.out.push_str(&n.to_string());
+                }
+            }
+            property::PropertyValue::Identifier(s) => {
+                self.out.push('\\');
+                self.out.push_str(s);
+            }
         }
     }
 
