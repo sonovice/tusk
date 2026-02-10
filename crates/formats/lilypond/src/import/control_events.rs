@@ -388,3 +388,55 @@ pub(super) fn make_string_dir(
     dir.children.push(DirChild::Text(number.to_string()));
     dir
 }
+
+/// Create an MEI Dir for a LilyPond repeat structure.
+///
+/// Label format: `lilypond:repeat,TYPE,COUNT[,alts=N]`
+/// Uses startid/endid to delimit the repeat body range.
+pub(super) fn make_repeat_dir(
+    start_id: &str,
+    end_id: &str,
+    staff_n: u32,
+    repeat_type: crate::model::RepeatType,
+    count: u32,
+    num_alternatives: u32,
+    id: u32,
+) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-repeat-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
+    dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    let mut label = format!("lilypond:repeat,{},{count}", repeat_type.as_str());
+    if num_alternatives > 0 {
+        label.push_str(&format!(",alts={num_alternatives}"));
+    }
+    dir.common.label = Some(label);
+    dir.children.push(DirChild::Text(format!(
+        "repeat {} {count}",
+        repeat_type.as_str()
+    )));
+    dir
+}
+
+/// Create an MEI Dir for a LilyPond alternative ending.
+///
+/// Label format: `lilypond:ending,INDEX`
+/// Uses startid/endid to delimit the alternative range.
+pub(super) fn make_ending_dir(
+    start_id: &str,
+    end_id: &str,
+    staff_n: u32,
+    index: u32,
+    id: u32,
+) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-repeat-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
+    dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    dir.common.label = Some(format!("lilypond:ending,{index}"));
+    dir.children
+        .push(DirChild::Text(format!("ending {}", index + 1)));
+    dir
+}

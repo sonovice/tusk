@@ -1110,3 +1110,89 @@ fn roundtrip_grace_fixture() {
     assert!(output.contains("\\appoggiatura"), "appoggiatura: {output}");
     assert!(output.contains("\\afterGrace"), "afterGrace: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Repeat roundtrip tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_repeat_volta_basic() {
+    let output = roundtrip("{ \\repeat volta 2 { c4 d e f } }");
+    assert!(output.contains("\\repeat volta 2"), "output: {output}");
+    assert!(output.contains("c4"), "output: {output}");
+    assert!(output.contains("f"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_volta_with_alternatives() {
+    let output = roundtrip("{ \\repeat volta 2 { c4 d e f } \\alternative { { g2 } { a2 } } }");
+    assert!(output.contains("\\repeat volta 2"), "output: {output}");
+    assert!(output.contains("\\alternative"), "output: {output}");
+    assert!(output.contains("g2"), "output: {output}");
+    assert!(output.contains("a2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_unfold() {
+    let output = roundtrip("{ \\repeat unfold 4 { c8 d } }");
+    assert!(output.contains("\\repeat unfold 4"), "output: {output}");
+    assert!(output.contains("c8"), "output: {output}");
+    assert!(output.contains("d"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_percent() {
+    let output = roundtrip("{ \\repeat percent 4 { c4 d e f } }");
+    assert!(output.contains("\\repeat percent 4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_tremolo() {
+    let output = roundtrip("{ \\repeat tremolo 8 { c16 d } }");
+    assert!(output.contains("\\repeat tremolo 8"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_segno() {
+    let output = roundtrip("{ \\repeat segno 2 { c4 d e f } }");
+    assert!(output.contains("\\repeat segno 2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_three_alternatives() {
+    let output =
+        roundtrip("{ \\repeat volta 3 { c4 d e f } \\alternative { { g2 } { a2 } { b2 } } }");
+    assert!(output.contains("\\repeat volta 3"), "output: {output}");
+    assert!(output.contains("\\alternative"), "output: {output}");
+    assert!(output.contains("g2"), "output: {output}");
+    assert!(output.contains("a2"), "output: {output}");
+    assert!(output.contains("b2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_nested() {
+    let output = roundtrip("{ \\repeat volta 2 { \\repeat unfold 3 { c8 d } e4 } }");
+    assert!(output.contains("\\repeat volta 2"), "output: {output}");
+    assert!(output.contains("\\repeat unfold 3"), "output: {output}");
+    assert!(output.contains("e4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_repeat_fixture() {
+    let src = "\
+\\repeat volta 2 { c4 d e f }
+\\repeat volta 2 { c4 d e f } \\alternative { { g2 } { a2 } }
+\\repeat unfold 4 { c8 d }
+\\repeat percent 4 { c4 d e f }
+\\repeat tremolo 8 { c16 d }
+\\repeat volta 2 { \\repeat unfold 3 { c8 d } e4 }
+\\repeat volta 3 { c4 d e f } \\alternative { { g2 } { a2 } { b2 } }
+\\repeat segno 2 { c4 d e f }";
+    let output = roundtrip(&format!("{{ {src} }}"));
+    assert!(output.contains("\\repeat volta 2"), "volta: {output}");
+    assert!(output.contains("\\repeat unfold"), "unfold: {output}");
+    assert!(output.contains("\\repeat percent"), "percent: {output}");
+    assert!(output.contains("\\repeat tremolo"), "tremolo: {output}");
+    assert!(output.contains("\\repeat segno"), "segno: {output}");
+    assert!(output.contains("\\alternative"), "alternative: {output}");
+}

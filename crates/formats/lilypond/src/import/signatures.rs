@@ -78,7 +78,11 @@ pub(super) fn apply_signatures_to_staff_def(
             | LyEvent::TupletStart { .. }
             | LyEvent::TupletEnd
             | LyEvent::GraceStart(_)
-            | LyEvent::GraceEnd => {}
+            | LyEvent::GraceEnd
+            | LyEvent::RepeatStart { .. }
+            | LyEvent::RepeatEnd
+            | LyEvent::AlternativeStart { .. }
+            | LyEvent::AlternativeEnd => {}
         }
     }
 

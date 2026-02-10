@@ -761,3 +761,123 @@ fn import_grace_chord() {
         panic!("expected Chord, got {:?}", lc[0]);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Repeat import tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn import_repeat_volta_creates_dir() {
+    let mei = parse_and_import("{ \\repeat volta 2 { c4 d e f } }");
+    let dirs = measure_dirs(&mei);
+    let repeat_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+        })
+        .collect();
+    assert_eq!(repeat_dirs.len(), 1, "should create one repeat Dir");
+    let label = repeat_dirs[0].common.label.as_deref().unwrap();
+    assert!(label.contains("volta"), "label: {label}");
+    assert!(label.contains(",2"), "label should contain count: {label}");
+    assert!(
+        repeat_dirs[0].dir_log.startid.is_some(),
+        "should have startid"
+    );
+    assert!(repeat_dirs[0].dir_log.endid.is_some(), "should have endid");
+}
+
+#[test]
+fn import_repeat_with_alternatives_creates_ending_dirs() {
+    let mei = parse_and_import("{ \\repeat volta 2 { c4 d } \\alternative { { e4 } { f4 } } }");
+    let dirs = measure_dirs(&mei);
+    let repeat_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+        })
+        .collect();
+    let ending_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:ending,"))
+        })
+        .collect();
+    assert_eq!(repeat_dirs.len(), 1, "one repeat Dir");
+    assert_eq!(ending_dirs.len(), 2, "two ending Dirs");
+    let repeat_label = repeat_dirs[0].common.label.as_deref().unwrap();
+    assert!(
+        repeat_label.contains("alts=2"),
+        "repeat label should note 2 alternatives: {repeat_label}"
+    );
+    let end0_label = ending_dirs[0].common.label.as_deref().unwrap();
+    let end1_label = ending_dirs[1].common.label.as_deref().unwrap();
+    assert_eq!(end0_label, "lilypond:ending,0");
+    assert_eq!(end1_label, "lilypond:ending,1");
+}
+
+#[test]
+fn import_repeat_unfold_creates_dir() {
+    let mei = parse_and_import("{ \\repeat unfold 4 { c8 d } }");
+    let dirs = measure_dirs(&mei);
+    let repeat_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+        })
+        .collect();
+    assert_eq!(repeat_dirs.len(), 1);
+    let label = repeat_dirs[0].common.label.as_deref().unwrap();
+    assert!(label.contains("unfold"), "label: {label}");
+    assert!(label.contains(",4"), "count=4: {label}");
+}
+
+#[test]
+fn import_repeat_percent_creates_dir() {
+    let mei = parse_and_import("{ \\repeat percent 4 { c4 d e f } }");
+    let dirs = measure_dirs(&mei);
+    let repeat_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+        })
+        .collect();
+    assert_eq!(repeat_dirs.len(), 1);
+    let label = repeat_dirs[0].common.label.as_deref().unwrap();
+    assert!(label.contains("percent"), "label: {label}");
+}
+
+#[test]
+fn import_nested_repeat_creates_multiple_dirs() {
+    let mei = parse_and_import("{ \\repeat volta 2 { \\repeat unfold 3 { c8 d } e4 } }");
+    let dirs = measure_dirs(&mei);
+    let repeat_dirs: Vec<_> = dirs
+        .iter()
+        .filter(|d| {
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+        })
+        .collect();
+    assert_eq!(
+        repeat_dirs.len(),
+        2,
+        "should create two repeat Dirs (nested)"
+    );
+}

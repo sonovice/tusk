@@ -2,6 +2,7 @@
 
 mod conversion;
 mod pitch_context;
+mod repeats;
 mod signatures;
 
 #[cfg(test)]
@@ -65,6 +66,10 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     // Collect tuplet spans for wrapping
                     let tuplet_spans = collect_tuplet_spans(&measure.children);
 
+                    // Collect repeat/ending spans for wrapping
+                    let repeat_spans = collect_repeat_spans(&measure.children);
+                    let ending_spans = collect_ending_spans(&measure.children);
+
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
@@ -85,6 +90,13 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                                 apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 // Wrap grace notes in Music::Grace/Acciaccatura/etc.
                                 apply_grace_wrapping(&mut items, &grace_types);
+                                // Wrap repeat/alternative ranges in Music::Repeat
+                                apply_repeat_wrapping(
+                                    &mut items,
+                                    &item_ids,
+                                    &repeat_spans,
+                                    &ending_spans,
+                                );
                                 layers.push(items);
                             }
 
@@ -799,6 +811,8 @@ fn apply_grace_wrapping(items: &mut Vec<Music>, grace_types: &[Option<ExportGrac
         }
     }
 }
+
+use repeats::{apply_repeat_wrapping, collect_ending_spans, collect_repeat_spans};
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {

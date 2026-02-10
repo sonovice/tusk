@@ -520,6 +520,25 @@ struct PendingHairpin {
     staff_n: u32,
 }
 
+/// A pending repeat structure waiting for its body end note.
+struct PendingRepeat {
+    /// xml:id of the first note in the repeat body.
+    start_id: String,
+    repeat_type: model::RepeatType,
+    count: u32,
+    num_alternatives: u32,
+    staff_n: u32,
+}
+
+/// A pending alternative ending waiting for its end note.
+struct PendingAlternative {
+    /// xml:id of the first note in the alternative.
+    start_id: String,
+    /// 0-based index of this alternative.
+    index: u32,
+    staff_n: u32,
+}
+
 /// A pending tuplet waiting for its end note.
 struct PendingTuplet {
     /// xml:id of the first note in the tuplet.
@@ -543,6 +562,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut artic_counter = 0u32;
     let mut ornam_counter = 0u32;
     let mut tuplet_counter = 0u32;
+    let mut repeat_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -565,6 +585,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut pending_slurs: Vec<PendingSpanner> = Vec::new();
             let mut pending_hairpins: Vec<PendingHairpin> = Vec::new();
             let mut pending_tuplets: Vec<PendingTuplet> = Vec::new();
+            let mut pending_repeats: Vec<PendingRepeat> = Vec::new();
+            let mut pending_alternatives: Vec<PendingAlternative> = Vec::new();
             let mut tie_pending = false;
             // Track the last note/chord/rest xml:id for tuplet boundary resolution
             let mut last_note_id: Option<String> = None;
@@ -697,6 +719,64 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         }
                         continue;
                     }
+                    LyEvent::RepeatStart {
+                        repeat_type,
+                        count,
+                        num_alternatives,
+                    } => {
+                        pending_repeats.push(PendingRepeat {
+                            start_id: String::new(),
+                            repeat_type: *repeat_type,
+                            count: *count,
+                            num_alternatives: *num_alternatives,
+                            staff_n: staff_info.n,
+                        });
+                        continue;
+                    }
+                    LyEvent::RepeatEnd => {
+                        if let Some(pending) = pending_repeats.pop()
+                            && let Some(end_id) = &last_note_id
+                            && !pending.start_id.is_empty()
+                        {
+                            repeat_counter += 1;
+                            let dir = make_repeat_dir(
+                                &pending.start_id,
+                                end_id,
+                                pending.staff_n,
+                                pending.repeat_type,
+                                pending.count,
+                                pending.num_alternatives,
+                                repeat_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        continue;
+                    }
+                    LyEvent::AlternativeStart { index } => {
+                        pending_alternatives.push(PendingAlternative {
+                            start_id: String::new(),
+                            index: *index,
+                            staff_n: staff_info.n,
+                        });
+                        continue;
+                    }
+                    LyEvent::AlternativeEnd => {
+                        if let Some(pending) = pending_alternatives.pop()
+                            && let Some(end_id) = &last_note_id
+                            && !pending.start_id.is_empty()
+                        {
+                            repeat_counter += 1;
+                            let dir = make_ending_dir(
+                                &pending.start_id,
+                                end_id,
+                                pending.staff_n,
+                                pending.index,
+                                repeat_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                        }
+                        continue;
+                    }
                     LyEvent::GraceStart(gt) => {
                         current_grace = Some(gt.clone());
                         continue;
@@ -713,10 +793,20 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     | LyEvent::AutoBeamOff => continue,
                 };
 
-                // Set start_id on any pending tuplets that haven't been assigned one yet
+                // Set start_id on any pending tuplets/repeats/alternatives
                 for pt in &mut pending_tuplets {
                     if pt.start_id.is_empty() {
                         pt.start_id = current_id.clone();
+                    }
+                }
+                for pr in &mut pending_repeats {
+                    if pr.start_id.is_empty() {
+                        pr.start_id = current_id.clone();
+                    }
+                }
+                for pa in &mut pending_alternatives {
+                    if pa.start_id.is_empty() {
+                        pa.start_id = current_id.clone();
                     }
                 }
                 last_note_id = Some(current_id.clone());
@@ -941,8 +1031,9 @@ fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
 }
 
 use control_events::{
-    make_artic_dir, make_dynam, make_fing_dir, make_hairpin, make_ornament_control_event,
-    make_slur, make_string_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin,
+    make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir, make_tuplet_span,
+    wrap_last_in_btrem,
 };
 
 /// Extract voice streams from LilyPond music.
@@ -1013,6 +1104,20 @@ enum LyEvent {
     GraceStart(GraceType),
     /// Marks the end of a grace note group.
     GraceEnd,
+    /// Marks the beginning of a repeat body.
+    RepeatStart {
+        repeat_type: model::RepeatType,
+        count: u32,
+        num_alternatives: u32,
+    },
+    /// Marks the end of a repeat body.
+    RepeatEnd,
+    /// Marks the beginning of an alternative ending (0-indexed).
+    AlternativeStart {
+        index: u32,
+    },
+    /// Marks the end of an alternative ending.
+    AlternativeEnd,
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -1178,14 +1283,24 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
             events.push(LyEvent::GraceEnd);
         }
         Music::Repeat {
-            body, alternatives, ..
+            repeat_type,
+            count,
+            body,
+            alternatives,
         } => {
-            // For now, collect events from body and alternatives linearly.
-            // Full repeat/volta MEI mapping is Phase 17.2.
+            let num_alts = alternatives.as_ref().map_or(0, |a| a.len() as u32);
+            events.push(LyEvent::RepeatStart {
+                repeat_type: *repeat_type,
+                count: *count,
+                num_alternatives: num_alts,
+            });
             collect_events(body, events, ctx);
+            events.push(LyEvent::RepeatEnd);
             if let Some(alts) = alternatives {
-                for alt in alts {
+                for (i, alt) in alts.iter().enumerate() {
+                    events.push(LyEvent::AlternativeStart { index: i as u32 });
                     collect_events(alt, events, ctx);
+                    events.push(LyEvent::AlternativeEnd);
                 }
             }
         }

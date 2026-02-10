@@ -749,10 +749,24 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 17.2 Import & Export
 
-- [ ] [I] Repeat/alternative → MEI repeat/ending (volta)
-- [ ] [E] MEI repeat/ending → LilyPond `\repeat` and `\alternative`
-- [ ] [T] Roundtrip repeat fixtures
-- [ ] [T] Repeat and alternative fixtures; roundtrip
+- [x] [I] Repeat/alternative → MEI repeat/ending (volta)
+  - RepeatStart/RepeatEnd/AlternativeStart/AlternativeEnd LyEvent markers in collect_events()
+  - PendingRepeat/PendingAlternative structs track open spans with start_id assignment
+  - `<dir>` carrier with `lilypond:repeat,TYPE,COUNT[,alts=N]` label + startid/endid for body range
+  - `<dir>` carrier with `lilypond:ending,INDEX` label + startid/endid for each alternative range
+  - make_repeat_dir() and make_ending_dir() builders in control_events.rs
+  - All 5 repeat types (volta, unfold, percent, tremolo, segno) and nested repeats supported
+  - 5 import tests: volta, alternatives, unfold, percent, nested
+- [x] [E] MEI repeat/ending → LilyPond `\repeat` and `\alternative`
+  - collect_repeat_spans() / collect_ending_spans() extract Dir elements by label prefix
+  - apply_repeat_wrapping() finds body/alternative ranges by xml:id, wraps in Music::Repeat
+  - Handles nested repeats (innermost first), alternatives with correct splitting
+  - Extracted to export/repeats.rs submodule to keep mod.rs under 1500 LOC
+- [x] [T] Roundtrip repeat fixtures
+  - 9 roundtrip tests: volta basic, volta+alternatives, unfold, percent, tremolo, segno, 3 alternatives, nested, fixture
+- [x] [T] Repeat and alternative fixtures; roundtrip
+  - roundtrip_repeat_fixture validates all 8 constructs from fragment_repeats.ly
+  - 585 total tests pass (571 → 585: +5 import + 9 roundtrip)
 
 ---
 
