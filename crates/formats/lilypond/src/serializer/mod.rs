@@ -97,6 +97,38 @@ pub fn serialize_property_op(music: &Music) -> String {
     out
 }
 
+/// Serialize a `\header { ... }` block to a string.
+pub fn serialize_header_block(hb: &HeaderBlock) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_header_block(hb);
+    out
+}
+
+/// Serialize a `\paper { ... }` block to a string.
+pub fn serialize_paper_block(pb: &PaperBlock) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_paper_block(pb);
+    out
+}
+
+/// Serialize a `\layout { ... }` block to a string.
+pub fn serialize_layout_block(lb: &LayoutBlock) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_layout_block(lb);
+    out
+}
+
+/// Serialize a `\midi { ... }` block to a string.
+pub fn serialize_midi_block(mb: &MidiBlock) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_midi_block(mb);
+    out
+}
+
 /// Serialize a tweak post-event to a string (e.g. `\tweak color #red`).
 pub fn serialize_tweak(path: &property::PropertyPath, value: &property::PropertyValue) -> String {
     let mut out = String::new();

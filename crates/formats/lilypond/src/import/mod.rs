@@ -5,6 +5,7 @@ mod control_events;
 mod conversion;
 mod events;
 pub(crate) mod lyrics;
+mod output_defs;
 pub(crate) mod signatures;
 
 #[cfg(test)]
@@ -18,15 +19,17 @@ mod tests_drums;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
+mod tests_output_defs;
+#[cfg(test)]
 mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild, Measure,
-    MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
+    Body, BodyChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild,
+    Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Staff, StaffChild, StaffDef,
+    StaffGrp, StaffGrpChild,
 };
 use tusk_model::generated::data::{DataTie, DataWord};
 
@@ -64,12 +67,12 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     let mut mei = Mei::default();
     mei.mei_version.meiversion = Some("6.0-dev".to_string());
 
-    // Minimal meiHead with empty fileDesc/titleStmt
-    let mei_head = build_mei_head();
+    // Build meiHead with metadata from \header and output-def blocks
+    let mei_head = output_defs::build_mei_head_from_file(file);
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
     // Music -> Body -> Mdiv -> Score
-    let mei_music = build_music(music)?;
+    let mei_music = build_music(music, file)?;
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
     Ok(mei)
@@ -93,28 +96,31 @@ fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
     None
 }
 
-/// Build a minimal MeiHead.
-fn build_mei_head() -> MeiHead {
-    let title_stmt = TitleStmt::default();
-    let mut file_desc = FileDesc::default();
-    file_desc
-        .children
-        .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
-    let mut head = MeiHead::default();
-    head.children
-        .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
-    head
-}
-
 /// Build MEI Music -> Body -> Mdiv -> Score from LilyPond music.
-fn build_music(ly_music: &Music) -> Result<tusk_model::elements::Music, ImportError> {
+fn build_music(
+    ly_music: &Music,
+    file: &model::LilyPondFile,
+) -> Result<tusk_model::elements::Music, ImportError> {
     let mut score = Score::default();
 
     // Analyze context structure to determine staves
     let staff_infos = analyze_staves(ly_music);
 
     // Build ScoreDef with staffDef(s)
-    let score_def = build_score_def_from_staves(&staff_infos);
+    let mut score_def = build_score_def_from_staves(&staff_infos);
+
+    // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
+    let score_blocks_label = output_defs::build_score_blocks_label(file);
+    if !score_blocks_label.is_empty() {
+        match &mut score_def.common.label {
+            Some(existing) => {
+                existing.push('|');
+                existing.push_str(&score_blocks_label);
+            }
+            None => score_def.common.label = Some(score_blocks_label),
+        }
+    }
+
     score
         .children
         .push(ScoreChild::ScoreDef(Box::new(score_def)));

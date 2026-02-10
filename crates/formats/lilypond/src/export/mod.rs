@@ -2,6 +2,7 @@
 
 mod conversion;
 pub(crate) mod lyrics;
+mod output_defs;
 mod pitch_context;
 mod repeats;
 mod signatures;
@@ -16,6 +17,8 @@ mod tests_drums;
 mod tests_figures;
 #[cfg(test)]
 mod tests_markup;
+#[cfg(test)]
+mod tests_output_defs;
 #[cfg(test)]
 mod tests_properties;
 #[cfg(test)]
@@ -168,15 +171,38 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         &figured_bass_meta,
     );
 
-    let score_block = ScoreBlock {
-        items: vec![ScoreItem::Music(music)],
-    };
+    // Build score block with score-level header/layout/midi
+    let mut score_items = vec![ScoreItem::Music(music)];
+    let score_blocks = output_defs::extract_score_blocks(score);
+    score_items.extend(score_blocks);
+
+    let score_block = ScoreBlock { items: score_items };
+
+    // Build top-level items: header, paper, layout, midi, then score
+    let mut items = Vec::new();
+
+    // Extract top-level blocks from MeiHead ExtMeta
+    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
+    if let Some(hb) = top_header {
+        items.push(ToplevelExpression::Header(hb));
+    }
+    if let Some(pb) = top_paper {
+        items.push(ToplevelExpression::Paper(pb));
+    }
+    if let Some(lb) = top_layout {
+        items.push(ToplevelExpression::Layout(lb));
+    }
+    if let Some(mb) = top_midi {
+        items.push(ToplevelExpression::Midi(mb));
+    }
+
+    items.push(ToplevelExpression::Score(score_block));
 
     Ok(LilyPondFile {
         version: Some(Version {
             version: "2.24.0".to_string(),
         }),
-        items: vec![ToplevelExpression::Score(score_block)],
+        items,
     })
 }
 

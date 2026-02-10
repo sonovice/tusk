@@ -1162,10 +1162,25 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 27.2 Import & Export
 
-- [ ] [I] Header → MEI fileDesc/titleStmt/source; paper/layout/midi → store in context or MEI encodingDesc for roundtrip
-- [ ] [E] MEI metadata → \header; encodingDesc → \paper/\layout/\midi where applicable
-- [ ] [T] Roundtrip header and paper fixtures
-- [ ] [T] Header and output-def fixtures; roundtrip
+- [x] [I] Header → MEI fileDesc/titleStmt/source; paper/layout/midi → store in context or MEI encodingDesc for roundtrip
+  - Header `title` field → MEI `<title>` text in `<titleStmt>` under `<fileDesc>`
+  - Full header serialized via `serialize_header_block()` and stored in `<extMeta label="lilypond:header,{escaped}">` under `<meiHead>` for lossless roundtrip
+  - Human-readable summary stored as `<extMeta>` text child
+  - Paper/layout/midi blocks stored as `<extMeta>` with `lilypond:paper,`/`lilypond:layout,`/`lilypond:midi,` label prefixes
+  - Score-level header/layout/midi stored in `ScoreDef` `@label` as `lilypond:score-header,`/`lilypond:score-layout,`/`lilypond:score-midi,` segments
+  - Extracted `import/output_defs.rs` submodule (155 LOC) to keep mod.rs under 1500 LOC
+  - 11 import tests: title, ext_meta, summary text, paper, layout, midi, score-level (header/layout/midi), no-header, layout-with-context
+- [x] [E] MEI metadata → \header; encodingDesc → \paper/\layout/\midi where applicable
+  - `extract_toplevel_blocks()` reads ExtMeta from MeiHead, re-parses serialized blocks via LilyPond parser
+  - `extract_score_blocks()` reads score-level blocks from ScoreDef label segments
+  - Top-level header/paper/layout/midi emitted as `ToplevelExpression` items before `\score`
+  - Score-level header/layout/midi emitted as `ScoreItem` entries within `\score`
+  - Extracted `export/output_defs.rs` submodule (134 LOC) to keep mod.rs under 1500 LOC
+- [x] [T] Roundtrip header and paper fixtures
+  - 12 roundtrip tests: header basic/multiple fields/scheme value, paper basic/multiple fields, layout empty/with-context, midi empty, score header, score layout+midi, header fixture, paper-layout-midi fixture
+- [x] [T] Header and output-def fixtures; roundtrip
+  - Both fixtures (`fragment_header.ly`, `fragment_paper_layout_midi.ly`) roundtrip through import→export correctly
+  - 972 total tests pass (was 949)
 
 ---
 
