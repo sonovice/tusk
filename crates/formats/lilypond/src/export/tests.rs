@@ -1020,3 +1020,93 @@ fn roundtrip_tuplet_fixture() {
     assert!(output.contains("\\tuplet 3/2"), "3/2 tuplet: {output}");
     assert!(output.contains("\\tuplet 5/4"), "5/4 tuplet: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Grace note roundtrip tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_grace_single() {
+    let output = roundtrip("{ \\grace c16 d4 }");
+    assert!(output.contains("\\grace"), "output: {output}");
+    assert!(output.contains("c16"), "output: {output}");
+    assert!(output.contains("d4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_grace_multiple_notes() {
+    let output = roundtrip("{ \\grace { c16 d16 } e4 }");
+    assert!(output.contains("\\grace"), "output: {output}");
+    assert!(output.contains("c16"), "output: {output}");
+    assert!(output.contains("d16"), "output: {output}");
+    assert!(output.contains("e4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_acciaccatura() {
+    let output = roundtrip("{ \\acciaccatura d8 c4 }");
+    assert!(output.contains("\\acciaccatura"), "output: {output}");
+    assert!(output.contains("d8"), "output: {output}");
+    assert!(output.contains("c4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_appoggiatura() {
+    let output = roundtrip("{ \\appoggiatura d8 c2 }");
+    assert!(output.contains("\\appoggiatura"), "output: {output}");
+    assert!(output.contains("d8"), "output: {output}");
+    assert!(output.contains("c2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_after_grace() {
+    let output = roundtrip("{ \\afterGrace c2 { d16 e16 } }");
+    assert!(output.contains("\\afterGrace"), "output: {output}");
+    assert!(output.contains("c2"), "output: {output}");
+    assert!(output.contains("d16"), "output: {output}");
+    assert!(output.contains("e16"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_after_grace_with_fraction() {
+    let output = roundtrip("{ \\afterGrace 3/4 c2 { d16 } }");
+    assert!(output.contains("\\afterGrace 3/4"), "output: {output}");
+    assert!(output.contains("c2"), "output: {output}");
+    assert!(output.contains("d16"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_grace_chord() {
+    let output = roundtrip("{ \\grace <c e>16 d4 }");
+    assert!(output.contains("\\grace"), "output: {output}");
+    assert!(output.contains("<c e>16"), "output: {output}");
+    assert!(output.contains("d4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_acciaccatura_multiple() {
+    let output = roundtrip("{ \\acciaccatura { c16 d16 } e2 }");
+    assert!(output.contains("\\acciaccatura"), "output: {output}");
+    assert!(output.contains("c16"), "output: {output}");
+    assert!(output.contains("d16"), "output: {output}");
+    assert!(output.contains("e2"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_grace_fixture() {
+    // Content from tests/fixtures/lilypond/fragment_grace.ly
+    let src = "\
+\\grace c16 d4
+\\acciaccatura d8 c4
+\\appoggiatura d8 c2
+\\grace { c16 d16 } e4
+\\acciaccatura { c16 d16 } e2
+\\afterGrace c2 { d16 e16 }
+\\afterGrace 3/4 c2 { d16 }
+\\afterGrace 7/8 f1 { g8 }";
+    let output = roundtrip(&format!("{{ {src} }}"));
+    assert!(output.contains("\\grace"), "grace: {output}");
+    assert!(output.contains("\\acciaccatura"), "acciaccatura: {output}");
+    assert!(output.contains("\\appoggiatura"), "appoggiatura: {output}");
+    assert!(output.contains("\\afterGrace"), "afterGrace: {output}");
+}

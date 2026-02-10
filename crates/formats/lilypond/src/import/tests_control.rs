@@ -607,3 +607,157 @@ fn import_tuplet_label_format() {
         "label should start with lilypond:tuplet,3/2: {label}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Grace note import tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn import_grace_sets_grace_attr() {
+    let mei = parse_and_import("{ \\grace c16 d4 }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 2, "expected 2 layer children: {lc:?}");
+    // First note should be grace
+    if let LayerChild::Note(note) = &lc[0] {
+        assert!(
+            note.note_log.grace.is_some(),
+            "grace note should have @grace"
+        );
+        assert_eq!(
+            note.note_log.grace,
+            Some(tusk_model::generated::data::DataGrace::Unacc)
+        );
+        let label = note.common.label.as_deref().unwrap();
+        assert!(label.contains("lilypond:grace,grace"), "label: {label}");
+    } else {
+        panic!("expected Note, got {:?}", lc[0]);
+    }
+    // Second note should NOT be grace
+    if let LayerChild::Note(note) = &lc[1] {
+        assert!(
+            note.note_log.grace.is_none(),
+            "main note should not have @grace"
+        );
+    }
+}
+
+#[test]
+fn import_acciaccatura_sets_unacc() {
+    let mei = parse_and_import("{ \\acciaccatura d8 c4 }");
+    let lc = layer_children(&mei);
+    if let LayerChild::Note(note) = &lc[0] {
+        assert_eq!(
+            note.note_log.grace,
+            Some(tusk_model::generated::data::DataGrace::Unacc)
+        );
+        let label = note.common.label.as_deref().unwrap();
+        assert!(
+            label.contains("lilypond:grace,acciaccatura"),
+            "label: {label}"
+        );
+    } else {
+        panic!("expected Note");
+    }
+}
+
+#[test]
+fn import_appoggiatura_sets_acc() {
+    let mei = parse_and_import("{ \\appoggiatura d8 c2 }");
+    let lc = layer_children(&mei);
+    if let LayerChild::Note(note) = &lc[0] {
+        assert_eq!(
+            note.note_log.grace,
+            Some(tusk_model::generated::data::DataGrace::Acc)
+        );
+        let label = note.common.label.as_deref().unwrap();
+        assert!(
+            label.contains("lilypond:grace,appoggiatura"),
+            "label: {label}"
+        );
+    } else {
+        panic!("expected Note");
+    }
+}
+
+#[test]
+fn import_grace_multiple_notes() {
+    let mei = parse_and_import("{ \\grace { c16 d16 } e4 }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 3, "expected 3 layer children: {lc:?}");
+    // First two notes should be grace
+    for (i, child) in lc.iter().enumerate().take(2) {
+        if let LayerChild::Note(note) = child {
+            assert!(
+                note.note_log.grace.is_some(),
+                "note {i} should be grace: {:?}",
+                note.note_log.grace
+            );
+        }
+    }
+    // Third note should NOT be grace
+    if let LayerChild::Note(note) = &lc[2] {
+        assert!(
+            note.note_log.grace.is_none(),
+            "main note should not be grace"
+        );
+    }
+}
+
+#[test]
+fn import_after_grace_main_not_grace() {
+    let mei = parse_and_import("{ \\afterGrace c2 { d16 e16 } }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 3, "expected 3 layer children: {lc:?}");
+    // First note (main) should NOT be grace
+    if let LayerChild::Note(note) = &lc[0] {
+        assert!(
+            note.note_log.grace.is_none(),
+            "main note should not be grace"
+        );
+    }
+    // Grace notes should have @grace and after label
+    for (i, child) in lc.iter().enumerate().take(3).skip(1) {
+        if let LayerChild::Note(note) = child {
+            assert!(
+                note.note_log.grace.is_some(),
+                "after-grace note {i} should have @grace"
+            );
+            let label = note.common.label.as_deref().unwrap();
+            assert!(
+                label.contains("lilypond:grace,after"),
+                "label should contain after: {label}"
+            );
+        }
+    }
+}
+
+#[test]
+fn import_after_grace_with_fraction() {
+    let mei = parse_and_import("{ \\afterGrace 3/4 c2 { d16 } }");
+    let lc = layer_children(&mei);
+    // Grace note should have fraction in label
+    if let LayerChild::Note(note) = &lc[1] {
+        let label = note.common.label.as_deref().unwrap();
+        assert!(
+            label.contains("fraction=3/4"),
+            "label should contain fraction=3/4: {label}"
+        );
+    }
+}
+
+#[test]
+fn import_grace_chord() {
+    let mei = parse_and_import("{ \\grace <c e>16 d4 }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 2);
+    if let LayerChild::Chord(chord) = &lc[0] {
+        assert!(
+            chord.chord_log.grace.is_some(),
+            "grace chord should have @grace"
+        );
+        let label = chord.common.label.as_deref().unwrap();
+        assert!(label.contains("lilypond:grace,grace"), "label: {label}");
+    } else {
+        panic!("expected Chord, got {:?}", lc[0]);
+    }
+}

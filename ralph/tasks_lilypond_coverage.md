@@ -699,10 +699,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 16.2 Import & Export
 
-- [ ] [I] Grace → MEI grace group / @grace
-- [ ] [E] MEI grace → LilyPond `\grace` or `\acciaccatura`/`\appoggiatura`
-- [ ] [T] Roundtrip grace note fixtures
-- [ ] [T] Grace note fixtures; roundtrip
+- [x] [I] Grace → MEI grace group / @grace
+  - GraceStart/GraceEnd markers in LyEvent stream; GraceType enum tracks grace/acciaccatura/appoggiatura/afterGrace
+  - `\grace` → `@grace=unacc` + label `lilypond:grace,grace`; `\acciaccatura` → `@grace=unacc` + `lilypond:grace,acciaccatura`
+  - `\appoggiatura` → `@grace=acc` + `lilypond:grace,appoggiatura`
+  - `\afterGrace [frac] main { grace }` → main note normal, grace notes `@grace=unacc` + `lilypond:grace,after[,fraction=N/D]`
+  - Grace attr applied to both Note and Chord elements; label pipe-appended to existing labels
+  - 7 import tests: grace attr, acciaccatura unacc, appoggiatura acc, multiple notes, afterGrace main/grace, fraction, chord
+- [x] [E] MEI grace → LilyPond `\grace` or `\acciaccatura`/`\appoggiatura`
+  - collect_grace_types() builds parallel grace type array from LayerChild @grace attrs + labels
+  - apply_grace_wrapping() groups consecutive grace notes, wraps in Music::Grace/Acciaccatura/Appoggiatura/AfterGrace
+  - AfterGrace: main note (preceding non-grace) pulled into Music::AfterGrace with fraction from label
+  - Supports Beam children (grace notes inside beams)
+- [x] [T] Roundtrip grace note fixtures
+  - 9 roundtrip tests: grace single, multiple, acciaccatura, appoggiatura, afterGrace, afterGrace+fraction, chord, acciaccatura multiple, fixture
+- [x] [T] Grace note fixtures; roundtrip
+  - fragment_grace.ly fixture content validated through roundtrip (all 8 constructs)
+  - 550 total tests pass (534 → 550: +7 import + 9 roundtrip)
 
 ---
 

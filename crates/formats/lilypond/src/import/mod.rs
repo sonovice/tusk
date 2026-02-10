@@ -16,7 +16,7 @@ use tusk_model::elements::{
     ScoreDefChild, Section, SectionChild, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild,
     TitleStmt,
 };
-use tusk_model::generated::data::{DataTie, DataWord};
+use tusk_model::generated::data::{DataGrace, DataTie, DataWord};
 
 use crate::model::{
     self, ContextKeyword, ContextModItem, Music, NoteEvent, PostEvent, RestEvent, ScoreItem,
@@ -568,6 +568,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut tie_pending = false;
             // Track the last note/chord/rest xml:id for tuplet boundary resolution
             let mut last_note_id: Option<String> = None;
+            // Track current grace context for setting @grace on notes
+            let mut current_grace: Option<GraceType> = None;
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -590,6 +592,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 }
                             }
                             tie_pending = true;
+                        }
+                        if let Some(ref gt) = current_grace {
+                            apply_grace_to_note(&mut mei_note, gt);
                         }
                         layer.children.push(LayerChild::Note(Box::new(mei_note)));
                         (pe, id_str)
@@ -645,6 +650,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             }
                             tie_pending = true;
                         }
+                        if let Some(ref gt) = current_grace {
+                            apply_grace_to_chord(&mut mei_chord, gt);
+                        }
                         layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
                         (pe, id_str)
                     }
@@ -687,6 +695,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 .children
                                 .push(MeasureChild::TupletSpan(Box::new(ts)));
                         }
+                        continue;
+                    }
+                    LyEvent::GraceStart(gt) => {
+                        current_grace = Some(gt.clone());
+                        continue;
+                    }
+                    LyEvent::GraceEnd => {
+                        current_grace = None;
                         continue;
                     }
                     LyEvent::Skip(_)
@@ -993,6 +1009,23 @@ enum LyEvent {
     },
     /// Marks the end of a tuplet group.
     TupletEnd,
+    /// Marks the beginning of a grace note group.
+    GraceStart(GraceType),
+    /// Marks the end of a grace note group.
+    GraceEnd,
+}
+
+/// Type of grace note construct for import/export roundtrip.
+#[derive(Debug, Clone, PartialEq)]
+enum GraceType {
+    /// `\grace { ... }`
+    Grace,
+    /// `\acciaccatura { ... }`
+    Acciaccatura,
+    /// `\appoggiatura { ... }`
+    Appoggiatura,
+    /// `\afterGrace [fraction] main { grace }` — grace notes only (main note is separate).
+    AfterGrace { fraction: Option<(u32, u32)> },
 }
 
 /// Pitch context tracking for relative mode and transposition.
@@ -1117,15 +1150,88 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts.clone())),
         Music::AutoBeamOn => events.push(LyEvent::AutoBeamOn),
         Music::AutoBeamOff => events.push(LyEvent::AutoBeamOff),
-        // Grace notes — import handled in Phase 16.2; for now, collect inner events
-        Music::Grace { body } | Music::Acciaccatura { body } | Music::Appoggiatura { body } => {
+        Music::Grace { body } => {
+            events.push(LyEvent::GraceStart(GraceType::Grace));
             collect_events(body, events, ctx);
+            events.push(LyEvent::GraceEnd);
         }
-        Music::AfterGrace { main, grace, .. } => {
+        Music::Acciaccatura { body } => {
+            events.push(LyEvent::GraceStart(GraceType::Acciaccatura));
+            collect_events(body, events, ctx);
+            events.push(LyEvent::GraceEnd);
+        }
+        Music::Appoggiatura { body } => {
+            events.push(LyEvent::GraceStart(GraceType::Appoggiatura));
+            collect_events(body, events, ctx);
+            events.push(LyEvent::GraceEnd);
+        }
+        Music::AfterGrace {
+            fraction,
+            main,
+            grace,
+        } => {
             collect_events(main, events, ctx);
+            events.push(LyEvent::GraceStart(GraceType::AfterGrace {
+                fraction: *fraction,
+            }));
             collect_events(grace, events, ctx);
+            events.push(LyEvent::GraceEnd);
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+    }
+}
+
+/// Build a grace label string from a `GraceType`.
+///
+/// Format: `lilypond:grace,TYPE[,fraction=N/D]`
+fn grace_type_label(gt: &GraceType) -> String {
+    match gt {
+        GraceType::Grace => "lilypond:grace,grace".to_string(),
+        GraceType::Acciaccatura => "lilypond:grace,acciaccatura".to_string(),
+        GraceType::Appoggiatura => "lilypond:grace,appoggiatura".to_string(),
+        GraceType::AfterGrace { fraction } => {
+            if let Some((n, d)) = fraction {
+                format!("lilypond:grace,after,fraction={n}/{d}")
+            } else {
+                "lilypond:grace,after".to_string()
+            }
+        }
+    }
+}
+
+/// Map a `GraceType` to the corresponding MEI `DataGrace` value.
+fn grace_type_to_data_grace(gt: &GraceType) -> DataGrace {
+    match gt {
+        GraceType::Appoggiatura => DataGrace::Acc,
+        GraceType::Grace | GraceType::Acciaccatura | GraceType::AfterGrace { .. } => {
+            DataGrace::Unacc
+        }
+    }
+}
+
+/// Set `@grace` and label on an MEI note for a grace context.
+fn apply_grace_to_note(note: &mut tusk_model::elements::Note, gt: &GraceType) {
+    note.note_log.grace = Some(grace_type_to_data_grace(gt));
+    let label = grace_type_label(gt);
+    match &mut note.common.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(&label);
+        }
+        None => note.common.label = Some(label),
+    }
+}
+
+/// Set `@grace` and label on an MEI chord for a grace context.
+fn apply_grace_to_chord(chord: &mut tusk_model::elements::Chord, gt: &GraceType) {
+    chord.chord_log.grace = Some(grace_type_to_data_grace(gt));
+    let label = grace_type_label(gt);
+    match &mut chord.common.label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(&label);
+        }
+        None => chord.common.label = Some(label),
     }
 }
 
