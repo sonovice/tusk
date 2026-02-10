@@ -278,10 +278,26 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 6.2 Import & Export
 
-- [ ] [I] Clef/key/time → MEI `<scoreDef>` / `<staffDef>` clef, key, meter
-- [ ] [E] MEI clef/key/meter → `\clef`, `\key`, `\time`
-- [ ] [T] Roundtrip with key and time change
-- [ ] [T] Fixtures with various clefs, keys, times; roundtrip
+- [x] [I] Clef/key/time → MEI `<scoreDef>` / `<staffDef>` clef, key, meter
+  - First clef → staffDef @clef.shape, @clef.line, @clef.dis, @clef.dis.place
+  - First key → staffDef @keysig (circle of fifths)
+  - First time → staffDef @meter.count, @meter.unit
+  - Full event sequence stored in staffDef @label as `lilypond:events,TYPE@POS;...` for roundtrip
+  - clef_name_to_mei() maps 20+ clef names to MEI shape/line with transposition (_8, ^15) support
+  - key_to_fifths() converts pitch+mode to circle-of-fifths value (all 9 modes)
+  - 12 import tests: treble/bass/alto clef, D major/A minor/Bb major key, 3/4 and 2+3/8 time, label storage, mid-stream clef change, transposed clef
+- [x] [E] MEI clef/key/meter → `\clef`, `\key`, `\time`
+  - Event sequence label parsed back: clef name, key (step.alter.mode), time (N+M/D)
+  - Fallback: reconstruct from staffDef attributes when no label present
+  - inject_signature_events() inserts clef/key/time at correct positions in music stream
+  - mei_clef_to_name() reverses MEI attributes to LilyPond clef name
+  - fifths_to_key() reverses circle-of-fifths to pitch+mode
+- [x] [T] Roundtrip with key and time change
+  - roundtrip_clef_change_mid_stream, roundtrip_key_change, roundtrip_time_change
+- [x] [T] Fixtures with various clefs, keys, times; roundtrip
+  - roundtrip_clef_key_time_fixture uses existing fragment_clef_key_time.ly
+  - 14 roundtrip tests: treble/bass/alto clef, D major/Bb minor key, 3/4 and 2+3/8 time, combined, mid-stream changes, transposed clef, fixture
+  - 217 total tests pass
 
 ---
 

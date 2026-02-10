@@ -9,8 +9,9 @@ use tusk_model::elements::{
 };
 use tusk_model::generated::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
-    DataAccidentalWrittenBasic, DataAugmentdot, DataDuration, DataDurationCmn, DataDurationrests,
-    DataOctave, DataPitchname,
+    DataAccidentalWrittenBasic, DataAugmentdot, DataClefline, DataClefshape, DataDuration,
+    DataDurationCmn, DataDurationrests, DataKeyfifths, DataOctave, DataOctaveDis, DataPitchname,
+    DataStaffrelBasic,
 };
 
 use crate::model::{
@@ -300,7 +301,7 @@ fn group_context_to_symbol(context_type: &str) -> Option<&'static str> {
     }
 }
 
-/// Build a ScoreDef from analyzed staff structure.
+/// Build a ScoreDef from analyzed staff structure, setting initial clef/key/time.
 fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
     let mut staff_grp = StaffGrp::default();
 
@@ -320,8 +321,25 @@ fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
         let mut staff_def = StaffDef::default();
         staff_def.n_integer.n = Some(staff_info.n.to_string());
 
-        // Store context metadata in label for roundtrip
-        let label = build_staff_label(staff_info);
+        // Collect events from all voices to find initial clef/key/time
+        let mut events = Vec::new();
+        for voice_music in &staff_info.voices {
+            for m in voice_music {
+                collect_events(m, &mut events);
+            }
+        }
+
+        // Set initial clef/key/time on staffDef and collect event sequence for label
+        let event_sequence = apply_signatures_to_staff_def(&events, &mut staff_def);
+
+        // Build label: start with context metadata, append event sequence
+        let mut label = build_staff_label(staff_info);
+        if !event_sequence.is_empty() {
+            if !label.is_empty() {
+                label.push('|');
+            }
+            label.push_str(&event_sequence);
+        }
         if !label.is_empty() {
             staff_def.labelled.label = Some(label);
         }
@@ -463,7 +481,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         let mei_mrest = convert_mrest(rest, id_counter);
                         layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
                     }
-                    LyEvent::Skip(_) => {}
+                    LyEvent::Skip(_)
+                    | LyEvent::Clef(_)
+                    | LyEvent::KeySig(_)
+                    | LyEvent::TimeSig(_) => {}
                 }
             }
 
@@ -521,6 +542,9 @@ enum LyEvent<'a> {
     PitchedRest(&'a NoteEvent),
     MeasureRest(&'a model::MultiMeasureRestEvent),
     Skip(()),
+    Clef(&'a model::Clef),
+    KeySig(&'a model::KeySignature),
+    TimeSig(&'a model::TimeSignature),
 }
 
 /// Recursively collect note/rest/skip events from LilyPond music.
@@ -550,10 +574,263 @@ fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
         Music::ContextChange { .. } => {
             // Context changes don't produce note events
         }
-        Music::Clef(_) | Music::KeySignature(_) | Music::TimeSignature(_) => {
-            // Clef/key/time are context events, not note events — handled elsewhere
-        }
+        Music::Clef(c) => events.push(LyEvent::Clef(c)),
+        Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks)),
+        Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts)),
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Clef / key / time signature → staffDef attributes
+// ---------------------------------------------------------------------------
+
+/// Apply clef/key/time from the event stream onto a staffDef and return
+/// a label segment encoding the full event sequence for roundtrip.
+///
+/// The label format is `lilypond:events,TYPE@POS;TYPE@POS;...` where:
+/// - TYPE is `clef:NAME`, `key:STEP.ALTER.MODE`, or `time:N+M/D`
+/// - POS is the 0-based index in the note/rest event stream
+fn apply_signatures_to_staff_def(events: &[LyEvent<'_>], staff_def: &mut StaffDef) -> String {
+    let mut first_clef = true;
+    let mut first_key = true;
+    let mut first_time = true;
+    let mut note_index = 0u32;
+    let mut entries = Vec::new();
+
+    for event in events {
+        match event {
+            LyEvent::Clef(c) => {
+                entries.push(format!("clef:{}@{note_index}", c.name));
+                if first_clef {
+                    apply_clef_to_staff_def(c, staff_def);
+                    first_clef = false;
+                }
+            }
+            LyEvent::KeySig(ks) => {
+                let fifths = key_to_fifths(&ks.pitch, &ks.mode);
+                entries.push(format!(
+                    "key:{}.{}.{}@{note_index}",
+                    ks.pitch.step,
+                    ks.pitch.alter,
+                    ks.mode.as_str()
+                ));
+                if first_key {
+                    staff_def.staff_def_log.keysig = Some(DataKeyfifths(fifths.to_string()));
+                    first_key = false;
+                }
+            }
+            LyEvent::TimeSig(ts) => {
+                let count: String = ts
+                    .numerators
+                    .iter()
+                    .map(|n| n.to_string())
+                    .collect::<Vec<_>>()
+                    .join("+");
+                entries.push(format!("time:{}/{}@{note_index}", count, ts.denominator));
+                if first_time {
+                    staff_def.staff_def_log.meter_count = Some(count);
+                    staff_def.staff_def_log.meter_unit = Some(ts.denominator.to_string());
+                    first_time = false;
+                }
+            }
+            LyEvent::Note(_)
+            | LyEvent::Rest(_)
+            | LyEvent::PitchedRest(_)
+            | LyEvent::MeasureRest(_) => {
+                note_index += 1;
+            }
+            LyEvent::Skip(_) => {}
+        }
+    }
+
+    if entries.is_empty() {
+        String::new()
+    } else {
+        format!("lilypond:events,{}", entries.join(";"))
+    }
+}
+
+/// Apply a LilyPond clef to MEI staffDef attributes.
+fn apply_clef_to_staff_def(clef: &model::Clef, staff_def: &mut StaffDef) {
+    let (shape, line, dis, dis_place) = clef_name_to_mei(&clef.name);
+    staff_def.staff_def_log.clef_shape = Some(shape);
+    staff_def.staff_def_log.clef_line = Some(DataClefline(line));
+    if let Some(d) = dis {
+        staff_def.staff_def_log.clef_dis = Some(DataOctaveDis(d));
+    }
+    if let Some(dp) = dis_place {
+        staff_def.staff_def_log.clef_dis_place = Some(dp);
+    }
+}
+
+/// Map LilyPond clef name to MEI clef attributes (shape, line, dis, dis.place).
+fn clef_name_to_mei(name: &str) -> (DataClefshape, u64, Option<u64>, Option<DataStaffrelBasic>) {
+    // Split off transposition suffix (_8, ^15, _15, ^8)
+    let (base, dis, dis_place) = parse_clef_transposition(name);
+
+    let (shape, line) = match base {
+        "treble" | "violin" | "G" | "G2" => (DataClefshape::G, 2),
+        "french" => (DataClefshape::G, 1),
+        "GG" => (DataClefshape::Gg, 2),
+        "tenorG" => (DataClefshape::G, 2), // tenor G clef (octave transposed)
+        "soprano" => (DataClefshape::C, 1),
+        "mezzosoprano" => (DataClefshape::C, 2),
+        "alto" | "C" => (DataClefshape::C, 3),
+        "tenor" => (DataClefshape::C, 4),
+        "baritone" => (DataClefshape::C, 5),
+        "varbaritone" => (DataClefshape::F, 3),
+        "bass" | "F" => (DataClefshape::F, 4),
+        "subbass" => (DataClefshape::F, 5),
+        "percussion" | "varpercussion" => (DataClefshape::Perc, 3),
+        "tab" => (DataClefshape::Tab, 5),
+        // Variant C clefs
+        "varC" | "altovarC" => (DataClefshape::C, 3),
+        "tenorvarC" => (DataClefshape::C, 4),
+        "baritonevarC" => (DataClefshape::C, 5),
+        _ => (DataClefshape::G, 2), // fallback to treble
+    };
+
+    // tenorG has implicit 8vb transposition
+    let (dis, dis_place) = if base == "tenorG" && dis.is_none() {
+        (Some(8), Some(DataStaffrelBasic::Below))
+    } else {
+        (dis, dis_place)
+    };
+
+    (shape, line, dis, dis_place)
+}
+
+/// Parse clef transposition suffix: `_8`, `^8`, `_15`, `^15`.
+fn parse_clef_transposition(name: &str) -> (&str, Option<u64>, Option<DataStaffrelBasic>) {
+    for (suffix, dis, place) in [
+        ("_8", 8u64, DataStaffrelBasic::Below),
+        ("^8", 8, DataStaffrelBasic::Above),
+        ("_15", 15, DataStaffrelBasic::Below),
+        ("^15", 15, DataStaffrelBasic::Above),
+    ] {
+        if let Some(base) = name.strip_suffix(suffix) {
+            return (base, Some(dis), Some(place));
+        }
+    }
+    (name, None, None)
+}
+
+/// Convert a LilyPond key (pitch + mode) to circle-of-fifths count.
+///
+/// Positive = sharps, negative = flats.
+fn key_to_fifths(pitch: &crate::model::pitch::Pitch, mode: &crate::model::Mode) -> i32 {
+    // Major keys: C=0, G=1, D=2, A=3, E=4, B=5, F#=6, Cb=-7, Gb=-6, Db=-5, Ab=-4, Eb=-3, Bb=-2, F=-1
+    // The fifths value for a major key is based on the pitch's position on the circle of fifths.
+    let base_fifths = pitch_to_major_fifths(pitch.step, pitch.alter);
+
+    // Mode offsets relative to major: minor = -3, dorian = -2, phrygian = -4, etc.
+    let mode_offset = match mode {
+        crate::model::Mode::Major | crate::model::Mode::Ionian => 0,
+        crate::model::Mode::Minor | crate::model::Mode::Aeolian => -3,
+        crate::model::Mode::Dorian => -2,
+        crate::model::Mode::Phrygian => -4,
+        crate::model::Mode::Lydian => 1,
+        crate::model::Mode::Mixolydian => -1,
+        crate::model::Mode::Locrian => -5,
+    };
+
+    base_fifths + mode_offset
+}
+
+/// Convert a pitch (step + alter) to its major-key position on the circle of fifths.
+fn pitch_to_major_fifths(step: char, alter: f32) -> i32 {
+    // Natural note positions on circle of fifths (for major keys):
+    // F=-1, C=0, G=1, D=2, A=3, E=4, B=5
+    let natural_fifths = match step {
+        'c' => 0,
+        'd' => 2,
+        'e' => 4,
+        'f' => -1,
+        'g' => 1,
+        'a' => 3,
+        'b' => 5,
+        _ => 0,
+    };
+    // Each sharp adds 7 fifths, each flat subtracts 7
+    let alter_offset = (alter * 2.0) as i32; // half-steps → alter units
+    // Sharp = +1.0 alter = +7 fifths, flat = -1.0 alter = -7 fifths
+    natural_fifths + alter_offset * 7 / 2
+}
+
+/// Convert MEI clef attributes back to LilyPond clef name.
+pub(crate) fn mei_clef_to_name(
+    shape: &DataClefshape,
+    line: u64,
+    dis: Option<u64>,
+    dis_place: Option<&DataStaffrelBasic>,
+) -> String {
+    let base = match (shape, line) {
+        (DataClefshape::G, 2) => "treble",
+        (DataClefshape::G, 1) => "french",
+        (DataClefshape::Gg, 2) => "GG",
+        (DataClefshape::C, 1) => "soprano",
+        (DataClefshape::C, 2) => "mezzosoprano",
+        (DataClefshape::C, 3) => "alto",
+        (DataClefshape::C, 4) => "tenor",
+        (DataClefshape::C, 5) => "baritone",
+        (DataClefshape::F, 3) => "varbaritone",
+        (DataClefshape::F, 4) => "bass",
+        (DataClefshape::F, 5) => "subbass",
+        (DataClefshape::Perc, _) => "percussion",
+        (DataClefshape::Tab, _) => "tab",
+        _ => "treble",
+    };
+
+    // Check for tenorG special case
+    if base == "treble" && dis == Some(8) && dis_place == Some(&DataStaffrelBasic::Below) {
+        return "tenorG".to_string();
+    }
+
+    // Append transposition suffix
+    match (dis, dis_place) {
+        (Some(8), Some(DataStaffrelBasic::Below)) => format!("{base}_8"),
+        (Some(8), Some(DataStaffrelBasic::Above)) => format!("{base}^8"),
+        (Some(15), Some(DataStaffrelBasic::Below)) => format!("{base}_15"),
+        (Some(15), Some(DataStaffrelBasic::Above)) => format!("{base}^15"),
+        _ => base.to_string(),
+    }
+}
+
+/// Convert MEI key fifths value back to LilyPond pitch + mode.
+pub(crate) fn fifths_to_key(fifths: i32) -> (crate::model::pitch::Pitch, crate::model::Mode) {
+    // For simplicity, always export as major key.
+    // The event sequence label preserves the original mode.
+    let (step, alter) = major_fifths_to_pitch(fifths);
+    let pitch = crate::model::pitch::Pitch {
+        step,
+        alter,
+        octave: 0,
+        force_accidental: false,
+        cautionary: false,
+    };
+    (pitch, crate::model::Mode::Major)
+}
+
+/// Convert circle-of-fifths position to a major key tonic.
+fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
+    match fifths {
+        0 => ('c', 0.0),
+        1 => ('g', 0.0),
+        2 => ('d', 0.0),
+        3 => ('a', 0.0),
+        4 => ('e', 0.0),
+        5 => ('b', 0.0),
+        6 => ('f', 1.0), // F#
+        7 => ('c', 1.0), // C#
+        -1 => ('f', 0.0),
+        -2 => ('b', -1.0), // Bb
+        -3 => ('e', -1.0), // Eb
+        -4 => ('a', -1.0), // Ab
+        -5 => ('d', -1.0), // Db
+        -6 => ('g', -1.0), // Gb
+        -7 => ('c', -1.0), // Cb
+        _ => ('c', 0.0),
     }
 }
 
@@ -1136,6 +1413,140 @@ mod tests {
         let mei = parse_and_import(&src);
         let staves = all_staves(&mei);
         assert_eq!(staves.len(), 2, "fragment_contexts.ly should have 2 staves");
+    }
+
+    /// Find the first staffDef in the scoreDef.
+    fn first_staff_def(mei: &Mei) -> Option<&StaffDef> {
+        let sd = find_score_def(mei)?;
+        for child in &sd.children {
+            if let ScoreDefChild::StaffGrp(grp) = child {
+                for gc in &grp.children {
+                    if let StaffGrpChild::StaffDef(sdef) = gc {
+                        return Some(sdef);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    // --- Phase 6.2: Clef/key/time import tests ---
+
+    #[test]
+    fn import_clef_sets_staff_def() {
+        let mei = parse_and_import("{ \\clef \"treble\" c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(
+            sdef.staff_def_log.clef_shape,
+            Some(DataClefshape::G),
+            "treble clef should be G shape"
+        );
+        assert_eq!(
+            sdef.staff_def_log.clef_line.as_ref().map(|l| l.0),
+            Some(2),
+            "treble clef should be on line 2"
+        );
+    }
+
+    #[test]
+    fn import_bass_clef_sets_staff_def() {
+        let mei = parse_and_import("{ \\clef \"bass\" c4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::F));
+        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(4));
+    }
+
+    #[test]
+    fn import_alto_clef_sets_staff_def() {
+        let mei = parse_and_import("{ \\clef \"alto\" c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::C));
+        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(3));
+    }
+
+    #[test]
+    fn import_key_sets_staff_def() {
+        let mei = parse_and_import("{ \\key d \\major c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        // D major = 2 sharps
+        assert_eq!(
+            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
+            Some("2")
+        );
+    }
+
+    #[test]
+    fn import_key_minor_sets_staff_def() {
+        let mei = parse_and_import("{ \\key a \\minor c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        // A minor = 0 sharps/flats
+        assert_eq!(
+            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
+            Some("0")
+        );
+    }
+
+    #[test]
+    fn import_key_flat_sets_staff_def() {
+        let mei = parse_and_import("{ \\key bes \\major c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        // Bb major = -2
+        assert_eq!(
+            sdef.staff_def_log.keysig.as_ref().map(|k| k.0.as_str()),
+            Some("-2")
+        );
+    }
+
+    #[test]
+    fn import_time_sets_staff_def() {
+        let mei = parse_and_import("{ \\time 3/4 c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("3"));
+        assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn import_time_compound_sets_staff_def() {
+        let mei = parse_and_import("{ \\time 2+3/8 c'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(sdef.staff_def_log.meter_count.as_deref(), Some("2+3"));
+        assert_eq!(sdef.staff_def_log.meter_unit.as_deref(), Some("8"));
+    }
+
+    #[test]
+    fn import_clef_key_time_label_stored() {
+        let mei = parse_and_import("{ \\clef \"treble\" \\key d \\major \\time 4/4 c'4 d'4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        let label = sdef.labelled.label.as_deref().unwrap();
+        assert!(label.contains("lilypond:events,"), "label: {label}");
+        assert!(label.contains("clef:treble@0"), "label: {label}");
+        assert!(label.contains("key:d.0.major@0"), "label: {label}");
+        assert!(label.contains("time:4/4@0"), "label: {label}");
+    }
+
+    #[test]
+    fn import_clef_change_mid_stream() {
+        let mei = parse_and_import("{ \\clef \"treble\" c'4 d'4 \\clef \"bass\" e4 f4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        // First clef is treble
+        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
+        // Label has both clefs
+        let label = sdef.labelled.label.as_deref().unwrap();
+        assert!(label.contains("clef:treble@0"), "label: {label}");
+        assert!(label.contains("clef:bass@2"), "label: {label}");
+    }
+
+    #[test]
+    fn import_transposed_clef() {
+        let mei = parse_and_import("{ \\clef \"treble_8\" c4 }");
+        let sdef = first_staff_def(&mei).unwrap();
+        assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
+        assert_eq!(sdef.staff_def_log.clef_line.as_ref().map(|l| l.0), Some(2));
+        assert_eq!(sdef.staff_def_log.clef_dis.as_ref().map(|d| d.0), Some(8));
+        assert_eq!(
+            sdef.staff_def_log.clef_dis_place,
+            Some(DataStaffrelBasic::Below)
+        );
     }
 
     #[test]
