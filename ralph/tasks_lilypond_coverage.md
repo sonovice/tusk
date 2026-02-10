@@ -1020,10 +1020,10 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 23.2 Import & Export
 
-- [ ] [I] Chord names → MEI harm (with label or extended for full data)
-- [ ] [E] MEI harm → LilyPond chord mode
-- [ ] [T] Roundtrip chord name fixtures
-- [ ] [T] Chord mode fixtures; roundtrip
+- [x] [I] Chord names → MEI harm (with label or extended for full data)
+- [x] [E] MEI harm → LilyPond chord mode
+- [x] [T] Roundtrip chord name fixtures
+- [x] [T] Chord mode fixtures; roundtrip
 
 ---
 

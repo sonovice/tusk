@@ -57,6 +57,14 @@ pub fn serialize_text_mark(tm: &signature::TextMark) -> String {
     out
 }
 
+/// Serialize a chord-mode event to a string (e.g. `c:m7/e`).
+pub fn serialize_chord_mode_event(ce: &note::ChordModeEvent) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_chord_mode_event(ce);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,

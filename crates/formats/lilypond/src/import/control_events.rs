@@ -1,15 +1,15 @@
 //! MEI control event builders for LilyPond import.
 //!
 //! Creates MEI elements (Slur, Dynam, Hairpin, TupletSpan, Dir, Trill, Mordent,
-//! Turn, Fermata, Ornam, BTrem) from LilyPond AST data.
+//! Turn, Fermata, Ornam, BTrem, Harm) from LilyPond AST data.
 
 use tusk_model::elements::{
-    BTrem, BTremChild, Dir, DirChild, Dynam, DynamChild, Fermata, Hairpin, Layer, LayerChild,
-    MeasureChild, Mordent, Ornam, OrnamChild, Slur, Trill, TupletSpan, Turn,
+    BTrem, BTremChild, Dir, DirChild, Dynam, DynamChild, Fermata, Hairpin, Harm, HarmChild, Layer,
+    LayerChild, MeasureChild, Mordent, Ornam, OrnamChild, Slur, Trill, TupletSpan, Turn,
 };
 use tusk_model::generated::data::DataUri;
 
-use crate::model::note::Direction;
+use crate::model::note::{ChordModeEvent, Direction};
 
 /// Encode a Direction into a label suffix.
 pub(super) fn direction_label_suffix(dir: Direction) -> &'static str {
@@ -538,4 +538,27 @@ pub(super) fn make_ending_dir(
     dir.children
         .push(DirChild::Text(format!("ending {}", index + 1)));
     dir
+}
+
+/// Create an MEI Harm control event from a LilyPond chord-mode event.
+///
+/// Label format: `lilypond:chord-mode,SERIALIZED`
+/// Text child: human-readable chord symbol (e.g. "c:m7/e").
+pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u32) -> Harm {
+    let mut harm = Harm::default();
+    harm.common.xml_id = Some(format!("ly-harm-{id}"));
+    harm.harm_log.startid = Some(DataUri(format!("#{startid}")));
+    harm.harm_log.staff = Some(staff_n.to_string());
+
+    // Serialize the chord mode event for label storage (lossless roundtrip)
+    let serialized = crate::serializer::serialize_chord_mode_event(ce);
+    harm.common.label = Some(format!(
+        "lilypond:chord-mode,{}",
+        super::signatures::escape_label_value_pub(&serialized)
+    ));
+
+    // Human-readable text child
+    harm.children.push(HarmChild::Text(serialized));
+
+    harm
 }

@@ -9,6 +9,8 @@ pub(crate) mod signatures;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_chords;
+#[cfg(test)]
 mod tests_control;
 #[cfg(test)]
 mod tests_tempo_marks;
@@ -156,10 +158,22 @@ struct GroupInfo {
     with_block: Option<Vec<ContextModItem>>,
 }
 
+/// Information about a ChordNames context found alongside staves.
+struct ChordNamesInfo<'a> {
+    /// Context name, if any.
+    name: Option<String>,
+    /// `\with { ... }` block items, if present.
+    with_block: Option<Vec<ContextModItem>>,
+    /// The music content (chord-mode entries).
+    music: &'a Music,
+}
+
 /// Result of analyzing the context hierarchy.
 struct StaffLayout<'a> {
     group: Option<GroupInfo>,
     staves: Vec<StaffInfo<'a>>,
+    /// ChordNames contexts found at the same level as staves.
+    chord_names: Vec<ChordNamesInfo<'a>>,
 }
 
 /// Analyze the LilyPond music tree to extract staff structure.
@@ -196,11 +210,12 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                 name: name.clone(),
                 with_block: with_block.clone(),
             };
-            let staves = extract_staves_from_group(inner);
+            let (staves, chord_names) = extract_staves_and_chords_from_group(inner);
             if !staves.is_empty() {
                 return StaffLayout {
                     group: Some(group),
                     staves,
+                    chord_names,
                 };
             }
         }
@@ -218,6 +233,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     voices,
                     lyrics: Vec::new(),
                 }],
+                chord_names: Vec::new(),
             };
         }
 
@@ -227,12 +243,13 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
 
     // Check if simultaneous music contains \new Staff / \new Lyrics children
     if let Music::Simultaneous(items) = music {
-        let staves = extract_staves_from_simultaneous(items);
+        let (staves, chord_names) = extract_staves_and_chords_from_simultaneous(items);
         if !staves.is_empty() {
             // Check for \lyricsto targeting named voices
             let mut layout = StaffLayout {
                 group: None,
                 staves,
+                chord_names,
             };
             attach_lyricsto_from_simultaneous(items, &mut layout.staves);
             return layout;
@@ -251,6 +268,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             voices,
             lyrics: Vec::new(),
         }],
+        chord_names: Vec::new(),
     }
 }
 
@@ -322,17 +340,22 @@ fn is_staff_context(ctx: &str) -> bool {
     )
 }
 
-/// Extract staff infos from the inner music of a group context.
-fn extract_staves_from_group(music: &Music) -> Vec<StaffInfo<'_>> {
+/// Extract staff and chord-names infos from the inner music of a group context.
+fn extract_staves_and_chords_from_group(
+    music: &Music,
+) -> (Vec<StaffInfo<'_>>, Vec<ChordNamesInfo<'_>>) {
     match music {
-        Music::Simultaneous(items) => extract_staves_from_simultaneous(items),
-        _ => Vec::new(),
+        Music::Simultaneous(items) => extract_staves_and_chords_from_simultaneous(items),
+        _ => (Vec::new(), Vec::new()),
     }
 }
 
-/// Extract staff infos from a simultaneous music list that contains \new Staff children.
-fn extract_staves_from_simultaneous<'a>(items: &'a [Music]) -> Vec<StaffInfo<'a>> {
+/// Extract staff and chord-names infos from a simultaneous music list.
+fn extract_staves_and_chords_from_simultaneous<'a>(
+    items: &'a [Music],
+) -> (Vec<StaffInfo<'a>>, Vec<ChordNamesInfo<'a>>) {
     let mut staves = Vec::new();
+    let mut chord_names = Vec::new();
     let mut n = 1u32;
 
     for item in items {
@@ -343,22 +366,29 @@ fn extract_staves_from_simultaneous<'a>(items: &'a [Music]) -> Vec<StaffInfo<'a>
             music: inner,
             ..
         } = item
-            && (is_staff_context(context_type) || is_voice_context(context_type))
         {
-            let voices = extract_voices(inner);
-            staves.push(StaffInfo {
-                n,
-                name: name.clone(),
-                context_type: context_type.clone(),
-                with_block: with_block.clone(),
-                voices,
-                lyrics: Vec::new(),
-            });
-            n += 1;
+            if is_staff_context(context_type) || is_voice_context(context_type) {
+                let voices = extract_voices(inner);
+                staves.push(StaffInfo {
+                    n,
+                    name: name.clone(),
+                    context_type: context_type.clone(),
+                    with_block: with_block.clone(),
+                    voices,
+                    lyrics: Vec::new(),
+                });
+                n += 1;
+            } else if context_type == "ChordNames" {
+                chord_names.push(ChordNamesInfo {
+                    name: name.clone(),
+                    with_block: with_block.clone(),
+                    music: inner,
+                });
+            }
         }
     }
 
-    staves
+    (staves, chord_names)
 }
 
 /// Check if a context type is a voice-level context.
@@ -448,11 +478,47 @@ fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
             .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
     }
 
+    // Store chord-names context info in staffGrp label for roundtrip
+    if !layout.chord_names.is_empty() {
+        let cn_label = build_chord_names_label(&layout.chord_names);
+        if !cn_label.is_empty() {
+            match &mut staff_grp.common.label {
+                Some(existing) => {
+                    existing.push('|');
+                    existing.push_str(&cn_label);
+                }
+                None => staff_grp.common.label = Some(cn_label),
+            }
+        }
+    }
+
     let mut score_def = ScoreDef::default();
     score_def
         .children
         .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
     score_def
+}
+
+/// Build a label segment for chord-names context info.
+///
+/// Format: `lilypond:chordnames[,name=Name][,with={serialized}]`
+fn build_chord_names_label(chord_names: &[ChordNamesInfo<'_>]) -> String {
+    // For now, support one ChordNames context
+    if let Some(cn) = chord_names.first() {
+        let mut parts = vec!["lilypond:chordnames".to_string()];
+        if let Some(name) = &cn.name {
+            parts.push(format!("name={name}"));
+        }
+        if let Some(with_items) = &cn.with_block
+            && !with_items.is_empty()
+        {
+            let with_str = serialize_with_block(with_items);
+            parts.push(format!("with={with_str}"));
+        }
+        parts.join(",")
+    } else {
+        String::new()
+    }
 }
 
 /// Build a label string for group context metadata.
@@ -651,6 +717,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut tuplet_counter = 0u32;
     let mut repeat_counter = 0u32;
     let mut tempo_mark_counter = 0u32;
+    let mut harm_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -682,6 +749,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut current_grace: Option<GraceType> = None;
             // Pending tempo/mark/textMark waiting for next note's startid
             let mut pending_tempo_marks: Vec<PendingTempoMark> = Vec::new();
+            // Pending inline chord names waiting for first note
+            let mut pending_chord_names: Vec<(crate::model::note::ChordModeEvent, u32)> =
+                Vec::new();
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -893,6 +963,18 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pending_tempo_marks.push(PendingTempoMark::TextMark(serialized.clone()));
                         continue;
                     }
+                    LyEvent::ChordName(ce) => {
+                        harm_counter += 1;
+                        // Inline chord name: create Harm with startid if a note
+                        // has already been seen, otherwise queue for later
+                        if let Some(ref note_id) = last_note_id {
+                            let harm = make_harm(ce, note_id, staff_info.n, harm_counter);
+                            measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                        } else {
+                            pending_chord_names.push((ce.clone(), staff_info.n));
+                        }
+                        continue;
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -922,6 +1004,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                 }
                 last_note_id = Some(current_id.clone());
+
+                // Flush pending inline chord names
+                for (ce, staff_n) in pending_chord_names.drain(..) {
+                    harm_counter += 1;
+                    let harm = make_harm(&ce, &current_id, staff_n, harm_counter);
+                    measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                }
 
                 // Flush pending tempo/mark/textMark events
                 for ptm in pending_tempo_marks.drain(..) {
@@ -1123,6 +1212,21 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 }
             }
 
+            // Flush remaining pending chord names (no notes followed them)
+            if !pending_chord_names.is_empty() {
+                let mut beat = 1.0f64;
+                for (ce, staff_n) in pending_chord_names.drain(..) {
+                    harm_counter += 1;
+                    let mut harm = make_harm(&ce, "", staff_n, harm_counter);
+                    harm.harm_log.startid = None;
+                    harm.harm_log.tstamp = Some(tusk_model::generated::data::DataBeat(beat));
+                    measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                    if let Some(dur) = &ce.duration {
+                        beat += duration_to_beats(dur);
+                    }
+                }
+            }
+
             // Attach lyrics to notes in this layer
             for (verse_idx, lyric_info) in staff_info.lyrics.iter().enumerate() {
                 let verse_n = (verse_idx + 1) as u32;
@@ -1136,11 +1240,45 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         measure.children.push(MeasureChild::Staff(Box::new(staff)));
     }
 
+    // Process dedicated ChordNames contexts → Harm control events
+    for cn_info in &layout.chord_names {
+        let mut cn_events = Vec::new();
+        let mut cn_ctx = PitchContext::new();
+        collect_events(cn_info.music, &mut cn_events, &mut cn_ctx);
+        // Use @tstamp for timing since chord names have no notes to attach to
+        let mut beat = 1.0f64; // beat 1 of the measure
+        for ev in &cn_events {
+            if let LyEvent::ChordName(ce) = ev {
+                harm_counter += 1;
+                let mut harm = make_harm(ce, "", 1, harm_counter);
+                // Override: use @tstamp instead of @startid
+                harm.harm_log.startid = None;
+                harm.harm_log.tstamp = Some(tusk_model::generated::data::DataBeat(beat));
+                measure.children.push(MeasureChild::Harm(Box::new(harm)));
+                // Advance beat position based on chord duration
+                if let Some(dur) = &ce.duration {
+                    beat += duration_to_beats(dur);
+                }
+            }
+        }
+    }
+
     section
         .children
         .push(SectionChild::Measure(Box::new(measure)));
 
     Ok(section)
+}
+
+/// Estimate beats from a LilyPond Duration (assuming 4/4 time).
+fn duration_to_beats(dur: &crate::model::Duration) -> f64 {
+    let base_beats = 4.0 / dur.base as f64;
+    let dot_factor = 2.0 - 0.5f64.powi(dur.dots as i32);
+    let mut beats = base_beats * dot_factor;
+    for &(n, d) in &dur.multipliers {
+        beats *= n as f64 / d as f64;
+    }
+    beats
 }
 
 /// Group a range of layer children into a `<beam>` element.
@@ -1181,9 +1319,9 @@ fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
 }
 
 use control_events::{
-    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin, make_mark_dir,
-    make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir, make_tempo,
-    make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin, make_harm,
+    make_mark_dir, make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir,
+    make_tempo, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };
 
 /// Parse a serialized `\tempo ...` string back into a Tempo AST node.

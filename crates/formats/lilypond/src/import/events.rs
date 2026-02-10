@@ -69,6 +69,8 @@ pub(super) enum LyEvent {
     Mark(String),
     /// A serialized `\textMark ...` expression.
     TextMark(String),
+    /// A chord-mode event (chord name symbol).
+    ChordName(model::note::ChordModeEvent),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -306,10 +308,19 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_text_mark(tm);
             events.push(LyEvent::TextMark(serialized));
         }
-        // Chord mode: recurse into body (import handled in Phase 23.2)
+        // Chord mode: recurse into body to collect chord-mode entries
         Music::ChordMode { body } => collect_events(body, events, ctx),
-        Music::ChordModeEntry(_) => {
-            // Chord-mode events are handled in Phase 23.2 (import/export)
+        Music::ChordModeEntry(ce) => {
+            // Resolve root pitch through pitch context
+            let mut resolved = ce.clone();
+            resolved.root = ctx.resolve(&ce.root);
+            if let Some(ref mut inv) = resolved.inversion {
+                *inv = ctx.resolve(inv);
+            }
+            if let Some(ref mut bass) = resolved.bass {
+                *bass = ctx.resolve(bass);
+            }
+            events.push(LyEvent::ChordName(resolved));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

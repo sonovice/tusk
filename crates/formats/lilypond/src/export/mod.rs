@@ -9,6 +9,8 @@ mod signatures;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_chords;
+#[cfg(test)]
 mod tests_markup;
 #[cfg(test)]
 mod tests_tempo_marks;
@@ -127,6 +129,12 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }
     }
 
+    // Collect chord-mode events from Harm control events
+    let chord_mode_events = collect_chord_mode_harms(score);
+
+    // Extract chord-names context metadata from staffGrp label
+    let chord_names_meta = extract_chord_names_meta(score);
+
     // Apply pitch context wrappers (relative/transpose) to each staff's music
     apply_pitch_contexts(&mut staff_music, &pitch_contexts);
 
@@ -137,6 +145,8 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         &staff_metas,
         &lyrics_infos,
         &staff_layer_children,
+        &chord_mode_events,
+        &chord_names_meta,
     );
 
     let score_block = ScoreBlock {
@@ -340,12 +350,16 @@ fn build_music_with_contexts(
     staff_metas: &[StaffMeta],
     lyrics_infos: &[Option<lyrics::LyricsExportInfo>],
     staff_layer_children: &[Vec<&[LayerChild]>],
+    chord_mode_events: &[Music],
+    chord_names_meta: &Option<ChordNamesMeta>,
 ) -> Music {
     let num_staves = staff_music.len();
+    let has_chords = !chord_mode_events.is_empty();
 
-    // Single staff, no group, no explicit staff context -> flat output
+    // Single staff, no group, no explicit staff context, no chord names -> flat output
     if num_staves <= 1
         && group_meta.is_none()
+        && !has_chords
         && (staff_metas.is_empty()
             || (staff_metas.len() == 1
                 && staff_metas[0].name.is_none()
@@ -364,6 +378,27 @@ fn build_music_with_contexts(
 
     // Build per-staff music with \new Staff wrappers
     let mut staff_exprs: Vec<Music> = Vec::new();
+
+    // Add ChordNames context if chord-mode events exist
+    if has_chords {
+        let chord_body = Music::ChordMode {
+            body: Box::new(Music::Sequential(chord_mode_events.to_vec())),
+        };
+        let cn_with = chord_names_meta
+            .as_ref()
+            .and_then(|m| m.with_block_str.as_deref())
+            .and_then(parse_with_block_str);
+        let cn_name = chord_names_meta.as_ref().and_then(|m| m.name.clone());
+        let chord_names_expr = Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: "ChordNames".to_string(),
+            name: cn_name,
+            with_block: cn_with,
+            music: Box::new(chord_body),
+        };
+        staff_exprs.push(chord_names_expr);
+    }
+
     for (i, layers) in staff_music.into_iter().enumerate() {
         let mut inner = build_layers_music(layers);
         // Apply lyrics wrapping per-staff
@@ -871,6 +906,9 @@ fn apply_grace_wrapping(items: &mut Vec<Music>, grace_types: &[Option<ExportGrac
 }
 
 use repeats::{apply_repeat_wrapping, collect_ending_spans, collect_repeat_spans};
+
+mod chord_names;
+use chord_names::{ChordNamesMeta, collect_chord_mode_harms, extract_chord_names_meta};
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
