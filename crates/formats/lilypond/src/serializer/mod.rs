@@ -566,6 +566,12 @@ impl<'a> Serializer<'a> {
                 self.write_music(body);
             }
             Music::ChordModeEntry(ce) => self.write_chord_mode_event(ce),
+            Music::DrumMode { body } => {
+                self.out.push_str("\\drummode ");
+                self.write_music(body);
+            }
+            Music::DrumNote(dn) => self.write_drum_note_event(dn),
+            Music::DrumChord(dc) => self.write_drum_chord_event(dc),
             Music::FigureMode { body } => {
                 self.out.push_str("\\figuremode ");
                 self.write_music(body);
@@ -829,6 +835,29 @@ impl<'a> Serializer<'a> {
         if fig.bracket_stop {
             self.out.push(']');
         }
+    }
+
+    fn write_drum_note_event(&mut self, dn: &note::DrumNoteEvent) {
+        self.out.push_str(&dn.drum_type);
+        if let Some(dur) = &dn.duration {
+            self.write_duration(dur);
+        }
+        self.write_post_events(&dn.post_events);
+    }
+
+    fn write_drum_chord_event(&mut self, dc: &note::DrumChordEvent) {
+        self.out.push('<');
+        for (i, dt) in dc.drum_types.iter().enumerate() {
+            if i > 0 {
+                self.out.push(' ');
+            }
+            self.out.push_str(dt);
+        }
+        self.out.push('>');
+        if let Some(dur) = &dc.duration {
+            self.write_duration(dur);
+        }
+        self.write_post_events(&dc.post_events);
     }
 
     fn write_chord_repetition(&mut self, cr: &ChordRepetitionEvent) {

@@ -1072,11 +1072,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 25.1 Model & Parser
 
-- [ ] [P] Parse `\drummode`, `\drums`; drum pitch names (e.g. snare, hihat, bassdrum) and drum chord body
-- [ ] [P] Add `DrumModeMusic`, `DrumPitch`, drum event
-- [ ] [S] Serialize drum mode
-- [ ] [V] Drum pitch names recognized
-- [ ] [T] Fragment: `\drummode { bd4 sn4 hh4 }`
+- [x] [P] Parse `\drummode`, `\drums`; drum pitch names (e.g. snare, hihat, bassdrum) and drum chord body
+  - parser/drums.rs: parse_drum_mode, parse_drums_shorthand, parse_drum_body, parse_drum_element, parse_drum_note_event, parse_drum_chord, parse_drum_simultaneous
+  - `\drums` wraps in `\new DrumStaff \drummode { ... }`; drum chords `< bd sn >4`; nested `{ }` and `<< >>`
+- [x] [P] Add `DrumModeMusic`, `DrumPitch`, drum event
+  - model/note.rs: DrumNoteEvent (drum_type, duration, post_events), DrumChordEvent (drum_types, duration, post_events), KNOWN_DRUM_PITCHES (118 names), is_drum_pitch()
+  - model/mod.rs: Music::DrumMode { body }, Music::DrumNote, Music::DrumChord
+- [x] [S] Serialize drum mode
+  - serializer/mod.rs: DrumMode → `\drummode`, DrumNote → drum_type+duration+post_events, DrumChord → `< types... >`+duration+post_events
+- [x] [V] Drum pitch names recognized
+  - validator/mod.rs: UnknownDrumPitch, EmptyDrumChord errors; validates drum pitch names against KNOWN_DRUM_PITCHES; duration + post-event validation
+- [x] [T] Fragment: `\drummode { bd4 sn4 hh4 }`
+  - tests/fixtures/lilypond/fragment_drummode.ly; parser/tests_drums.rs: 12 tests (basic, long names, rests/barchecks, chord, shorthand, post-events, roundtrip, fixture, validation, skip, various pitches)
 
 ### 25.2 Import & Export
 

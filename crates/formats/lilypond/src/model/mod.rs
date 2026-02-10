@@ -12,9 +12,10 @@ pub use duration::Duration;
 pub use markup::{Markup, MarkupList};
 pub use note::{
     BassFigure, ChordEvent, ChordModeEvent, ChordModifier, ChordQualityItem, ChordRepetitionEvent,
-    ChordStep, Direction, FigureAlteration, FigureEvent, FiguredBassModification, KNOWN_DYNAMICS,
-    KNOWN_ORNAMENTS, LyricEvent, MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent,
-    ScriptAbbreviation, SkipEvent, StepAlteration,
+    ChordStep, Direction, DrumChordEvent, DrumNoteEvent, FigureAlteration, FigureEvent,
+    FiguredBassModification, KNOWN_DRUM_PITCHES, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent,
+    MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
+    StepAlteration,
 };
 pub use pitch::Pitch;
 pub use signature::{
@@ -377,6 +378,12 @@ pub enum Music {
         voice_id: String,
         lyrics: Box<Music>,
     },
+    /// `\drummode { ... }` — drum mode music.
+    DrumMode { body: Box<Music> },
+    /// A drum note event inside drum mode: `drumtype [duration] [post_events]`.
+    DrumNote(DrumNoteEvent),
+    /// A drum chord event: `< drum1 drum2 ... > duration post_events`.
+    DrumChord(DrumChordEvent),
     /// `\figuremode { ... }` — figured bass mode music.
     FigureMode { body: Box<Music> },
     /// A figure event: `\< figures \> duration` inside figure mode.

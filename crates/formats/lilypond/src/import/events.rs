@@ -324,6 +324,10 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
             events.push(LyEvent::ChordName(resolved));
         }
+        Music::DrumMode { body } => collect_events(body, events, ctx),
+        Music::DrumNote(_) | Music::DrumChord(_) => {
+            // Drum events handled in dedicated drum import (Phase 25.2)
+        }
         Music::FigureMode { body } => collect_events(body, events, ctx),
         Music::Figure(fe) => {
             events.push(LyEvent::FigureEvent(fe.clone()));

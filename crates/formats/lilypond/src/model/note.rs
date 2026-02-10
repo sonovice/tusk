@@ -295,6 +295,181 @@ pub struct ChordRepetitionEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Drum mode types
+// ---------------------------------------------------------------------------
+
+/// A drum note event: drum pitch name + optional duration + post-events.
+///
+/// In drum mode, pitches are symbolic names (e.g. `bd`, `sn`, `hh`) rather
+/// than standard note names. Corresponds to `DRUM_PITCH post_events` in the grammar.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DrumNoteEvent {
+    /// Drum pitch name (e.g. "bassdrum", "snare", "hihat", "bd", "sn").
+    pub drum_type: String,
+    /// Duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+    /// Post-events (ties, slurs, etc.) attached after the duration.
+    pub post_events: Vec<PostEvent>,
+}
+
+/// A drum chord event: `< drum1 drum2 ... > duration post_events`.
+///
+/// Multiple simultaneous drum hits sharing a duration.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DrumChordEvent {
+    /// Drum pitch names (at least one).
+    pub drum_types: Vec<String>,
+    /// Shared duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+    /// Post-events (ties, slurs, etc.) attached after the duration.
+    pub post_events: Vec<PostEvent>,
+}
+
+/// Known LilyPond drum pitch names (from `drumpitch-init.ly`).
+///
+/// Includes both long names and short abbreviations. All names map to
+/// canonical drum types for MIDI and notation purposes.
+pub const KNOWN_DRUM_PITCHES: &[&str] = &[
+    // Long names
+    "acousticbassdrum",
+    "bassdrum",
+    "hisidestick",
+    "sidestick",
+    "losidestick",
+    "acousticsnare",
+    "snare",
+    "handclap",
+    "electricsnare",
+    "lowfloortom",
+    "closedhihat",
+    "hihat",
+    "highfloortom",
+    "pedalhihat",
+    "splashhihat",
+    "lowtom",
+    "openhihat",
+    "halfopenhihat",
+    "lowmidtom",
+    "himidtom",
+    "crashcymbala",
+    "crashcymbal",
+    "hightom",
+    "ridecymbala",
+    "ridecymbal",
+    "chinesecymbal",
+    "ridebell",
+    "tambourine",
+    "splashcymbal",
+    "cowbell",
+    "crashcymbalb",
+    "vibraslap",
+    "ridecymbalb",
+    "mutehibongo",
+    "hibongo",
+    "openhibongo",
+    "mutelobongo",
+    "lobongo",
+    "openlobongo",
+    "mutehiconga",
+    "muteloconga",
+    "openhiconga",
+    "hiconga",
+    "openloconga",
+    "loconga",
+    "hitimbale",
+    "lotimbale",
+    "hiagogo",
+    "loagogo",
+    "cabasa",
+    "maracas",
+    "shortwhistle",
+    "longwhistle",
+    "shortguiro",
+    "longguiro",
+    "guiro",
+    "claves",
+    "hiwoodblock",
+    "lowoodblock",
+    "mutecuica",
+    "opencuica",
+    "mutetriangle",
+    "triangle",
+    "opentriangle",
+    "tamtam",
+    // Short abbreviations
+    "bda",
+    "bd",
+    "ssh",
+    "ss",
+    "ssl",
+    "sna",
+    "sn",
+    "hc",
+    "sne",
+    "tomfl",
+    "hhc",
+    "hh",
+    "tomfh",
+    "hhp",
+    "hhs",
+    "toml",
+    "hho",
+    "hhho",
+    "tomml",
+    "tommh",
+    "cymca",
+    "cymc",
+    "tomh",
+    "cymra",
+    "cymr",
+    "cymch",
+    "rb",
+    "tamb",
+    "cyms",
+    "cb",
+    "cymcb",
+    "vibs",
+    "cymrb",
+    "bohm",
+    "boh",
+    "boho",
+    "bolm",
+    "bol",
+    "bolo",
+    "cghm",
+    "cglm",
+    "cgho",
+    "cgh",
+    "cglo",
+    "cgl",
+    "timh",
+    "timl",
+    "agh",
+    "agl",
+    "cab",
+    "mar",
+    "whs",
+    "whl",
+    "guis",
+    "guil",
+    "gui",
+    "cl",
+    "wbh",
+    "wbl",
+    "cuim",
+    "cuio",
+    "trim",
+    "tri",
+    "trio",
+    "tt",
+];
+
+/// Returns `true` if the given name is a known LilyPond drum pitch name.
+pub fn is_drum_pitch(name: &str) -> bool {
+    KNOWN_DRUM_PITCHES.contains(&name)
+}
+
+// ---------------------------------------------------------------------------
 // Chord mode types
 // ---------------------------------------------------------------------------
 

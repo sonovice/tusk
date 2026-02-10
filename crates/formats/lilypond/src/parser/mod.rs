@@ -250,6 +250,8 @@ impl<'src> Parser<'src> {
             | Token::Change
             | Token::ChordMode
             | Token::Chords
+            | Token::DrumMode
+            | Token::Drums
             | Token::FigureMode
             | Token::Figures
             | Token::LyricMode
@@ -679,6 +681,8 @@ impl<'src> Parser<'src> {
             }
             Token::ChordMode => self.parse_chord_mode(),
             Token::Chords => self.parse_chords_shorthand(),
+            Token::DrumMode => self.parse_drum_mode(),
+            Token::Drums => self.parse_drums_shorthand(),
             Token::FigureMode => self.parse_figure_mode(),
             Token::Figures => self.parse_figures_shorthand(),
             Token::LyricMode => self.parse_lyric_mode(),
@@ -1464,6 +1468,7 @@ impl<'src> Parser<'src> {
     }
 }
 mod chords;
+mod drums;
 mod figures;
 mod lyrics;
 mod markup;
@@ -1483,6 +1488,8 @@ mod tests_barcheck;
 mod tests_chord_rep;
 #[cfg(test)]
 mod tests_chords;
+#[cfg(test)]
+mod tests_drums;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]

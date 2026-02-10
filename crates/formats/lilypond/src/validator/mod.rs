@@ -91,6 +91,12 @@ pub enum ValidationError {
     #[error("empty lyric syllable")]
     EmptyLyricSyllable,
 
+    #[error("unknown drum pitch name '{name}'")]
+    UnknownDrumPitch { name: String },
+
+    #[error("empty drum chord")]
+    EmptyDrumChord,
+
     #[error("invalid chord step number {number}: must be 1-13")]
     InvalidChordStep { number: u8 },
 
@@ -350,6 +356,11 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::ContextedMusic { music, .. } => {
             count_spans(music, counts);
         }
+        Music::DrumMode { body } => {
+            count_spans(body, counts);
+        }
+        Music::DrumNote(dn) => counts.count_post_events(&dn.post_events),
+        Music::DrumChord(dc) => counts.count_post_events(&dc.post_events),
         Music::FigureMode { body } => {
             count_spans(body, counts);
         }
@@ -592,6 +603,34 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             }
             validate_music(main, errors);
             validate_music(grace, errors);
+        }
+        Music::DrumMode { body } => {
+            validate_music(body, errors);
+        }
+        Music::DrumNote(dn) => {
+            if !note::is_drum_pitch(&dn.drum_type) {
+                errors.push(ValidationError::UnknownDrumPitch {
+                    name: dn.drum_type.clone(),
+                });
+            }
+            if let Some(dur) = &dn.duration {
+                validate_duration(dur, errors);
+            }
+            validate_post_events(&dn.post_events, errors);
+        }
+        Music::DrumChord(dc) => {
+            if dc.drum_types.is_empty() {
+                errors.push(ValidationError::EmptyDrumChord);
+            }
+            for dt in &dc.drum_types {
+                if !note::is_drum_pitch(dt) {
+                    errors.push(ValidationError::UnknownDrumPitch { name: dt.clone() });
+                }
+            }
+            if let Some(dur) = &dc.duration {
+                validate_duration(dur, errors);
+            }
+            validate_post_events(&dc.post_events, errors);
         }
         Music::FigureMode { body } => {
             validate_music(body, errors);
