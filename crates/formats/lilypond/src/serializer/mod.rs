@@ -354,6 +354,14 @@ impl<'a> Serializer<'a> {
                 self.out.push(' ');
                 self.write_music(body);
             }
+            Music::Transpose { from, to, body } => {
+                self.out.push_str("\\transpose ");
+                self.write_music(from);
+                self.out.push(' ');
+                self.write_music(to);
+                self.out.push(' ');
+                self.write_music(body);
+            }
             Music::ContextedMusic {
                 keyword,
                 context_type,
@@ -483,6 +491,14 @@ impl<'a> Serializer<'a> {
         if p.cautionary {
             self.out.push('?');
         }
+        if let Some(check) = p.octave_check {
+            self.out.push('=');
+            if check > 0 {
+                self.out.push_str(&"'".repeat(check as usize));
+            } else if check < 0 {
+                self.out.push_str(&",".repeat((-check) as usize));
+            }
+        }
     }
 
     fn write_duration(&mut self, dur: &Duration) {
@@ -536,6 +552,7 @@ mod tests {
                             octave: 0,
                             force_accidental: false,
                             cautionary: false,
+                            octave_check: None,
                         },
                         duration: Some(Duration {
                             base: 4,
@@ -590,6 +607,7 @@ mod tests {
                             octave: 0,
                             force_accidental: false,
                             cautionary: false,
+                            octave_check: None,
                         },
                         duration: Some(Duration {
                             base: 4,
@@ -622,6 +640,7 @@ mod tests {
                             octave: 0,
                             force_accidental: false,
                             cautionary: false,
+                            octave_check: None,
                         },
                         duration: Some(Duration {
                             base: 4,
@@ -637,6 +656,7 @@ mod tests {
                             octave: 0,
                             force_accidental: false,
                             cautionary: false,
+                            octave_check: None,
                         },
                         duration: Some(Duration {
                             base: 4,
@@ -676,6 +696,7 @@ mod tests {
                         octave: 2,
                         force_accidental: true,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -756,6 +777,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -782,6 +804,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -824,6 +847,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     mode: Mode::Minor,
                 }),

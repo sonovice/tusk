@@ -505,6 +505,7 @@ fn parse_key_label(s: &str) -> Option<KeySignature> {
             octave: 0,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         },
         mode,
     })
@@ -710,6 +711,7 @@ fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         octave,
         force_accidental,
         cautionary,
+        octave_check: None,
     };
 
     let duration = extract_note_duration(note);
@@ -766,6 +768,7 @@ fn parse_pitched_rest_label(
             octave,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         },
         duration: extract_rest_duration(rest),
         pitched_rest: true,

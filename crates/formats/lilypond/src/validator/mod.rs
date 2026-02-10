@@ -177,6 +177,11 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             validate_music(pitch, errors);
             validate_music(body, errors);
         }
+        Music::Transpose { from, to, body } => {
+            validate_music(from, errors);
+            validate_music(to, errors);
+            validate_music(body, errors);
+        }
         Music::ContextedMusic {
             context_type,
             music,
@@ -275,6 +280,7 @@ mod tests {
                             octave: 0,
                             force_accidental: false,
                             cautionary: false,
+                            octave_check: None,
                         },
                         duration: Some(Duration {
                             base: 4,
@@ -305,6 +311,7 @@ mod tests {
                                 octave: 0,
                                 force_accidental: false,
                                 cautionary: false,
+                                octave_check: None,
                             },
                             duration: Some(Duration {
                                 base: 4,
@@ -374,6 +381,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 3, // invalid
@@ -403,6 +411,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -477,6 +486,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -517,6 +527,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     duration: Some(Duration {
                         base: 4,
@@ -581,6 +592,7 @@ mod tests {
                         octave: 0,
                         force_accidental: false,
                         cautionary: false,
+                        octave_check: None,
                     },
                     mode: Mode::Major,
                 },

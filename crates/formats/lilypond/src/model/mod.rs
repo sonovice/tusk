@@ -223,6 +223,12 @@ pub enum Music {
     },
     /// `\fixed pitch { ... }`.
     Fixed { pitch: Box<Music>, body: Box<Music> },
+    /// `\transpose from to { ... }`.
+    Transpose {
+        from: Box<Music>,
+        to: Box<Music>,
+        body: Box<Music>,
+    },
     /// `\new ContextType [= "name"] [\with { ... }] music` or
     /// `\context ContextType [= "name"] [\with { ... }] music`.
     ContextedMusic {

@@ -520,6 +520,7 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
                         | Music::MultiMeasureRest(_)
                         | Music::Relative { .. }
                         | Music::Fixed { .. }
+                        | Music::Transpose { .. }
                 ) || matches!(
                     item,
                     Music::ContextedMusic { context_type, .. } if !is_staff_context(context_type) && !is_staff_group_context(context_type)
@@ -565,7 +566,9 @@ fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
                 collect_events(item, events);
             }
         }
-        Music::Relative { body, .. } | Music::Fixed { body, .. } => {
+        Music::Relative { body, .. }
+        | Music::Fixed { body, .. }
+        | Music::Transpose { body, .. } => {
             collect_events(body, events);
         }
         Music::ContextedMusic { music, .. } => {
@@ -808,6 +811,7 @@ pub(crate) fn fifths_to_key(fifths: i32) -> (crate::model::pitch::Pitch, crate::
         octave: 0,
         force_accidental: false,
         cautionary: false,
+        octave_check: None,
     };
     (pitch, crate::model::Mode::Major)
 }

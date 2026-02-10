@@ -305,11 +305,16 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 7.1 Model & Parser
 
-- [ ] [P] Parse `\relative c' { ... }` and `\relative pitch` (optional start pitch); parse `\transpose from to { ... }`
-- [ ] [P] Parse octave check `= '` / `= ,` after pitch
-- [ ] [S] Serialize `\relative`, `\transpose`, octave check
-- [ ] [V] Relative start pitch and transpose from/to valid
-- [ ] [T] Fragment: `\relative c'' { c d e f }` and `\transpose c d { c4 }`
+- [x] [P] Parse `\relative c' { ... }` and `\relative pitch` (optional start pitch); parse `\transpose from to { ... }`
+  - Added `Music::Transpose { from, to, body }` variant; `parse_transpose()` method
+- [x] [P] Parse octave check `= '` / `= ,` after pitch
+  - Added `octave_check: Option<i8>` to `Pitch` struct; parsed after accidentals, before duration
+- [x] [S] Serialize `\relative`, `\transpose`, octave check
+  - Transpose serialization in serializer; octave check `=` + quotes/commas in `write_pitch()`
+- [x] [V] Relative start pitch and transpose from/to valid
+  - Transpose from/to/body recursively validated
+- [x] [T] Fragment: `\relative c'' { c d e f }` and `\transpose c d { c4 }`
+  - 9 tests: parse_transpose variants, octave_check variants, relative_no_pitch, roundtrip fixture
 
 ### 7.2 Import & Export
 

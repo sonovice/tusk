@@ -227,7 +227,12 @@ impl<'src> Parser<'src> {
                 let m = self.parse_music()?;
                 Ok(AssignmentValue::Music(Box::new(m)))
             }
-            Token::Relative | Token::Fixed | Token::New | Token::Context | Token::Change => {
+            Token::Relative
+            | Token::Fixed
+            | Token::Transpose
+            | Token::New
+            | Token::Context
+            | Token::Change => {
                 let m = self.parse_music()?;
                 Ok(AssignmentValue::Music(Box::new(m)))
             }
@@ -604,6 +609,7 @@ impl<'src> Parser<'src> {
             Token::Simultaneous => self.parse_explicit_simultaneous(),
             Token::Relative => self.parse_relative(),
             Token::Fixed => self.parse_fixed(),
+            Token::Transpose => self.parse_transpose(),
             Token::New | Token::Context => self.parse_context_music(),
             Token::Change => self.parse_context_change(),
             Token::Time => self.parse_time_signature(),
@@ -651,6 +657,14 @@ impl<'src> Parser<'src> {
         let force_accidental = self.try_consume(&Token::Exclamation);
         let cautionary = self.try_consume(&Token::Question);
 
+        // Parse octave check: `=` followed by optional octave marks
+        let octave_check = if *self.peek() == Token::Equals {
+            self.advance()?; // consume `=`
+            Some(self.parse_quotes())
+        } else {
+            None
+        };
+
         // Parse optional duration
         let duration = self.parse_optional_duration()?;
 
@@ -664,6 +678,7 @@ impl<'src> Parser<'src> {
                 octave,
                 force_accidental,
                 cautionary,
+                octave_check,
             },
             duration,
             pitched_rest,
@@ -858,6 +873,30 @@ impl<'src> Parser<'src> {
         Ok(Music::Fixed { pitch, body })
     }
 
+    fn parse_transpose(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Transpose)?;
+        // From pitch
+        if !matches!(self.peek(), Token::NoteName(_)) {
+            return Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "pitch after \\transpose".into(),
+            });
+        }
+        let from = Box::new(self.parse_note_event()?);
+        // To pitch
+        if !matches!(self.peek(), Token::NoteName(_)) {
+            return Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "second pitch after \\transpose".into(),
+            });
+        }
+        let to = Box::new(self.parse_note_event()?);
+        let body = Box::new(self.parse_music()?);
+        Ok(Music::Transpose { from, to, body })
+    }
+
     fn parse_context_music(&mut self) -> Result<Music, ParseError> {
         // \new or \context
         let keyword = match self.peek() {
@@ -1026,6 +1065,7 @@ impl<'src> Parser<'src> {
             octave,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         };
 
         // Parse mode: \major, \minor, \dorian, etc.
@@ -2166,5 +2206,151 @@ mod tests {
     #[test]
     fn roundtrip_fragment_clef_key_time() {
         roundtrip_fixture("fragment_clef_key_time.ly");
+    }
+
+    // ── Phase 7 tests ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_transpose() {
+        let ast = parse("\\transpose c d { c4 d e f }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Transpose { from, to, body }) => {
+                match from.as_ref() {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'c');
+                        assert_eq!(n.pitch.octave, 0);
+                    }
+                    other => panic!("expected Note for from, got {other:?}"),
+                }
+                match to.as_ref() {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'd');
+                        assert_eq!(n.pitch.octave, 0);
+                    }
+                    other => panic!("expected Note for to, got {other:?}"),
+                }
+                assert!(matches!(body.as_ref(), Music::Sequential(_)));
+            }
+            other => panic!("expected Transpose, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_transpose_with_octave() {
+        let ast = parse("\\transpose c' d'' { c4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Transpose { from, to, .. }) => {
+                match from.as_ref() {
+                    Music::Note(n) => assert_eq!(n.pitch.octave, 1),
+                    other => panic!("expected Note, got {other:?}"),
+                }
+                match to.as_ref() {
+                    Music::Note(n) => assert_eq!(n.pitch.octave, 2),
+                    other => panic!("expected Note, got {other:?}"),
+                }
+            }
+            other => panic!("expected Transpose, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_transpose_with_accidentals() {
+        let ast = parse("\\transpose bes ees' { c4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Transpose { from, to, .. }) => {
+                match from.as_ref() {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'b');
+                        assert_eq!(n.pitch.alter, -1.0);
+                    }
+                    other => panic!("expected Note, got {other:?}"),
+                }
+                match to.as_ref() {
+                    Music::Note(n) => {
+                        assert_eq!(n.pitch.step, 'e');
+                        assert_eq!(n.pitch.alter, -1.0);
+                        assert_eq!(n.pitch.octave, 1);
+                    }
+                    other => panic!("expected Note, got {other:?}"),
+                }
+            }
+            other => panic!("expected Transpose, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_octave_check() {
+        let ast = parse("{ c='4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.step, 'c');
+                    assert_eq!(n.pitch.octave_check, Some(1));
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_octave_check_down() {
+        let ast = parse("{ f=,,4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.step, 'f');
+                    assert_eq!(n.pitch.octave_check, Some(-2));
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_octave_check_no_marks() {
+        // `=` with no following octave marks means octave 0
+        let ast = parse("{ c=4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.pitch.octave_check, Some(0));
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_no_octave_check() {
+        let ast = parse("{ c'4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert!(n.pitch.octave_check.is_none());
+                }
+                other => panic!("expected Note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_relative_no_pitch() {
+        let ast = parse("\\relative { c'4 d e f }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Relative { pitch, body }) => {
+                assert!(pitch.is_none());
+                assert!(matches!(body.as_ref(), Music::Sequential(_)));
+            }
+            other => panic!("expected relative, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_fragment_relative_transpose() {
+        roundtrip_fixture("fragment_relative_transpose.ly");
     }
 }

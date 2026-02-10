@@ -24,6 +24,9 @@ pub struct Pitch {
     pub force_accidental: bool,
     /// Cautionary accidental display (`?` after the pitch).
     pub cautionary: bool,
+    /// Octave check: `=` followed by octave marks after the pitch.
+    /// `Some(n)` means `= <n quotes>` was present; `None` means no check.
+    pub octave_check: Option<i8>,
 }
 
 impl Pitch {
@@ -144,6 +147,7 @@ mod tests {
                 octave: 0,
                 force_accidental: false,
                 cautionary: false,
+                octave_check: None,
             };
             assert_eq!(pitch.to_note_name(), *name);
         }
@@ -160,6 +164,7 @@ mod tests {
             octave: 0,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         };
         // Our serializer produces the "es" suffix form
         assert_eq!(pitch.to_note_name(), "aes");
@@ -173,6 +178,7 @@ mod tests {
             octave: 2,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         };
         assert_eq!(p.octave_marks(), "''");
     }
@@ -185,6 +191,7 @@ mod tests {
             octave: -3,
             force_accidental: false,
             cautionary: false,
+            octave_check: None,
         };
         assert_eq!(p.octave_marks(), ",,,");
     }
