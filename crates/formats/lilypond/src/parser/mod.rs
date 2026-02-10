@@ -628,6 +628,10 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 Ok(Music::AutoBeamOff)
             }
+            Token::EscapedWord(s) if s == "grace" => self.parse_grace(),
+            Token::EscapedWord(s) if s == "acciaccatura" => self.parse_acciaccatura(),
+            Token::EscapedWord(s) if s == "appoggiatura" => self.parse_appoggiatura(),
+            Token::EscapedWord(s) if s == "afterGrace" => self.parse_after_grace(),
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -1099,6 +1103,67 @@ impl<'src> Parser<'src> {
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────
+    // Grace notes
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_grace(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \grace
+        let body = Box::new(self.parse_music()?);
+        Ok(Music::Grace { body })
+    }
+
+    fn parse_acciaccatura(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \acciaccatura
+        let body = Box::new(self.parse_music()?);
+        Ok(Music::Acciaccatura { body })
+    }
+
+    fn parse_appoggiatura(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \appoggiatura
+        let body = Box::new(self.parse_music()?);
+        Ok(Music::Appoggiatura { body })
+    }
+
+    fn parse_after_grace(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \afterGrace
+
+        // Optional fraction: N/M (both must be unsigned integers with `/`)
+        let fraction = self.try_parse_fraction();
+
+        let main = Box::new(self.parse_music()?);
+        let grace = Box::new(self.parse_music()?);
+        Ok(Music::AfterGrace {
+            fraction,
+            main,
+            grace,
+        })
+    }
+
+    /// Try to parse a fraction `N/M` for `\afterGrace`. Returns `None` if
+    /// the current token isn't an unsigned integer. Since `Unsigned` can't
+    /// start a music expression, its presence after `\afterGrace` unambiguously
+    /// signals a fraction.
+    fn try_parse_fraction(&mut self) -> Option<(u32, u32)> {
+        if let Token::Unsigned(n) = self.peek() {
+            let n = *n as u32;
+            let _ = self.advance(); // consume numerator
+            if *self.peek() == Token::Slash {
+                let _ = self.advance(); // consume `/`
+                if let Token::Unsigned(d) = self.peek() {
+                    let d = *d as u32;
+                    let _ = self.advance(); // consume denominator
+                    return Some((n, d));
+                }
+                // N/ without denominator — treat as N/1
+                return Some((n, 1));
+            }
+            // Bare N without / — treat as N/1
+            return Some((n, 1));
+        }
+        None
+    }
+
     fn parse_sequential_music(&mut self) -> Result<Music, ParseError> {
         self.expect(&Token::BraceOpen)?;
         let mut items = Vec::new();
@@ -1314,5 +1379,7 @@ pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_grace;
 #[cfg(test)]
 mod tests_post_events;

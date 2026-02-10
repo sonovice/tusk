@@ -680,11 +680,22 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 16.1 Model & Parser
 
-- [ ] [P] Parse `\grace { ... }`, `\acciaccatura { ... }`, `\appoggiatura { ... }`, `\afterGrace main { grace }`
-- [ ] [P] Add `GraceMusic`, `AcciaccaturaMusic`, `AppoggiaturaMusic`, `AfterGraceMusic`
-- [ ] [S] Serialize grace constructs
-- [ ] [V] Grace block non-empty where required
-- [ ] [T] Fragment: `\grace c16 d4`, `\acciaccatura c8 d4`
+- [x] [P] Parse `\grace { ... }`, `\acciaccatura { ... }`, `\appoggiatura { ... }`, `\afterGrace main { grace }`
+  - parser/mod.rs: dispatch in parse_music() for EscapedWord grace/acciaccatura/appoggiatura/afterGrace
+  - parse_grace(), parse_acciaccatura(), parse_appoggiatura(), parse_after_grace(), try_parse_fraction()
+- [x] [P] Add `GraceMusic`, `AcciaccaturaMusic`, `AppoggiaturaMusic`, `AfterGraceMusic`
+  - model/mod.rs: Music::Grace, Music::Acciaccatura, Music::Appoggiatura, Music::AfterGrace variants
+- [x] [S] Serialize grace constructs
+  - serializer/mod.rs: \grace, \acciaccatura, \appoggiatura, \afterGrace [N/D] serialization
+  - serializer tests extracted to serializer/tests.rs (file was over 1500 LOC)
+- [x] [V] Grace block non-empty where required
+  - validator/mod.rs: EmptyGraceBody, InvalidAfterGraceFraction errors; validate_music() grace handling
+  - validator tests extracted to validator/tests.rs (file was over 1500 LOC)
+- [x] [T] Fragment: `\grace c16 d4`, `\acciaccatura c8 d4`
+  - tests/fixtures/lilypond/fragment_grace.ly fixture
+  - parser/tests_grace.rs: 16 parser tests + fixture roundtrip
+  - serializer/tests.rs: 5 grace serializer tests
+  - validator/tests.rs: 8 grace validator tests
 
 ### 16.2 Import & Export
 

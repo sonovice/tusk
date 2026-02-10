@@ -1117,6 +1117,14 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts.clone())),
         Music::AutoBeamOn => events.push(LyEvent::AutoBeamOn),
         Music::AutoBeamOff => events.push(LyEvent::AutoBeamOff),
+        // Grace notes — import handled in Phase 16.2; for now, collect inner events
+        Music::Grace { body } | Music::Acciaccatura { body } | Music::Appoggiatura { body } => {
+            collect_events(body, events, ctx);
+        }
+        Music::AfterGrace { main, grace, .. } => {
+            collect_events(main, events, ctx);
+            collect_events(grace, events, ctx);
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

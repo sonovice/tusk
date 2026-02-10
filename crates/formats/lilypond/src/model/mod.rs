@@ -271,6 +271,19 @@ pub enum Music {
     AutoBeamOn,
     /// `\autoBeamOff` — disable automatic beaming.
     AutoBeamOff,
+    /// `\grace { ... }` — standard grace notes.
+    Grace { body: Box<Music> },
+    /// `\acciaccatura { ... }` — acciaccatura grace notes.
+    Acciaccatura { body: Box<Music> },
+    /// `\appoggiatura { ... }` — appoggiatura grace notes.
+    Appoggiatura { body: Box<Music> },
+    /// `\afterGrace [fraction] main { grace }` — grace notes after main note.
+    AfterGrace {
+        /// Optional fraction (e.g. `3/4`), defaults to `3/4` in LilyPond.
+        fraction: Option<(u32, u32)>,
+        main: Box<Music>,
+        grace: Box<Music>,
+    },
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),
