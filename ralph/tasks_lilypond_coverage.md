@@ -1337,11 +1337,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 32.1 Export Completion
 
-- [ ] [E] Wire all MEI elements to LilyPond AST: generate idiomatic \relative where possible, proper indentation, \new Staff/Voice structure, all notation types
-- [ ] [E] **Retain element IDs**: For every MEI element with `xml:id`, emit the appropriate `\tweak GrobType.id #"xml:id-value"` (see "Retaining element IDs" section; e.g. NoteHead, Rest, Slur, Tie, Hairpin, DynamicText, RehearsalMark, etc.). Optionally emit `% @id value` comments for robustness on re-import
-- [ ] [E] Preserve roundtrip data from import (labels, extended) so LilyPond → MEI → LilyPond matches where intended
-- [ ] [T] Export all fixture MEI (from Phase 31) back to .ly; compare to original or validate with parser
-- [ ] [T] Roundtrip ID test: MEI with xml:id on notes/rests/slurs → LilyPond → MEI; verify same xml:id values on corresponding elements
+- [x] [E] Wire all MEI elements to LilyPond AST: generate idiomatic \relative where possible, proper indentation, \new Staff/Voice structure, all notation types
+  - Already complete from prior phases: notes, rests, chords, mrest, beams, grace, tuplets, repeats, slurs, dynamics, hairpins, articulations, ornaments, fermatas, tremolos, lyrics, chord-mode, figured-bass, drums, context wrappers, property ops, music functions, tempo/mark/textmark (via event sequence), output defs, variables, relative/transpose, context changes
+- [x] [E] **Retain element IDs**: For every MEI element with `xml:id`, emit the appropriate `\tweak GrobType.id #"xml:id-value"` (see "Retaining element IDs" section; e.g. NoteHead, Rest, Slur, Tie, Hairpin, DynamicText, RehearsalMark, etc.). Optionally emit `% @id value` comments for robustness on re-import
+  - `emit_id_tweak_if_needed()` in conversion.rs: checks for non-auto-generated xml:id (`ly-*-N` pattern filtered), emits `\tweak id #"value"` as PostEvent::Tweak; applied to Note, Rest, Chord, MRest, and pitched-rest conversions
+  - Deduplication: won't emit if an id tweak already exists from label restoration (roundtrip case)
+- [x] [E] Preserve roundtrip data from import (labels, extended) so LilyPond → MEI → LilyPond matches where intended
+  - Already complete from prior phases via label-based roundtrip system (lilypond:tweak, lilypond:drum, lilypond:chord-rep, lilypond:pitched-rest, lilypond:mrest, lilypond:events, lilypond:group, lilypond:staff, etc.)
+- [x] [T] Export all fixture MEI (from Phase 31) back to .ly; compare to original or validate with parser
+  - `all_fixtures_export_without_panic()` in tests_export_completion.rs: discovers all 51 .ly fixtures, imports to MEI, exports back to LilyPond, asserts no panics/errors and non-empty output
+- [x] [T] Roundtrip ID test: MEI with xml:id on notes/rests/slurs → LilyPond → MEI; verify same xml:id values on corresponding elements
+  - `roundtrip_tweak_id_on_note/chord` in tests_export_completion.rs: verifies \tweak id roundtrips
+  - `export_mei_with_custom_xml_id_emits_tweak`: fresh MEI with custom xml:id → LilyPond emits \tweak id
+  - `export_mei_with_autogen_xml_id_no_tweak`: auto-generated IDs don't produce \tweak id
+  - `roundtrip_mei_to_ly_to_mei_preserves_custom_ids`: full MEI → LilyPond → MEI roundtrip preserves custom xml:id values
 
 ### 32.2 Roundtrip Tests
 

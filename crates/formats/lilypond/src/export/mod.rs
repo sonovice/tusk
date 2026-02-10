@@ -14,6 +14,8 @@ mod tests_chords;
 #[cfg(test)]
 mod tests_drums;
 #[cfg(test)]
+mod tests_export_completion;
+#[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
 mod tests_functions;
