@@ -640,10 +640,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 15.1 Model & Parser
 
-- [ ] [P] Parse `\tuplet n/m { ... }` (and nested tuplets); add `TupletMusic`, fraction, music list
-- [ ] [S] Serialize `\tuplet n/m { ... }`
-- [ ] [V] Tuplet fraction positive; nested tuplets well-formed
-- [ ] [T] Fragment: `\tuplet 3/2 { c8 d e }`, nested tuplets
+- [x] [P] Parse `\tuplet n/m { ... }` (and nested tuplets); add `TupletMusic`, fraction, music list
+  - `Music::Tuplet { numerator, denominator, span_duration, body }` variant in model
+  - `parse_tuplet()`, `parse_times()`, `parse_fraction()` in parser/signatures.rs
+  - `\times n/m` parsed with inverted fraction for uniform representation
+- [x] [S] Serialize `\tuplet n/m { ... }`
+  - Always serializes in `\tuplet` form (not `\times`)
+- [x] [V] Tuplet fraction positive; nested tuplets well-formed
+  - `InvalidTupletFraction` error for zero numerator/denominator
+  - Recurses into body for nested validation
+- [x] [T] Fragment: `\tuplet 3/2 { c8 d e }`, nested tuplets
+  - 11 parser tests, 2 serializer tests, 6 validator tests
+  - `fragment_tuplets.ly` fixture with basic, span-duration, 5/4, nested cases
 
 ### 15.2 Import & Export
 

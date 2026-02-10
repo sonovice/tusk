@@ -1337,6 +1337,11 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
             // For now, just collect from body (pitches are written absolute).
             collect_events(body, events, ctx);
         }
+        Music::Tuplet { body, .. } => {
+            // Phase 15.2 will add tupletSpan/time-modification;
+            // for now just collect the inner events.
+            collect_events(body, events, ctx);
+        }
         Music::Transpose { from, to, body } => {
             let from_pitch = extract_pitch_from_music(from);
             let to_pitch = extract_pitch_from_music(to);

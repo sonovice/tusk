@@ -232,6 +232,14 @@ pub enum Music {
         to: Box<Music>,
         body: Box<Music>,
     },
+    /// `\tuplet n/m [duration] { ... }` or `\times n/m { ... }`.
+    Tuplet {
+        numerator: u32,
+        denominator: u32,
+        /// Optional tuplet span duration (only for `\tuplet`).
+        span_duration: Option<Duration>,
+        body: Box<Music>,
+    },
     /// `\new ContextType [= "name"] [\with { ... }] music` or
     /// `\context ContextType [= "name"] [\with { ... }] music`.
     ContextedMusic {

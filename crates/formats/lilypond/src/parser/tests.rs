@@ -1236,3 +1236,192 @@ fn roundtrip_chord_complex() {
 fn roundtrip_fragment_chords() {
     roundtrip_fixture("fragment_chords.ly");
 }
+
+// ── Phase 15 tests: tuplets ──────────────────────────────────────
+
+#[test]
+fn parse_tuplet_basic() {
+    let ast = parse("{ \\tuplet 3/2 { c8 d e } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 1);
+            match &items[0] {
+                Music::Tuplet {
+                    numerator,
+                    denominator,
+                    span_duration,
+                    body,
+                } => {
+                    assert_eq!(*numerator, 3);
+                    assert_eq!(*denominator, 2);
+                    assert!(span_duration.is_none());
+                    match body.as_ref() {
+                        Music::Sequential(inner) => assert_eq!(inner.len(), 3),
+                        other => panic!("expected sequential, got {other:?}"),
+                    }
+                }
+                other => panic!("expected tuplet, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tuplet_with_span_duration() {
+    let ast = parse("{ \\tuplet 3/2 4 { c8 d e f g a } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Tuplet {
+                numerator,
+                denominator,
+                span_duration,
+                body,
+            } => {
+                assert_eq!(*numerator, 3);
+                assert_eq!(*denominator, 2);
+                let dur = span_duration.as_ref().unwrap();
+                assert_eq!(dur.base, 4);
+                assert_eq!(dur.dots, 0);
+                match body.as_ref() {
+                    Music::Sequential(inner) => assert_eq!(inner.len(), 6),
+                    other => panic!("expected sequential, got {other:?}"),
+                }
+            }
+            other => panic!("expected tuplet, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tuplet_5_4() {
+    let ast = parse("{ \\tuplet 5/4 { c16 d e f g } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Tuplet {
+                numerator,
+                denominator,
+                ..
+            } => {
+                assert_eq!(*numerator, 5);
+                assert_eq!(*denominator, 4);
+            }
+            other => panic!("expected tuplet, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tuplet_nested() {
+    let ast = parse("{ \\tuplet 3/2 { \\tuplet 3/2 { c32 d e } f16 g } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Tuplet { body, .. } => match body.as_ref() {
+                    Music::Sequential(inner) => {
+                        assert_eq!(inner.len(), 3); // inner tuplet, f, g
+                        assert!(matches!(&inner[0], Music::Tuplet { .. }));
+                    }
+                    other => panic!("expected sequential, got {other:?}"),
+                },
+                other => panic!("expected tuplet, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_times_basic() {
+    // \times 2/3 is equivalent to \tuplet 3/2
+    let ast = parse("{ \\times 2/3 { c8 d e } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Tuplet {
+                    numerator,
+                    denominator,
+                    span_duration,
+                    body,
+                } => {
+                    // \times 2/3 → stored as \tuplet 3/2 (inverted)
+                    assert_eq!(*numerator, 3);
+                    assert_eq!(*denominator, 2);
+                    assert!(span_duration.is_none());
+                    match body.as_ref() {
+                        Music::Sequential(inner) => assert_eq!(inner.len(), 3),
+                        other => panic!("expected sequential, got {other:?}"),
+                    }
+                }
+                other => panic!("expected tuplet, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tuplet_with_dotted_span() {
+    let ast = parse("{ \\tuplet 3/2 4. { c8 d e } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Tuplet { span_duration, .. } => {
+                let dur = span_duration.as_ref().unwrap();
+                assert_eq!(dur.base, 4);
+                assert_eq!(dur.dots, 1);
+            }
+            other => panic!("expected tuplet, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tuplet_in_context() {
+    // Tuplet inside \new Staff
+    let ast = parse("\\new Staff { \\tuplet 3/2 { c8 d e } }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic { music, .. }) => match music.as_ref() {
+            Music::Sequential(items) => {
+                assert_eq!(items.len(), 1);
+                assert!(matches!(&items[0], Music::Tuplet { .. }));
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        },
+        other => panic!("expected context, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_tuplet_basic() {
+    let input = "{ \\tuplet 3/2 { c8 d e } }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_tuplet_with_span() {
+    let input = "{ \\tuplet 3/2 4 { c8 d e f g a } }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_tuplet_nested() {
+    let input = "{ \\tuplet 3/2 { \\tuplet 3/2 { c32 d e } f16 g } }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_tuplets() {
+    roundtrip_fixture("fragment_tuplets.ly");
+}

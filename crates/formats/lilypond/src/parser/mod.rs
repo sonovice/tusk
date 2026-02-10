@@ -230,6 +230,8 @@ impl<'src> Parser<'src> {
             Token::Relative
             | Token::Fixed
             | Token::Transpose
+            | Token::Tuplet
+            | Token::Times
             | Token::New
             | Token::Context
             | Token::Change => {
@@ -611,6 +613,8 @@ impl<'src> Parser<'src> {
             Token::Relative => self.parse_relative(),
             Token::Fixed => self.parse_fixed(),
             Token::Transpose => self.parse_transpose(),
+            Token::Tuplet => self.parse_tuplet(),
+            Token::Times => self.parse_times(),
             Token::New | Token::Context => self.parse_context_music(),
             Token::Change => self.parse_context_change(),
             Token::Time => self.parse_time_signature(),
@@ -1295,176 +1299,9 @@ impl<'src> Parser<'src> {
             }),
         }
     }
-
-    // ──────────────────────────────────────────────────────────────────
-    // \clef "name"
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_clef(&mut self) -> Result<Music, ParseError> {
-        self.advance()?; // consume \clef (EscapedWord("clef"))
-        // Clef name: quoted string or bare symbol
-        let name = match &self.current.token {
-            Token::String(_) => self.expect_string()?,
-            Token::Symbol(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::Symbol(s) => s,
-                    _ => unreachable!(),
-                }
-            }
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "clef name (string or symbol)".into(),
-                });
-            }
-        };
-        Ok(Music::Clef(Clef { name }))
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // \key pitch \mode
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_key_signature(&mut self) -> Result<Music, ParseError> {
-        self.advance()?; // consume \key (EscapedWord("key"))
-
-        // Parse tonic pitch (note name + optional octave marks)
-        let offset = self.offset();
-        let note_name = match &self.current.token {
-            Token::NoteName(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::NoteName(s) => s,
-                    _ => unreachable!(),
-                }
-            }
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "pitch after \\key".into(),
-                });
-            }
-        };
-
-        let (step, alter) =
-            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
-                name: note_name.clone(),
-                offset,
-            })?;
-
-        // Optional octave marks (rarely used in \key but valid)
-        let octave = self.parse_quotes();
-
-        let pitch = Pitch {
-            step,
-            alter,
-            octave,
-            force_accidental: false,
-            cautionary: false,
-            octave_check: None,
-        };
-
-        // Parse mode: \major, \minor, \dorian, etc.
-        let mode = match &self.current.token {
-            Token::EscapedWord(s) => {
-                let mode = Mode::from_name(s).ok_or_else(|| ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "mode (\\major, \\minor, \\dorian, etc.)".into(),
-                })?;
-                self.advance()?;
-                mode
-            }
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "mode (\\major, \\minor, \\dorian, etc.)".into(),
-                });
-            }
-        };
-
-        Ok(Music::KeySignature(KeySignature { pitch, mode }))
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // \time [n+m+...]/d
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_time_signature(&mut self) -> Result<Music, ParseError> {
-        self.expect(&Token::Time)?;
-
-        // Parse numerator(s): N or N+M+... (compound)
-        let mut numerators = Vec::new();
-        match self.peek() {
-            Token::Unsigned(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::Unsigned(n) => numerators.push(n as u32),
-                    _ => unreachable!(),
-                }
-            }
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "time signature numerator".into(),
-                });
-            }
-        }
-
-        // Check for additive numerators: +N+M...
-        while *self.peek() == Token::Plus {
-            self.advance()?; // consume +
-            match self.peek() {
-                Token::Unsigned(_) => {
-                    let tok = self.advance()?;
-                    match tok.token {
-                        Token::Unsigned(n) => numerators.push(n as u32),
-                        _ => unreachable!(),
-                    }
-                }
-                _ => {
-                    return Err(ParseError::Unexpected {
-                        found: self.current.token.clone(),
-                        offset: self.offset(),
-                        expected: "number after + in time signature".into(),
-                    });
-                }
-            }
-        }
-
-        // Expect /
-        self.expect(&Token::Slash)?;
-
-        // Parse denominator
-        let denominator = match self.peek() {
-            Token::Unsigned(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::Unsigned(n) => n as u32,
-                    _ => unreachable!(),
-                }
-            }
-            _ => {
-                return Err(ParseError::Unexpected {
-                    found: self.current.token.clone(),
-                    offset: self.offset(),
-                    expected: "time signature denominator".into(),
-                });
-            }
-        };
-
-        Ok(Music::TimeSignature(TimeSignature {
-            numerators,
-            denominator,
-        }))
-    }
 }
 mod raw_blocks;
+mod signatures;
 
 // ---------------------------------------------------------------------------
 // Convenience function

@@ -362,6 +362,23 @@ impl<'a> Serializer<'a> {
                 self.out.push(' ');
                 self.write_music(body);
             }
+            Music::Tuplet {
+                numerator,
+                denominator,
+                span_duration,
+                body,
+            } => {
+                self.out.push_str("\\tuplet ");
+                self.out.push_str(&numerator.to_string());
+                self.out.push('/');
+                self.out.push_str(&denominator.to_string());
+                if let Some(dur) = span_duration {
+                    self.out.push(' ');
+                    self.write_duration(dur);
+                }
+                self.out.push(' ');
+                self.write_music(body);
+            }
             Music::ContextedMusic {
                 keyword,
                 context_type,
@@ -1312,6 +1329,58 @@ mod tests {
         };
         let output = serialize(&file);
         assert!(output.contains("c4^\\3"));
+    }
+
+    // ── Phase 15 serializer tests ────────────────────────────
+
+    #[test]
+    fn serialize_tuplet_basic() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 8,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![],
+                })])),
+            })],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\tuplet 3/2 { c8 }"));
+    }
+
+    #[test]
+    fn serialize_tuplet_with_span() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                body: Box::new(Music::Sequential(vec![])),
+            })],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\tuplet 3/2 4 {  }"));
     }
 
     #[test]

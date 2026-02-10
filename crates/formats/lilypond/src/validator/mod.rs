@@ -70,6 +70,9 @@ pub enum ValidationError {
     #[error("invalid tremolo type {value}: must be 0 or a power of 2 >= 8")]
     InvalidTremoloType { value: u32 },
 
+    #[error("invalid tuplet fraction: numerator and denominator must be positive")]
+    InvalidTupletFraction,
+
     #[error("{0}")]
     Other(String),
 }
@@ -281,7 +284,7 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::Relative { body, .. } | Music::Fixed { body, .. } => {
             count_spans(body, counts);
         }
-        Music::Transpose { body, .. } => {
+        Music::Transpose { body, .. } | Music::Tuplet { body, .. } => {
             count_spans(body, counts);
         }
         Music::ContextedMusic { music, .. } => {
@@ -345,6 +348,20 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
         Music::Transpose { from, to, body } => {
             validate_music(from, errors);
             validate_music(to, errors);
+            validate_music(body, errors);
+        }
+        Music::Tuplet {
+            numerator,
+            denominator,
+            span_duration,
+            body,
+        } => {
+            if *numerator == 0 || *denominator == 0 {
+                errors.push(ValidationError::InvalidTupletFraction);
+            }
+            if let Some(dur) = span_duration {
+                validate_duration(dur, errors);
+            }
             validate_music(body, errors);
         }
         Music::ContextedMusic {
@@ -1295,6 +1312,129 @@ mod tests {
                     name: "staccato".into(),
                 }]),
             ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 15 validator tests ──────────────────────────────────
+
+    #[test]
+    fn valid_tuplet_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![
+                    make_note(vec![]),
+                    make_note(vec![]),
+                    make_note(vec![]),
+                ])),
+            })],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn tuplet_zero_numerator_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 0,
+                denominator: 2,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![])),
+            })],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTupletFraction))
+        );
+    }
+
+    #[test]
+    fn tuplet_zero_denominator_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 0,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![])),
+            })],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTupletFraction))
+        );
+    }
+
+    #[test]
+    fn tuplet_invalid_span_duration_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: Some(Duration {
+                    base: 3, // invalid
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                body: Box::new(Music::Sequential(vec![])),
+            })],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+        );
+    }
+
+    #[test]
+    fn tuplet_with_slurs_span_balance() {
+        // Slurs inside a tuplet should be tracked for balance
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![
+                    make_note(vec![PostEvent::SlurStart]),
+                    make_note(vec![]),
+                    make_note(vec![PostEvent::SlurEnd]),
+                ])),
+            })],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn nested_tuplet_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Tuplet {
+                numerator: 3,
+                denominator: 2,
+                span_duration: None,
+                body: Box::new(Music::Sequential(vec![
+                    Music::Tuplet {
+                        numerator: 3,
+                        denominator: 2,
+                        span_duration: None,
+                        body: Box::new(Music::Sequential(vec![
+                            make_note(vec![]),
+                            make_note(vec![]),
+                            make_note(vec![]),
+                        ])),
+                    },
+                    make_note(vec![]),
+                ])),
+            })],
         };
         assert!(validate(&file).is_ok());
     }
