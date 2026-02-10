@@ -115,6 +115,9 @@ pub enum ValidationError {
     #[error("empty property path")]
     EmptyPropertyPath,
 
+    #[error("empty assignment name")]
+    EmptyAssignmentName,
+
     #[error("{0}")]
     Other(String),
 }
@@ -182,7 +185,7 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
         ToplevelExpression::Paper(pb) => validate_paper(pb, errors),
         ToplevelExpression::Layout(lb) => validate_layout(lb, errors),
         ToplevelExpression::Midi(mb) => validate_midi(mb, errors),
-        ToplevelExpression::Assignment(_) => {}
+        ToplevelExpression::Assignment(a) => validate_assignment(a, errors),
         ToplevelExpression::Markup(m) => validate_markup(m, errors),
         ToplevelExpression::MarkupList(ml) => {
             for item in &ml.items {
@@ -290,6 +293,33 @@ fn validate_paper(pb: &PaperBlock, errors: &mut Vec<ValidationError>) {
         if a.name.is_empty() {
             errors.push(ValidationError::Other("empty paper variable name".into()));
         }
+    }
+}
+
+fn validate_assignment(a: &Assignment, errors: &mut Vec<ValidationError>) {
+    if a.name.is_empty() {
+        errors.push(ValidationError::EmptyAssignmentName);
+    }
+    validate_assignment_value(&a.value, errors);
+}
+
+fn validate_assignment_value(v: &AssignmentValue, errors: &mut Vec<ValidationError>) {
+    match v {
+        AssignmentValue::Music(m) => {
+            validate_music(m, errors);
+        }
+        AssignmentValue::Markup(m) => validate_markup(m, errors),
+        AssignmentValue::MarkupList(ml) => {
+            for item in &ml.items {
+                validate_markup(item, errors);
+            }
+        }
+        // Identifier refs, strings, numbers, scheme exprs: no structural validation needed.
+        // LilyPond allows forward refs and many built-in identifiers, so we don't check scope.
+        AssignmentValue::Identifier(_)
+        | AssignmentValue::String(_)
+        | AssignmentValue::Number(_)
+        | AssignmentValue::SchemeExpr(_) => {}
     }
 }
 
@@ -811,7 +841,7 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 validate_markup(item, errors);
             }
         }
-        Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
+        Music::Event(_) | Music::Unparsed(_) | Music::Identifier(_) => {}
     }
 }
 

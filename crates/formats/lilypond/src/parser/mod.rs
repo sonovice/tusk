@@ -1474,3 +1474,5 @@ mod tests_properties;
 mod tests_repeats;
 #[cfg(test)]
 mod tests_tempo_marks;
+#[cfg(test)]
+mod tests_variables;

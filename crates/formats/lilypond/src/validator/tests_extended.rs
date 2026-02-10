@@ -560,3 +560,136 @@ fn figure_space_valid() {
     }));
     assert!(validate(&file).is_ok());
 }
+
+// ── Assignment / variable validation (Phase 28) ────────────────────────
+
+#[test]
+fn valid_assignment_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: "melody".into(),
+            value: AssignmentValue::Music(Box::new(Music::Sequential(vec![make_note(vec![])]))),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn assignment_string_value_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: "myTitle".into(),
+            value: AssignmentValue::String("Hello".into()),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn assignment_number_value_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: "myNum".into(),
+            value: AssignmentValue::Number(42.0),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn assignment_identifier_value_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: "soprano".into(),
+            value: AssignmentValue::Identifier("melody".into()),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn empty_assignment_name_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: String::new(),
+            value: AssignmentValue::Number(1.0),
+        })],
+    };
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::EmptyAssignmentName))
+    );
+}
+
+#[test]
+fn assignment_with_invalid_music_value_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Assignment(Assignment {
+            name: "broken".into(),
+            value: AssignmentValue::Music(Box::new(Music::Note(NoteEvent {
+                pitch: Pitch {
+                    step: 'c',
+                    alter: 0.0,
+                    octave: 0,
+                    force_accidental: false,
+                    cautionary: false,
+                    octave_check: None,
+                },
+                duration: Some(Duration {
+                    base: 3, // invalid
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                pitched_rest: false,
+                post_events: vec![],
+            }))),
+        })],
+    };
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+    );
+}
+
+#[test]
+fn assignment_then_score_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![
+            ToplevelExpression::Assignment(Assignment {
+                name: "melody".into(),
+                value: AssignmentValue::Music(Box::new(Music::Sequential(vec![make_note(vec![])]))),
+            }),
+            ToplevelExpression::Score(ScoreBlock {
+                items: vec![ScoreItem::Music(Music::ContextedMusic {
+                    keyword: ContextKeyword::New,
+                    context_type: "Staff".into(),
+                    name: None,
+                    with_block: None,
+                    music: Box::new(Music::Identifier("melody".into())),
+                })],
+            }),
+        ],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn music_identifier_ref_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            make_note(vec![]),
+            Music::Identifier("someVar".into()),
+        ]))],
+    };
+    assert!(validate(&file).is_ok());
+}

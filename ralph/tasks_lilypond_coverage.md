@@ -1188,11 +1188,16 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 28.1 Model & Parser
 
-- [ ] [P] Parse assignments: `name = { music }`, `name = \markup { }`, `name = 42`, etc.; reference identifiers in music/markup
-- [ ] [P] Add `Assignment`, `IdentifierRef`; track variable scope in parser
-- [ ] [S] Serialize assignments and expand or preserve variable references
-- [ ] [V] Variable defined before use (or allow forward ref per grammar)
-- [ ] [T] Fragment: `melody = { c4 d e f } \score { \new Staff \melody }`
+- [x] [P] Parse assignments: `name = { music }`, `name = \markup { }`, `name = 42`, etc.; reference identifiers in music/markup
+  - Already implemented: `parse_assignment_or_music()`, `parse_assignment_value()` handles string/number/music/identifier/scheme/markup values; `Music::Identifier` for `\name` refs in music
+- [x] [P] Add `Assignment`, `IdentifierRef`; track variable scope in parser
+  - `Assignment`/`AssignmentValue` (with `Identifier` variant) already in model; `Music::Identifier`, `Markup::Identifier` for refs; assignments in book/bookpart/header/layout/midi/paper/context-mod scopes
+- [x] [S] Serialize assignments and expand or preserve variable references
+  - `write_assignment()`/`write_assignment_value()` serialize all value types; `Music::Identifier` → `\name`; roundtrip verified
+- [x] [V] Variable defined before use (or allow forward ref per grammar)
+  - Added `validate_assignment()` with `EmptyAssignmentName` error; recursive validation of assignment values (music/markup); forward refs allowed per grammar
+- [x] [T] Fragment: `melody = { c4 d e f } \score { \new Staff \melody }`
+  - Added `fragment_variables.ly` fixture; 15 parser tests (all value types, identifier refs, roundtrips); 8 validator tests (valid/invalid assignments, empty name, music value validation)
 
 ### 28.2 Import & Export
 
