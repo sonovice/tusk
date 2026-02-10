@@ -77,6 +77,8 @@ pub(super) enum LyEvent {
     DrumEvent(model::note::DrumNoteEvent),
     /// A drum chord event.
     DrumChordEvent(model::note::DrumChordEvent),
+    /// A serialized property operation (`\override`, `\set`, `\revert`, `\unset`, `\once`).
+    PropertyOp(String),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -339,9 +341,24 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::Figure(fe) => {
             events.push(LyEvent::FigureEvent(fe.clone()));
         }
-        Music::Once { music } => collect_events(music, events, ctx),
+        Music::Once { music: inner } => {
+            // If wrapping a property op, serialize the entire \once expression
+            if matches!(
+                inner.as_ref(),
+                Music::Override { .. }
+                    | Music::Revert { .. }
+                    | Music::Set { .. }
+                    | Music::Unset { .. }
+            ) {
+                let serialized = crate::serializer::serialize_property_op(music);
+                events.push(LyEvent::PropertyOp(serialized));
+            } else {
+                collect_events(inner, events, ctx);
+            }
+        }
         Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
-            // Property operations don't produce note events
+            let serialized = crate::serializer::serialize_property_op(music);
+            events.push(LyEvent::PropertyOp(serialized));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

@@ -145,6 +145,9 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
         post_events.push(PostEvent::Tie);
     }
 
+    // Restore tweak post-events from label
+    restore_tweak_post_events(chord.common.label.as_deref(), &mut post_events);
+
     // Check for chord repetition label
     if chord
         .common
@@ -194,8 +197,13 @@ fn extract_chord_duration(chord: &tusk_model::elements::Chord) -> Option<Duratio
     })
 }
 
-/// Convert an MEI Note to a LilyPond NoteEvent.
+/// Convert an MEI Note to a LilyPond NoteEvent (or DrumNote/DrumChord if labeled).
 pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
+    // Check for drum label first
+    if let Some(drum_music) = try_convert_drum_label(note) {
+        return drum_music;
+    }
+
     let pitch = extract_pitch_from_note(note);
     let duration = extract_note_duration(note);
     let mut post_events = Vec::new();
@@ -207,12 +215,54 @@ pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         post_events.push(PostEvent::Tie);
     }
 
+    // Restore tweak post-events from label
+    restore_tweak_post_events(note.common.label.as_deref(), &mut post_events);
+
     Music::Note(NoteEvent {
         pitch,
         duration,
         pitched_rest: false,
         post_events,
     })
+}
+
+/// Try to convert a note with a `lilypond:drum,` label back to drum mode music.
+fn try_convert_drum_label(note: &tusk_model::elements::Note) -> Option<Music> {
+    let label = note.common.label.as_deref()?;
+    // Find the drum segment (may be pipe-separated)
+    for segment in label.split('|') {
+        if let Some(serialized) = segment.strip_prefix("lilypond:drum,") {
+            let unescaped = crate::import::signatures::unescape_label_value(serialized);
+            return parse_drum_event_str(&unescaped);
+        }
+    }
+    None
+}
+
+/// Parse a serialized drum event string back into Music::DrumNote or Music::DrumChord.
+///
+/// Re-parses through the LilyPond parser by wrapping in `\drummode { ... }`.
+fn parse_drum_event_str(s: &str) -> Option<Music> {
+    use crate::parser::Parser;
+    let src = format!("\\drummode {{ {s} }}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::DrumMode { body }) = item {
+            if let Music::Sequential(items) = body.as_ref() {
+                for m in items {
+                    match m {
+                        Music::DrumNote(_) | Music::DrumChord(_) => return Some(m.clone()),
+                        _ => {}
+                    }
+                }
+            }
+            match body.as_ref() {
+                Music::DrumNote(_) | Music::DrumChord(_) => return Some(*body.clone()),
+                _ => {}
+            }
+        }
+    }
+    None
 }
 
 /// Convert an MEI Rest to a LilyPond RestEvent or pitched rest.
@@ -312,4 +362,45 @@ fn parse_mrest_label(label: &str) -> Option<Duration> {
         dots,
         multipliers,
     })
+}
+
+/// Restore tweak post-events from a label string.
+///
+/// Scans pipe-separated label segments for `lilypond:tweak,{serialized}` and
+/// re-parses them into `PostEvent::Tweak` entries.
+fn restore_tweak_post_events(label: Option<&str>, post_events: &mut Vec<PostEvent>) {
+    let label = match label {
+        Some(l) => l,
+        None => return,
+    };
+    for segment in label.split('|') {
+        if let Some(serialized) = segment.strip_prefix("lilypond:tweak,") {
+            let unescaped = crate::import::signatures::unescape_label_value(serialized);
+            if let Some(tweak) = parse_tweak_str(&unescaped) {
+                post_events.push(tweak);
+            }
+        }
+    }
+}
+
+/// Parse a serialized tweak string (e.g. `\tweak color #red`) back into a PostEvent::Tweak.
+fn parse_tweak_str(s: &str) -> Option<PostEvent> {
+    use crate::parser::Parser;
+    // Wrap in a note context: `{ c4 <tweak> -. }` so the parser sees it as a post-event
+    let src = format!("{{ c4{s} -. }}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                if let Music::Note(n) = m {
+                    for pe in &n.post_events {
+                        if matches!(pe, PostEvent::Tweak { .. }) {
+                            return Some(pe.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }

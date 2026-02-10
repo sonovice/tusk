@@ -89,6 +89,25 @@ pub fn serialize_drum_chord_event(dc: &note::DrumChordEvent) -> String {
     out
 }
 
+/// Serialize a property operation (`Music::Override`, `Set`, `Revert`, `Unset`, `Once`).
+pub fn serialize_property_op(music: &Music) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_music(music);
+    out
+}
+
+/// Serialize a tweak post-event to a string (e.g. `\tweak color #red`).
+pub fn serialize_tweak(path: &property::PropertyPath, value: &property::PropertyValue) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.out.push_str("\\tweak ");
+    ser.write_property_path(path);
+    ser.out.push(' ');
+    ser.write_property_value(value);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,

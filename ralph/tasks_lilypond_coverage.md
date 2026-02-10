@@ -1123,10 +1123,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 26.2 Import & Export
 
-- [ ] [I] Override/set → MEI scoreDef/staffDef/annot or label for roundtrip
-- [ ] [E] MEI appearance/layout → LilyPond \override/\set where applicable
-- [ ] [T] Roundtrip property fixtures
-- [ ] [T] Property operation fixtures; roundtrip
+- [x] [I] Override/set → MEI scoreDef/staffDef/annot or label for roundtrip
+  - Override/revert/set/unset/once → serialized as `LyEvent::PropertyOp` → MEI `<dir>` with `lilypond:prop,{serialized}` label
+  - Tweak post-events → note/chord `@label` with `lilypond:tweak,{serialized}` segment
+  - Property ops get `startid` referencing next note (pending pattern like tempo marks)
+- [x] [E] MEI appearance/layout → LilyPond \override/\set where applicable
+  - `<dir>` with `lilypond:prop,` label → re-parsed back to `Music::Override/Set/Revert/Unset/Once`
+  - `lilypond:tweak,` label segments on notes/chords → `PostEvent::Tweak` restoration
+  - Property ops injected before referenced notes in layer items
+- [x] [T] Roundtrip property fixtures
+  - 17 import tests in `import/tests_properties.rs`; 13 export roundtrip tests in `export/tests_properties.rs`
+- [x] [T] Property operation fixtures; roundtrip
+  - Override, revert, set, unset, once, tweak (single/compound path), compound scheme values all roundtrip
 
 ---
 

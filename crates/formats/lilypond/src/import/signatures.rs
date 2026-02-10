@@ -99,7 +99,9 @@ pub(super) fn apply_signatures_to_staff_def(
             | LyEvent::Chord { .. }
             | LyEvent::Rest(_)
             | LyEvent::PitchedRest(_)
-            | LyEvent::MeasureRest(_) => {
+            | LyEvent::MeasureRest(_)
+            | LyEvent::DrumEvent(_)
+            | LyEvent::DrumChordEvent(_) => {
                 note_index += 1;
             }
             LyEvent::Skip(_)
@@ -112,7 +114,8 @@ pub(super) fn apply_signatures_to_staff_def(
             | LyEvent::AlternativeStart { .. }
             | LyEvent::AlternativeEnd
             | LyEvent::ChordName(_)
-            | LyEvent::FigureEvent(_) => {}
+            | LyEvent::FigureEvent(_)
+            | LyEvent::PropertyOp(_) => {}
         }
     }
 

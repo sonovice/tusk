@@ -619,3 +619,17 @@ fn bass_figure_to_text(fig: &BassFigure) -> String {
     }
     text
 }
+
+/// Create an MEI Dir for a LilyPond property operation (`\override`, `\set`, etc.).
+///
+/// Label format: `lilypond:prop,{serialized}`
+/// The serialized text is the full LilyPond expression (e.g. `\override NoteHead.color = #red`).
+pub(super) fn make_property_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-prop-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    let escaped = crate::import::signatures::escape_label_value_pub(serialized);
+    dir.common.label = Some(format!("lilypond:prop,{escaped}"));
+    dir
+}

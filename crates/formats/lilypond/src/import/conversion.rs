@@ -228,6 +228,52 @@ pub(super) fn convert_pitched_rest(note: &NoteEvent, id: u32) -> Rest {
     mei_rest
 }
 
+/// Convert a LilyPond DrumNoteEvent to an MEI Note.
+///
+/// Drum notes are stored as unpitched MEI notes with `@label` carrying the
+/// serialized drum event for lossless roundtrip. Duration is applied normally.
+pub(super) fn convert_drum_note(dn: &crate::model::note::DrumNoteEvent, id: u32) -> Note {
+    let mut mei_note = Note::default();
+    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
+
+    // Serialize the drum event for label storage (lossless roundtrip)
+    let serialized = crate::serializer::serialize_drum_note_event(dn);
+    mei_note.common.label = Some(format!(
+        "lilypond:drum,{}",
+        crate::import::signatures::escape_label_value_pub(&serialized)
+    ));
+
+    // Duration
+    if let Some(ref dur) = dn.duration {
+        apply_duration_to_note(dur, &mut mei_note);
+    }
+
+    mei_note
+}
+
+/// Convert a LilyPond DrumChordEvent to an MEI Note.
+///
+/// Drum chords (simultaneous drum hits) are stored as a single MEI note with
+/// `@label` carrying the serialized drum chord for lossless roundtrip.
+pub(super) fn convert_drum_chord(dc: &crate::model::note::DrumChordEvent, id: u32) -> Note {
+    let mut mei_note = Note::default();
+    mei_note.common.xml_id = Some(format!("ly-note-{id}"));
+
+    // Serialize the drum chord event for label storage (lossless roundtrip)
+    let serialized = crate::serializer::serialize_drum_chord_event(dc);
+    mei_note.common.label = Some(format!(
+        "lilypond:drum,{}",
+        crate::import::signatures::escape_label_value_pub(&serialized)
+    ));
+
+    // Duration
+    if let Some(ref dur) = dc.duration {
+        apply_duration_to_note(dur, &mut mei_note);
+    }
+
+    mei_note
+}
+
 /// Convert a LilyPond MultiMeasureRestEvent to an MEI MRest.
 pub(super) fn convert_mrest(rest: &model::MultiMeasureRestEvent, id: u32) -> MRest {
     let mut mei_mrest = MRest::default();

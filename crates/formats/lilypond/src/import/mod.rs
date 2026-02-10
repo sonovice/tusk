@@ -18,6 +18,8 @@ mod tests_drums;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
+mod tests_properties;
+#[cfg(test)]
 mod tests_tempo_marks;
 
 use thiserror::Error;
@@ -861,6 +863,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             // Pending inline chord names waiting for first note
             let mut pending_chord_names: Vec<(crate::model::note::ChordModeEvent, u32)> =
                 Vec::new();
+            // Pending property operations waiting for next note's startid
+            let mut pending_property_ops: Vec<String> = Vec::new();
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -1106,6 +1110,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         layer.children.push(LayerChild::Note(Box::new(n)));
                         (pe, id)
                     }
+                    LyEvent::PropertyOp(serialized) => {
+                        pending_property_ops.push(serialized.clone());
+                        continue;
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -1169,6 +1177,18 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
                     }
+                }
+
+                // Flush pending property operations
+                for prop_serialized in pending_property_ops.drain(..) {
+                    artic_counter += 1;
+                    let dir = make_property_dir(
+                        &prop_serialized,
+                        &current_id,
+                        staff_info.n,
+                        artic_counter,
+                    );
+                    measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
 
                 // Process post-events
@@ -1336,8 +1356,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         PostEvent::Tremolo(value) => {
                             wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
                         }
-                        PostEvent::Tweak { .. } => {
-                            // Tweak post-events preserved in roundtrip via labels (Phase 26.2)
+                        PostEvent::Tweak { path, value } => {
+                            let serialized = crate::serializer::serialize_tweak(path, value);
+                            let escaped = signatures::escape_label_value_pub(&serialized);
+                            append_label_to_last_layer_child(
+                                &mut layer,
+                                &format!("lilypond:tweak,{escaped}"),
+                            );
                         }
                         PostEvent::LyricHyphen | PostEvent::LyricExtender => {
                             // Lyric post-events handled in Phase 20.2
@@ -1422,64 +1447,9 @@ use beams::{duration_to_beats, group_beamed_notes};
 
 use control_events::{
     make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_hairpin, make_harm,
-    make_mark_dir, make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir,
-    make_tempo, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_mark_dir, make_ornament_control_event, make_property_dir, make_repeat_dir, make_slur,
+    make_string_dir, make_tempo, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };
 
-/// Parse a serialized `\tempo ...` string back into a Tempo AST node.
-fn parse_tempo_from_serialized(s: &str) -> Option<crate::model::signature::Tempo> {
-    use crate::parser::Parser;
-    // Wrap in a parseable form: the serialized string is the full \tempo expression
-    let src = format!("{s}\nc4");
-    let file = Parser::new(&src).ok()?.parse().ok()?;
-    for item in &file.items {
-        if let ToplevelExpression::Music(Music::Sequential(items)) = item {
-            for m in items {
-                if let Music::Tempo(t) = m {
-                    return Some(t.clone());
-                }
-            }
-        }
-        if let ToplevelExpression::Music(Music::Tempo(t)) = item {
-            return Some(t.clone());
-        }
-    }
-    None
-}
-
-/// Extract voice streams from LilyPond music.
-///
-/// If the top-level music is `Simultaneous` and each child is a distinct
-/// voice (Sequential block or single event), each child becomes a separate
-/// voice (MEI layer). Otherwise, all music goes into a single voice.
-fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
-    match music {
-        Music::Simultaneous(items) if items.len() > 1 => {
-            // Check if children look like separate voice streams
-            // (each is a Sequential block or a single event, NOT \new Staff)
-            let all_voice_like = items.iter().all(|item| {
-                matches!(
-                    item,
-                    Music::Sequential(_)
-                        | Music::Note(_)
-                        | Music::Chord(_)
-                        | Music::ChordRepetition(_)
-                        | Music::Rest(_)
-                        | Music::MultiMeasureRest(_)
-                        | Music::Relative { .. }
-                        | Music::Fixed { .. }
-                        | Music::Transpose { .. }
-                ) || matches!(
-                    item,
-                    Music::ContextedMusic { context_type, .. } if !is_staff_context(context_type) && !is_staff_group_context(context_type)
-                )
-            });
-            if all_voice_like {
-                items.iter().map(|item| vec![item]).collect()
-            } else {
-                vec![vec![music]]
-            }
-        }
-        _ => vec![vec![music]],
-    }
-}
+mod utils;
+use utils::{append_label_to_last_layer_child, extract_voices, parse_tempo_from_serialized};

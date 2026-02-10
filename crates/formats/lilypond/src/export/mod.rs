@@ -11,9 +11,13 @@ mod tests;
 #[cfg(test)]
 mod tests_chords;
 #[cfg(test)]
+mod tests_drums;
+#[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
 mod tests_markup;
+#[cfg(test)]
+mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
 
@@ -77,6 +81,9 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     collect_artic_post_events(&measure.children, &mut post_event_map);
                     collect_ornament_post_events(&measure.children, &mut post_event_map);
 
+                    // Collect property operations for injection
+                    let property_ops = collect_property_ops(&measure.children);
+
                     // Collect tuplet spans for wrapping
                     let tuplet_spans = collect_tuplet_spans(&measure.children);
 
@@ -102,6 +109,8 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                                     // Track xml:ids for newly added items
                                     collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
                                 }
+                                // Inject property operations before their referenced notes
+                                inject_property_ops(&mut items, &item_ids, &property_ops);
                                 // Wrap tuplet ranges in Music::Tuplet
                                 apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 // Wrap grace notes in Music::Grace/Acciaccatura/etc.
@@ -470,11 +479,20 @@ fn build_music_with_contexts(
             .and_then(|m| m.with_block_str.as_deref())
             .and_then(parse_with_block_str);
 
+        let ctx_type = meta
+            .map(|m| m.context_type.clone())
+            .unwrap_or_else(|| "Staff".to_string());
+
+        // DrumStaff: wrap music in \drummode
+        if ctx_type == "DrumStaff" {
+            inner = Music::DrumMode {
+                body: Box::new(inner),
+            };
+        }
+
         let staff_music_expr = Music::ContextedMusic {
             keyword: ContextKeyword::New,
-            context_type: meta
-                .map(|m| m.context_type.clone())
-                .unwrap_or_else(|| "Staff".to_string()),
+            context_type: ctx_type,
             name: meta.and_then(|m| m.name.clone()),
             with_block,
             music: Box::new(inner),
@@ -764,203 +782,8 @@ fn apply_tuplet_wrapping(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Grace note wrapping
-// ---------------------------------------------------------------------------
-
-/// Grace type info extracted from an MEI element's @grace and label.
-#[derive(Debug, Clone, PartialEq)]
-enum ExportGraceType {
-    Grace,
-    Acciaccatura,
-    Appoggiatura,
-    AfterGrace { fraction: Option<(u32, u32)> },
-}
-
-/// Check if a LayerChild is a grace note and extract the grace type.
-fn layer_child_grace_type(child: &LayerChild) -> Option<ExportGraceType> {
-    match child {
-        LayerChild::Note(note) => {
-            note.note_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                note.common.label.as_deref(),
-            ))
-        }
-        LayerChild::Chord(chord) => {
-            chord.chord_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                chord.common.label.as_deref(),
-            ))
-        }
-        _ => None,
-    }
-}
-
-/// Check if a BeamChild is a grace note.
-fn beam_child_grace_type(child: &tusk_model::elements::BeamChild) -> Option<ExportGraceType> {
-    use tusk_model::elements::BeamChild;
-    match child {
-        BeamChild::Note(note) => {
-            note.note_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                note.common.label.as_deref(),
-            ))
-        }
-        BeamChild::Chord(chord) => {
-            chord.chord_log.grace.as_ref()?;
-            Some(parse_grace_label_from_note_label(
-                chord.common.label.as_deref(),
-            ))
-        }
-        _ => None,
-    }
-}
-
-/// Parse grace type from a note/chord's label.
-///
-/// Label segment: `lilypond:grace,TYPE[,fraction=N/D]`
-fn parse_grace_label_from_note_label(label: Option<&str>) -> ExportGraceType {
-    let label = match label {
-        Some(l) => l,
-        None => return ExportGraceType::Grace,
-    };
-    // Find the `lilypond:grace,...` segment (may be pipe-separated)
-    for segment in label.split('|') {
-        if let Some(rest) = segment.strip_prefix("lilypond:grace,") {
-            return parse_grace_type_str(rest);
-        }
-    }
-    ExportGraceType::Grace
-}
-
-/// Parse grace type from the value after `lilypond:grace,`.
-fn parse_grace_type_str(s: &str) -> ExportGraceType {
-    if s == "grace" {
-        ExportGraceType::Grace
-    } else if s == "acciaccatura" {
-        ExportGraceType::Acciaccatura
-    } else if s == "appoggiatura" {
-        ExportGraceType::Appoggiatura
-    } else if let Some(rest) = s.strip_prefix("after") {
-        let fraction = rest
-            .strip_prefix(",fraction=")
-            .and_then(|f| f.split_once('/'))
-            .and_then(|(n, d)| Some((n.parse().ok()?, d.parse().ok()?)));
-        ExportGraceType::AfterGrace { fraction }
-    } else {
-        ExportGraceType::Grace
-    }
-}
-
-/// Collect grace type info from layer children, producing a parallel array.
-///
-/// Each entry corresponds to one Music item in the output. For Beam children,
-/// each inner child produces one entry.
-fn collect_grace_types(layer_children: &[LayerChild]) -> Vec<Option<ExportGraceType>> {
-    let mut types = Vec::new();
-    for child in layer_children {
-        match child {
-            LayerChild::Beam(beam) => {
-                for bc in &beam.children {
-                    types.push(beam_child_grace_type(bc));
-                }
-            }
-            _ => {
-                types.push(layer_child_grace_type(child));
-            }
-        }
-    }
-    types
-}
-
-/// Wrap consecutive grace notes in Music::Grace/Acciaccatura/Appoggiatura/AfterGrace.
-///
-/// For `\afterGrace`, the grace notes follow the main note. The main note is the
-/// non-grace note immediately before the grace group.
-fn apply_grace_wrapping(items: &mut Vec<Music>, grace_types: &[Option<ExportGraceType>]) {
-    if items.is_empty() {
-        return;
-    }
-
-    // Build a list of grace groups: (start_idx, end_idx, grace_type)
-    let mut groups: Vec<(usize, usize, ExportGraceType)> = Vec::new();
-    let mut i = 0;
-    while i < items.len() && i < grace_types.len() {
-        if let Some(ref gt) = grace_types[i] {
-            let group_type = gt.clone();
-            let start = i;
-            // Find end of consecutive grace notes with same type
-            while i < items.len()
-                && i < grace_types.len()
-                && grace_types[i].as_ref() == Some(&group_type)
-            {
-                i += 1;
-            }
-            groups.push((start, i - 1, group_type));
-        } else {
-            i += 1;
-        }
-    }
-
-    // Process groups in reverse order to avoid index shifting
-    for (start, end, gt) in groups.into_iter().rev() {
-        let grace_items: Vec<Music> = items.drain(start..=end).collect();
-        let grace_body = if grace_items.len() == 1 {
-            grace_items.into_iter().next().unwrap()
-        } else {
-            Music::Sequential(grace_items)
-        };
-
-        match gt {
-            ExportGraceType::Grace => {
-                items.insert(
-                    start,
-                    Music::Grace {
-                        body: Box::new(grace_body),
-                    },
-                );
-            }
-            ExportGraceType::Acciaccatura => {
-                items.insert(
-                    start,
-                    Music::Acciaccatura {
-                        body: Box::new(grace_body),
-                    },
-                );
-            }
-            ExportGraceType::Appoggiatura => {
-                items.insert(
-                    start,
-                    Music::Appoggiatura {
-                        body: Box::new(grace_body),
-                    },
-                );
-            }
-            ExportGraceType::AfterGrace { fraction } => {
-                // AfterGrace: the main note is immediately before the grace group
-                if start > 0 {
-                    let main = items.remove(start - 1);
-                    items.insert(
-                        start - 1,
-                        Music::AfterGrace {
-                            fraction,
-                            main: Box::new(main),
-                            grace: Box::new(grace_body),
-                        },
-                    );
-                } else {
-                    // No preceding main note — fall back to regular grace
-                    items.insert(
-                        start,
-                        Music::Grace {
-                            body: Box::new(grace_body),
-                        },
-                    );
-                }
-            }
-        }
-    }
-}
+mod grace;
+use grace::{apply_grace_wrapping, collect_grace_types};
 
 use repeats::{apply_repeat_wrapping, collect_ending_spans, collect_repeat_spans};
 
@@ -968,6 +791,117 @@ mod chord_names;
 mod figured_bass;
 use chord_names::{ChordNamesMeta, collect_chord_mode_harms, extract_chord_names_meta};
 use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bass_meta};
+
+// ---------------------------------------------------------------------------
+// Property operation roundtrip (export)
+// ---------------------------------------------------------------------------
+
+/// Collected property operation info: startid → list of Music property ops.
+struct PropertyOpInfo {
+    start_id: String,
+    music: Music,
+}
+
+/// Collect property operations from measure `<dir>` elements with `lilypond:prop,` labels.
+fn collect_property_ops(measure_children: &[MeasureChild]) -> Vec<PropertyOpInfo> {
+    let mut ops = Vec::new();
+    for mc in measure_children {
+        if let MeasureChild::Dir(dir) = mc {
+            let label = match dir.common.label.as_deref() {
+                Some(l) => l,
+                None => continue,
+            };
+            if let Some(serialized_escaped) = label.strip_prefix("lilypond:prop,") {
+                let serialized =
+                    crate::import::signatures::unescape_label_value(serialized_escaped);
+                if let Some(music) = parse_property_op_str(&serialized) {
+                    let start_id = dir
+                        .dir_log
+                        .startid
+                        .as_ref()
+                        .map(|u| u.0.trim_start_matches('#').to_string())
+                        .unwrap_or_default();
+                    ops.push(PropertyOpInfo { start_id, music });
+                }
+            }
+        }
+    }
+    ops
+}
+
+/// Parse a serialized property operation string back into a Music variant.
+fn parse_property_op_str(s: &str) -> Option<Music> {
+    use crate::parser::Parser;
+    // Wrap in a sequence with a note so the parser can handle it
+    let src = format!("{s}\nc4");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
+            for m in items {
+                match m {
+                    Music::Override { .. }
+                    | Music::Revert { .. }
+                    | Music::Set { .. }
+                    | Music::Unset { .. }
+                    | Music::Once { .. } => return Some(m.clone()),
+                    _ => {}
+                }
+            }
+        }
+        // Bare property op (no sequential wrapper)
+        if let crate::model::ToplevelExpression::Music(
+            m @ (Music::Override { .. }
+            | Music::Revert { .. }
+            | Music::Set { .. }
+            | Music::Unset { .. }
+            | Music::Once { .. }),
+        ) = item
+        {
+            return Some(m.clone());
+        }
+    }
+    None
+}
+
+/// Inject property operations into the items list before their referenced notes.
+fn inject_property_ops(
+    items: &mut Vec<Music>,
+    item_ids: &[Option<String>],
+    ops: &[PropertyOpInfo],
+) {
+    if ops.is_empty() {
+        return;
+    }
+    // Build a map of id → list of property ops to inject before that id
+    let mut inject_map: HashMap<String, Vec<Music>> = HashMap::new();
+    for op in ops {
+        if !op.start_id.is_empty() {
+            inject_map
+                .entry(op.start_id.clone())
+                .or_default()
+                .push(op.music.clone());
+        }
+    }
+
+    // Walk items in reverse to avoid index shifting
+    let mut insertions: Vec<(usize, Vec<Music>)> = Vec::new();
+    for (i, id) in item_ids.iter().enumerate() {
+        if let Some(id_str) = id
+            && let Some(prop_ops) = inject_map.remove(id_str.as_str())
+        {
+            insertions.push((i, prop_ops));
+        }
+    }
+    // Sort by position descending so we insert from back to front
+    insertions.sort_by(|a, b| b.0.cmp(&a.0));
+    for (pos, prop_ops) in insertions {
+        if pos <= items.len() {
+            for (j, op) in prop_ops.into_iter().enumerate() {
+                items.insert(pos + j, op);
+            }
+        }
+    }
+}
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
