@@ -1365,7 +1365,11 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 32.3 Documentation & Script
 
-- [ ] [T] Update any docs referencing LilyPond support; ensure `tusk_lilypond_coverage.sh` runs and finds tasks
-- [ ] [T] Final full test run: `cargo test`, `cargo clippy --all-targets` pass
+- [x] [T] Update any docs referencing LilyPond support; ensure `tusk_lilypond_coverage.sh` runs and finds tasks
+  - No docs outside task file reference LilyPond — nothing to update
+  - Verified script runs, counts 292 completed / 2 remaining, correctly identifies next section
+- [x] [T] Final full test run: `cargo test`, `cargo clippy --all-targets` pass
+  - 2204 tests pass, 0 failures
+  - Clippy: 0 warnings, 0 errors
 
 ---
