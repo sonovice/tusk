@@ -728,6 +728,17 @@ impl<'a> Serializer<'a> {
                 self.out.push_str("\\markuplist ");
                 self.write_markup_list(ml);
             }
+            Music::MusicFunction { name, args } => {
+                self.out.push('\\');
+                self.out.push_str(name);
+                self.write_function_args(args);
+            }
+            Music::PartialFunction { name, args } => {
+                self.out.push('\\');
+                self.out.push_str(name);
+                self.write_function_args(args);
+                self.out.push_str(" \\etc");
+            }
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');
@@ -1121,6 +1132,44 @@ impl<'a> Serializer<'a> {
             if den != 1 {
                 self.out.push('/');
                 self.out.push_str(&den.to_string());
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Function arguments
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_function_args(&mut self, args: &[FunctionArg]) {
+        for arg in args {
+            self.out.push(' ');
+            match arg {
+                FunctionArg::Music(m) => self.write_music(m),
+                FunctionArg::String(s) => {
+                    self.out.push('"');
+                    for ch in s.chars() {
+                        match ch {
+                            '"' => self.out.push_str("\\\""),
+                            '\\' => self.out.push_str("\\\\"),
+                            _ => self.out.push(ch),
+                        }
+                    }
+                    self.out.push('"');
+                }
+                FunctionArg::Number(n) => {
+                    if *n == (*n as i64) as f64 {
+                        self.out.push_str(&(*n as i64).to_string());
+                    } else {
+                        self.out.push_str(&n.to_string());
+                    }
+                }
+                FunctionArg::SchemeExpr(s) => self.out.push_str(s),
+                FunctionArg::Duration(dur) => self.write_duration(dur),
+                FunctionArg::Identifier(name) => {
+                    self.out.push('\\');
+                    self.out.push_str(name);
+                }
+                FunctionArg::Default => self.out.push_str("\\default"),
             }
         }
     }

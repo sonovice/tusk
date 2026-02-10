@@ -118,6 +118,9 @@ pub enum ValidationError {
     #[error("empty assignment name")]
     EmptyAssignmentName,
 
+    #[error("empty function name")]
+    EmptyFunctionName,
+
     #[error("{0}")]
     Other(String),
 }
@@ -522,6 +525,13 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         }
         Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
         }
+        Music::MusicFunction { args, .. } | Music::PartialFunction { args, .. } => {
+            for arg in args {
+                if let FunctionArg::Music(m) = arg {
+                    count_spans(m, counts);
+                }
+            }
+        }
         Music::BarCheck | Music::BarLine { .. } | Music::Markup(_) | Music::MarkupList(_) => {}
         _ => {}
     }
@@ -841,6 +851,12 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 validate_markup(item, errors);
             }
         }
+        Music::MusicFunction { name, args } | Music::PartialFunction { name, args } => {
+            if name.is_empty() {
+                errors.push(ValidationError::EmptyFunctionName);
+            }
+            validate_function_args(args, errors);
+        }
         Music::Event(_) | Music::Unparsed(_) | Music::Identifier(_) => {}
     }
 }
@@ -886,6 +902,20 @@ fn validate_chord_steps(
     for s in removals {
         if s.number == 0 || s.number > 13 {
             errors.push(ValidationError::InvalidChordStep { number: s.number });
+        }
+    }
+}
+
+fn validate_function_args(args: &[FunctionArg], errors: &mut Vec<ValidationError>) {
+    for arg in args {
+        match arg {
+            FunctionArg::Music(m) => validate_music(m, errors),
+            FunctionArg::Duration(dur) => validate_duration(dur, errors),
+            FunctionArg::String(_)
+            | FunctionArg::Number(_)
+            | FunctionArg::SchemeExpr(_)
+            | FunctionArg::Identifier(_)
+            | FunctionArg::Default => {}
         }
     }
 }

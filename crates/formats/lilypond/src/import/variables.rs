@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use crate::model::{Assignment, AssignmentValue, Music, ToplevelExpression};
+use crate::model::{Assignment, AssignmentValue, FunctionArg, Music, ToplevelExpression};
 use crate::serializer;
 
 use super::signatures;
@@ -160,9 +160,29 @@ pub(super) fn resolve_identifiers(music: &Music, var_map: &HashMap<String, Music
         Music::Once { music: inner } => Music::Once {
             music: Box::new(resolve_identifiers(inner, var_map)),
         },
+        Music::MusicFunction { name, args } => Music::MusicFunction {
+            name: name.clone(),
+            args: resolve_function_args(args, var_map),
+        },
+        Music::PartialFunction { name, args } => Music::PartialFunction {
+            name: name.clone(),
+            args: resolve_function_args(args, var_map),
+        },
         // Leaf nodes: no recursion needed
         _ => music.clone(),
     }
+}
+
+fn resolve_function_args(
+    args: &[FunctionArg],
+    var_map: &HashMap<String, Music>,
+) -> Vec<FunctionArg> {
+    args.iter()
+        .map(|arg| match arg {
+            FunctionArg::Music(m) => FunctionArg::Music(resolve_identifiers(m, var_map)),
+            other => other.clone(),
+        })
+        .collect()
 }
 
 /// Build a label segment for top-level assignments.

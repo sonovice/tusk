@@ -443,6 +443,27 @@ pub enum Music {
     Markup(Markup),
     /// A `\markuplist { ... }` expression in a music context.
     MarkupList(MarkupList),
+    /// A generic music function call: `\functionName arg1 arg2 ...`.
+    ///
+    /// Used for user-defined or unrecognized music functions. Built-in
+    /// functions like `\grace`, `\tuplet`, `\relative` etc. have their own
+    /// dedicated variants above.
+    MusicFunction {
+        /// Function name (without leading backslash).
+        name: String,
+        /// Arguments passed to the function.
+        args: Vec<FunctionArg>,
+    },
+    /// A partial function application terminated by `\etc`.
+    ///
+    /// `\functionName arg1 arg2 \etc` — supplies some arguments now;
+    /// remaining arguments are expected later when the result is called.
+    PartialFunction {
+        /// Function name (without leading backslash).
+        name: String,
+        /// Arguments supplied so far.
+        args: Vec<FunctionArg>,
+    },
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),
@@ -450,4 +471,27 @@ pub enum Music {
     Identifier(String),
     /// Unparsed content inside braces (to be refined in later phases).
     Unparsed(String),
+}
+
+// ---------------------------------------------------------------------------
+// Function arguments
+// ---------------------------------------------------------------------------
+
+/// An argument to a music function call.
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionArg {
+    /// A music expression argument.
+    Music(Music),
+    /// A string argument.
+    String(String),
+    /// A numeric argument.
+    Number(f64),
+    /// A Scheme expression argument (stored as raw text).
+    SchemeExpr(String),
+    /// A duration argument (e.g. `4.` in `\tuplet 3/2 4. { ... }`).
+    Duration(Duration),
+    /// An identifier reference (e.g. `\varName`).
+    Identifier(String),
+    /// `\default` — explicit placeholder for an optional argument.
+    Default,
 }

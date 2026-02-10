@@ -658,13 +658,7 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 Ok(Music::BarCheck)
             }
-            Token::EscapedWord(_) => {
-                let tok = self.advance()?;
-                match tok.token {
-                    Token::EscapedWord(s) => Ok(Music::Identifier(s)),
-                    _ => unreachable!(),
-                }
-            }
+            Token::EscapedWord(_) => self.parse_identifier_or_function_call(),
             Token::NoteName(_) => self.parse_note_event(),
             Token::Symbol(s) if s == "r" || s == "s" || s == "R" => self.parse_rest_or_skip(),
             Token::Symbol(s) if s == "q" => self.parse_chord_repetition(),
@@ -1435,6 +1429,7 @@ impl<'src> Parser<'src> {
 mod chords;
 mod drums;
 mod figures;
+mod functions;
 mod lyrics;
 mod markup;
 mod properties;
@@ -1464,6 +1459,8 @@ mod tests_grace;
 mod tests_lyrics;
 #[cfg(test)]
 mod tests_markup;
+#[cfg(test)]
+mod tests_music_functions;
 #[cfg(test)]
 mod tests_output_defs;
 #[cfg(test)]

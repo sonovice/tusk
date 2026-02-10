@@ -5,7 +5,7 @@
 
 use tusk_model::generated::data::DataGrace;
 
-use crate::model::{self, Music, NoteEvent, PostEvent, RestEvent};
+use crate::model::{self, FunctionArg, Music, NoteEvent, PostEvent, RestEvent};
 
 /// Internal event representation for collecting from the AST.
 ///
@@ -359,6 +359,14 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::Override { .. } | Music::Revert { .. } | Music::Set { .. } | Music::Unset { .. } => {
             let serialized = crate::serializer::serialize_property_op(music);
             events.push(LyEvent::PropertyOp(serialized));
+        }
+        Music::MusicFunction { args, .. } | Music::PartialFunction { args, .. } => {
+            // Recurse into any music arguments
+            for arg in args {
+                if let FunctionArg::Music(m) = arg {
+                    collect_events(m, events, ctx);
+                }
+            }
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

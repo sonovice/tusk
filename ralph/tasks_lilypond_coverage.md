@@ -1218,11 +1218,26 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 29.1 Model & Parser
 
-- [ ] [P] Parse music function calls: `\functionName arg1 arg2`; optional args, backup/reparse for overloaded functions; partial functions with `\etc`
-- [ ] [P] Add `MusicFunctionCall`, `FunctionArglist`, `PartialFunction`; represent built-in functions (e.g. `\tuplet`, `\grace`) and generic function call node
-- [ ] [S] Serialize function calls and partial application
-- [ ] [V] Function name known or allowed as identifier; arg count/type where specified
-- [ ] [T] Fragment: `\grace c8 d4`, `\tuplet 3/2 { c8 d e }` (already covered) and generic `\someFunction arg`
+- [x] [P] Parse music function calls: `\functionName arg1 arg2`; optional args, backup/reparse for overloaded functions; partial functions with `\etc`
+  - `Music::MusicFunction { name, args }` for generic function calls
+  - `Music::PartialFunction { name, args }` for `\func args \etc`
+  - `FunctionArg` enum: Music, String, Number, SchemeExpr, Duration, Identifier, Default
+  - Greedy arg collection: strings, numbers, scheme `#expr`, `\default`, braced/simultaneous music
+  - Parser submodule `parser/functions.rs` for function call parsing
+  - Fixed `parse_scheme_raw` to handle `#'symbol` (quoted Scheme symbols)
+- [x] [P] Add `MusicFunctionCall`, `FunctionArglist`, `PartialFunction`; represent built-in functions (e.g. `\tuplet`, `\grace`) and generic function call node
+  - Built-in functions (`\grace`, `\tuplet`, `\relative`, etc.) keep dedicated Music variants
+  - Unknown `\name` with args → `MusicFunction`; without args → `Identifier`
+- [x] [S] Serialize function calls and partial application
+  - `write_function_args` in serializer handles all FunctionArg types
+  - PartialFunction serialized with trailing `\etc`
+- [x] [V] Function name known or allowed as identifier; arg count/type where specified
+  - `EmptyFunctionName` validation error
+  - Music args validated recursively; Duration args validated
+  - `count_spans` updated for span balance in function args
+- [x] [T] Fragment: `\grace c8 d4`, `\tuplet 3/2 { c8 d e }` (already covered) and generic `\someFunction arg`
+  - `fragment_music_functions.ly` with generic functions, string/scheme/number/music args, partial \etc
+  - 12 parser tests: function with music/string/scheme/number/default args, partial functions, bare identifiers, roundtrip
 
 ### 29.2 Import & Export
 

@@ -45,6 +45,12 @@ impl<'src> Parser<'src> {
                 let tok = self.advance()?;
                 Ok(self.src[start..tok.span.end].to_string())
             }
+            Token::Quote => {
+                // #'symbol — Scheme quoted symbol (e.g. #'print, #'score)
+                self.advance()?; // consume '
+                let tok = self.advance()?; // consume symbol name
+                Ok(self.src[start..tok.span.end].to_string())
+            }
             _ => {
                 // #value — single token
                 let tok = self.advance()?;
