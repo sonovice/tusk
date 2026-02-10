@@ -797,10 +797,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 18.2 Import & Export
 
-- [ ] [I] Multi-measure rest → MEI multi-rest; bar line → MEI barline
-- [ ] [E] MEI multi-rest and barline → LilyPond R and \bar
-- [ ] [T] Roundtrip multi-rest and bar line fixtures
-- [ ] [T] Multi-rest and bar line fixtures; roundtrip
+- [x] [I] Multi-measure rest → MEI multi-rest; bar line → MEI barline
+  - Multi-measure rest already implemented in Phase 3.2 (MRest in layer)
+  - Bar check `|` → LyEvent::BarCheck, encoded as `barcheck@POS` in staffDef event sequence label
+  - Bar line `\bar "TYPE"` → LyEvent::BarLine, encoded as `barline:TYPE@POS` in event sequence label
+  - Pipe chars in bar type escaped as `\u007c` to avoid label segment separator conflicts
+  - Bar checks and bar lines do not create layer children (handled via event sequence label roundtrip)
+- [x] [E] MEI multi-rest and barline → LilyPond R and \bar
+  - Multi-measure rest export already implemented in Phase 3.2 (MRest → MultiMeasureRestEvent)
+  - Bar check: `barcheck@POS` in event label → Music::BarCheck injected at correct position
+  - Bar line: `barline:TYPE@POS` → Music::BarLine { bar_type } with `\u007c` unescaping
+  - Uses existing inject_signature_events() mechanism (same pattern as clef/key/time/autobeam)
+- [x] [T] Roundtrip multi-rest and bar line fixtures
+  - 5 import tests: bar_check_encoded_in_label, bar_line_encoded_in_label, bar_check_does_not_create_layer_children, bar_line_does_not_create_layer_children, multiple_bar_checks_encoded
+  - 6 roundtrip tests: bar_check, bar_line_final, bar_line_double, bar_check_and_bar_line_combined, multiple_bar_checks, barcheck_barline_fixture
+- [x] [T] Multi-rest and bar line fixtures; roundtrip
+  - fragment_barcheck_barline.ly fixture validated through roundtrip
+  - 618 total tests pass (was 607)
 
 ---
 

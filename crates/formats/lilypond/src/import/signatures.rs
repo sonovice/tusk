@@ -67,6 +67,14 @@ pub(super) fn apply_signatures_to_staff_def(
             LyEvent::AutoBeamOff => {
                 entries.push(format!("autobeamoff@{note_index}"));
             }
+            LyEvent::BarCheck => {
+                entries.push(format!("barcheck@{note_index}"));
+            }
+            LyEvent::BarLine(bar_type) => {
+                // Escape pipe characters — pipe is the label segment separator
+                let escaped = bar_type.replace('|', "\\u007c");
+                entries.push(format!("barline:{}@{note_index}", escaped));
+            }
             LyEvent::Note(_)
             | LyEvent::Chord { .. }
             | LyEvent::Rest(_)

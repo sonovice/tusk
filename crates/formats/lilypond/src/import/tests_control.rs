@@ -881,3 +881,103 @@ fn import_nested_repeat_creates_multiple_dirs() {
         "should create two repeat Dirs (nested)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Bar check and bar line import tests (Phase 18.2)
+// ---------------------------------------------------------------------------
+
+/// Walk MEI to find the first staffDef.
+fn first_staff_def(mei: &Mei) -> Option<&tusk_model::elements::StaffDef> {
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::ScoreDef(sd) = sc {
+                                for sd_c in &sd.children {
+                                    if let tusk_model::elements::ScoreDefChild::StaffGrp(grp) = sd_c
+                                    {
+                                        for grp_c in &grp.children {
+                                            if let tusk_model::elements::StaffGrpChild::StaffDef(
+                                                sdef,
+                                            ) = grp_c
+                                            {
+                                                return Some(sdef);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn import_bar_check_encoded_in_label() {
+    let mei = parse_and_import("{ c4 d e f | g4 a b c }");
+    let sdef = first_staff_def(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap_or("");
+    assert!(
+        label.contains("barcheck@4"),
+        "label should contain barcheck@4 (after 4 notes): {label}"
+    );
+}
+
+#[test]
+fn import_bar_line_encoded_in_label() {
+    let mei = parse_and_import("{ c4 d e f \\bar \"|.\" }");
+    let sdef = first_staff_def(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap_or("");
+    // Pipe in bar type is escaped as \u007c in labels
+    assert!(
+        label.contains("barline:\\u007c.@4"),
+        "label should contain barline:\\u007c.@4: {label}"
+    );
+}
+
+#[test]
+fn import_bar_check_does_not_create_layer_children() {
+    let mei = parse_and_import("{ c4 | d4 }");
+    let lc = layer_children(&mei);
+    // Bar check should not create any layer children — only notes
+    assert_eq!(
+        lc.len(),
+        2,
+        "expected 2 layer children (notes only): {lc:?}"
+    );
+}
+
+#[test]
+fn import_bar_line_does_not_create_layer_children() {
+    let mei = parse_and_import("{ c4 d4 \\bar \"|.\" }");
+    let lc = layer_children(&mei);
+    assert_eq!(
+        lc.len(),
+        2,
+        "expected 2 layer children (notes only): {lc:?}"
+    );
+}
+
+#[test]
+fn import_multiple_bar_checks_encoded() {
+    let mei = parse_and_import("{ c4 | d4 | e4 }");
+    let sdef = first_staff_def(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap_or("");
+    assert!(
+        label.contains("barcheck@1"),
+        "first barcheck after 1 note: {label}"
+    );
+    assert!(
+        label.contains("barcheck@2"),
+        "second barcheck after 2 notes: {label}"
+    );
+}

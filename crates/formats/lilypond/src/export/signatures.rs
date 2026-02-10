@@ -101,6 +101,18 @@ fn parse_event_sequence_label(staff_def: &tusk_model::elements::StaffDef) -> Vec
                 position,
                 music: Music::AutoBeamOff,
             });
+        } else if type_str == "barcheck" {
+            events.push(SignatureEvent {
+                position,
+                music: Music::BarCheck,
+            });
+        } else if let Some(bar_type) = type_str.strip_prefix("barline:") {
+            // Unescape pipe characters
+            let bar_type = bar_type.replace("\\u007c", "|");
+            events.push(SignatureEvent {
+                position,
+                music: Music::BarLine { bar_type },
+            });
         }
     }
 

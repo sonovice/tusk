@@ -790,7 +790,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     | LyEvent::KeySig(_)
                     | LyEvent::TimeSig(_)
                     | LyEvent::AutoBeamOn
-                    | LyEvent::AutoBeamOff => continue,
+                    | LyEvent::AutoBeamOff
+                    | LyEvent::BarCheck
+                    | LyEvent::BarLine(_) => continue,
                 };
 
                 // Set start_id on any pending tuplets/repeats/alternatives
@@ -1118,6 +1120,10 @@ enum LyEvent {
     },
     /// Marks the end of an alternative ending.
     AlternativeEnd,
+    /// A bar check `|` (timing assertion).
+    BarCheck,
+    /// An explicit bar line `\bar "TYPE"`.
+    BarLine(String),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -1304,9 +1310,8 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
                 }
             }
         }
-        // Bar checks are timing hints only — no MEI equivalent needed during import.
-        // Bar lines are handled in Phase 18.2 import.
-        Music::BarCheck | Music::BarLine { .. } => {}
+        Music::BarCheck => events.push(LyEvent::BarCheck),
+        Music::BarLine { bar_type } => events.push(LyEvent::BarLine(bar_type.clone())),
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

@@ -1196,3 +1196,67 @@ fn roundtrip_repeat_fixture() {
     assert!(output.contains("\\repeat segno"), "segno: {output}");
     assert!(output.contains("\\alternative"), "alternative: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Bar check and bar line roundtrip tests (Phase 18.2)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_bar_check() {
+    let output = roundtrip("{ c4 d e f | g4 a b c }");
+    assert!(output.contains("|"), "bar check preserved: {output}");
+    assert!(output.contains("c4"), "notes preserved: {output}");
+}
+
+#[test]
+fn roundtrip_bar_line_final() {
+    let output = roundtrip("{ c4 d e f \\bar \"|.\" }");
+    assert!(
+        output.contains("\\bar \"|.\""),
+        "final bar line preserved: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_bar_line_double() {
+    let output = roundtrip("{ c4 d \\bar \"||\" e f }");
+    assert!(
+        output.contains("\\bar \"||\""),
+        "double bar line preserved: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_bar_check_and_bar_line_combined() {
+    let output = roundtrip("{ c4 d e f | g4 a b c \\bar \"|.\" }");
+    assert!(output.contains("|"), "bar check preserved: {output}");
+    assert!(
+        output.contains("\\bar \"|.\""),
+        "final bar line preserved: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_multiple_bar_checks() {
+    let output = roundtrip("{ c4 | d4 | e4 f4 }");
+    let pipe_count = output.chars().filter(|&c| c == '|').count();
+    assert!(
+        pipe_count >= 2,
+        "expected at least 2 bar checks, got {pipe_count}: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_barcheck_barline_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_barcheck_barline.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(output.contains("|"), "bar check preserved: {output}");
+    assert!(
+        output.contains("\\bar \"|.\""),
+        "final bar line preserved: {output}"
+    );
+}
