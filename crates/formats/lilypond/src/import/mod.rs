@@ -1304,6 +1304,9 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
                 }
             }
         }
+        // Bar checks are timing hints only — no MEI equivalent needed during import.
+        // Bar lines are handled in Phase 18.2 import.
+        Music::BarCheck | Music::BarLine { .. } => {}
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

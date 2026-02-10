@@ -475,6 +475,12 @@ impl<'a> Serializer<'a> {
             }
             Music::AutoBeamOn => self.out.push_str("\\autoBeamOn"),
             Music::AutoBeamOff => self.out.push_str("\\autoBeamOff"),
+            Music::BarCheck => self.out.push('|'),
+            Music::BarLine { bar_type } => {
+                self.out.push_str("\\bar \"");
+                self.out.push_str(bar_type);
+                self.out.push('"');
+            }
             Music::Note(n) => self.write_note_event(n),
             Music::Chord(c) => self.write_chord_event(c),
             Music::Rest(r) => self.write_rest_event(r),

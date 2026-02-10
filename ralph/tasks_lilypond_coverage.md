@@ -774,11 +774,26 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 18.1 Model & Parser
 
-- [ ] [P] Parse multi-measure rest `R` with duration and post-events; parse bar check `|`; parse bar line commands (e.g. `\bar "|"`, `\bar "||"`)
-- [ ] [P] Add `MultiMeasureRest`, `BarCheck`, `BarLine`
-- [ ] [S] Serialize R, bar check, bar line
-- [ ] [V] Multi-measure rest duration positive
-- [ ] [T] Fragment: `R1*4`, `c4 | d4`, `\bar "|."`
+- [x] [P] Parse multi-measure rest `R` with duration and post-events; parse bar check `|`; parse bar line commands (e.g. `\bar "|"`, `\bar "||"`)
+  - Multi-measure rest `R` already fully implemented from Phase 3 (model/parser/serializer/validator)
+  - Bar check `|`: Token::Pipe → Music::BarCheck in parse_music()
+  - Bar line `\bar "type"`: EscapedWord("bar") → parse_bar_line() → Music::BarLine { bar_type }
+- [x] [P] Add `MultiMeasureRest`, `BarCheck`, `BarLine`
+  - Music::BarCheck variant (standalone timing assertion)
+  - Music::BarLine { bar_type: String } variant (explicit bar line)
+  - MultiMeasureRestEvent already existed from Phase 3
+- [x] [S] Serialize R, bar check, bar line
+  - BarCheck → `|`; BarLine → `\bar "type"`; MultiMeasureRest already done
+- [x] [V] Multi-measure rest duration positive
+  - Multi-measure rest validation already from Phase 3
+  - Added ValidationError::EmptyBarLineType for empty bar line type strings
+  - BarCheck passes validation (no constraints); BarLine validates non-empty type
+- [x] [T] Fragment: `R1*4`, `c4 | d4`, `\bar "|."`
+  - Fixture: fragment_barcheck_barline.ly (bar checks + final bar line in score)
+  - 11 parser tests: bar check standalone/between notes/at start, bar line final/double/repeat/empty, multi-measure rest with multiplier/fraction, roundtrips
+  - 3 serializer tests: bar check, bar line final, bar line double
+  - 3 validator tests: bar check passes, bar line valid, bar line empty fails
+  - 607 total tests pass (was 585)
 
 ### 18.2 Import & Export
 

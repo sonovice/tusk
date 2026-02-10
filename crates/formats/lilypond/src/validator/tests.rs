@@ -1138,3 +1138,59 @@ fn repeat_span_balance_in_body() {
     };
     assert!(validate(&file).is_ok());
 }
+
+// ── Bar check & bar line (Phase 18) ─────────────────────────────────────
+
+#[test]
+fn bar_check_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Note(NoteEvent {
+                pitch: Pitch {
+                    step: 'c',
+                    alter: 0.0,
+                    octave: 0,
+                    force_accidental: false,
+                    cautionary: false,
+                    octave_check: None,
+                },
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                pitched_rest: false,
+                post_events: vec![],
+            }),
+            Music::BarCheck,
+        ]))],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn bar_line_valid_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::BarLine {
+            bar_type: "|.".to_string(),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn bar_line_empty_type_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::BarLine {
+            bar_type: String::new(),
+        })],
+    };
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::EmptyBarLineType))
+    );
+}

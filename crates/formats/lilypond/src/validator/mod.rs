@@ -85,6 +85,9 @@ pub enum ValidationError {
     #[error("unknown repeat type '{0}'")]
     UnknownRepeatType(String),
 
+    #[error("empty bar line type")]
+    EmptyBarLineType,
+
     #[error("{0}")]
     Other(String),
 }
@@ -320,6 +323,7 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::ContextedMusic { music, .. } => {
             count_spans(music, counts);
         }
+        Music::BarCheck | Music::BarLine { .. } => {}
         _ => {}
     }
 }
@@ -497,6 +501,12 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             validate_music(grace, errors);
         }
         Music::AutoBeamOn | Music::AutoBeamOff => {}
+        Music::BarCheck => {}
+        Music::BarLine { bar_type } => {
+            if bar_type.is_empty() {
+                errors.push(ValidationError::EmptyBarLineType);
+            }
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

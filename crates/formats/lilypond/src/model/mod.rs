@@ -334,6 +334,10 @@ pub enum Music {
         body: Box<Music>,
         alternatives: Option<Vec<Music>>,
     },
+    /// Bar check: `|` — a timing assertion at measure boundaries.
+    BarCheck,
+    /// Bar line command: `\bar "type"` — sets explicit bar line style.
+    BarLine { bar_type: String },
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

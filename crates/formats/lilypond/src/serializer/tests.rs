@@ -927,3 +927,42 @@ fn serialize_repeat_unfold() {
     let output = serialize(&file);
     assert!(output.contains("\\repeat unfold 4 { c8 }"));
 }
+
+// ── Bar check & bar line (Phase 18) ─────────────────────────────────────
+
+#[test]
+fn serialize_bar_check() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            make_note('c', 4),
+            Music::BarCheck,
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("c4 |"), "got: {output}");
+}
+
+#[test]
+fn serialize_bar_line_final() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::BarLine {
+            bar_type: "|.".to_string(),
+        })],
+    };
+    let output = serialize(&file);
+    assert!(output.contains(r#"\bar "|.""#), "got: {output}");
+}
+
+#[test]
+fn serialize_bar_line_double() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::BarLine {
+            bar_type: "||".to_string(),
+        })],
+    };
+    let output = serialize(&file);
+    assert!(output.contains(r#"\bar "||""#), "got: {output}");
+}

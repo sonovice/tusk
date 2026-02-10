@@ -635,6 +635,11 @@ impl<'src> Parser<'src> {
             Token::EscapedWord(s) if s == "acciaccatura" => self.parse_acciaccatura(),
             Token::EscapedWord(s) if s == "appoggiatura" => self.parse_appoggiatura(),
             Token::EscapedWord(s) if s == "afterGrace" => self.parse_after_grace(),
+            Token::EscapedWord(s) if s == "bar" => self.parse_bar_line(),
+            Token::Pipe => {
+                self.advance()?;
+                Ok(Music::BarCheck)
+            }
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -1107,6 +1112,16 @@ impl<'src> Parser<'src> {
     }
 
     // ──────────────────────────────────────────────────────────────────
+    // Bar line: \bar "type"
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_bar_line(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \bar
+        let bar_type = self.expect_string()?;
+        Ok(Music::BarLine { bar_type })
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     // Grace notes
     // ──────────────────────────────────────────────────────────────────
 
@@ -1382,6 +1397,8 @@ pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_barcheck;
 #[cfg(test)]
 mod tests_grace;
 #[cfg(test)]
