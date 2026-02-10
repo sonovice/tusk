@@ -655,10 +655,24 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 15.2 Import & Export
 
-- [ ] [I] Tuplet → MEI tupletSpan / time-modification
-- [ ] [E] MEI tuplet → LilyPond `\tuplet`
-- [ ] [T] Roundtrip tuplet fixtures
-- [ ] [T] Tuplet fixtures; roundtrip
+- [x] [I] Tuplet → MEI tupletSpan / time-modification
+  - Music::Tuplet emits TupletStart/TupletEnd markers in collect_events()
+  - PendingTuplet tracks startid (first note), resolved on TupletEnd with endid (last note)
+  - MeasureChild::TupletSpan created with @startid, @endid, @num, @numbase, @staff
+  - Label `lilypond:tuplet,N/M[,span=DUR]` for lossless roundtrip (including span_duration)
+  - Extracted control event builders to import/control_events.rs to keep mod.rs under 1500 LOC
+- [x] [E] MEI tuplet → LilyPond `\tuplet`
+  - collect_tuplet_spans() extracts TupletSpan control events from measure
+  - collect_layer_child_ids() builds parallel xml:id list during layer conversion
+  - apply_tuplet_wrapping() finds start/end indices, wraps range in Music::Tuplet
+  - Nested tuplets: innermost processed first (sorted by range size), id list updated to preserve start_id
+  - parse_tuplet_span_duration() and parse_duration_from_label() restore span_duration from label
+- [x] [T] Roundtrip tuplet fixtures
+  - 5 import tests: basic tuplet, span duration, 5/4 ratio, nested tuplets, label format
+  - 6 roundtrip tests: basic, span duration, 5/4, nested, mixed with other notes, fixture
+- [x] [T] Tuplet fixtures; roundtrip
+  - fragment_tuplets.ly content validated through roundtrip
+  - 505 total tests pass (was 475)
 
 ---
 

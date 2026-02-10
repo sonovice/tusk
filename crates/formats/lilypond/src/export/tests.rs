@@ -970,3 +970,53 @@ fn roundtrip_ornaments_fixture() {
     assert!(output.contains(":32"), "tremolo :32: {output}");
     assert!(output.contains(":16"), "tremolo :16: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Tuplet roundtrip tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_tuplet_basic() {
+    let output = roundtrip("{ \\tuplet 3/2 { c'8 d' e' } }");
+    assert!(output.contains("\\tuplet 3/2"), "output: {output}");
+    assert!(output.contains("c'8"), "output: {output}");
+    assert!(output.contains("d'"), "output: {output}");
+    assert!(output.contains("e'"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tuplet_with_span_duration() {
+    let output = roundtrip("{ \\tuplet 3/2 4 { c'8 d' e' f' g' a' } }");
+    assert!(output.contains("\\tuplet 3/2 4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tuplet_5_4() {
+    let output = roundtrip("{ \\tuplet 5/4 { c'16 d' e' f' g' } }");
+    assert!(output.contains("\\tuplet 5/4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_nested_tuplets() {
+    let output = roundtrip("{ \\tuplet 3/2 { \\tuplet 3/2 { c'32 d' e' } f'16 g' } }");
+    // Should contain two \tuplet 3/2 occurrences
+    let count = output.matches("\\tuplet 3/2").count();
+    assert!(count >= 2, "expected 2 \\tuplet 3/2, got {count}: {output}");
+}
+
+#[test]
+fn roundtrip_tuplet_with_other_notes() {
+    let output = roundtrip("{ a'4 \\tuplet 3/2 { c'8 d' e' } b'4 }");
+    assert!(output.contains("a'4"), "output: {output}");
+    assert!(output.contains("\\tuplet 3/2"), "output: {output}");
+    assert!(output.contains("b'4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tuplet_fixture() {
+    // Content from tests/fixtures/lilypond/fragment_tuplets.ly
+    let src = "{ \\tuplet 3/2 { c8 d e } \\tuplet 3/2 4 { c8 d e f g a } \\tuplet 5/4 { c16 d e f g } \\tuplet 3/2 { \\tuplet 3/2 { c32 d e } f16 g } }";
+    let output = roundtrip(src);
+    assert!(output.contains("\\tuplet 3/2"), "3/2 tuplet: {output}");
+    assert!(output.contains("\\tuplet 5/4"), "5/4 tuplet: {output}");
+}

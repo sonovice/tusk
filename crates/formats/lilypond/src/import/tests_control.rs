@@ -500,3 +500,110 @@ fn import_combined_string_and_open() {
     assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:string,1"));
     assert_eq!(dirs[1].common.label.as_deref(), Some("lilypond:artic,open"));
 }
+
+// ---------------------------------------------------------------------------
+// Tuplet import tests
+// ---------------------------------------------------------------------------
+
+use tusk_model::elements::TupletSpan;
+
+/// Walk MEI to find all TupletSpan elements in the first measure.
+fn measure_tuplet_spans(mei: &Mei) -> Vec<&TupletSpan> {
+    let mut spans = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::TupletSpan(ts) = mc2 {
+                                                spans.push(ts.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    spans
+}
+
+#[test]
+fn import_tuplet_creates_tuplet_span() {
+    let mei = parse_and_import("{ \\tuplet 3/2 { c8 d e } }");
+    let spans = measure_tuplet_spans(&mei);
+    assert_eq!(spans.len(), 1, "expected 1 tupletSpan");
+    let ts = &spans[0];
+    assert_eq!(ts.tuplet_span_log.num.as_deref(), Some("3"));
+    assert_eq!(ts.tuplet_span_log.numbase.as_deref(), Some("2"));
+    assert!(ts.tuplet_span_log.startid.is_some());
+    assert!(ts.tuplet_span_log.endid.is_some());
+    assert!(ts.tuplet_span_log.staff.is_some());
+    // startid and endid should reference different notes
+    assert_ne!(
+        ts.tuplet_span_log.startid.as_ref().unwrap().0,
+        ts.tuplet_span_log.endid.as_ref().unwrap().0
+    );
+}
+
+#[test]
+fn import_tuplet_with_span_duration() {
+    let mei = parse_and_import("{ \\tuplet 3/2 4 { c8 d e f g a } }");
+    let spans = measure_tuplet_spans(&mei);
+    assert_eq!(spans.len(), 1);
+    let ts = &spans[0];
+    assert_eq!(ts.tuplet_span_log.num.as_deref(), Some("3"));
+    assert_eq!(ts.tuplet_span_log.numbase.as_deref(), Some("2"));
+    // Label should contain span duration info
+    let label = ts.common.label.as_deref().unwrap();
+    assert!(
+        label.contains("span=4"),
+        "label should contain span=4: {label}"
+    );
+}
+
+#[test]
+fn import_tuplet_5_4() {
+    let mei = parse_and_import("{ \\tuplet 5/4 { c16 d e f g } }");
+    let spans = measure_tuplet_spans(&mei);
+    assert_eq!(spans.len(), 1);
+    assert_eq!(spans[0].tuplet_span_log.num.as_deref(), Some("5"));
+    assert_eq!(spans[0].tuplet_span_log.numbase.as_deref(), Some("4"));
+    // 5 notes in the layer
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 5, "expected 5 notes in layer");
+}
+
+#[test]
+fn import_nested_tuplets() {
+    let mei = parse_and_import("{ \\tuplet 3/2 { \\tuplet 3/2 { c32 d e } f16 g } }");
+    let spans = measure_tuplet_spans(&mei);
+    assert_eq!(spans.len(), 2, "expected 2 tupletSpans (inner + outer)");
+    // Both should be 3/2
+    for ts in &spans {
+        assert_eq!(ts.tuplet_span_log.num.as_deref(), Some("3"));
+        assert_eq!(ts.tuplet_span_log.numbase.as_deref(), Some("2"));
+    }
+}
+
+#[test]
+fn import_tuplet_label_format() {
+    let mei = parse_and_import("{ \\tuplet 3/2 { c8 d e } }");
+    let spans = measure_tuplet_spans(&mei);
+    let label = spans[0].common.label.as_deref().unwrap();
+    assert!(
+        label.starts_with("lilypond:tuplet,3/2"),
+        "label should start with lilypond:tuplet,3/2: {label}"
+    );
+}

@@ -74,7 +74,7 @@ pub(super) fn apply_signatures_to_staff_def(
             | LyEvent::MeasureRest(_) => {
                 note_index += 1;
             }
-            LyEvent::Skip(_) => {}
+            LyEvent::Skip(_) | LyEvent::TupletStart { .. } | LyEvent::TupletEnd => {}
         }
     }
 

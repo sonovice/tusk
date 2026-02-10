@@ -1,7 +1,7 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{
-    ChordChild, Dynam, Hairpin, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef,
+    ChordChild, Dynam, DynamChild, Hairpin, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef,
 };
 use tusk_model::generated::data::{
     DataClefshape, DataDuration, DataDurationCmn, DataDurationrests, DataStaffrelBasic,

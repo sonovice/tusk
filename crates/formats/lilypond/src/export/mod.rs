@@ -13,6 +13,7 @@ use tusk_model::elements::{
     LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
 };
 
+use crate::model::Duration;
 use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
 use crate::model::{
     ContextKeyword, LilyPondFile, Music, ScoreBlock, ScoreItem, ToplevelExpression, Version,
@@ -61,6 +62,9 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     collect_artic_post_events(&measure.children, &mut post_event_map);
                     collect_ornament_post_events(&measure.children, &mut post_event_map);
 
+                    // Collect tuplet spans for wrapping
+                    let tuplet_spans = collect_tuplet_spans(&measure.children);
+
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
@@ -68,9 +72,15 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                             for sc in &staff.children {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc;
                                 let mut items = Vec::new();
+                                let mut item_ids = Vec::new();
                                 for lc in &layer.children {
+                                    let start = items.len();
                                     convert_layer_child_to_items(lc, &post_event_map, &mut items);
+                                    // Track xml:ids for newly added items
+                                    collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
                                 }
+                                // Wrap tuplet ranges in Music::Tuplet
+                                apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 layers.push(items);
                             }
 
@@ -351,6 +361,239 @@ fn build_layers_music(layers: Vec<Vec<Music>>) -> Music {
         _ => {
             let voices: Vec<Music> = non_empty.into_iter().map(Music::Sequential).collect();
             Music::Simultaneous(voices)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tuplet span handling
+// ---------------------------------------------------------------------------
+
+/// Collected tuplet span info from measure control events.
+struct TupletSpanInfo {
+    start_id: String,
+    end_id: String,
+    numerator: u32,
+    denominator: u32,
+    span_duration: Option<Duration>,
+}
+
+/// Collect TupletSpan control events from measure children.
+fn collect_tuplet_spans(measure_children: &[MeasureChild]) -> Vec<TupletSpanInfo> {
+    let mut spans = Vec::new();
+    for mc in measure_children {
+        if let MeasureChild::TupletSpan(ts) = mc {
+            let start_id = ts
+                .tuplet_span_log
+                .startid
+                .as_ref()
+                .map(|u| u.0.trim_start_matches('#').to_string())
+                .unwrap_or_default();
+            let end_id = ts
+                .tuplet_span_log
+                .endid
+                .as_ref()
+                .map(|u| u.0.trim_start_matches('#').to_string())
+                .unwrap_or_default();
+            let numerator: u32 = ts
+                .tuplet_span_log
+                .num
+                .as_deref()
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(3);
+            let denominator: u32 = ts
+                .tuplet_span_log
+                .numbase
+                .as_deref()
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(2);
+
+            // Parse span_duration from label if present
+            let span_duration = ts
+                .common
+                .label
+                .as_deref()
+                .and_then(parse_tuplet_span_duration);
+
+            spans.push(TupletSpanInfo {
+                start_id,
+                end_id,
+                numerator,
+                denominator,
+                span_duration,
+            });
+        }
+    }
+    spans
+}
+
+/// Parse span duration from a tuplet label.
+///
+/// Label format: `lilypond:tuplet,NUM/DENOM[,span=DUR]`
+/// Duration format: `BASE[.DOTS][*N][*N/M]`
+fn parse_tuplet_span_duration(label: &str) -> Option<Duration> {
+    let rest = label.strip_prefix("lilypond:tuplet,")?;
+    // Find span= part
+    let span_str = rest.split(',').find_map(|p| p.strip_prefix("span="))?;
+    parse_duration_from_label(span_str)
+}
+
+/// Parse a compact duration string from a label.
+///
+/// Format: `BASE[.DOTS][*N][*N/M]`
+fn parse_duration_from_label(s: &str) -> Option<Duration> {
+    let mut chars = s.chars().peekable();
+
+    // Parse base (digits before first dot or *)
+    let mut base_str = String::new();
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_digit() {
+            base_str.push(c);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    let base: u32 = base_str.parse().ok()?;
+
+    // Parse dots
+    let mut dots = 0u8;
+    while let Some(&'.') = chars.peek() {
+        dots += 1;
+        chars.next();
+    }
+
+    // Parse multipliers
+    let mut multipliers = Vec::new();
+    while let Some(&'*') = chars.peek() {
+        chars.next();
+        let mut num_str = String::new();
+        while let Some(&c) = chars.peek() {
+            if c.is_ascii_digit() {
+                num_str.push(c);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        let num: u32 = num_str.parse().ok()?;
+
+        if let Some(&'/') = chars.peek() {
+            chars.next();
+            let mut den_str = String::new();
+            while let Some(&c) = chars.peek() {
+                if c.is_ascii_digit() {
+                    den_str.push(c);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            let den: u32 = den_str.parse().ok()?;
+            multipliers.push((num, den));
+        } else {
+            multipliers.push((num, 1));
+        }
+    }
+
+    Some(Duration {
+        base,
+        dots,
+        multipliers,
+    })
+}
+
+/// Collect xml:ids from a LayerChild in the same order as convert_layer_child_to_items
+/// produces items.
+fn collect_layer_child_ids(child: &LayerChild, ids: &mut Vec<Option<String>>, count: usize) {
+    match child {
+        LayerChild::Beam(beam) => {
+            for bc in &beam.children {
+                ids.push(beam_child_xml_id(bc).map(String::from));
+            }
+        }
+        _ => {
+            if count > 0 {
+                ids.push(layer_child_xml_id(child).map(String::from));
+            }
+        }
+    }
+}
+
+/// Apply tuplet wrapping to a list of Music items using tuplet span info.
+///
+/// For each tuplet span, finds the start and end indices in the items list
+/// by matching xml:ids, then replaces that range with a Music::Tuplet wrapper.
+/// Processes tuplets from innermost to outermost (sorted by range size, ascending).
+fn apply_tuplet_wrapping(
+    items: &mut Vec<Music>,
+    item_ids: &[Option<String>],
+    tuplet_spans: &[TupletSpanInfo],
+) {
+    if tuplet_spans.is_empty() || items.is_empty() {
+        return;
+    }
+
+    // Build (start_idx, end_idx, span_info_idx) for each tuplet span
+    // Indices are into the original item_ids list.
+    let mut ranges: Vec<(usize, usize, usize)> = Vec::new();
+    for (si, span) in tuplet_spans.iter().enumerate() {
+        let start_idx = item_ids
+            .iter()
+            .position(|id| id.as_deref().is_some_and(|i| i == span.start_id));
+        let end_idx = item_ids
+            .iter()
+            .position(|id| id.as_deref().is_some_and(|i| i == span.end_id));
+        if let (Some(si_idx), Some(ei_idx)) = (start_idx, end_idx)
+            && si_idx <= ei_idx
+        {
+            ranges.push((si_idx, ei_idx, si));
+        }
+    }
+
+    // Sort by range size (smallest first = innermost first) for correct nesting.
+    // For equal sizes, process later positions first to avoid index shifting issues.
+    ranges.sort_by(|a, b| {
+        let size_a = a.1 - a.0;
+        let size_b = b.1 - b.0;
+        size_a.cmp(&size_b).then(b.0.cmp(&a.0))
+    });
+
+    // Maintain a mutable id list that gets updated as items are wrapped.
+    // When a range [s..=e] is wrapped, the ids collapse to a single entry
+    // retaining the start_id (so outer tuplets referencing the same note can find it).
+    let mut ids: Vec<Option<String>> = item_ids.to_vec();
+
+    for &(_orig_start, _orig_end, span_idx) in &ranges {
+        let span = &tuplet_spans[span_idx];
+
+        // Find current positions in the (possibly modified) ids list
+        let cur_start = ids
+            .iter()
+            .position(|id| id.as_deref().is_some_and(|i| i == span.start_id));
+        let cur_end = ids
+            .iter()
+            .rposition(|id| id.as_deref().is_some_and(|i| i == span.end_id));
+
+        if let (Some(cs), Some(ce)) = (cur_start, cur_end)
+            && cs <= ce
+            && ce < items.len()
+        {
+            let start_id = ids[cs].clone();
+
+            // Extract items in range and wrap in Tuplet
+            let body_items: Vec<Music> = items.drain(cs..=ce).collect();
+            let tuplet = Music::Tuplet {
+                numerator: span.numerator,
+                denominator: span.denominator,
+                span_duration: span.span_duration.clone(),
+                body: Box::new(Music::Sequential(body_items)),
+            };
+            items.insert(cs, tuplet);
+
+            // Replace range of ids with single entry preserving start_id
+            ids.drain(cs..=ce);
+            ids.insert(cs, start_id);
         }
     }
 }
