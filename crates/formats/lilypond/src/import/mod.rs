@@ -249,6 +249,9 @@ fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
         Music::ContextedMusic { music, .. } => {
             collect_events(music, events);
         }
+        Music::ContextChange { .. } => {
+            // Context changes don't produce note events
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

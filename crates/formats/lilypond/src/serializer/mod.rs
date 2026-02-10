@@ -355,12 +355,16 @@ impl<'a> Serializer<'a> {
                 self.write_music(body);
             }
             Music::ContextedMusic {
+                keyword,
                 context_type,
                 name,
                 with_block,
                 music,
             } => {
-                self.out.push_str("\\new ");
+                match keyword {
+                    ContextKeyword::New => self.out.push_str("\\new "),
+                    ContextKeyword::Context => self.out.push_str("\\context "),
+                }
                 self.out.push_str(context_type);
                 if let Some(n) = name {
                     self.out.push_str(" = \"");
@@ -382,6 +386,13 @@ impl<'a> Serializer<'a> {
                 }
                 self.out.push(' ');
                 self.write_music(music);
+            }
+            Music::ContextChange { context_type, name } => {
+                self.out.push_str("\\change ");
+                self.out.push_str(context_type);
+                self.out.push_str(" = \"");
+                self.out.push_str(name);
+                self.out.push('"');
             }
             Music::Note(n) => self.write_note_event(n),
             Music::Rest(r) => self.write_rest_event(r),

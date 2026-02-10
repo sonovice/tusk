@@ -196,6 +196,15 @@ pub enum AssignmentValue {
 // Music
 // ---------------------------------------------------------------------------
 
+/// Whether `\new` or `\context` was used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContextKeyword {
+    /// `\new` — creates a fresh context instance.
+    New,
+    /// `\context` — references an existing (or creates a default) context.
+    Context,
+}
+
 /// A music expression.
 ///
 /// Variants are expanded as new phases implement more of the grammar.
@@ -212,13 +221,17 @@ pub enum Music {
     },
     /// `\fixed pitch { ... }`.
     Fixed { pitch: Box<Music>, body: Box<Music> },
-    /// `\new ContextType [= "name"] [\with { ... }] music`.
+    /// `\new ContextType [= "name"] [\with { ... }] music` or
+    /// `\context ContextType [= "name"] [\with { ... }] music`.
     ContextedMusic {
+        keyword: ContextKeyword,
         context_type: String,
         name: Option<String>,
         with_block: Option<Vec<ContextModItem>>,
         music: Box<Music>,
     },
+    /// `\change ContextType = "name"`.
+    ContextChange { context_type: String, name: String },
     /// A note event with structured pitch and duration.
     Note(NoteEvent),
     /// A rest event (`r`).

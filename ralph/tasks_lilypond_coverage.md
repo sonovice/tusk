@@ -206,11 +206,28 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 5.1 Model & Parser
 
-- [ ] [P] Add `ContextPrefix`, `ContextModification`, `ContextDefSpec`, `OptionalContextMods`; parse `\new Staff`, `\new Voice = "name"`, `\context "Staff"`, `\change Staff = "name"`, `\with { ... }`
-- [ ] [P] Parse context modifier list in `\with { \consists ..., \remove ..., \override ..., \set ..., etc. }`
-- [ ] [S] Serialize context prefix and `\with` blocks
-- [ ] [V] Context names and types consistent
-- [ ] [T] Parse `\score { \new Staff { c4 } }` and `\new PianoStaff << \new Staff { } \new Staff { } >>`
+- [x] [P] Add `ContextPrefix`, `ContextModification`, `ContextDefSpec`, `OptionalContextMods`; parse `\new Staff`, `\new Voice = "name"`, `\context "Staff"`, `\change Staff = "name"`, `\with { ... }`
+  - Added `ContextKeyword` enum (New/Context) to distinguish `\new` vs `\context`
+  - Added `Music::ContextChange { context_type, name }` for `\change Staff = "name"`
+  - Updated `ContextedMusic` to carry `keyword` field
+  - `parse_context_music()` records keyword, accepts String or Symbol for context type
+  - `parse_context_change()` for `\change ContextType = simple_string`
+  - `parse_optional_context_mods()` supports multiple `\with` blocks per grammar
+  - `expect_simple_string()` accepts quoted string or bare symbol
+- [x] [P] Parse context modifier list in `\with { \consists ..., \remove ..., \override ..., \set ..., etc. }`
+  - Reuses existing `parse_context_mod_item()` (\\consists, \\remove, \\ContextRef, assignments)
+  - Multiple `\with` blocks merged into single list per grammar `context_modification_mods_list`
+- [x] [S] Serialize context prefix and `\with` blocks
+  - Serializer uses `ContextKeyword` to emit `\new` or `\context`
+  - Added `Music::ContextChange` serialization: `\change Type = "name"`
+- [x] [V] Context names and types consistent
+  - Added `KNOWN_CONTEXT_TYPES` list (30 types: Score, Staff, Voice, PianoStaff, etc.)
+  - `ValidationError::UnknownContextType` for unrecognized context types
+  - Validates both `ContextedMusic` and `ContextChange`
+- [x] [T] Parse `\score { \new Staff { c4 } }` and `\new PianoStaff << \new Staff { } \new Staff { } >>`
+  - 10 new tests: parse_new_staff_with_name, parse_context_staff, parse_new_with_block, parse_context_change, parse_nested_new_staff, parse_piano_staff, roundtrip_context_fixture, unknown_context_type, known_context_type_passes, context_change_unknown_type
+  - Fixture: fragment_contexts.ly (StaffGroup with named staves)
+  - 155 total tests pass
 
 ### 5.2 Import & Export
 

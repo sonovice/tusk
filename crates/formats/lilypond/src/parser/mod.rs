@@ -227,7 +227,7 @@ impl<'src> Parser<'src> {
                 let m = self.parse_music()?;
                 Ok(AssignmentValue::Music(Box::new(m)))
             }
-            Token::Relative | Token::Fixed | Token::New | Token::Context => {
+            Token::Relative | Token::Fixed | Token::New | Token::Context | Token::Change => {
                 let m = self.parse_music()?;
                 Ok(AssignmentValue::Music(Box::new(m)))
             }
@@ -605,6 +605,7 @@ impl<'src> Parser<'src> {
             Token::Relative => self.parse_relative(),
             Token::Fixed => self.parse_fixed(),
             Token::New | Token::Context => self.parse_context_music(),
+            Token::Change => self.parse_context_change(),
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -856,11 +857,17 @@ impl<'src> Parser<'src> {
 
     fn parse_context_music(&mut self) -> Result<Music, ParseError> {
         // \new or \context
+        let keyword = match self.peek() {
+            Token::New => ContextKeyword::New,
+            Token::Context => ContextKeyword::Context,
+            _ => unreachable!(),
+        };
         self.advance()?;
 
-        // Context type name
+        // Context type name (Symbol or String — grammar allows simple_string)
         let context_type = match &self.current.token {
             Token::Symbol(s) => s.clone(),
+            Token::String(s) => s.clone(),
             _ => {
                 return Err(ParseError::Unexpected {
                     found: self.current.token.clone(),
@@ -874,33 +881,78 @@ impl<'src> Parser<'src> {
         // Optional = "name"
         let name = if *self.peek() == Token::Equals {
             self.advance()?;
-            Some(self.expect_string()?)
+            Some(self.expect_simple_string()?)
         } else {
             None
         };
 
-        // Optional \with { ... }
-        let with_block = if *self.peek() == Token::With {
-            self.advance()?;
-            self.expect(&Token::BraceOpen)?;
-            let mut items = Vec::new();
-            while *self.peek() != Token::BraceClose && !self.at_eof() {
-                items.push(self.parse_context_mod_item()?);
-            }
-            self.expect(&Token::BraceClose)?;
-            Some(items)
-        } else {
-            None
-        };
+        // Optional \with { ... } (can repeat per grammar)
+        let with_block = self.parse_optional_context_mods()?;
 
         // Music body
         let music = Box::new(self.parse_music()?);
         Ok(Music::ContextedMusic {
+            keyword,
             context_type,
             name,
             with_block,
             music,
         })
+    }
+
+    fn parse_context_change(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Change)?;
+        // Context type name
+        let context_type = match &self.current.token {
+            Token::Symbol(s) => s.clone(),
+            Token::String(s) => s.clone(),
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "context type name after \\change".into(),
+                });
+            }
+        };
+        self.advance()?;
+        self.expect(&Token::Equals)?;
+        let name = self.expect_simple_string()?;
+        Ok(Music::ContextChange { context_type, name })
+    }
+
+    /// Parse `optional_context_mods` — zero or more `\with { ... }` blocks.
+    fn parse_optional_context_mods(&mut self) -> Result<Option<Vec<ContextModItem>>, ParseError> {
+        let mut all_items = Vec::new();
+        while *self.peek() == Token::With {
+            self.advance()?;
+            self.expect(&Token::BraceOpen)?;
+            while *self.peek() != Token::BraceClose && !self.at_eof() {
+                all_items.push(self.parse_context_mod_item()?);
+            }
+            self.expect(&Token::BraceClose)?;
+        }
+        if all_items.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(all_items))
+        }
+    }
+
+    /// Parse a `simple_string`: either a quoted string or a bare symbol.
+    fn expect_simple_string(&mut self) -> Result<String, ParseError> {
+        match &self.current.token {
+            Token::String(_) => self.expect_string(),
+            Token::Symbol(s) => {
+                let s = s.clone();
+                self.advance()?;
+                Ok(s)
+            }
+            _ => Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "string or symbol".into(),
+            }),
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -1154,8 +1206,12 @@ mod tests {
         let ast = parse(input).unwrap();
         match &ast.items[0] {
             ToplevelExpression::Music(Music::ContextedMusic {
-                context_type, name, ..
+                keyword,
+                context_type,
+                name,
+                ..
             }) => {
+                assert_eq!(*keyword, ContextKeyword::New);
                 assert_eq!(context_type, "Staff");
                 assert!(name.is_none());
             }
@@ -1624,5 +1680,145 @@ mod tests {
     #[test]
     fn roundtrip_fragment_sequential_simultaneous() {
         roundtrip_fixture("fragment_sequential_simultaneous.ly");
+    }
+
+    // ── Phase 5 tests ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_new_staff_with_name() {
+        let ast = parse("\\new Staff = \"violin\" { c4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::ContextedMusic {
+                keyword,
+                context_type,
+                name,
+                ..
+            }) => {
+                assert_eq!(*keyword, ContextKeyword::New);
+                assert_eq!(context_type, "Staff");
+                assert_eq!(name.as_deref(), Some("violin"));
+            }
+            other => panic!("expected contexted music, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_context_staff() {
+        let ast = parse("\\context Staff = \"main\" { c4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::ContextedMusic {
+                keyword,
+                context_type,
+                name,
+                ..
+            }) => {
+                assert_eq!(*keyword, ContextKeyword::Context);
+                assert_eq!(context_type, "Staff");
+                assert_eq!(name.as_deref(), Some("main"));
+            }
+            other => panic!("expected contexted music, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_new_with_block() {
+        let input = r#"\new Staff \with {
+  \consists "Span_arpeggio_engraver"
+  instrumentName = "Piano"
+} { c4 }"#;
+        let ast = parse(input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::ContextedMusic {
+                keyword,
+                context_type,
+                with_block,
+                ..
+            }) => {
+                assert_eq!(*keyword, ContextKeyword::New);
+                assert_eq!(context_type, "Staff");
+                let items = with_block.as_ref().unwrap();
+                assert_eq!(items.len(), 2);
+                assert!(
+                    matches!(&items[0], ContextModItem::Consists(s) if s == "Span_arpeggio_engraver")
+                );
+                assert!(
+                    matches!(&items[1], ContextModItem::Assignment(a) if a.name == "instrumentName")
+                );
+            }
+            other => panic!("expected contexted music, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_context_change() {
+        let ast = parse("{ c4 \\change Staff = \"other\" d4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 3);
+                match &items[1] {
+                    Music::ContextChange { context_type, name } => {
+                        assert_eq!(context_type, "Staff");
+                        assert_eq!(name, "other");
+                    }
+                    other => panic!("expected ContextChange, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_nested_new_staff() {
+        let input = r#"\new StaffGroup << \new Staff { c4 } \new Staff { d4 } >>"#;
+        let ast = parse(input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::ContextedMusic {
+                keyword,
+                context_type,
+                music,
+                ..
+            }) => {
+                assert_eq!(*keyword, ContextKeyword::New);
+                assert_eq!(context_type, "StaffGroup");
+                match music.as_ref() {
+                    Music::Simultaneous(items) => {
+                        assert_eq!(items.len(), 2);
+                        assert!(
+                            matches!(&items[0], Music::ContextedMusic { context_type, .. } if context_type == "Staff")
+                        );
+                        assert!(
+                            matches!(&items[1], Music::ContextedMusic { context_type, .. } if context_type == "Staff")
+                        );
+                    }
+                    other => panic!("expected simultaneous, got {other:?}"),
+                }
+            }
+            other => panic!("expected contexted music, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_piano_staff() {
+        let input = r#"\new PianoStaff <<
+  \new Staff = "right" { c'4 }
+  \new Staff = "left" { c4 }
+>>"#;
+        let ast = parse(input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::ContextedMusic {
+                keyword,
+                context_type,
+                ..
+            }) => {
+                assert_eq!(*keyword, ContextKeyword::New);
+                assert_eq!(context_type, "PianoStaff");
+            }
+            other => panic!("expected PianoStaff, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_context_fixture() {
+        roundtrip_fixture("fragment_contexts.ly");
     }
 }

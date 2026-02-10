@@ -28,9 +28,45 @@ pub enum ValidationError {
     #[error("duration multiplier denominator is zero")]
     ZeroMultiplierDenominator,
 
+    #[error("unknown context type '{name}'")]
+    UnknownContextType { name: String },
+
     #[error("{0}")]
     Other(String),
 }
+
+/// Well-known LilyPond context types.
+const KNOWN_CONTEXT_TYPES: &[&str] = &[
+    "Score",
+    "StaffGroup",
+    "ChoirStaff",
+    "GrandStaff",
+    "PianoStaff",
+    "Staff",
+    "RhythmicStaff",
+    "TabStaff",
+    "DrumStaff",
+    "Voice",
+    "TabVoice",
+    "DrumVoice",
+    "Lyrics",
+    "ChordNames",
+    "FiguredBass",
+    "Devnull",
+    "NullVoice",
+    "CueVoice",
+    "Global",
+    "MensuralStaff",
+    "MensuralVoice",
+    "VaticanaStaff",
+    "VaticanaVoice",
+    "GregorianTranscriptionStaff",
+    "GregorianTranscriptionVoice",
+    "KievanStaff",
+    "KievanVoice",
+    "PetrucciStaff",
+    "PetrucciVoice",
+];
 
 // ---------------------------------------------------------------------------
 // Validator
@@ -129,8 +165,24 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             validate_music(pitch, errors);
             validate_music(body, errors);
         }
-        Music::ContextedMusic { music, .. } => {
+        Music::ContextedMusic {
+            context_type,
+            music,
+            ..
+        } => {
+            if !KNOWN_CONTEXT_TYPES.contains(&context_type.as_str()) {
+                errors.push(ValidationError::UnknownContextType {
+                    name: context_type.clone(),
+                });
+            }
             validate_music(music, errors);
+        }
+        Music::ContextChange { context_type, .. } => {
+            if !KNOWN_CONTEXT_TYPES.contains(&context_type.as_str()) {
+                errors.push(ValidationError::UnknownContextType {
+                    name: context_type.clone(),
+                });
+            }
         }
         Music::Note(n) => {
             if let Some(dur) = &n.duration {
@@ -357,6 +409,70 @@ mod tests {
             errs.iter()
                 .any(|e| matches!(e, ValidationError::ZeroMultiplierDenominator))
         );
+    }
+
+    #[test]
+    fn unknown_context_type() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::ContextedMusic {
+                keyword: ContextKeyword::New,
+                context_type: "Bogus".into(),
+                name: None,
+                with_block: None,
+                music: Box::new(Music::Sequential(vec![])),
+            })],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter().any(
+                |e| matches!(e, ValidationError::UnknownContextType { name } if name == "Bogus")
+            )
+        );
+    }
+
+    #[test]
+    fn known_context_type_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::ContextedMusic {
+                keyword: ContextKeyword::New,
+                context_type: "Staff".into(),
+                name: None,
+                with_block: None,
+                music: Box::new(Music::Sequential(vec![Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                })])),
+            })],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn context_change_unknown_type() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::ContextChange {
+                context_type: "FooBar".into(),
+                name: "x".into(),
+            })],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(errs.iter().any(
+            |e| matches!(e, ValidationError::UnknownContextType { name } if name == "FooBar")
+        ));
     }
 
     #[test]
