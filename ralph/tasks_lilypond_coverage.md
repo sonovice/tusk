@@ -846,10 +846,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 19.2 Import & Export
 
-- [ ] [I] Chord repetition → MEI as repeated chord notes
-- [ ] [E] MEI repeated chord → LilyPond `q` where applicable
-- [ ] [T] Roundtrip chord repetition fixture
-- [ ] [T] Chord repetition fixture; roundtrip
+- [x] [I] Chord repetition → MEI as repeated chord notes
+  - `q` expanded to full chord in collect_events() (already done in 19.1); now tagged with `lilypond:chord-rep` label on MEI chord
+  - `is_chord_repetition` flag on LyEvent::Chord tracks q-origin through import pipeline
+  - 5 import tests: expansion to chord, label on q-chord, duration preserved, same pitches, dynamics on q
+- [x] [E] MEI repeated chord → LilyPond `q` where applicable
+  - convert_mei_chord() detects `lilypond:chord-rep` label → emits Music::ChordRepetition instead of Music::Chord
+  - append_post_events() extended to handle ChordRepetition variant
+- [x] [T] Roundtrip chord repetition fixture
+  - 7 roundtrip tests: basic (q count), duration, different durations, slur, dynamics, tie, fixture
+- [x] [T] Chord repetition fixture; roundtrip
+  - fragment_chord_repetition.ly validated through roundtrip (q preserved, dynamics, ties)
+  - 652 total tests pass (was 640)
 
 ---
 

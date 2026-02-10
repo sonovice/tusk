@@ -1337,6 +1337,7 @@ fn append_post_events(music: &mut Music, events: &[PostEvent]) {
         Music::Note(note) => note.post_events.extend(events.iter().cloned()),
         Music::Rest(rest) => rest.post_events.extend(events.iter().cloned()),
         Music::Chord(chord) => chord.post_events.extend(events.iter().cloned()),
+        Music::ChordRepetition(cr) => cr.post_events.extend(events.iter().cloned()),
         Music::MultiMeasureRest(mrest) => mrest.post_events.extend(events.iter().cloned()),
         _ => {}
     }

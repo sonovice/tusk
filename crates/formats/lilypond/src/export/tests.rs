@@ -1260,3 +1260,75 @@ fn roundtrip_barcheck_barline_fixture() {
         "final bar line preserved: {output}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Chord repetition roundtrip tests (Phase 19.2)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_chord_repetition_basic() {
+    let output = roundtrip("{ <c e g>4 q q q }");
+    assert!(output.contains("<c e g>4"), "original chord: {output}");
+    // q should be preserved (not expanded)
+    let q_count = output.matches(" q").count();
+    assert_eq!(q_count, 3, "expected 3 chord repetitions (q): {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_with_duration() {
+    let output = roundtrip("{ <c e g>4 q2. }");
+    assert!(output.contains("<c e g>4"), "original chord: {output}");
+    assert!(output.contains("q2."), "q with dotted half: {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_different_durations() {
+    let output = roundtrip("{ <d f a>2. q4 }");
+    assert!(output.contains("<d f a>2."), "original chord: {output}");
+    assert!(output.contains("q4"), "q with quarter: {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_with_slur() {
+    let output = roundtrip("{ <e gis b>8( q q q) }");
+    assert!(output.contains("<e gis b>8("), "slur start: {output}");
+    assert!(output.contains("q)"), "slur end on q: {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_with_dynamics() {
+    let output = roundtrip("{ <c e g>4\\f q\\p }");
+    assert!(output.contains("\\f"), "f dynamic: {output}");
+    assert!(output.contains("q\\p"), "p dynamic on q: {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_with_tie() {
+    let output = roundtrip("{ <c e g>4~ q }");
+    assert!(output.contains("~"), "tie: {output}");
+    assert!(output.contains("q"), "chord repetition: {output}");
+}
+
+#[test]
+fn roundtrip_chord_repetition_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_chord_repetition.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    // Should contain q (chord repetitions preserved)
+    assert!(
+        output.contains(" q"),
+        "chord repetitions preserved: {output}"
+    );
+    // Should contain chord syntax (< ... >)
+    assert!(output.contains("<"), "chord angle brackets: {output}");
+    // Should contain dynamics
+    assert!(output.contains("\\f"), "dynamic f: {output}");
+    assert!(output.contains("\\p"), "dynamic p: {output}");
+    // Should contain tie
+    assert!(output.contains("~"), "tie: {output}");
+    // Should contain relative wrapper (fixture uses \relative)
+    assert!(output.contains("\\relative"), "relative wrapper: {output}");
+}

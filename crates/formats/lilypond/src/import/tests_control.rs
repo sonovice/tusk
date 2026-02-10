@@ -981,3 +981,114 @@ fn import_multiple_bar_checks_encoded() {
         "second barcheck after 2 notes: {label}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Chord repetition import tests (Phase 19.2)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn import_chord_repetition_expands_to_chord() {
+    let mei = parse_and_import("{ <c e g>4 q q }");
+    let lc = layer_children(&mei);
+    // q expands to full chord — all 3 should be Chord elements
+    assert_eq!(lc.len(), 3, "expected 3 chords: {lc:?}");
+    for (i, child) in lc.iter().enumerate() {
+        assert!(
+            matches!(child, LayerChild::Chord(_)),
+            "child {i} should be Chord: {child:?}"
+        );
+    }
+}
+
+#[test]
+fn import_chord_repetition_has_label() {
+    let mei = parse_and_import("{ <c e g>4 q }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 2);
+    // First chord (original) should NOT have chord-rep label
+    if let LayerChild::Chord(c) = &lc[0] {
+        let label = c.common.label.as_deref().unwrap_or("");
+        assert!(
+            !label.contains("lilypond:chord-rep"),
+            "original chord should not have chord-rep label: {label}"
+        );
+    }
+    // Second chord (from q) should have chord-rep label
+    if let LayerChild::Chord(c) = &lc[1] {
+        assert_eq!(
+            c.common.label.as_deref(),
+            Some("lilypond:chord-rep"),
+            "chord from q should have chord-rep label"
+        );
+    } else {
+        panic!("expected Chord");
+    }
+}
+
+#[test]
+fn import_chord_repetition_preserves_duration() {
+    let mei = parse_and_import("{ <c e g>4 q2. }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 2);
+    if let LayerChild::Chord(c) = &lc[1] {
+        // q2. should have dotted half note duration
+        let dur = c.chord_log.dur.as_ref().unwrap();
+        assert!(matches!(
+            dur,
+            tusk_model::generated::data::DataDuration::MeiDataDurationCmn(
+                tusk_model::generated::data::DataDurationCmn::N2
+            )
+        ));
+        assert_eq!(c.chord_log.dots.as_ref().map(|d| d.0), Some(1));
+    } else {
+        panic!("expected Chord");
+    }
+}
+
+#[test]
+fn import_chord_repetition_same_pitches() {
+    let mei = parse_and_import("{ <c e g>4 q }");
+    let lc = layer_children(&mei);
+    // Both chords should have same number of child notes (3)
+    if let (LayerChild::Chord(c1), LayerChild::Chord(c2)) = (&lc[0], &lc[1]) {
+        assert_eq!(c1.children.len(), c2.children.len(), "same pitch count");
+    } else {
+        panic!("expected two Chords");
+    }
+}
+
+#[test]
+fn import_chord_repetition_with_dynamics() {
+    let mei = parse_and_import("{ <c e g>4\\f q\\p }");
+    let lc = layer_children(&mei);
+    assert_eq!(lc.len(), 2);
+    // Both notes should have dynamics attached via control events
+    let mut dynam_count = 0;
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Dynam(_) = mc2 {
+                                                dynam_count += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(dynam_count, 2, "expected 2 dynam control events");
+}

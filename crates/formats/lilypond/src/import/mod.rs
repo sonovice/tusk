@@ -641,10 +641,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pitches,
                         duration,
                         post_events,
+                        is_chord_repetition,
                     } => {
                         id_counter += 1;
                         let mut mei_chord =
                             convert_chord(pitches, duration.as_ref(), &mut id_counter);
+                        if *is_chord_repetition {
+                            mei_chord.common.label = Some("lilypond:chord-rep".to_string());
+                        }
                         if tie_pending {
                             for child in &mut mei_chord.children {
                                 let tusk_model::elements::ChordChild::Note(n) = child;
@@ -1085,6 +1089,8 @@ enum LyEvent {
         pitches: Vec<crate::model::Pitch>,
         duration: Option<crate::model::Duration>,
         post_events: Vec<PostEvent>,
+        /// True if this chord was expanded from a `q` (chord repetition).
+        is_chord_repetition: bool,
     },
     Rest(RestEvent),
     PitchedRest(NoteEvent),
@@ -1200,6 +1206,7 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
                 pitches: resolved_pitches,
                 duration: chord.duration.clone(),
                 post_events: chord.post_events.clone(),
+                is_chord_repetition: false,
             });
         }
         Music::ChordRepetition(cr) => {
@@ -1209,6 +1216,7 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
                     pitches: ctx.last_chord_pitches.clone(),
                     duration: cr.duration.clone(),
                     post_events: cr.post_events.clone(),
+                    is_chord_repetition: true,
                 });
             }
         }

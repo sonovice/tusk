@@ -3,7 +3,7 @@
 use tusk_model::elements::ChordChild;
 use tusk_model::generated::data::{DataAccidentalGesturalBasic, DataDurationCmn};
 
-use crate::model::note::{ChordEvent, PostEvent};
+use crate::model::note::{ChordEvent, ChordRepetitionEvent, PostEvent};
 use crate::model::pitch::Pitch;
 use crate::model::{Duration, MultiMeasureRestEvent, Music, NoteEvent, RestEvent};
 
@@ -127,17 +127,12 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
     }
 }
 
-/// Convert an MEI Chord to a LilyPond ChordEvent.
+/// Convert an MEI Chord to a LilyPond ChordEvent or ChordRepetitionEvent.
+///
+/// If the chord has a `lilypond:chord-rep` label, it originated from a `q`
+/// (chord repetition) and is emitted as `Music::ChordRepetition` for lossless
+/// roundtrip.
 pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
-    let pitches: Vec<Pitch> = chord
-        .children
-        .iter()
-        .map(|child| {
-            let ChordChild::Note(note) = child;
-            extract_pitch_from_note(note)
-        })
-        .collect();
-
     let duration = extract_chord_duration(chord);
 
     // Chord tie: if any child note has @tie="i" or "m", the chord has a tie
@@ -149,6 +144,28 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
     if has_tie {
         post_events.push(PostEvent::Tie);
     }
+
+    // Check for chord repetition label
+    if chord
+        .common
+        .label
+        .as_deref()
+        .is_some_and(|l| l == "lilypond:chord-rep")
+    {
+        return Music::ChordRepetition(ChordRepetitionEvent {
+            duration,
+            post_events,
+        });
+    }
+
+    let pitches: Vec<Pitch> = chord
+        .children
+        .iter()
+        .map(|child| {
+            let ChordChild::Note(note) = child;
+            extract_pitch_from_note(note)
+        })
+        .collect();
 
     Music::Chord(ChordEvent {
         pitches,
