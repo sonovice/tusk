@@ -792,3 +792,114 @@ fn roundtrip_artics_fixture() {
     assert!(output.contains("^3"), "up-fingering 3: {output}");
     assert!(output.contains("_4"), "down-fingering 4: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Ornament & tremolo roundtrip tests (Phase 13.2)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_trill() {
+    let output = roundtrip("{ c4\\trill }");
+    assert!(output.contains("\\trill"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_mordent() {
+    let output = roundtrip("{ d4\\mordent }");
+    assert!(output.contains("\\mordent"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_prall() {
+    let output = roundtrip("{ f4\\prall }");
+    assert!(output.contains("\\prall"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_turn() {
+    let output = roundtrip("{ e4\\turn }");
+    assert!(output.contains("\\turn"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_reverseturn() {
+    let output = roundtrip("{ a4\\reverseturn }");
+    assert!(output.contains("\\reverseturn"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_fermata() {
+    let output = roundtrip("{ b4\\fermata }");
+    assert!(output.contains("\\fermata"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_prallprall() {
+    let output = roundtrip("{ g4\\prallprall }");
+    assert!(output.contains("\\prallprall"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_upbow() {
+    let output = roundtrip("{ c4\\upbow }");
+    assert!(output.contains("\\upbow"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_downbow() {
+    let output = roundtrip("{ d4\\downbow }");
+    assert!(output.contains("\\downbow"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tremolo_note() {
+    let output = roundtrip("{ e4:32 }");
+    assert!(output.contains(":32"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tremolo_16() {
+    let output = roundtrip("{ f8:16 }");
+    assert!(output.contains(":16"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_tremolo_chord() {
+    let output = roundtrip("{ <c e g>4:32 }");
+    assert!(output.contains(":32"), "output: {output}");
+    assert!(output.contains("<"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_trill_and_fermata_combined() {
+    let output = roundtrip("{ c4\\trill\\fermata }");
+    assert!(output.contains("\\trill"), "output: {output}");
+    assert!(output.contains("\\fermata"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_directed_trill() {
+    let output = roundtrip("{ d4-\\trill }");
+    assert!(output.contains("\\trill"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_ornaments_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_ornaments_tremolo.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(output.contains("\\trill"), "trill: {output}");
+    assert!(output.contains("\\mordent"), "mordent: {output}");
+    assert!(output.contains("\\turn"), "turn: {output}");
+    assert!(output.contains("\\prall"), "prall: {output}");
+    assert!(output.contains("\\prallprall"), "prallprall: {output}");
+    assert!(output.contains("\\reverseturn"), "reverseturn: {output}");
+    assert!(output.contains("\\fermata"), "fermata: {output}");
+    assert!(output.contains("\\upbow"), "upbow: {output}");
+    assert!(output.contains("\\downbow"), "downbow: {output}");
+    assert!(output.contains(":32"), "tremolo :32: {output}");
+    assert!(output.contains(":16"), "tremolo :16: {output}");
+}

@@ -1,7 +1,8 @@
 use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{
-    ChordChild, Dynam, Hairpin, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef,
+    ChordChild, Dynam, Fermata as MeiFermata, Hairpin, Mei, MeiChild, Mordent as MeiMordent,
+    Ornam as MeiOrnam, ScoreDef, Slur, Staff, StaffDef, Trill as MeiTrill, Turn as MeiTurn,
 };
 use tusk_model::generated::data::{
     DataClefshape, DataDuration, DataDurationCmn, DataDurationrests, DataStaffrelBasic,
@@ -1153,4 +1154,299 @@ fn import_multiple_artics_on_one_note() {
         Some("lilypond:artic,staccato")
     );
     assert_eq!(dirs[1].common.label.as_deref(), Some("lilypond:fing,3"));
+}
+
+// ---------------------------------------------------------------------------
+// Ornament and tremolo import tests (Phase 13.2)
+// ---------------------------------------------------------------------------
+
+/// Collect all Trill control events from the first measure.
+fn measure_trills(mei: &Mei) -> Vec<&MeiTrill> {
+    let mut trills = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Trill(t) = mc2 {
+                                                trills.push(t.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    trills
+}
+
+/// Collect all Mordent control events from the first measure.
+fn measure_mordents(mei: &Mei) -> Vec<&MeiMordent> {
+    let mut mordents = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Mordent(m) = mc2 {
+                                                mordents.push(m.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    mordents
+}
+
+/// Collect all Turn control events from the first measure.
+fn measure_turns(mei: &Mei) -> Vec<&MeiTurn> {
+    let mut turns = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Turn(t) = mc2 {
+                                                turns.push(t.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    turns
+}
+
+/// Collect all Fermata control events from the first measure.
+fn measure_fermatas(mei: &Mei) -> Vec<&MeiFermata> {
+    let mut fermatas = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Fermata(f) = mc2 {
+                                                fermatas.push(f.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fermatas
+}
+
+/// Collect all Ornam control events from the first measure.
+fn measure_ornams(mei: &Mei) -> Vec<&MeiOrnam> {
+    let mut ornams = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Ornam(o) = mc2 {
+                                                ornams.push(o.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    ornams
+}
+
+#[test]
+fn import_trill_creates_trill_element() {
+    let mei = parse_and_import("{ c4\\trill }");
+    let trills = measure_trills(&mei);
+    assert_eq!(trills.len(), 1, "expected 1 trill control event");
+    assert!(trills[0].trill_log.startid.is_some());
+    assert!(trills[0].trill_log.staff.is_some());
+}
+
+#[test]
+fn import_mordent_creates_mordent_element() {
+    let mei = parse_and_import("{ d4\\mordent }");
+    let mordents = measure_mordents(&mei);
+    assert_eq!(mordents.len(), 1, "expected 1 mordent control event");
+    assert_eq!(mordents[0].mordent_log.form.as_deref(), Some("lower"));
+    assert!(mordents[0].mordent_log.startid.is_some());
+}
+
+#[test]
+fn import_prall_creates_upper_mordent() {
+    let mei = parse_and_import("{ f4\\prall }");
+    let mordents = measure_mordents(&mei);
+    assert_eq!(
+        mordents.len(),
+        1,
+        "expected 1 mordent (prall) control event"
+    );
+    assert_eq!(mordents[0].mordent_log.form.as_deref(), Some("upper"));
+}
+
+#[test]
+fn import_turn_creates_turn_element() {
+    let mei = parse_and_import("{ e4\\turn }");
+    let turns = measure_turns(&mei);
+    assert_eq!(turns.len(), 1, "expected 1 turn control event");
+    assert_eq!(turns[0].turn_log.form.as_deref(), Some("upper"));
+}
+
+#[test]
+fn import_reverseturn_creates_lower_turn() {
+    let mei = parse_and_import("{ a4\\reverseturn }");
+    let turns = measure_turns(&mei);
+    assert_eq!(
+        turns.len(),
+        1,
+        "expected 1 turn (reverseturn) control event"
+    );
+    assert_eq!(turns[0].turn_log.form.as_deref(), Some("lower"));
+}
+
+#[test]
+fn import_fermata_creates_fermata_element() {
+    let mei = parse_and_import("{ b4\\fermata }");
+    let fermatas = measure_fermatas(&mei);
+    assert_eq!(fermatas.len(), 1, "expected 1 fermata control event");
+    assert!(fermatas[0].fermata_log.startid.is_some());
+}
+
+#[test]
+fn import_prallprall_creates_ornam() {
+    let mei = parse_and_import("{ g4\\prallprall }");
+    let ornams = measure_ornams(&mei);
+    assert_eq!(ornams.len(), 1, "expected 1 ornam control event");
+    let label = ornams[0].common.label.as_deref().unwrap();
+    assert!(
+        label.contains("prallprall"),
+        "label should contain prallprall: {label}"
+    );
+}
+
+#[test]
+fn import_tremolo_wraps_note_in_btrem() {
+    let mei = parse_and_import("{ e4:32 }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 1);
+    if let LayerChild::BTrem(btrem) = &children[0] {
+        assert_eq!(btrem.children.len(), 1);
+        assert!(matches!(
+            btrem.children[0],
+            tusk_model::elements::BTremChild::Note(_)
+        ));
+        let label = btrem.common.label.as_deref().unwrap();
+        assert!(
+            label.contains("32"),
+            "label should contain tremolo value: {label}"
+        );
+        assert_eq!(btrem.b_trem_log.num.as_deref(), Some("3")); // 32nds = 3 slashes
+    } else {
+        panic!("expected BTrem, got {:?}", children[0]);
+    }
+}
+
+#[test]
+fn import_tremolo_chord_wraps_in_btrem() {
+    let mei = parse_and_import("{ <c e g>4:32 }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 1);
+    if let LayerChild::BTrem(btrem) = &children[0] {
+        assert!(matches!(
+            btrem.children[0],
+            tusk_model::elements::BTremChild::Chord(_)
+        ));
+    } else {
+        panic!("expected BTrem for chord tremolo");
+    }
+}
+
+#[test]
+fn import_combined_ornaments_on_one_note() {
+    let mei = parse_and_import("{ c4\\trill\\fermata }");
+    let trills = measure_trills(&mei);
+    let fermatas = measure_fermatas(&mei);
+    assert_eq!(trills.len(), 1, "expected 1 trill");
+    assert_eq!(fermatas.len(), 1, "expected 1 fermata");
+}
+
+#[test]
+fn import_upbow_stays_as_dir() {
+    // upbow is not a native MEI ornament, should stay as <dir>
+    let mei = parse_and_import("{ c4\\upbow }");
+    let dirs = measure_dirs(&mei);
+    assert_eq!(dirs.len(), 1);
+    assert_eq!(
+        dirs[0].common.label.as_deref(),
+        Some("lilypond:artic,upbow")
+    );
+    // Should NOT be a trill/mordent/turn/fermata/ornam
+    assert_eq!(measure_trills(&mei).len(), 0);
+    assert_eq!(measure_mordents(&mei).len(), 0);
 }

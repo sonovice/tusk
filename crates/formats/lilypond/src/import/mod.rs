@@ -8,10 +8,11 @@ mod tests;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, Dir, DirChild, Dynam, DynamChild, FileDesc, FileDescChild,
-    Hairpin, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead,
-    MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Staff,
-    StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
+    BTrem, BTremChild, Beam, BeamChild, Body, BodyChild, Dir, DirChild, Dynam, DynamChild, Fermata,
+    FileDesc, FileDescChild, Hairpin, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild,
+    Mei, MeiChild, MeiHead, MeiHeadChild, Mordent, Ornam, OrnamChild, Score, ScoreChild, ScoreDef,
+    ScoreDefChild, Section, SectionChild, Slur, Staff, StaffChild, StaffDef, StaffGrp,
+    StaffGrpChild, TitleStmt, Trill, Turn,
 };
 use tusk_model::generated::data::{DataTie, DataUri, DataWord};
 
@@ -529,6 +530,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut dynam_counter = 0u32;
     let mut hairpin_counter = 0u32;
     let mut artic_counter = 0u32;
+    let mut ornam_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -741,15 +743,25 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         PostEvent::NamedArticulation {
                             direction, name, ..
                         } => {
-                            artic_counter += 1;
-                            let dir = make_artic_dir(
+                            if let Some(mc) = make_ornament_control_event(
                                 name,
                                 *direction,
                                 &current_id,
                                 staff_info.n,
-                                artic_counter,
-                            );
-                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                                &mut ornam_counter,
+                            ) {
+                                measure.children.push(mc);
+                            } else {
+                                artic_counter += 1;
+                                let dir = make_artic_dir(
+                                    name,
+                                    *direction,
+                                    &current_id,
+                                    staff_info.n,
+                                    artic_counter,
+                                );
+                                measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                            }
                         }
                         PostEvent::Fingering {
                             direction, digit, ..
@@ -797,8 +809,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 }
                             }
                         }
-                        // Tremolo handled in Phase 13.2 (import/export)
-                        PostEvent::Tremolo(_) => {}
+                        PostEvent::Tremolo(value) => {
+                            wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
+                        }
                     }
                 }
             }
@@ -900,6 +913,235 @@ fn direction_label_suffix(dir: Direction) -> &'static str {
         Direction::Down => ",dir=down",
         Direction::Neutral => "",
     }
+}
+
+/// Classify an ornament name and create the appropriate MEI control event.
+///
+/// Returns `Some(MeasureChild)` for ornaments with native MEI elements (trill, mordent,
+/// turn, fermata, generic ornam). Returns `None` for names that should use `<dir>` instead.
+fn make_ornament_control_event(
+    name: &str,
+    direction: Direction,
+    startid: &str,
+    staff_n: u32,
+    counter: &mut u32,
+) -> Option<MeasureChild> {
+    match name {
+        // Trill → <trill>
+        "trill" => {
+            *counter += 1;
+            Some(MeasureChild::Trill(Box::new(make_trill(
+                startid, staff_n, direction, *counter,
+            ))))
+        }
+        // Mordent (lower neighbor) → <mordent @form="lower">
+        "mordent" => {
+            *counter += 1;
+            Some(MeasureChild::Mordent(Box::new(make_mordent(
+                startid, staff_n, direction, "lower", false, *counter, None,
+            ))))
+        }
+        // Prall (upper neighbor, aka inverted mordent) → <mordent @form="upper">
+        "prall" => {
+            *counter += 1;
+            Some(MeasureChild::Mordent(Box::new(make_mordent(
+                startid, staff_n, direction, "upper", false, *counter, None,
+            ))))
+        }
+        // Compound mordent variants → <ornam> with label for specific name
+        "prallprall" | "prallmordent" | "upprall" | "downprall" | "upmordent" | "downmordent"
+        | "pralldown" | "prallup" | "lineprall" => {
+            *counter += 1;
+            Some(MeasureChild::Ornam(Box::new(make_ornam(
+                name, startid, staff_n, direction, *counter,
+            ))))
+        }
+        // Turn → <turn @form="upper">
+        "turn" => {
+            *counter += 1;
+            Some(MeasureChild::Turn(Box::new(make_turn(
+                startid, staff_n, direction, "upper", *counter,
+            ))))
+        }
+        // Reverse turn → <turn @form="lower">
+        "reverseturn" => {
+            *counter += 1;
+            Some(MeasureChild::Turn(Box::new(make_turn(
+                startid, staff_n, direction, "lower", *counter,
+            ))))
+        }
+        // Fermata variants → <fermata>
+        "fermata" | "shortfermata" | "longfermata" | "verylongfermata" => {
+            *counter += 1;
+            Some(MeasureChild::Fermata(Box::new(make_fermata(
+                name, startid, staff_n, direction, *counter,
+            ))))
+        }
+        // Everything else (upbow, downbow, segno, coda, etc.) → not a native MEI ornament
+        _ => None,
+    }
+}
+
+/// Create an MEI Trill control event.
+fn make_trill(startid: &str, staff_n: u32, direction: Direction, id: u32) -> Trill {
+    let mut trill = Trill::default();
+    trill.common.xml_id = Some(format!("ly-ornam-{id}"));
+    trill.trill_log.startid = Some(DataUri(format!("#{startid}")));
+    trill.trill_log.staff = Some(staff_n.to_string());
+    if direction != Direction::Neutral {
+        trill.common.label = Some(format!(
+            "lilypond:trill{}",
+            direction_label_suffix(direction)
+        ));
+    }
+    trill
+}
+
+/// Create an MEI Mordent control event.
+fn make_mordent(
+    startid: &str,
+    staff_n: u32,
+    direction: Direction,
+    form: &str,
+    long: bool,
+    id: u32,
+    label: Option<&str>,
+) -> Mordent {
+    let mut mordent = Mordent::default();
+    mordent.common.xml_id = Some(format!("ly-ornam-{id}"));
+    mordent.mordent_log.startid = Some(DataUri(format!("#{startid}")));
+    mordent.mordent_log.staff = Some(staff_n.to_string());
+    mordent.mordent_log.form = Some(form.to_string());
+    if long {
+        mordent.mordent_log.long = Some(tusk_model::generated::data::DataBoolean::True);
+    }
+    if direction != Direction::Neutral || label.is_some() {
+        let mut lbl = label.unwrap_or("").to_string();
+        if direction != Direction::Neutral {
+            if !lbl.is_empty() {
+                lbl.push_str(direction_label_suffix(direction));
+            } else {
+                lbl = format!("lilypond:mordent{}", direction_label_suffix(direction));
+            }
+        }
+        if !lbl.is_empty() {
+            mordent.common.label = Some(lbl);
+        }
+    }
+    mordent
+}
+
+/// Create an MEI Turn control event.
+fn make_turn(startid: &str, staff_n: u32, direction: Direction, form: &str, id: u32) -> Turn {
+    let mut turn = Turn::default();
+    turn.common.xml_id = Some(format!("ly-ornam-{id}"));
+    turn.turn_log.startid = Some(DataUri(format!("#{startid}")));
+    turn.turn_log.staff = Some(staff_n.to_string());
+    turn.turn_log.form = Some(form.to_string());
+    if direction != Direction::Neutral {
+        turn.common.label = Some(format!(
+            "lilypond:turn{}",
+            direction_label_suffix(direction)
+        ));
+    }
+    turn
+}
+
+/// Create an MEI Fermata control event.
+fn make_fermata(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32) -> Fermata {
+    let mut fermata = Fermata::default();
+    fermata.common.xml_id = Some(format!("ly-ornam-{id}"));
+    fermata.fermata_log.startid = Some(DataUri(format!("#{startid}")));
+    fermata.fermata_log.staff = Some(staff_n.to_string());
+    // Store fermata shape variant if not the default "fermata"
+    let shape = match name {
+        "shortfermata" => Some("angular"),
+        "longfermata" => Some("square"),
+        "verylongfermata" => Some("square"),
+        _ => None,
+    };
+    if let Some(s) = shape {
+        fermata.fermata_vis.shape = Some(s.to_string());
+    }
+    // Build label for non-default variants or direction
+    let variant_str = if name != "fermata" {
+        Some(format!("lilypond:fermata,{name}"))
+    } else {
+        None
+    };
+    if direction != Direction::Neutral || variant_str.is_some() {
+        let base = variant_str.unwrap_or_default();
+        let dir_suffix = direction_label_suffix(direction);
+        if !base.is_empty() || !dir_suffix.is_empty() {
+            let label = if base.is_empty() {
+                format!("lilypond:fermata{dir_suffix}")
+            } else {
+                format!("{base}{dir_suffix}")
+            };
+            fermata.common.label = Some(label);
+        }
+    }
+    fermata
+}
+
+/// Create an MEI Ornam (generic ornament) control event.
+///
+/// Used for compound mordent variants (prallprall, upprall, etc.) that don't have
+/// a direct MEI element. The LilyPond name is stored in the label.
+fn make_ornam(name: &str, startid: &str, staff_n: u32, direction: Direction, id: u32) -> Ornam {
+    let mut ornam = Ornam::default();
+    ornam.common.xml_id = Some(format!("ly-ornam-{id}"));
+    ornam.ornam_log.startid = Some(DataUri(format!("#{startid}")));
+    ornam.ornam_log.staff = Some(staff_n.to_string());
+    ornam.common.label = Some(format!(
+        "lilypond:ornam,{name}{}",
+        direction_label_suffix(direction)
+    ));
+    ornam.children.push(OrnamChild::Text(name.to_string()));
+    ornam
+}
+
+/// Wrap the last-added LayerChild in a `<bTrem>` element for single-note tremolo.
+///
+/// Takes the last item from the layer, wraps it as a BTremChild, and inserts the
+/// BTrem back. The `value` is the subdivision (e.g., 32 for `:32`).
+fn wrap_last_in_btrem(layer: &mut Layer, value: u32, counter: &mut u32) {
+    if let Some(last) = layer.children.pop() {
+        *counter += 1;
+        let mut btrem = BTrem::default();
+        btrem.common.xml_id = Some(format!("ly-btrem-{}", *counter));
+        // Compute slash count from subdivision and note duration
+        // Store the raw value in a label for lossless roundtrip
+        btrem.common.label = Some(format!("lilypond:tremolo,{value}"));
+        // @num = number of tremolo strokes
+        let num = tremolo_slash_count(value);
+        if num > 0 {
+            btrem.b_trem_log.num = Some(num.to_string());
+        }
+        match last {
+            LayerChild::Note(n) => btrem.children.push(BTremChild::Note(n)),
+            LayerChild::Chord(c) => btrem.children.push(BTremChild::Chord(c)),
+            other => {
+                // Not a note or chord -- put it back and don't wrap
+                layer.children.push(other);
+                return;
+            }
+        }
+        layer.children.push(LayerChild::BTrem(Box::new(btrem)));
+    }
+}
+
+/// Compute the number of tremolo slashes from the subdivision value.
+///
+/// E.g., 32 → 3 slashes (32nd notes = 3 beams), 16 → 2, 8 → 1.
+/// Value 0 (bare `:`) → 0 (unmeasured).
+fn tremolo_slash_count(value: u32) -> u32 {
+    if value == 0 {
+        return 0;
+    }
+    // Count trailing zeros: 8=3 zeros in binary → 3-2=1 slash,
+    // 16=4 zeros → 4-2=2, 32=5 zeros → 5-2=3
+    value.trailing_zeros().saturating_sub(2)
 }
 
 /// Create an MEI Dir for a LilyPond articulation.

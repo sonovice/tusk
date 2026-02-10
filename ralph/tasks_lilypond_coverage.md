@@ -569,10 +569,24 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 13.2 Import & Export
 
-- [ ] [I] Ornaments → MEI `<trill>`, `<mordent>`, `<turn>`, etc.; tremolo → MEI ornam label / bTrem
-- [ ] [E] MEI ornaments and tremolo → LilyPond `\trill`, `:N`, etc.
-- [ ] [T] Roundtrip ornaments and tremolo
-- [ ] [T] Ornament and tremolo fixtures; roundtrip
+- [x] [I] Ornaments → MEI `<trill>`, `<mordent>`, `<turn>`, etc.; tremolo → MEI ornam label / bTrem
+  - `\trill` → `MeasureChild::Trill` with `@startid`, `@staff`
+  - `\mordent` → `MeasureChild::Mordent` with `@form="lower"`; `\prall` → `@form="upper"`
+  - `\turn` → `MeasureChild::Turn` with `@form="upper"`; `\reverseturn` → `@form="lower"`
+  - `\fermata` (and shortfermata/longfermata/verylongfermata) → `MeasureChild::Fermata` with `@shape` variant in label
+  - Compound mordents (prallprall, upprall, downprall, etc.) → `MeasureChild::Ornam` with `lilypond:ornam,NAME` label
+  - upbow, downbow, segno, coda, etc. → stay as `<dir>` with `lilypond:artic,NAME` label (no native MEI equivalent)
+  - Tremolo `:N` → note/chord wrapped in `LayerChild::BTrem` with `@num` (slash count) and `lilypond:tremolo,N` label
+  - 12 import tests: trill, mordent, prall, turn, reverseturn, fermata, prallprall, tremolo note, tremolo chord, combined ornaments, upbow stays as dir
+- [x] [E] MEI ornaments and tremolo → LilyPond `\trill`, `:N`, etc.
+  - `collect_ornament_post_events()` maps Trill/Mordent/Turn/Fermata/Ornam → `PostEvent::NamedArticulation`
+  - `convert_mei_btrem()` extracts inner note/chord and adds `PostEvent::Tremolo(value)` from label
+  - BTrem xml:id delegation via `btrem_inner_xml_id()` for slur/dynam post-event attachment
+- [x] [T] Roundtrip ornaments and tremolo
+  - 15 roundtrip tests: trill, mordent, prall, turn, reverseturn, fermata, prallprall, upbow, downbow, tremolo note, tremolo :16, tremolo chord, trill+fermata combined, directed trill, fixture
+- [x] [T] Ornament and tremolo fixtures; roundtrip
+  - `roundtrip_ornaments_fixture` validates fragment_ornaments_tremolo.ly (all ornaments + tremolos)
+  - 447 total tests pass (421 → 447: +12 import + 15 roundtrip = +26 new, -1 obsolete count)
 
 ---
 

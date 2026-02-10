@@ -59,6 +59,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     collect_dynam_post_events(&measure.children, &mut post_event_map);
                     collect_hairpin_post_events(&measure.children, &mut post_event_map);
                     collect_artic_post_events(&measure.children, &mut post_event_map);
+                    collect_ornament_post_events(&measure.children, &mut post_event_map);
 
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
@@ -417,6 +418,7 @@ fn convert_layer_child(child: &LayerChild) -> Option<Music> {
         LayerChild::Rest(rest) => Some(convert_mei_rest(rest)),
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest)),
         LayerChild::Chord(chord) => Some(convert_mei_chord(chord)),
+        LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem)),
         _ => None,
     }
 }
@@ -456,8 +458,17 @@ fn layer_child_xml_id(child: &LayerChild) -> Option<&str> {
         LayerChild::Rest(rest) => rest.common.xml_id.as_deref(),
         LayerChild::MRest(mrest) => mrest.common.xml_id.as_deref(),
         LayerChild::Chord(chord) => chord.common.xml_id.as_deref(),
+        LayerChild::BTrem(btrem) => btrem_inner_xml_id(btrem),
         _ => None,
     }
+}
+
+/// Get xml:id of the inner note/chord inside a BTrem.
+fn btrem_inner_xml_id(btrem: &tusk_model::elements::BTrem) -> Option<&str> {
+    btrem.children.first().and_then(|child| match child {
+        tusk_model::elements::BTremChild::Note(n) => n.common.xml_id.as_deref(),
+        tusk_model::elements::BTremChild::Chord(c) => c.common.xml_id.as_deref(),
+    })
 }
 
 /// Get xml:id from a BeamChild.
@@ -601,6 +612,192 @@ fn collect_artic_post_events(
             }
         }
     }
+}
+
+/// Collect ornament control events (trill, mordent, turn, fermata, ornam) from
+/// measure children into the post-event map.
+fn collect_ornament_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<PostEvent>>,
+) {
+    for mc in measure_children {
+        match mc {
+            MeasureChild::Trill(trill) => {
+                if let Some(ref startid) = trill.trill_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let direction = trill
+                        .common
+                        .label
+                        .as_deref()
+                        .map(parse_ornament_direction)
+                        .unwrap_or(Direction::Neutral);
+                    map.entry(id)
+                        .or_default()
+                        .push(PostEvent::NamedArticulation {
+                            direction,
+                            name: "trill".to_string(),
+                        });
+                }
+            }
+            MeasureChild::Mordent(mordent) => {
+                if let Some(ref startid) = mordent.mordent_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let direction = mordent
+                        .common
+                        .label
+                        .as_deref()
+                        .map(parse_ornament_direction)
+                        .unwrap_or(Direction::Neutral);
+                    let name = match mordent.mordent_log.form.as_deref() {
+                        Some("upper") => "prall",
+                        _ => "mordent",
+                    };
+                    map.entry(id)
+                        .or_default()
+                        .push(PostEvent::NamedArticulation {
+                            direction,
+                            name: name.to_string(),
+                        });
+                }
+            }
+            MeasureChild::Turn(turn) => {
+                if let Some(ref startid) = turn.turn_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let direction = turn
+                        .common
+                        .label
+                        .as_deref()
+                        .map(parse_ornament_direction)
+                        .unwrap_or(Direction::Neutral);
+                    let name = match turn.turn_log.form.as_deref() {
+                        Some("lower") => "reverseturn",
+                        _ => "turn",
+                    };
+                    map.entry(id)
+                        .or_default()
+                        .push(PostEvent::NamedArticulation {
+                            direction,
+                            name: name.to_string(),
+                        });
+                }
+            }
+            MeasureChild::Fermata(fermata) => {
+                if let Some(ref startid) = fermata.fermata_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let (name, direction) = parse_fermata_label(fermata);
+                    map.entry(id)
+                        .or_default()
+                        .push(PostEvent::NamedArticulation {
+                            direction,
+                            name: name.to_string(),
+                        });
+                }
+            }
+            MeasureChild::Ornam(ornam) => {
+                if let Some(ref startid) = ornam.ornam_log.startid {
+                    let id = startid.0.trim_start_matches('#').to_string();
+                    let (name, direction) = parse_ornam_label(ornam);
+                    map.entry(id)
+                        .or_default()
+                        .push(PostEvent::NamedArticulation { direction, name });
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Parse direction from an ornament label (e.g., "lilypond:trill,dir=up").
+fn parse_ornament_direction(label: &str) -> Direction {
+    if label.ends_with(",dir=up") {
+        Direction::Up
+    } else if label.ends_with(",dir=down") {
+        Direction::Down
+    } else {
+        Direction::Neutral
+    }
+}
+
+/// Parse fermata variant and direction from a Fermata element's label.
+fn parse_fermata_label(fermata: &tusk_model::elements::Fermata) -> (&str, Direction) {
+    if let Some(label) = fermata.common.label.as_deref() {
+        if let Some(rest) = label.strip_prefix("lilypond:fermata,") {
+            let (name, dir) = split_label_direction(rest);
+            return (name, dir);
+        }
+        // Label exists but no variant prefix — check for direction only
+        let dir = parse_ornament_direction(label);
+        return ("fermata", dir);
+    }
+    ("fermata", Direction::Neutral)
+}
+
+/// Parse ornament name and direction from an Ornam element's label.
+fn parse_ornam_label(ornam: &tusk_model::elements::Ornam) -> (String, Direction) {
+    if let Some(label) = ornam.common.label.as_deref()
+        && let Some(rest) = label.strip_prefix("lilypond:ornam,")
+    {
+        let (name, dir) = split_label_direction(rest);
+        return (name.to_string(), dir);
+    }
+    // Fallback: use text content
+    let name = ornam
+        .children
+        .iter()
+        .map(|c| {
+            let tusk_model::elements::OrnamChild::Text(t) = c;
+            t.clone()
+        })
+        .next()
+        .unwrap_or_else(|| "ornam".to_string());
+    (name, Direction::Neutral)
+}
+
+/// Convert an MEI BTrem (bowed tremolo) to a LilyPond Music expression.
+///
+/// Extracts the inner note/chord and adds a `PostEvent::Tremolo` with the
+/// subdivision value restored from the label.
+fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem) -> Music {
+    // Restore subdivision value from label
+    let value = btrem
+        .common
+        .label
+        .as_deref()
+        .and_then(|l| l.strip_prefix("lilypond:tremolo,"))
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or_else(|| {
+            // Fallback: compute from @num (slash count)
+            let num: u32 = btrem
+                .b_trem_log
+                .num
+                .as_deref()
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(0);
+            if num == 0 {
+                0
+            } else {
+                // Reverse of trailing_zeros - 2: value = 2^(num+2)
+                1 << (num + 2)
+            }
+        });
+
+    let mut music = btrem
+        .children
+        .first()
+        .map(|child| match child {
+            tusk_model::elements::BTremChild::Note(n) => convert_mei_note(n),
+            tusk_model::elements::BTremChild::Chord(c) => convert_mei_chord(c),
+        })
+        .unwrap_or_else(|| {
+            Music::Rest(crate::model::RestEvent {
+                duration: None,
+                post_events: vec![],
+            })
+        });
+
+    // Append tremolo post-event
+    append_post_events(&mut music, &[PostEvent::Tremolo(value)]);
+    music
 }
 
 /// Parse direction suffix from a label part.
