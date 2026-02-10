@@ -71,6 +71,8 @@ pub(super) enum LyEvent {
     TextMark(String),
     /// A chord-mode event (chord name symbol).
     ChordName(model::note::ChordModeEvent),
+    /// A figured bass event.
+    FigureEvent(model::note::FigureEvent),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -322,8 +324,9 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
             events.push(LyEvent::ChordName(resolved));
         }
-        Music::FigureMode { .. } | Music::Figure(_) => {
-            // Figured bass handled in Phase 24.2 import
+        Music::FigureMode { body } => collect_events(body, events, ctx),
+        Music::Figure(fe) => {
+            events.push(LyEvent::FigureEvent(fe.clone()));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

@@ -111,7 +111,8 @@ pub(super) fn apply_signatures_to_staff_def(
             | LyEvent::RepeatEnd
             | LyEvent::AlternativeStart { .. }
             | LyEvent::AlternativeEnd
-            | LyEvent::ChordName(_) => {}
+            | LyEvent::ChordName(_)
+            | LyEvent::FigureEvent(_) => {}
         }
     }
 

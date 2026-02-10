@@ -65,6 +65,14 @@ pub fn serialize_chord_mode_event(ce: &note::ChordModeEvent) -> String {
     out
 }
 
+/// Serialize a figure event to a string (e.g. `\<6 4\>4`).
+pub fn serialize_figure_event(fe: &note::FigureEvent) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_figure_event(fe);
+    out
+}
+
 struct Serializer<'a> {
     out: &'a mut String,
     indent: usize,

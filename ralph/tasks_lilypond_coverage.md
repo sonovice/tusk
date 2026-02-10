@@ -1048,10 +1048,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 24.2 Import & Export
 
-- [ ] [I] Figured bass → MEI fb/f
-- [ ] [E] MEI fb → LilyPond \figures
-- [ ] [T] Roundtrip figured bass fixtures
-- [ ] [T] Figured bass fixtures; roundtrip
+- [x] [I] Figured bass → MEI fb/f
+  - FigureEvent variant added to LyEvent; collect_events handles FigureMode/Figure
+  - FiguredBass context extracted in analyze_staves (like ChordNames)
+  - make_fb() in control_events.rs: FigureEvent → MEI `<fb>` with `<f>` children
+  - Label: `lilypond:figure,SERIALIZED` for lossless roundtrip
+  - Human-readable text in `<f>`: number + alteration (#/b/n) + modifications (+/!//\\)
+  - FiguredBass context metadata stored in staffGrp label: `lilypond:figuredbass[,name=][,with=]`
+- [x] [E] MEI fb → LilyPond \figures
+  - export/figured_bass.rs: collect_figure_mode_fbs + extract_figured_bass_meta
+  - Re-parses serialized figure events through LilyPond parser for lossless roundtrip
+  - Reconstructs `\new FiguredBass \figuremode { ... }` context structure
+  - Standalone figured bass (no staves) roundtrips correctly
+- [x] [T] Roundtrip figured bass fixtures
+  - import/tests_figures.rs: 8 tests (fb creation, labels, f children, xml:id, alterations, spaces)
+  - export/tests_figures.rs: 8 roundtrip tests (basic, alterations, modifications, brackets, 4 fixtures)
+- [x] [T] Figured bass fixtures; roundtrip
+  - All 4 existing fixtures (basic, alterations, brackets, modifications) roundtrip successfully
 
 ---
 

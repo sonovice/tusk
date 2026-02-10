@@ -4,12 +4,15 @@
 //! Turn, Fermata, Ornam, BTrem, Harm) from LilyPond AST data.
 
 use tusk_model::elements::{
-    BTrem, BTremChild, Dir, DirChild, Dynam, DynamChild, Fermata, Hairpin, Harm, HarmChild, Layer,
-    LayerChild, MeasureChild, Mordent, Ornam, OrnamChild, Slur, Trill, TupletSpan, Turn,
+    BTrem, BTremChild, Dir, DirChild, Dynam, DynamChild, F, FChild, Fb, FbChild, Fermata, Hairpin,
+    Harm, HarmChild, Layer, LayerChild, MeasureChild, Mordent, Ornam, OrnamChild, Slur, Trill,
+    TupletSpan, Turn,
 };
 use tusk_model::generated::data::DataUri;
 
-use crate::model::note::{ChordModeEvent, Direction};
+use crate::model::note::{
+    BassFigure, ChordModeEvent, Direction, FigureAlteration, FigureEvent, FiguredBassModification,
+};
 
 /// Encode a Direction into a label suffix.
 pub(super) fn direction_label_suffix(dir: Direction) -> &'static str {
@@ -561,4 +564,58 @@ pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u3
     harm.children.push(HarmChild::Text(serialized));
 
     harm
+}
+
+/// Create an MEI `<fb>` control event from a LilyPond figure event.
+///
+/// Label format: `lilypond:figure,SERIALIZED`
+/// `<f>` children carry human-readable text (e.g. "6+", "4", "_").
+pub(super) fn make_fb(fe: &FigureEvent, _staff_n: u32, id: u32) -> Fb {
+    let mut fb = Fb::default();
+    fb.common.xml_id = Some(format!("ly-fb-{id}"));
+
+    // Serialize the figure event for label storage (lossless roundtrip)
+    let serialized = crate::serializer::serialize_figure_event(fe);
+    fb.common.label = Some(format!(
+        "lilypond:figure,{}",
+        super::signatures::escape_label_value_pub(&serialized)
+    ));
+
+    // Create <f> children with human-readable text
+    for fig in &fe.figures {
+        let mut mei_f = F::default();
+        let text = bass_figure_to_text(fig);
+        if !text.is_empty() {
+            mei_f.children.push(FChild::Text(text));
+        }
+        fb.children.push(FbChild::F(Box::new(mei_f)));
+    }
+
+    fb
+}
+
+/// Generate human-readable text for a single bass figure.
+fn bass_figure_to_text(fig: &BassFigure) -> String {
+    let mut text = String::new();
+    match fig.number {
+        Some(n) => text.push_str(&n.to_string()),
+        None => text.push('_'),
+    }
+    match fig.alteration {
+        FigureAlteration::Natural => {}
+        FigureAlteration::Sharp => text.push('#'),
+        FigureAlteration::Flat => text.push('b'),
+        FigureAlteration::ForcedNatural => text.push('n'),
+        FigureAlteration::DoubleSharp => text.push_str("##"),
+        FigureAlteration::DoubleFlat => text.push_str("bb"),
+    }
+    for m in &fig.modifications {
+        match m {
+            FiguredBassModification::Augmented => text.push('+'),
+            FiguredBassModification::NoContinuation => text.push('!'),
+            FiguredBassModification::Diminished => text.push('/'),
+            FiguredBassModification::AugmentedSlash => text.push('\\'),
+        }
+    }
+    text
 }

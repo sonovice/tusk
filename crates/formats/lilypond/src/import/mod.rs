@@ -13,6 +13,8 @@ mod tests_chords;
 #[cfg(test)]
 mod tests_control;
 #[cfg(test)]
+mod tests_figures;
+#[cfg(test)]
 mod tests_tempo_marks;
 
 use thiserror::Error;
@@ -168,12 +170,24 @@ struct ChordNamesInfo<'a> {
     music: &'a Music,
 }
 
+/// Information about a FiguredBass context found alongside staves.
+struct FiguredBassInfo<'a> {
+    /// Context name, if any.
+    name: Option<String>,
+    /// `\with { ... }` block items, if present.
+    with_block: Option<Vec<ContextModItem>>,
+    /// The music content (figure-mode entries).
+    music: &'a Music,
+}
+
 /// Result of analyzing the context hierarchy.
 struct StaffLayout<'a> {
     group: Option<GroupInfo>,
     staves: Vec<StaffInfo<'a>>,
     /// ChordNames contexts found at the same level as staves.
     chord_names: Vec<ChordNamesInfo<'a>>,
+    /// FiguredBass contexts found at the same level as staves.
+    figured_bass: Vec<FiguredBassInfo<'a>>,
 }
 
 /// Analyze the LilyPond music tree to extract staff structure.
@@ -210,12 +224,14 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                 name: name.clone(),
                 with_block: with_block.clone(),
             };
-            let (staves, chord_names) = extract_staves_and_chords_from_group(inner);
+            let (staves, chord_names, figured_bass) =
+                extract_staves_chords_figures_from_group(inner);
             if !staves.is_empty() {
                 return StaffLayout {
                     group: Some(group),
                     staves,
                     chord_names,
+                    figured_bass,
                 };
             }
         }
@@ -234,6 +250,21 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     lyrics: Vec::new(),
                 }],
                 chord_names: Vec::new(),
+                figured_bass: Vec::new(),
+            };
+        }
+
+        // FiguredBass context at top level (e.g. \figures { ... })
+        if context_type == "FiguredBass" {
+            return StaffLayout {
+                group: None,
+                staves: Vec::new(),
+                chord_names: Vec::new(),
+                figured_bass: vec![FiguredBassInfo {
+                    name: name.clone(),
+                    with_block: with_block.clone(),
+                    music: inner,
+                }],
             };
         }
 
@@ -243,13 +274,15 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
 
     // Check if simultaneous music contains \new Staff / \new Lyrics children
     if let Music::Simultaneous(items) = music {
-        let (staves, chord_names) = extract_staves_and_chords_from_simultaneous(items);
+        let (staves, chord_names, figured_bass) =
+            extract_staves_chords_figures_from_simultaneous(items);
         if !staves.is_empty() {
             // Check for \lyricsto targeting named voices
             let mut layout = StaffLayout {
                 group: None,
                 staves,
                 chord_names,
+                figured_bass,
             };
             attach_lyricsto_from_simultaneous(items, &mut layout.staves);
             return layout;
@@ -269,6 +302,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             lyrics: Vec::new(),
         }],
         chord_names: Vec::new(),
+        figured_bass: Vec::new(),
     }
 }
 
@@ -340,22 +374,31 @@ fn is_staff_context(ctx: &str) -> bool {
     )
 }
 
-/// Extract staff and chord-names infos from the inner music of a group context.
-fn extract_staves_and_chords_from_group(
+/// Extract staff, chord-names, and figured-bass infos from a group context.
+fn extract_staves_chords_figures_from_group(
     music: &Music,
-) -> (Vec<StaffInfo<'_>>, Vec<ChordNamesInfo<'_>>) {
+) -> (
+    Vec<StaffInfo<'_>>,
+    Vec<ChordNamesInfo<'_>>,
+    Vec<FiguredBassInfo<'_>>,
+) {
     match music {
-        Music::Simultaneous(items) => extract_staves_and_chords_from_simultaneous(items),
-        _ => (Vec::new(), Vec::new()),
+        Music::Simultaneous(items) => extract_staves_chords_figures_from_simultaneous(items),
+        _ => (Vec::new(), Vec::new(), Vec::new()),
     }
 }
 
-/// Extract staff and chord-names infos from a simultaneous music list.
-fn extract_staves_and_chords_from_simultaneous<'a>(
+/// Extract staff, chord-names, and figured-bass infos from a simultaneous music list.
+fn extract_staves_chords_figures_from_simultaneous<'a>(
     items: &'a [Music],
-) -> (Vec<StaffInfo<'a>>, Vec<ChordNamesInfo<'a>>) {
+) -> (
+    Vec<StaffInfo<'a>>,
+    Vec<ChordNamesInfo<'a>>,
+    Vec<FiguredBassInfo<'a>>,
+) {
     let mut staves = Vec::new();
     let mut chord_names = Vec::new();
+    let mut figured_bass = Vec::new();
     let mut n = 1u32;
 
     for item in items {
@@ -384,11 +427,17 @@ fn extract_staves_and_chords_from_simultaneous<'a>(
                     with_block: with_block.clone(),
                     music: inner,
                 });
+            } else if context_type == "FiguredBass" {
+                figured_bass.push(FiguredBassInfo {
+                    name: name.clone(),
+                    with_block: with_block.clone(),
+                    music: inner,
+                });
             }
         }
     }
 
-    (staves, chord_names)
+    (staves, chord_names, figured_bass)
 }
 
 /// Check if a context type is a voice-level context.
@@ -492,6 +541,20 @@ fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
         }
     }
 
+    // Store figured-bass context info in staffGrp label for roundtrip
+    if !layout.figured_bass.is_empty() {
+        let fb_label = build_figured_bass_label(&layout.figured_bass);
+        if !fb_label.is_empty() {
+            match &mut staff_grp.common.label {
+                Some(existing) => {
+                    existing.push('|');
+                    existing.push_str(&fb_label);
+                }
+                None => staff_grp.common.label = Some(fb_label),
+            }
+        }
+    }
+
     let mut score_def = ScoreDef::default();
     score_def
         .children
@@ -510,6 +573,28 @@ fn build_chord_names_label(chord_names: &[ChordNamesInfo<'_>]) -> String {
             parts.push(format!("name={name}"));
         }
         if let Some(with_items) = &cn.with_block
+            && !with_items.is_empty()
+        {
+            let with_str = serialize_with_block(with_items);
+            parts.push(format!("with={with_str}"));
+        }
+        parts.join(",")
+    } else {
+        String::new()
+    }
+}
+
+/// Build a label segment for figured-bass context info.
+///
+/// Format: `lilypond:figuredbass[,name=Name][,with={serialized}]`
+fn build_figured_bass_label(figured_bass: &[FiguredBassInfo<'_>]) -> String {
+    // Support one FiguredBass context (same pattern as ChordNames)
+    if let Some(fb) = figured_bass.first() {
+        let mut parts = vec!["lilypond:figuredbass".to_string()];
+        if let Some(name) = &fb.name {
+            parts.push(format!("name={name}"));
+        }
+        if let Some(with_items) = &fb.with_block
             && !with_items.is_empty()
         {
             let with_str = serialize_with_block(with_items);
@@ -718,6 +803,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut repeat_counter = 0u32;
     let mut tempo_mark_counter = 0u32;
     let mut harm_counter = 0u32;
+    let mut fb_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -973,6 +1059,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         } else {
                             pending_chord_names.push((ce.clone(), staff_info.n));
                         }
+                        continue;
+                    }
+                    LyEvent::FigureEvent(fe) => {
+                        fb_counter += 1;
+                        let fb = make_fb(fe, staff_info.n, fb_counter);
+                        measure.children.push(MeasureChild::Fb(Box::new(fb)));
                         continue;
                     }
                     LyEvent::Skip(_)
@@ -1263,6 +1355,20 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         }
     }
 
+    // Process dedicated FiguredBass contexts → Fb control events
+    for fb_info in &layout.figured_bass {
+        let mut fb_events = Vec::new();
+        let mut fb_ctx = PitchContext::new();
+        collect_events(fb_info.music, &mut fb_events, &mut fb_ctx);
+        for ev in &fb_events {
+            if let LyEvent::FigureEvent(fe) = ev {
+                fb_counter += 1;
+                let fb = make_fb(fe, 1, fb_counter);
+                measure.children.push(MeasureChild::Fb(Box::new(fb)));
+            }
+        }
+    }
+
     section
         .children
         .push(SectionChild::Measure(Box::new(measure)));
@@ -1319,7 +1425,7 @@ fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
 }
 
 use control_events::{
-    make_artic_dir, make_dynam, make_ending_dir, make_fing_dir, make_hairpin, make_harm,
+    make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_hairpin, make_harm,
     make_mark_dir, make_ornament_control_event, make_repeat_dir, make_slur, make_string_dir,
     make_tempo, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };

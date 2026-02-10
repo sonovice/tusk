@@ -11,6 +11,8 @@ mod tests;
 #[cfg(test)]
 mod tests_chords;
 #[cfg(test)]
+mod tests_figures;
+#[cfg(test)]
 mod tests_markup;
 #[cfg(test)]
 mod tests_tempo_marks;
@@ -135,6 +137,12 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     // Extract chord-names context metadata from staffGrp label
     let chord_names_meta = extract_chord_names_meta(score);
 
+    // Collect figure-mode events from Fb control events
+    let figure_mode_events = collect_figure_mode_fbs(score);
+
+    // Extract figured-bass context metadata from staffGrp label
+    let figured_bass_meta = extract_figured_bass_meta(score);
+
     // Apply pitch context wrappers (relative/transpose) to each staff's music
     apply_pitch_contexts(&mut staff_music, &pitch_contexts);
 
@@ -147,6 +155,8 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         &staff_layer_children,
         &chord_mode_events,
         &chord_names_meta,
+        &figure_mode_events,
+        &figured_bass_meta,
     );
 
     let score_block = ScoreBlock {
@@ -344,6 +354,7 @@ fn parse_with_block_str(with_str: &str) -> Option<Vec<crate::model::ContextModIt
 }
 
 /// Build a Music expression from staff/layer structure, wrapping in context.
+#[allow(clippy::too_many_arguments)]
 fn build_music_with_contexts(
     staff_music: Vec<Vec<Vec<Music>>>,
     group_meta: &Option<GroupMeta>,
@@ -352,14 +363,18 @@ fn build_music_with_contexts(
     staff_layer_children: &[Vec<&[LayerChild]>],
     chord_mode_events: &[Music],
     chord_names_meta: &Option<ChordNamesMeta>,
+    figure_mode_events: &[Music],
+    figured_bass_meta: &Option<FiguredBassMeta>,
 ) -> Music {
     let num_staves = staff_music.len();
     let has_chords = !chord_mode_events.is_empty();
+    let has_figures = !figure_mode_events.is_empty();
 
-    // Single staff, no group, no explicit staff context, no chord names -> flat output
+    // Single staff, no group, no explicit staff context, no chord/figure names -> flat output
     if num_staves <= 1
         && group_meta.is_none()
         && !has_chords
+        && !has_figures
         && (staff_metas.is_empty()
             || (staff_metas.len() == 1
                 && staff_metas[0].name.is_none()
@@ -374,6 +389,28 @@ fn build_music_with_contexts(
             music = lyrics::wrap_music_with_lyrics(music, raw, info);
         }
         return music;
+    }
+
+    // Standalone figured bass (no staves, no chords)
+    if num_staves == 0 && !has_figures {
+        return Music::Sequential(Vec::new());
+    }
+    if num_staves == 0 && has_figures {
+        let figure_body = Music::FigureMode {
+            body: Box::new(Music::Sequential(figure_mode_events.to_vec())),
+        };
+        let fb_with = figured_bass_meta
+            .as_ref()
+            .and_then(|m| m.with_block_str.as_deref())
+            .and_then(parse_with_block_str);
+        let fb_name = figured_bass_meta.as_ref().and_then(|m| m.name.clone());
+        return Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: "FiguredBass".to_string(),
+            name: fb_name,
+            with_block: fb_with,
+            music: Box::new(figure_body),
+        };
     }
 
     // Build per-staff music with \new Staff wrappers
@@ -397,6 +434,26 @@ fn build_music_with_contexts(
             music: Box::new(chord_body),
         };
         staff_exprs.push(chord_names_expr);
+    }
+
+    // Add FiguredBass context if figure events exist
+    if has_figures {
+        let figure_body = Music::FigureMode {
+            body: Box::new(Music::Sequential(figure_mode_events.to_vec())),
+        };
+        let fb_with = figured_bass_meta
+            .as_ref()
+            .and_then(|m| m.with_block_str.as_deref())
+            .and_then(parse_with_block_str);
+        let fb_name = figured_bass_meta.as_ref().and_then(|m| m.name.clone());
+        let fb_expr = Music::ContextedMusic {
+            keyword: ContextKeyword::New,
+            context_type: "FiguredBass".to_string(),
+            name: fb_name,
+            with_block: fb_with,
+            music: Box::new(figure_body),
+        };
+        staff_exprs.push(fb_expr);
     }
 
     for (i, layers) in staff_music.into_iter().enumerate() {
@@ -908,7 +965,9 @@ fn apply_grace_wrapping(items: &mut Vec<Music>, grace_types: &[Option<ExportGrac
 use repeats::{apply_repeat_wrapping, collect_ending_spans, collect_repeat_spans};
 
 mod chord_names;
+mod figured_bass;
 use chord_names::{ChordNamesMeta, collect_chord_mode_harms, extract_chord_names_meta};
+use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bass_meta};
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
