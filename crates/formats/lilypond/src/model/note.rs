@@ -405,3 +405,85 @@ impl StepAlteration {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Figured bass types
+// ---------------------------------------------------------------------------
+
+/// A figure event: `<figures...> duration` inside figure mode.
+///
+/// Corresponds to `chord_body: FIGURE_OPEN figure_list FIGURE_CLOSE`
+/// in the grammar, followed by optional duration.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FigureEvent {
+    /// The list of bass figures between `\<` and `\>`.
+    pub figures: Vec<BassFigure>,
+    /// Shared duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+}
+
+/// A single bass figure inside a figure list.
+///
+/// Corresponds to `br_bass_figure → bass_figure` in the grammar.
+/// A bass figure is either a number (with optional alteration and modifications),
+/// or a space (`_`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BassFigure {
+    /// The figure number; `None` means a figure space (`_`).
+    pub number: Option<u32>,
+    /// Cumulative alteration from `+` (sharp) and `-` (flat) in FIGURE_ALTERATION_EXPR.
+    pub alteration: FigureAlteration,
+    /// Modification flags: `\+` (augmented), `\!` (no-continuation),
+    /// `/` (diminished), `\\` (augmented-slash).
+    pub modifications: Vec<FiguredBassModification>,
+    /// Whether this figure starts a bracket group (`[` before the figure).
+    pub bracket_start: bool,
+    /// Whether this figure ends a bracket group (`]` after the figure).
+    pub bracket_stop: bool,
+}
+
+/// Alteration on a bass figure number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FigureAlteration {
+    /// No alteration.
+    Natural,
+    /// `+` — sharp (raised).
+    Sharp,
+    /// `-` — flat (lowered).
+    Flat,
+    /// `!` — natural (forced).
+    ForcedNatural,
+    /// `++` — double sharp.
+    DoubleSharp,
+    /// `--` — double flat.
+    DoubleFlat,
+}
+
+impl FigureAlteration {
+    /// The LilyPond suffix for this alteration.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Natural => "",
+            Self::Sharp => "+",
+            Self::Flat => "-",
+            Self::ForcedNatural => "!",
+            Self::DoubleSharp => "++",
+            Self::DoubleFlat => "--",
+        }
+    }
+}
+
+/// Modification on a figured bass number.
+///
+/// Corresponds to `figured_bass_modification` in the grammar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FiguredBassModification {
+    /// `\+` — augmented.
+    Augmented,
+    /// `\!` — no-continuation.
+    NoContinuation,
+    /// `/` — diminished (slash through number).
+    Diminished,
+    /// `\\` — augmented-slash (backslash through number).
+    AugmentedSlash,
+}

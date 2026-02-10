@@ -11,9 +11,10 @@ pub mod signature;
 pub use duration::Duration;
 pub use markup::{Markup, MarkupList};
 pub use note::{
-    ChordEvent, ChordModeEvent, ChordModifier, ChordQualityItem, ChordRepetitionEvent, ChordStep,
-    Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent, MultiMeasureRestEvent, NoteEvent,
-    PostEvent, RestEvent, ScriptAbbreviation, SkipEvent, StepAlteration,
+    BassFigure, ChordEvent, ChordModeEvent, ChordModifier, ChordQualityItem, ChordRepetitionEvent,
+    ChordStep, Direction, FigureAlteration, FigureEvent, FiguredBassModification, KNOWN_DYNAMICS,
+    KNOWN_ORNAMENTS, LyricEvent, MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent,
+    ScriptAbbreviation, SkipEvent, StepAlteration,
 };
 pub use pitch::Pitch;
 pub use signature::{
@@ -376,6 +377,10 @@ pub enum Music {
         voice_id: String,
         lyrics: Box<Music>,
     },
+    /// `\figuremode { ... }` — figured bass mode music.
+    FigureMode { body: Box<Music> },
+    /// A figure event: `\< figures \> duration` inside figure mode.
+    Figure(FigureEvent),
     /// A lyric event: a syllable with optional duration and post-events.
     Lyric(LyricEvent),
     /// A `\markup { ... }` expression in a music context.

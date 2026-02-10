@@ -1031,11 +1031,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 24.1 Model & Parser
 
-- [ ] [P] Parse `\figuremode`, `\figures`; figure list `\< ... \>`; bass figure (number, `\+`, `\!`, `/`, `\\`, brackets `[` `]`), figure space `_`
-- [ ] [P] Add `FigureModeMusic`, `FigureList`, `BassFigure`, `FiguredBassModification`
-- [ ] [S] Serialize figured bass
-- [ ] [V] Figure numbers and modifications valid
-- [ ] [T] Fragment: `\figures { <6 4> <7 5> }`, `\< 5\+ 3 \>`
+- [x] [P] Parse `\figuremode`, `\figures`; figure list `\< ... \>`; bass figure (number, `\+`, `\!`, `/`, `\\`, brackets `[` `]`), figure space `_`
+  - parser/figures.rs: parse_figure_mode, parse_figures_shorthand, parse_figure_event, parse_br_bass_figure, parse_bass_figure, parse_figure_alteration, parse_figure_modifications
+  - Dispatched from parser/mod.rs for FigureMode/Figures tokens
+- [x] [P] Add `FigureModeMusic`, `FigureList`, `BassFigure`, `FiguredBassModification`
+  - model/note.rs: FigureEvent, BassFigure, FigureAlteration, FiguredBassModification
+  - model/mod.rs: Music::FigureMode, Music::Figure variants
+- [x] [S] Serialize figured bass
+  - serializer/mod.rs: write_figure_event, write_bass_figure
+- [x] [V] Figure numbers and modifications valid
+  - validator/mod.rs: InvalidFigureNumber error, figure validation in validate_music + count_spans
+- [x] [T] Fragment: `\figures { <6 4> <7 5> }`, `\< 5\+ 3 \>`
+  - tests/fixtures/lilypond/figured-bass-{basic,modifications,brackets,alterations}.ly
+  - parser/tests_figures.rs: 14 tests covering parsing, roundtrip, modifications, brackets, alterations, spaces, rests/skips, bar checks
+  - validator/tests_extended.rs: figure_mode_valid_passes, figure_invalid_number_fails, figure_space_valid
 
 ### 24.2 Import & Export
 

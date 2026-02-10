@@ -496,3 +496,67 @@ fn text_mark_passes() {
     }));
     assert!(validate(&file).is_ok());
 }
+
+#[test]
+fn figure_mode_valid_passes() {
+    let file = wrap_music(Music::FigureMode {
+        body: Box::new(Music::Sequential(vec![Music::Figure(FigureEvent {
+            figures: vec![
+                BassFigure {
+                    number: Some(6),
+                    alteration: FigureAlteration::Natural,
+                    modifications: vec![],
+                    bracket_start: false,
+                    bracket_stop: false,
+                },
+                BassFigure {
+                    number: Some(4),
+                    alteration: FigureAlteration::Sharp,
+                    modifications: vec![FiguredBassModification::Augmented],
+                    bracket_start: true,
+                    bracket_stop: true,
+                },
+            ],
+            duration: Some(Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+        })])),
+    });
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn figure_invalid_number_fails() {
+    let file = wrap_music(Music::Figure(FigureEvent {
+        figures: vec![BassFigure {
+            number: Some(0),
+            alteration: FigureAlteration::Natural,
+            modifications: vec![],
+            bracket_start: false,
+            bracket_stop: false,
+        }],
+        duration: None,
+    }));
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::InvalidFigureNumber { number: 0 }))
+    );
+}
+
+#[test]
+fn figure_space_valid() {
+    let file = wrap_music(Music::Figure(FigureEvent {
+        figures: vec![BassFigure {
+            number: None,
+            alteration: FigureAlteration::Natural,
+            modifications: vec![],
+            bracket_start: false,
+            bracket_stop: false,
+        }],
+        duration: None,
+    }));
+    assert!(validate(&file).is_ok());
+}

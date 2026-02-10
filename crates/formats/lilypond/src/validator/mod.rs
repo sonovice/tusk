@@ -94,6 +94,9 @@ pub enum ValidationError {
     #[error("invalid chord step number {number}: must be 1-13")]
     InvalidChordStep { number: u8 },
 
+    #[error("invalid figure number {number}: must be 1-99")]
+    InvalidFigureNumber { number: u32 },
+
     #[error("tempo must have text or metronome mark")]
     EmptyTempo,
 
@@ -347,6 +350,10 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::ContextedMusic { music, .. } => {
             count_spans(music, counts);
         }
+        Music::FigureMode { body } => {
+            count_spans(body, counts);
+        }
+        Music::Figure(_) => {}
         Music::ChordMode { body } => {
             count_spans(body, counts);
         }
@@ -585,6 +592,21 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             }
             validate_music(main, errors);
             validate_music(grace, errors);
+        }
+        Music::FigureMode { body } => {
+            validate_music(body, errors);
+        }
+        Music::Figure(fe) => {
+            if let Some(dur) = &fe.duration {
+                validate_duration(dur, errors);
+            }
+            for fig in &fe.figures {
+                if let Some(n) = fig.number
+                    && (n == 0 || n > 99)
+                {
+                    errors.push(ValidationError::InvalidFigureNumber { number: n });
+                }
+            }
         }
         Music::ChordMode { body } => {
             validate_music(body, errors);

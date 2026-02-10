@@ -250,6 +250,8 @@ impl<'src> Parser<'src> {
             | Token::Change
             | Token::ChordMode
             | Token::Chords
+            | Token::FigureMode
+            | Token::Figures
             | Token::LyricMode
             | Token::Lyrics
             | Token::LyricsTo => {
@@ -677,6 +679,8 @@ impl<'src> Parser<'src> {
             }
             Token::ChordMode => self.parse_chord_mode(),
             Token::Chords => self.parse_chords_shorthand(),
+            Token::FigureMode => self.parse_figure_mode(),
+            Token::Figures => self.parse_figures_shorthand(),
             Token::LyricMode => self.parse_lyric_mode(),
             Token::Lyrics => self.parse_lyrics_shorthand(),
             Token::LyricsTo => self.parse_lyricsto(),
@@ -1460,14 +1464,11 @@ impl<'src> Parser<'src> {
     }
 }
 mod chords;
+mod figures;
 mod lyrics;
 mod markup;
 mod raw_blocks;
 mod signatures;
-
-// ---------------------------------------------------------------------------
-// Convenience function
-// ---------------------------------------------------------------------------
 
 /// Parse a LilyPond source string into an AST.
 pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
@@ -1482,6 +1483,8 @@ mod tests_barcheck;
 mod tests_chord_rep;
 #[cfg(test)]
 mod tests_chords;
+#[cfg(test)]
+mod tests_figures;
 #[cfg(test)]
 mod tests_grace;
 #[cfg(test)]

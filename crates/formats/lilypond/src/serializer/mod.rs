@@ -558,6 +558,11 @@ impl<'a> Serializer<'a> {
                 self.write_music(body);
             }
             Music::ChordModeEntry(ce) => self.write_chord_mode_event(ce),
+            Music::FigureMode { body } => {
+                self.out.push_str("\\figuremode ");
+                self.write_music(body);
+            }
+            Music::Figure(fe) => self.write_figure_event(fe),
             Music::LyricMode { body } => {
                 self.out.push_str("\\lyricmode ");
                 self.write_music(body);
@@ -780,6 +785,42 @@ impl<'a> Serializer<'a> {
             self.write_pitch(b);
         }
         self.write_post_events(&ce.post_events);
+    }
+
+    fn write_figure_event(&mut self, fe: &note::FigureEvent) {
+        self.out.push_str("\\<");
+        for (i, fig) in fe.figures.iter().enumerate() {
+            if i > 0 {
+                self.out.push(' ');
+            }
+            self.write_bass_figure(fig);
+        }
+        self.out.push_str("\\>");
+        if let Some(dur) = &fe.duration {
+            self.write_duration(dur);
+        }
+    }
+
+    fn write_bass_figure(&mut self, fig: &note::BassFigure) {
+        if fig.bracket_start {
+            self.out.push('[');
+        }
+        match fig.number {
+            Some(n) => self.out.push_str(&n.to_string()),
+            None => self.out.push('_'),
+        }
+        self.out.push_str(fig.alteration.as_str());
+        for m in &fig.modifications {
+            match m {
+                note::FiguredBassModification::Augmented => self.out.push_str("\\+"),
+                note::FiguredBassModification::NoContinuation => self.out.push_str("\\!"),
+                note::FiguredBassModification::Diminished => self.out.push('/'),
+                note::FiguredBassModification::AugmentedSlash => self.out.push_str("\\\\"),
+            }
+        }
+        if fig.bracket_stop {
+            self.out.push(']');
+        }
     }
 
     fn write_chord_repetition(&mut self, cr: &ChordRepetitionEvent) {

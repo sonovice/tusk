@@ -322,6 +322,9 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
             events.push(LyEvent::ChordName(resolved));
         }
+        Music::FigureMode { .. } | Music::Figure(_) => {
+            // Figured bass handled in Phase 24.2 import
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }
