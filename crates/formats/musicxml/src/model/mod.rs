@@ -29,16 +29,21 @@ pub mod print;
 pub mod technical;
 
 // Re-export commonly used types
+#[allow(ambiguous_glob_reexports)]
 pub use attributes::*;
 pub use data::*;
 pub use direction::*;
 pub use duration::*;
+#[allow(ambiguous_glob_reexports)]
 pub use elements::*;
 pub use figured_bass::*;
+#[allow(ambiguous_glob_reexports)]
 pub use harmony::*;
 pub use listening::*;
 pub use lyric::*;
 pub use notations::*;
+#[allow(ambiguous_glob_reexports)]
 pub use note::*;
 pub use print::*;
+#[allow(ambiguous_glob_reexports)]
 pub use technical::*;

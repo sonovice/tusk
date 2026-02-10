@@ -118,6 +118,7 @@ pub(crate) fn parse_non_arpeggiate(e: &BytesStart) -> Result<NonArpeggiate> {
 }
 
 /// Parse glissando/slide shared attributes.
+#[allow(clippy::type_complexity)]
 fn parse_start_stop_line_attrs(
     e: &BytesStart,
 ) -> Result<(

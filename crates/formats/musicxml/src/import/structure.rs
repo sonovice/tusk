@@ -875,6 +875,7 @@ fn layer_child_to_beam_child(child: &LayerChild) -> Option<BeamChild> {
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;

@@ -144,6 +144,15 @@ impl tusk_format::Exporter for MeiFormat {
 }
 
 #[cfg(all(test, feature = "roundtrip_tests"))]
+#[allow(
+    clippy::field_reassign_with_default,
+    clippy::redundant_closure,
+    clippy::manual_strip,
+    clippy::needless_borrow,
+    clippy::manual_find_map,
+    irrefutable_let_patterns,
+    unreachable_patterns
+)]
 mod roundtrip_tests;
 
 #[cfg(test)]

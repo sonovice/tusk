@@ -188,6 +188,7 @@ impl FormatRegistry {
     /// 4. If no extension matches and `content` is provided, falls back to
     ///    pure content detection.
     pub fn find_importer(&self, ext: &str, content: Option<&[u8]>) -> Option<&dyn Importer> {
+        #[allow(clippy::borrowed_box)]
         let matches_ext =
             |imp: &Box<dyn Importer>| imp.extensions().iter().any(|e| e.eq_ignore_ascii_case(ext));
 
@@ -214,15 +215,14 @@ impl FormatRegistry {
 
         // Multiple extension matches — use content to disambiguate.
         if let Some(content) = content {
-            if ext_match_count > 1 {
-                if let Some(imp) = self
+            if ext_match_count > 1
+                && let Some(imp) = self
                     .importers
                     .iter()
                     .filter(|imp| matches_ext(imp))
                     .find(|imp| imp.detect(content))
-                {
-                    return Some(imp.as_ref());
-                }
+            {
+                return Some(imp.as_ref());
             }
             // Fall back to any importer that detects the content.
             return self
@@ -374,16 +374,10 @@ mod tests {
         ));
         assert!(err.to_string().contains("bad data"));
 
-        let err = FormatError::conversion(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "conversion failed",
-        ));
+        let err = FormatError::conversion(std::io::Error::other("conversion failed"));
         assert!(err.to_string().contains("conversion failed"));
 
-        let err = FormatError::serialize(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "serialize failed",
-        ));
+        let err = FormatError::serialize(std::io::Error::other("serialize failed"));
         assert!(err.to_string().contains("serialize failed"));
     }
 }

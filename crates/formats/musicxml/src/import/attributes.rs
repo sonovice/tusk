@@ -265,7 +265,7 @@ pub fn process_attributes(
 
     // Process for-part (concert score per-part transposition)
     if !attrs.for_parts.is_empty() {
-        if let Some(sd) = staff_def.as_deref_mut() {
+        if let Some(sd) = staff_def {
             if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
                 append_label(sd, format!("{}{}", FOR_PART_LABEL_PREFIX, json));
             }

@@ -74,7 +74,7 @@ pub fn convert_mei_dynam(
         .dynam_log
         .staff
         .as_ref()
-        .map_or(false, |s| !s.is_empty())
+        .is_some_and(|s| !s.is_empty())
     {
         direction.staff = Some(1);
     }
@@ -198,7 +198,7 @@ pub fn convert_mei_hairpin(
         .hairpin_log
         .staff
         .as_ref()
-        .map_or(false, |s| !s.is_empty())
+        .is_some_and(|s| !s.is_empty())
     {
         direction.staff = Some(1);
     }
@@ -365,7 +365,7 @@ pub fn convert_mei_dir(
 
     let mut direction = Direction::new(vec![direction_type]);
 
-    if dir.dir_log.staff.as_ref().map_or(false, |s| !s.is_empty()) {
+    if dir.dir_log.staff.as_ref().is_some_and(|s| !s.is_empty()) {
         direction.staff = Some(1);
     }
 
@@ -575,7 +575,7 @@ pub fn convert_mei_tempo(
         .tempo_log
         .staff
         .as_ref()
-        .map_or(false, |s| !s.is_empty())
+        .is_some_and(|s| !s.is_empty())
     {
         direction.staff = Some(1);
     }

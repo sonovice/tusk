@@ -24,8 +24,8 @@ impl MeiDeserialize for Mei {
         let ext_prefix = "ext:";
         let mut rest_attrs = AttributeMap::new();
         for (k, v) in attrs.drain() {
-            if k.starts_with(ext_prefix) {
-                let local = k[ext_prefix.len()..].to_string();
+            if let Some(stripped) = k.strip_prefix(ext_prefix) {
+                let local = stripped.to_string();
                 custom_attributes.push((TUSK_EXT_NS.to_string(), local, v));
             } else {
                 rest_attrs.insert(k, v);
@@ -48,13 +48,13 @@ impl MeiDeserialize for Mei {
             while let Some((name, child_attrs, child_empty)) =
                 reader.read_next_child_start("mei")?
             {
-                if name.starts_with("ext:") {
+                if let Some(stripped) = name.strip_prefix("ext:") {
                     reader.skip_unknown_child(&name, "mei", child_empty)?;
                     if result.extensions.is_none() {
                         result.extensions = Some(ExtensionBag::default());
                     }
                     let bag = result.extensions.as_mut().unwrap();
-                    let local = name["ext:".len()..].to_string();
+                    let local = stripped.to_string();
                     let el_attrs: Vec<(String, String, String)> = child_attrs
                         .into_iter()
                         .map(|(k, v)| (TUSK_EXT_NS.to_string(), k, v))

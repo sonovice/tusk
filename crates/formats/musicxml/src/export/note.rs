@@ -255,8 +255,8 @@ fn convert_mei_gestural_accid_to_alter(
         DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
     };
 
-    accid_ges.as_ref().and_then(|a| {
-        Some(match a {
+    accid_ges.as_ref().map(|a| {
+        match a {
             DataAccidentalGestural::MeiDataAccidentalGesturalBasic(basic) => match basic {
                 DataAccidentalGesturalBasic::Tf => -3.0,
                 DataAccidentalGesturalBasic::Ff => -2.0,
@@ -276,7 +276,7 @@ fn convert_mei_gestural_accid_to_alter(
             },
             DataAccidentalGestural::MeiDataAccidentalAeu(_)
             | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
-        })
+        }
     })
 }
 
@@ -1009,12 +1009,12 @@ fn add_rest_conversion_warnings(
         .rest_log
         .staff
         .as_ref()
-        .map_or(false, |s| !s.is_empty())
+        .is_some_and(|s| !s.is_empty())
         || mei_rest
             .rest_log
             .layer
             .as_ref()
-            .map_or(false, |s| !s.is_empty())
+            .is_some_and(|s| !s.is_empty())
     {
         ctx.add_warning(
             "rest",
@@ -1027,7 +1027,7 @@ fn add_rest_conversion_warnings(
         .facsimile
         .facs
         .as_ref()
-        .map_or(false, |s| !s.0.is_empty())
+        .is_some_and(|s| !s.0.is_empty())
     {
         ctx.add_warning(
             "rest",
@@ -1417,12 +1417,12 @@ fn add_chord_conversion_warnings(
         .chord_log
         .staff
         .as_ref()
-        .map_or(false, |s| !s.is_empty())
+        .is_some_and(|s| !s.is_empty())
         || mei_chord
             .chord_log
             .layer
             .as_ref()
-            .map_or(false, |s| !s.is_empty())
+            .is_some_and(|s| !s.is_empty())
     {
         ctx.add_warning(
             "chord",
@@ -1435,7 +1435,7 @@ fn add_chord_conversion_warnings(
         .facsimile
         .facs
         .as_ref()
-        .map_or(false, |s| !s.0.is_empty())
+        .is_some_and(|s| !s.0.is_empty())
     {
         ctx.add_warning(
             "chord",

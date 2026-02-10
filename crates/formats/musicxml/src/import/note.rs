@@ -2151,8 +2151,10 @@ mod tests {
         use crate::model::data::{Step, YesNo};
         use crate::model::note::{Grace, Note, Pitch};
 
-        let mut grace = Grace::default();
-        grace.slash = Some(YesNo::Yes); // Slashed grace note
+        let grace = Grace {
+            slash: Some(YesNo::Yes), // Slashed grace note
+            ..Default::default()
+        };
 
         let note = Note::grace_note(Pitch::new(Step::D, 5), grace);
 
@@ -2876,9 +2878,9 @@ mod tests {
         let notes: Vec<_> = mei_chord
             .children
             .iter()
-            .filter_map(|c| {
+            .map(|c| {
                 let ChordChild::Note(n) = c;
-                Some(n.as_ref())
+                n.as_ref()
             })
             .collect();
 

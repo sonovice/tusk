@@ -30,17 +30,7 @@ fn xsd_type_to_rust(s: &str) -> String {
         _ => {
             // MusicXML type like "yes-no", "left-center-right" -> enum or alias
             let name = s.trim_start_matches("xs:");
-            if name.contains('-')
-                || name
-                    .chars()
-                    .next()
-                    .map(|c| c.is_lowercase())
-                    .unwrap_or(false)
-            {
-                type_name_to_rust(name)
-            } else {
-                type_name_to_rust(name)
-            }
+            type_name_to_rust(name)
         }
     }
 }

@@ -424,9 +424,11 @@ fn defaults_from_score_def(
     let has_page =
         vis.page_height.is_some() || vis.page_width.is_some() || vis.page_topmar.is_some();
     if has_page {
-        let mut pl = PageLayout::default();
-        pl.page_height = vis.page_height.as_ref().and_then(|v| v.0.parse().ok());
-        pl.page_width = vis.page_width.as_ref().and_then(|v| v.0.parse().ok());
+        let mut pl = PageLayout {
+            page_height: vis.page_height.as_ref().and_then(|v| v.0.parse().ok()),
+            page_width: vis.page_width.as_ref().and_then(|v| v.0.parse().ok()),
+            ..Default::default()
+        };
 
         // Build margins if any margin attribute exists
         let has_margins = vis.page_topmar.is_some()
@@ -476,12 +478,11 @@ fn defaults_from_score_def(
 
     // Music font from music.name, music.size
     if vis.music_name.is_some() || vis.music_size.is_some() {
-        let mut mf = EmptyFont::default();
-        mf.font_family = vis.music_name.as_ref().map(|n| n.0.clone());
-        mf.font_size = vis
-            .music_size
-            .as_ref()
-            .and_then(|s| convert_mei_font_size(s));
+        let mf = EmptyFont {
+            font_family: vis.music_name.as_ref().map(|n| n.0.clone()),
+            font_size: vis.music_size.as_ref().and_then(convert_mei_font_size),
+            ..Default::default()
+        };
         defaults.music_font = Some(mf);
     }
 
@@ -491,14 +492,12 @@ fn defaults_from_score_def(
         || vis.text_style.is_some()
         || vis.text_weight.is_some()
     {
-        let mut wf = EmptyFont::default();
-        wf.font_family = vis.text_fam.as_ref().map(|f| f.0.clone());
-        wf.font_size = vis
-            .text_size
-            .as_ref()
-            .and_then(|s| convert_mei_font_size(s));
-        wf.font_style = vis.text_style.as_ref().map(convert_mei_font_style);
-        wf.font_weight = vis.text_weight.as_ref().map(convert_mei_font_weight);
+        let wf = EmptyFont {
+            font_family: vis.text_fam.as_ref().map(|f| f.0.clone()),
+            font_size: vis.text_size.as_ref().and_then(convert_mei_font_size),
+            font_style: vis.text_style.as_ref().map(convert_mei_font_style),
+            font_weight: vis.text_weight.as_ref().map(convert_mei_font_weight),
+        };
         defaults.word_font = Some(wf);
     }
 

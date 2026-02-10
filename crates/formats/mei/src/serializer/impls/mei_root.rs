@@ -26,7 +26,7 @@ impl MeiSerialize for Mei {
             || self
                 .extensions
                 .as_ref()
-                .map_or(false, |e| !e.custom_elements.is_empty())
+                .is_some_and(|e| !e.custom_elements.is_empty())
     }
 
     fn serialize_children<W: Write>(&self, writer: &mut MeiWriter<W>) -> SerializeResult<()> {

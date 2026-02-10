@@ -1162,6 +1162,7 @@ impl MusicXmlSerialize for crate::model::elements::Barline {
 }
 
 /// Serialize a segno or coda empty element with position attributes.
+#[allow(clippy::too_many_arguments)]
 fn serialize_segno_coda<W: Write>(
     w: &mut MusicXmlWriter<W>,
     tag: &str,

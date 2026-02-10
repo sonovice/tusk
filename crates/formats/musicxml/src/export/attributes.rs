@@ -77,7 +77,7 @@ fn has_jianpu_clef_label(staff_def: &StaffDef) -> bool {
         .labelled
         .label
         .as_deref()
-        .map_or(false, |l| l.split('|').any(|seg| seg == CLEF_JIANPU_LABEL))
+        .is_some_and(|l| l.split('|').any(|seg| seg == CLEF_JIANPU_LABEL))
 }
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
@@ -663,16 +663,12 @@ pub fn build_first_measure_attributes_multi(
 
     let first_def = part_staff_defs.first().copied();
 
-    let mut attrs = Attributes::default();
-
-    // Divisions
-    attrs.divisions = Some(ctx.divisions());
-
-    // Staves count
-    attrs.staves = Some(num_staves);
-
-    // Part symbol for multi-staff parts (from context, set during part-list export)
-    attrs.part_symbol = ctx.part_symbol(part_id).cloned();
+    let mut attrs = Attributes {
+        divisions: Some(ctx.divisions()),
+        staves: Some(num_staves),
+        part_symbol: ctx.part_symbol(part_id).cloned(),
+        ..Default::default()
+    };
 
     // Key signature — try JSON label on first staffDef for lossless roundtrip
     if let Some(key) = first_def.and_then(extract_key_from_label) {

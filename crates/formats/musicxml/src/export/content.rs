@@ -1483,12 +1483,9 @@ fn convert_ornament_events(
                     let text: String = ornam
                         .children
                         .iter()
-                        .filter_map(|c| {
-                            if let tusk_model::elements::OrnamChild::Text(t) = c {
-                                Some(t.as_str())
-                            } else {
-                                None
-                            }
+                        .map(|c| {
+                            let tusk_model::elements::OrnamChild::Text(t) = c;
+                            t.as_str()
                         })
                         .collect::<Vec<_>>()
                         .join("");

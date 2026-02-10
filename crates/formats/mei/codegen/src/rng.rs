@@ -73,8 +73,7 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                         depth = 1;
                     }
                 } else if depth >= 1 {
-                    if current.is_some() {
-                        let cur = current.as_mut().unwrap();
+                    if let Some(cur) = current.as_mut() {
                         match local {
                             b"ref" => {
                                 if let Some(n) = get_attr(&e, b"name") {
@@ -111,21 +110,22 @@ fn collect_rng_defines(content: &[u8]) -> Result<HashMap<String, RngDefine>> {
                 }
             }
             Ok(Event::Empty(e)) => {
-                if depth >= 1 && current.is_some() {
-                    let cur = current.as_mut().unwrap();
-                    match e.name().as_ref() {
-                        b"ref" => {
-                            if let Some(n) = get_attr(&e, b"name") {
-                                cur.refs.push(n);
+                if depth >= 1 {
+                    if let Some(cur) = current.as_mut() {
+                        match e.name().as_ref() {
+                            b"ref" => {
+                                if let Some(n) = get_attr(&e, b"name") {
+                                    cur.refs.push(n);
+                                }
                             }
+                            b"data" => {
+                                cur.data_type = get_attr(&e, b"type");
+                            }
+                            b"text" => {
+                                cur.has_text = true;
+                            }
+                            _ => {}
                         }
-                        b"data" => {
-                            cur.data_type = get_attr(&e, b"type");
-                        }
-                        b"text" => {
-                            cur.has_text = true;
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -305,9 +305,7 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                 let mut content: Vec<ContentItem> = content_refs
                     .into_iter()
                     .map(|r| {
-                        if r.starts_with("mei_model.") {
-                            ContentItem::Ref(r.strip_prefix("mei_").unwrap_or(&r).to_string())
-                        } else if r.starts_with("mei_") {
+                        if r.starts_with("mei_") {
                             ContentItem::Ref(r.strip_prefix("mei_").unwrap_or(&r).to_string())
                         } else {
                             ContentItem::Ref(r)
@@ -319,10 +317,6 @@ fn rng_to_odd(defines: &HashMap<String, RngDefine>) -> Result<OddDefinitions> {
                 }
                 let content_model = if content.is_empty() {
                     vec![ContentItem::Empty]
-                } else if content.len() == 1 && !matches!(content[0], ContentItem::Empty) {
-                    vec![ContentItem::ZeroOrMore(Box::new(vec![
-                        ContentItem::Choice(vec![content]),
-                    ]))]
                 } else {
                     vec![ContentItem::ZeroOrMore(Box::new(vec![
                         ContentItem::Choice(vec![content]),

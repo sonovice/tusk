@@ -43,6 +43,5 @@ mod tests {
     #[test]
     fn crate_compiles() {
         // Basic smoke test to verify the crate structure is valid
-        assert!(true);
     }
 }

@@ -1296,9 +1296,6 @@ pub struct Level {
 // Empty marker (reused from elements.rs but needed here too)
 // ============================================================================
 
-/// Empty element marker (already defined in elements.rs, but imported via data).
-/// We re-use the definition from super::data or elements.
-
 // ============================================================================
 // Tests
 // ============================================================================

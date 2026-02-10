@@ -83,8 +83,10 @@ fn convert_credits_to_pg_head(
         return None;
     }
 
-    let mut pg_head = PgHead::default();
-    pg_head.children = texts;
+    let pg_head = PgHead {
+        children: texts,
+        ..Default::default()
+    };
     Some(pg_head)
 }
 
@@ -1118,6 +1120,7 @@ fn extract_attributes_with_staves<'a>(
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use crate::context::ConversionDirection;

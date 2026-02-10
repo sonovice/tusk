@@ -55,40 +55,40 @@ pub fn parse_xsd_str(content: &str) -> Result<Schema> {
                 let local = local_name(e.name().as_ref());
                 match local.as_slice() {
                     b"simpleType" => {
-                        if let Some(n) = get_attr(&e, "name") {
-                            if let Some(st) = read_simple_type(&mut reader, &mut buf)? {
-                                schema.simple_types.insert(n, st);
-                            }
+                        if let Some(n) = get_attr(&e, "name")
+                            && let Some(st) = read_simple_type(&mut reader, &mut buf)?
+                        {
+                            schema.simple_types.insert(n, st);
                         }
                     }
                     b"complexType" => {
-                        if let Some(n) = get_attr(&e, "name") {
-                            if let Some(ct) = read_complex_type(&mut reader, &mut buf)? {
-                                schema.complex_types.insert(n, ct);
-                            }
+                        if let Some(n) = get_attr(&e, "name")
+                            && let Some(ct) = read_complex_type(&mut reader, &mut buf)?
+                        {
+                            schema.complex_types.insert(n, ct);
                         }
                     }
                     b"group" => {
-                        if let Some(n) = get_attr(&e, "name") {
-                            if let Some(g) = read_group(&mut reader, &mut buf)? {
-                                schema.groups.insert(n, g);
-                            }
+                        if let Some(n) = get_attr(&e, "name")
+                            && let Some(g) = read_group(&mut reader, &mut buf)?
+                        {
+                            schema.groups.insert(n, g);
                         }
                     }
                     b"attributeGroup" => {
-                        if let Some(n) = get_attr(&e, "name") {
-                            if let Some(ag) = read_attribute_group(&mut reader, &mut buf)? {
-                                schema.attribute_groups.insert(n, ag);
-                            }
+                        if let Some(n) = get_attr(&e, "name")
+                            && let Some(ag) = read_attribute_group(&mut reader, &mut buf)?
+                        {
+                            schema.attribute_groups.insert(n, ag);
                         }
                     }
                     b"element" => {
                         let elem_name = get_attr(&e, "name");
                         let type_ref = get_attr(&e, "type");
-                        if let Some(n) = elem_name {
-                            if let Some(ed) = read_element_decl(&mut reader, &mut buf, type_ref)? {
-                                schema.elements.insert(n, ed);
-                            }
+                        if let Some(n) = elem_name
+                            && let Some(ed) = read_element_decl(&mut reader, &mut buf, type_ref)?
+                        {
+                            schema.elements.insert(n, ed);
                         }
                     }
                     _ => {}
@@ -120,10 +120,10 @@ fn read_simple_type<R: BufRead>(
                 if local == b"restriction" {
                     restriction_base = get_attr(&e, "base").or(restriction_base);
                 }
-                if local == b"enumeration" {
-                    if let Some(v) = get_attr(&e, "value") {
-                        values.push(v);
-                    }
+                if local == b"enumeration"
+                    && let Some(v) = get_attr(&e, "value")
+                {
+                    values.push(v);
                 }
                 if local == b"pattern" {
                     pattern = get_attr(&e, "value").or(pattern);
@@ -313,10 +313,10 @@ fn read_extension<R: BufRead>(
                 if local.as_slice() == b"extension" {
                     base = get_attr(&e, "base").unwrap_or_default();
                 }
-                if local.as_slice() == b"attributeGroup" {
-                    if let Some(r) = get_attr(&e, "ref") {
-                        ags.push(r);
-                    }
+                if local.as_slice() == b"attributeGroup"
+                    && let Some(r) = get_attr(&e, "ref")
+                {
+                    ags.push(r);
                 }
                 if local.as_slice() == b"attribute" {
                     let name = get_attr(&e, "name");

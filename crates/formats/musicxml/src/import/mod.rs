@@ -570,11 +570,13 @@ mod tests {
 
     #[test]
     fn convert_header_uses_work_title() {
-        let mut score = ScorePartwise::default();
-        score.work = Some(Work {
-            work_title: Some("Test Symphony".to_string()),
+        let score = ScorePartwise {
+            work: Some(Work {
+                work_title: Some("Test Symphony".to_string()),
+                ..Default::default()
+            }),
             ..Default::default()
-        });
+        };
 
         let mei = convert_score(&score).expect("conversion should succeed");
 
@@ -592,10 +594,10 @@ mod tests {
 
                 // Check title content
                 let ts = title_stmt.unwrap();
-                let title = ts.children.iter().find_map(|c| {
+                let title = ts.children.iter().map(|c| {
                     let tusk_model::elements::TitleStmtChild::Title(t) = c;
-                    Some(t)
-                });
+                    t
+                }).next();
                 assert!(title.is_some());
 
                 // Check title text
@@ -617,8 +619,10 @@ mod tests {
 
     #[test]
     fn convert_header_uses_movement_title_as_fallback() {
-        let mut score = ScorePartwise::default();
-        score.movement_title = Some("Movement I".to_string());
+        let score = ScorePartwise {
+            movement_title: Some("Movement I".to_string()),
+            ..Default::default()
+        };
 
         let mei = convert_score(&score).expect("conversion should succeed");
 

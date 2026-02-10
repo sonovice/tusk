@@ -26,7 +26,7 @@ pub mod v4_1;
 /// Returns a version label (e.g. `"4.0"` → `"v4_0"`), or `None` if unknown/missing.
 pub fn detect_musicxml_version(xml: &str) -> Option<Cow<'static, str>> {
     let root = find_musicxml_root(xml)?;
-    let version = get_version_attr(&root)?;
+    let version = get_version_attr(root)?;
     version_string_to_label(version).map(Cow::Borrowed)
 }
 
@@ -40,7 +40,7 @@ pub fn detect_musicxml_version(xml: &str) -> Option<Cow<'static, str>> {
 pub fn detect_version_string(xml: &str) -> Option<&'static str> {
     // Try @version attribute first
     if let Some(root) = find_musicxml_root(xml) {
-        if let Some(v) = get_version_attr(&root) {
+        if let Some(v) = get_version_attr(root) {
             return version_string_to_canonical(v);
         }
     }
