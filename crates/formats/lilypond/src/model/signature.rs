@@ -1,7 +1,9 @@
-//! Clef, key signature, and time signature types for the LilyPond AST.
+//! Clef, key signature, time signature, tempo, and mark types for the LilyPond AST.
 //!
-//! These correspond to the `\clef`, `\key`, and `\time` music functions.
+//! These correspond to the `\clef`, `\key`, `\time`, `\tempo`, and `\mark` music functions.
 
+use super::duration::Duration;
+use super::markup::Markup;
 use super::pitch::Pitch;
 
 /// `\clef "name"` — clef specification.
@@ -173,4 +175,70 @@ pub struct TimeSignature {
     pub numerators: Vec<u32>,
     /// Denominator (beat unit).
     pub denominator: u32,
+}
+
+// ---------------------------------------------------------------------------
+// Tempo
+// ---------------------------------------------------------------------------
+
+/// `\tempo` — tempo indication.
+///
+/// Supports three forms from the grammar:
+/// - `\tempo 4 = 120` — metronome mark only
+/// - `\tempo "Allegro" 4 = 120` — text + metronome mark
+/// - `\tempo "Allegro"` — text only (markup or string)
+///
+/// The BPM can be a single value or a range (e.g. `120-132`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tempo {
+    /// Optional text label (string or markup), e.g. `"Allegro"`.
+    pub text: Option<Markup>,
+    /// Optional beat duration for metronome mark (e.g. quarter note = `4`).
+    pub duration: Option<Duration>,
+    /// Optional BPM value or range.
+    pub bpm: Option<TempoRange>,
+}
+
+/// BPM specification for `\tempo`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TempoRange {
+    /// Single BPM value, e.g. `120`.
+    Single(u32),
+    /// BPM range, e.g. `120-132`.
+    Range(u32, u32),
+}
+
+// ---------------------------------------------------------------------------
+// Mark
+// ---------------------------------------------------------------------------
+
+/// The label argument to `\mark`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MarkLabel {
+    /// `\mark \default` — auto-incremented mark.
+    Default,
+    /// `\mark N` — numeric mark (integer argument).
+    Number(u32),
+    /// `\mark "A"` or `\mark \markup { ... }` — string/markup label.
+    Markup(Markup),
+}
+
+/// `\mark` — rehearsal or ad-hoc mark.
+///
+/// Grammar forms:
+/// - `\mark \default` — auto-incremented rehearsal mark
+/// - `\mark N` — mark with specific number
+/// - `\mark "text"` or `\mark \markup { ... }` — mark with text/markup
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mark {
+    pub label: MarkLabel,
+}
+
+/// `\textMark` — text mark (LilyPond 2.24+).
+///
+/// Places a text mark at the current position.
+/// - `\textMark "text"` or `\textMark \markup { ... }`
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextMark {
+    pub text: Markup,
 }

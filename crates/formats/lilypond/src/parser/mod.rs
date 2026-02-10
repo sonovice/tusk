@@ -648,8 +648,11 @@ impl<'src> Parser<'src> {
             Token::New | Token::Context => self.parse_context_music(),
             Token::Change => self.parse_context_change(),
             Token::Time => self.parse_time_signature(),
+            Token::Tempo => self.parse_tempo(),
             Token::EscapedWord(s) if s == "clef" => self.parse_clef(),
             Token::EscapedWord(s) if s == "key" => self.parse_key_signature(),
+            Token::EscapedWord(s) if s == "mark" => self.parse_mark(),
+            Token::EscapedWord(s) if s == "textMark" => self.parse_text_mark(),
             Token::EscapedWord(s) if s == "autoBeamOn" => {
                 self.advance()?;
                 Ok(Music::AutoBeamOn)
@@ -1482,3 +1485,5 @@ mod tests_markup;
 mod tests_post_events;
 #[cfg(test)]
 mod tests_repeats;
+#[cfg(test)]
+mod tests_tempo_marks;

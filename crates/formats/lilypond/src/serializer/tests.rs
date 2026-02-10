@@ -1242,3 +1242,147 @@ fn serialize_markup_assignment() {
         "got: {output}"
     );
 }
+
+// ── Tempo ────────────────────────────────────────────────────────────────
+
+#[test]
+fn serialize_tempo_text_and_metronome() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Tempo(Tempo {
+                text: Some(markup::Markup::Word("Allegro".into())),
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                bpm: Some(TempoRange::Single(120)),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(
+        output.contains("\\tempo \"Allegro\" 4 = 120"),
+        "got: {output}"
+    );
+}
+
+#[test]
+fn serialize_tempo_metronome_only() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Tempo(Tempo {
+                text: None,
+                duration: Some(Duration {
+                    base: 2,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                bpm: Some(TempoRange::Single(60)),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\tempo 2 = 60"), "got: {output}");
+}
+
+#[test]
+fn serialize_tempo_text_only() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Tempo(Tempo {
+                text: Some(markup::Markup::Word("Andante".into())),
+                duration: None,
+                bpm: None,
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\tempo \"Andante\""), "got: {output}");
+}
+
+#[test]
+fn serialize_tempo_range() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Tempo(Tempo {
+                text: Some(markup::Markup::Word("Vivace".into())),
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 1,
+                    multipliers: vec![],
+                }),
+                bpm: Some(TempoRange::Range(132, 144)),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(
+        output.contains("\\tempo \"Vivace\" 4. = 132-144"),
+        "got: {output}"
+    );
+}
+
+// ── Mark ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn serialize_mark_default() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Mark(Mark {
+                label: MarkLabel::Default,
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\mark \\default"), "got: {output}");
+}
+
+#[test]
+fn serialize_mark_number() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Mark(Mark {
+                label: MarkLabel::Number(5),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\mark 5"), "got: {output}");
+}
+
+#[test]
+fn serialize_mark_string() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::Mark(Mark {
+                label: MarkLabel::Markup(markup::Markup::Word("A".into())),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\mark \"A\""), "got: {output}");
+}
+
+// ── TextMark ─────────────────────────────────────────────────────────────
+
+#[test]
+fn serialize_text_mark() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+            Music::TextMark(TextMark {
+                text: markup::Markup::Word("Fine".into()),
+            }),
+        ]))],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\textMark \"Fine\""), "got: {output}");
+}

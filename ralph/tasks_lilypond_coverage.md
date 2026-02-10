@@ -943,11 +943,37 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 22.1 Model & Parser
 
-- [ ] [P] Parse `\tempo "Allegro" 4 = 120`, `\mark \default` or `\mark "A"`, segno/coda as markup or commands
-- [ ] [P] Add `TempoEvent`, `MarkEvent`, text script events
-- [ ] [S] Serialize tempo, mark, text events
-- [ ] [V] Tempo duration and BPM valid
-- [ ] [T] Fragment: `\tempo "Andante" 4 = 72`, `\mark \default`
+- [x] [P] Parse `\tempo "Allegro" 4 = 120`, `\mark \default` or `\mark "A"`, segno/coda as markup or commands
+  - `\tempo` supports 3 grammar forms: text+metronome (`\tempo "Allegro" 4 = 120`), metronome only (`\tempo 4 = 60`), text only (`\tempo "Andante"`)
+  - Tempo range: single BPM or `N-M` range (e.g. `132-144`)
+  - Tempo text: string literal or `\markup { ... }`
+  - `\mark` supports: `\mark \default`, `\mark N` (number), `\mark "A"` (string), `\mark \markup { ... }`
+  - `\textMark` supports: `\textMark "text"` or `\textMark \markup { ... }`
+  - Segno/coda already handled as NamedArticulation post-events (KNOWN_ORNAMENTS)
+  - Parser dispatch: Token::Tempo, EscapedWord("mark"), EscapedWord("textMark")
+- [x] [P] Add `TempoEvent`, `MarkEvent`, text script events
+  - `Tempo { text: Option<Markup>, duration: Option<Duration>, bpm: Option<TempoRange> }` in model/signature.rs
+  - `TempoRange` enum: `Single(u32)` | `Range(u32, u32)`
+  - `Mark { label: MarkLabel }` with `MarkLabel` enum: `Default` | `Number(u32)` | `Markup(Markup)`
+  - `TextMark { text: Markup }` for `\textMark`
+  - `Music::Tempo(Tempo)`, `Music::Mark(Mark)`, `Music::TextMark(TextMark)` variants
+- [x] [S] Serialize tempo, mark, text events
+  - `\tempo "text" dur = BPM[-BPM]`, `\tempo dur = BPM`, `\tempo "text"`
+  - `\mark \default`, `\mark N`, `\mark "text"`, `\mark \markup { ... }`
+  - `\textMark "text"`, `\textMark \markup { ... }`
+  - 8 serializer tests
+- [x] [V] Tempo duration and BPM valid
+  - EmptyTempo, InvalidTempoBpm, InvalidTempoRange validation errors
+  - BPM range validated (low < high); zero BPM rejected
+  - Markup validated recursively for Mark/TextMark
+  - 6 validator tests
+  - Split validator/tests.rs → tests.rs (1071 LOC) + tests_extended.rs (498 LOC)
+- [x] [T] Fragment: `\tempo "Andante" 4 = 72`, `\mark \default`
+  - Fixture: fragment_tempo_marks.ly (tempo text+metro, metro only, text only, range, mark default/string/number, textMark)
+  - 7 parser tests: tempo text+metronome, metronome only, text only, range, dotted, markup, markup-text-only
+  - 5 parser tests: mark default/string/number/markup, textMark string/markup
+  - 10 roundtrip tests: tempo/mark/textMark combinations, fixture
+  - 789 total tests pass (was 752)
 
 ### 22.2 Import & Export
 

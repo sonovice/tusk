@@ -453,6 +453,9 @@ impl<'a> Serializer<'a> {
             Music::Clef(c) => self.write_clef(c),
             Music::KeySignature(ks) => self.write_key_signature(ks),
             Music::TimeSignature(ts) => self.write_time_signature(ts),
+            Music::Tempo(t) => self.write_tempo(t),
+            Music::Mark(m) => self.write_mark(m),
+            Music::TextMark(tm) => self.write_text_mark(tm),
             Music::Grace { body } => {
                 self.out.push_str("\\grace ");
                 self.write_music(body);
@@ -580,6 +583,59 @@ impl<'a> Serializer<'a> {
         }
         self.out.push('/');
         self.out.push_str(&ts.denominator.to_string());
+    }
+
+    fn write_tempo(&mut self, t: &Tempo) {
+        self.out.push_str("\\tempo ");
+        if let Some(text) = &t.text {
+            self.write_tempo_text(text);
+            if t.duration.is_some() {
+                self.out.push(' ');
+            }
+        }
+        if let Some(dur) = &t.duration {
+            self.write_duration(dur);
+            self.out.push_str(" = ");
+            if let Some(bpm) = &t.bpm {
+                match bpm {
+                    TempoRange::Single(n) => self.out.push_str(&n.to_string()),
+                    TempoRange::Range(lo, hi) => {
+                        self.out.push_str(&lo.to_string());
+                        self.out.push('-');
+                        self.out.push_str(&hi.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Write the text part of a tempo (quoted string for Word, \markup for structured).
+    fn write_tempo_text(&mut self, m: &markup::Markup) {
+        match m {
+            markup::Markup::Word(s) => {
+                self.out.push('"');
+                self.out.push_str(s);
+                self.out.push('"');
+            }
+            _ => {
+                self.out.push_str("\\markup ");
+                self.write_markup(m);
+            }
+        }
+    }
+
+    fn write_mark(&mut self, m: &Mark) {
+        self.out.push_str("\\mark ");
+        match &m.label {
+            MarkLabel::Default => self.out.push_str("\\default"),
+            MarkLabel::Number(n) => self.out.push_str(&n.to_string()),
+            MarkLabel::Markup(markup) => self.write_tempo_text(markup),
+        }
+    }
+
+    fn write_text_mark(&mut self, tm: &TextMark) {
+        self.out.push_str("\\textMark ");
+        self.write_tempo_text(&tm.text);
     }
 
     // ──────────────────────────────────────────────────────────────────

@@ -15,7 +15,9 @@ pub use note::{
     MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
 };
 pub use pitch::Pitch;
-pub use signature::{Clef, KeySignature, Mode, TimeSignature};
+pub use signature::{
+    Clef, KeySignature, Mark, MarkLabel, Mode, Tempo, TempoRange, TextMark, TimeSignature,
+};
 
 // Re-export repeat types (defined in this file)
 // RepeatType is already available as model::RepeatType
@@ -320,6 +322,12 @@ pub enum Music {
     KeySignature(KeySignature),
     /// `\time n/m` — set the time signature.
     TimeSignature(TimeSignature),
+    /// `\tempo` — tempo indication.
+    Tempo(Tempo),
+    /// `\mark` — rehearsal or ad-hoc mark.
+    Mark(Mark),
+    /// `\textMark` — text mark (LilyPond 2.24+).
+    TextMark(TextMark),
     /// `\autoBeamOn` — enable automatic beaming.
     AutoBeamOn,
     /// `\autoBeamOff` — disable automatic beaming.

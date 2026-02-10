@@ -91,6 +91,15 @@ pub enum ValidationError {
     #[error("empty lyric syllable")]
     EmptyLyricSyllable,
 
+    #[error("tempo must have text or metronome mark")]
+    EmptyTempo,
+
+    #[error("tempo BPM must be positive")]
+    InvalidTempoBpm,
+
+    #[error("tempo BPM range: low ({low}) must be less than high ({high})")]
+    InvalidTempoRange { low: u32, high: u32 },
+
     #[error("{0}")]
     Other(String),
 }
@@ -460,6 +469,45 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 errors.push(ValidationError::InvalidTimeDenominator);
             }
         }
+        Music::Tempo(t) => {
+            if t.text.is_none() && t.duration.is_none() {
+                errors.push(ValidationError::EmptyTempo);
+            }
+            if let Some(dur) = &t.duration {
+                validate_duration(dur, errors);
+            }
+            if let Some(bpm) = &t.bpm {
+                match bpm {
+                    TempoRange::Single(n) => {
+                        if *n == 0 {
+                            errors.push(ValidationError::InvalidTempoBpm);
+                        }
+                    }
+                    TempoRange::Range(lo, hi) => {
+                        if *lo == 0 || *hi == 0 {
+                            errors.push(ValidationError::InvalidTempoBpm);
+                        }
+                        if *lo >= *hi {
+                            errors.push(ValidationError::InvalidTempoRange {
+                                low: *lo,
+                                high: *hi,
+                            });
+                        }
+                    }
+                }
+            }
+            if let Some(text) = &t.text {
+                validate_markup(text, errors);
+            }
+        }
+        Music::Mark(m) => {
+            if let MarkLabel::Markup(markup) = &m.label {
+                validate_markup(markup, errors);
+            }
+        }
+        Music::TextMark(tm) => {
+            validate_markup(&tm.text, errors);
+        }
         Music::Note(n) => {
             if let Some(dur) = &n.duration {
                 validate_duration(dur, errors);
@@ -608,3 +656,5 @@ fn validate_duration(dur: &Duration, errors: &mut Vec<ValidationError>) {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_extended;

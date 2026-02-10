@@ -1,4 +1,4 @@
-//! Parsing of signatures, tuplets, and fraction-based constructs.
+//! Parsing of signatures, tuplets, tempo, marks, and fraction-based constructs.
 //!
 //! Extracted from `parser/mod.rs` to keep file sizes under 1500 LOC.
 
@@ -6,6 +6,9 @@ use crate::lexer::Token;
 use crate::model::*;
 
 use super::{ParseError, Parser};
+
+// Steno duration values (integer → duration base value).
+const STENO_DURATIONS: &[u64] = &[1, 2, 4, 8, 16, 32, 64, 128, 256];
 
 impl<'src> Parser<'src> {
     /// Parse `\tuplet n/m [duration] { music }`.
@@ -327,5 +330,184 @@ impl<'src> Parser<'src> {
             numerators,
             denominator,
         }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \tempo [text] [steno_duration = tempo_range]
+    // ──────────────────────────────────────────────────────────────────
+
+    /// Parse `\tempo` in three grammar forms:
+    /// - `\tempo 4 = 120` — metronome mark only
+    /// - `\tempo "Allegro" 4 = 120` — text + metronome
+    /// - `\tempo "Allegro"` — text only
+    pub(super) fn parse_tempo(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Tempo)?;
+
+        // Try to parse optional text (string, symbol, or markup).
+        let text = self.try_parse_tempo_text()?;
+
+        // Try to parse optional steno_duration = tempo_range.
+        let (duration, bpm) = if self.is_steno_duration() {
+            let dur = self.parse_required_duration()?;
+            self.expect(&Token::Equals)?;
+            let range = self.parse_tempo_range()?;
+            (Some(dur), Some(range))
+        } else {
+            (None, None)
+        };
+
+        // At least text or duration must be present.
+        if text.is_none() && duration.is_none() {
+            return Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "tempo text or metronome mark after \\tempo".into(),
+            });
+        }
+
+        Ok(Music::Tempo(Tempo {
+            text,
+            duration,
+            bpm,
+        }))
+    }
+
+    /// Try to parse the `text` part of a tempo (string, symbol as markup word, or \markup).
+    fn try_parse_tempo_text(&mut self) -> Result<Option<Markup>, ParseError> {
+        match self.peek() {
+            Token::String(_) => {
+                let s = self.expect_string()?;
+                Ok(Some(Markup::Word(s)))
+            }
+            Token::Markup => {
+                let m = self.parse_markup()?;
+                Ok(Some(m))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Check if the current token starts a steno_duration (unsigned integer
+    /// that is a valid duration base: 1, 2, 4, 8, 16, 32, 64, 128, 256).
+    fn is_steno_duration(&self) -> bool {
+        matches!(self.peek(), Token::Unsigned(n) if STENO_DURATIONS.contains(n))
+    }
+
+    /// Parse a required duration (base + dots, no multipliers).
+    fn parse_required_duration(&mut self) -> Result<Duration, ParseError> {
+        match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                let base = match tok.token {
+                    Token::Unsigned(n) => n as u32,
+                    _ => unreachable!(),
+                };
+                let dots = self.parse_dots();
+                Ok(Duration {
+                    base,
+                    dots,
+                    multipliers: vec![],
+                })
+            }
+            _ => Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "duration value".into(),
+            }),
+        }
+    }
+
+    /// Parse a `tempo_range`: single number or `N-M` range.
+    fn parse_tempo_range(&mut self) -> Result<TempoRange, ParseError> {
+        let first = self.expect_unsigned("tempo BPM value")?;
+        if *self.peek() == Token::Dash {
+            self.advance()?; // consume `-`
+            let second = self.expect_unsigned("tempo BPM range end")?;
+            Ok(TempoRange::Range(first, second))
+        } else {
+            Ok(TempoRange::Single(first))
+        }
+    }
+
+    /// Expect and consume an unsigned integer.
+    fn expect_unsigned(&mut self, context: &str) -> Result<u32, ParseError> {
+        match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Unsigned(n) => Ok(n as u32),
+                    _ => unreachable!(),
+                }
+            }
+            _ => Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: context.into(),
+            }),
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \mark label
+    // ──────────────────────────────────────────────────────────────────
+
+    /// Parse `\mark` with label: `\mark \default`, `\mark N`, `\mark "A"`,
+    /// or `\mark \markup { ... }`.
+    pub(super) fn parse_mark(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \mark (EscapedWord("mark"))
+
+        let label = match self.peek() {
+            Token::Default => {
+                self.advance()?;
+                MarkLabel::Default
+            }
+            Token::Unsigned(_) => {
+                let n = self.expect_unsigned("mark number")?;
+                MarkLabel::Number(n)
+            }
+            Token::String(_) => {
+                let s = self.expect_string()?;
+                MarkLabel::Markup(Markup::Word(s))
+            }
+            Token::Markup => {
+                let m = self.parse_markup()?;
+                MarkLabel::Markup(m)
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "mark label (\\default, number, string, or \\markup)".into(),
+                });
+            }
+        };
+
+        Ok(Music::Mark(Mark { label }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \textMark text
+    // ──────────────────────────────────────────────────────────────────
+
+    /// Parse `\textMark "text"` or `\textMark \markup { ... }`.
+    pub(super) fn parse_text_mark(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \textMark (EscapedWord("textMark"))
+
+        let text = match self.peek() {
+            Token::String(_) => {
+                let s = self.expect_string()?;
+                Markup::Word(s)
+            }
+            Token::Markup => self.parse_markup()?,
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "text (string or \\markup) after \\textMark".into(),
+                });
+            }
+        };
+
+        Ok(Music::TextMark(TextMark { text }))
     }
 }

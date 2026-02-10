@@ -288,6 +288,8 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_markuplist(ml);
             events.push(LyEvent::MarkupList(serialized));
         }
+        // Tempo, mark, textMark — import handled in Phase 22.2
+        Music::Tempo(_) | Music::Mark(_) | Music::TextMark(_) => {}
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }
