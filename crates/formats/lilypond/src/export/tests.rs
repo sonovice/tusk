@@ -551,3 +551,82 @@ fn roundtrip_beam_fixture() {
         "autoBeamOn preserved: {output}"
     );
 }
+
+// --- Phase 11.2: Dynamics and hairpin roundtrip tests ---
+
+#[test]
+fn roundtrip_dynamic_f() {
+    let output = roundtrip("{ c4\\f d4 }");
+    assert!(output.contains("\\f"), "output: {output}");
+    assert!(output.contains("c4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_dynamic_p() {
+    let output = roundtrip("{ c4\\p d4 }");
+    assert!(output.contains("\\p"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_multiple_dynamics() {
+    let output = roundtrip("{ c4\\f d4\\p e4\\ff f4\\pp }");
+    assert!(output.contains("\\f"), "output: {output}");
+    assert!(output.contains("\\p"), "output: {output}");
+    assert!(output.contains("\\ff"), "output: {output}");
+    assert!(output.contains("\\pp"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_crescendo_hairpin() {
+    let output = roundtrip("{ c4\\< d4 e4\\! }");
+    assert!(
+        output.contains("\\<"),
+        "output should contain crescendo: {output}"
+    );
+    assert!(
+        output.contains("\\!"),
+        "output should contain hairpin end: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_decrescendo_hairpin() {
+    let output = roundtrip("{ c4\\> d4 e4\\! }");
+    assert!(
+        output.contains("\\>"),
+        "output should contain decrescendo: {output}"
+    );
+    assert!(
+        output.contains("\\!"),
+        "output should contain hairpin end: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_dynamic_with_hairpin() {
+    let output = roundtrip("{ c4\\f\\< d4 e4\\!\\ff }");
+    assert!(output.contains("\\f"), "output: {output}");
+    assert!(output.contains("\\<"), "output: {output}");
+    assert!(output.contains("\\!"), "output: {output}");
+    assert!(output.contains("\\ff"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_dynamics_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_dynamics.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(output.contains("\\f"), "output: {output}");
+    assert!(output.contains("\\p"), "output: {output}");
+    assert!(output.contains("\\<"), "output: {output}");
+    assert!(output.contains("\\>"), "output: {output}");
+    assert!(output.contains("\\!"), "output: {output}");
+    assert!(output.contains("\\ff"), "output: {output}");
+    assert!(output.contains("\\mp"), "output: {output}");
+    assert!(output.contains("\\mf"), "output: {output}");
+    assert!(output.contains("\\sfz"), "output: {output}");
+    assert!(output.contains("\\fp"), "output: {output}");
+}

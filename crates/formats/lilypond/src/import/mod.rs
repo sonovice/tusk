@@ -8,10 +8,10 @@ mod tests;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild,
-    Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef,
-    ScoreDefChild, Section, SectionChild, Slur, Staff, StaffChild, StaffDef, StaffGrp,
-    StaffGrpChild, TitleStmt,
+    Beam, BeamChild, Body, BodyChild, Dynam, DynamChild, FileDesc, FileDescChild, Hairpin, Layer,
+    LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild,
+    Score, ScoreChild, ScoreDef, ScoreDefChild, Section, SectionChild, Slur, Staff, StaffChild,
+    StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
 };
 use tusk_model::generated::data::{DataTie, DataUri, DataWord};
 
@@ -509,6 +509,14 @@ struct PendingSpanner {
     staff_n: u32,
 }
 
+/// A pending hairpin (crescendo/decrescendo) waiting for its end note.
+struct PendingHairpin {
+    start_id: String,
+    /// "cres" for crescendo, "dim" for diminuendo.
+    form: String,
+    staff_n: u32,
+}
+
 /// Build a Section from analyzed staff layout.
 fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, ImportError> {
     let mut section = Section::default();
@@ -517,6 +525,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     measure.common.n = Some(DataWord("1".to_string()));
     let mut slur_counter = 0u32;
     let mut beam_counter = 0u32;
+    let mut dynam_counter = 0u32;
+    let mut hairpin_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -537,6 +547,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
 
             // Track IDs of notes for tie/slur resolution
             let mut pending_slurs: Vec<PendingSpanner> = Vec::new();
+            let mut pending_hairpins: Vec<PendingHairpin> = Vec::new();
             let mut tie_pending = false;
 
             for event in &events {
@@ -677,11 +688,41 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
                             }
                         }
-                        PostEvent::Tie
-                        | PostEvent::Crescendo
-                        | PostEvent::Decrescendo
-                        | PostEvent::HairpinEnd
-                        | PostEvent::Dynamic(_) => {}
+                        PostEvent::Dynamic(name) => {
+                            dynam_counter += 1;
+                            let dynam = make_dynam(name, &current_id, staff_info.n, dynam_counter);
+                            measure.children.push(MeasureChild::Dynam(Box::new(dynam)));
+                        }
+                        PostEvent::Crescendo => {
+                            pending_hairpins.push(PendingHairpin {
+                                start_id: current_id.clone(),
+                                form: "cres".to_string(),
+                                staff_n: staff_info.n,
+                            });
+                        }
+                        PostEvent::Decrescendo => {
+                            pending_hairpins.push(PendingHairpin {
+                                start_id: current_id.clone(),
+                                form: "dim".to_string(),
+                                staff_n: staff_info.n,
+                            });
+                        }
+                        PostEvent::HairpinEnd => {
+                            if let Some(pending) = pending_hairpins.pop() {
+                                hairpin_counter += 1;
+                                let hairpin = make_hairpin(
+                                    &pending.start_id,
+                                    &current_id,
+                                    pending.staff_n,
+                                    &pending.form,
+                                    hairpin_counter,
+                                );
+                                measure
+                                    .children
+                                    .push(MeasureChild::Hairpin(Box::new(hairpin)));
+                            }
+                        }
+                        PostEvent::Tie => {}
                         PostEvent::BeamStart => {
                             // Record position of this note in the layer
                             beam_starts.push(layer.children.len() - 1);
@@ -767,6 +808,33 @@ fn make_slur(start_id: &str, end_id: &str, staff_n: u32, slur_id: u32, is_phrase
         slur.common.label = Some("lilypond:phrase".to_string());
     }
     slur
+}
+
+/// Create an MEI Dynam control event.
+fn make_dynam(name: &str, startid: &str, staff_n: u32, dynam_id: u32) -> Dynam {
+    let mut dynam = Dynam::default();
+    dynam.common.xml_id = Some(format!("ly-dynam-{dynam_id}"));
+    dynam.dynam_log.startid = Some(DataUri(format!("#{startid}")));
+    dynam.dynam_log.staff = Some(staff_n.to_string());
+    dynam.children.push(DynamChild::Text(name.to_string()));
+    dynam
+}
+
+/// Create an MEI Hairpin control event.
+fn make_hairpin(
+    start_id: &str,
+    end_id: &str,
+    staff_n: u32,
+    form: &str,
+    hairpin_id: u32,
+) -> Hairpin {
+    let mut hairpin = Hairpin::default();
+    hairpin.common.xml_id = Some(format!("ly-hairpin-{hairpin_id}"));
+    hairpin.hairpin_log.startid = Some(DataUri(format!("#{start_id}")));
+    hairpin.hairpin_log.endid = Some(DataUri(format!("#{end_id}")));
+    hairpin.hairpin_log.staff = Some(staff_n.to_string());
+    hairpin.hairpin_log.form = Some(form.to_string());
+    hairpin
 }
 
 /// Extract voice streams from LilyPond music.

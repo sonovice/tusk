@@ -1,6 +1,8 @@
 use super::*;
 use crate::parser::Parser;
-use tusk_model::elements::{ChordChild, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef};
+use tusk_model::elements::{
+    ChordChild, Dynam, Hairpin, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef,
+};
 use tusk_model::generated::data::{
     DataClefshape, DataDuration, DataDurationCmn, DataDurationrests, DataStaffrelBasic,
 };
@@ -926,4 +928,127 @@ fn import_beam_preserves_note_content() {
     } else {
         panic!("expected Beam");
     }
+}
+
+// --- Phase 11.2: Dynamics and hairpin import tests ---
+
+/// Collect all Dynam control events from the first measure.
+fn measure_dynams(mei: &Mei) -> Vec<&Dynam> {
+    let mut dynams = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Dynam(d) = mc2 {
+                                                dynams.push(d.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    dynams
+}
+
+/// Collect all Hairpin control events from the first measure.
+fn measure_hairpins(mei: &Mei) -> Vec<&Hairpin> {
+    let mut hairpins = Vec::new();
+    for child in &mei.children {
+        if let MeiChild::Music(music) = child {
+            for mc in &music.children {
+                let tusk_model::elements::MusicChild::Body(body) = mc;
+                for bc in &body.children {
+                    let tusk_model::elements::BodyChild::Mdiv(mdiv) = bc;
+                    for dc in &mdiv.children {
+                        let tusk_model::elements::MdivChild::Score(score) = dc;
+                        for sc in &score.children {
+                            if let ScoreChild::Section(section) = sc {
+                                for sec_c in &section.children {
+                                    if let SectionChild::Measure(measure) = sec_c {
+                                        for mc2 in &measure.children {
+                                            if let MeasureChild::Hairpin(h) = mc2 {
+                                                hairpins.push(h.as_ref());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    hairpins
+}
+
+#[test]
+fn import_dynamic_creates_dynam() {
+    let mei = parse_and_import("{ c4\\f d4\\p }");
+    let dynams = measure_dynams(&mei);
+    assert_eq!(dynams.len(), 2, "expected 2 dynam control events");
+    // First dynamic: f
+    assert_eq!(dynams[0].children.len(), 1);
+    let DynamChild::Text(t) = &dynams[0].children[0];
+    assert_eq!(t, "f");
+    assert!(dynams[0].dynam_log.startid.is_some());
+    assert!(dynams[0].dynam_log.staff.is_some());
+    // Second dynamic: p
+    let DynamChild::Text(t) = &dynams[1].children[0];
+    assert_eq!(t, "p");
+}
+
+#[test]
+fn import_crescendo_hairpin() {
+    let mei = parse_and_import("{ c4\\< d4 e4\\! }");
+    let hairpins = measure_hairpins(&mei);
+    assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
+    let hp = hairpins[0];
+    assert_eq!(hp.hairpin_log.form.as_deref(), Some("cres"));
+    assert!(hp.hairpin_log.startid.is_some());
+    assert!(hp.hairpin_log.endid.is_some());
+    assert!(hp.hairpin_log.staff.is_some());
+}
+
+#[test]
+fn import_decrescendo_hairpin() {
+    let mei = parse_and_import("{ c4\\> d4 e4\\! }");
+    let hairpins = measure_hairpins(&mei);
+    assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
+    assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("dim"));
+}
+
+#[test]
+fn import_dynamic_and_hairpin_combined() {
+    let mei = parse_and_import("{ c4\\f\\< d4 e4\\!\\ff }");
+    let dynams = measure_dynams(&mei);
+    let hairpins = measure_hairpins(&mei);
+    assert_eq!(dynams.len(), 2, "expected 2 dynamics (f and ff)");
+    assert_eq!(hairpins.len(), 1, "expected 1 hairpin");
+    let DynamChild::Text(t) = &dynams[0].children[0];
+    assert_eq!(t, "f");
+    let DynamChild::Text(t) = &dynams[1].children[0];
+    assert_eq!(t, "ff");
+}
+
+#[test]
+fn import_hairpin_on_chord() {
+    let mei = parse_and_import("{ <c e g>4\\< <d f a>4\\! }");
+    let hairpins = measure_hairpins(&mei);
+    assert_eq!(hairpins.len(), 1);
+    assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("cres"));
 }

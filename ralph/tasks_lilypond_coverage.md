@@ -486,10 +486,21 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 11.2 Import & Export
 
-- [ ] [I] Dynamics → MEI `<dynam>`; hairpins → MEI `<hairpin>`
-- [ ] [E] MEI dynam/hairpin → LilyPond `\p`, `\f`, `\<`, etc.
-- [ ] [T] Roundtrip dynamics and hairpins
-- [ ] [T] Dynamics and hairpin fixtures; roundtrip
+- [x] [I] Dynamics → MEI `<dynam>`; hairpins → MEI `<hairpin>`
+  - PostEvent::Dynamic(name) → MEI `<dynam>` with text child + @startid + @staff
+  - PostEvent::Crescendo/Decrescendo → PendingHairpin; PostEvent::HairpinEnd → MEI `<hairpin>` with @startid/@endid/@form/@staff
+  - PendingHairpin struct tracks open hairpins (same pattern as PendingSpanner for slurs)
+  - make_dynam() and make_hairpin() helpers added
+  - 5 import tests: dynamic creates dynam, crescendo hairpin, decrescendo hairpin, combined, chord hairpin
+- [x] [E] MEI dynam/hairpin → LilyPond `\p`, `\f`, `\<`, etc.
+  - collect_dynam_post_events(): maps Dynam @startid → PostEvent::Dynamic(text) on referenced note
+  - collect_hairpin_post_events(): maps Hairpin @startid → Crescendo/Decrescendo, @endid → HairpinEnd
+  - Post-event map merged with slur post-events for unified handling
+- [x] [T] Roundtrip dynamics and hairpins
+  - 7 roundtrip tests: dynamic f/p, multiple dynamics, crescendo, decrescendo, dynamic+hairpin combined
+- [x] [T] Dynamics and hairpin fixtures; roundtrip
+  - roundtrip_dynamics_fixture validates fragment_dynamics.ly (f, p, <, >, !, ff, mp, mf, sfz, fp)
+  - 351 total tests pass
 
 ---
 

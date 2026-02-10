@@ -54,8 +54,10 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         if let ScoreChild::Section(section) = child {
             for section_child in &section.children {
                 if let SectionChild::Measure(measure) = section_child {
-                    // Collect slur control events → note-id post-event map
-                    let slur_post_events = collect_slur_post_events(&measure.children);
+                    // Collect control events → note-id post-event map
+                    let mut post_event_map = collect_slur_post_events(&measure.children);
+                    collect_dynam_post_events(&measure.children, &mut post_event_map);
+                    collect_hairpin_post_events(&measure.children, &mut post_event_map);
 
                     let mut staff_idx = 0usize;
                     for mc in &measure.children {
@@ -65,7 +67,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc;
                                 let mut items = Vec::new();
                                 for lc in &layer.children {
-                                    convert_layer_child_to_items(lc, &slur_post_events, &mut items);
+                                    convert_layer_child_to_items(lc, &post_event_map, &mut items);
                                 }
                                 layers.push(items);
                             }
@@ -505,6 +507,65 @@ fn collect_slur_post_events(measure_children: &[MeasureChild]) -> HashMap<String
     }
 
     map
+}
+
+/// Collect dynamic control events from measure children into the post-event map.
+///
+/// Each `<dynam>` with a `@startid` is mapped to a `PostEvent::Dynamic(text)` on
+/// the referenced note.
+fn collect_dynam_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<PostEvent>>,
+) {
+    for mc in measure_children {
+        if let MeasureChild::Dynam(dynam) = mc {
+            // Get the text content
+            let text = dynam
+                .children
+                .iter()
+                .map(|c| {
+                    let tusk_model::elements::DynamChild::Text(t) = c;
+                    t.clone()
+                })
+                .next()
+                .unwrap_or_default();
+
+            if let Some(ref startid) = dynam.dynam_log.startid {
+                let id = startid.0.trim_start_matches('#').to_string();
+                map.entry(id).or_default().push(PostEvent::Dynamic(text));
+            }
+        }
+    }
+}
+
+/// Collect hairpin control events from measure children into the post-event map.
+///
+/// Each `<hairpin>` with `@startid`/`@endid` is mapped to `Crescendo`/`Decrescendo`
+/// on the start note and `HairpinEnd` on the end note.
+fn collect_hairpin_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<PostEvent>>,
+) {
+    for mc in measure_children {
+        if let MeasureChild::Hairpin(hairpin) = mc {
+            let form = hairpin.hairpin_log.form.as_deref().unwrap_or("");
+
+            if let Some(ref startid) = hairpin.hairpin_log.startid {
+                let id = startid.0.trim_start_matches('#').to_string();
+                let event = if form == "dim" {
+                    PostEvent::Decrescendo
+                } else {
+                    PostEvent::Crescendo
+                };
+                map.entry(id).or_default().push(event);
+            }
+
+            if let Some(ref endid) = hairpin.hairpin_log.endid {
+                let id = endid.0.trim_start_matches('#').to_string();
+                map.entry(id).or_default().push(PostEvent::HairpinEnd);
+            }
+        }
+    }
 }
 
 /// Append post-events to a Music item's post_events list.
