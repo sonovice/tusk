@@ -67,6 +67,9 @@ pub enum ValidationError {
     #[error("string number {number} out of range (0-9)")]
     InvalidStringNumber { number: u8 },
 
+    #[error("invalid tremolo type {value}: must be 0 or a power of 2 >= 8")]
+    InvalidTremoloType { value: u32 },
+
     #[error("{0}")]
     Other(String),
 }
@@ -197,9 +200,19 @@ fn validate_post_events(events: &[note::PostEvent], errors: &mut Vec<ValidationE
             note::PostEvent::StringNumber { number, .. } if *number > 9 => {
                 errors.push(ValidationError::InvalidStringNumber { number: *number });
             }
+            note::PostEvent::Tremolo(n) if !is_valid_tremolo(*n) => {
+                errors.push(ValidationError::InvalidTremoloType { value: *n });
+            }
             _ => {}
         }
     }
+}
+
+/// Returns `true` if a tremolo type value is valid.
+///
+/// Valid values: 0 (default/bare `:`) or powers of 2 >= 8 (8, 16, 32, 64, 128).
+fn is_valid_tremolo(value: u32) -> bool {
+    value == 0 || (value >= 8 && value.is_power_of_two())
 }
 
 /// Counters for paired post-events (slurs, phrasing slurs, beams, hairpins).
@@ -246,7 +259,8 @@ impl SpanCounts {
                 | note::PostEvent::Articulation { .. }
                 | note::PostEvent::Fingering { .. }
                 | note::PostEvent::NamedArticulation { .. }
-                | note::PostEvent::StringNumber { .. } => {}
+                | note::PostEvent::StringNumber { .. }
+                | note::PostEvent::Tremolo(_) => {}
             }
         }
     }
@@ -1177,6 +1191,75 @@ mod tests {
         };
         assert!(validate(&file).is_ok());
     }
+
+    // ── Phase 13 validator tests ──────────────────────────────────
+
+    #[test]
+    fn valid_tremolo_32_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tremolo(32)]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn valid_tremolo_bare_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tremolo(0)]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn invalid_tremolo_type_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tremolo(12)]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTremoloType { value: 12 }))
+        );
+    }
+
+    #[test]
+    fn invalid_tremolo_4_fails() {
+        // 4 is a power of 2 but < 8, not valid for tremolo
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tremolo(4)]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTremoloType { value: 4 }))
+        );
+    }
+
+    #[test]
+    fn tremolo_does_not_affect_span_balance() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tremolo(32)]),
+                make_note(vec![PostEvent::Tremolo(16)]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 12 validator tests (continued) ──────────────────────
 
     #[test]
     fn articulation_does_not_affect_span_balance() {

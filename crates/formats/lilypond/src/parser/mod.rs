@@ -677,10 +677,16 @@ impl<'src> Parser<'src> {
         // Parse optional duration
         let duration = self.parse_optional_duration()?;
 
+        // Parse optional tremolo `:N`
+        let tremolo = self.parse_optional_tremolo();
+
         // Check for \rest (pitched rest)
         let pitched_rest = self.try_consume(&Token::Rest);
 
-        let post_events = self.parse_post_events();
+        let mut post_events = self.parse_post_events();
+        if let Some(t) = tremolo {
+            post_events.insert(0, t);
+        }
 
         Ok(Music::Note(NoteEvent {
             pitch: Pitch {
@@ -709,7 +715,11 @@ impl<'src> Parser<'src> {
         }
         self.expect(&Token::AngleClose)?;
         let duration = self.parse_optional_duration()?;
-        let post_events = self.parse_post_events();
+        let tremolo = self.parse_optional_tremolo();
+        let mut post_events = self.parse_post_events();
+        if let Some(t) = tremolo {
+            post_events.insert(0, t);
+        }
         Ok(Music::Chord(ChordEvent {
             pitches,
             duration,
@@ -774,7 +784,11 @@ impl<'src> Parser<'src> {
             _ => unreachable!(),
         };
         let duration = self.parse_optional_duration()?;
-        let post_events = self.parse_post_events();
+        let tremolo = self.parse_optional_tremolo();
+        let mut post_events = self.parse_post_events();
+        if let Some(t) = tremolo {
+            post_events.insert(0, t);
+        }
         match kind.as_str() {
             "r" => Ok(Music::Rest(RestEvent {
                 duration,
@@ -795,6 +809,24 @@ impl<'src> Parser<'src> {
     // ──────────────────────────────────────────────────────────────────
     // Post-events: tie ~, slur ( ), phrasing slur \( \)
     // ──────────────────────────────────────────────────────────────────
+
+    /// Parse optional tremolo: `:` followed by optional unsigned integer.
+    ///
+    /// Mirrors the `tremolo_type` production in the grammar. Returns `None`
+    /// if no colon is present; returns `Tremolo(0)` for bare `:`.
+    fn parse_optional_tremolo(&mut self) -> Option<PostEvent> {
+        if *self.peek() != Token::Colon {
+            return None;
+        }
+        let _ = self.advance(); // consume `:`
+        if let Token::Unsigned(n) = self.peek() {
+            let n = *n as u32;
+            let _ = self.advance();
+            Some(PostEvent::Tremolo(n))
+        } else {
+            Some(PostEvent::Tremolo(0))
+        }
+    }
 
     fn parse_post_events(&mut self) -> Vec<PostEvent> {
         let mut events = Vec::new();
@@ -844,6 +876,15 @@ impl<'src> Parser<'src> {
                     let s = s.clone();
                     let _ = self.advance();
                     events.push(PostEvent::Dynamic(s));
+                }
+                // Undirected ornaments/scripts: \trill, \mordent, \turn, etc.
+                Token::EscapedWord(s) if note::is_ornament_or_script(s) => {
+                    let s = s.clone();
+                    let _ = self.advance();
+                    events.push(PostEvent::NamedArticulation {
+                        direction: note::Direction::Neutral,
+                        name: s,
+                    });
                 }
                 // Direction prefixes: -, ^, _ followed by script/fingering/articulation
                 Token::Dash | Token::Caret | Token::Underscore => {

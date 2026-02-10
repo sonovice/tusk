@@ -539,6 +539,12 @@ impl<'a> Serializer<'a> {
                     self.out.push('\\');
                     self.out.push_str(&number.to_string());
                 }
+                PostEvent::Tremolo(n) => {
+                    self.out.push(':');
+                    if *n > 0 {
+                        self.out.push_str(&n.to_string());
+                    }
+                }
             }
         }
     }
@@ -1182,6 +1188,66 @@ mod tests {
         };
         let output = serialize(&file);
         assert!(output.contains("c4_\\staccato"));
+    }
+
+    // ── Phase 13 serializer tests ────────────────────────────
+
+    #[test]
+    fn serialize_tremolo() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::Tremolo(32)],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4:32"));
+    }
+
+    #[test]
+    fn serialize_tremolo_bare() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::Tremolo(0)],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4:"));
+        // Should NOT contain c4:0
+        assert!(!output.contains("c4:0"));
     }
 
     #[test]

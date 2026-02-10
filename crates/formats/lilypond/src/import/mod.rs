@@ -797,6 +797,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 }
                             }
                         }
+                        // Tremolo handled in Phase 13.2 (import/export)
+                        PostEvent::Tremolo(_) => {}
                     }
                 }
             }

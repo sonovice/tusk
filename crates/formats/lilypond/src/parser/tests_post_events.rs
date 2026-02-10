@@ -818,3 +818,273 @@ fn roundtrip_named_articulation() {
 fn roundtrip_fragment_articulations() {
     roundtrip_fixture("fragment_articulations.ly");
 }
+
+// ── Phase 13 parser tests: Ornaments & Tremolos ─────────────
+
+#[test]
+fn parse_trill() {
+    let ast = parse("{ c4\\trill }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "trill".into(),
+                    }]
+                );
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_mordent() {
+    let ast = parse("{ c4\\mordent }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "mordent".into(),
+                    }]
+                );
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_turn_and_prall() {
+    let ast = parse("{ c4\\turn d4\\prall }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Note(n) => assert_eq!(
+                    n.post_events[0],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "turn".into(),
+                    }
+                ),
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[1] {
+                Music::Note(n) => assert_eq!(
+                    n.post_events[0],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "prall".into(),
+                    }
+                ),
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_fermata() {
+    let ast = parse("{ c4\\fermata }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => assert_eq!(
+                n.post_events[0],
+                PostEvent::NamedArticulation {
+                    direction: Direction::Neutral,
+                    name: "fermata".into(),
+                }
+            ),
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_directed_trill() {
+    // With direction prefix
+    let ast = parse("{ c4-\\trill }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => assert_eq!(
+                n.post_events[0],
+                PostEvent::NamedArticulation {
+                    direction: Direction::Neutral,
+                    name: "trill".into(),
+                }
+            ),
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_upbow_downbow() {
+    let ast = parse("{ c4\\upbow d4\\downbow }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Note(n) => assert_eq!(
+                    n.post_events[0],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "upbow".into(),
+                    }
+                ),
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[1] {
+                Music::Note(n) => assert_eq!(
+                    n.post_events[0],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "downbow".into(),
+                    }
+                ),
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tremolo_32() {
+    let ast = parse("{ c4:32 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events, vec![PostEvent::Tremolo(32)]);
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tremolo_16() {
+    let ast = parse("{ f8:16 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.duration.as_ref().unwrap().base, 8);
+                assert_eq!(n.post_events, vec![PostEvent::Tremolo(16)]);
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tremolo_bare_colon() {
+    let ast = parse("{ c4: }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events, vec![PostEvent::Tremolo(0)]);
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_chord_tremolo() {
+    let ast = parse("{ <c e g>4:32 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Chord(c) => {
+                assert_eq!(c.pitches.len(), 3);
+                assert_eq!(c.post_events, vec![PostEvent::Tremolo(32)]);
+            }
+            other => panic!("expected chord, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_tremolo_with_ornament() {
+    let ast = parse("{ c4:32\\trill }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events.len(), 2);
+                assert_eq!(n.post_events[0], PostEvent::Tremolo(32));
+                assert_eq!(
+                    n.post_events[1],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "trill".into(),
+                    }
+                );
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_multiple_ornaments() {
+    let ast = parse("{ c4\\trill\\fermata }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events.len(), 2);
+                assert_eq!(
+                    n.post_events[0],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "trill".into(),
+                    }
+                );
+                assert_eq!(
+                    n.post_events[1],
+                    PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "fermata".into(),
+                    }
+                );
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_tremolo() {
+    let input = "{ c4:32 }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_ornaments() {
+    let input = "{ c4\\trill d4\\mordent e4\\turn f4\\fermata }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_ornaments_tremolo() {
+    roundtrip_fixture("fragment_ornaments_tremolo.ly");
+}

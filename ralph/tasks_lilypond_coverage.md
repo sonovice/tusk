@@ -548,11 +548,24 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 13.1 Model & Parser
 
-- [ ] [P] Parse ornaments: `\trill`, `\mordent`, `\turn`, `\prall`, `\prallprall`, etc.; single-note tremolo `:N` (e.g. `c8:32`)
-- [ ] [P] Add `OrnamentEvent`, `TremoloEvent` (type and value)
-- [ ] [S] Serialize ornaments and tremolo
-- [ ] [V] Tremolo value in valid range
-- [ ] [T] Fragment: `c4\trill`, `c8\mordent`, `c8:32`
+- [x] [P] Parse ornaments: `\trill`, `\mordent`, `\turn`, `\prall`, `\prallprall`, etc.; single-note tremolo `:N` (e.g. `c8:32`)
+  - Ornaments parsed as undirected NamedArticulation post-events (direction=Neutral) via KNOWN_ORNAMENTS list (35 entries)
+  - Tremolo parsed via `parse_optional_tremolo()` after duration: `:N` → PostEvent::Tremolo(N), bare `:` → Tremolo(0)
+  - Tremolo applied to notes, chords, rests, skips, and multi-measure rests
+- [x] [P] Add `OrnamentEvent`, `TremoloEvent` (type and value)
+  - PostEvent::Tremolo(u32) variant added; KNOWN_ORNAMENTS const + is_ornament_or_script() helper in model/note.rs
+  - Ornaments reuse existing NamedArticulation variant (direction=Neutral for undirected)
+- [x] [S] Serialize ornaments and tremolo
+  - Tremolo serialized as `:N` (or bare `:` for value 0); ornaments serialize via existing NamedArticulation path
+- [x] [V] Tremolo value in valid range
+  - InvalidTremoloType validation error; is_valid_tremolo() accepts 0 or powers of 2 >= 8
+  - Tremolo does not affect span balance
+- [x] [T] Fragment: `c4\trill`, `c8\mordent`, `c8:32`
+  - fragment_ornaments_tremolo.ly fixture (trill, mordent, turn, prall, reverseturn, fermata, upbow, downbow, tremolo :32/:16, chord tremolo, combined)
+  - 16 parser tests: trill, mordent, turn+prall, fermata, directed trill, upbow+downbow, tremolo 32/16/bare/chord/with-ornament, multiple ornaments, roundtrip tremolo/ornaments/fixture
+  - 2 serializer tests: tremolo with value, bare tremolo
+  - 5 validator tests: valid tremolo 32, valid bare, invalid 12, invalid 4, span balance unaffected
+  - 421 total tests pass
 
 ### 13.2 Import & Export
 

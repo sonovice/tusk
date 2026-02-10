@@ -125,6 +125,11 @@ pub enum PostEvent {
     NamedArticulation { direction: Direction, name: String },
     /// String number with direction: `\N` (where N is a digit).
     StringNumber { direction: Direction, number: u8 },
+    /// Single-note tremolo: `:N` (e.g. `:32`, `:16`).
+    ///
+    /// The value is the subdivision (8, 16, 32, 64, etc.).
+    /// `:` alone (no number) means "default" tremolo, stored as 0.
+    Tremolo(u32),
 }
 
 /// Known LilyPond dynamic marking names (from `dynamic-scripts-init.ly`).
@@ -136,6 +141,61 @@ pub const KNOWN_DYNAMICS: &[&str] = &[
 /// Returns `true` if the given name is a known LilyPond dynamic marking.
 pub fn is_dynamic_marking(name: &str) -> bool {
     KNOWN_DYNAMICS.contains(&name)
+}
+
+/// Known LilyPond ornament / script names that can appear as direction-less
+/// post-events (e.g. `c4\trill` without a `-`/`^`/`_` prefix).
+///
+/// From `scm/script.scm` and the grammar's `direction_less_event` production.
+pub const KNOWN_ORNAMENTS: &[&str] = &[
+    // Trills
+    "trill",
+    // Mordents
+    "mordent",
+    "prall",
+    "prallprall",
+    "prallmordent",
+    "upprall",
+    "downprall",
+    "upmordent",
+    "downmordent",
+    "pralldown",
+    "prallup",
+    "lineprall",
+    // Turns
+    "turn",
+    "reverseturn",
+    // Fermatas
+    "fermata",
+    "shortfermata",
+    "longfermata",
+    "verylongfermata",
+    // Bowing
+    "upbow",
+    "downbow",
+    // Harmonics
+    "flageolet",
+    "open",
+    // Articulation scripts
+    "espressivo",
+    "staccatissimo",
+    "staccato",
+    "tenuto",
+    "portato",
+    "marcato",
+    "accent",
+    "stopped",
+    "snappizzicato",
+    // Segno/Coda
+    "segno",
+    "coda",
+    "varcoda",
+];
+
+/// Returns `true` if the given name is a known LilyPond ornament/script name
+/// that can appear as a direction-less post-event.
+pub fn is_ornament_or_script(name: &str) -> bool {
+    KNOWN_ORNAMENTS.contains(&name)
 }
 
 /// A note event: pitch + optional duration + post-events.
