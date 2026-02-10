@@ -2,6 +2,7 @@
 
 mod control_events;
 mod conversion;
+pub(crate) mod lyrics;
 mod signatures;
 
 #[cfg(test)]
@@ -135,6 +136,8 @@ struct StaffInfo<'a> {
     with_block: Option<Vec<ContextModItem>>,
     /// The music content for this staff (one or more voice streams).
     voices: Vec<Vec<&'a Music>>,
+    /// Lyrics attached to this staff (from \addlyrics, \lyricsto, etc.).
+    lyrics: Vec<lyrics::LyricsInfo>,
 }
 
 /// Information about a staff group wrapping multiple staves.
@@ -161,6 +164,16 @@ struct StaffLayout<'a> {
 /// - `\new Staff { ... }` (single staff)
 /// - `{ ... }` (bare music, single staff)
 fn analyze_staves(music: &Music) -> StaffLayout<'_> {
+    // Check for \addlyrics wrapping (music \addlyrics { ... })
+    if let Some((inner_music, lyric_infos)) = lyrics::extract_addlyrics(music) {
+        let mut layout = analyze_staves(inner_music);
+        // Attach lyrics to the first staff
+        if let Some(staff) = layout.staves.first_mut() {
+            staff.lyrics = lyric_infos;
+        }
+        return layout;
+    }
+
     // Unwrap score-level context (e.g. \new StaffGroup << ... >>)
     if let Music::ContextedMusic {
         keyword: _,
@@ -197,6 +210,7 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     context_type: context_type.clone(),
                     with_block: with_block.clone(),
                     voices,
+                    lyrics: Vec::new(),
                 }],
             };
         }
@@ -205,14 +219,17 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
         return analyze_staves(inner);
     }
 
-    // Check if simultaneous music contains \new Staff children
+    // Check if simultaneous music contains \new Staff / \new Lyrics children
     if let Music::Simultaneous(items) = music {
         let staves = extract_staves_from_simultaneous(items);
         if !staves.is_empty() {
-            return StaffLayout {
+            // Check for \lyricsto targeting named voices
+            let mut layout = StaffLayout {
                 group: None,
                 staves,
             };
+            attach_lyricsto_from_simultaneous(items, &mut layout.staves);
+            return layout;
         }
     }
 
@@ -226,7 +243,48 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             context_type: "Staff".to_string(),
             with_block: None,
             voices,
+            lyrics: Vec::new(),
         }],
+    }
+}
+
+/// Scan simultaneous items for `\lyricsto` constructs and attach them to
+/// the named staff.
+fn attach_lyricsto_from_simultaneous(items: &[Music], staves: &mut [StaffInfo<'_>]) {
+    for item in items {
+        // Direct \lyricsto
+        if let Some(info) = lyrics::extract_lyricsto(item) {
+            attach_lyricsto_info(info, staves);
+            continue;
+        }
+        // \new Lyrics \lyricsto "..." { ... }
+        if let Music::ContextedMusic {
+            context_type,
+            music: inner,
+            ..
+        } = item
+            && context_type == "Lyrics"
+            && let Some(info) = lyrics::extract_lyricsto(inner)
+        {
+            attach_lyricsto_info(info, staves);
+        }
+    }
+}
+
+/// Attach a LyricsTo info to the staff whose name matches the voice_id.
+fn attach_lyricsto_info(info: lyrics::LyricsInfo, staves: &mut [StaffInfo<'_>]) {
+    if let lyrics::LyricsStyle::LyricsTo { ref voice_id } = info.style {
+        // Find the staff with this name
+        for staff in staves.iter_mut() {
+            if staff.name.as_deref() == Some(voice_id) {
+                staff.lyrics.push(info);
+                return;
+            }
+        }
+        // If no named match found, attach to first staff
+        if let Some(staff) = staves.first_mut() {
+            staff.lyrics.push(info);
+        }
     }
 }
 
@@ -279,7 +337,7 @@ fn extract_staves_from_simultaneous<'a>(items: &'a [Music]) -> Vec<StaffInfo<'a>
             music: inner,
             ..
         } = item
-            && is_staff_context(context_type)
+            && (is_staff_context(context_type) || is_voice_context(context_type))
         {
             let voices = extract_voices(inner);
             staves.push(StaffInfo {
@@ -288,12 +346,18 @@ fn extract_staves_from_simultaneous<'a>(items: &'a [Music]) -> Vec<StaffInfo<'a>
                 context_type: context_type.clone(),
                 with_block: with_block.clone(),
                 voices,
+                lyrics: Vec::new(),
             });
             n += 1;
         }
     }
 
     staves
+}
+
+/// Check if a context type is a voice-level context.
+fn is_voice_context(ctx: &str) -> bool {
+    matches!(ctx, "Voice" | "CueVoice" | "NullVoice")
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +423,16 @@ fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
             }
             label.push_str(&pitch_context_label);
         }
+
+        // Store lyrics style info in label for roundtrip
+        let lyrics_label = lyrics::build_lyrics_label(&staff_info.lyrics);
+        if !lyrics_label.is_empty() {
+            if !label.is_empty() {
+                label.push('|');
+            }
+            label.push_str(&lyrics_label);
+        }
+
         if !label.is_empty() {
             staff_def.labelled.label = Some(label);
         }
@@ -989,6 +1063,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 }
             }
 
+            // Attach lyrics to notes in this layer
+            for (verse_idx, lyric_info) in staff_info.lyrics.iter().enumerate() {
+                let verse_n = (verse_idx + 1) as u32;
+                lyrics::attach_lyrics_to_layer(&mut layer.children, &lyric_info.syllables, verse_n);
+                lyrics::refine_wordpos(&mut layer.children, verse_n);
+            }
+
             staff.children.push(StaffChild::Layer(Box::new(layer)));
         }
 
@@ -1338,21 +1419,18 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         }
         Music::BarCheck => events.push(LyEvent::BarCheck),
         Music::BarLine { bar_type } => events.push(LyEvent::BarLine(bar_type.clone())),
-        Music::LyricMode { body } => {
-            // Lyric mode content — collect from body (lyrics handled in Phase 20.2)
-            collect_events(body, events, ctx);
+        Music::LyricMode { .. } => {
+            // Lyric mode content — lyrics handled via lyrics::collect_lyric_syllables
         }
-        Music::AddLyrics { music, lyrics } => {
+        Music::AddLyrics { music, .. } => {
+            // Collect only the music part; lyrics handled via lyrics::extract_addlyrics
             collect_events(music, events, ctx);
-            for ly in lyrics {
-                collect_events(ly, events, ctx);
-            }
         }
-        Music::LyricsTo { lyrics, .. } => {
-            collect_events(lyrics, events, ctx);
+        Music::LyricsTo { .. } => {
+            // Lyrics handled via lyrics::extract_lyricsto in analyze_staves
         }
         Music::Lyric(_) => {
-            // Lyric events imported in Phase 20.2
+            // Lyric events handled in lyrics module
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

@@ -896,10 +896,14 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 20.2 Import & Export
 
-- [ ] [I] Lyrics → MEI `<verse>`, `<syl>`; syllabic and extend from hyphen/extender
-- [ ] [E] MEI verse/syl → LilyPond lyrics and \addlyrics/\lyricsto
-- [ ] [T] Roundtrip lyric fixtures
-- [ ] [T] Lyric fixtures; roundtrip
+- [x] [I] Lyrics → MEI `<verse>`, `<syl>`; syllabic and extend from hyphen/extender
+- [x] [E] MEI verse/syl → LilyPond lyrics and \addlyrics/\lyricsto
+- [x] [T] Roundtrip lyric fixtures
+- [x] [T] Lyric fixtures; roundtrip
+
+**Validation** (post-20.2):
+  - 0 clippy warnings
+  - 693 total tests pass (was 683)
 
 ---
 

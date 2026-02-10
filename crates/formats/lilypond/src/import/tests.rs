@@ -2,6 +2,7 @@ use super::*;
 use crate::parser::Parser;
 use tusk_model::elements::{
     ChordChild, Dynam, DynamChild, Hairpin, Mei, MeiChild, ScoreDef, Slur, Staff, StaffDef,
+    StaffGrpChild,
 };
 use tusk_model::generated::data::{
     DataClefshape, DataDuration, DataDurationCmn, DataDurationrests, DataStaffrelBasic,
@@ -1051,6 +1052,187 @@ fn import_hairpin_on_chord() {
     let hairpins = measure_hairpins(&mei);
     assert_eq!(hairpins.len(), 1);
     assert_eq!(hairpins[0].hairpin_log.form.as_deref(), Some("cres"));
+}
+
+// ---------------------------------------------------------------------------
+// Lyrics import tests
+// ---------------------------------------------------------------------------
+
+/// Extract verse/syl text from a note's children for a given verse number.
+fn get_verse_text(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
+    use tusk_model::elements::{NoteChild, SylChild, VerseChild};
+    for nc in &note.children {
+        if let NoteChild::Verse(verse) = nc
+            && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n)
+        {
+            for vc in &verse.children {
+                if let VerseChild::Syl(syl) = vc {
+                    for sc in &syl.children {
+                        let SylChild::Text(t) = sc;
+                        return Some(t.clone());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract syl @con from a note's verse for a given verse number.
+fn get_verse_con(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
+    use tusk_model::elements::{NoteChild, VerseChild};
+    for nc in &note.children {
+        if let NoteChild::Verse(verse) = nc
+            && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n)
+        {
+            for vc in &verse.children {
+                if let VerseChild::Syl(syl) = vc {
+                    return syl.syl_log.con.clone();
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract syl @wordpos from a note's verse for a given verse number.
+fn get_verse_wordpos(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
+    use tusk_model::elements::{NoteChild, VerseChild};
+    for nc in &note.children {
+        if let NoteChild::Verse(verse) = nc
+            && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n)
+        {
+            for vc in &verse.children {
+                if let VerseChild::Syl(syl) = vc {
+                    return syl.syl_log.wordpos.clone();
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract syl @label from a note's verse for a given verse number.
+fn get_verse_syl_label(note: &tusk_model::elements::Note, verse_n: &str) -> Option<String> {
+    use tusk_model::elements::{NoteChild, VerseChild};
+    for nc in &note.children {
+        if let NoteChild::Verse(verse) = nc
+            && verse.common.n.as_ref().is_some_and(|n| n.0 == verse_n)
+        {
+            for vc in &verse.children {
+                if let VerseChild::Syl(syl) = vc {
+                    return syl.common.label.clone();
+                }
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn import_addlyrics_basic() {
+    let mei = parse_and_import("{ c'4 d'4 e'4 f'4 } \\addlyrics { one two three four }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 4);
+    // Check verse text on each note
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("one"));
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("two"));
+    }
+    if let LayerChild::Note(n) = &children[2] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("three"));
+    }
+    if let LayerChild::Note(n) = &children[3] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("four"));
+    }
+}
+
+#[test]
+fn import_addlyrics_hyphens() {
+    let mei = parse_and_import("{ c'4 d'4 e'4 } \\addlyrics { hel -- lo world }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 3);
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("hel"));
+        assert_eq!(get_verse_con(n, "1").as_deref(), Some("d"));
+        assert_eq!(get_verse_wordpos(n, "1").as_deref(), Some("i"));
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("lo"));
+        assert_eq!(get_verse_con(n, "1"), None);
+        assert_eq!(get_verse_wordpos(n, "1").as_deref(), Some("t"));
+    }
+    if let LayerChild::Note(n) = &children[2] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("world"));
+        assert_eq!(get_verse_con(n, "1"), None);
+        assert_eq!(get_verse_wordpos(n, "1"), None);
+    }
+}
+
+#[test]
+fn import_addlyrics_extender() {
+    let mei = parse_and_import("{ c'4 d'4 } \\addlyrics { hold __ rest }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 2);
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("hold"));
+        assert_eq!(
+            get_verse_syl_label(n, "1").as_deref(),
+            Some("lilypond:extender")
+        );
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("rest"));
+    }
+}
+
+#[test]
+fn import_addlyrics_label_on_staffdef() {
+    let mei = parse_and_import("{ c'4 d'4 } \\addlyrics { do re }");
+    let sd = find_score_def(&mei).unwrap();
+    // Should have lyrics label on staffDef
+    let sdef = find_staff_def(sd);
+    assert!(sdef.is_some());
+    let label = sdef.unwrap().labelled.label.as_deref().unwrap_or("");
+    assert!(
+        label.contains("lilypond:lyrics,addlyrics"),
+        "label should contain lyrics info: {label}"
+    );
+}
+
+/// Helper to find first staffDef in a scoreDef.
+fn find_staff_def(sd: &ScoreDef) -> Option<&StaffDef> {
+    for c in &sd.children {
+        if let ScoreDefChild::StaffGrp(grp) = c {
+            for gc in &grp.children {
+                if let StaffGrpChild::StaffDef(sdef) = gc {
+                    return Some(sdef);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn import_lyricsto_basic() {
+    let src = r#"\score {
+  <<
+    \new Voice = "melody" { c'4 d'4 }
+    \new Lyrics \lyricsto "melody" { do re }
+  >>
+}"#;
+    let mei = parse_and_import(src);
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 2);
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("do"));
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(get_verse_text(n, "1").as_deref(), Some("re"));
+    }
 }
 
 // Articulation, ornament, tremolo, and technical import tests moved to tests_control.rs

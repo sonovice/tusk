@@ -1,6 +1,7 @@
 //! Conversion from MEI to LilyPond AST.
 
 mod conversion;
+pub(crate) mod lyrics;
 mod pitch_context;
 mod repeats;
 mod signatures;
@@ -49,8 +50,13 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     // Extract pitch context labels (relative/transpose) from staffDefs
     let pitch_contexts = extract_pitch_contexts(score);
 
+    // Extract lyrics info from staffDef labels
+    let lyrics_infos = extract_lyrics_infos(score);
+
     // Walk section -> measures -> staves -> layers -> notes/rests
     let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new(); // staff -> layer -> items
+    // Also collect raw layer children per staff for lyrics extraction
+    let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
 
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
@@ -74,8 +80,10 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     for mc in &measure.children {
                         if let MeasureChild::Staff(staff) = mc {
                             let mut layers: Vec<Vec<Music>> = Vec::new();
+                            let mut raw_layers: Vec<&[LayerChild]> = Vec::new();
                             for sc in &staff.children {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                                raw_layers.push(&layer.children);
                                 // Collect grace type info before converting
                                 let grace_types = collect_grace_types(&layer.children);
                                 let mut items = Vec::new();
@@ -106,6 +114,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                             }
 
                             staff_music.push(layers);
+                            staff_layer_children.push(raw_layers);
                             staff_idx += 1;
                         }
                     }
@@ -118,7 +127,13 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     apply_pitch_contexts(&mut staff_music, &pitch_contexts);
 
     // Build music expression from collected layers, wrapping in contexts
-    let music = build_music_with_contexts(staff_music, &group_meta, &staff_metas);
+    let music = build_music_with_contexts(
+        staff_music,
+        &group_meta,
+        &staff_metas,
+        &lyrics_infos,
+        &staff_layer_children,
+    );
 
     let score_block = ScoreBlock {
         items: vec![ScoreItem::Music(music)],
@@ -130,6 +145,30 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }),
         items: vec![ToplevelExpression::Score(score_block)],
     })
+}
+
+/// Extract lyrics export info from all staffDef labels.
+fn extract_lyrics_infos(
+    score: &tusk_model::elements::Score,
+) -> Vec<Option<lyrics::LyricsExportInfo>> {
+    let mut infos = Vec::new();
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child {
+            for sd_child in &score_def.children {
+                if let ScoreDefChild::StaffGrp(grp) = sd_child {
+                    for grp_child in &grp.children {
+                        if let StaffGrpChild::StaffDef(sdef) = grp_child {
+                            let info = sdef.labelled.label.as_deref().and_then(|label| {
+                                label.split('|').find_map(lyrics::parse_lyrics_label)
+                            });
+                            infos.push(info);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    infos
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +334,8 @@ fn build_music_with_contexts(
     staff_music: Vec<Vec<Vec<Music>>>,
     group_meta: &Option<GroupMeta>,
     staff_metas: &[StaffMeta],
+    lyrics_infos: &[Option<lyrics::LyricsExportInfo>],
+    staff_layer_children: &[Vec<&[LayerChild]>],
 ) -> Music {
     let num_staves = staff_music.len();
 
@@ -307,13 +348,26 @@ fn build_music_with_contexts(
                 && staff_metas[0].with_block_str.is_none()
                 && staff_metas[0].context_type == "Staff"))
     {
-        return build_flat_music(staff_music);
+        let mut music = build_flat_music(staff_music);
+        // Apply lyrics wrapping for single-staff case
+        if let Some(Some(info)) = lyrics_infos.first()
+            && let Some(raw) = staff_layer_children.first().and_then(|v| v.first())
+        {
+            music = lyrics::wrap_music_with_lyrics(music, raw, info);
+        }
+        return music;
     }
 
     // Build per-staff music with \new Staff wrappers
     let mut staff_exprs: Vec<Music> = Vec::new();
     for (i, layers) in staff_music.into_iter().enumerate() {
-        let inner = build_layers_music(layers);
+        let mut inner = build_layers_music(layers);
+        // Apply lyrics wrapping per-staff
+        if let Some(Some(info)) = lyrics_infos.get(i)
+            && let Some(raw) = staff_layer_children.get(i).and_then(|v| v.first())
+        {
+            inner = lyrics::wrap_music_with_lyrics(inner, raw, info);
+        }
         let meta = staff_metas.get(i);
 
         let with_block = meta

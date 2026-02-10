@@ -1332,3 +1332,64 @@ fn roundtrip_chord_repetition_fixture() {
     // Should contain relative wrapper (fixture uses \relative)
     assert!(output.contains("\\relative"), "relative wrapper: {output}");
 }
+
+// ---------------------------------------------------------------------------
+// Lyrics roundtrip tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_addlyrics_basic() {
+    let output = roundtrip("{ c'4 d'4 e'4 f'4 } \\addlyrics { one two three four }");
+    assert!(output.contains("\\addlyrics"), "addlyrics: {output}");
+    assert!(output.contains("one"), "one: {output}");
+    assert!(output.contains("two"), "two: {output}");
+    assert!(output.contains("three"), "three: {output}");
+    assert!(output.contains("four"), "four: {output}");
+}
+
+#[test]
+fn roundtrip_addlyrics_hyphens() {
+    let output = roundtrip("{ c'4 d'4 e'4 } \\addlyrics { hel -- lo world }");
+    assert!(output.contains("\\addlyrics"), "addlyrics: {output}");
+    assert!(output.contains("hel"), "hel: {output}");
+    assert!(output.contains("--"), "hyphen: {output}");
+    assert!(output.contains("lo"), "lo: {output}");
+    assert!(output.contains("world"), "world: {output}");
+}
+
+#[test]
+fn roundtrip_addlyrics_extender() {
+    let output = roundtrip("{ c'4 d'4 } \\addlyrics { hold __ rest }");
+    assert!(output.contains("\\addlyrics"), "addlyrics: {output}");
+    assert!(output.contains("hold"), "hold: {output}");
+    assert!(output.contains("__"), "extender: {output}");
+    assert!(output.contains("rest"), "rest: {output}");
+}
+
+#[test]
+fn roundtrip_lyricsto() {
+    let src = r#"\score {
+  <<
+    \new Voice = "melody" { c'4 d'4 }
+    \new Lyrics \lyricsto "melody" { do re }
+  >>
+}"#;
+    let output = roundtrip(src);
+    assert!(output.contains("do"), "do: {output}");
+    assert!(output.contains("re"), "re: {output}");
+}
+
+#[test]
+fn roundtrip_lyrics_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_lyrics.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    // Should contain lyric text
+    assert!(output.contains("do"), "lyric 'do': {output}");
+    assert!(output.contains("re"), "lyric 're': {output}");
+    assert!(output.contains("mi"), "lyric 'mi': {output}");
+    assert!(output.contains("fa"), "lyric 'fa': {output}");
+}
