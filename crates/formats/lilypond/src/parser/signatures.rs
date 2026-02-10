@@ -83,6 +83,85 @@ impl<'src> Parser<'src> {
     }
 
     // ──────────────────────────────────────────────────────────────────
+    // \repeat type count { body } [\alternative { { a } { b } }]
+    // ──────────────────────────────────────────────────────────────────
+
+    /// Parse `\repeat type count { body } [\alternative { ... }]`.
+    ///
+    /// Grammar: `REPEAT simple_string unsigned_integer music [alternative_music]`
+    pub(super) fn parse_repeat(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Repeat)?;
+
+        // Repeat type: simple_string (e.g. "volta", "unfold", "percent", "tremolo")
+        let type_name = self.expect_simple_string()?;
+        let repeat_type =
+            RepeatType::from_name(&type_name).ok_or_else(|| ParseError::Unexpected {
+                found: Token::Symbol(type_name.clone()),
+                offset: self.offset(),
+                expected: "repeat type (volta, unfold, percent, tremolo, segno)".into(),
+            })?;
+
+        // Repeat count: unsigned integer
+        let count = match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Unsigned(n) => n as u32,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "repeat count (unsigned integer)".into(),
+                });
+            }
+        };
+
+        // Music body
+        let body = Box::new(self.parse_music()?);
+
+        // Optional \alternative { ... }
+        let alternatives = if *self.peek() == Token::Alternative {
+            Some(self.parse_alternative_block()?)
+        } else {
+            None
+        };
+
+        Ok(Music::Repeat {
+            repeat_type,
+            count,
+            body,
+            alternatives,
+        })
+    }
+
+    /// Parse `\alternative { { a } { b } ... }` — returns the list of alternative music blocks.
+    ///
+    /// Grammar: `ALTERNATIVE basic_music` where basic_music is typically `{ { a } { b } }`.
+    fn parse_alternative_block(&mut self) -> Result<Vec<Music>, ParseError> {
+        self.expect(&Token::Alternative)?;
+        self.expect(&Token::BraceOpen)?;
+        let mut alts = Vec::new();
+        while *self.peek() != Token::BraceClose && !self.at_eof() {
+            alts.push(self.parse_music()?);
+        }
+        self.expect(&Token::BraceClose)?;
+        Ok(alts)
+    }
+
+    /// Parse a standalone `\alternative` at the music level.
+    ///
+    /// This is valid per the grammar (`alternative_music` is in `basic_music`),
+    /// though rare outside of `\repeat`. We wrap it as a sequential block.
+    pub(super) fn parse_alternative_as_music(&mut self) -> Result<Music, ParseError> {
+        let alts = self.parse_alternative_block()?;
+        // Standalone \alternative is sequential music per LilyPond grammar
+        Ok(Music::Sequential(alts))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     // \clef "name"
     // ──────────────────────────────────────────────────────────────────
 

@@ -15,6 +15,9 @@ pub use note::{
 pub use pitch::Pitch;
 pub use signature::{Clef, KeySignature, Mode, TimeSignature};
 
+// Re-export repeat types (defined in this file)
+// RepeatType is already available as model::RepeatType
+
 // ---------------------------------------------------------------------------
 // Top-level file
 // ---------------------------------------------------------------------------
@@ -201,6 +204,46 @@ pub enum AssignmentValue {
 // Music
 // ---------------------------------------------------------------------------
 
+/// Repeat type for `\repeat TYPE count { ... }`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepeatType {
+    /// `\repeat volta` — folded repeat with volta brackets.
+    Volta,
+    /// `\repeat unfold` — expanded without repeat notation.
+    Unfold,
+    /// `\repeat percent` — percent/slash notation.
+    Percent,
+    /// `\repeat tremolo` — tremolo repeat.
+    Tremolo,
+    /// `\repeat segno` — segno-based repeat (LilyPond 2.24+).
+    Segno,
+}
+
+impl RepeatType {
+    /// Parse a repeat type from a string.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "volta" => Some(Self::Volta),
+            "unfold" => Some(Self::Unfold),
+            "percent" => Some(Self::Percent),
+            "tremolo" => Some(Self::Tremolo),
+            "segno" => Some(Self::Segno),
+            _ => None,
+        }
+    }
+
+    /// Return the LilyPond name of this repeat type.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Volta => "volta",
+            Self::Unfold => "unfold",
+            Self::Percent => "percent",
+            Self::Tremolo => "tremolo",
+            Self::Segno => "segno",
+        }
+    }
+}
+
 /// Whether `\new` or `\context` was used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextKeyword {
@@ -283,6 +326,13 @@ pub enum Music {
         fraction: Option<(u32, u32)>,
         main: Box<Music>,
         grace: Box<Music>,
+    },
+    /// `\repeat type count { body } [\alternative { ... }]`.
+    Repeat {
+        repeat_type: RepeatType,
+        count: u32,
+        body: Box<Music>,
+        alternatives: Option<Vec<Music>>,
     },
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).

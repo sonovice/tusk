@@ -1177,6 +1177,18 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
             collect_events(grace, events, ctx);
             events.push(LyEvent::GraceEnd);
         }
+        Music::Repeat {
+            body, alternatives, ..
+        } => {
+            // For now, collect events from body and alternatives linearly.
+            // Full repeat/volta MEI mapping is Phase 17.2.
+            collect_events(body, events, ctx);
+            if let Some(alts) = alternatives {
+                for alt in alts {
+                    collect_events(alt, events, ctx);
+                }
+            }
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

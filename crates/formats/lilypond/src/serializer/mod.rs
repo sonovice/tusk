@@ -450,6 +450,29 @@ impl<'a> Serializer<'a> {
                 self.out.push(' ');
                 self.write_music(grace);
             }
+            Music::Repeat {
+                repeat_type,
+                count,
+                body,
+                alternatives,
+            } => {
+                self.out.push_str("\\repeat ");
+                self.out.push_str(repeat_type.as_str());
+                self.out.push(' ');
+                self.out.push_str(&count.to_string());
+                self.out.push(' ');
+                self.write_music(body);
+                if let Some(alts) = alternatives {
+                    self.out.push_str(" \\alternative { ");
+                    for (i, alt) in alts.iter().enumerate() {
+                        if i > 0 {
+                            self.out.push(' ');
+                        }
+                        self.write_music(alt);
+                    }
+                    self.out.push_str(" }");
+                }
+            }
             Music::AutoBeamOn => self.out.push_str("\\autoBeamOn"),
             Music::AutoBeamOff => self.out.push_str("\\autoBeamOff"),
             Music::Note(n) => self.write_note_event(n),

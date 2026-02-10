@@ -232,6 +232,7 @@ impl<'src> Parser<'src> {
             | Token::Transpose
             | Token::Tuplet
             | Token::Times
+            | Token::Repeat
             | Token::New
             | Token::Context
             | Token::Change => {
@@ -615,6 +616,8 @@ impl<'src> Parser<'src> {
             Token::Transpose => self.parse_transpose(),
             Token::Tuplet => self.parse_tuplet(),
             Token::Times => self.parse_times(),
+            Token::Repeat => self.parse_repeat(),
+            Token::Alternative => self.parse_alternative_as_music(),
             Token::New | Token::Context => self.parse_context_music(),
             Token::Change => self.parse_context_change(),
             Token::Time => self.parse_time_signature(),
@@ -1383,3 +1386,5 @@ mod tests;
 mod tests_grace;
 #[cfg(test)]
 mod tests_post_events;
+#[cfg(test)]
+mod tests_repeats;

@@ -1069,3 +1069,72 @@ fn nested_tuplet_passes() {
     };
     assert!(validate(&file).is_ok());
 }
+
+// ── Repeat validation (Phase 17) ────────────────────────────────────────
+
+#[test]
+fn valid_repeat_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 2,
+            body: Box::new(Music::Sequential(vec![make_note(vec![])])),
+            alternatives: None,
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn repeat_zero_count_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 0,
+            body: Box::new(Music::Sequential(vec![make_note(vec![])])),
+            alternatives: None,
+        })],
+    };
+    let errors = validate(&file).unwrap_err();
+    assert!(
+        errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidRepeatCount))
+    );
+}
+
+#[test]
+fn valid_repeat_with_alternatives_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 2,
+            body: Box::new(Music::Sequential(vec![make_note(vec![])])),
+            alternatives: Some(vec![
+                Music::Sequential(vec![make_note(vec![])]),
+                Music::Sequential(vec![make_note(vec![])]),
+            ]),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn repeat_span_balance_in_body() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 2,
+            body: Box::new(Music::Sequential(vec![
+                make_note(vec![PostEvent::SlurStart]),
+                make_note(vec![PostEvent::SlurEnd]),
+            ])),
+            alternatives: None,
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}

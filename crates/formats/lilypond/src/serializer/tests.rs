@@ -874,3 +874,56 @@ fn serialize_after_grace_with_fraction() {
     let output = serialize(&file);
     assert!(output.contains("\\afterGrace 3/4 c2 { d16 }"));
 }
+
+// ── Repeat serialization (Phase 17) ─────────────────────────────────────
+
+#[test]
+fn serialize_repeat_volta_basic() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 2,
+            body: Box::new(Music::Sequential(vec![
+                make_note('c', 4),
+                make_note('d', 4),
+            ])),
+            alternatives: None,
+        })],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\repeat volta 2 { c4 d4 }"));
+}
+
+#[test]
+fn serialize_repeat_with_alternatives() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Volta,
+            count: 2,
+            body: Box::new(Music::Sequential(vec![make_note('c', 4)])),
+            alternatives: Some(vec![
+                Music::Sequential(vec![make_note('g', 2)]),
+                Music::Sequential(vec![make_note('a', 2)]),
+            ]),
+        })],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\repeat volta 2 { c4 } \\alternative { { g2 } { a2 } }"));
+}
+
+#[test]
+fn serialize_repeat_unfold() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::Repeat {
+            repeat_type: RepeatType::Unfold,
+            count: 4,
+            body: Box::new(Music::Sequential(vec![make_note('c', 8)])),
+            alternatives: None,
+        })],
+    };
+    let output = serialize(&file);
+    assert!(output.contains("\\repeat unfold 4 { c8 }"));
+}

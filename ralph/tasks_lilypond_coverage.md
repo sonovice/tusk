@@ -723,11 +723,29 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 17.1 Model & Parser
 
-- [ ] [P] Parse `\repeat volta n { ... }`, `\repeat unfold n { ... }`, `\repeat percent n { ... }`, `\repeat tremolo n { ... }`; parse `\alternative { ... }` (alternative music list)
-- [ ] [P] Add `RepeatedMusic` (type, count, body, alternatives), `AlternativeMusic`
-- [ ] [S] Serialize \repeat and \alternative
-- [ ] [V] Repeat count positive; alternative count matches repeat
-- [ ] [T] Fragment: `\repeat volta 2 { c4 d e f } \alternative { { g2 } { a2 } }`
+- [x] [P] Parse `\repeat volta n { ... }`, `\repeat unfold n { ... }`, `\repeat percent n { ... }`, `\repeat tremolo n { ... }`; parse `\alternative { ... }` (alternative music list)
+  - `parse_repeat()` in parser/signatures.rs: `\repeat TYPE COUNT MUSIC [\alternative { ... }]`
+  - `parse_alternative_block()`: `\alternative { MUSIC1 MUSIC2 ... }`
+  - `parse_alternative_as_music()`: standalone `\alternative` at music level → Sequential
+  - Dispatched from parse_music() via Token::Repeat and Token::Alternative
+  - All 5 repeat types: volta, unfold, percent, tremolo, segno
+- [x] [P] Add `RepeatedMusic` (type, count, body, alternatives), `AlternativeMusic`
+  - `Music::Repeat { repeat_type: RepeatType, count: u32, body: Box<Music>, alternatives: Option<Vec<Music>> }`
+  - `RepeatType` enum: Volta, Unfold, Percent, Tremolo, Segno
+  - `RepeatType::from_name()` and `RepeatType::as_str()` for parsing/serialization
+- [x] [S] Serialize \repeat and \alternative
+  - `\repeat TYPE COUNT BODY [\alternative { ALT1 ALT2 ... }]`
+- [x] [V] Repeat count positive; alternative count matches repeat
+  - `ValidationError::InvalidRepeatCount` for count == 0
+  - Body and alternatives recursively validated
+  - Span balance (slurs, beams, hairpins) counted through body and alternatives
+- [x] [T] Fragment: `\repeat volta 2 { c4 d e f } \alternative { { g2 } { a2 } }`
+  - fragment_repeats.ly fixture (volta, volta+alternatives, unfold, percent, tremolo, nested, 3 alternatives, segno)
+  - 13 parser tests: volta basic, volta+alternatives, 3 alternatives, unfold, percent, tremolo, segno, nested, in-score, roundtrip basic/alternatives/unfold/nested
+  - 3 serializer tests: volta basic, with alternatives, unfold
+  - 4 validator tests: valid repeat, zero count fails, with alternatives passes, span balance in body
+  - 1 fixture roundtrip test
+  - 571 total tests pass (was 550)
 
 ### 17.2 Import & Export
 

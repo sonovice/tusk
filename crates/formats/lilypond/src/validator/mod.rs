@@ -79,6 +79,12 @@ pub enum ValidationError {
     #[error("invalid afterGrace fraction: numerator and denominator must be positive")]
     InvalidAfterGraceFraction,
 
+    #[error("invalid repeat count: must be positive")]
+    InvalidRepeatCount,
+
+    #[error("unknown repeat type '{0}'")]
+    UnknownRepeatType(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -297,6 +303,16 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::Transpose { body, .. } | Music::Tuplet { body, .. } => {
             count_spans(body, counts);
         }
+        Music::Repeat {
+            body, alternatives, ..
+        } => {
+            count_spans(body, counts);
+            if let Some(alts) = alternatives {
+                for alt in alts {
+                    count_spans(alt, counts);
+                }
+            }
+        }
         Music::AfterGrace { main, grace, .. } => {
             count_spans(main, counts);
             count_spans(grace, counts);
@@ -447,6 +463,22 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 validate_duration(dur, errors);
             }
             validate_post_events(&r.post_events, errors);
+        }
+        Music::Repeat {
+            count,
+            body,
+            alternatives,
+            ..
+        } => {
+            if *count == 0 {
+                errors.push(ValidationError::InvalidRepeatCount);
+            }
+            validate_music(body, errors);
+            if let Some(alts) = alternatives {
+                for alt in alts {
+                    validate_music(alt, errors);
+                }
+            }
         }
         Music::Grace { body } | Music::Acciaccatura { body } | Music::Appoggiatura { body } => {
             validate_music(body, errors);
