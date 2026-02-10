@@ -1,5 +1,6 @@
 //! Conversion from LilyPond AST to MEI.
 
+mod beams;
 mod control_events;
 mod conversion;
 mod events;
@@ -13,16 +14,17 @@ mod tests_chords;
 #[cfg(test)]
 mod tests_control;
 #[cfg(test)]
+mod tests_drums;
+#[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
 mod tests_tempo_marks;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild,
-    Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef,
-    ScoreDefChild, Section, SectionChild, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild,
-    TitleStmt,
+    Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild, Measure,
+    MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild,
+    Section, SectionChild, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
 };
 use tusk_model::generated::data::{DataTie, DataWord};
 
@@ -38,7 +40,10 @@ use events::{
 use signatures::apply_signatures_to_staff_def;
 pub use signatures::{fifths_to_key, mei_clef_to_name};
 
-use conversion::{convert_chord, convert_mrest, convert_note, convert_pitched_rest, convert_rest};
+use conversion::{
+    convert_chord, convert_drum_chord, convert_drum_note, convert_mrest, convert_note,
+    convert_pitched_rest, convert_rest,
+};
 
 #[derive(Debug, Error)]
 pub enum ImportError {
@@ -287,6 +292,24 @@ fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             attach_lyricsto_from_simultaneous(items, &mut layout.staves);
             return layout;
         }
+    }
+
+    // Bare \drummode { ... } → treat as DrumStaff
+    if let Music::DrumMode { body } = music {
+        let voices = extract_voices(body);
+        return StaffLayout {
+            group: None,
+            staves: vec![StaffInfo {
+                n: 1,
+                name: None,
+                context_type: "DrumStaff".to_string(),
+                with_block: None,
+                voices,
+                lyrics: Vec::new(),
+            }],
+            chord_names: Vec::new(),
+            figured_bass: Vec::new(),
+        };
     }
 
     // Bare music -- single staff, possibly multiple voices
@@ -1067,6 +1090,22 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         measure.children.push(MeasureChild::Fb(Box::new(fb)));
                         continue;
                     }
+                    LyEvent::DrumEvent(dn) => {
+                        id_counter += 1;
+                        let n = convert_drum_note(dn, id_counter);
+                        let id = format!("ly-note-{}", id_counter);
+                        let pe = dn.post_events.clone();
+                        layer.children.push(LayerChild::Note(Box::new(n)));
+                        (pe, id)
+                    }
+                    LyEvent::DrumChordEvent(dc) => {
+                        id_counter += 1;
+                        let n = convert_drum_chord(dc, id_counter);
+                        let id = format!("ly-note-{}", id_counter);
+                        let pe = dc.post_events.clone();
+                        layer.children.push(LayerChild::Note(Box::new(n)));
+                        (pe, id)
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -1376,53 +1415,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     Ok(section)
 }
 
-/// Estimate beats from a LilyPond Duration (assuming 4/4 time).
-fn duration_to_beats(dur: &crate::model::Duration) -> f64 {
-    let base_beats = 4.0 / dur.base as f64;
-    let dot_factor = 2.0 - 0.5f64.powi(dur.dots as i32);
-    let mut beats = base_beats * dot_factor;
-    for &(n, d) in &dur.multipliers {
-        beats *= n as f64 / d as f64;
-    }
-    beats
-}
-
-/// Group a range of layer children into a `<beam>` element.
-///
-/// Replaces `layer.children[start..=end]` with a single `LayerChild::Beam`
-/// containing those elements as `BeamChild` items.
-fn group_beamed_notes(layer: &mut Layer, start: usize, end: usize, beam_id: u32) {
-    if start >= layer.children.len() || end >= layer.children.len() || start > end {
-        return;
-    }
-
-    let mut beam = Beam::default();
-    beam.common.xml_id = Some(format!("ly-beam-{beam_id}"));
-
-    // Drain the range and convert LayerChild → BeamChild
-    let items: Vec<LayerChild> = layer.children.drain(start..=end).collect();
-    for item in items {
-        if let Some(bc) = layer_child_to_beam_child(item) {
-            beam.children.push(bc);
-        }
-    }
-
-    // Insert the beam at the start position
-    layer
-        .children
-        .insert(start, LayerChild::Beam(Box::new(beam)));
-}
-
-/// Convert a LayerChild to a BeamChild (Note, Rest, Chord).
-fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
-    match child {
-        LayerChild::Note(n) => Some(BeamChild::Note(n)),
-        LayerChild::Rest(r) => Some(BeamChild::Rest(r)),
-        LayerChild::Chord(c) => Some(BeamChild::Chord(c)),
-        LayerChild::Beam(b) => Some(BeamChild::Beam(b)),
-        _ => None,
-    }
-}
+use beams::{duration_to_beats, group_beamed_notes};
 
 use control_events::{
     make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_hairpin, make_harm,

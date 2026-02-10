@@ -1087,10 +1087,16 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 25.2 Import & Export
 
-- [ ] [I] Drum events → MEI percussion notation or note with @pname/@accid mapping for drums
-- [ ] [E] MEI percussion → LilyPond drum mode
-- [ ] [T] Roundtrip drum fixtures
-- [ ] [T] Drum mode fixtures; roundtrip
+- [x] [I] Drum events → MEI percussion notation or note with @pname/@accid mapping for drums
+  - import/conversion.rs: convert_drum_note/convert_drum_chord → MEI Note with `lilypond:drum,` label
+  - import/mod.rs: analyze_staves detects bare `\drummode` → DrumStaff context_type
+- [x] [E] MEI percussion → LilyPond drum mode
+  - export/conversion.rs: try_convert_drum_label → parse_drum_event_str re-parses label via parser
+  - export/mod.rs: DrumStaff context_type → wraps music in `\drummode { ... }`
+- [x] [T] Roundtrip drum fixtures
+  - export/tests_drums.rs: 6 roundtrip tests (basic, long names, chord, mixed, fixture, shorthand)
+- [x] [T] Drum mode fixtures; roundtrip
+  - fragment_drummode.ly fixture roundtrips through import→export correctly
 
 ---
 
