@@ -397,8 +397,8 @@ pub fn keyword_from_str(word: &str) -> Option<Token> {
 /// This covers the default (Dutch) naming convention used by LilyPond:
 ///   c d e f g a b
 ///   + optional accidental suffixes: is, es, isis, eses, ih, eh
-///   (sharp = is, flat = es, double-sharp = isis, double-flat = eses,
-///    quarter-sharp = ih, quarter-flat = eh)
+///     (sharp = is, flat = es, double-sharp = isis, double-flat = eses,
+///     quarter-sharp = ih, quarter-flat = eh)
 pub fn is_note_name(word: &str) -> bool {
     // Must start with a–g
     let mut chars = word.chars();

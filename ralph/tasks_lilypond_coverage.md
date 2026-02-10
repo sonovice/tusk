@@ -100,9 +100,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
   - `fixture_minimal_score` test validates full token sequence
 - [x] [T] Unit tests for lexer on minimal inputs
   - 47 unit tests covering: whitespace, comments, strings, numbers, keywords, note names, operators, escaped operators, compound sequences, spans, note name recognition
-
-### 1.3 Tests
-
 - [x] [T] Crate compiles; `cargo test -p tusk-lilypond` runs (47 lexer tests pass)
 
 ---
@@ -125,10 +122,7 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
   - validator::validate() checks score has music; validates nested structures
 - [x] [T] Parse `tests/fixtures/lilypond/simple.ly` and roundtrip via serializer
   - parse_simple_ly and roundtrip_simple_ly tests; parse_fragment_score_minimal and roundtrip_fragment_score_minimal
-
-### 2.2 Tests
-
-- [x] [T] Fixture `simple.ly` (single staff, few notes) parses and serializes without error
+[x] [T] Fixture `simple.ly` (single staff, few notes) parses and serializes without error
   - 71 total tests: 47 lexer + 11 parser + 6 serializer + 5 validator + 2 roundtrips
 
 ---
@@ -148,14 +142,27 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 3.2 Import & Export
 
-- [ ] [I] Map `NoteEvent` (pitch + duration) → MEI `<note>` with @pname, @accid, @oct, @dur, @dots
-- [ ] [I] Map `RestEvent` → MEI `<rest>` with @dur, @dots
-- [ ] [E] MEI note/rest → LilyPond note/rest (relative pitch context handled in later phase)
-- [ ] [T] Roundtrip: LilyPond → MEI → LilyPond on simple note/rest fixture
-
-### 3.3 Tests
-
-- [ ] [T] All Phase 3 fragment tests pass; no regressions in Phase 1–2
+- [x] [I] Map `NoteEvent` (pitch + duration) → MEI `<note>` with @pname, @accid, @oct, @dur, @dots
+  - import::import() builds full MEI hierarchy: Mei → MeiHead + Music → Body → Mdiv → Score → ScoreDef + Section → Measure → Staff → Layer → Note/Rest/MRest
+  - Pitch: step → @pname, octave marks → @oct (c=3, c'=4, c,=2), alter → @accid.ges
+  - Duration: base → @dur (DataDurationCmn), dots → @dots (DataAugmentdot)
+  - Written accidentals (!/?) → Accid child with @accid and @func="cautionary"
+  - Pitched rests → Rest with lilypond:pitched-rest label for roundtrip
+  - Multi-measure rests → MRest with lilypond:mrest label encoding dur/dots/multipliers
+- [x] [I] Map `RestEvent` → MEI `<rest>` with @dur, @dots
+  - RestEvent → Rest with @dur, @dots; SkipEvent ignored (no MEI equivalent)
+- [x] [E] MEI note/rest → LilyPond note/rest (relative pitch context handled in later phase)
+  - export::export() walks MEI hierarchy, converts Note/Rest/MRest back to LilyPond AST
+  - Restores pitch from @pname/@oct, alter from @accid.ges, duration from @dur/@dots
+  - Pitched rest label → NoteEvent with pitched_rest=true
+  - MRest label → MultiMeasureRestEvent with full duration/multipliers
+  - Exporter trait wired: LilyPondFormat::export_to_string() → export() + serialize()
+  - Importer trait wired: LilyPondFormat::import_from_str() → parse() + import()
+- [x] [T] Roundtrip: LilyPond → MEI → LilyPond on simple note/rest fixture
+  - 10 roundtrip tests: single note, accidentals, rests, dotted, flat, multiple notes, multi-measure rest, pitched rest, force accidental, cautionary accidental
+  - 10 import tests: single note, accidental, rest, dotted rest, multi-measure rest, pitched rest, multiple events, skip ignored, score block, nested relative
+- [x] [T] All Phase 3 fragment tests pass; no regressions in Phase 1–2
+  - 129 total tests: 47 lexer + 12 model + 29 parser + 12 serializer + 9 validator + 10 import + 10 export roundtrip
 
 ---
 
@@ -174,9 +181,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Sequential → linear MEI layer; simultaneous → multiple layers or staff groups as per MEI model
 - [ ] [E] MEI layers/parallel content → LilyPond `<< >>` or `{ }` as appropriate
 - [ ] [T] Roundtrip two-voice score
-
-### 4.3 Tests
-
 - [ ] [T] Fixtures for sequential and simultaneous; roundtrip via MEI
 
 ---
@@ -197,9 +201,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] `\with { }` overrides → store in conversion context or MEI extensions for roundtrip
 - [ ] [E] MEI staff/part → `\new Staff` / `\new Voice` with optional `\with`
 - [ ] [T] Roundtrip score with multiple staves
-
-### 5.3 Tests
-
 - [ ] [T] Piano-style score fixture; roundtrip
 
 ---
@@ -219,9 +220,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Clef/key/time → MEI `<scoreDef>` / `<staffDef>` clef, key, meter
 - [ ] [E] MEI clef/key/meter → `\clef`, `\key`, `\time`
 - [ ] [T] Roundtrip with key and time change
-
-### 6.3 Tests
-
 - [ ] [T] Fixtures with various clefs, keys, times; roundtrip
 
 ---
@@ -241,9 +239,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Relative/transpose → MEI as written (or expand to absolute); store relative/transpose in context for roundtrip
 - [ ] [E] When exporting, prefer `\relative` when all notes in a voice can be expressed relative to a single reference
 - [ ] [T] Roundtrip relative-mode score
-
-### 7.3 Tests
-
 - [ ] [T] Relative and transpose fixtures; roundtrip
 
 ---
@@ -263,9 +258,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Chord → MEI chord (multiple note elements with same @dur, chord attribute)
 - [ ] [E] MEI chord → LilyPond `< ... >` chord
 - [ ] [T] Roundtrip chord fixture
-
-### 8.3 Tests
-
 - [ ] [T] Chord fixtures; roundtrip
 
 ---
@@ -285,9 +277,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Tie → MEI `<tie>`; slur → MEI `<slur>`; phrasing slur → MEI `<phrase>` or equivalent
 - [ ] [E] MEI tie/slur/phrase → LilyPond `~`, `( )`, `\( \)`
 - [ ] [T] Roundtrip tied and slurred phrases
-
-### 9.3 Tests
-
 - [ ] [T] Tie, slur, phrasing slur fixtures; roundtrip
 
 ---
@@ -307,9 +296,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Beams → MEI `<beam>` or beam span; auto-beam → context
 - [ ] [E] MEI beam → LilyPond `[ ]` or auto-beam
 - [ ] [T] Roundtrip beamed passage
-
-### 10.3 Tests
-
 - [ ] [T] Beam fixtures; roundtrip
 
 ---
@@ -329,9 +315,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Dynamics → MEI `<dynam>`; hairpins → MEI `<hairpin>`
 - [ ] [E] MEI dynam/hairpin → LilyPond `\p`, `\f`, `\<`, etc.
 - [ ] [T] Roundtrip dynamics and hairpins
-
-### 11.3 Tests
-
 - [ ] [T] Dynamics and hairpin fixtures; roundtrip
 
 ---
@@ -352,9 +335,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Articulations → MEI `<artic>`, fingerings → MEI fingering; script placement → @place
 - [ ] [E] MEI artic/fingering → LilyPond abbreviations and fingerings
 - [ ] [T] Roundtrip articulations and fingerings
-
-### 12.3 Tests
-
 - [ ] [T] Articulation and fingering fixtures; roundtrip
 
 ---
@@ -374,9 +354,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Ornaments → MEI `<trill>`, `<mordent>`, `<turn>`, etc.; tremolo → MEI ornam label / bTrem
 - [ ] [E] MEI ornaments and tremolo → LilyPond `\trill`, `:N`, etc.
 - [ ] [T] Roundtrip ornaments and tremolo
-
-### 13.3 Tests
-
 - [ ] [T] Ornament and tremolo fixtures; roundtrip
 
 ---
@@ -396,9 +373,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Technical → MEI technical elements or ornam labels
 - [ ] [E] MEI technical → LilyPond
 - [ ] [T] Roundtrip technical fixtures
-
-### 14.3 Tests
-
 - [ ] [T] Technical notation fixtures; roundtrip
 
 ---
@@ -417,9 +391,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Tuplet → MEI tupletSpan / time-modification
 - [ ] [E] MEI tuplet → LilyPond `\tuplet`
 - [ ] [T] Roundtrip tuplet fixtures
-
-### 15.3 Tests
-
 - [ ] [T] Tuplet fixtures; roundtrip
 
 ---
@@ -439,9 +410,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Grace → MEI grace group / @grace
 - [ ] [E] MEI grace → LilyPond `\grace` or `\acciaccatura`/`\appoggiatura`
 - [ ] [T] Roundtrip grace note fixtures
-
-### 16.3 Tests
-
 - [ ] [T] Grace note fixtures; roundtrip
 
 ---
@@ -461,9 +429,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Repeat/alternative → MEI repeat/ending (volta)
 - [ ] [E] MEI repeat/ending → LilyPond `\repeat` and `\alternative`
 - [ ] [T] Roundtrip repeat fixtures
-
-### 17.3 Tests
-
 - [ ] [T] Repeat and alternative fixtures; roundtrip
 
 ---
@@ -483,9 +448,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Multi-measure rest → MEI multi-rest; bar line → MEI barline
 - [ ] [E] MEI multi-rest and barline → LilyPond R and \bar
 - [ ] [T] Roundtrip multi-rest and bar line fixtures
-
-### 18.3 Tests
-
 - [ ] [T] Multi-rest and bar line fixtures; roundtrip
 
 ---
@@ -505,9 +467,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Chord repetition → MEI as repeated chord notes
 - [ ] [E] MEI repeated chord → LilyPond `q` where applicable
 - [ ] [T] Roundtrip chord repetition fixture
-
-### 19.3 Tests
-
 - [ ] [T] Chord repetition fixture; roundtrip
 
 ---
@@ -527,9 +486,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Lyrics → MEI `<verse>`, `<syl>`; syllabic and extend from hyphen/extender
 - [ ] [E] MEI verse/syl → LilyPond lyrics and \addlyrics/\lyricsto
 - [ ] [T] Roundtrip lyric fixtures
-
-### 20.3 Tests
-
 - [ ] [T] Lyric fixtures; roundtrip
 
 ---
@@ -549,9 +505,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Markup → MEI text/dir or annot with label for roundtrip
 - [ ] [E] MEI text/dir → LilyPond \markup where applicable
 - [ ] [T] Roundtrip markup fixtures
-
-### 21.3 Tests
-
 - [ ] [T] Markup fixtures; roundtrip
 
 ---
@@ -571,9 +524,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Tempo → MEI tempo; rehearsal/mark → MEI dir or rehearsal
 - [ ] [E] MEI tempo/rehearsal → LilyPond \tempo, \mark
 - [ ] [T] Roundtrip tempo and mark fixtures
-
-### 22.3 Tests
-
 - [ ] [T] Tempo and mark fixtures; roundtrip
 
 ---
@@ -593,9 +543,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Chord names → MEI harm (with label or extended for full data)
 - [ ] [E] MEI harm → LilyPond chord mode
 - [ ] [T] Roundtrip chord name fixtures
-
-### 23.3 Tests
-
 - [ ] [T] Chord mode fixtures; roundtrip
 
 ---
@@ -615,9 +562,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Figured bass → MEI fb/f
 - [ ] [E] MEI fb → LilyPond \figures
 - [ ] [T] Roundtrip figured bass fixtures
-
-### 24.3 Tests
-
 - [ ] [T] Figured bass fixtures; roundtrip
 
 ---
@@ -637,9 +581,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Drum events → MEI percussion notation or note with @pname/@accid mapping for drums
 - [ ] [E] MEI percussion → LilyPond drum mode
 - [ ] [T] Roundtrip drum fixtures
-
-### 25.3 Tests
-
 - [ ] [T] Drum mode fixtures; roundtrip
 
 ---
@@ -660,9 +601,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Override/set → MEI scoreDef/staffDef/annot or label for roundtrip
 - [ ] [E] MEI appearance/layout → LilyPond \override/\set where applicable
 - [ ] [T] Roundtrip property fixtures
-
-### 26.3 Tests
-
 - [ ] [T] Property operation fixtures; roundtrip
 
 ---
@@ -682,9 +620,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Header → MEI fileDesc/titleStmt/source; paper/layout/midi → store in context or MEI encodingDesc for roundtrip
 - [ ] [E] MEI metadata → \header; encodingDesc → \paper/\layout/\midi where applicable
 - [ ] [T] Roundtrip header and paper fixtures
-
-### 27.3 Tests
-
 - [ ] [T] Header and output-def fixtures; roundtrip
 
 ---
@@ -704,9 +639,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Inline expanded music for MEI; optionally preserve variable names in label for roundtrip
 - [ ] [E] MEI → LilyPond; optional variable extraction for repeated blocks
 - [ ] [T] Roundtrip score with variables
-
-### 28.3 Tests
-
 - [ ] [T] Variable and assignment fixtures; roundtrip
 
 ---
@@ -726,9 +658,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Built-in music functions (tuplet, grace, etc.) already mapped; generic function call → MEI as control or annot with label
 - [ ] [E] MEI → LilyPond; emit appropriate \functionName calls
 - [ ] [T] Roundtrip scores using music functions
-
-### 29.3 Tests
-
 - [ ] [T] Music function fixtures; roundtrip
 
 ---
@@ -748,9 +677,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 - [ ] [I] Scheme and embedded LilyPond → preserve as opaque or parse simple values for MEI
 - [ ] [E] MEI → LilyPond; preserve stored Scheme/embedded where present
 - [ ] [T] Roundtrip fixtures with simple Scheme
-
-### 30.3 Tests
-
 - [ ] [T] Scheme and embedded LilyPond fixtures; roundtrip
 
 ---
@@ -769,9 +695,6 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 - [ ] [V] Run validator on AST before import; report clear errors for invalid structure
 - [ ] [T] Invalid .ly files produce clear parse/validation errors
-
-### 31.3 Tests
-
 - [ ] [T] Full regression: every fixture in tests/fixtures/lilypond imports to MEI; no panics
 
 ---

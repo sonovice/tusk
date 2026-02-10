@@ -62,17 +62,17 @@ impl tusk_format::Format for LilyPondFormat {
 }
 
 impl tusk_format::Importer for LilyPondFormat {
-    fn import_from_str(&self, _input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
-        Err(tusk_format::FormatError::conversion(
-            crate::import::ImportError::NotImplemented,
-        ))
+    fn import_from_str(&self, input: &str) -> tusk_format::FormatResult<tusk_format::Mei> {
+        let file = crate::parser::Parser::new(input)
+            .and_then(|p| p.parse())
+            .map_err(tusk_format::FormatError::parse)?;
+        crate::import::import(&file).map_err(tusk_format::FormatError::conversion)
     }
 }
 
 impl tusk_format::Exporter for LilyPondFormat {
-    fn export_to_string(&self, _mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
-        Err(tusk_format::FormatError::conversion(
-            crate::export::ExportError::NotImplemented,
-        ))
+    fn export_to_string(&self, mei: &tusk_format::Mei) -> tusk_format::FormatResult<String> {
+        let file = crate::export::export(mei).map_err(tusk_format::FormatError::conversion)?;
+        Ok(crate::serializer::serialize(&file))
     }
 }
