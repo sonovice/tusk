@@ -5,7 +5,7 @@
 
 use tusk_model::generated::data::DataGrace;
 
-use crate::model::{self, FunctionArg, Music, NoteEvent, PostEvent, RestEvent};
+use crate::model::{self, Music, NoteEvent, PostEvent, RestEvent};
 
 /// Internal event representation for collecting from the AST.
 ///
@@ -79,6 +79,8 @@ pub(super) enum LyEvent {
     DrumChordEvent(model::note::DrumChordEvent),
     /// A serialized property operation (`\override`, `\set`, `\revert`, `\unset`, `\once`).
     PropertyOp(String),
+    /// A serialized music function call (`\functionName args...`).
+    MusicFunction(String),
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -360,13 +362,10 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_property_op(music);
             events.push(LyEvent::PropertyOp(serialized));
         }
-        Music::MusicFunction { args, .. } | Music::PartialFunction { args, .. } => {
-            // Recurse into any music arguments
-            for arg in args {
-                if let FunctionArg::Music(m) = arg {
-                    collect_events(m, events, ctx);
-                }
-            }
+        Music::MusicFunction { .. } | Music::PartialFunction { .. } => {
+            // Serialize the entire function call and store opaquely
+            let serialized = crate::serializer::serialize_property_op(music);
+            events.push(LyEvent::MusicFunction(serialized));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

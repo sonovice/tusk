@@ -20,6 +20,8 @@ mod tests_drums;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
+mod tests_functions;
+#[cfg(test)]
 mod tests_output_defs;
 #[cfg(test)]
 mod tests_properties;
@@ -861,6 +863,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut tempo_mark_counter = 0u32;
     let mut harm_counter = 0u32;
     let mut fb_counter = 0u32;
+    let mut func_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -897,6 +900,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 Vec::new();
             // Pending property operations waiting for next note's startid
             let mut pending_property_ops: Vec<String> = Vec::new();
+            // Pending music function calls waiting for next note's startid
+            let mut pending_function_ops: Vec<String> = Vec::new();
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -1146,6 +1151,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pending_property_ops.push(serialized.clone());
                         continue;
                     }
+                    LyEvent::MusicFunction(serialized) => {
+                        pending_function_ops.push(serialized.clone());
+                        continue;
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -1219,6 +1228,18 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         &current_id,
                         staff_info.n,
                         artic_counter,
+                    );
+                    measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                }
+
+                // Flush pending music function calls
+                for func_serialized in pending_function_ops.drain(..) {
+                    func_counter += 1;
+                    let dir = make_function_dir(
+                        &func_serialized,
+                        &current_id,
+                        staff_info.n,
+                        func_counter,
                     );
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
@@ -1478,9 +1499,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
 use beams::{duration_to_beats, group_beamed_notes};
 
 use control_events::{
-    make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_hairpin, make_harm,
-    make_mark_dir, make_ornament_control_event, make_property_dir, make_repeat_dir, make_slur,
-    make_string_dir, make_tempo, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_function_dir,
+    make_hairpin, make_harm, make_mark_dir, make_ornament_control_event, make_property_dir,
+    make_repeat_dir, make_slur, make_string_dir, make_tempo, make_textmark_dir, make_tuplet_span,
+    wrap_last_in_btrem,
 };
 
 mod utils;

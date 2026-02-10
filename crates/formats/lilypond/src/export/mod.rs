@@ -16,6 +16,8 @@ mod tests_drums;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]
+mod tests_functions;
+#[cfg(test)]
 mod tests_markup;
 #[cfg(test)]
 mod tests_output_defs;
@@ -89,6 +91,9 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                     // Collect property operations for injection
                     let property_ops = collect_property_ops(&measure.children);
 
+                    // Collect music function calls for injection
+                    let function_ops = collect_function_ops(&measure.children);
+
                     // Collect tuplet spans for wrapping
                     let tuplet_spans = collect_tuplet_spans(&measure.children);
 
@@ -116,6 +121,8 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                                 }
                                 // Inject property operations before their referenced notes
                                 inject_property_ops(&mut items, &item_ids, &property_ops);
+                                // Inject music function calls before their referenced notes
+                                inject_function_ops(&mut items, &item_ids, &function_ops);
                                 // Wrap tuplet ranges in Music::Tuplet
                                 apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 // Wrap grace notes in Music::Grace/Acciaccatura/etc.
@@ -847,116 +854,10 @@ mod figured_bass;
 use chord_names::{ChordNamesMeta, collect_chord_mode_harms, extract_chord_names_meta};
 use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bass_meta};
 
-// ---------------------------------------------------------------------------
-// Property operation roundtrip (export)
-// ---------------------------------------------------------------------------
-
-/// Collected property operation info: startid → list of Music property ops.
-struct PropertyOpInfo {
-    start_id: String,
-    music: Music,
-}
-
-/// Collect property operations from measure `<dir>` elements with `lilypond:prop,` labels.
-fn collect_property_ops(measure_children: &[MeasureChild]) -> Vec<PropertyOpInfo> {
-    let mut ops = Vec::new();
-    for mc in measure_children {
-        if let MeasureChild::Dir(dir) = mc {
-            let label = match dir.common.label.as_deref() {
-                Some(l) => l,
-                None => continue,
-            };
-            if let Some(serialized_escaped) = label.strip_prefix("lilypond:prop,") {
-                let serialized =
-                    crate::import::signatures::unescape_label_value(serialized_escaped);
-                if let Some(music) = parse_property_op_str(&serialized) {
-                    let start_id = dir
-                        .dir_log
-                        .startid
-                        .as_ref()
-                        .map(|u| u.0.trim_start_matches('#').to_string())
-                        .unwrap_or_default();
-                    ops.push(PropertyOpInfo { start_id, music });
-                }
-            }
-        }
-    }
-    ops
-}
-
-/// Parse a serialized property operation string back into a Music variant.
-fn parse_property_op_str(s: &str) -> Option<Music> {
-    use crate::parser::Parser;
-    // Wrap in a sequence with a note so the parser can handle it
-    let src = format!("{s}\nc4");
-    let file = Parser::new(&src).ok()?.parse().ok()?;
-    for item in &file.items {
-        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
-            for m in items {
-                match m {
-                    Music::Override { .. }
-                    | Music::Revert { .. }
-                    | Music::Set { .. }
-                    | Music::Unset { .. }
-                    | Music::Once { .. } => return Some(m.clone()),
-                    _ => {}
-                }
-            }
-        }
-        // Bare property op (no sequential wrapper)
-        if let crate::model::ToplevelExpression::Music(
-            m @ (Music::Override { .. }
-            | Music::Revert { .. }
-            | Music::Set { .. }
-            | Music::Unset { .. }
-            | Music::Once { .. }),
-        ) = item
-        {
-            return Some(m.clone());
-        }
-    }
-    None
-}
-
-/// Inject property operations into the items list before their referenced notes.
-fn inject_property_ops(
-    items: &mut Vec<Music>,
-    item_ids: &[Option<String>],
-    ops: &[PropertyOpInfo],
-) {
-    if ops.is_empty() {
-        return;
-    }
-    // Build a map of id → list of property ops to inject before that id
-    let mut inject_map: HashMap<String, Vec<Music>> = HashMap::new();
-    for op in ops {
-        if !op.start_id.is_empty() {
-            inject_map
-                .entry(op.start_id.clone())
-                .or_default()
-                .push(op.music.clone());
-        }
-    }
-
-    // Walk items in reverse to avoid index shifting
-    let mut insertions: Vec<(usize, Vec<Music>)> = Vec::new();
-    for (i, id) in item_ids.iter().enumerate() {
-        if let Some(id_str) = id
-            && let Some(prop_ops) = inject_map.remove(id_str.as_str())
-        {
-            insertions.push((i, prop_ops));
-        }
-    }
-    // Sort by position descending so we insert from back to front
-    insertions.sort_by(|a, b| b.0.cmp(&a.0));
-    for (pos, prop_ops) in insertions {
-        if pos <= items.len() {
-            for (j, op) in prop_ops.into_iter().enumerate() {
-                items.insert(pos + j, op);
-            }
-        }
-    }
-}
+mod operations;
+use operations::{
+    collect_function_ops, collect_property_ops, inject_function_ops, inject_property_ops,
+};
 
 /// Find the Score element in the MEI hierarchy.
 fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {

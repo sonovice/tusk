@@ -1241,10 +1241,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 29.2 Import & Export
 
-- [ ] [I] Built-in music functions (tuplet, grace, etc.) already mapped; generic function call → MEI as control or annot with label
-- [ ] [E] MEI → LilyPond; emit appropriate \functionName calls
-- [ ] [T] Roundtrip scores using music functions
-- [ ] [T] Music function fixtures; roundtrip
+- [x] [I] Built-in music functions (tuplet, grace, etc.) already mapped; generic function call → MEI as control or annot with label
+  - `LyEvent::MusicFunction(String)` variant in events.rs; serialize entire call, store as `<dir>` with `lilypond:func,{escaped}` label
+  - `make_function_dir()` in control_events.rs; pending flush before next note (same pattern as PropertyOp)
+- [x] [E] MEI → LilyPond; emit appropriate \functionName calls
+  - `collect_function_ops()` / `inject_function_ops()` in new export/operations.rs submodule
+  - Parses `lilypond:func,` label back into `Music::MusicFunction` / `Music::PartialFunction`
+  - Extracted property ops + function ops + injection logic into operations.rs (mod.rs was over 1500 LOC)
+- [x] [T] Roundtrip scores using music functions
+  - 5 export roundtrip tests: music arg, string+music, numeric, partial, multiple calls
+  - 4 import tests: creates dir, string arg, has startid, partial function
+- [x] [T] Music function fixtures; roundtrip
+  - `fragment_music_functions_roundtrip.ly` fixture with score context
 
 ---
 

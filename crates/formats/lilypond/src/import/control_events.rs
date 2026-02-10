@@ -620,6 +620,20 @@ fn bass_figure_to_text(fig: &BassFigure) -> String {
     text
 }
 
+/// Create an MEI Dir for a generic LilyPond music function call.
+///
+/// Label format: `lilypond:func,{serialized}`
+/// The serialized text is the full LilyPond expression (e.g. `\tag "part" { c4 d e f }`).
+pub(super) fn make_function_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-func-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+    let escaped = crate::import::signatures::escape_label_value_pub(serialized);
+    dir.common.label = Some(format!("lilypond:func,{escaped}"));
+    dir
+}
+
 /// Create an MEI Dir for a LilyPond property operation (`\override`, `\set`, etc.).
 ///
 /// Label format: `lilypond:prop,{serialized}`
