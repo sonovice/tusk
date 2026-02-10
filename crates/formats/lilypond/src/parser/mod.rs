@@ -600,6 +600,8 @@ impl<'src> Parser<'src> {
         match self.peek() {
             Token::BraceOpen => self.parse_sequential_music(),
             Token::DoubleAngleOpen => self.parse_simultaneous_music(),
+            Token::Sequential => self.parse_explicit_sequential(),
+            Token::Simultaneous => self.parse_explicit_simultaneous(),
             Token::Relative => self.parse_relative(),
             Token::Fixed => self.parse_fixed(),
             Token::New | Token::Context => self.parse_context_music(),
@@ -785,13 +787,38 @@ impl<'src> Parser<'src> {
         Ok(Music::Sequential(items))
     }
 
+    /// `\sequential { ... }` — explicit sequential keyword form.
+    fn parse_explicit_sequential(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Sequential)?;
+        self.parse_sequential_music()
+    }
+
     fn parse_simultaneous_music(&mut self) -> Result<Music, ParseError> {
         self.expect(&Token::DoubleAngleOpen)?;
         let mut items = Vec::new();
         while *self.peek() != Token::DoubleAngleClose && !self.at_eof() {
+            // Skip `\\` voice separators — they act as delimiters between
+            // voices but don't add semantic content at the AST level.
+            if *self.peek() == Token::DoubleBackslash {
+                self.advance()?;
+                continue;
+            }
             items.push(self.parse_music()?);
         }
         self.expect(&Token::DoubleAngleClose)?;
+        Ok(Music::Simultaneous(items))
+    }
+
+    /// `\simultaneous { ... }` — explicit simultaneous keyword form.
+    fn parse_explicit_simultaneous(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Simultaneous)?;
+        // \simultaneous uses braces, not angle brackets
+        self.expect(&Token::BraceOpen)?;
+        let mut items = Vec::new();
+        while *self.peek() != Token::BraceClose && !self.at_eof() {
+            items.push(self.parse_music()?);
+        }
+        self.expect(&Token::BraceClose)?;
         Ok(Music::Simultaneous(items))
     }
 
@@ -1464,5 +1491,138 @@ mod tests {
     #[test]
     fn roundtrip_fragment_rests() {
         roundtrip_fixture("fragment_rests.ly");
+    }
+
+    // ── Phase 4 tests ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_nested_sequential_simultaneous() {
+        let ast = parse("{ << { c4 d4 } { e4 f4 } >> }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(outer)) => {
+                assert_eq!(outer.len(), 1);
+                match &outer[0] {
+                    Music::Simultaneous(voices) => {
+                        assert_eq!(voices.len(), 2);
+                        match &voices[0] {
+                            Music::Sequential(items) => {
+                                assert_eq!(items.len(), 2);
+                                assert!(matches!(&items[0], Music::Note(n) if n.pitch.step == 'c'));
+                                assert!(matches!(&items[1], Music::Note(n) if n.pitch.step == 'd'));
+                            }
+                            other => panic!("expected sequential, got {other:?}"),
+                        }
+                        match &voices[1] {
+                            Music::Sequential(items) => {
+                                assert_eq!(items.len(), 2);
+                                assert!(matches!(&items[0], Music::Note(n) if n.pitch.step == 'e'));
+                                assert!(matches!(&items[1], Music::Note(n) if n.pitch.step == 'f'));
+                            }
+                            other => panic!("expected sequential, got {other:?}"),
+                        }
+                    }
+                    other => panic!("expected simultaneous, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_explicit_sequential_keyword() {
+        let ast = parse("\\sequential { c4 d4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 2);
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_explicit_simultaneous_keyword() {
+        let ast = parse("\\simultaneous { { c4 } { d4 } }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Simultaneous(items)) => {
+                assert_eq!(items.len(), 2);
+            }
+            other => panic!("expected simultaneous, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_voice_separator_backslash() {
+        let ast = parse("<< { c4 d4 } \\\\ { e4 f4 } >>").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Simultaneous(voices)) => {
+                assert_eq!(voices.len(), 2);
+                assert!(matches!(&voices[0], Music::Sequential(_)));
+                assert!(matches!(&voices[1], Music::Sequential(_)));
+            }
+            other => panic!("expected simultaneous, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_deeply_nested_music() {
+        let ast = parse("{ { { c4 } } }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(l1)) => {
+                assert_eq!(l1.len(), 1);
+                match &l1[0] {
+                    Music::Sequential(l2) => {
+                        assert_eq!(l2.len(), 1);
+                        match &l2[0] {
+                            Music::Sequential(l3) => {
+                                assert_eq!(l3.len(), 1);
+                                assert!(matches!(&l3[0], Music::Note(_)));
+                            }
+                            other => panic!("expected sequential, got {other:?}"),
+                        }
+                    }
+                    other => panic!("expected sequential, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_empty_sequential() {
+        let ast = parse("{ }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert!(items.is_empty());
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_empty_simultaneous() {
+        let ast = parse("<< >>").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Simultaneous(items)) => {
+                assert!(items.is_empty());
+            }
+            other => panic!("expected simultaneous, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_simultaneous_with_notes() {
+        // Notes directly inside << >> (no inner braces)
+        let ast = parse("<< c4 d4 e4 >>").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Simultaneous(items)) => {
+                assert_eq!(items.len(), 3);
+            }
+            other => panic!("expected simultaneous, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_fragment_sequential_simultaneous() {
+        roundtrip_fixture("fragment_sequential_simultaneous.ly");
     }
 }

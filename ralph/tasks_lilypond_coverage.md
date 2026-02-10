@@ -170,11 +170,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 4.1 Model & Parser
 
-- [ ] [P] Add `SequentialMusic`, `SimultaneousMusic`, `MusicList`, `GroupedMusicList`; parse `{ ... }` (sequential) and `<< ... >>` (simultaneous)
-- [ ] [P] Grammar: `braced_music_list`, `sequential_music`, `simultaneous_music`, `music_list` (reversed list)
-- [ ] [S] Serialize sequential with `{ }`, simultaneous with `<< >>`
-- [ ] [V] Brace/angle bracket matching and balanced structure
-- [ ] [T] Parse/serialize nested `{ << { c4 d4 } { e4 f4 } >> }`
+- [x] [P] Add `SequentialMusic`, `SimultaneousMusic`, `MusicList`, `GroupedMusicList`; parse `{ ... }` (sequential) and `<< ... >>` (simultaneous)
+  - Music::Sequential(Vec<Music>) and Music::Simultaneous(Vec<Music>) already in model from Phase 2
+  - Added `\sequential { }` and `\simultaneous { }` explicit keyword forms (parse_explicit_sequential/parse_explicit_simultaneous)
+  - Added `\\` voice separator handling in `<< ... \\ ... >>` simultaneous music
+- [x] [P] Grammar: `braced_music_list`, `sequential_music`, `simultaneous_music`, `music_list` (reversed list)
+  - parse_sequential_music, parse_simultaneous_music, parse_explicit_sequential, parse_explicit_simultaneous in parser
+- [x] [S] Serialize sequential with `{ }`, simultaneous with `<< >>`
+  - Already implemented in serializer from Phase 2
+- [x] [V] Brace/angle bracket matching and balanced structure
+  - Parser enforces via expect(); validator recursively validates music structure
+- [x] [T] Parse/serialize nested `{ << { c4 d4 } { e4 f4 } >> }`
+  - 9 new tests: nested sequential/simultaneous, explicit keyword forms, `\\` separator, deeply nested, empty blocks, direct notes in `<< >>`, fixture roundtrip
+  - Fixture: fragment_sequential_simultaneous.ly
+  - 138 total tests pass
 
 ### 4.2 Import & Export
 
