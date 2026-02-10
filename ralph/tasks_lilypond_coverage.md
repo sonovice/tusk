@@ -187,10 +187,18 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 4.2 Import & Export
 
-- [ ] [I] Sequential → linear MEI layer; simultaneous → multiple layers or staff groups as per MEI model
-- [ ] [E] MEI layers/parallel content → LilyPond `<< >>` or `{ }` as appropriate
-- [ ] [T] Roundtrip two-voice score
-- [ ] [T] Fixtures for sequential and simultaneous; roundtrip via MEI
+- [x] [I] Sequential → linear MEI layer; simultaneous → multiple layers or staff groups as per MEI model
+  - Sequential music flattened into single MEI layer (layer @n=1)
+  - Simultaneous music (`<< { voice1 } { voice2 } >>`) → multiple layers on same staff (layer @n=1, 2, ...)
+  - extract_voices() detects voice-like children (Sequential, Note, Rest, Relative, etc.) and splits into separate layers
+- [x] [E] MEI layers/parallel content → LilyPond `<< >>` or `{ }` as appropriate
+  - Single layer → `{ ... }` (sequential); multiple layers → `<< { voice1 } { voice2 } >>` (simultaneous)
+  - build_music_from_layers() handles single/multi layer dispatch
+- [x] [T] Roundtrip two-voice score
+  - roundtrip_two_voices, roundtrip_three_voices, roundtrip_sequential_preserved tests
+- [x] [T] Fixtures for sequential and simultaneous; roundtrip via MEI
+  - Fixture: fragment_two_voices.ly; 4 import tests + 3 roundtrip tests
+  - 145 total tests pass
 
 ---
 

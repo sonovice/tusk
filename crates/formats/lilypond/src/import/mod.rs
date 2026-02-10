@@ -121,51 +121,57 @@ fn build_score_def() -> ScoreDef {
     score_def
 }
 
-/// Build a Section from LilyPond music. Flattens music into a single
-/// measure with all events in one layer (simple model for Phase 3).
+/// Build a Section from LilyPond music.
+///
+/// Simultaneous music (`<< { voice1 } { voice2 } >>`) maps to multiple
+/// layers on the same staff. Sequential music maps to a single layer.
 fn build_section(ly_music: &Music) -> Result<Section, ImportError> {
     let mut section = Section::default();
-
-    // Collect all note/rest events into a flat list
-    let mut events = Vec::new();
-    collect_events(ly_music, &mut events);
-
-    // Build a single measure with all events
-    let mut layer = Layer::default();
-    layer.n_integer.n = Some("1".to_string());
-
     let mut id_counter = 0u32;
-    for event in &events {
-        match event {
-            LyEvent::Note(note) => {
-                id_counter += 1;
-                let mei_note = convert_note(note, id_counter);
-                layer.children.push(LayerChild::Note(Box::new(mei_note)));
-            }
-            LyEvent::Rest(rest) => {
-                id_counter += 1;
-                let mei_rest = convert_rest(rest, id_counter);
-                layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
-            }
-            LyEvent::PitchedRest(note) => {
-                id_counter += 1;
-                let mei_rest = convert_pitched_rest(note, id_counter);
-                layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
-            }
-            LyEvent::MeasureRest(rest) => {
-                id_counter += 1;
-                let mei_mrest = convert_mrest(rest, id_counter);
-                layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
-            }
-            LyEvent::Skip(_) => {
-                // Skips have no MEI equivalent in the layer; ignore for now
-            }
-        }
-    }
+
+    // Determine voice structure: simultaneous top-level → multiple layers
+    let voices = extract_voices(ly_music);
 
     let mut staff = Staff::default();
     staff.n_integer.n = Some("1".to_string());
-    staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+    for (voice_idx, voice_music) in voices.iter().enumerate() {
+        let mut layer = Layer::default();
+        layer.n_integer.n = Some((voice_idx + 1).to_string());
+
+        let mut events = Vec::new();
+        for m in voice_music {
+            collect_events(m, &mut events);
+        }
+
+        for event in &events {
+            match event {
+                LyEvent::Note(note) => {
+                    id_counter += 1;
+                    let mei_note = convert_note(note, id_counter);
+                    layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                }
+                LyEvent::Rest(rest) => {
+                    id_counter += 1;
+                    let mei_rest = convert_rest(rest, id_counter);
+                    layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                }
+                LyEvent::PitchedRest(note) => {
+                    id_counter += 1;
+                    let mei_rest = convert_pitched_rest(note, id_counter);
+                    layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
+                }
+                LyEvent::MeasureRest(rest) => {
+                    id_counter += 1;
+                    let mei_mrest = convert_mrest(rest, id_counter);
+                    layer.children.push(LayerChild::MRest(Box::new(mei_mrest)));
+                }
+                LyEvent::Skip(_) => {}
+            }
+        }
+
+        staff.children.push(StaffChild::Layer(Box::new(layer)));
+    }
 
     let mut measure = Measure::default();
     measure.common.n = Some(tusk_model::generated::data::DataWord("1".to_string()));
@@ -176,6 +182,38 @@ fn build_section(ly_music: &Music) -> Result<Section, ImportError> {
         .push(SectionChild::Measure(Box::new(measure)));
 
     Ok(section)
+}
+
+/// Extract voice streams from LilyPond music.
+///
+/// If the top-level music is `Simultaneous` and each child is a distinct
+/// voice (Sequential block or single event), each child becomes a separate
+/// voice (MEI layer). Otherwise, all music goes into a single voice.
+fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
+    match music {
+        Music::Simultaneous(items) if items.len() > 1 => {
+            // Check if children look like separate voice streams
+            // (each is a Sequential block or a single event)
+            let all_voice_like = items.iter().all(|item| {
+                matches!(
+                    item,
+                    Music::Sequential(_)
+                        | Music::Note(_)
+                        | Music::Rest(_)
+                        | Music::MultiMeasureRest(_)
+                        | Music::Relative { .. }
+                        | Music::Fixed { .. }
+                        | Music::ContextedMusic { .. }
+                )
+            });
+            if all_voice_like {
+                items.iter().map(|item| vec![item]).collect()
+            } else {
+                vec![vec![music]]
+            }
+        }
+        _ => vec![vec![music]],
+    }
 }
 
 /// Internal event representation for collecting from the AST.
@@ -413,8 +451,8 @@ mod tests {
         import(&file).unwrap()
     }
 
-    /// Walk MEI to find layer children.
-    fn layer_children(mei: &Mei) -> &[LayerChild] {
+    /// Walk MEI to find the first staff in the first measure.
+    fn first_staff(mei: &Mei) -> Option<&Staff> {
         for child in &mei.children {
             if let MeiChild::Music(music) = child {
                 for mc in &music.children {
@@ -428,11 +466,8 @@ mod tests {
                                     for sec_c in &section.children {
                                         if let SectionChild::Measure(measure) = sec_c {
                                             for mc2 in &measure.children {
-                                                if let MeasureChild::Staff(staff) = mc2
-                                                    && let Some(StaffChild::Layer(layer)) =
-                                                        staff.children.first()
-                                                {
-                                                    return &layer.children;
+                                                if let MeasureChild::Staff(staff) = mc2 {
+                                                    return Some(staff);
                                                 }
                                             }
                                         }
@@ -443,6 +478,31 @@ mod tests {
                     }
                 }
             }
+        }
+        None
+    }
+
+    /// Walk MEI to find layer children (first layer of first staff).
+    fn layer_children(mei: &Mei) -> &[LayerChild] {
+        if let Some(staff) = first_staff(mei)
+            && let Some(StaffChild::Layer(layer)) = staff.children.first()
+        {
+            return &layer.children;
+        }
+        &[]
+    }
+
+    /// Count the number of layers in the first staff.
+    fn layer_count(mei: &Mei) -> usize {
+        first_staff(mei).map(|s| s.children.len()).unwrap_or(0)
+    }
+
+    /// Get layer children for a specific layer index (0-based).
+    fn nth_layer_children(mei: &Mei, idx: usize) -> &[LayerChild] {
+        if let Some(staff) = first_staff(mei)
+            && let Some(StaffChild::Layer(layer)) = staff.children.get(idx)
+        {
+            return &layer.children;
         }
         &[]
     }
@@ -579,5 +639,55 @@ mod tests {
         let mei = parse_and_import("\\relative c' { c4 d e f }");
         let children = layer_children(&mei);
         assert_eq!(children.len(), 4);
+    }
+
+    #[test]
+    fn import_simultaneous_two_voices() {
+        let mei = parse_and_import("<< { c'4 d'4 } { e'4 f'4 } >>");
+        assert_eq!(layer_count(&mei), 2);
+        let voice1 = nth_layer_children(&mei, 0);
+        let voice2 = nth_layer_children(&mei, 1);
+        assert_eq!(voice1.len(), 2);
+        assert_eq!(voice2.len(), 2);
+        // Voice 1: c d
+        if let LayerChild::Note(n) = &voice1[0] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+        } else {
+            panic!("expected Note");
+        }
+        // Voice 2: e f
+        if let LayerChild::Note(n) = &voice2[0] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "e");
+        } else {
+            panic!("expected Note");
+        }
+    }
+
+    #[test]
+    fn import_simultaneous_three_voices() {
+        let mei = parse_and_import("<< { c'4 } { e'4 } { g'4 } >>");
+        assert_eq!(layer_count(&mei), 3);
+        assert_eq!(nth_layer_children(&mei, 0).len(), 1);
+        assert_eq!(nth_layer_children(&mei, 1).len(), 1);
+        assert_eq!(nth_layer_children(&mei, 2).len(), 1);
+    }
+
+    #[test]
+    fn import_sequential_single_layer() {
+        let mei = parse_and_import("{ c'4 d'4 e'4 }");
+        assert_eq!(layer_count(&mei), 1);
+        assert_eq!(layer_children(&mei).len(), 3);
+    }
+
+    #[test]
+    fn import_nested_sequential_in_simultaneous() {
+        // Outer sequential wrapping simultaneous
+        let mei = parse_and_import("{ << { c'4 } { e'4 } >> }");
+        // The outer sequential contains a simultaneous — but find_music
+        // walks into it and finds the simultaneous at the section level
+        // The top-level is Sequential([Simultaneous([...])]) — the
+        // collect_events will flatten both voices into one layer since
+        // extract_voices sees a Sequential at top level
+        assert_eq!(layer_count(&mei), 1);
     }
 }

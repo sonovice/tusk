@@ -26,21 +26,26 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     let score = find_score(mei).ok_or(ExportError::NoMusic)?;
 
     // Walk section → measures → staves → layers → notes/rests
-    let mut music_items = Vec::new();
+    let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new(); // staff → layer → items
+
     for child in &score.children {
         if let ScoreChild::Section(section) = child {
             for section_child in &section.children {
                 if let SectionChild::Measure(measure) = section_child {
                     for mc in &measure.children {
-                        if let MeasureChild::Staff(staff) = mc
-                            && let Some(tusk_model::elements::StaffChild::Layer(layer)) =
-                                staff.children.first()
-                        {
-                            for lc in &layer.children {
-                                if let Some(m) = convert_layer_child(lc) {
-                                    music_items.push(m);
+                        if let MeasureChild::Staff(staff) = mc {
+                            let mut layers: Vec<Vec<Music>> = Vec::new();
+                            for sc in &staff.children {
+                                let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                                let mut items = Vec::new();
+                                for lc in &layer.children {
+                                    if let Some(m) = convert_layer_child(lc) {
+                                        items.push(m);
+                                    }
                                 }
+                                layers.push(items);
                             }
+                            staff_music.push(layers);
                         }
                     }
                 }
@@ -48,8 +53,11 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }
     }
 
+    // Build music expression from collected layers
+    let music = build_music_from_layers(staff_music);
+
     let score_block = ScoreBlock {
-        items: vec![ScoreItem::Music(Music::Sequential(music_items))],
+        items: vec![ScoreItem::Music(music)],
     };
 
     Ok(LilyPondFile {
@@ -58,6 +66,31 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }),
         items: vec![ToplevelExpression::Score(score_block)],
     })
+}
+
+/// Build a Music expression from staff/layer structure.
+///
+/// Single layer → `{ notes... }` (sequential).
+/// Multiple layers → `<< { voice1 } { voice2 } >>` (simultaneous).
+fn build_music_from_layers(staff_music: Vec<Vec<Vec<Music>>>) -> Music {
+    // Flatten all staves (for now we handle single-staff)
+    let mut all_layers: Vec<Vec<Music>> = Vec::new();
+    for layers in staff_music {
+        all_layers.extend(layers);
+    }
+
+    // Filter out empty layers
+    let non_empty: Vec<Vec<Music>> = all_layers.into_iter().filter(|l| !l.is_empty()).collect();
+
+    match non_empty.len() {
+        0 => Music::Sequential(Vec::new()),
+        1 => Music::Sequential(non_empty.into_iter().next().unwrap()),
+        _ => {
+            // Multiple layers → simultaneous with each as sequential
+            let voices: Vec<Music> = non_empty.into_iter().map(Music::Sequential).collect();
+            Music::Simultaneous(voices)
+        }
+    }
 }
 
 /// Find the Score element in the MEI hierarchy.
@@ -387,5 +420,35 @@ mod tests {
     fn roundtrip_cautionary_accidental() {
         let output = roundtrip("{ bes'?4 }");
         assert!(output.contains("bes'?4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_two_voices() {
+        let output = roundtrip("<< { c'4 d'4 } { e'4 f'4 } >>");
+        // Should produce simultaneous with two sequential voices
+        assert!(output.contains("<<"), "output: {output}");
+        assert!(output.contains(">>"), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
+        assert!(output.contains("d'4"), "output: {output}");
+        assert!(output.contains("e'4"), "output: {output}");
+        assert!(output.contains("f'4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_three_voices() {
+        let output = roundtrip("<< { c'4 } { e'4 } { g'4 } >>");
+        assert!(output.contains("<<"), "output: {output}");
+        assert!(output.contains(">>"), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
+        assert!(output.contains("e'4"), "output: {output}");
+        assert!(output.contains("g'4"), "output: {output}");
+    }
+
+    #[test]
+    fn roundtrip_sequential_preserved() {
+        // Single voice should stay sequential, no << >>
+        let output = roundtrip("{ c'4 d'4 e'4 }");
+        assert!(!output.contains("<<"), "output: {output}");
+        assert!(output.contains("c'4"), "output: {output}");
     }
 }
