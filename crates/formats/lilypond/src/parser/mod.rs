@@ -828,6 +828,23 @@ impl<'src> Parser<'src> {
                     let _ = self.advance();
                     events.push(PostEvent::BeamEnd);
                 }
+                Token::EscapedAngleOpen => {
+                    let _ = self.advance();
+                    events.push(PostEvent::Crescendo);
+                }
+                Token::EscapedAngleClose => {
+                    let _ = self.advance();
+                    events.push(PostEvent::Decrescendo);
+                }
+                Token::EscapedExclamation => {
+                    let _ = self.advance();
+                    events.push(PostEvent::HairpinEnd);
+                }
+                Token::EscapedWord(s) if note::is_dynamic_marking(s) => {
+                    let s = s.clone();
+                    let _ = self.advance();
+                    events.push(PostEvent::Dynamic(s));
+                }
                 _ => break,
             }
         }
@@ -1387,3 +1404,5 @@ pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_post_events;

@@ -464,11 +464,25 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 11.1 Model & Parser
 
-- [ ] [P] Parse dynamics: `\p`, `\f`, `\ff`, `\sfz`, `\fp`, etc.; hairpins `\<`, `\>`, `\!`
-- [ ] [P] Add `DynamicsEvent`, `HairpinEvent` (cresc/dim)
-- [ ] [S] Serialize dynamics and hairpins
-- [ ] [V] Dynamic script and hairpin direction valid
-- [ ] [T] Fragment: `c4\f d\p e\< f g\!\ff`
+- [x] [P] Parse dynamics: `\p`, `\f`, `\ff`, `\sfz`, `\fp`, etc.; hairpins `\<`, `\>`, `\!`
+  - PostEvent::Dynamic(String) for 22 known dynamics from dynamic-scripts-init.ly
+  - PostEvent::Crescendo (`\<`), PostEvent::Decrescendo (`\>`), PostEvent::HairpinEnd (`\!`)
+  - Parsed in parse_post_events() from EscapedAngleOpen/Close, EscapedExclamation, EscapedWord
+- [x] [P] Add `DynamicsEvent`, `HairpinEvent` (cresc/dim)
+  - PostEvent enum extended with Crescendo, Decrescendo, HairpinEnd, Dynamic(String)
+  - KNOWN_DYNAMICS const and is_dynamic_marking() helper in model/note.rs
+- [x] [S] Serialize dynamics and hairpins
+  - write_post_events: Crescendo→`\<`, Decrescendo→`\>`, HairpinEnd→`\!`, Dynamic→`\name`
+- [x] [V] Dynamic script and hairpin direction valid
+  - SpanCounts extended with hairpin_opens/hairpin_closes
+  - ValidationError::UnmatchedHairpin for unbalanced \</\>/\!
+  - validate_post_events checks dynamic names against KNOWN_DYNAMICS
+- [x] [T] Fragment: `c4\f d\p e\< f g\!\ff`
+  - fragment_dynamics.ly fixture with 14 dynamic/hairpin events
+  - 10 parser tests: parse_dynamic_f, parse_crescendo/decrescendo_hairpin, parse_multiple_dynamics, parse_all_standard_dynamics, parse_dynamics_on_chord/rest, roundtrip_dynamics/hairpins/fixture
+  - 6 validator tests: balanced/unmatched hairpin, decrescendo balanced, dynamic does not affect balance, known dynamic passes
+  - Split parser/tests.rs (1645→1238 LOC) by extracting Phase 9-11 tests to parser/tests_post_events.rs (423 LOC)
+  - 339 total tests pass
 
 ### 11.2 Import & Export
 

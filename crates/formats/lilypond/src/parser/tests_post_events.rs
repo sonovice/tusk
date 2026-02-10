@@ -1,0 +1,422 @@
+//! Parser tests for post-events: ties, slurs, beams, dynamics, hairpins (Phases 9–11).
+
+use super::*;
+
+fn roundtrip_fixture(name: &str) {
+    let path = format!(
+        "{}/tests/fixtures/lilypond/{name}",
+        env!("CARGO_MANIFEST_DIR").replace("/crates/formats/lilypond", "")
+    );
+    let input = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path}: {e}"));
+    let ast = parse(&input).unwrap_or_else(|e| panic!("parse {name}: {e}"));
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap_or_else(|e| panic!("re-parse {name}: {e}"));
+    assert_eq!(ast, ast2, "roundtrip mismatch for {name}");
+}
+
+// ── Phase 9 parser tests ──────────────────────────────────────
+
+#[test]
+fn parse_tie() {
+    let ast = parse("{ c4~ c4 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2);
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::Tie]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_slur() {
+    let ast = parse("{ c4( d4 e4) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 3);
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::SlurStart]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[2] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::SlurEnd]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_phrasing_slur() {
+    let ast = parse("{ c4\\( d4 e4\\) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 3);
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::PhrasingSlurStart]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[2] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::PhrasingSlurEnd]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_multiple_post_events() {
+    let ast = parse("{ c4~( d4) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(n.post_events, vec![PostEvent::Tie, PostEvent::SlurStart]);
+            }
+            other => panic!("expected note, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_chord_with_tie() {
+    let ast = parse("{ <c e g>4~ <c e g>4 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Chord(c) => {
+                assert_eq!(c.post_events, vec![PostEvent::Tie]);
+            }
+            other => panic!("expected chord, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_rest_with_slur() {
+    // Unusual but valid in LilyPond grammar
+    let ast = parse("{ r4( c4) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Rest(r) => {
+                assert_eq!(r.post_events, vec![PostEvent::SlurStart]);
+            }
+            other => panic!("expected rest, got {other:?}"),
+        },
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_tie() {
+    let input = "{ c4~ c4 }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_slur() {
+    let input = "{ c4( d4 e4) }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_phrasing_slur() {
+    let input = "{ c4\\( d4 e4\\) }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_ties_slurs() {
+    roundtrip_fixture("fragment_ties_slurs.ly");
+}
+
+// ── Phase 10 beam parser tests ──────────────────────────────────
+
+#[test]
+fn parse_beam_start_end() {
+    let ast = parse("{ c8[ d e f] }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 4);
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::BeamStart]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[3] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::BeamEnd]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_beam_with_slur() {
+    let ast = parse("{ c8[( d e] f) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 4);
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(
+                        n.post_events,
+                        vec![PostEvent::BeamStart, PostEvent::SlurStart]
+                    );
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+            match &items[2] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::BeamEnd]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_autobeam_on() {
+    let ast = parse("{ \\autoBeamOn c8 d e f }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert!(matches!(&items[0], Music::AutoBeamOn));
+            assert!(matches!(&items[1], Music::Note(_)));
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_autobeam_off() {
+    let ast = parse("{ \\autoBeamOff c8[ d e f] }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert!(matches!(&items[0], Music::AutoBeamOff));
+            assert!(matches!(&items[1], Music::Note(_)));
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_chord_with_beam() {
+    let ast = parse("{ <c e>8[ <d f>] }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2);
+            match &items[0] {
+                Music::Chord(c) => {
+                    assert_eq!(c.post_events, vec![PostEvent::BeamStart]);
+                }
+                other => panic!("expected chord, got {other:?}"),
+            }
+            match &items[1] {
+                Music::Chord(c) => {
+                    assert_eq!(c.post_events, vec![PostEvent::BeamEnd]);
+                }
+                other => panic!("expected chord, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_beam() {
+    let input = "{ c8[ d e f] }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_autobeam() {
+    let input = "{ \\autoBeamOff c8[ d e f] \\autoBeamOn }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_beams() {
+    roundtrip_fixture("fragment_beams.ly");
+}
+
+// ── Phase 11 (dynamics & hairpins) ─────────────────────────────────
+
+#[test]
+fn parse_dynamic_f() {
+    let ast = parse("{ c4\\f }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => assert_eq!(n.post_events, vec![PostEvent::Dynamic("f".into())]),
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_crescendo_hairpin() {
+    let ast = parse("{ c4\\< d e\\! }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Note(n) => assert_eq!(n.post_events, vec![PostEvent::Crescendo]),
+                o => panic!("expected note, got {o:?}"),
+            }
+            match &items[2] {
+                Music::Note(n) => assert_eq!(n.post_events, vec![PostEvent::HairpinEnd]),
+                o => panic!("expected note, got {o:?}"),
+            }
+        }
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_decrescendo_hairpin() {
+    let ast = parse("{ c4\\> d\\! }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Note(n) => assert_eq!(n.post_events, vec![PostEvent::Decrescendo]),
+                o => panic!("expected note, got {o:?}"),
+            }
+            match &items[1] {
+                Music::Note(n) => assert_eq!(n.post_events, vec![PostEvent::HairpinEnd]),
+                o => panic!("expected note, got {o:?}"),
+            }
+        }
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_multiple_dynamics() {
+    let ast = parse("{ c4\\f\\< d e\\!\\ff }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(
+                        n.post_events,
+                        vec![PostEvent::Dynamic("f".into()), PostEvent::Crescendo]
+                    );
+                }
+                o => panic!("expected note, got {o:?}"),
+            }
+            match &items[2] {
+                Music::Note(n) => {
+                    assert_eq!(
+                        n.post_events,
+                        vec![PostEvent::HairpinEnd, PostEvent::Dynamic("ff".into())]
+                    );
+                }
+                o => panic!("expected note, got {o:?}"),
+            }
+        }
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_all_standard_dynamics() {
+    for &dyn_name in note::KNOWN_DYNAMICS {
+        let input = format!("{{ c4\\{dyn_name} }}");
+        let ast = parse(&input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::Dynamic(dyn_name.into())]);
+                }
+                o => panic!("expected note for \\{dyn_name}, got {o:?}"),
+            },
+            o => panic!("expected sequential for \\{dyn_name}, got {o:?}"),
+        }
+    }
+}
+
+#[test]
+fn parse_dynamics_on_chord() {
+    let ast = parse("{ <c e g>4\\sfz }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Chord(c) => {
+                assert_eq!(c.post_events, vec![PostEvent::Dynamic("sfz".into())]);
+            }
+            o => panic!("expected chord, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_dynamics_on_rest() {
+    let ast = parse("{ r4\\p }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Rest(r) => {
+                assert_eq!(r.post_events, vec![PostEvent::Dynamic("p".into())]);
+            }
+            o => panic!("expected rest, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_dynamics() {
+    let input = "{ c4\\f d\\p e\\< f g\\! a\\ff }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_hairpins() {
+    let input = "{ c4\\< d e\\!\\ff b\\> c' d'\\! }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_dynamics() {
+    roundtrip_fixture("fragment_dynamics.ly");
+}

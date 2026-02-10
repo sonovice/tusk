@@ -677,7 +677,11 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
                             }
                         }
-                        PostEvent::Tie => {}
+                        PostEvent::Tie
+                        | PostEvent::Crescendo
+                        | PostEvent::Decrescendo
+                        | PostEvent::HairpinEnd
+                        | PostEvent::Dynamic(_) => {}
                         PostEvent::BeamStart => {
                             // Record position of this note in the layer
                             beam_starts.push(layer.children.len() - 1);

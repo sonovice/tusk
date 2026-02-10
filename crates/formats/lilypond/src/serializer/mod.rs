@@ -514,6 +514,13 @@ impl<'a> Serializer<'a> {
                 PostEvent::PhrasingSlurEnd => self.out.push_str("\\)"),
                 PostEvent::BeamStart => self.out.push('['),
                 PostEvent::BeamEnd => self.out.push(']'),
+                PostEvent::Crescendo => self.out.push_str("\\<"),
+                PostEvent::Decrescendo => self.out.push_str("\\>"),
+                PostEvent::HairpinEnd => self.out.push_str("\\!"),
+                PostEvent::Dynamic(s) => {
+                    self.out.push('\\');
+                    self.out.push_str(s);
+                }
             }
         }
     }

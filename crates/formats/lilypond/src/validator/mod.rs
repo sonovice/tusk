@@ -55,6 +55,12 @@ pub enum ValidationError {
     #[error("unmatched beam: {0} open, {1} close")]
     UnmatchedBeam(usize, usize),
 
+    #[error("unmatched hairpin: {0} open, {1} close")]
+    UnmatchedHairpin(usize, usize),
+
+    #[error("unknown dynamic marking '\\{0}'")]
+    UnknownDynamic(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -173,13 +179,17 @@ fn validate_header(_hb: &HeaderBlock, _errors: &mut Vec<ValidationError>) {
     // Header field validation can be extended later
 }
 
-fn validate_post_events(events: &[note::PostEvent], _errors: &mut Vec<ValidationError>) {
-    // Individual post-event validation (extensible for future checks).
-    // Slur balance is checked at the sequential-music level.
-    let _ = events;
+fn validate_post_events(events: &[note::PostEvent], errors: &mut Vec<ValidationError>) {
+    for ev in events {
+        if let note::PostEvent::Dynamic(name) = ev
+            && !note::is_dynamic_marking(name)
+        {
+            errors.push(ValidationError::UnknownDynamic(name.clone()));
+        }
+    }
 }
 
-/// Counters for paired post-events (slurs, phrasing slurs, beams).
+/// Counters for paired post-events (slurs, phrasing slurs, beams, hairpins).
 struct SpanCounts {
     slur_opens: usize,
     slur_closes: usize,
@@ -187,6 +197,8 @@ struct SpanCounts {
     phr_closes: usize,
     beam_opens: usize,
     beam_closes: usize,
+    hairpin_opens: usize,
+    hairpin_closes: usize,
 }
 
 impl SpanCounts {
@@ -198,6 +210,8 @@ impl SpanCounts {
             phr_closes: 0,
             beam_opens: 0,
             beam_closes: 0,
+            hairpin_opens: 0,
+            hairpin_closes: 0,
         }
     }
 
@@ -210,7 +224,11 @@ impl SpanCounts {
                 note::PostEvent::PhrasingSlurEnd => self.phr_closes += 1,
                 note::PostEvent::BeamStart => self.beam_opens += 1,
                 note::PostEvent::BeamEnd => self.beam_closes += 1,
-                note::PostEvent::Tie => {}
+                note::PostEvent::Crescendo | note::PostEvent::Decrescendo => {
+                    self.hairpin_opens += 1
+                }
+                note::PostEvent::HairpinEnd => self.hairpin_closes += 1,
+                note::PostEvent::Tie | note::PostEvent::Dynamic(_) => {}
             }
         }
     }
@@ -260,6 +278,12 @@ fn validate_span_balance(m: &Music, errors: &mut Vec<ValidationError>) {
         errors.push(ValidationError::UnmatchedBeam(
             counts.beam_opens,
             counts.beam_closes,
+        ));
+    }
+    if counts.hairpin_opens != counts.hairpin_closes {
+        errors.push(ValidationError::UnmatchedHairpin(
+            counts.hairpin_opens,
+            counts.hairpin_closes,
         ));
     }
 }
@@ -1022,5 +1046,87 @@ mod tests {
             errs.iter()
                 .any(|e| matches!(e, ValidationError::UnmatchedBeam(0, 1)))
         );
+    }
+
+    // ── Phase 11 validator tests ───────────────────────────────────
+
+    #[test]
+    fn balanced_hairpin_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Crescendo]),
+                make_note(vec![]),
+                make_note(vec![PostEvent::HairpinEnd]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn unmatched_hairpin_start_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Crescendo]),
+                make_note(vec![]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedHairpin(1, 0)))
+        );
+    }
+
+    #[test]
+    fn unmatched_hairpin_end_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![]),
+                make_note(vec![PostEvent::HairpinEnd]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedHairpin(0, 1)))
+        );
+    }
+
+    #[test]
+    fn decrescendo_hairpin_balanced() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Decrescendo]),
+                make_note(vec![PostEvent::HairpinEnd]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn dynamic_does_not_affect_hairpin_balance() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Dynamic("f".into())]),
+                make_note(vec![PostEvent::Dynamic("p".into())]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn known_dynamic_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Dynamic("sfz".into())]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
     }
 }

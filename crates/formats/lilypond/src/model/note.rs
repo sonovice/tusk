@@ -9,8 +9,8 @@ use super::pitch::Pitch;
 /// A post-event attached to a note, chord, rest, or skip.
 ///
 /// Mirrors the `post_event` production in the grammar. Post-events appear
-/// after the duration and include ties, slurs, phrasing slurs, and (in
-/// later phases) articulations, dynamics, beaming, etc.
+/// after the duration and include ties, slurs, phrasing slurs, beaming,
+/// dynamics, and hairpins.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PostEvent {
     /// Tie: `~`
@@ -27,6 +27,25 @@ pub enum PostEvent {
     BeamStart,
     /// Beam end: `]`
     BeamEnd,
+    /// Crescendo hairpin start: `\<`
+    Crescendo,
+    /// Decrescendo hairpin start: `\>`
+    Decrescendo,
+    /// Hairpin end: `\!`
+    HairpinEnd,
+    /// Absolute dynamic marking: `\p`, `\ff`, `\sfz`, etc.
+    Dynamic(String),
+}
+
+/// Known LilyPond dynamic marking names (from `dynamic-scripts-init.ly`).
+pub const KNOWN_DYNAMICS: &[&str] = &[
+    "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "ffff", "fffff", "fp", "sf",
+    "sfp", "sff", "sfz", "fz", "sp", "spp", "rfz", "n",
+];
+
+/// Returns `true` if the given name is a known LilyPond dynamic marking.
+pub fn is_dynamic_marking(name: &str) -> bool {
+    KNOWN_DYNAMICS.contains(&name)
 }
 
 /// A note event: pitch + optional duration + post-events.
