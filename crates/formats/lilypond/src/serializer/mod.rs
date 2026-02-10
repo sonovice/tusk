@@ -406,6 +406,7 @@ impl<'a> Serializer<'a> {
             Music::KeySignature(ks) => self.write_key_signature(ks),
             Music::TimeSignature(ts) => self.write_time_signature(ts),
             Music::Note(n) => self.write_note_event(n),
+            Music::Chord(c) => self.write_chord_event(c),
             Music::Rest(r) => self.write_rest_event(r),
             Music::Skip(s) => self.write_skip_event(s),
             Music::MultiMeasureRest(r) => self.write_multi_measure_rest(r),
@@ -458,6 +459,20 @@ impl<'a> Serializer<'a> {
         }
         if n.pitched_rest {
             self.out.push_str("\\rest");
+        }
+    }
+
+    fn write_chord_event(&mut self, c: &ChordEvent) {
+        self.out.push('<');
+        for (i, p) in c.pitches.iter().enumerate() {
+            if i > 0 {
+                self.out.push(' ');
+            }
+            self.write_pitch(p);
+        }
+        self.out.push('>');
+        if let Some(dur) = &c.duration {
+            self.write_duration(dur);
         }
     }
 
@@ -885,5 +900,117 @@ mod tests {
         };
         let output = serialize(&file);
         assert!(output.contains("\\time 3+3+2/8"));
+    }
+
+    // ── Phase 8 serializer tests ────────────────────────────────────
+
+    #[test]
+    fn serialize_chord() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![
+                        Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        Pitch {
+                            step: 'e',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        Pitch {
+                            step: 'g',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                    ],
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("<c e g>4"));
+    }
+
+    #[test]
+    fn serialize_chord_accidentals() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![
+                        Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        Pitch {
+                            step: 'e',
+                            alter: -1.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        Pitch {
+                            step: 'g',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                    ],
+                    duration: Some(Duration {
+                        base: 2,
+                        dots: 1,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("<c ees g>2."));
+    }
+
+    #[test]
+    fn serialize_chord_no_duration() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 1,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    }],
+                    duration: None,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("<c'>"));
     }
 }

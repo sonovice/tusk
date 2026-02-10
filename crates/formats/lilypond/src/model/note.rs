@@ -19,6 +19,21 @@ pub struct NoteEvent {
     pub pitched_rest: bool,
 }
 
+/// A chord event: `< pitch1 pitch2 ... > duration`.
+///
+/// Corresponds to the `note_chord_element` production in the grammar:
+/// `chord_body optional_notemode_duration post_events`.
+///
+/// Each element in the chord body is a pitch with optional accidental markers;
+/// the duration is shared across all pitches.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChordEvent {
+    /// Pitches in the chord body (at least one).
+    pub pitches: Vec<Pitch>,
+    /// Shared duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+}
+
 /// A rest event (`r` with optional duration).
 ///
 /// Corresponds to `simple_element` with RESTNAME="r".

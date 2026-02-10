@@ -534,6 +534,19 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         let mei_rest = convert_pitched_rest(note, id_counter);
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
                     }
+                    LyEvent::Chord { pitches, duration } => {
+                        // Stub: emit first pitch as a note (full chord import in Phase 8.2)
+                        if let Some(first_pitch) = pitches.first() {
+                            id_counter += 1;
+                            let note_event = NoteEvent {
+                                pitch: first_pitch.clone(),
+                                duration: duration.clone(),
+                                pitched_rest: false,
+                            };
+                            let mei_note = convert_note(&note_event, id_counter);
+                            layer.children.push(LayerChild::Note(Box::new(mei_note)));
+                        }
+                    }
                     LyEvent::MeasureRest(rest) => {
                         id_counter += 1;
                         let mei_mrest = convert_mrest(rest, id_counter);
@@ -574,6 +587,7 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
                     item,
                     Music::Sequential(_)
                         | Music::Note(_)
+                        | Music::Chord(_)
                         | Music::Rest(_)
                         | Music::MultiMeasureRest(_)
                         | Music::Relative { .. }
@@ -600,6 +614,10 @@ fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
 /// resolution produces new Pitch values.
 enum LyEvent {
     Note(NoteEvent),
+    Chord {
+        pitches: Vec<crate::model::Pitch>,
+        duration: Option<crate::model::Duration>,
+    },
     Rest(RestEvent),
     PitchedRest(NoteEvent),
     MeasureRest(model::MultiMeasureRestEvent),
@@ -658,6 +676,15 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
             } else {
                 events.push(LyEvent::Note(resolved));
             }
+        }
+        Music::Chord(chord) => {
+            // Resolve each pitch and emit individual note events for now.
+            // Full chord import will be done in Phase 8.2.
+            let resolved_pitches: Vec<_> = chord.pitches.iter().map(|p| ctx.resolve(p)).collect();
+            events.push(LyEvent::Chord {
+                pitches: resolved_pitches,
+                duration: chord.duration.clone(),
+            });
         }
         Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
         Music::Skip(_) => events.push(LyEvent::Skip(())),
@@ -773,6 +800,7 @@ fn apply_signatures_to_staff_def(events: &[LyEvent], staff_def: &mut StaffDef) -
                 }
             }
             LyEvent::Note(_)
+            | LyEvent::Chord { .. }
             | LyEvent::Rest(_)
             | LyEvent::PitchedRest(_)
             | LyEvent::MeasureRest(_) => {

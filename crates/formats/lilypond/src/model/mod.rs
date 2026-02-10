@@ -8,7 +8,7 @@ pub mod pitch;
 pub mod signature;
 
 pub use duration::Duration;
-pub use note::{MultiMeasureRestEvent, NoteEvent, RestEvent, SkipEvent};
+pub use note::{ChordEvent, MultiMeasureRestEvent, NoteEvent, RestEvent, SkipEvent};
 pub use pitch::Pitch;
 pub use signature::{Clef, KeySignature, Mode, TimeSignature};
 
@@ -242,6 +242,8 @@ pub enum Music {
     ContextChange { context_type: String, name: String },
     /// A note event with structured pitch and duration.
     Note(NoteEvent),
+    /// A chord event: `< c e g >4`.
+    Chord(ChordEvent),
     /// A rest event (`r`).
     Rest(RestEvent),
     /// A skip event (`s`).

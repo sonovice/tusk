@@ -758,13 +758,33 @@ fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) {
     let mut current_oct = ref_oct;
 
     for item in items.iter_mut() {
-        if let Music::Note(note) = item {
-            let rel_marks = note.pitch.to_relative_marks(current_step, current_oct);
-            // Update reference to this note's absolute position
-            current_step = note.pitch.step;
-            current_oct = note.pitch.octave;
-            // Set relative marks
-            note.pitch.octave = rel_marks;
+        match item {
+            Music::Note(note) => {
+                let rel_marks = note.pitch.to_relative_marks(current_step, current_oct);
+                current_step = note.pitch.step;
+                current_oct = note.pitch.octave;
+                note.pitch.octave = rel_marks;
+            }
+            Music::Chord(chord) => {
+                // In relative mode, the first pitch in a chord is relative to
+                // the previous note; subsequent pitches are relative to the first.
+                // Capture first pitch's absolute position before mutating.
+                let first_step = chord.pitches[0].step;
+                let first_oct = chord.pitches[0].octave;
+                for (i, pitch) in chord.pitches.iter_mut().enumerate() {
+                    let (rs, ro) = if i == 0 {
+                        (current_step, current_oct)
+                    } else {
+                        (first_step, first_oct)
+                    };
+                    let rel_marks = pitch.to_relative_marks(rs, ro);
+                    pitch.octave = rel_marks;
+                }
+                // Update reference for next event to the first chord pitch
+                current_step = first_step;
+                current_oct = first_oct;
+            }
+            _ => {}
         }
     }
 }
@@ -772,8 +792,16 @@ fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) {
 /// Un-transpose pitches in a list of Music items.
 fn untranspose_items(items: &mut [Music], from: &Pitch, to: &Pitch) {
     for item in items.iter_mut() {
-        if let Music::Note(note) = item {
-            note.pitch = note.pitch.untranspose(from, to);
+        match item {
+            Music::Note(note) => {
+                note.pitch = note.pitch.untranspose(from, to);
+            }
+            Music::Chord(chord) => {
+                for pitch in &mut chord.pitches {
+                    *pitch = pitch.untranspose(from, to);
+                }
+            }
+            _ => {}
         }
     }
 }

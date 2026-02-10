@@ -605,6 +605,7 @@ impl<'src> Parser<'src> {
         match self.peek() {
             Token::BraceOpen => self.parse_sequential_music(),
             Token::DoubleAngleOpen => self.parse_simultaneous_music(),
+            Token::AngleOpen => self.parse_chord(),
             Token::Sequential => self.parse_explicit_sequential(),
             Token::Simultaneous => self.parse_explicit_simultaneous(),
             Token::Relative => self.parse_relative(),
@@ -683,6 +684,67 @@ impl<'src> Parser<'src> {
             duration,
             pitched_rest,
         }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Chord: < pitch1 pitch2 ... > duration
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_chord(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::AngleOpen)?;
+        let mut pitches = Vec::new();
+        while *self.peek() != Token::AngleClose && !self.at_eof() {
+            pitches.push(self.parse_chord_body_pitch()?);
+        }
+        self.expect(&Token::AngleClose)?;
+        let duration = self.parse_optional_duration()?;
+        Ok(Music::Chord(ChordEvent { pitches, duration }))
+    }
+
+    /// Parse a single pitch element inside a chord body.
+    ///
+    /// Mirrors `chord_body_element`: pitch with octave marks, accidental
+    /// markers (! ?), but no duration (duration is shared on the chord).
+    fn parse_chord_body_pitch(&mut self) -> Result<Pitch, ParseError> {
+        let offset = self.offset();
+        let tok = self.advance()?;
+        let note_name = match tok.token {
+            Token::NoteName(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    found: other,
+                    offset,
+                    expected: "pitch in chord body".into(),
+                });
+            }
+        };
+
+        let (step, alter) =
+            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
+                name: note_name.clone(),
+                offset,
+            })?;
+
+        let octave = self.parse_quotes();
+        let force_accidental = self.try_consume(&Token::Exclamation);
+        let cautionary = self.try_consume(&Token::Question);
+
+        // Octave check inside chord body
+        let octave_check = if *self.peek() == Token::Equals {
+            self.advance()?;
+            Some(self.parse_quotes())
+        } else {
+            None
+        };
+
+        Ok(Pitch {
+            step,
+            alter,
+            octave,
+            force_accidental,
+            cautionary,
+            octave_check,
+        })
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -2352,5 +2414,153 @@ mod tests {
     #[test]
     fn roundtrip_fragment_relative_transpose() {
         roundtrip_fixture("fragment_relative_transpose.ly");
+    }
+
+    // ── Phase 8 chord parser tests ────────────────────────────────────
+
+    #[test]
+    fn parse_chord_basic() {
+        let ast = parse("{ <c e g>4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 1);
+                match &items[0] {
+                    Music::Chord(chord) => {
+                        assert_eq!(chord.pitches.len(), 3);
+                        assert_eq!(chord.pitches[0].step, 'c');
+                        assert_eq!(chord.pitches[1].step, 'e');
+                        assert_eq!(chord.pitches[2].step, 'g');
+                        assert_eq!(chord.duration.as_ref().unwrap().base, 4);
+                    }
+                    other => panic!("expected Chord, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_accidentals() {
+        let ast = parse("{ <c es g>2. }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(chord) => {
+                    assert_eq!(chord.pitches.len(), 3);
+                    assert_eq!(chord.pitches[1].step, 'e');
+                    assert_eq!(chord.pitches[1].alter, -1.0); // es = E-flat
+                    assert_eq!(chord.duration.as_ref().unwrap().base, 2);
+                    assert_eq!(chord.duration.as_ref().unwrap().dots, 1);
+                }
+                other => panic!("expected Chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_octave_marks() {
+        let ast = parse("{ <d' fis' a'>8 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(chord) => {
+                    assert_eq!(chord.pitches.len(), 3);
+                    assert_eq!(chord.pitches[0].step, 'd');
+                    assert_eq!(chord.pitches[0].octave, 1);
+                    assert_eq!(chord.pitches[1].step, 'f');
+                    assert_eq!(chord.pitches[1].alter, 1.0); // fis = F-sharp
+                    assert_eq!(chord.pitches[1].octave, 1);
+                    assert_eq!(chord.pitches[2].step, 'a');
+                    assert_eq!(chord.pitches[2].octave, 1);
+                    assert_eq!(chord.duration.as_ref().unwrap().base, 8);
+                }
+                other => panic!("expected Chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_force_cautionary() {
+        let ast = parse("{ <cis''! e''?>4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(chord) => {
+                    assert_eq!(chord.pitches.len(), 2);
+                    assert!(chord.pitches[0].force_accidental);
+                    assert!(!chord.pitches[0].cautionary);
+                    assert!(!chord.pitches[1].force_accidental);
+                    assert!(chord.pitches[1].cautionary);
+                }
+                other => panic!("expected Chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_no_duration() {
+        let ast = parse("{ <c e g> }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(chord) => {
+                    assert_eq!(chord.pitches.len(), 3);
+                    assert!(chord.duration.is_none());
+                }
+                other => panic!("expected Chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_single_pitch() {
+        let ast = parse("{ <c>4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(chord) => {
+                    assert_eq!(chord.pitches.len(), 1);
+                    assert_eq!(chord.pitches[0].step, 'c');
+                }
+                other => panic!("expected Chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_mixed_with_notes() {
+        let ast = parse("{ c4 <c e g>4 d4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 3);
+                assert!(matches!(&items[0], Music::Note(_)));
+                assert!(matches!(&items[1], Music::Chord(_)));
+                assert!(matches!(&items[2], Music::Note(_)));
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_chord_basic() {
+        let input = "{ <c e g>4 }";
+        let ast = parse(input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2);
+    }
+
+    #[test]
+    fn roundtrip_chord_complex() {
+        let input = "{ <c es g>2. <d' fis' a'>8 <bes, d f>1 }";
+        let ast = parse(input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2);
+    }
+
+    #[test]
+    fn roundtrip_fragment_chords() {
+        roundtrip_fixture("fragment_chords.ly");
     }
 }

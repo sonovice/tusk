@@ -344,11 +344,22 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 8.1 Model & Parser
 
-- [ ] [P] Parse chord body `< ... >`: multiple pitches with optional accidentals/octave marks, shared duration, optional post-events
-- [ ] [P] Add `ChordEvent`, `ChordBody`, chord body elements (pitch, drum pitch, post-event, function call)
-- [ ] [S] Serialize `< c e g >` with correct spacing and shared duration
-- [ ] [V] Chord has at least one pitch; duration consistent
-- [ ] [T] Fragment: `<c e g>4`, `<c es g>2.`
+- [x] [P] Parse chord body `< ... >`: multiple pitches with optional accidentals/octave marks, shared duration, optional post-events
+  - `parse_chord()` handles `AngleOpen`, collects pitches via `parse_chord_body_pitch()`, then `AngleClose` + optional duration
+  - Each pitch in chord body supports octave marks, force/cautionary accidentals, octave check
+- [x] [P] Add `ChordEvent`, `ChordBody`, chord body elements (pitch, drum pitch, post-event, function call)
+  - `ChordEvent` struct in model/note.rs with `pitches: Vec<Pitch>` and `duration: Option<Duration>`
+  - `Music::Chord(ChordEvent)` variant added to Music enum
+- [x] [S] Serialize `< c e g >` with correct spacing and shared duration
+  - `write_chord_event()` in serializer: `<pitch1 pitch2 ...>duration`
+- [x] [V] Chord has at least one pitch; duration consistent
+  - `ValidationError::EmptyChord` for empty pitch list; duration validated via `validate_duration()`
+- [x] [T] Fragment: `<c e g>4`, `<c es g>2.`
+  - Fixture: fragment_chords.ly (5 chord variants)
+  - 10 parser tests: basic, accidentals, octave marks, force/cautionary, no duration, single pitch, mixed with notes, roundtrip basic, roundtrip complex, fixture roundtrip
+  - 3 serializer tests: basic chord, accidentals, no duration
+  - 3 validator tests: valid chord, empty chord, invalid duration
+  - 265 total tests pass
 
 ### 8.2 Import & Export
 

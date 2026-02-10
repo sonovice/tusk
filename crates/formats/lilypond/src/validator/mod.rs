@@ -43,6 +43,9 @@ pub enum ValidationError {
     #[error("invalid time signature: denominator must be positive")]
     InvalidTimeDenominator,
 
+    #[error("chord must contain at least one pitch")]
+    EmptyChord,
+
     #[error("{0}")]
     Other(String),
 }
@@ -221,6 +224,14 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
         }
         Music::Note(n) => {
             if let Some(dur) = &n.duration {
+                validate_duration(dur, errors);
+            }
+        }
+        Music::Chord(c) => {
+            if c.pitches.is_empty() {
+                errors.push(ValidationError::EmptyChord);
+            }
+            if let Some(dur) = &c.duration {
                 validate_duration(dur, errors);
             }
         }
@@ -663,5 +674,93 @@ mod tests {
             ))],
         };
         assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 8 validator tests ─────────────────────────────────────
+
+    #[test]
+    fn valid_chord_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![
+                        Pitch {
+                            step: 'c',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        Pitch {
+                            step: 'e',
+                            alter: 0.0,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                    ],
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn empty_chord_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![],
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::EmptyChord))
+        );
+    }
+
+    #[test]
+    fn chord_invalid_duration_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Chord(ChordEvent {
+                    pitches: vec![Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    }],
+                    duration: Some(Duration {
+                        base: 3, // invalid
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                }),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+        );
     }
 }
