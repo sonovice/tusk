@@ -6,11 +6,90 @@
 use super::duration::Duration;
 use super::pitch::Pitch;
 
+/// Direction placement for articulations, dynamics, and other post-events.
+///
+/// Mirrors the `script_dir` production in the grammar:
+/// `^` = Up, `_` = Down, `-` = Neutral (default).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    /// `^` — place above
+    Up,
+    /// `_` — place below
+    Down,
+    /// `-` — default/neutral placement
+    Neutral,
+}
+
+/// Script abbreviation characters and their articulation names.
+///
+/// Mirrors `script_abbreviation` in the grammar and `script-init.ly` mappings:
+/// `.` = staccato, `-` = tenuto, `>` = accent, `^` = marcato,
+/// `+` = stopped, `!` = staccatissimo, `_` = portato.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScriptAbbreviation {
+    /// `.` → staccato (`dashDot`)
+    Dot,
+    /// `-` → tenuto (`dashDash`)
+    Dash,
+    /// `>` → accent (`dashLarger`)
+    Accent,
+    /// `^` → marcato (`dashHat`)
+    Marcato,
+    /// `+` → stopped (`dashPlus`)
+    Stopped,
+    /// `!` → staccatissimo (`dashBang`)
+    Staccatissimo,
+    /// `_` → portato (`dashUnderscore`)
+    Portato,
+}
+
+impl ScriptAbbreviation {
+    /// Convert a character to a script abbreviation, if valid.
+    pub fn from_char(ch: char) -> Option<Self> {
+        match ch {
+            '.' => Some(Self::Dot),
+            '-' => Some(Self::Dash),
+            '>' => Some(Self::Accent),
+            '^' => Some(Self::Marcato),
+            '+' => Some(Self::Stopped),
+            '!' => Some(Self::Staccatissimo),
+            '_' => Some(Self::Portato),
+            _ => None,
+        }
+    }
+
+    /// The character used in LilyPond source for this abbreviation.
+    pub fn as_char(self) -> char {
+        match self {
+            Self::Dot => '.',
+            Self::Dash => '-',
+            Self::Accent => '>',
+            Self::Marcato => '^',
+            Self::Stopped => '+',
+            Self::Staccatissimo => '!',
+            Self::Portato => '_',
+        }
+    }
+
+    /// The LilyPond articulation command name (without backslash).
+    pub fn articulation_name(self) -> &'static str {
+        match self {
+            Self::Dot => "staccato",
+            Self::Dash => "tenuto",
+            Self::Accent => "accent",
+            Self::Marcato => "marcato",
+            Self::Stopped => "stopped",
+            Self::Staccatissimo => "staccatissimo",
+            Self::Portato => "portato",
+        }
+    }
+}
+
 /// A post-event attached to a note, chord, rest, or skip.
 ///
 /// Mirrors the `post_event` production in the grammar. Post-events appear
 /// after the duration and include ties, slurs, phrasing slurs, beaming,
-/// dynamics, and hairpins.
+/// dynamics, hairpins, articulations, and fingerings.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PostEvent {
     /// Tie: `~`
@@ -35,6 +114,17 @@ pub enum PostEvent {
     HairpinEnd,
     /// Absolute dynamic marking: `\p`, `\ff`, `\sfz`, etc.
     Dynamic(String),
+    /// Script abbreviation with optional direction: `-. ^> _-` etc.
+    Articulation {
+        direction: Direction,
+        script: ScriptAbbreviation,
+    },
+    /// Fingering with optional direction: `-1`, `^3`, `_2`, etc.
+    Fingering { direction: Direction, digit: u8 },
+    /// Named articulation with direction: `-\staccato`, `^\accent`, etc.
+    NamedArticulation { direction: Direction, name: String },
+    /// String number with direction: `\N` (where N is a digit).
+    StringNumber { direction: Direction, number: u8 },
 }
 
 /// Known LilyPond dynamic marking names (from `dynamic-scripts-init.ly`).

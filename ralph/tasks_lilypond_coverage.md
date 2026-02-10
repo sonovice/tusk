@@ -508,12 +508,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 12.1 Model & Parser
 
-- [ ] [P] Parse script abbreviations: `.` (staccato), `-` (tenuto), `>` (accent), `^` (marcato), `+` (stopped), `!` (accent), `_` (portato); direction placement `^`, `_`, `-` for scripts
-- [ ] [P] Parse fingering (digit after `-`, `^`, `_`), string number
-- [ ] [P] Add `ArticulationEvent`, `ScriptAbbreviation`, `FingeringEvent`, `StringNumberEvent`
-- [ ] [S] Serialize articulations and fingerings
-- [ ] [V] Script direction and fingering digits valid
-- [ ] [T] Fragment: `c4. c4- c4^> c4-5`
+- [x] [P] Parse script abbreviations: `.` (staccato), `-` (tenuto), `>` (accent), `^` (marcato), `+` (stopped), `!` (staccatissimo), `_` (portato); direction placement `^`, `_`, `-` for scripts
+  - try_parse_directed_post_event() in parser/mod.rs handles direction prefix + script/fingering/named artic
+  - Lexer changed: `--` → two Dash tokens, `__` → two Underscore tokens (lyric mode deferred to Phase 20)
+- [x] [P] Parse fingering (digit after `-`, `^`, `_`), string number
+  - Unsigned(0..=9) after direction prefix → Fingering { direction, digit }
+- [x] [P] Add `ArticulationEvent`, `ScriptAbbreviation`, `FingeringEvent`, `StringNumberEvent`
+  - Direction enum (Up/Down/Neutral), ScriptAbbreviation enum with 7 variants, 4 new PostEvent variants
+- [x] [S] Serialize articulations and fingerings
+  - write_direction() helper; Articulation/Fingering/NamedArticulation/StringNumber serialization
+- [x] [V] Script direction and fingering digits valid
+  - InvalidFingeringDigit (0..=5), InvalidStringNumber (1..=9) validation errors
+- [x] [T] Fragment: `c4. c4- c4^> c4-5`
+  - fragment_articulations.ly; 22 parser tests, 4 serializer tests, 3 validator tests; 380 total tests pass
+  - Extracted parse_markup_raw/parse_scheme_raw → parser/raw_blocks.rs (mod.rs 1428 LOC)
 
 ### 12.2 Import & Export
 

@@ -135,29 +135,14 @@ impl<'src> Lexer<'src> {
             b'#' => self.single_char(Token::Hash, start),
 
             // ── Direction / articulation / other prefix chars ─────────
-            b'-' => {
-                if self.peek_at(1) == Some(b'-') {
-                    self.pos += 2;
-                    Ok(SpannedToken::new(
-                        Token::LyricHyphen,
-                        Span::new(start, self.pos),
-                    ))
-                } else {
-                    self.single_char(Token::Dash, start)
-                }
-            }
+            // Note: `--` and `__` are lyric hyphen/extender in lyric mode,
+            // but in note mode they are two separate tokens. Since we don't
+            // have lexer mode switching yet, always produce individual tokens.
+            // Lyric mode (Phase 20) will handle compound `--`/`__` at the
+            // parser level or via mode-aware lexing.
+            b'-' => self.single_char(Token::Dash, start),
             b'^' => self.single_char(Token::Caret, start),
-            b'_' => {
-                if self.peek_at(1) == Some(b'_') {
-                    self.pos += 2;
-                    Ok(SpannedToken::new(
-                        Token::LyricExtender,
-                        Span::new(start, self.pos),
-                    ))
-                } else {
-                    self.single_char(Token::Underscore, start)
-                }
-            }
+            b'_' => self.single_char(Token::Underscore, start),
 
             _ => {
                 // Try to decode a UTF-8 char for the error message.
@@ -762,15 +747,19 @@ mod tests {
     }
 
     #[test]
-    fn lyric_hyphen() {
+    fn double_dash() {
+        // In note mode, `--` is two Dash tokens (direction + tenuto abbreviation).
+        // In lyric mode (Phase 20) this will become LyricHyphen.
         let toks = tokens("--").unwrap();
-        assert_eq!(toks, vec![Token::LyricHyphen, Token::Eof]);
+        assert_eq!(toks, vec![Token::Dash, Token::Dash, Token::Eof]);
     }
 
     #[test]
-    fn lyric_extender() {
+    fn double_underscore() {
+        // In note mode, `__` is two Underscore tokens.
+        // In lyric mode (Phase 20) this will become LyricExtender.
         let toks = tokens("__").unwrap();
-        assert_eq!(toks, vec![Token::LyricExtender, Token::Eof]);
+        assert_eq!(toks, vec![Token::Underscore, Token::Underscore, Token::Eof]);
     }
 
     // ── Escaped operators ────────────────────────────────────────────

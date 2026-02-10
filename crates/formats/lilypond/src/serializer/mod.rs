@@ -521,7 +521,33 @@ impl<'a> Serializer<'a> {
                     self.out.push('\\');
                     self.out.push_str(s);
                 }
+                PostEvent::Articulation { direction, script } => {
+                    self.write_direction(*direction);
+                    self.out.push(script.as_char());
+                }
+                PostEvent::Fingering { direction, digit } => {
+                    self.write_direction(*direction);
+                    self.out.push_str(&digit.to_string());
+                }
+                PostEvent::NamedArticulation { direction, name } => {
+                    self.write_direction(*direction);
+                    self.out.push('\\');
+                    self.out.push_str(name);
+                }
+                PostEvent::StringNumber { direction, number } => {
+                    self.write_direction(*direction);
+                    self.out.push('\\');
+                    self.out.push_str(&number.to_string());
+                }
             }
+        }
+    }
+
+    fn write_direction(&mut self, dir: Direction) {
+        match dir {
+            Direction::Neutral => self.out.push('-'),
+            Direction::Up => self.out.push('^'),
+            Direction::Down => self.out.push('_'),
         }
     }
 
@@ -1030,6 +1056,132 @@ mod tests {
         };
         let output = serialize(&file);
         assert!(output.contains("<c ees g>2."));
+    }
+
+    // ── Phase 12 serializer tests ────────────────────────────────
+
+    #[test]
+    fn serialize_articulation_staccato() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Dot,
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4-."));
+    }
+
+    #[test]
+    fn serialize_articulation_direction_up() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::Articulation {
+                        direction: Direction::Up,
+                        script: ScriptAbbreviation::Accent,
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4^>"));
+    }
+
+    #[test]
+    fn serialize_fingering() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::Fingering {
+                        direction: Direction::Neutral,
+                        digit: 3,
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4-3"));
+    }
+
+    #[test]
+    fn serialize_named_articulation() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Note(NoteEvent {
+                    pitch: Pitch {
+                        step: 'c',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                        octave_check: None,
+                    },
+                    duration: Some(Duration {
+                        base: 4,
+                        dots: 0,
+                        multipliers: vec![],
+                    }),
+                    pitched_rest: false,
+                    post_events: vec![PostEvent::NamedArticulation {
+                        direction: Direction::Down,
+                        name: "staccato".into(),
+                    }],
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("c4_\\staccato"));
     }
 
     #[test]

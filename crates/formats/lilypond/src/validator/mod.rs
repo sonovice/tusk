@@ -61,6 +61,12 @@ pub enum ValidationError {
     #[error("unknown dynamic marking '\\{0}'")]
     UnknownDynamic(String),
 
+    #[error("fingering digit {digit} out of range (0-9)")]
+    InvalidFingeringDigit { digit: u8 },
+
+    #[error("string number {number} out of range (0-9)")]
+    InvalidStringNumber { number: u8 },
+
     #[error("{0}")]
     Other(String),
 }
@@ -181,10 +187,17 @@ fn validate_header(_hb: &HeaderBlock, _errors: &mut Vec<ValidationError>) {
 
 fn validate_post_events(events: &[note::PostEvent], errors: &mut Vec<ValidationError>) {
     for ev in events {
-        if let note::PostEvent::Dynamic(name) = ev
-            && !note::is_dynamic_marking(name)
-        {
-            errors.push(ValidationError::UnknownDynamic(name.clone()));
+        match ev {
+            note::PostEvent::Dynamic(name) if !note::is_dynamic_marking(name) => {
+                errors.push(ValidationError::UnknownDynamic(name.clone()));
+            }
+            note::PostEvent::Fingering { digit, .. } if *digit > 9 => {
+                errors.push(ValidationError::InvalidFingeringDigit { digit: *digit });
+            }
+            note::PostEvent::StringNumber { number, .. } if *number > 9 => {
+                errors.push(ValidationError::InvalidStringNumber { number: *number });
+            }
+            _ => {}
         }
     }
 }
@@ -228,7 +241,12 @@ impl SpanCounts {
                     self.hairpin_opens += 1
                 }
                 note::PostEvent::HairpinEnd => self.hairpin_closes += 1,
-                note::PostEvent::Tie | note::PostEvent::Dynamic(_) => {}
+                note::PostEvent::Tie
+                | note::PostEvent::Dynamic(_)
+                | note::PostEvent::Articulation { .. }
+                | note::PostEvent::Fingering { .. }
+                | note::PostEvent::NamedArticulation { .. }
+                | note::PostEvent::StringNumber { .. } => {}
             }
         }
     }
@@ -1125,6 +1143,60 @@ mod tests {
             version: None,
             items: vec![ToplevelExpression::Music(Music::Sequential(vec![
                 make_note(vec![PostEvent::Dynamic("sfz".into())]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 12 validator tests ──────────────────────────────────
+
+    #[test]
+    fn valid_articulation_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Articulation {
+                    direction: Direction::Neutral,
+                    script: ScriptAbbreviation::Dot,
+                }]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn valid_fingering_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Fingering {
+                    direction: Direction::Up,
+                    digit: 3,
+                }]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn articulation_does_not_affect_span_balance() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![
+                    PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Accent,
+                    },
+                    PostEvent::Fingering {
+                        direction: Direction::Neutral,
+                        digit: 1,
+                    },
+                ]),
+                make_note(vec![PostEvent::NamedArticulation {
+                    direction: Direction::Down,
+                    name: "staccato".into(),
+                }]),
             ]))],
         };
         assert!(validate(&file).is_ok());

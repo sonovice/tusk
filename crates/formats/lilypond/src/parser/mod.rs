@@ -845,10 +845,108 @@ impl<'src> Parser<'src> {
                     let _ = self.advance();
                     events.push(PostEvent::Dynamic(s));
                 }
+                // Direction prefixes: -, ^, _ followed by script/fingering/articulation
+                Token::Dash | Token::Caret | Token::Underscore => {
+                    if let Some(ev) = self.try_parse_directed_post_event() {
+                        events.push(ev);
+                    } else {
+                        break;
+                    }
+                }
                 _ => break,
             }
         }
         events
+    }
+
+    /// Try to parse a direction-prefixed post-event: `-X`, `^X`, `_X`.
+    ///
+    /// Returns `None` if the token after the direction prefix isn't a valid
+    /// post-event (the direction token is NOT consumed in that case).
+    fn try_parse_directed_post_event(&mut self) -> Option<PostEvent> {
+        let direction = match self.peek() {
+            Token::Dash => note::Direction::Neutral,
+            Token::Caret => note::Direction::Up,
+            Token::Underscore => note::Direction::Down,
+            _ => return None,
+        };
+
+        // We need lookahead: peek past the direction to see what follows.
+        // Save state for potential backtrack.
+        let saved = self.current.clone();
+        let _ = self.advance(); // consume direction token
+
+        match self.peek() {
+            // Script abbreviation: . - > ^ + ! _
+            Token::Dot => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Dot,
+                })
+            }
+            Token::Dash => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Dash,
+                })
+            }
+            Token::AngleClose => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Accent,
+                })
+            }
+            Token::Caret => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Marcato,
+                })
+            }
+            Token::Plus => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Stopped,
+                })
+            }
+            Token::Exclamation => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Staccatissimo,
+                })
+            }
+            Token::Underscore => {
+                let _ = self.advance();
+                Some(PostEvent::Articulation {
+                    direction,
+                    script: note::ScriptAbbreviation::Portato,
+                })
+            }
+            // Fingering: digit 0-9
+            Token::Unsigned(n) if *n <= 9 => {
+                let digit = *n as u8;
+                let _ = self.advance();
+                Some(PostEvent::Fingering { direction, digit })
+            }
+            // Named articulation: \name (e.g. \staccato, \accent, \trill)
+            Token::EscapedWord(name) => {
+                let name = name.clone();
+                let _ = self.advance();
+                Some(PostEvent::NamedArticulation { direction, name })
+            }
+            // String number after \N escape — handled as EscapedWord above
+            // if it's a string_number_event; for now treat as named articulation
+            _ => {
+                // Not a valid post-event after direction — backtrack
+                self.current = saved;
+                None
+            }
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -1311,87 +1409,8 @@ impl<'src> Parser<'src> {
             denominator,
         }))
     }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Markup (raw, for now)
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_markup_raw(&mut self) -> Result<String, ParseError> {
-        let start = self.offset();
-        self.expect(&Token::Markup)?;
-
-        if *self.peek() == Token::BraceOpen {
-            // \markup { ... } — balance braces
-            self.expect(&Token::BraceOpen)?;
-            let mut depth = 1u32;
-            while depth > 0 && !self.at_eof() {
-                match self.peek() {
-                    Token::BraceOpen => {
-                        depth += 1;
-                        self.advance()?;
-                    }
-                    Token::BraceClose => {
-                        depth -= 1;
-                        if depth > 0 {
-                            self.advance()?;
-                        }
-                    }
-                    _ => {
-                        self.advance()?;
-                    }
-                }
-            }
-            self.expect(&Token::BraceClose)?;
-            // Extract raw text from source
-            Ok(self.src[start..self.lexer.position()].to_string())
-        } else {
-            // \markup \command ... — single token
-            let tok = self.advance()?;
-            Ok(self.src[start..tok.span.end].to_string())
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Scheme (raw, for now)
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_scheme_raw(&mut self) -> Result<String, ParseError> {
-        let start = self.offset();
-        self.expect(&Token::Hash)?;
-
-        match self.peek() {
-            Token::ParenOpen => {
-                // #( ... ) — balance parens
-                self.advance()?;
-                let mut depth = 1u32;
-                while depth > 0 && !self.at_eof() {
-                    match self.peek() {
-                        Token::ParenOpen => {
-                            depth += 1;
-                            self.advance()?;
-                        }
-                        Token::ParenClose => {
-                            depth -= 1;
-                            if depth > 0 {
-                                self.advance()?;
-                            }
-                        }
-                        _ => {
-                            self.advance()?;
-                        }
-                    }
-                }
-                self.expect(&Token::ParenClose)?;
-                Ok(self.src[start..self.lexer.position()].to_string())
-            }
-            _ => {
-                // #value — single token
-                let tok = self.advance()?;
-                Ok(self.src[start..tok.span.end].to_string())
-            }
-        }
-    }
 }
+mod raw_blocks;
 
 // ---------------------------------------------------------------------------
 // Convenience function

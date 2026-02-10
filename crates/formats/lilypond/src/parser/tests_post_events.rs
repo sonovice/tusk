@@ -420,3 +420,401 @@ fn roundtrip_hairpins() {
 fn roundtrip_fragment_dynamics() {
     roundtrip_fixture("fragment_dynamics.ly");
 }
+
+// ── Phase 12 (articulations & script abbreviations) ─────────────
+
+#[test]
+fn parse_staccato_abbreviation() {
+    let ast = parse("{ c4-. }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Dot,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_accent_abbreviation() {
+    let ast = parse("{ c4-> }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Accent,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_tenuto_abbreviation() {
+    let ast = parse("{ c4-- }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Dash,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_marcato_abbreviation() {
+    let ast = parse("{ c4-^ }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Marcato,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_stopped_abbreviation() {
+    let ast = parse("{ c4-+ }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Stopped,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_staccatissimo_abbreviation() {
+    let ast = parse("{ c4-! }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Staccatissimo,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_portato_abbreviation() {
+    let ast = parse("{ c4-_ }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Portato,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_direction_up_staccato() {
+    let ast = parse("{ c4^. }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Up,
+                        script: ScriptAbbreviation::Dot,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_direction_down_tenuto() {
+    let ast = parse("{ c4_- }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Down,
+                        script: ScriptAbbreviation::Dash,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_fingering_neutral() {
+    let ast = parse("{ c4-1 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Fingering {
+                        direction: Direction::Neutral,
+                        digit: 1,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_fingering_up() {
+    let ast = parse("{ c4^3 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Fingering {
+                        direction: Direction::Up,
+                        digit: 3,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_fingering_down() {
+    let ast = parse("{ c4_4 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::Fingering {
+                        direction: Direction::Down,
+                        digit: 4,
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_named_articulation() {
+    let ast = parse("{ c4-\\staccato }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![PostEvent::NamedArticulation {
+                        direction: Direction::Neutral,
+                        name: "staccato".into(),
+                    }]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_multiple_articulations() {
+    let ast = parse("{ c4-. -> }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![
+                        PostEvent::Articulation {
+                            direction: Direction::Neutral,
+                            script: ScriptAbbreviation::Dot,
+                        },
+                        PostEvent::Articulation {
+                            direction: Direction::Neutral,
+                            script: ScriptAbbreviation::Accent,
+                        },
+                    ]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_articulation_with_fingering() {
+    let ast = parse("{ c4-. -3 }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![
+                        PostEvent::Articulation {
+                            direction: Direction::Neutral,
+                            script: ScriptAbbreviation::Dot,
+                        },
+                        PostEvent::Fingering {
+                            direction: Direction::Neutral,
+                            digit: 3,
+                        },
+                    ]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_chord_with_articulation() {
+    let ast = parse("{ <c e g>4-. }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Chord(c) => {
+                assert_eq!(
+                    c.post_events,
+                    vec![PostEvent::Articulation {
+                        direction: Direction::Neutral,
+                        script: ScriptAbbreviation::Dot,
+                    }]
+                );
+            }
+            o => panic!("expected chord, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn parse_articulation_with_slur() {
+    let ast = parse("{ c4-.(  d4) }").unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+            Music::Note(n) => {
+                assert_eq!(
+                    n.post_events,
+                    vec![
+                        PostEvent::Articulation {
+                            direction: Direction::Neutral,
+                            script: ScriptAbbreviation::Dot,
+                        },
+                        PostEvent::SlurStart,
+                    ]
+                );
+            }
+            o => panic!("expected note, got {o:?}"),
+        },
+        o => panic!("expected sequential, got {o:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_articulations() {
+    let input = "{ c4-. d4-> e4-+ f4-- g4-! a4-_ b4-^ }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_directed_articulations() {
+    let input = "{ c4^. d4^> e4_. f4_- }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fingerings() {
+    let input = "{ c4-1 d4-2 e4^3 f4_4 }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_named_articulation() {
+    let input = "{ c4-\\staccato d4^\\accent }";
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_fragment_articulations() {
+    roundtrip_fixture("fragment_articulations.ly");
+}

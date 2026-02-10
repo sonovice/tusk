@@ -722,7 +722,13 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                     .push(MeasureChild::Hairpin(Box::new(hairpin)));
                             }
                         }
-                        PostEvent::Tie => {}
+                        PostEvent::Tie
+                        | PostEvent::Articulation { .. }
+                        | PostEvent::Fingering { .. }
+                        | PostEvent::NamedArticulation { .. }
+                        | PostEvent::StringNumber { .. } => {
+                            // Articulations/fingerings will be handled in Phase 12.2
+                        }
                         PostEvent::BeamStart => {
                             // Record position of this note in the layer
                             beam_starts.push(layer.children.len() - 1);
