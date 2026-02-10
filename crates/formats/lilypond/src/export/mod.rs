@@ -905,6 +905,10 @@ fn convert_layer_child_to_items(
             }
         }
         _ => {
+            // Inject \change before notes with lilypond:change label
+            if let Some(change) = extract_context_change_from_label(child) {
+                items.push(change);
+            }
             if let Some(mut m) = convert_layer_child(child) {
                 if let Some(id) = layer_child_xml_id(child)
                     && let Some(events) = slur_map.get(id)
@@ -915,6 +919,31 @@ fn convert_layer_child_to_items(
             }
         }
     }
+}
+
+/// Extract a `\change` context change from a LayerChild's label.
+///
+/// Looks for `lilypond:change,TYPE,NAME` label segment and returns a
+/// `Music::ContextChange` if found.
+fn extract_context_change_from_label(child: &LayerChild) -> Option<Music> {
+    let label = match child {
+        LayerChild::Note(n) => n.common.label.as_deref()?,
+        LayerChild::Rest(r) => r.common.label.as_deref()?,
+        LayerChild::Chord(c) => c.common.label.as_deref()?,
+        _ => return None,
+    };
+    for segment in label.split('|') {
+        if let Some(rest) = segment.strip_prefix("lilypond:change,") {
+            let parts: Vec<&str> = rest.splitn(2, ',').collect();
+            if parts.len() == 2 {
+                return Some(Music::ContextChange {
+                    context_type: parts[0].to_string(),
+                    name: parts[1].to_string(),
+                });
+            }
+        }
+    }
+    None
 }
 
 /// Convert a single MEI LayerChild to a LilyPond Music expression.

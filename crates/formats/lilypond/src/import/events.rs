@@ -81,6 +81,11 @@ pub(super) enum LyEvent {
     PropertyOp(String),
     /// A serialized music function call (`\functionName args...`).
     MusicFunction(String),
+    /// A context change (`\change Staff = "name"`).
+    ContextChange {
+        context_type: String,
+        name: String,
+    },
 }
 
 /// Type of grace note construct for import/export roundtrip.
@@ -226,8 +231,11 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         Music::ContextedMusic { music, .. } => {
             collect_events(music, events, ctx);
         }
-        Music::ContextChange { .. } => {
-            // Context changes don't produce note events
+        Music::ContextChange { context_type, name } => {
+            events.push(LyEvent::ContextChange {
+                context_type: context_type.clone(),
+                name: name.clone(),
+            });
         }
         Music::Clef(c) => events.push(LyEvent::Clef(c.clone())),
         Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks.clone())),

@@ -15,6 +15,8 @@ mod tests;
 #[cfg(test)]
 mod tests_chords;
 #[cfg(test)]
+mod tests_completion;
+#[cfg(test)]
 mod tests_control;
 #[cfg(test)]
 mod tests_drums;
@@ -281,6 +283,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut pending_property_ops: Vec<String> = Vec::new();
             // Pending music function calls waiting for next note's startid
             let mut pending_function_ops: Vec<String> = Vec::new();
+            // Cross-staff override from \change Staff = "name"
+            let mut cross_staff_override: Option<String> = None;
 
             for event in &events {
                 let (post_events, current_id) = match event {
@@ -534,6 +538,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pending_function_ops.push(serialized.clone());
                         continue;
                     }
+                    LyEvent::ContextChange { context_type, name } => {
+                        // Track cross-staff override; store label for roundtrip
+                        cross_staff_override =
+                            Some(format!("lilypond:change,{context_type},{name}"));
+                        continue;
+                    }
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
@@ -563,6 +573,11 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     }
                 }
                 last_note_id = Some(current_id.clone());
+
+                // Apply cross-staff label if active
+                if let Some(ref change_label) = cross_staff_override {
+                    append_label_to_last_layer_child(&mut layer, change_label);
+                }
 
                 // Flush pending inline chord names
                 for (ce, staff_n) in pending_chord_names.drain(..) {
@@ -789,6 +804,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
                         }
                         PostEvent::Tweak { path, value } => {
+                            // Check for \tweak id #"value" — set xml:id
+                            if is_id_tweak(path)
+                                && let Some(id_val) = extract_tweak_string_value(value)
+                            {
+                                set_xml_id_on_last_layer_child(&mut layer, &id_val);
+                            }
                             let serialized = crate::serializer::serialize_tweak(path, value);
                             let escaped = signatures::escape_label_value_pub(&serialized);
                             append_label_to_last_layer_child(
@@ -885,4 +906,7 @@ use control_events::{
 };
 
 mod utils;
-use utils::{append_label_to_last_layer_child, parse_tempo_from_serialized};
+use utils::{
+    append_label_to_last_layer_child, extract_tweak_string_value, is_id_tweak,
+    parse_tempo_from_serialized, set_xml_id_on_last_layer_child,
+};

@@ -1296,11 +1296,30 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 31.1 Import Completion
 
-- [ ] [I] Wire all AST node types to MEI: notes, rests, chords, lyrics, figured bass, chord names, dynamics, articulations, ornaments, spanners, repeats, tuplets, grace, multi-rest, bar lines, tempo, marks, staff/voice structure, header/metadata
-- [ ] [I] **Retain element IDs**: When AST has `\tweak #'id #"value"` (or equivalent) on an event/grob, set MEI `xml:id` on the corresponding created element; optionally parse `% @id value` comments and assign to the following element for roundtrip
-- [ ] [I] Handle edge cases: cross-staff, multiple voices, nested repeats, nested tuplets
-- [ ] [I] Use MEI extended/label patterns for concepts without direct MEI equivalent (e.g. LilyPond-specific overrides)
-- [ ] [T] All fixture categories import without error; compare structure to reference MEI where available
+- [x] [I] Wire all AST node types to MEI: notes, rests, chords, lyrics, figured bass, chord names, dynamics, articulations, ornaments, spanners, repeats, tuplets, grace, multi-rest, bar lines, tempo, marks, staff/voice structure, header/metadata
+  - All 50+ Music enum variants handled in `collect_events()` (events.rs)
+  - Full event pipeline: notes, chords, rests, pitched rests, multi-measure rests, skips, clef/key/time, tempo/mark/textMark, tuplets, repeats, alternatives, grace notes, chord mode, drum mode, figured bass, properties, functions, markup, bar checks/lines, lyrics, context changes
+- [x] [I] **Retain element IDs**: When AST has `\tweak #'id #"value"` (or equivalent) on an event/grob, set MEI `xml:id` on the corresponding created element; optionally parse `% @id value` comments and assign to the following element for roundtrip
+  - `\tweak id #"value"` detected via `is_id_tweak()` + `extract_tweak_string_value()` in utils.rs
+  - Sets `xml:id` on the MEI note/rest/chord; also preserved in label for lossless roundtrip
+  - `% @id` comment parsing deferred (lexer strips comments; would require lexer-level changes)
+- [x] [I] Handle edge cases: cross-staff, multiple voices, nested repeats, nested tuplets
+  - Cross-staff: `\change Staff = "name"` emits `LyEvent::ContextChange`, stores `lilypond:change,TYPE,NAME` label on subsequent notes; export restores `\change` from label
+  - Multiple voices: `Simultaneous` with voice-like children → separate MEI layers (tested)
+  - Nested tuplets: stack-based pending tracking (inner pops first), tested with 2+ levels
+  - Nested repeats: same stack-based approach, tested with 2+ levels
+- [x] [I] Use MEI extended/label patterns for concepts without direct MEI equivalent (e.g. LilyPond-specific overrides)
+  - Properties: `lilypond:prop,{serialized}` on Dir elements
+  - Functions: `lilypond:func,{serialized}` on Dir elements
+  - Tweaks: `lilypond:tweak,{serialized}` on note/rest/chord labels
+  - Grace types: `lilypond:grace,{type}` labels
+  - Chord repetition: `lilypond:chord-rep` label
+  - Repeats/endings: `lilypond:repeat,TYPE,COUNT` and `lilypond:ending,INDEX` on Dir
+  - Context changes: `lilypond:change,TYPE,NAME` on notes
+  - All label patterns use pipe-separated segments with escape handling
+- [x] [T] All fixture categories import without error; compare structure to reference MEI where available
+  - 50 fixture smoke tests (tests_completion.rs) — all parseable fixtures import without error
+  - 16 structural tests: element ID retention, cross-staff, nested tuplets/repeats, multiple voices, property/function labels, grace notes, figured bass, chord mode, header metadata, comprehensive fixture
 
 ### 31.2 Validator in Import
 

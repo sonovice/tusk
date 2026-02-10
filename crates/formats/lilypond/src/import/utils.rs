@@ -81,3 +81,33 @@ pub(super) fn append_label_to_last_layer_child(layer: &mut Layer, segment: &str)
         None => *label = Some(segment.to_string()),
     }
 }
+
+/// Check if a `\tweak` path targets an element ID property.
+///
+/// Matches paths like `id`, `NoteHead.id`, etc. — the last segment is `id`.
+pub(super) fn is_id_tweak(path: &crate::model::PropertyPath) -> bool {
+    path.segments.last().is_some_and(|s| s == "id")
+}
+
+/// Extract a string value from a `PropertyValue`, if it is a `String` or `SchemeExpr::String`.
+pub(super) fn extract_tweak_string_value(value: &crate::model::PropertyValue) -> Option<String> {
+    match value {
+        crate::model::PropertyValue::String(s) => Some(s.clone()),
+        crate::model::PropertyValue::SchemeExpr(crate::model::SchemeExpr::String(s)) => {
+            Some(s.clone())
+        }
+        _ => None,
+    }
+}
+
+/// Set `xml:id` on the last note/rest/chord in a layer.
+pub(super) fn set_xml_id_on_last_layer_child(layer: &mut Layer, id: &str) {
+    let last = layer.children.last_mut();
+    let xml_id = match last {
+        Some(LayerChild::Note(n)) => &mut n.common.xml_id,
+        Some(LayerChild::Rest(r)) => &mut r.common.xml_id,
+        Some(LayerChild::Chord(c)) => &mut c.common.xml_id,
+        _ => return,
+    };
+    *xml_id = Some(id.to_string());
+}
