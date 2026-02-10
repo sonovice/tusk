@@ -31,6 +31,18 @@ pub enum ValidationError {
     #[error("unknown context type '{name}'")]
     UnknownContextType { name: String },
 
+    #[error("unknown clef name '{name}'")]
+    UnknownClefName { name: String },
+
+    #[error("unknown key mode '{mode}'")]
+    UnknownKeyMode { mode: String },
+
+    #[error("invalid time signature: numerator must be positive")]
+    InvalidTimeNumerator,
+
+    #[error("invalid time signature: denominator must be positive")]
+    InvalidTimeDenominator,
+
     #[error("{0}")]
     Other(String),
 }
@@ -182,6 +194,24 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 errors.push(ValidationError::UnknownContextType {
                     name: context_type.clone(),
                 });
+            }
+        }
+        Music::Clef(c) => {
+            if !c.is_known() {
+                errors.push(ValidationError::UnknownClefName {
+                    name: c.name.clone(),
+                });
+            }
+        }
+        Music::KeySignature(_) => {
+            // Pitch and mode are structurally valid by construction
+        }
+        Music::TimeSignature(ts) => {
+            if ts.numerators.is_empty() || ts.numerators.contains(&0) {
+                errors.push(ValidationError::InvalidTimeNumerator);
+            }
+            if ts.denominator == 0 {
+                errors.push(ValidationError::InvalidTimeDenominator);
             }
         }
         Music::Note(n) => {
@@ -496,6 +526,129 @@ mod tests {
                     pitched_rest: false,
                 }),
             ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    // ── Phase 6 validator tests ─────────────────────────────────────
+
+    #[test]
+    fn valid_clef_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Clef(Clef {
+                name: "treble".into(),
+            }))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn unknown_clef_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Clef(Clef {
+                name: "bogus".into(),
+            }))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnknownClefName { name } if name == "bogus"))
+        );
+    }
+
+    #[test]
+    fn transposed_clef_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Clef(Clef {
+                name: "G_8".into(),
+            }))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn valid_key_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::KeySignature(
+                KeySignature {
+                    pitch: Pitch {
+                        step: 'd',
+                        alter: 0.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    mode: Mode::Major,
+                },
+            ))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn valid_time_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::TimeSignature(
+                TimeSignature {
+                    numerators: vec![4],
+                    denominator: 4,
+                },
+            ))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn zero_time_denominator_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::TimeSignature(
+                TimeSignature {
+                    numerators: vec![4],
+                    denominator: 0,
+                },
+            ))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTimeDenominator))
+        );
+    }
+
+    #[test]
+    fn zero_time_numerator_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::TimeSignature(
+                TimeSignature {
+                    numerators: vec![0],
+                    denominator: 4,
+                },
+            ))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::InvalidTimeNumerator))
+        );
+    }
+
+    #[test]
+    fn additive_time_passes() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::TimeSignature(
+                TimeSignature {
+                    numerators: vec![3, 3, 2],
+                    denominator: 8,
+                },
+            ))],
         };
         assert!(validate(&file).is_ok());
     }

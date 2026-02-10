@@ -257,11 +257,24 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 6.1 Model & Parser
 
-- [ ] [P] Parse `\clef "treble"` (and other clef names), `\key pitch \mode`, `\time n/m` (and compound, e.g. `\time 2+3/8`)
-- [ ] [P] Add AST nodes: `Clef`, `KeySignature`, `TimeSignature`
-- [ ] [S] Serialize clef, key, time
-- [ ] [V] Key pitch and mode valid; time numerator/denominator valid
-- [ ] [T] Fragment: `\clef bass \key d \minor \time 3/4`
+- [x] [P] Parse `\clef "treble"` (and other clef names), `\key pitch \mode`, `\time n/m` (and compound, e.g. `\time 2+3/8`)
+  - `\clef` accepts quoted string or bare symbol; `\key` parses pitch + `\mode`; `\time` parses N/D and additive N+M+.../D
+  - Dispatched from parse_music() via EscapedWord("clef"), EscapedWord("key"), Token::Time
+- [x] [P] Add AST nodes: `Clef`, `KeySignature`, `TimeSignature`
+  - model/signature.rs: Clef (name), KeySignature (pitch, Mode enum), TimeSignature (numerators vec, denominator)
+  - Mode enum: Major/Minor/Ionian/Dorian/Phrygian/Lydian/Mixolydian/Aeolian/Locrian
+  - Music::Clef, Music::KeySignature, Music::TimeSignature variants
+- [x] [S] Serialize clef, key, time
+  - `\clef "name"`, `\key pitch \mode`, `\time N+M/D` (additive numerators joined with +)
+- [x] [V] Key pitch and mode valid; time numerator/denominator valid
+  - Clef: validates base name against KNOWN_CLEF_NAMES (70+ entries incl. transposition suffixes)
+  - Time: numerators non-empty and non-zero, denominator non-zero
+- [x] [T] Fragment: `\clef bass \key d \minor \time 3/4`
+  - Fixture: fragment_clef_key_time.ly (treble/bass clefs, D major/Bb minor keys, 4/4, 3/4, 2+3/8 times)
+  - 13 parser tests: clef string/symbol/transposed, key major/flat/all 9 modes, time simple/compound/additive/triple-additive, combined sequence, fixture roundtrip
+  - 4 serializer tests: clef, key signature, time simple, time additive
+  - 8 validator tests: valid/unknown clef, transposed clef, valid key, valid/zero-denom/zero-numer/additive time
+  - 193 total tests pass
 
 ### 6.2 Import & Export
 

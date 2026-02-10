@@ -5,10 +5,12 @@
 pub mod duration;
 pub mod note;
 pub mod pitch;
+pub mod signature;
 
 pub use duration::Duration;
 pub use note::{MultiMeasureRestEvent, NoteEvent, RestEvent, SkipEvent};
 pub use pitch::Pitch;
+pub use signature::{Clef, KeySignature, Mode, TimeSignature};
 
 // ---------------------------------------------------------------------------
 // Top-level file
@@ -240,6 +242,12 @@ pub enum Music {
     Skip(SkipEvent),
     /// A multi-measure rest (`R`).
     MultiMeasureRest(MultiMeasureRestEvent),
+    /// `\clef "treble"` — set the clef.
+    Clef(Clef),
+    /// `\key pitch \mode` — set the key signature.
+    KeySignature(KeySignature),
+    /// `\time n/m` — set the time signature.
+    TimeSignature(TimeSignature),
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

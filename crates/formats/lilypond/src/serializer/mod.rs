@@ -394,6 +394,9 @@ impl<'a> Serializer<'a> {
                 self.out.push_str(name);
                 self.out.push('"');
             }
+            Music::Clef(c) => self.write_clef(c),
+            Music::KeySignature(ks) => self.write_key_signature(ks),
+            Music::TimeSignature(ts) => self.write_time_signature(ts),
             Music::Note(n) => self.write_note_event(n),
             Music::Rest(r) => self.write_rest_event(r),
             Music::Skip(s) => self.write_skip_event(s),
@@ -405,6 +408,35 @@ impl<'a> Serializer<'a> {
             }
             Music::Unparsed(text) => self.out.push_str(text),
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Clef, key, time serialization
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_clef(&mut self, c: &Clef) {
+        self.out.push_str("\\clef \"");
+        self.out.push_str(&c.name);
+        self.out.push('"');
+    }
+
+    fn write_key_signature(&mut self, ks: &KeySignature) {
+        self.out.push_str("\\key ");
+        self.write_pitch(&ks.pitch);
+        self.out.push_str(" \\");
+        self.out.push_str(ks.mode.as_str());
+    }
+
+    fn write_time_signature(&mut self, ts: &TimeSignature) {
+        self.out.push_str("\\time ");
+        for (i, &n) in ts.numerators.iter().enumerate() {
+            if i > 0 {
+                self.out.push('+');
+            }
+            self.out.push_str(&n.to_string());
+        }
+        self.out.push('/');
+        self.out.push_str(&ts.denominator.to_string());
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -762,5 +794,72 @@ mod tests {
         };
         let output = serialize(&file);
         assert!(output.contains("c4\\rest"));
+    }
+
+    // ── Phase 6 serializer tests ────────────────────────────────────
+
+    #[test]
+    fn serialize_clef() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::Clef(Clef {
+                    name: "bass".into(),
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\clef \"bass\""));
+    }
+
+    #[test]
+    fn serialize_key_signature() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::KeySignature(KeySignature {
+                    pitch: Pitch {
+                        step: 'b',
+                        alter: -1.0,
+                        octave: 0,
+                        force_accidental: false,
+                        cautionary: false,
+                    },
+                    mode: Mode::Minor,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\key bes \\minor"));
+    }
+
+    #[test]
+    fn serialize_time_signature() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::TimeSignature(TimeSignature {
+                    numerators: vec![4],
+                    denominator: 4,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\time 4/4"));
+    }
+
+    #[test]
+    fn serialize_time_signature_additive() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                Music::TimeSignature(TimeSignature {
+                    numerators: vec![3, 3, 2],
+                    denominator: 8,
+                }),
+            ]))],
+        };
+        let output = serialize(&file);
+        assert!(output.contains("\\time 3+3+2/8"));
     }
 }

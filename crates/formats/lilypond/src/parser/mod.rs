@@ -606,6 +606,9 @@ impl<'src> Parser<'src> {
             Token::Fixed => self.parse_fixed(),
             Token::New | Token::Context => self.parse_context_music(),
             Token::Change => self.parse_context_change(),
+            Token::Time => self.parse_time_signature(),
+            Token::EscapedWord(s) if s == "clef" => self.parse_clef(),
+            Token::EscapedWord(s) if s == "key" => self.parse_key_signature(),
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -953,6 +956,173 @@ impl<'src> Parser<'src> {
                 expected: "string or symbol".into(),
             }),
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \clef "name"
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_clef(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \clef (EscapedWord("clef"))
+        // Clef name: quoted string or bare symbol
+        let name = match &self.current.token {
+            Token::String(_) => self.expect_string()?,
+            Token::Symbol(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Symbol(s) => s,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "clef name (string or symbol)".into(),
+                });
+            }
+        };
+        Ok(Music::Clef(Clef { name }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \key pitch \mode
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_key_signature(&mut self) -> Result<Music, ParseError> {
+        self.advance()?; // consume \key (EscapedWord("key"))
+
+        // Parse tonic pitch (note name + optional octave marks)
+        let offset = self.offset();
+        let note_name = match &self.current.token {
+            Token::NoteName(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::NoteName(s) => s,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "pitch after \\key".into(),
+                });
+            }
+        };
+
+        let (step, alter) =
+            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
+                name: note_name.clone(),
+                offset,
+            })?;
+
+        // Optional octave marks (rarely used in \key but valid)
+        let octave = self.parse_quotes();
+
+        let pitch = Pitch {
+            step,
+            alter,
+            octave,
+            force_accidental: false,
+            cautionary: false,
+        };
+
+        // Parse mode: \major, \minor, \dorian, etc.
+        let mode = match &self.current.token {
+            Token::EscapedWord(s) => {
+                let mode = Mode::from_name(s).ok_or_else(|| ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "mode (\\major, \\minor, \\dorian, etc.)".into(),
+                })?;
+                self.advance()?;
+                mode
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "mode (\\major, \\minor, \\dorian, etc.)".into(),
+                });
+            }
+        };
+
+        Ok(Music::KeySignature(KeySignature { pitch, mode }))
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // \time [n+m+...]/d
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_time_signature(&mut self) -> Result<Music, ParseError> {
+        self.expect(&Token::Time)?;
+
+        // Parse numerator(s): N or N+M+... (compound)
+        let mut numerators = Vec::new();
+        match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Unsigned(n) => numerators.push(n as u32),
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "time signature numerator".into(),
+                });
+            }
+        }
+
+        // Check for additive numerators: +N+M...
+        while *self.peek() == Token::Plus {
+            self.advance()?; // consume +
+            match self.peek() {
+                Token::Unsigned(_) => {
+                    let tok = self.advance()?;
+                    match tok.token {
+                        Token::Unsigned(n) => numerators.push(n as u32),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => {
+                    return Err(ParseError::Unexpected {
+                        found: self.current.token.clone(),
+                        offset: self.offset(),
+                        expected: "number after + in time signature".into(),
+                    });
+                }
+            }
+        }
+
+        // Expect /
+        self.expect(&Token::Slash)?;
+
+        // Parse denominator
+        let denominator = match self.peek() {
+            Token::Unsigned(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Unsigned(n) => n as u32,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {
+                return Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "time signature denominator".into(),
+                });
+            }
+        };
+
+        Ok(Music::TimeSignature(TimeSignature {
+            numerators,
+            denominator,
+        }))
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -1820,5 +1990,181 @@ mod tests {
     #[test]
     fn roundtrip_context_fixture() {
         roundtrip_fixture("fragment_contexts.ly");
+    }
+
+    // ── Phase 6 tests ───────────────────────────────────────────────
+
+    #[test]
+    fn parse_clef_string() {
+        let ast = parse("{ \\clef \"treble\" }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Clef(c) => assert_eq!(c.name, "treble"),
+                other => panic!("expected Clef, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_clef_bare_symbol() {
+        let ast = parse("{ \\clef bass }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Clef(c) => assert_eq!(c.name, "bass"),
+                other => panic!("expected Clef, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_clef_transposed() {
+        let ast = parse("{ \\clef \"G_8\" }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Clef(c) => assert_eq!(c.name, "G_8"),
+                other => panic!("expected Clef, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_key_signature() {
+        let ast = parse("{ \\key d \\major }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::KeySignature(ks) => {
+                    assert_eq!(ks.pitch.step, 'd');
+                    assert_eq!(ks.pitch.alter, 0.0);
+                    assert_eq!(ks.mode, Mode::Major);
+                }
+                other => panic!("expected KeySignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_key_signature_flat() {
+        let ast = parse("{ \\key bes \\minor }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::KeySignature(ks) => {
+                    assert_eq!(ks.pitch.step, 'b');
+                    assert_eq!(ks.pitch.alter, -1.0);
+                    assert_eq!(ks.mode, Mode::Minor);
+                }
+                other => panic!("expected KeySignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_key_signature_modes() {
+        for (mode_str, mode) in [
+            ("major", Mode::Major),
+            ("minor", Mode::Minor),
+            ("dorian", Mode::Dorian),
+            ("phrygian", Mode::Phrygian),
+            ("lydian", Mode::Lydian),
+            ("mixolydian", Mode::Mixolydian),
+            ("aeolian", Mode::Aeolian),
+            ("locrian", Mode::Locrian),
+            ("ionian", Mode::Ionian),
+        ] {
+            let input = format!("{{ \\key c \\{mode_str} }}");
+            let ast = parse(&input).unwrap();
+            match &ast.items[0] {
+                ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                    Music::KeySignature(ks) => assert_eq!(ks.mode, mode, "mode: {mode_str}"),
+                    other => panic!("expected KeySignature for {mode_str}, got {other:?}"),
+                },
+                other => panic!("expected sequential for {mode_str}, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_time_signature_simple() {
+        let ast = parse("{ \\time 4/4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::TimeSignature(ts) => {
+                    assert_eq!(ts.numerators, vec![4]);
+                    assert_eq!(ts.denominator, 4);
+                }
+                other => panic!("expected TimeSignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_time_signature_compound() {
+        let ast = parse("{ \\time 3/4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::TimeSignature(ts) => {
+                    assert_eq!(ts.numerators, vec![3]);
+                    assert_eq!(ts.denominator, 4);
+                }
+                other => panic!("expected TimeSignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_time_signature_additive() {
+        let ast = parse("{ \\time 2+3/8 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::TimeSignature(ts) => {
+                    assert_eq!(ts.numerators, vec![2, 3]);
+                    assert_eq!(ts.denominator, 8);
+                }
+                other => panic!("expected TimeSignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_time_signature_triple_additive() {
+        let ast = parse("{ \\time 3+3+2/8 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::TimeSignature(ts) => {
+                    assert_eq!(ts.numerators, vec![3, 3, 2]);
+                    assert_eq!(ts.denominator, 8);
+                }
+                other => panic!("expected TimeSignature, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_clef_key_time_sequence() {
+        let input = "{ \\clef \"treble\" \\key d \\major \\time 4/4 c4 }";
+        let ast = parse(input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 4);
+                assert!(matches!(&items[0], Music::Clef(_)));
+                assert!(matches!(&items[1], Music::KeySignature(_)));
+                assert!(matches!(&items[2], Music::TimeSignature(_)));
+                assert!(matches!(&items[3], Music::Note(_)));
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_fragment_clef_key_time() {
+        roundtrip_fixture("fragment_clef_key_time.ly");
     }
 }

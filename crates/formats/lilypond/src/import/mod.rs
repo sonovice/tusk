@@ -550,6 +550,9 @@ fn collect_events<'a>(music: &'a Music, events: &mut Vec<LyEvent<'a>>) {
         Music::ContextChange { .. } => {
             // Context changes don't produce note events
         }
+        Music::Clef(_) | Music::KeySignature(_) | Music::TimeSignature(_) => {
+            // Clef/key/time are context events, not note events — handled elsewhere
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }
