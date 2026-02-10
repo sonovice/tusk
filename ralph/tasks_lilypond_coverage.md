@@ -1000,11 +1000,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 23.1 Model & Parser
 
-- [ ] [P] Parse `\chordmode`, `\chords`; chord quality syntax: root, `:`, quality modifiers, `^` (omit), `/` (inversion), `/+` (bass); step numbers (e.g. `7`, `9+`, `11-`); chord modifiers (maj, min, dim, aug, etc.)
-- [ ] [P] Add `ChordModeMusic`, `ChordName` (tonic, quality, bass, omit), `ChordModifier`, `ChordSeparator`
-- [ ] [S] Serialize chord mode and chord names
-- [ ] [V] Chord root and quality valid
-- [ ] [T] Fragment: `\chordmode { c1 c:m c:7 c:dim7/f }`
+- [x] [P] Parse `\chordmode`, `\chords`; chord quality syntax: root, `:`, quality modifiers, `^` (omit), `/` (inversion), `/+` (bass); step numbers (e.g. `7`, `9+`, `11-`); chord modifiers (maj, min, dim, aug, etc.)
+  - parser/chords.rs: parse_chord_mode(), parse_chords_shorthand(), parse_chord_mode_event() with full quality chain
+  - Handles Real token decomposition (lexer merges `7.9` into one token)
+  - \chords wraps in \new ChordNames \chordmode (like \lyrics pattern)
+- [x] [P] Add `ChordModeMusic`, `ChordName` (tonic, quality, bass, omit), `ChordModifier`, `ChordSeparator`
+  - Music::ChordMode, Music::ChordModeEntry(ChordModeEvent)
+  - ChordModeEvent: root, duration, quality, removals, inversion, bass, post_events
+  - ChordQualityItem (Modifier | Step), ChordStep, ChordModifier, StepAlteration
+- [x] [S] Serialize chord mode and chord names
+  - write_chord_mode_event with `:quality^removals/inversion/+bass` syntax
+  - Dot-separated quality items for roundtrip fidelity
+- [x] [V] Chord root and quality valid
+  - InvalidChordStep error for step numbers outside 1-13
+  - Validates duration, post-events on chord mode entries
+- [x] [T] Fragment: `\chordmode { c1 c:m c:7 c:dim7/f }`
+  - fragment_chordmode.ly fixture
+  - 14 parser tests: bare root, minor, seventh, dim7/inversion, bass, removal, step alterations, complex quality, chords shorthand, rests/barchecks, roundtrip serialization, fixture parse, validation
 
 ### 23.2 Import & Export
 

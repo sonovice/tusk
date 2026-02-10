@@ -248,6 +248,8 @@ impl<'src> Parser<'src> {
             | Token::New
             | Token::Context
             | Token::Change
+            | Token::ChordMode
+            | Token::Chords
             | Token::LyricMode
             | Token::Lyrics
             | Token::LyricsTo => {
@@ -673,6 +675,8 @@ impl<'src> Parser<'src> {
                 let ml = self.parse_markuplist()?;
                 Ok(Music::MarkupList(ml))
             }
+            Token::ChordMode => self.parse_chord_mode(),
+            Token::Chords => self.parse_chords_shorthand(),
             Token::LyricMode => self.parse_lyric_mode(),
             Token::Lyrics => self.parse_lyrics_shorthand(),
             Token::LyricsTo => self.parse_lyricsto(),
@@ -1455,6 +1459,7 @@ impl<'src> Parser<'src> {
         }
     }
 }
+mod chords;
 mod lyrics;
 mod markup;
 mod raw_blocks;
@@ -1475,6 +1480,8 @@ mod tests;
 mod tests_barcheck;
 #[cfg(test)]
 mod tests_chord_rep;
+#[cfg(test)]
+mod tests_chords;
 #[cfg(test)]
 mod tests_grace;
 #[cfg(test)]

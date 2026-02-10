@@ -11,8 +11,9 @@ pub mod signature;
 pub use duration::Duration;
 pub use markup::{Markup, MarkupList};
 pub use note::{
-    ChordEvent, ChordRepetitionEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent,
-    MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
+    ChordEvent, ChordModeEvent, ChordModifier, ChordQualityItem, ChordRepetitionEvent, ChordStep,
+    Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent, MultiMeasureRestEvent, NoteEvent,
+    PostEvent, RestEvent, ScriptAbbreviation, SkipEvent, StepAlteration,
 };
 pub use pitch::Pitch;
 pub use signature::{
@@ -356,6 +357,10 @@ pub enum Music {
     BarCheck,
     /// Bar line command: `\bar "type"` — sets explicit bar line style.
     BarLine { bar_type: String },
+    /// `\chordmode { ... }` — chord mode music.
+    ChordMode { body: Box<Music> },
+    /// A chord-mode event: `root[:quality][/inversion][/+bass]`.
+    ChordModeEntry(ChordModeEvent),
     /// `\lyricmode { ... }` — lyric mode music.
     LyricMode { body: Box<Music> },
     /// `\addlyrics { ... }` — attach lyrics to preceding music.

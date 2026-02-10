@@ -293,3 +293,115 @@ pub struct ChordRepetitionEvent {
     /// Post-events (ties, slurs, etc.) attached after the duration.
     pub post_events: Vec<PostEvent>,
 }
+
+// ---------------------------------------------------------------------------
+// Chord mode types
+// ---------------------------------------------------------------------------
+
+/// A chord-mode event: `root[:quality][/inversion][/+bass]`.
+///
+/// Corresponds to the `new_chord` production in chord mode. The root pitch
+/// is combined with quality modifiers, step additions/removals, inversion,
+/// and optional bass note to fully specify a chord symbol.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChordModeEvent {
+    /// Root pitch of the chord (e.g. `c`, `fis`).
+    pub root: Pitch,
+    /// Duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+    /// Quality items after `:` — modifiers and step numbers.
+    pub quality: Vec<ChordQualityItem>,
+    /// Removals after `^` — step numbers to omit.
+    pub removals: Vec<ChordStep>,
+    /// Inversion pitch after `/` (chord inversion).
+    pub inversion: Option<Pitch>,
+    /// Added bass note after `/+`.
+    pub bass: Option<Pitch>,
+    /// Post-events (ties, slurs, etc.) attached after the chord.
+    pub post_events: Vec<PostEvent>,
+}
+
+/// An item in the chord quality chain after `:`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChordQualityItem {
+    /// A named modifier: `m`, `min`, `aug`, `dim`, `maj`, `sus`.
+    Modifier(ChordModifier),
+    /// A step number with optional alteration: `7`, `9+`, `5-`.
+    Step(ChordStep),
+}
+
+/// A step number with optional alteration.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChordStep {
+    /// Step number (1–13 typically).
+    pub number: u8,
+    /// Alteration of the step.
+    pub alteration: StepAlteration,
+}
+
+/// Named chord quality modifiers.
+///
+/// From LilyPond's `chordmodifiers` table (see `chord-entry.scm`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChordModifier {
+    /// `m` or `min` — minor
+    Minor,
+    /// `aug` — augmented
+    Augmented,
+    /// `dim` — diminished
+    Diminished,
+    /// `maj` — major (typically `maj7`)
+    Major,
+    /// `sus` — suspended
+    Suspended,
+}
+
+impl ChordModifier {
+    /// Parse a modifier from its LilyPond name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "m" | "min" => Some(Self::Minor),
+            "aug" => Some(Self::Augmented),
+            "dim" => Some(Self::Diminished),
+            "maj" => Some(Self::Major),
+            "sus" => Some(Self::Suspended),
+            _ => None,
+        }
+    }
+
+    /// The canonical LilyPond name for this modifier.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Minor => "m",
+            Self::Augmented => "aug",
+            Self::Diminished => "dim",
+            Self::Major => "maj",
+            Self::Suspended => "sus",
+        }
+    }
+
+    /// All known chord modifier names.
+    pub const KNOWN_NAMES: &[&str] = &["m", "min", "aug", "dim", "maj", "sus"];
+}
+
+/// Alteration on a chord step number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepAlteration {
+    /// No alteration (natural).
+    Natural,
+    /// `+` — raised (sharp).
+    Sharp,
+    /// `-` — lowered (flat).
+    Flat,
+}
+
+impl StepAlteration {
+    /// The LilyPond suffix character for this alteration.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Natural => "",
+            Self::Sharp => "+",
+            Self::Flat => "-",
+        }
+    }
+}

@@ -545,6 +545,11 @@ impl<'a> Serializer<'a> {
             Music::Skip(s) => self.write_skip_event(s),
             Music::MultiMeasureRest(r) => self.write_multi_measure_rest(r),
             Music::ChordRepetition(cr) => self.write_chord_repetition(cr),
+            Music::ChordMode { body } => {
+                self.out.push_str("\\chordmode ");
+                self.write_music(body);
+            }
+            Music::ChordModeEntry(ce) => self.write_chord_mode_event(ce),
             Music::LyricMode { body } => {
                 self.out.push_str("\\lyricmode ");
                 self.write_music(body);
@@ -722,6 +727,51 @@ impl<'a> Serializer<'a> {
             self.write_duration(dur);
         }
         self.write_post_events(&le.post_events);
+    }
+
+    fn write_chord_mode_event(&mut self, ce: &ChordModeEvent) {
+        self.write_pitch(&ce.root);
+        if let Some(dur) = &ce.duration {
+            self.write_duration(dur);
+        }
+        // Quality items after `:`
+        if !ce.quality.is_empty() {
+            self.out.push(':');
+            for (i, item) in ce.quality.iter().enumerate() {
+                if i > 0 {
+                    self.out.push('.');
+                }
+                match item {
+                    ChordQualityItem::Modifier(m) => self.out.push_str(m.as_str()),
+                    ChordQualityItem::Step(s) => {
+                        self.out.push_str(&s.number.to_string());
+                        self.out.push_str(s.alteration.as_str());
+                    }
+                }
+            }
+        }
+        // Removals after `^`
+        if !ce.removals.is_empty() {
+            self.out.push('^');
+            for (i, s) in ce.removals.iter().enumerate() {
+                if i > 0 {
+                    self.out.push('.');
+                }
+                self.out.push_str(&s.number.to_string());
+                self.out.push_str(s.alteration.as_str());
+            }
+        }
+        // Inversion `/pitch`
+        if let Some(inv) = &ce.inversion {
+            self.out.push('/');
+            self.write_pitch(inv);
+        }
+        // Bass `/+pitch`
+        if let Some(b) = &ce.bass {
+            self.out.push_str("/+");
+            self.write_pitch(b);
+        }
+        self.write_post_events(&ce.post_events);
     }
 
     fn write_chord_repetition(&mut self, cr: &ChordRepetitionEvent) {

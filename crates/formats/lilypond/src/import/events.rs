@@ -306,6 +306,11 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_text_mark(tm);
             events.push(LyEvent::TextMark(serialized));
         }
+        // Chord mode: recurse into body (import handled in Phase 23.2)
+        Music::ChordMode { body } => collect_events(body, events, ctx),
+        Music::ChordModeEntry(_) => {
+            // Chord-mode events are handled in Phase 23.2 (import/export)
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

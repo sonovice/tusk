@@ -91,6 +91,9 @@ pub enum ValidationError {
     #[error("empty lyric syllable")]
     EmptyLyricSyllable,
 
+    #[error("invalid chord step number {number}: must be 1-13")]
+    InvalidChordStep { number: u8 },
+
     #[error("tempo must have text or metronome mark")]
     EmptyTempo,
 
@@ -344,6 +347,10 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::ContextedMusic { music, .. } => {
             count_spans(music, counts);
         }
+        Music::ChordMode { body } => {
+            count_spans(body, counts);
+        }
+        Music::ChordModeEntry(ce) => counts.count_post_events(&ce.post_events),
         Music::LyricMode { body } => {
             count_spans(body, counts);
         }
@@ -579,6 +586,16 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             validate_music(main, errors);
             validate_music(grace, errors);
         }
+        Music::ChordMode { body } => {
+            validate_music(body, errors);
+        }
+        Music::ChordModeEntry(ce) => {
+            if let Some(dur) = &ce.duration {
+                validate_duration(dur, errors);
+            }
+            validate_chord_steps(&ce.quality, &ce.removals, errors);
+            validate_post_events(&ce.post_events, errors);
+        }
         Music::LyricMode { body } => {
             validate_music(body, errors);
         }
@@ -637,6 +654,25 @@ fn validate_markup(m: &markup::Markup, errors: &mut Vec<ValidationError>) {
         | markup::Markup::Identifier(_)
         | markup::Markup::Scheme(_)
         | markup::Markup::Number(_) => {}
+    }
+}
+
+fn validate_chord_steps(
+    quality: &[note::ChordQualityItem],
+    removals: &[note::ChordStep],
+    errors: &mut Vec<ValidationError>,
+) {
+    for item in quality {
+        if let note::ChordQualityItem::Step(s) = item
+            && (s.number == 0 || s.number > 13)
+        {
+            errors.push(ValidationError::InvalidChordStep { number: s.number });
+        }
+    }
+    for s in removals {
+        if s.number == 0 || s.number > 13 {
+            errors.push(ValidationError::InvalidChordStep { number: s.number });
+        }
     }
 }
 
