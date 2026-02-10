@@ -8,7 +8,7 @@ pub mod pitch;
 pub mod signature;
 
 pub use duration::Duration;
-pub use note::{ChordEvent, MultiMeasureRestEvent, NoteEvent, RestEvent, SkipEvent};
+pub use note::{ChordEvent, MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, SkipEvent};
 pub use pitch::Pitch;
 pub use signature::{Clef, KeySignature, Mode, TimeSignature};
 

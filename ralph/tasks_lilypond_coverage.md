@@ -10,6 +10,8 @@ Each task covers: `[L]` Lexer, `[P]` Parser, `[S]` Serializer, `[I]` Import (Lil
 
 **Constraint**: Every change must pass `cargo test` and `cargo clippy --all-targets` with no regressions.
 
+**File size limit**: No hand-written `.rs` file may exceed 1500 lines. If a file is over 1500 LOC — even a pre-existing one — split it into submodules before or as part of the current task. This does **not** apply to generated files (`generated/` directories, `generated_*.rs` files, version `data.rs` files).
+
 **Key references**:
 - Coverage plan: `.cursor/plans/` (LilyPond Coverage Plan)
 - LilyPond grammar: `specs/lilypond/repo/lily/parser.yy`
@@ -384,11 +386,23 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 9.1 Model & Parser
 
-- [ ] [P] Parse tie `~`, slur `( ... )`, phrasing slur `\( ... \)` as post-events or event identifiers
-- [ ] [P] Add `TieEvent`, `SlurEvent`, `PhrasingSlurEvent` (or generic span events with type)
-- [ ] [S] Serialize tie, slur, phrasing slur
-- [ ] [V] Slur/phrasing slur start/stop match
-- [ ] [T] Fragment: `c4~ c`, `c4( d e f)`, `c4\( d e\)`
+- [x] [P] Parse tie `~`, slur `( ... )`, phrasing slur `\( ... \)` as post-events or event identifiers
+  - Added `PostEvent` enum (Tie, SlurStart, SlurEnd, PhrasingSlurStart, PhrasingSlurEnd) in model/note.rs
+  - Added `post_events: Vec<PostEvent>` to NoteEvent, ChordEvent, RestEvent, SkipEvent, MultiMeasureRestEvent
+  - `parse_post_events()` consumes Tilde, ParenOpen/Close, EscapedParenOpen/Close after duration
+- [x] [P] Add `TieEvent`, `SlurEvent`, `PhrasingSlurEvent` (or generic span events with type)
+  - Unified as PostEvent enum variants — extensible for future articulations/dynamics
+- [x] [S] Serialize tie, slur, phrasing slur
+  - `write_post_events()` emits `~`, `(`, `)`, `\(`, `\)` after duration on all event types
+- [x] [V] Slur/phrasing slur start/stop match
+  - `count_slurs()` recursively counts opens/closes; `validate_slur_balance()` checks match
+  - ValidationError::UnmatchedSlur, ValidationError::UnmatchedPhrasingSlur
+  - Balance checked at score and top-level music scope
+- [x] [T] Fragment: `c4~ c`, `c4( d e f)`, `c4\( d e\)`
+  - Fixture: fragment_ties_slurs.ly (tie, slur, phrasing slur, chord tie, combined)
+  - 10 parser tests: tie, slur, phrasing slur, multiple post-events, chord tie, rest slur, roundtrip tie/slur/phrasing/fixture
+  - 5 validator tests: balanced slurs/phrasing pass, unmatched slur/phrasing fail, tie-only passes
+  - 291 total tests pass
 
 ### 9.2 Import & Export
 

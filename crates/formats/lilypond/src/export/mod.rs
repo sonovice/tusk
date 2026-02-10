@@ -711,6 +711,7 @@ fn apply_pitch_contexts(staff_music: &mut [Vec<Vec<Music>>], pitch_contexts: &[O
                             },
                             duration: None,
                             pitched_rest: false,
+                            post_events: vec![],
                         })))
                     } else {
                         None
@@ -738,11 +739,13 @@ fn apply_pitch_contexts(staff_music: &mut [Vec<Vec<Music>>], pitch_contexts: &[O
                             pitch: from.clone(),
                             duration: None,
                             pitched_rest: false,
+                            post_events: vec![],
                         })),
                         to: Box::new(Music::Note(NoteEvent {
                             pitch: to.clone(),
                             duration: None,
                             pitched_rest: false,
+                            post_events: vec![],
                         })),
                         body: Box::new(inner),
                     };
@@ -970,7 +973,11 @@ fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
 
     let duration = extract_chord_duration(chord);
 
-    Music::Chord(ChordEvent { pitches, duration })
+    Music::Chord(ChordEvent {
+        pitches,
+        duration,
+        post_events: vec![],
+    })
 }
 
 /// Extract duration from an MEI chord.
@@ -1002,6 +1009,7 @@ fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
         pitch,
         duration,
         pitched_rest: false,
+        post_events: vec![],
     })
 }
 
@@ -1017,6 +1025,7 @@ fn convert_mei_rest(rest: &tusk_model::elements::Rest) -> Music {
 
     Music::Rest(RestEvent {
         duration: extract_rest_duration(rest),
+        post_events: vec![],
     })
 }
 
@@ -1054,6 +1063,7 @@ fn parse_pitched_rest_label(
         },
         duration: extract_rest_duration(rest),
         pitched_rest: true,
+        post_events: vec![],
     })
 }
 
@@ -1067,7 +1077,10 @@ fn convert_mei_mrest(mrest: &tusk_model::elements::MRest) -> Music {
         .and_then(|l| l.strip_prefix("lilypond:mrest,"))
         .and_then(parse_mrest_label);
 
-    Music::MultiMeasureRest(MultiMeasureRestEvent { duration })
+    Music::MultiMeasureRest(MultiMeasureRestEvent {
+        duration,
+        post_events: vec![],
+    })
 }
 
 /// Parse mrest label back to Duration.

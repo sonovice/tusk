@@ -46,6 +46,12 @@ pub enum ValidationError {
     #[error("chord must contain at least one pitch")]
     EmptyChord,
 
+    #[error("unmatched slur: {0} open, {1} close")]
+    UnmatchedSlur(usize, usize),
+
+    #[error("unmatched phrasing slur: {0} open, {1} close")]
+    UnmatchedPhrasingSlur(usize, usize),
+
     #[error("{0}")]
     Other(String),
 }
@@ -111,7 +117,10 @@ fn validate_toplevel(expr: &ToplevelExpression, errors: &mut Vec<ValidationError
         ToplevelExpression::BookPart(bp) => validate_bookpart(bp, errors),
         ToplevelExpression::Header(hb) => validate_header(hb, errors),
         ToplevelExpression::Assignment(_) => {}
-        ToplevelExpression::Music(m) => validate_music(m, errors),
+        ToplevelExpression::Music(m) => {
+            validate_music(m, errors);
+            validate_slur_balance(m, errors);
+        }
     }
 }
 
@@ -124,7 +133,10 @@ fn validate_score(sb: &ScoreBlock, errors: &mut Vec<ValidationError>) {
 
     for item in &sb.items {
         match item {
-            ScoreItem::Music(m) => validate_music(m, errors),
+            ScoreItem::Music(m) => {
+                validate_music(m, errors);
+                validate_slur_balance(m, errors);
+            }
             ScoreItem::Header(hb) => validate_header(hb, errors),
             ScoreItem::Layout(_) | ScoreItem::Midi(_) => {}
         }
@@ -156,6 +168,100 @@ fn validate_bookpart(bp: &BookPartBlock, errors: &mut Vec<ValidationError>) {
 
 fn validate_header(_hb: &HeaderBlock, _errors: &mut Vec<ValidationError>) {
     // Header field validation can be extended later
+}
+
+fn validate_post_events(events: &[note::PostEvent], _errors: &mut Vec<ValidationError>) {
+    // Individual post-event validation (extensible for future checks).
+    // Slur balance is checked at the sequential-music level.
+    let _ = events;
+}
+
+fn count_slurs(
+    m: &Music,
+    slur_opens: &mut usize,
+    slur_closes: &mut usize,
+    phr_opens: &mut usize,
+    phr_closes: &mut usize,
+) {
+    let check_post = |events: &[note::PostEvent],
+                      so: &mut usize,
+                      sc: &mut usize,
+                      po: &mut usize,
+                      pc: &mut usize| {
+        for ev in events {
+            match ev {
+                note::PostEvent::SlurStart => *so += 1,
+                note::PostEvent::SlurEnd => *sc += 1,
+                note::PostEvent::PhrasingSlurStart => *po += 1,
+                note::PostEvent::PhrasingSlurEnd => *pc += 1,
+                note::PostEvent::Tie => {}
+            }
+        }
+    };
+
+    match m {
+        Music::Note(n) => check_post(
+            &n.post_events,
+            slur_opens,
+            slur_closes,
+            phr_opens,
+            phr_closes,
+        ),
+        Music::Chord(c) => check_post(
+            &c.post_events,
+            slur_opens,
+            slur_closes,
+            phr_opens,
+            phr_closes,
+        ),
+        Music::Rest(r) => check_post(
+            &r.post_events,
+            slur_opens,
+            slur_closes,
+            phr_opens,
+            phr_closes,
+        ),
+        Music::Skip(s) => check_post(
+            &s.post_events,
+            slur_opens,
+            slur_closes,
+            phr_opens,
+            phr_closes,
+        ),
+        Music::MultiMeasureRest(r) => check_post(
+            &r.post_events,
+            slur_opens,
+            slur_closes,
+            phr_opens,
+            phr_closes,
+        ),
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            for item in items {
+                count_slurs(item, slur_opens, slur_closes, phr_opens, phr_closes);
+            }
+        }
+        Music::Relative { body, .. } | Music::Fixed { body, .. } => {
+            count_slurs(body, slur_opens, slur_closes, phr_opens, phr_closes);
+        }
+        Music::Transpose { body, .. } => {
+            count_slurs(body, slur_opens, slur_closes, phr_opens, phr_closes);
+        }
+        Music::ContextedMusic { music, .. } => {
+            count_slurs(music, slur_opens, slur_closes, phr_opens, phr_closes);
+        }
+        _ => {}
+    }
+}
+
+fn validate_slur_balance(m: &Music, errors: &mut Vec<ValidationError>) {
+    let (mut so, mut sc, mut po, mut pc) = (0, 0, 0, 0);
+    count_slurs(m, &mut so, &mut sc, &mut po, &mut pc);
+    if so != sc {
+        errors.push(ValidationError::UnmatchedSlur(so, sc));
+    }
+    if po != pc {
+        errors.push(ValidationError::UnmatchedPhrasingSlur(po, pc));
+    }
 }
 
 fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
@@ -226,6 +332,7 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             if let Some(dur) = &n.duration {
                 validate_duration(dur, errors);
             }
+            validate_post_events(&n.post_events, errors);
         }
         Music::Chord(c) => {
             if c.pitches.is_empty() {
@@ -234,21 +341,25 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             if let Some(dur) = &c.duration {
                 validate_duration(dur, errors);
             }
+            validate_post_events(&c.post_events, errors);
         }
         Music::Rest(r) => {
             if let Some(dur) = &r.duration {
                 validate_duration(dur, errors);
             }
+            validate_post_events(&r.post_events, errors);
         }
         Music::Skip(s) => {
             if let Some(dur) = &s.duration {
                 validate_duration(dur, errors);
             }
+            validate_post_events(&s.post_events, errors);
         }
         Music::MultiMeasureRest(r) => {
             if let Some(dur) = &r.duration {
                 validate_duration(dur, errors);
             }
+            validate_post_events(&r.post_events, errors);
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
@@ -299,6 +410,7 @@ mod tests {
                             multipliers: vec![],
                         }),
                         pitched_rest: false,
+                        post_events: vec![],
                     },
                 )]))],
             })],
@@ -330,6 +442,7 @@ mod tests {
                                 multipliers: vec![],
                             }),
                             pitched_rest: false,
+                            post_events: vec![],
                         },
                     )]))],
                 })],
@@ -400,6 +513,7 @@ mod tests {
                         multipliers: vec![],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -430,6 +544,7 @@ mod tests {
                         multipliers: vec![],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -451,6 +566,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![(2, 0)],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -505,6 +621,7 @@ mod tests {
                         multipliers: vec![],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 })])),
             })],
         };
@@ -546,6 +663,7 @@ mod tests {
                         multipliers: vec![(3, 2)],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -707,6 +825,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -725,6 +844,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -754,6 +874,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -762,5 +883,96 @@ mod tests {
             errs.iter()
                 .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
         );
+    }
+
+    // ── Phase 9 validator tests ─────────────────────────────────────
+
+    fn make_note(post_events: Vec<note::PostEvent>) -> Music {
+        Music::Note(NoteEvent {
+            pitch: Pitch {
+                step: 'c',
+                alter: 0.0,
+                octave: 0,
+                force_accidental: false,
+                cautionary: false,
+                octave_check: None,
+            },
+            duration: Some(Duration {
+                base: 4,
+                dots: 0,
+                multipliers: vec![],
+            }),
+            pitched_rest: false,
+            post_events,
+        })
+    }
+
+    #[test]
+    fn balanced_slurs_pass() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::SlurStart]),
+                make_note(vec![]),
+                make_note(vec![PostEvent::SlurEnd]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn unmatched_slur_start_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::SlurStart]),
+                make_note(vec![]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedSlur(1, 0)))
+        );
+    }
+
+    #[test]
+    fn unmatched_phrasing_slur_fails() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::PhrasingSlurStart]),
+                make_note(vec![]),
+            ]))],
+        };
+        let errs = validate(&file).unwrap_err();
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, ValidationError::UnmatchedPhrasingSlur(1, 0)))
+        );
+    }
+
+    #[test]
+    fn balanced_phrasing_slurs_pass() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::PhrasingSlurStart]),
+                make_note(vec![PostEvent::PhrasingSlurEnd]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
+    }
+
+    #[test]
+    fn tie_does_not_affect_slur_balance() {
+        let file = LilyPondFile {
+            version: None,
+            items: vec![ToplevelExpression::Music(Music::Sequential(vec![
+                make_note(vec![PostEvent::Tie]),
+                make_note(vec![]),
+            ]))],
+        };
+        assert!(validate(&file).is_ok());
     }
 }

@@ -672,6 +672,8 @@ impl<'src> Parser<'src> {
         // Check for \rest (pitched rest)
         let pitched_rest = self.try_consume(&Token::Rest);
 
+        let post_events = self.parse_post_events();
+
         Ok(Music::Note(NoteEvent {
             pitch: Pitch {
                 step,
@@ -683,11 +685,12 @@ impl<'src> Parser<'src> {
             },
             duration,
             pitched_rest,
+            post_events,
         }))
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // Chord: < pitch1 pitch2 ... > duration
+    // Chord: < pitch1 pitch2 ... > duration post_events
     // ──────────────────────────────────────────────────────────────────
 
     fn parse_chord(&mut self) -> Result<Music, ParseError> {
@@ -698,7 +701,12 @@ impl<'src> Parser<'src> {
         }
         self.expect(&Token::AngleClose)?;
         let duration = self.parse_optional_duration()?;
-        Ok(Music::Chord(ChordEvent { pitches, duration }))
+        let post_events = self.parse_post_events();
+        Ok(Music::Chord(ChordEvent {
+            pitches,
+            duration,
+            post_events,
+        }))
     }
 
     /// Parse a single pitch element inside a chord body.
@@ -758,12 +766,56 @@ impl<'src> Parser<'src> {
             _ => unreachable!(),
         };
         let duration = self.parse_optional_duration()?;
+        let post_events = self.parse_post_events();
         match kind.as_str() {
-            "r" => Ok(Music::Rest(RestEvent { duration })),
-            "s" => Ok(Music::Skip(SkipEvent { duration })),
-            "R" => Ok(Music::MultiMeasureRest(MultiMeasureRestEvent { duration })),
+            "r" => Ok(Music::Rest(RestEvent {
+                duration,
+                post_events,
+            })),
+            "s" => Ok(Music::Skip(SkipEvent {
+                duration,
+                post_events,
+            })),
+            "R" => Ok(Music::MultiMeasureRest(MultiMeasureRestEvent {
+                duration,
+                post_events,
+            })),
             _ => unreachable!(),
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Post-events: tie ~, slur ( ), phrasing slur \( \)
+    // ──────────────────────────────────────────────────────────────────
+
+    fn parse_post_events(&mut self) -> Vec<PostEvent> {
+        let mut events = Vec::new();
+        loop {
+            match self.peek() {
+                Token::Tilde => {
+                    let _ = self.advance();
+                    events.push(PostEvent::Tie);
+                }
+                Token::ParenOpen => {
+                    let _ = self.advance();
+                    events.push(PostEvent::SlurStart);
+                }
+                Token::ParenClose => {
+                    let _ = self.advance();
+                    events.push(PostEvent::SlurEnd);
+                }
+                Token::EscapedParenOpen => {
+                    let _ = self.advance();
+                    events.push(PostEvent::PhrasingSlurStart);
+                }
+                Token::EscapedParenClose => {
+                    let _ = self.advance();
+                    events.push(PostEvent::PhrasingSlurEnd);
+                }
+                _ => break,
+            }
+        }
+        events
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -2562,5 +2614,145 @@ mod tests {
     #[test]
     fn roundtrip_fragment_chords() {
         roundtrip_fixture("fragment_chords.ly");
+    }
+
+    // ── Phase 9 parser tests ──────────────────────────────────────
+
+    #[test]
+    fn parse_tie() {
+        let ast = parse("{ c4~ c4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 2);
+                match &items[0] {
+                    Music::Note(n) => {
+                        assert_eq!(n.post_events, vec![PostEvent::Tie]);
+                    }
+                    other => panic!("expected note, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_slur() {
+        let ast = parse("{ c4( d4 e4) }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 3);
+                match &items[0] {
+                    Music::Note(n) => {
+                        assert_eq!(n.post_events, vec![PostEvent::SlurStart]);
+                    }
+                    other => panic!("expected note, got {other:?}"),
+                }
+                match &items[2] {
+                    Music::Note(n) => {
+                        assert_eq!(n.post_events, vec![PostEvent::SlurEnd]);
+                    }
+                    other => panic!("expected note, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_phrasing_slur() {
+        let ast = parse("{ c4\\( d4 e4\\) }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => {
+                assert_eq!(items.len(), 3);
+                match &items[0] {
+                    Music::Note(n) => {
+                        assert_eq!(n.post_events, vec![PostEvent::PhrasingSlurStart]);
+                    }
+                    other => panic!("expected note, got {other:?}"),
+                }
+                match &items[2] {
+                    Music::Note(n) => {
+                        assert_eq!(n.post_events, vec![PostEvent::PhrasingSlurEnd]);
+                    }
+                    other => panic!("expected note, got {other:?}"),
+                }
+            }
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_multiple_post_events() {
+        let ast = parse("{ c4~( d4) }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Note(n) => {
+                    assert_eq!(n.post_events, vec![PostEvent::Tie, PostEvent::SlurStart]);
+                }
+                other => panic!("expected note, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_chord_with_tie() {
+        let ast = parse("{ <c e g>4~ <c e g>4 }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Chord(c) => {
+                    assert_eq!(c.post_events, vec![PostEvent::Tie]);
+                }
+                other => panic!("expected chord, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_rest_with_slur() {
+        // Unusual but valid in LilyPond grammar
+        let ast = parse("{ r4( c4) }").unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Music(Music::Sequential(items)) => match &items[0] {
+                Music::Rest(r) => {
+                    assert_eq!(r.post_events, vec![PostEvent::SlurStart]);
+                }
+                other => panic!("expected rest, got {other:?}"),
+            },
+            other => panic!("expected sequential, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_tie() {
+        let input = "{ c4~ c4 }";
+        let ast = parse(input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2);
+    }
+
+    #[test]
+    fn roundtrip_slur() {
+        let input = "{ c4( d4 e4) }";
+        let ast = parse(input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2);
+    }
+
+    #[test]
+    fn roundtrip_phrasing_slur() {
+        let input = "{ c4\\( d4 e4\\) }";
+        let ast = parse(input).unwrap();
+        let output = crate::serializer::serialize(&ast);
+        let ast2 = parse(&output).unwrap();
+        assert_eq!(ast, ast2);
+    }
+
+    #[test]
+    fn roundtrip_fragment_ties_slurs() {
+        roundtrip_fixture("fragment_ties_slurs.ly");
     }
 }

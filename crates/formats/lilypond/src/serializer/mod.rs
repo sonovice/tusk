@@ -460,6 +460,7 @@ impl<'a> Serializer<'a> {
         if n.pitched_rest {
             self.out.push_str("\\rest");
         }
+        self.write_post_events(&n.post_events);
     }
 
     fn write_chord_event(&mut self, c: &ChordEvent) {
@@ -474,6 +475,7 @@ impl<'a> Serializer<'a> {
         if let Some(dur) = &c.duration {
             self.write_duration(dur);
         }
+        self.write_post_events(&c.post_events);
     }
 
     fn write_rest_event(&mut self, r: &RestEvent) {
@@ -481,6 +483,7 @@ impl<'a> Serializer<'a> {
         if let Some(dur) = &r.duration {
             self.write_duration(dur);
         }
+        self.write_post_events(&r.post_events);
     }
 
     fn write_skip_event(&mut self, s: &SkipEvent) {
@@ -488,12 +491,26 @@ impl<'a> Serializer<'a> {
         if let Some(dur) = &s.duration {
             self.write_duration(dur);
         }
+        self.write_post_events(&s.post_events);
     }
 
     fn write_multi_measure_rest(&mut self, r: &MultiMeasureRestEvent) {
         self.out.push('R');
         if let Some(dur) = &r.duration {
             self.write_duration(dur);
+        }
+        self.write_post_events(&r.post_events);
+    }
+
+    fn write_post_events(&mut self, events: &[PostEvent]) {
+        for ev in events {
+            match ev {
+                PostEvent::Tie => self.out.push('~'),
+                PostEvent::SlurStart => self.out.push('('),
+                PostEvent::SlurEnd => self.out.push(')'),
+                PostEvent::PhrasingSlurStart => self.out.push_str("\\("),
+                PostEvent::PhrasingSlurEnd => self.out.push_str("\\)"),
+            }
         }
     }
 
@@ -575,6 +592,7 @@ mod tests {
                             multipliers: vec![],
                         }),
                         pitched_rest: false,
+                        post_events: vec![],
                     },
                 )]))],
             })],
@@ -630,6 +648,7 @@ mod tests {
                             multipliers: vec![],
                         }),
                         pitched_rest: false,
+                        post_events: vec![],
                     })])),
                     ScoreItem::Layout(LayoutBlock { body: vec![] }),
                     ScoreItem::Midi(MidiBlock { body: vec![] }),
@@ -663,6 +682,7 @@ mod tests {
                             multipliers: vec![],
                         }),
                         pitched_rest: false,
+                        post_events: vec![],
                     }),
                     Music::Note(NoteEvent {
                         pitch: Pitch {
@@ -679,6 +699,7 @@ mod tests {
                             multipliers: vec![],
                         }),
                         pitched_rest: false,
+                        post_events: vec![],
                     }),
                 ]))),
             })],
@@ -719,6 +740,7 @@ mod tests {
                         multipliers: vec![],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -737,6 +759,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -755,6 +778,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -773,6 +797,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![(4, 1)],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -800,6 +825,7 @@ mod tests {
                         multipliers: vec![(2, 3)],
                     }),
                     pitched_rest: false,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -827,6 +853,7 @@ mod tests {
                         multipliers: vec![],
                     }),
                     pitched_rest: true,
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -941,6 +968,7 @@ mod tests {
                         dots: 0,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -985,6 +1013,7 @@ mod tests {
                         dots: 1,
                         multipliers: vec![],
                     }),
+                    post_events: vec![],
                 }),
             ]))],
         };
@@ -1007,6 +1036,7 @@ mod tests {
                         octave_check: None,
                     }],
                     duration: None,
+                    post_events: vec![],
                 }),
             ]))],
         };
