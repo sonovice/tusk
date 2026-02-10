@@ -865,11 +865,34 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 20.1 Model & Parser
 
-- [ ] [P] Parse `\lyricmode`, `\lyrics`, `\addlyrics`, `\lyricsto "voice"`; lyric elements (syllables), hyphen `--`, extender `__`; elision
-- [ ] [P] Add `LyricModeMusic`, `Lyrics`, `AddLyrics`, `Lyricsto`, `LyricEvent`, `HyphenEvent`, `ExtenderEvent`
-- [ ] [S] Serialize lyrics and lyric mode
-- [ ] [V] Lyricsto voice reference exists
-- [ ] [T] Fragment: `\addlyrics { A -- way __ }` and `\lyricsto "one" \lyricmode { One two }`
+- [x] [P] Parse `\lyricmode`, `\lyrics`, `\addlyrics`, `\lyricsto "voice"`; lyric elements (syllables), hyphen `--`, extender `__`; elision
+  - `\lyricmode { ... }` → `Music::LyricMode { body }` with lyric elements inside
+  - `\lyrics { ... }` → `Music::ContextedMusic { New, "Lyrics", LyricMode }` (shorthand expansion)
+  - `\addlyrics { ... }` → `Music::AddLyrics { music, lyrics }` wrapping preceding music; supports chaining
+  - `\lyricsto "voice" { ... }` → `Music::LyricsTo { voice_id, lyrics }`
+  - Lyric body: words (Symbol/NoteName/String) become `Music::Lyric(LyricEvent)`
+  - `--` parsed as two consecutive Dash tokens at parser level → `PostEvent::LyricHyphen`
+  - `__` parsed as two consecutive Underscore tokens → `PostEvent::LyricExtender`
+  - `~` (tie) supported in lyric context
+  - parser/lyrics.rs submodule (237 LOC)
+- [x] [P] Add `LyricModeMusic`, `Lyrics`, `AddLyrics`, `Lyricsto`, `LyricEvent`, `HyphenEvent`, `ExtenderEvent`
+  - `Music::LyricMode { body }`, `Music::AddLyrics { music, lyrics }`, `Music::LyricsTo { voice_id, lyrics }`, `Music::Lyric(LyricEvent)`
+  - `LyricEvent` struct: text, optional duration, post_events
+  - `PostEvent::LyricHyphen`, `PostEvent::LyricExtender` variants
+- [x] [S] Serialize lyrics and lyric mode
+  - `\lyricmode`, `\addlyrics` (chained), `\lyricsto "voice"`, lyric event text+duration
+  - Hyphen → ` --`, Extender → ` __` (space-separated for readability)
+  - 7 serializer tests
+- [x] [V] Lyricsto voice reference exists
+  - LyricMode/AddLyrics/LyricsTo/Lyric validated recursively
+  - Duration and post-events validated on LyricEvent
+  - LyricHyphen/LyricExtender don't affect span balance
+  - `ValidationError::EmptyLyricSyllable` added (not currently triggered but available)
+  - 5 validator tests
+- [x] [T] Fragment: `\addlyrics { A -- way __ }` and `\lyricsto "one" \lyricmode { One two }`
+  - Fixture: fragment_lyrics.ly (score+lyricsto, lyricmode+hyphens+extenders, addlyrics, lyrics shorthand)
+  - 20 parser tests: lyricmode basic/duration/hyphen/extender/note-names/string/tie, lyrics shorthand, addlyrics basic/chained/hyphens, lyricsto basic/identifier, 7 roundtrip tests
+  - 683 total tests pass (was 652)
 
 ### 20.2 Import & Export
 

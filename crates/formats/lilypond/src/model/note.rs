@@ -130,6 +130,10 @@ pub enum PostEvent {
     /// The value is the subdivision (8, 16, 32, 64, etc.).
     /// `:` alone (no number) means "default" tremolo, stored as 0.
     Tremolo(u32),
+    /// Lyric hyphen: `--` (syllable continuation).
+    LyricHyphen,
+    /// Lyric extender: `__` (melisma/note hold).
+    LyricExtender,
 }
 
 /// Known LilyPond dynamic marking names (from `dynamic-scripts-init.ly`).
@@ -261,6 +265,20 @@ pub struct MultiMeasureRestEvent {
     /// Duration; `None` means "use default/previous duration".
     pub duration: Option<Duration>,
     /// Post-events attached after the duration.
+    pub post_events: Vec<PostEvent>,
+}
+
+/// A lyric event: a syllable with optional duration and post-events.
+///
+/// In lyric mode, words/strings become lyric elements with optional duration,
+/// hyphen (`--`), and extender (`__`) post-events.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LyricEvent {
+    /// The syllable text (word or string).
+    pub text: String,
+    /// Duration; `None` means "use default/previous duration".
+    pub duration: Option<Duration>,
+    /// Post-events (hyphens, extenders, etc.) attached after the duration.
     pub post_events: Vec<PostEvent>,
 }
 

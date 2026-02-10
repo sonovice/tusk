@@ -9,7 +9,7 @@ pub mod signature;
 
 pub use duration::Duration;
 pub use note::{
-    ChordEvent, ChordRepetitionEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS,
+    ChordEvent, ChordRepetitionEvent, Direction, KNOWN_DYNAMICS, KNOWN_ORNAMENTS, LyricEvent,
     MultiMeasureRestEvent, NoteEvent, PostEvent, RestEvent, ScriptAbbreviation, SkipEvent,
 };
 pub use pitch::Pitch;
@@ -340,6 +340,23 @@ pub enum Music {
     BarCheck,
     /// Bar line command: `\bar "type"` — sets explicit bar line style.
     BarLine { bar_type: String },
+    /// `\lyricmode { ... }` — lyric mode music.
+    LyricMode { body: Box<Music> },
+    /// `\addlyrics { ... }` — attach lyrics to preceding music.
+    ///
+    /// Parsed as: `music \addlyrics lyrics1 [\addlyrics lyrics2 ...]`.
+    /// The `music` field is the preceding music, `lyrics` are the lyric blocks.
+    AddLyrics {
+        music: Box<Music>,
+        lyrics: Vec<Music>,
+    },
+    /// `\lyricsto "voice" { ... }` — attach lyrics to a named voice.
+    LyricsTo {
+        voice_id: String,
+        lyrics: Box<Music>,
+    },
+    /// A lyric event: a syllable with optional duration and post-events.
+    Lyric(LyricEvent),
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

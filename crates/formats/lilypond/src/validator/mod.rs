@@ -88,6 +88,9 @@ pub enum ValidationError {
     #[error("empty bar line type")]
     EmptyBarLineType,
 
+    #[error("empty lyric syllable")]
+    EmptyLyricSyllable,
+
     #[error("{0}")]
     Other(String),
 }
@@ -278,7 +281,9 @@ impl SpanCounts {
                 | note::PostEvent::Fingering { .. }
                 | note::PostEvent::NamedArticulation { .. }
                 | note::PostEvent::StringNumber { .. }
-                | note::PostEvent::Tremolo(_) => {}
+                | note::PostEvent::Tremolo(_)
+                | note::PostEvent::LyricHyphen
+                | note::PostEvent::LyricExtender => {}
             }
         }
     }
@@ -324,6 +329,19 @@ fn count_spans(m: &Music, counts: &mut SpanCounts) {
         Music::ContextedMusic { music, .. } => {
             count_spans(music, counts);
         }
+        Music::LyricMode { body } => {
+            count_spans(body, counts);
+        }
+        Music::AddLyrics { music, lyrics } => {
+            count_spans(music, counts);
+            for ly in lyrics {
+                count_spans(ly, counts);
+            }
+        }
+        Music::LyricsTo { lyrics, .. } => {
+            count_spans(lyrics, counts);
+        }
+        Music::Lyric(le) => counts.count_post_events(&le.post_events),
         Music::BarCheck | Music::BarLine { .. } => {}
         _ => {}
     }
@@ -506,6 +524,24 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
             }
             validate_music(main, errors);
             validate_music(grace, errors);
+        }
+        Music::LyricMode { body } => {
+            validate_music(body, errors);
+        }
+        Music::AddLyrics { music, lyrics } => {
+            validate_music(music, errors);
+            for ly in lyrics {
+                validate_music(ly, errors);
+            }
+        }
+        Music::LyricsTo { lyrics, .. } => {
+            validate_music(lyrics, errors);
+        }
+        Music::Lyric(le) => {
+            if let Some(dur) = &le.duration {
+                validate_duration(dur, errors);
+            }
+            validate_post_events(&le.post_events, errors);
         }
         Music::AutoBeamOn | Music::AutoBeamOff => {}
         Music::BarCheck => {}

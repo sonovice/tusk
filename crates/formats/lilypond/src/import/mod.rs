@@ -982,6 +982,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         PostEvent::Tremolo(value) => {
                             wrap_last_in_btrem(&mut layer, *value, &mut ornam_counter);
                         }
+                        PostEvent::LyricHyphen | PostEvent::LyricExtender => {
+                            // Lyric post-events handled in Phase 20.2
+                        }
                     }
                 }
             }
@@ -1335,6 +1338,22 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         }
         Music::BarCheck => events.push(LyEvent::BarCheck),
         Music::BarLine { bar_type } => events.push(LyEvent::BarLine(bar_type.clone())),
+        Music::LyricMode { body } => {
+            // Lyric mode content — collect from body (lyrics handled in Phase 20.2)
+            collect_events(body, events, ctx);
+        }
+        Music::AddLyrics { music, lyrics } => {
+            collect_events(music, events, ctx);
+            for ly in lyrics {
+                collect_events(ly, events, ctx);
+            }
+        }
+        Music::LyricsTo { lyrics, .. } => {
+            collect_events(lyrics, events, ctx);
+        }
+        Music::Lyric(_) => {
+            // Lyric events imported in Phase 20.2
+        }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

@@ -1259,3 +1259,120 @@ fn chord_rep_span_balance() {
     };
     assert!(validate(&file).is_ok());
 }
+
+// ── Lyric validation (Phase 20) ─────────────────────────────────
+
+#[test]
+fn lyricmode_valid_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![
+                Music::Lyric(LyricEvent {
+                    text: "hello".into(),
+                    duration: None,
+                    post_events: vec![],
+                }),
+                Music::Lyric(LyricEvent {
+                    text: "world".into(),
+                    duration: None,
+                    post_events: vec![],
+                }),
+            ])),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn lyric_with_invalid_duration_fails() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "bad".into(),
+                duration: Some(Duration {
+                    base: 3, // invalid — not a power of 2
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            })])),
+        })],
+    };
+    let errs = validate(&file).unwrap_err();
+    assert!(
+        errs.iter()
+            .any(|e| matches!(e, ValidationError::InvalidDurationBase { base: 3 }))
+    );
+}
+
+#[test]
+fn addlyrics_valid_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::AddLyrics {
+            music: Box::new(Music::Sequential(vec![Music::Note(NoteEvent {
+                pitch: Pitch {
+                    step: 'c',
+                    alter: 0.0,
+                    octave: 0,
+                    force_accidental: false,
+                    cautionary: false,
+                    octave_check: None,
+                },
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                pitched_rest: false,
+                post_events: vec![],
+            })])),
+            lyrics: vec![Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "do".into(),
+                duration: None,
+                post_events: vec![],
+            })])],
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn lyricsto_valid_passes() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricsTo {
+            voice_id: "melody".into(),
+            lyrics: Box::new(Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "la".into(),
+                duration: None,
+                post_events: vec![],
+            })])),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}
+
+#[test]
+fn lyric_hyphen_extender_dont_affect_span_balance() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![
+                Music::Lyric(LyricEvent {
+                    text: "hel".into(),
+                    duration: None,
+                    post_events: vec![PostEvent::LyricHyphen],
+                }),
+                Music::Lyric(LyricEvent {
+                    text: "lo".into(),
+                    duration: None,
+                    post_events: vec![PostEvent::LyricExtender],
+                }),
+            ])),
+        })],
+    };
+    assert!(validate(&file).is_ok());
+}

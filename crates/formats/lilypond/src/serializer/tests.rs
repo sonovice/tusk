@@ -1021,3 +1021,137 @@ fn serialize_chord_rep_with_post_events() {
     let output = serialize(&file);
     assert_eq!(output.trim(), "q4~");
 }
+
+// ── Lyric serialization (Phase 20) ─────────────────────────────────
+
+#[test]
+fn serialize_lyricmode() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![
+                Music::Lyric(LyricEvent {
+                    text: "hello".into(),
+                    duration: None,
+                    post_events: vec![],
+                }),
+                Music::Lyric(LyricEvent {
+                    text: "world".into(),
+                    duration: None,
+                    post_events: vec![],
+                }),
+            ])),
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\lyricmode { hello world }");
+}
+
+#[test]
+fn serialize_lyric_with_hyphen() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![
+                Music::Lyric(LyricEvent {
+                    text: "hel".into(),
+                    duration: None,
+                    post_events: vec![PostEvent::LyricHyphen],
+                }),
+                Music::Lyric(LyricEvent {
+                    text: "lo".into(),
+                    duration: None,
+                    post_events: vec![],
+                }),
+            ])),
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\lyricmode { hel -- lo }");
+}
+
+#[test]
+fn serialize_lyric_with_extender() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "hold".into(),
+                duration: None,
+                post_events: vec![PostEvent::LyricExtender],
+            })])),
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\lyricmode { hold __ }");
+}
+
+#[test]
+fn serialize_lyricsto() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricsTo {
+            voice_id: "melody".into(),
+            lyrics: Box::new(Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "la".into(),
+                duration: None,
+                post_events: vec![],
+            })])),
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\lyricsto \"melody\" { la }");
+}
+
+#[test]
+fn serialize_addlyrics() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::AddLyrics {
+            music: Box::new(Music::Sequential(vec![Music::Note(NoteEvent {
+                pitch: Pitch {
+                    step: 'c',
+                    alter: 0.0,
+                    octave: 0,
+                    force_accidental: false,
+                    cautionary: false,
+                    octave_check: None,
+                },
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 0,
+                    multipliers: vec![],
+                }),
+                pitched_rest: false,
+                post_events: vec![],
+            })])),
+            lyrics: vec![Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "do".into(),
+                duration: None,
+                post_events: vec![],
+            })])],
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "{ c4 } \\addlyrics { do }");
+}
+
+#[test]
+fn serialize_lyric_with_duration() {
+    let file = LilyPondFile {
+        version: None,
+        items: vec![ToplevelExpression::Music(Music::LyricMode {
+            body: Box::new(Music::Sequential(vec![Music::Lyric(LyricEvent {
+                text: "word".into(),
+                duration: Some(Duration {
+                    base: 4,
+                    dots: 1,
+                    multipliers: vec![],
+                }),
+                post_events: vec![],
+            })])),
+        })],
+    };
+    let output = serialize(&file);
+    assert_eq!(output.trim(), "\\lyricmode { word4. }");
+}

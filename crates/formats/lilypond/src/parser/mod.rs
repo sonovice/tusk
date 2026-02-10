@@ -161,7 +161,11 @@ impl<'src> Parser<'src> {
                 self.parse_assignment_or_music()
             }
             // Music expressions
-            _ => Ok(ToplevelExpression::Music(self.parse_music()?)),
+            _ => {
+                let music = self.parse_music()?;
+                let music = self.try_wrap_addlyrics(music)?;
+                Ok(ToplevelExpression::Music(music))
+            }
         }
     }
 
@@ -235,7 +239,10 @@ impl<'src> Parser<'src> {
             | Token::Repeat
             | Token::New
             | Token::Context
-            | Token::Change => {
+            | Token::Change
+            | Token::LyricMode
+            | Token::Lyrics
+            | Token::LyricsTo => {
                 let m = self.parse_music()?;
                 Ok(AssignmentValue::Music(Box::new(m)))
             }
@@ -282,7 +289,11 @@ impl<'src> Parser<'src> {
             Token::Header => Ok(ScoreItem::Header(self.parse_header_block()?)),
             Token::Layout => Ok(ScoreItem::Layout(self.parse_layout_block()?)),
             Token::Midi => Ok(ScoreItem::Midi(self.parse_midi_block()?)),
-            _ => Ok(ScoreItem::Music(self.parse_music()?)),
+            _ => {
+                let music = self.parse_music()?;
+                let music = self.try_wrap_addlyrics(music)?;
+                Ok(ScoreItem::Music(music))
+            }
         }
     }
 
@@ -635,6 +646,17 @@ impl<'src> Parser<'src> {
             Token::EscapedWord(s) if s == "acciaccatura" => self.parse_acciaccatura(),
             Token::EscapedWord(s) if s == "appoggiatura" => self.parse_appoggiatura(),
             Token::EscapedWord(s) if s == "afterGrace" => self.parse_after_grace(),
+            Token::LyricMode => self.parse_lyric_mode(),
+            Token::Lyrics => self.parse_lyrics_shorthand(),
+            Token::LyricsTo => self.parse_lyricsto(),
+            Token::AddLyrics => {
+                // Standalone \addlyrics without preceding music — parse error
+                Err(ParseError::Unexpected {
+                    found: self.current.token.clone(),
+                    offset: self.offset(),
+                    expected: "music expression before \\addlyrics".into(),
+                })
+            }
             Token::EscapedWord(s) if s == "bar" => self.parse_bar_line(),
             Token::Pipe => {
                 self.advance()?;
@@ -1205,7 +1227,9 @@ impl<'src> Parser<'src> {
         self.expect(&Token::BraceOpen)?;
         let mut items = Vec::new();
         while *self.peek() != Token::BraceClose && !self.at_eof() {
-            items.push(self.parse_music()?);
+            let m = self.parse_music()?;
+            let m = self.try_wrap_addlyrics(m)?;
+            items.push(m);
         }
         self.expect(&Token::BraceClose)?;
         Ok(Music::Sequential(items))
@@ -1227,7 +1251,9 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 continue;
             }
-            items.push(self.parse_music()?);
+            let m = self.parse_music()?;
+            let m = self.try_wrap_addlyrics(m)?;
+            items.push(m);
         }
         self.expect(&Token::DoubleAngleClose)?;
         Ok(Music::Simultaneous(items))
@@ -1402,6 +1428,7 @@ impl<'src> Parser<'src> {
         }
     }
 }
+mod lyrics;
 mod raw_blocks;
 mod signatures;
 
@@ -1422,6 +1449,8 @@ mod tests_barcheck;
 mod tests_chord_rep;
 #[cfg(test)]
 mod tests_grace;
+#[cfg(test)]
+mod tests_lyrics;
 #[cfg(test)]
 mod tests_post_events;
 #[cfg(test)]

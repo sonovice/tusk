@@ -487,6 +487,24 @@ impl<'a> Serializer<'a> {
             Music::Skip(s) => self.write_skip_event(s),
             Music::MultiMeasureRest(r) => self.write_multi_measure_rest(r),
             Music::ChordRepetition(cr) => self.write_chord_repetition(cr),
+            Music::LyricMode { body } => {
+                self.out.push_str("\\lyricmode ");
+                self.write_music(body);
+            }
+            Music::AddLyrics { music, lyrics } => {
+                self.write_music(music);
+                for ly in lyrics {
+                    self.out.push_str(" \\addlyrics ");
+                    self.write_music(ly);
+                }
+            }
+            Music::LyricsTo { voice_id, lyrics } => {
+                self.out.push_str("\\lyricsto \"");
+                self.out.push_str(voice_id);
+                self.out.push_str("\" ");
+                self.write_music(lyrics);
+            }
+            Music::Lyric(le) => self.write_lyric_event(le),
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');
@@ -579,6 +597,14 @@ impl<'a> Serializer<'a> {
         self.write_post_events(&r.post_events);
     }
 
+    fn write_lyric_event(&mut self, le: &LyricEvent) {
+        self.out.push_str(&le.text);
+        if let Some(dur) = &le.duration {
+            self.write_duration(dur);
+        }
+        self.write_post_events(&le.post_events);
+    }
+
     fn write_chord_repetition(&mut self, cr: &ChordRepetitionEvent) {
         self.out.push('q');
         if let Some(dur) = &cr.duration {
@@ -628,6 +654,8 @@ impl<'a> Serializer<'a> {
                         self.out.push_str(&n.to_string());
                     }
                 }
+                PostEvent::LyricHyphen => self.out.push_str(" --"),
+                PostEvent::LyricExtender => self.out.push_str(" __"),
             }
         }
     }
