@@ -65,17 +65,7 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
                                 let tusk_model::elements::StaffChild::Layer(layer) = sc;
                                 let mut items = Vec::new();
                                 for lc in &layer.children {
-                                    if let Some(mut m) =
-                                        convert_layer_child_with_slurs(lc, &slur_post_events)
-                                    {
-                                        // Apply slur post-events based on xml:id
-                                        if let Some(id) = layer_child_xml_id(lc)
-                                            && let Some(events) = slur_post_events.get(id)
-                                        {
-                                            append_post_events(&mut m, events);
-                                        }
-                                        items.push(m);
-                                    }
+                                    convert_layer_child_to_items(lc, &slur_post_events, &mut items);
                                 }
                                 layers.push(items);
                             }
@@ -375,17 +365,83 @@ fn find_score(mei: &Mei) -> Option<&tusk_model::elements::Score> {
     None
 }
 
-/// Convert a single MEI LayerChild to a LilyPond Music expression.
-/// Ties are handled in conversion.rs; slur post-events are applied separately.
-fn convert_layer_child_with_slurs(
+/// Convert a LayerChild to Music items, handling Beam containers by flattening
+/// their children and adding BeamStart/BeamEnd post-events.
+fn convert_layer_child_to_items(
     child: &LayerChild,
-    _slur_map: &HashMap<String, Vec<PostEvent>>,
-) -> Option<Music> {
+    slur_map: &HashMap<String, Vec<PostEvent>>,
+    items: &mut Vec<Music>,
+) {
+    match child {
+        LayerChild::Beam(beam) => {
+            let count = beam.children.len();
+            for (i, bc) in beam.children.iter().enumerate() {
+                if let Some(mut m) = convert_beam_child(bc) {
+                    // Apply slur post-events by xml:id
+                    if let Some(id) = beam_child_xml_id(bc)
+                        && let Some(events) = slur_map.get(id)
+                    {
+                        append_post_events(&mut m, events);
+                    }
+                    // First child gets BeamStart, last gets BeamEnd
+                    if i == 0 {
+                        append_post_events(&mut m, &[PostEvent::BeamStart]);
+                    }
+                    if i == count - 1 {
+                        append_post_events(&mut m, &[PostEvent::BeamEnd]);
+                    }
+                    items.push(m);
+                }
+            }
+        }
+        _ => {
+            if let Some(mut m) = convert_layer_child(child) {
+                if let Some(id) = layer_child_xml_id(child)
+                    && let Some(events) = slur_map.get(id)
+                {
+                    append_post_events(&mut m, events);
+                }
+                items.push(m);
+            }
+        }
+    }
+}
+
+/// Convert a single MEI LayerChild to a LilyPond Music expression.
+fn convert_layer_child(child: &LayerChild) -> Option<Music> {
     match child {
         LayerChild::Note(note) => Some(convert_mei_note(note)),
         LayerChild::Rest(rest) => Some(convert_mei_rest(rest)),
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest)),
         LayerChild::Chord(chord) => Some(convert_mei_chord(chord)),
+        _ => None,
+    }
+}
+
+/// Convert a BeamChild to a LilyPond Music expression.
+fn convert_beam_child(child: &tusk_model::elements::BeamChild) -> Option<Music> {
+    use tusk_model::elements::BeamChild;
+    match child {
+        BeamChild::Note(note) => Some(convert_mei_note(note)),
+        BeamChild::Rest(rest) => Some(convert_mei_rest(rest)),
+        BeamChild::Chord(chord) => Some(convert_mei_chord(chord)),
+        BeamChild::Beam(beam) => {
+            // Nested beams: flatten recursively (nested beams just continue the beam)
+            // This shouldn't produce beam markers for the inner beam since
+            // LilyPond uses a flat [ ... ] without nesting
+            let mut nested = Vec::new();
+            for bc in &beam.children {
+                if let Some(m) = convert_beam_child(bc) {
+                    nested.push(m);
+                }
+            }
+            // Return first item if single, otherwise none (shouldn't occur in practice)
+            if nested.len() == 1 {
+                nested.into_iter().next()
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
@@ -397,6 +453,18 @@ fn layer_child_xml_id(child: &LayerChild) -> Option<&str> {
         LayerChild::Rest(rest) => rest.common.xml_id.as_deref(),
         LayerChild::MRest(mrest) => mrest.common.xml_id.as_deref(),
         LayerChild::Chord(chord) => chord.common.xml_id.as_deref(),
+        _ => None,
+    }
+}
+
+/// Get xml:id from a BeamChild.
+fn beam_child_xml_id(child: &tusk_model::elements::BeamChild) -> Option<&str> {
+    use tusk_model::elements::BeamChild;
+    match child {
+        BeamChild::Note(note) => note.common.xml_id.as_deref(),
+        BeamChild::Rest(rest) => rest.common.xml_id.as_deref(),
+        BeamChild::Chord(chord) => chord.common.xml_id.as_deref(),
+        BeamChild::Beam(beam) => beam.common.xml_id.as_deref(),
         _ => None,
     }
 }

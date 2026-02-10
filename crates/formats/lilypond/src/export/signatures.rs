@@ -91,6 +91,16 @@ fn parse_event_sequence_label(staff_def: &tusk_model::elements::StaffDef) -> Vec
                 position,
                 music: Music::TimeSignature(ts),
             });
+        } else if type_str == "autobeamon" {
+            events.push(SignatureEvent {
+                position,
+                music: Music::AutoBeamOn,
+            });
+        } else if type_str == "autobeamoff" {
+            events.push(SignatureEvent {
+                position,
+                music: Music::AutoBeamOff,
+            });
         }
     }
 

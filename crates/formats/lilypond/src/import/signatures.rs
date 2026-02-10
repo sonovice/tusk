@@ -61,6 +61,12 @@ pub(super) fn apply_signatures_to_staff_def(
                     first_time = false;
                 }
             }
+            LyEvent::AutoBeamOn => {
+                entries.push(format!("autobeamon@{note_index}"));
+            }
+            LyEvent::AutoBeamOff => {
+                entries.push(format!("autobeamoff@{note_index}"));
+            }
             LyEvent::Note(_)
             | LyEvent::Chord { .. }
             | LyEvent::Rest(_)

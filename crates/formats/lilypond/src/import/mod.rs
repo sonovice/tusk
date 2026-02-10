@@ -8,9 +8,10 @@ mod tests;
 
 use thiserror::Error;
 use tusk_model::elements::{
-    Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild, Measure,
-    MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef, ScoreDefChild,
-    Section, SectionChild, Slur, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild, TitleStmt,
+    Beam, BeamChild, Body, BodyChild, FileDesc, FileDescChild, Layer, LayerChild, Mdiv, MdivChild,
+    Measure, MeasureChild, Mei, MeiChild, MeiHead, MeiHeadChild, Score, ScoreChild, ScoreDef,
+    ScoreDefChild, Section, SectionChild, Slur, Staff, StaffChild, StaffDef, StaffGrp,
+    StaffGrpChild, TitleStmt,
 };
 use tusk_model::generated::data::{DataTie, DataUri, DataWord};
 
@@ -515,6 +516,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut measure = Measure::default();
     measure.common.n = Some(DataWord("1".to_string()));
     let mut slur_counter = 0u32;
+    let mut beam_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -530,6 +532,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 collect_events(m, &mut events, &mut voice_ctx);
             }
 
+            // Track beam start/end positions (index in layer.children)
+            let mut beam_starts: Vec<usize> = Vec::new();
+
             // Track IDs of notes for tie/slur resolution
             let mut pending_slurs: Vec<PendingSpanner> = Vec::new();
             let mut tie_pending = false;
@@ -539,18 +544,15 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     LyEvent::Note(note) => {
                         id_counter += 1;
                         let mut mei_note = convert_note(note, id_counter);
-                        // If a tie was pending from the previous note, mark this as tie end
                         if tie_pending {
                             mei_note.note_anl.tie = Some(DataTie::from("t".to_string()));
                             tie_pending = false;
                         }
                         let id_str = format!("ly-note-{}", id_counter);
                         let pe = note.post_events.clone();
-                        // Check if this note starts a tie
                         if pe.contains(&PostEvent::Tie) {
                             match &mei_note.note_anl.tie {
                                 Some(t) if t.0 == "t" => {
-                                    // Already has terminal tie → medial
                                     mei_note.note_anl.tie = Some(DataTie::from("m".to_string()));
                                 }
                                 _ => {
@@ -586,7 +588,6 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         id_counter += 1;
                         let mut mei_chord =
                             convert_chord(pitches, duration.as_ref(), &mut id_counter);
-                        // If a tie was pending, mark all chord notes as tie end
                         if tie_pending {
                             for child in &mut mei_chord.children {
                                 let tusk_model::elements::ChordChild::Note(n) = child;
@@ -600,7 +601,6 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             .clone()
                             .unwrap_or_else(|| format!("ly-chord-{}", id_counter));
                         let pe = post_events.clone();
-                        // Chord ties: set @tie on all child notes
                         if pe.contains(&PostEvent::Tie) {
                             for child in &mut mei_chord.children {
                                 let tusk_model::elements::ChordChild::Note(n) = child;
@@ -627,10 +627,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                     LyEvent::Skip(_)
                     | LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
-                    | LyEvent::TimeSig(_) => continue,
+                    | LyEvent::TimeSig(_)
+                    | LyEvent::AutoBeamOn
+                    | LyEvent::AutoBeamOff => continue,
                 };
 
-                // Process slur/phrasing slur post-events
+                // Process post-events
                 for pe in &post_events {
                     match pe {
                         PostEvent::SlurStart => {
@@ -641,7 +643,6 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             });
                         }
                         PostEvent::SlurEnd => {
-                            // Find most recent pending regular slur
                             if let Some(pos) = pending_slurs.iter().rposition(|s| !s.is_phrase) {
                                 let pending = pending_slurs.remove(pos);
                                 slur_counter += 1;
@@ -663,7 +664,6 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                             });
                         }
                         PostEvent::PhrasingSlurEnd => {
-                            // Find most recent pending phrasing slur
                             if let Some(pos) = pending_slurs.iter().rposition(|s| s.is_phrase) {
                                 let pending = pending_slurs.remove(pos);
                                 slur_counter += 1;
@@ -677,9 +677,26 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 measure.children.push(MeasureChild::Slur(Box::new(slur)));
                             }
                         }
-                        PostEvent::Tie => {} // handled above
-                        PostEvent::BeamStart | PostEvent::BeamEnd => {
-                            // Beams handled at export; not represented as MEI control events
+                        PostEvent::Tie => {}
+                        PostEvent::BeamStart => {
+                            // Record position of this note in the layer
+                            beam_starts.push(layer.children.len() - 1);
+                        }
+                        PostEvent::BeamEnd => {
+                            // Match with most recent beam start
+                            if let Some(start_pos) = beam_starts.pop() {
+                                let end_pos = layer.children.len() - 1;
+                                beam_counter += 1;
+                                group_beamed_notes(&mut layer, start_pos, end_pos, beam_counter);
+                                // Adjust any remaining beam_starts indices
+                                // (grouping replaced N items with 1 Beam item)
+                                let removed = end_pos - start_pos; // items collapsed
+                                for bs in &mut beam_starts {
+                                    if *bs > start_pos {
+                                        *bs -= removed;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -696,6 +713,43 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
         .push(SectionChild::Measure(Box::new(measure)));
 
     Ok(section)
+}
+
+/// Group a range of layer children into a `<beam>` element.
+///
+/// Replaces `layer.children[start..=end]` with a single `LayerChild::Beam`
+/// containing those elements as `BeamChild` items.
+fn group_beamed_notes(layer: &mut Layer, start: usize, end: usize, beam_id: u32) {
+    if start >= layer.children.len() || end >= layer.children.len() || start > end {
+        return;
+    }
+
+    let mut beam = Beam::default();
+    beam.common.xml_id = Some(format!("ly-beam-{beam_id}"));
+
+    // Drain the range and convert LayerChild → BeamChild
+    let items: Vec<LayerChild> = layer.children.drain(start..=end).collect();
+    for item in items {
+        if let Some(bc) = layer_child_to_beam_child(item) {
+            beam.children.push(bc);
+        }
+    }
+
+    // Insert the beam at the start position
+    layer
+        .children
+        .insert(start, LayerChild::Beam(Box::new(beam)));
+}
+
+/// Convert a LayerChild to a BeamChild (Note, Rest, Chord).
+fn layer_child_to_beam_child(child: LayerChild) -> Option<BeamChild> {
+    match child {
+        LayerChild::Note(n) => Some(BeamChild::Note(n)),
+        LayerChild::Rest(r) => Some(BeamChild::Rest(r)),
+        LayerChild::Chord(c) => Some(BeamChild::Chord(c)),
+        LayerChild::Beam(b) => Some(BeamChild::Beam(b)),
+        _ => None,
+    }
 }
 
 /// Create an MEI Slur control event.
@@ -765,6 +819,8 @@ enum LyEvent {
     Clef(model::Clef),
     KeySig(model::KeySignature),
     TimeSig(model::TimeSignature),
+    AutoBeamOn,
+    AutoBeamOff,
 }
 
 /// Pitch context tracking for relative mode and transposition.
@@ -873,9 +929,8 @@ fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut PitchConte
         Music::Clef(c) => events.push(LyEvent::Clef(c.clone())),
         Music::KeySignature(ks) => events.push(LyEvent::KeySig(ks.clone())),
         Music::TimeSignature(ts) => events.push(LyEvent::TimeSig(ts.clone())),
-        Music::AutoBeamOn | Music::AutoBeamOff => {
-            // Auto-beam commands don't produce note events; handled at export
-        }
+        Music::AutoBeamOn => events.push(LyEvent::AutoBeamOn),
+        Music::AutoBeamOff => events.push(LyEvent::AutoBeamOff),
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
 }

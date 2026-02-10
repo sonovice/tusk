@@ -850,3 +850,80 @@ fn import_combined_tie_and_slur() {
     let slurs = measure_slurs(&mei);
     assert_eq!(slurs.len(), 1);
 }
+
+// --- Phase 10.2: Beam import tests ---
+
+#[test]
+fn import_beam_creates_beam_element() {
+    let mei = parse_and_import("{ c8[ d e f] }");
+    let children = layer_children(&mei);
+    assert_eq!(
+        children.len(),
+        1,
+        "expected 1 beam element, got {children:?}"
+    );
+    if let LayerChild::Beam(beam) = &children[0] {
+        assert_eq!(beam.children.len(), 4, "beam should contain 4 notes");
+        assert!(beam.common.xml_id.is_some());
+    } else {
+        panic!("expected Beam, got {:?}", children[0]);
+    }
+}
+
+#[test]
+fn import_multiple_beams() {
+    let mei = parse_and_import("{ c8[ d] e8[ f] }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 2, "expected 2 beam elements");
+    for child in children {
+        if let LayerChild::Beam(beam) = child {
+            assert_eq!(beam.children.len(), 2);
+        } else {
+            panic!("expected Beam");
+        }
+    }
+}
+
+#[test]
+fn import_beam_with_unbeamed_notes() {
+    let mei = parse_and_import("{ c4 d8[ e f] g4 }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 3, "expected note + beam + note");
+    assert!(matches!(children[0], LayerChild::Note(_)));
+    assert!(matches!(children[1], LayerChild::Beam(_)));
+    assert!(matches!(children[2], LayerChild::Note(_)));
+}
+
+#[test]
+fn import_autobeam_in_event_label() {
+    let mei = parse_and_import("{ \\autoBeamOff c8 d \\autoBeamOn e8 }");
+    let sd = first_staff_def(&mei).unwrap();
+    let label = sd.labelled.label.as_deref().unwrap_or("");
+    assert!(
+        label.contains("autobeamoff@0"),
+        "label should contain autobeamoff: {label}"
+    );
+    assert!(
+        label.contains("autobeamon@2"),
+        "label should contain autobeamon: {label}"
+    );
+}
+
+#[test]
+fn import_beam_preserves_note_content() {
+    let mei = parse_and_import("{ cis'8[ d' ees' f'] }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 1);
+    if let LayerChild::Beam(beam) = &children[0] {
+        assert_eq!(beam.children.len(), 4);
+        // Check first note has correct pitch
+        if let tusk_model::elements::BeamChild::Note(n) = &beam.children[0] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+            assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        } else {
+            panic!("expected Note in beam");
+        }
+    } else {
+        panic!("expected Beam");
+    }
+}

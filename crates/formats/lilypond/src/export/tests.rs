@@ -465,3 +465,89 @@ fn roundtrip_ties_slurs_fixture() {
         "output should contain phrasing slur end: {output}"
     );
 }
+
+// --- Phase 10.2: Beam roundtrip tests ---
+
+#[test]
+fn roundtrip_beam_basic() {
+    let output = roundtrip("{ c8[ d e f] }");
+    assert!(
+        output.contains("["),
+        "output should contain beam start: {output}"
+    );
+    assert!(
+        output.contains("]"),
+        "output should contain beam end: {output}"
+    );
+    // First note should have [ and last should have ]
+    assert!(
+        output.contains("c8["),
+        "first note should have beam start: {output}"
+    );
+    assert!(
+        output.contains("f]"),
+        "last note should have beam end: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_multiple_beams() {
+    let output = roundtrip("{ c8[ d] e8[ f] }");
+    // Should have two beam groups
+    let bracket_opens: Vec<_> = output.match_indices('[').collect();
+    let bracket_closes: Vec<_> = output.match_indices(']').collect();
+    assert_eq!(
+        bracket_opens.len(),
+        2,
+        "should have 2 beam starts: {output}"
+    );
+    assert_eq!(bracket_closes.len(), 2, "should have 2 beam ends: {output}");
+}
+
+#[test]
+fn roundtrip_beam_with_unbeamed() {
+    let output = roundtrip("{ c4 d8[ e f] g4 }");
+    assert!(output.contains("c4"), "unbeamed note preserved: {output}");
+    assert!(output.contains("d8["), "beam start: {output}");
+    assert!(output.contains("f]"), "beam end: {output}");
+    assert!(output.contains("g4"), "unbeamed note preserved: {output}");
+}
+
+#[test]
+fn roundtrip_autobeam_commands() {
+    let output = roundtrip("{ \\autoBeamOff c8 d \\autoBeamOn e8 }");
+    assert!(
+        output.contains("\\autoBeamOff"),
+        "autoBeamOff preserved: {output}"
+    );
+    assert!(
+        output.contains("\\autoBeamOn"),
+        "autoBeamOn preserved: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_beam_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_beams.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(
+        output.contains("["),
+        "output should contain beam start: {output}"
+    );
+    assert!(
+        output.contains("]"),
+        "output should contain beam end: {output}"
+    );
+    assert!(
+        output.contains("\\autoBeamOff"),
+        "autoBeamOff preserved: {output}"
+    );
+    assert!(
+        output.contains("\\autoBeamOn"),
+        "autoBeamOn preserved: {output}"
+    );
+}

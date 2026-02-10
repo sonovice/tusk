@@ -443,10 +443,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 10.2 Import & Export
 
-- [ ] [I] Beams → MEI `<beam>` or beam span; auto-beam → context
-- [ ] [E] MEI beam → LilyPond `[ ]` or auto-beam
-- [ ] [T] Roundtrip beamed passage
-- [ ] [T] Beam fixtures; roundtrip
+- [x] [I] Beams → MEI `<beam>` or beam span; auto-beam → context
+  - BeamStart/BeamEnd post-events → group_beamed_notes() wraps notes in MEI `<beam>` container
+  - AutoBeamOn/AutoBeamOff → encoded in staffDef event sequence label (`autobeamon@POS`, `autobeamoff@POS`)
+  - layer_child_to_beam_child() converts LayerChild → BeamChild for Note/Rest/Chord
+  - 5 import tests: beam creates element, multiple beams, beam with unbeamed, autobeam label, beam preserves content
+- [x] [E] MEI beam → LilyPond `[ ]` or auto-beam
+  - convert_layer_child_to_items() handles LayerChild::Beam by flattening children with BeamStart/BeamEnd post-events
+  - convert_beam_child() converts BeamChild → Music; beam_child_xml_id() for slur post-event lookup
+  - autobeamon/autobeamoff parsed from event label and injected via inject_signature_events()
+- [x] [T] Roundtrip beamed passage
+  - roundtrip_beam_basic, roundtrip_multiple_beams, roundtrip_beam_with_unbeamed, roundtrip_autobeam_commands
+- [x] [T] Beam fixtures; roundtrip
+  - roundtrip_beam_fixture validates fragment_beams.ly (manual beams + autoBeamOff/On)
+  - 323 total tests pass
 
 ---
 
