@@ -255,28 +255,26 @@ fn convert_mei_gestural_accid_to_alter(
         DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalGesturalExtended,
     };
 
-    accid_ges.as_ref().map(|a| {
-        match a {
-            DataAccidentalGestural::MeiDataAccidentalGesturalBasic(basic) => match basic {
-                DataAccidentalGesturalBasic::Tf => -3.0,
-                DataAccidentalGesturalBasic::Ff => -2.0,
-                DataAccidentalGesturalBasic::F => -1.0,
-                DataAccidentalGesturalBasic::N => 0.0,
-                DataAccidentalGesturalBasic::S => 1.0,
-                DataAccidentalGesturalBasic::Ss => 2.0,
-                DataAccidentalGesturalBasic::Ts => 3.0,
-            },
-            DataAccidentalGestural::MeiDataAccidentalGesturalExtended(ext) => match ext {
-                DataAccidentalGesturalExtended::Su => 1.5,
-                DataAccidentalGesturalExtended::Sd => 0.5,
-                DataAccidentalGesturalExtended::Fu => -0.5,
-                DataAccidentalGesturalExtended::Fd => -1.5,
-                DataAccidentalGesturalExtended::Xu => 2.5,
-                DataAccidentalGesturalExtended::Ffd => -2.5,
-            },
-            DataAccidentalGestural::MeiDataAccidentalAeu(_)
-            | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
-        }
+    accid_ges.as_ref().map(|a| match a {
+        DataAccidentalGestural::MeiDataAccidentalGesturalBasic(basic) => match basic {
+            DataAccidentalGesturalBasic::Tf => -3.0,
+            DataAccidentalGesturalBasic::Ff => -2.0,
+            DataAccidentalGesturalBasic::F => -1.0,
+            DataAccidentalGesturalBasic::N => 0.0,
+            DataAccidentalGesturalBasic::S => 1.0,
+            DataAccidentalGesturalBasic::Ss => 2.0,
+            DataAccidentalGesturalBasic::Ts => 3.0,
+        },
+        DataAccidentalGestural::MeiDataAccidentalGesturalExtended(ext) => match ext {
+            DataAccidentalGesturalExtended::Su => 1.5,
+            DataAccidentalGesturalExtended::Sd => 0.5,
+            DataAccidentalGesturalExtended::Fu => -0.5,
+            DataAccidentalGesturalExtended::Fd => -1.5,
+            DataAccidentalGesturalExtended::Xu => 2.5,
+            DataAccidentalGesturalExtended::Ffd => -2.5,
+        },
+        DataAccidentalGestural::MeiDataAccidentalAeu(_)
+        | DataAccidentalGestural::MeiDataAccidentalPersian(_) => 0.0,
     })
 }
 

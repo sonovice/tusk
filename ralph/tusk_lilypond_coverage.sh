@@ -90,7 +90,7 @@ Read @$TASKS_FILE and the test/clippy results below. Then:
 - Follow existing codebase patterns. Use \`cargo add\` for new dependencies.
 - Keep commits focused and atomic. No attribution to AI.
 - CRITICAL: All existing tests must pass. Zero regressions.
-- CRITICAL: If a file exceeds 1500 lines, split into submodules.
+- CRITICAL: No hand-written .rs file may exceed 1500 lines. If a file is over 1500 LOC — even a pre-existing one — split it into submodules before or as part of the current task. This does NOT apply to generated files (\`generated/\` directories, \`generated_*.rs\` files, version \`data.rs\` files). See the OVERSIZED FILES section in the validation results.
 - Validate .ly fixtures with the LilyPond parser (or lilypond --check) when available.
 
 If all tasks in @$TASKS_FILE are completed and no new issues are found, output <promise>COMPLETE</promise>."
@@ -139,6 +139,25 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   FAILED_TESTS=$(echo "$TEST_OUTPUT" | grep '... FAILED$' || true)
   FAILURE_DETAILS=$(echo "$TEST_OUTPUT" | sed -n '/^failures:$/,/^test result:/p' || true)
 
+  # Detect oversized hand-written files (>1500 LOC, excluding generated)
+  echo "Checking for oversized files..."
+  OVERSIZED_FILES=$(find crates -name '*.rs' \
+    -not -path '*/generated/*' \
+    -not -name 'generated_*.rs' \
+    -not -path '*/versions/*/data.rs' \
+    -print0 \
+    | xargs -0 wc -l \
+    | grep -v ' total$' \
+    | awk '$1 > 1500 { print $1 "\t" $2 }' \
+    | sort -rn || true)
+  OVERSIZED_COUNT=0
+  if [ -n "$OVERSIZED_FILES" ]; then
+    OVERSIZED_COUNT=$(echo "$OVERSIZED_FILES" | wc -l | tr -d ' ')
+    echo "Oversized files ($OVERSIZED_COUNT): found"
+  else
+    echo "Oversized files: none"
+  fi
+
   # LilyPond coverage metrics (only if crate exists)
   LILY_AST_MODULES=0
   LILY_PARSER_MODULES=0
@@ -177,6 +196,10 @@ $FAILURE_DETAILS
 ## Clippy
 Warnings: $CLIPPY_WARNINGS | Errors: $CLIPPY_ERRORS
 $(echo "$CLIPPY_OUTPUT" | grep -E '^(warning|error)\[' | head -20 || true)
+
+## Oversized Files (>1500 LOC, must split)
+Count: $OVERSIZED_COUNT
+$OVERSIZED_FILES
 
 ## LilyPond Coverage Metrics
 AST model modules: $LILY_AST_MODULES

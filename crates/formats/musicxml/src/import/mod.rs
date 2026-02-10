@@ -594,10 +594,14 @@ mod tests {
 
                 // Check title content
                 let ts = title_stmt.unwrap();
-                let title = ts.children.iter().map(|c| {
-                    let tusk_model::elements::TitleStmtChild::Title(t) = c;
-                    t
-                }).next();
+                let title = ts
+                    .children
+                    .iter()
+                    .map(|c| {
+                        let tusk_model::elements::TitleStmtChild::Title(t) = c;
+                        t
+                    })
+                    .next();
                 assert!(title.is_some());
 
                 // Check title text
