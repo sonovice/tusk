@@ -331,7 +331,12 @@ fn parse_markup_with_scheme() {
             assert_eq!(name, "with-color");
             assert_eq!(args.len(), 2);
             match &args[0] {
-                Markup::Scheme(s) => assert_eq!(s, "#red"),
+                Markup::Scheme(s) => {
+                    assert_eq!(
+                        *s,
+                        crate::model::scheme::SchemeExpr::Identifier("red".into())
+                    )
+                }
                 other => panic!("expected Scheme, got {other:?}"),
             }
             assert_eq!(args[1], Markup::String("text".into()));
@@ -352,7 +357,9 @@ fn parse_markup_number() {
             assert_eq!(name, "abs-fontsize");
             assert_eq!(args.len(), 2);
             match &args[0] {
-                Markup::Scheme(s) => assert_eq!(s, "#16"),
+                Markup::Scheme(s) => {
+                    assert_eq!(*s, crate::model::scheme::SchemeExpr::Integer(16))
+                }
                 other => panic!("expected Scheme, got {other:?}"),
             }
         }

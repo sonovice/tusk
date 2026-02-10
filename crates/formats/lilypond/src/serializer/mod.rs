@@ -3,6 +3,7 @@
 //! Converts a [`LilyPondFile`] AST back to LilyPond source text with standard
 //! formatting and indentation.
 
+use crate::model::scheme::SchemeExpr;
 use crate::model::*;
 
 // ---------------------------------------------------------------------------
@@ -474,7 +475,7 @@ impl<'a> Serializer<'a> {
                 self.out.push('\\');
                 self.out.push_str(s);
             }
-            AssignmentValue::SchemeExpr(s) => self.out.push_str(s),
+            AssignmentValue::SchemeExpr(expr) => self.write_scheme_expr(expr),
             AssignmentValue::Markup(m) => {
                 self.out.push_str("\\markup ");
                 self.write_markup(m);
@@ -1076,7 +1077,7 @@ impl<'a> Serializer<'a> {
 
     fn write_property_value(&mut self, v: &property::PropertyValue) {
         match v {
-            property::PropertyValue::SchemeExpr(s) => self.out.push_str(s),
+            property::PropertyValue::SchemeExpr(expr) => self.write_scheme_expr(expr),
             property::PropertyValue::String(s) => {
                 self.out.push('"');
                 for ch in s.chars() {
@@ -1163,7 +1164,7 @@ impl<'a> Serializer<'a> {
                         self.out.push_str(&n.to_string());
                     }
                 }
-                FunctionArg::SchemeExpr(s) => self.out.push_str(s),
+                FunctionArg::SchemeExpr(expr) => self.write_scheme_expr(expr),
                 FunctionArg::Duration(dur) => self.write_duration(dur),
                 FunctionArg::Identifier(name) => {
                     self.out.push('\\');
@@ -1171,6 +1172,48 @@ impl<'a> Serializer<'a> {
                 }
                 FunctionArg::Default => self.out.push_str("\\default"),
             }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Scheme expressions
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_scheme_expr(&mut self, expr: &SchemeExpr) {
+        self.out.push('#');
+        match expr {
+            SchemeExpr::Bool(true) => self.out.push_str("#t"),
+            SchemeExpr::Bool(false) => self.out.push_str("#f"),
+            SchemeExpr::Integer(n) => self.out.push_str(&n.to_string()),
+            SchemeExpr::Float(f) => self.out.push_str(&f.to_string()),
+            SchemeExpr::String(s) => {
+                self.out.push('"');
+                for ch in s.chars() {
+                    match ch {
+                        '"' => self.out.push_str("\\\""),
+                        '\\' => self.out.push_str("\\\\"),
+                        _ => self.out.push(ch),
+                    }
+                }
+                self.out.push('"');
+            }
+            SchemeExpr::Symbol(s) => {
+                self.out.push('\'');
+                self.out.push_str(s);
+            }
+            SchemeExpr::Identifier(s) => self.out.push_str(s),
+            SchemeExpr::List(raw) => self.out.push_str(raw),
+            SchemeExpr::EmbeddedLilypond(items) => {
+                self.out.push_str("#{ ");
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 {
+                        self.out.push(' ');
+                    }
+                    self.write_music(item);
+                }
+                self.out.push_str(" #}");
+            }
+            SchemeExpr::Raw(raw) => self.out.push_str(raw),
         }
     }
 
@@ -1231,7 +1274,7 @@ impl<'a> Serializer<'a> {
                 self.out.push('\\');
                 self.out.push_str(name);
             }
-            markup::Markup::Scheme(raw) => self.out.push_str(raw),
+            markup::Markup::Scheme(expr) => self.write_scheme_expr(expr),
             markup::Markup::Number(n) => {
                 if *n == (*n as i64) as f64 {
                     self.out.push_str(&(*n as i64).to_string());

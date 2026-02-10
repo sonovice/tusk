@@ -29,8 +29,8 @@ pub enum Markup {
     MarkupList(MarkupList),
     /// An identifier reference (e.g. `\myMarkup`).
     Identifier(String),
-    /// A Scheme expression stored as raw text (e.g. `#(markup ...)` or `#red`).
-    Scheme(String),
+    /// A Scheme expression (e.g. `#(markup ...)` or `#red`).
+    Scheme(super::SchemeExpr),
     /// A number literal inside markup (e.g. standalone `42` or `3.5`).
     Number(f64),
 }

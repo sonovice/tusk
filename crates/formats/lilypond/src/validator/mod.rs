@@ -121,6 +121,12 @@ pub enum ValidationError {
     #[error("empty function name")]
     EmptyFunctionName,
 
+    #[error("unbalanced parentheses in Scheme list expression")]
+    SchemeUnbalancedParens,
+
+    #[error("empty embedded LilyPond block (##{{ #}})")]
+    SchemeEmptyEmbeddedLilypond,
+
     #[error("{0}")]
     Other(String),
 }
@@ -317,12 +323,11 @@ fn validate_assignment_value(v: &AssignmentValue, errors: &mut Vec<ValidationErr
                 validate_markup(item, errors);
             }
         }
-        // Identifier refs, strings, numbers, scheme exprs: no structural validation needed.
-        // LilyPond allows forward refs and many built-in identifiers, so we don't check scope.
+        AssignmentValue::SchemeExpr(expr) => validate_scheme_expr(expr, errors),
+        // Identifier refs, strings, numbers: no structural validation needed.
         AssignmentValue::Identifier(_)
         | AssignmentValue::String(_)
-        | AssignmentValue::Number(_)
-        | AssignmentValue::SchemeExpr(_) => {}
+        | AssignmentValue::Number(_) => {}
     }
 }
 
@@ -879,10 +884,10 @@ fn validate_markup(m: &markup::Markup, errors: &mut Vec<ValidationError>) {
                 validate_markup(item, errors);
             }
         }
+        markup::Markup::Scheme(expr) => validate_scheme_expr(expr, errors),
         markup::Markup::Word(_)
         | markup::Markup::String(_)
         | markup::Markup::Identifier(_)
-        | markup::Markup::Scheme(_)
         | markup::Markup::Number(_) => {}
     }
 }
@@ -911,12 +916,52 @@ fn validate_function_args(args: &[FunctionArg], errors: &mut Vec<ValidationError
         match arg {
             FunctionArg::Music(m) => validate_music(m, errors),
             FunctionArg::Duration(dur) => validate_duration(dur, errors),
+            FunctionArg::SchemeExpr(expr) => validate_scheme_expr(expr, errors),
             FunctionArg::String(_)
             | FunctionArg::Number(_)
-            | FunctionArg::SchemeExpr(_)
             | FunctionArg::Identifier(_)
             | FunctionArg::Default => {}
         }
+    }
+}
+
+fn validate_scheme_expr(
+    expr: &crate::model::scheme::SchemeExpr,
+    errors: &mut Vec<ValidationError>,
+) {
+    use crate::model::scheme::SchemeExpr;
+    match expr {
+        SchemeExpr::List(raw) => {
+            // Check balanced parentheses
+            let mut depth: i32 = 0;
+            for ch in raw.chars() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => depth -= 1,
+                    _ => {}
+                }
+                if depth < 0 {
+                    errors.push(ValidationError::SchemeUnbalancedParens);
+                    return;
+                }
+            }
+            if depth != 0 {
+                errors.push(ValidationError::SchemeUnbalancedParens);
+            }
+        }
+        SchemeExpr::EmbeddedLilypond(items) => {
+            for item in items {
+                validate_music(item, errors);
+            }
+        }
+        // Atomic expressions: no structural validation needed
+        SchemeExpr::Bool(_)
+        | SchemeExpr::Integer(_)
+        | SchemeExpr::Float(_)
+        | SchemeExpr::String(_)
+        | SchemeExpr::Symbol(_)
+        | SchemeExpr::Identifier(_)
+        | SchemeExpr::Raw(_) => {}
     }
 }
 

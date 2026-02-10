@@ -32,8 +32,7 @@ impl PropertyPath {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PropertyValue {
     /// A Scheme expression (e.g. `#red`, `#(rgb-color 1 0 0)`, `##t`).
-    /// Stored as raw text including the leading `#`.
-    SchemeExpr(String),
+    SchemeExpr(super::SchemeExpr),
     /// A quoted string (e.g. `"Piano"`).
     String(String),
     /// A number (e.g. `5`, `2.5`).

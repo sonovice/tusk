@@ -7,6 +7,7 @@ pub mod markup;
 pub mod note;
 pub mod pitch;
 pub mod property;
+pub mod scheme;
 pub mod signature;
 
 pub use duration::Duration;
@@ -20,6 +21,7 @@ pub use note::{
 };
 pub use pitch::Pitch;
 pub use property::{PropertyPath, PropertyValue};
+pub use scheme::SchemeExpr;
 pub use signature::{
     Clef, KeySignature, Mark, MarkLabel, Mode, Tempo, TempoRange, TextMark, TimeSignature,
 };
@@ -238,8 +240,8 @@ pub enum AssignmentValue {
     Music(Box<Music>),
     /// A bare identifier reference (e.g. `\melody`).
     Identifier(String),
-    /// A Scheme-like expression stored as raw text (for now).
-    SchemeExpr(String),
+    /// A Scheme expression (e.g. `#red`, `#42`, `##t`).
+    SchemeExpr(SchemeExpr),
     /// A structured markup expression.
     Markup(Markup),
     /// A structured markup list expression.
@@ -486,8 +488,8 @@ pub enum FunctionArg {
     String(String),
     /// A numeric argument.
     Number(f64),
-    /// A Scheme expression argument (stored as raw text).
-    SchemeExpr(String),
+    /// A Scheme expression argument (e.g. `#'print`, `#42`).
+    SchemeExpr(SchemeExpr),
     /// A duration argument (e.g. `4.` in `\tuplet 3/2 4. { ... }`).
     Duration(Duration),
     /// An identifier reference (e.g. `\varName`).

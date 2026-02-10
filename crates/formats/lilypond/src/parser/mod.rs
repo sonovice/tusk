@@ -279,8 +279,8 @@ impl<'src> Parser<'src> {
                 Ok(AssignmentValue::MarkupList(ml))
             }
             Token::Hash => {
-                let raw = self.parse_scheme_raw()?;
-                Ok(AssignmentValue::SchemeExpr(raw))
+                let expr = self.parse_scheme_expr()?;
+                Ok(AssignmentValue::SchemeExpr(expr))
             }
             _ => {
                 // Try to parse as music
@@ -487,8 +487,8 @@ impl<'src> Parser<'src> {
                 Ok(AssignmentValue::MarkupList(ml))
             }
             Token::Hash => {
-                let raw = self.parse_scheme_raw()?;
-                Ok(AssignmentValue::SchemeExpr(raw))
+                let expr = self.parse_scheme_expr()?;
+                Ok(AssignmentValue::SchemeExpr(expr))
             }
             _ => {
                 // Anything else — try as string (some headers have unquoted values)
@@ -1469,6 +1469,8 @@ mod tests_post_events;
 mod tests_properties;
 #[cfg(test)]
 mod tests_repeats;
+#[cfg(test)]
+mod tests_scheme;
 #[cfg(test)]
 mod tests_tempo_marks;
 #[cfg(test)]

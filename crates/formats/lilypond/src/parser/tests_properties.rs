@@ -1,5 +1,6 @@
 //! Tests for property operation parsing: override, revert, set, unset, tweak, once.
 
+use crate::model::scheme::SchemeExpr;
 use crate::model::*;
 use crate::parser::parse;
 use crate::serializer::serialize;
@@ -27,7 +28,10 @@ fn override_simple() {
     match m {
         Music::Override { path, value } => {
             assert_eq!(path.segments, vec!["NoteHead", "color"]);
-            assert_eq!(value, PropertyValue::SchemeExpr("#red".into()));
+            assert_eq!(
+                value,
+                PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
+            );
         }
         _ => panic!("expected Override, got {m:?}"),
     }
@@ -39,7 +43,10 @@ fn override_with_context() {
     match m {
         Music::Override { path, value } => {
             assert_eq!(path.segments, vec!["Staff", "TimeSignature", "color"]);
-            assert_eq!(value, PropertyValue::SchemeExpr("#green".into()));
+            assert_eq!(
+                value,
+                PropertyValue::SchemeExpr(SchemeExpr::Identifier("green".into()))
+            );
         }
         _ => panic!("expected Override, got {m:?}"),
     }
@@ -64,8 +71,10 @@ fn override_scheme_compound() {
         Music::Override { path, value } => {
             assert_eq!(path.segments, vec!["Glissando", "color"]);
             match value {
-                PropertyValue::SchemeExpr(s) => assert!(s.starts_with("#(")),
-                _ => panic!("expected SchemeExpr"),
+                PropertyValue::SchemeExpr(SchemeExpr::List(s)) => {
+                    assert!(s.starts_with("("))
+                }
+                other => panic!("expected SchemeExpr::List, got {other:?}"),
             }
         }
         _ => panic!("expected Override, got {m:?}"),
@@ -116,7 +125,7 @@ fn set_scheme_value() {
     match m {
         Music::Set { path, value } => {
             assert_eq!(path.segments, vec!["Staff", "useBassFigureExtenders"]);
-            assert_eq!(value, PropertyValue::SchemeExpr("##t".into()));
+            assert_eq!(value, PropertyValue::SchemeExpr(SchemeExpr::Bool(true)));
         }
         _ => panic!("expected Set, got {m:?}"),
     }
@@ -157,7 +166,10 @@ fn once_override() {
         Music::Once { music } => match *music {
             Music::Override { path, value } => {
                 assert_eq!(path.segments, vec!["NoteHead", "color"]);
-                assert_eq!(value, PropertyValue::SchemeExpr("#red".into()));
+                assert_eq!(
+                    value,
+                    PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
+                );
             }
             _ => panic!("expected Override inside Once"),
         },
@@ -188,7 +200,10 @@ fn tweak_post_event() {
     match &tweaks[0] {
         note::PostEvent::Tweak { path, value } => {
             assert_eq!(path.segments, vec!["color"]);
-            assert_eq!(*value, PropertyValue::SchemeExpr("#red".into()));
+            assert_eq!(
+                *value,
+                PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
+            );
         }
         _ => unreachable!(),
     }
@@ -214,7 +229,10 @@ fn context_mod_override() {
             match &items[0] {
                 ContextModItem::Override { path, value } => {
                     assert_eq!(path.segments, vec!["TimeSignature", "color"]);
-                    assert_eq!(*value, PropertyValue::SchemeExpr("#green".into()));
+                    assert_eq!(
+                        *value,
+                        PropertyValue::SchemeExpr(SchemeExpr::Identifier("green".into()))
+                    );
                 }
                 other => panic!("expected Override, got {other:?}"),
             }

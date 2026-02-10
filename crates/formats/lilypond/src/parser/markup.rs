@@ -214,8 +214,8 @@ impl<'src> Parser<'src> {
                 Ok(Markup::Score(score))
             }
             Token::Hash => {
-                let raw = self.parse_scheme_raw()?;
-                Ok(Markup::Scheme(raw))
+                let expr = self.parse_scheme_expr()?;
+                Ok(Markup::Scheme(expr))
             }
             // List command: \column { ... }, \line { ... }, etc.
             Token::EscapedWord(name) if is_list_command(name) => {
@@ -271,8 +271,8 @@ impl<'src> Parser<'src> {
             match self.peek() {
                 // Scheme argument
                 Token::Hash => {
-                    let raw = self.parse_scheme_raw()?;
-                    args.push(Markup::Scheme(raw));
+                    let expr = self.parse_scheme_expr()?;
+                    args.push(Markup::Scheme(expr));
                 }
                 // Number argument
                 Token::Unsigned(n) => {

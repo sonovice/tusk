@@ -55,8 +55,8 @@ impl<'src> Parser<'src> {
     pub(super) fn parse_property_value(&mut self) -> Result<PropertyValue, ParseError> {
         match self.peek() {
             Token::Hash => {
-                let raw = self.parse_scheme_raw()?;
-                Ok(PropertyValue::SchemeExpr(raw))
+                let expr = self.parse_scheme_expr()?;
+                Ok(PropertyValue::SchemeExpr(expr))
             }
             Token::String(_) => {
                 let s = self.expect_string()?;

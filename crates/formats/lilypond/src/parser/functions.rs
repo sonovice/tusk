@@ -84,8 +84,8 @@ impl<'src> Parser<'src> {
                     args.push(FunctionArg::Number(n));
                 }
                 Token::Hash => {
-                    let raw = self.parse_scheme_raw()?;
-                    args.push(FunctionArg::SchemeExpr(raw));
+                    let expr = self.parse_scheme_expr()?;
+                    args.push(FunctionArg::SchemeExpr(expr));
                 }
                 Token::Default => {
                     self.advance()?;

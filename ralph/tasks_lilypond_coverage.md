@@ -1260,11 +1260,20 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
 
 ### 30.1 Model & Parser
 
-- [ ] [P] Parse `#expr` (Scheme expression): numbers, booleans, strings, lists, symbols; parse `##{ lilypond #}` embedded LilyPond
-- [ ] [P] Add `SchemeExpr`, `EmbeddedLilyPond`; limit to common patterns (no full Guile)
-- [ ] [S] Serialize #expr and ##{ #}
-- [ ] [V] Scheme expr well-formed (balanced parens, etc.)
-- [ ] [T] Fragment: `c4 #(ly:export (make-moment 1 4))`, `\override X.color = #red`
+- [x] [P] Parse `#expr` (Scheme expression): numbers, booleans, strings, lists, symbols; parse `##{ lilypond #}` embedded LilyPond
+  - `model/scheme.rs`: `SchemeExpr` enum with Bool, Integer, Float, String, Symbol, Identifier, List, EmbeddedLilypond, Raw variants
+  - `parser/raw_blocks.rs`: `parse_scheme_expr()` structured parser; `parse_embedded_lilypond()` for `##{ ... #}`
+  - Fixed raw text capture to use token span instead of lexer position (avoids including skipped comments)
+- [x] [P] Add `SchemeExpr`, `EmbeddedLilyPond`; limit to common patterns (no full Guile)
+  - Updated `AssignmentValue::SchemeExpr`, `FunctionArg::SchemeExpr`, `PropertyValue::SchemeExpr`, `Markup::Scheme` to use `SchemeExpr` type
+- [x] [S] Serialize #expr and ##{ #}
+  - `serializer/mod.rs`: `write_scheme_expr()` method handles all variants; embedded LilyPond serialized as `##{ music #}`
+- [x] [V] Scheme expr well-formed (balanced parens, etc.)
+  - `validator/mod.rs`: `validate_scheme_expr()` checks balanced parens in List, validates music in EmbeddedLilypond
+  - Added `SchemeUnbalancedParens`, `SchemeEmptyEmbeddedLilypond` error variants
+- [x] [T] Fragment: `c4 #(ly:export (make-moment 1 4))`, `\override X.color = #red`
+  - `tests/fixtures/lilypond/fragment_scheme.ly`: booleans, integers, identifiers, symbols, lists, markup Scheme
+  - `parser/tests_scheme.rs`: 22 tests covering all SchemeExpr variants, roundtrip, fixture parse, validation
 
 ### 30.2 Import & Export
 
