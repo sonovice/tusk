@@ -34,6 +34,8 @@ mod tests_properties;
 #[cfg(test)]
 mod tests_tempo_marks;
 #[cfg(test)]
+mod tests_toplevel_markup;
+#[cfg(test)]
 mod tests_validation;
 #[cfg(test)]
 mod tests_variables;
@@ -50,6 +52,7 @@ use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrp
 use tusk_model::generated::data::{DataTie, DataWord};
 
 use crate::model::{self, Assignment, Music, PostEvent, ScoreItem, ToplevelExpression};
+use tusk_model::{ToplevelMarkup, ToplevelMarkupKind};
 
 use context_analysis::{StaffLayout, analyze_staves, build_score_def_from_staves};
 use events::{
@@ -95,6 +98,9 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     let mei_head = output_defs::build_mei_head_from_file(file);
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
+    // Collect top-level markups
+    let toplevel_markups = collect_toplevel_markups(file);
+
     // Collect all score entries (handling book/bookpart hierarchy)
     let entries = collect_score_entries(file);
 
@@ -103,13 +109,13 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
 
     let mei_music = if has_book && !entries.is_empty() {
         // Book-structured: one mdiv per score entry
-        build_music_multi(&entries, &assignments, &var_map)?
+        build_music_multi(&entries, &assignments, &var_map, &toplevel_markups)?
     } else {
         // Non-book: use find_music for backward-compatible behavior
         let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
         let music = resolve_identifiers(raw_music, &var_map);
         let score_block = entries.first().map(|e| e.score_block);
-        build_music_single(music, score_block, &assignments)?
+        build_music_single(music, score_block, &assignments, &toplevel_markups)?
     };
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
@@ -196,6 +202,31 @@ fn collect_score_entries<'a>(file: &'a model::LilyPondFile) -> Vec<ScoreEntry<'a
     }
 
     entries
+}
+
+/// Collect top-level `\markup` and `\markuplist` expressions with their positions.
+fn collect_toplevel_markups(file: &model::LilyPondFile) -> Vec<ToplevelMarkup> {
+    let mut markups = Vec::new();
+    for (idx, item) in file.items.iter().enumerate() {
+        match item {
+            ToplevelExpression::Markup(m) => {
+                let serialized = crate::serializer::serialize_markup(m);
+                markups.push(ToplevelMarkup {
+                    position: idx,
+                    kind: ToplevelMarkupKind::Markup(serialized),
+                });
+            }
+            ToplevelExpression::MarkupList(ml) => {
+                let serialized = crate::serializer::serialize_markuplist(ml);
+                markups.push(ToplevelMarkup {
+                    position: idx,
+                    kind: ToplevelMarkupKind::MarkupList(serialized),
+                });
+            }
+            _ => {}
+        }
+    }
+    markups
 }
 
 /// Find music expression inside a score block.
@@ -287,12 +318,16 @@ fn build_music_multi(
     entries: &[ScoreEntry<'_>],
     assignments: &[Assignment],
     var_map: &std::collections::HashMap<String, Music>,
+    toplevel_markups: &[ToplevelMarkup],
 ) -> Result<tusk_model::elements::Music, ImportError> {
     let mut body = Body::default();
 
     for (i, entry) in entries.iter().enumerate() {
         let resolved = resolve_identifiers(entry.music, var_map);
-        let mei_score = build_score_from_music(resolved, Some(entry.score_block), assignments)?;
+        // Only store toplevel markups on the first score
+        let markups = if i == 0 { toplevel_markups } else { &[] };
+        let mei_score =
+            build_score_from_music(resolved, Some(entry.score_block), assignments, markups)?;
 
         let mut mdiv = Mdiv::default();
         mdiv.common.n = Some(DataWord((i + 1).to_string()));
@@ -319,8 +354,9 @@ fn build_music_single(
     ly_music: Music,
     score_block: Option<&model::ScoreBlock>,
     assignments: &[Assignment],
+    toplevel_markups: &[ToplevelMarkup],
 ) -> Result<tusk_model::elements::Music, ImportError> {
-    let score = build_score_from_music(ly_music, score_block, assignments)?;
+    let score = build_score_from_music(ly_music, score_block, assignments, toplevel_markups)?;
 
     let mut mdiv = Mdiv::default();
     mdiv.children.push(MdivChild::Score(Box::new(score)));
@@ -344,6 +380,7 @@ fn build_score_from_music(
     ly_music: Music,
     score_block: Option<&model::ScoreBlock>,
     assignments: &[Assignment],
+    toplevel_markups: &[ToplevelMarkup],
 ) -> Result<Score, ImportError> {
     let mut score = Score::default();
 
@@ -359,6 +396,16 @@ fn build_score_from_music(
         if !score_blocks_label.is_empty() {
             append_label(&mut score_def.common.label, &score_blocks_label);
         }
+    }
+
+    // Store top-level markups on ScoreDef label
+    if !toplevel_markups.is_empty() {
+        let json =
+            utils::escape_json_pipe(&serde_json::to_string(toplevel_markups).unwrap_or_default());
+        append_label(
+            &mut score_def.common.label,
+            &format!("tusk:toplevel-markup,{json}"),
+        );
     }
 
     score

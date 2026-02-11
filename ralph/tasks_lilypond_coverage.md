@@ -1696,9 +1696,14 @@ Standalone `\markup { ... }` and `\markuplist { ... }` at file top level (outsid
 
 ### 37.1 Import
 
-- [ ] [I] `ToplevelExpression::Markup` → store as a `ToplevelMarkup` extension entry on the MEI root, preserving ordering relative to other top-level items (scores, assignments, etc.)
-- [ ] [I] `ToplevelExpression::MarkupList` → store as a `ToplevelMarkup::List` variant in the same extension
-- [ ] [T] Import tests: top-level markup stored, markuplist stored, ordering preserved
+- [x] [I] `ToplevelExpression::Markup` → store as a `ToplevelMarkup` extension entry on the MEI root, preserving ordering relative to other top-level items (scores, assignments, etc.)
+  - `collect_toplevel_markups()` in import/mod.rs serializes markup/markuplist with position index
+  - Stored on ScoreDef label as `tusk:toplevel-markup,{json}` (Vec<ToplevelMarkup>)
+  - ToplevelMarkup struct: { position: usize, kind: ToplevelMarkupKind }
+- [x] [I] `ToplevelExpression::MarkupList` → store as a `ToplevelMarkup::List` variant in the same extension
+  - ToplevelMarkupKind::MarkupList(String) variant, serialized via serialize_markuplist()
+- [x] [T] Import tests: top-level markup stored, markuplist stored, ordering preserved
+  - 5 tests in tests_toplevel_markup.rs: stored, markuplist, ordering, mixed, no-markup
 
 ### 37.2 Export
 

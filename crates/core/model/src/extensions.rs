@@ -118,9 +118,9 @@ pub struct ExtData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variable_assignments: Option<VariableAssignments>,
 
-    /// Standalone markup/markuplist at file top level.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub toplevel_markup: Option<ToplevelMarkup>,
+    /// Standalone markup/markuplist at file top level (may be multiple).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub toplevel_markups: Vec<ToplevelMarkup>,
 
     /// Lyrics attachment metadata.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -519,9 +519,19 @@ pub struct VariableAssignments {
 // ToplevelMarkup
 // ---------------------------------------------------------------------------
 
-/// A standalone markup or markuplist at the file top level.
+/// A standalone markup or markuplist at the file top level, with its position
+/// among other top-level items (scores, assignments, etc.) for ordering.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ToplevelMarkup {
+pub struct ToplevelMarkup {
+    /// 0-based index among all top-level items in the original file.
+    pub position: usize,
+    /// The kind of markup.
+    pub kind: ToplevelMarkupKind,
+}
+
+/// Whether the top-level item is `\markup` or `\markuplist`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ToplevelMarkupKind {
     /// `\markup { ... }` — serialized form.
     Markup(String),
     /// `\markuplist { ... }` — serialized form.
@@ -1251,7 +1261,10 @@ mod tests {
 
     #[test]
     fn toplevel_markup_roundtrip() {
-        let m = ToplevelMarkup::Markup("\\bold { Title }".into());
+        let m = ToplevelMarkup {
+            position: 2,
+            kind: ToplevelMarkupKind::Markup("\\bold { Title }".into()),
+        };
         let json = serde_json::to_string(&m).unwrap();
         let back: ToplevelMarkup = serde_json::from_str(&json).unwrap();
         assert_eq!(m, back);
