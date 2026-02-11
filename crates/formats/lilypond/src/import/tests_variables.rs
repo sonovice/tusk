@@ -108,7 +108,7 @@ fn import_variable_label_stored_on_score_def() {
     let label = score_def_label(&mei).unwrap_or_default();
     assert!(
         label.contains("tusk:vars,"),
-        "scoreDef label should contain lilypond:vars: {label}"
+        "scoreDef label should contain tusk:vars: {label}"
     );
     // The serialized assignment should be present (escaped)
     assert!(

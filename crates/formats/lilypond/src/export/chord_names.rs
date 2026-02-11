@@ -17,7 +17,7 @@ pub(super) struct ChordNamesMeta {
 /// Collect chord-mode events from Harm control events in the score.
 ///
 /// Returns a list of `Music::ChordModeEntry` items extracted from
-/// `<harm>` elements with `lilypond:chord-mode,` labels.
+/// `<harm>` elements with `tusk:chord-mode,{JSON}` labels.
 pub(super) fn collect_chord_mode_harms(score: &tusk_model::elements::Score) -> Vec<Music> {
     let mut events = Vec::new();
     for child in &score.children {
@@ -38,17 +38,14 @@ pub(super) fn collect_chord_mode_harms(score: &tusk_model::elements::Score) -> V
     events
 }
 
-/// Parse a ChordModeEvent from a Harm element's label.
-///
-/// Label format: `lilypond:chord-mode,SERIALIZED`
+/// Parse a ChordModeEvent from a Harm element's typed JSON label.
 fn parse_chord_mode_from_harm(
     harm: &tusk_model::elements::Harm,
 ) -> Option<crate::model::note::ChordModeEvent> {
     let label = harm.common.label.as_deref()?;
-    let serialized = label.strip_prefix("lilypond:chord-mode,")?;
-    // Unescape label value
-    let unescaped = crate::import::signatures::unescape_label_value(serialized);
-    parse_chord_mode_event_str(&unescaped)
+    let json = label.strip_prefix("tusk:chord-mode,")?;
+    let info: tusk_model::ChordModeInfo = serde_json::from_str(json).ok()?;
+    parse_chord_mode_event_str(&info.serialized)
 }
 
 /// Parse a chord-mode event string back into a ChordModeEvent.

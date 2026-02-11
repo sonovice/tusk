@@ -653,6 +653,184 @@ pub struct DrumEvent {
 pub struct LyricExtender;
 
 // ---------------------------------------------------------------------------
+// PhrasingSlur
+// ---------------------------------------------------------------------------
+
+/// Marker that a `<slur>` is a phrasing slur (`\(` / `\)` in LilyPond).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PhrasingSlur;
+
+// ---------------------------------------------------------------------------
+// TupletInfo
+// ---------------------------------------------------------------------------
+
+/// LilyPond-specific tuplet data for lossless roundtrip on `<tupletSpan>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TupletInfo {
+    pub num: u32,
+    pub denom: u32,
+    /// Optional span duration (base value, e.g. 4 = quarter note).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub span_duration: Option<DurationInfo>,
+}
+
+impl Default for TupletInfo {
+    fn default() -> Self {
+        Self {
+            num: 3,
+            denom: 2,
+            span_duration: None,
+        }
+    }
+}
+
+/// Compact duration representation for label storage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DurationInfo {
+    pub base: u32,
+    #[serde(skip_serializing_if = "is_zero_u8")]
+    pub dots: u8,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub multipliers: Vec<(u32, u32)>,
+}
+
+impl Default for DurationInfo {
+    fn default() -> Self {
+        Self {
+            base: 4,
+            dots: 0,
+            multipliers: Vec::new(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// OrnamentInfo
+// ---------------------------------------------------------------------------
+
+/// Ornament metadata for `<trill>`, `<mordent>`, `<turn>`, `<fermata>`, `<ornam>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OrnamentInfo {
+    /// Ornament name (e.g. "trill", "mordent", "shortfermata", "prallprall").
+    pub name: String,
+    /// Placement direction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<DirectionExt>,
+}
+
+/// Placement direction for ornaments, articulations, etc.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DirectionExt {
+    Up,
+    Down,
+}
+
+// ---------------------------------------------------------------------------
+// TremoloInfo
+// ---------------------------------------------------------------------------
+
+/// Tremolo subdivision value for `<bTrem>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TremoloInfo {
+    /// Subdivision value (e.g. 16, 32). 0 = unmeasured.
+    pub value: u32,
+}
+
+// ---------------------------------------------------------------------------
+// ArticulationInfo
+// ---------------------------------------------------------------------------
+
+/// Articulation / fingering / string number metadata on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ArticulationInfo {
+    /// What kind of marking this is.
+    pub kind: ArticulationKind,
+    /// Name or numeric value (e.g. "staccato", "1", "3").
+    pub value: String,
+    /// Placement direction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<DirectionExt>,
+}
+
+/// Kind of articulation-like marking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ArticulationKind {
+    Articulation,
+    Fingering,
+    StringNumber,
+}
+
+// ---------------------------------------------------------------------------
+// TempoInfo / MarkInfo / TextMarkInfo
+// ---------------------------------------------------------------------------
+
+/// Serialized tempo mark for lossless roundtrip on `<tempo>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TempoInfo {
+    /// Full serialized LilyPond `\tempo` expression.
+    pub serialized: String,
+}
+
+/// Serialized rehearsal mark for lossless roundtrip on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MarkInfo {
+    /// Full serialized LilyPond `\mark` expression.
+    pub serialized: String,
+}
+
+/// Serialized text mark for lossless roundtrip on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TextMarkInfo {
+    /// Full serialized LilyPond `\textMark` expression.
+    pub serialized: String,
+}
+
+// ---------------------------------------------------------------------------
+// EndingInfo
+// ---------------------------------------------------------------------------
+
+/// Alternative ending metadata on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EndingInfo {
+    /// 0-based ending index.
+    pub index: u32,
+}
+
+// ---------------------------------------------------------------------------
+// ChordModeInfo / FiguredBassInfo
+// ---------------------------------------------------------------------------
+
+/// Serialized chord-mode event for lossless roundtrip on `<harm>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChordModeInfo {
+    /// Full serialized LilyPond chord-mode event.
+    pub serialized: String,
+}
+
+/// Serialized figured bass event for lossless roundtrip on `<fb>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FiguredBassInfo {
+    /// Full serialized LilyPond figure event.
+    pub serialized: String,
+}
+
+/// Serialized property operation for lossless roundtrip on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PropertyOpInfo {
+    /// Full serialized LilyPond property operation.
+    pub serialized: String,
+}
+
+/// Serialized function call for lossless roundtrip on `<dir>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionCallInfo {
+    /// Full serialized LilyPond function call.
+    pub serialized: String,
+}
+
+// ---------------------------------------------------------------------------
 // ExtensionStore — side table for attaching extensions to MEI elements
 // ---------------------------------------------------------------------------
 

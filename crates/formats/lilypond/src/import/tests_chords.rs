@@ -55,7 +55,7 @@ fn harm_has_chord_mode_label() {
     assert_eq!(harms.len(), 1);
     let label = harms[0].common.label.as_deref().unwrap();
     assert!(
-        label.starts_with("lilypond:chord-mode,"),
+        label.starts_with("tusk:chord-mode,"),
         "label should have chord-mode prefix: {label}"
     );
 }

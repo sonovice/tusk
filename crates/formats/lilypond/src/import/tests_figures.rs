@@ -55,7 +55,7 @@ fn fb_has_figure_label() {
     assert_eq!(fbs.len(), 1);
     let label = fbs[0].common.label.as_deref().unwrap();
     assert!(
-        label.starts_with("lilypond:figure,"),
+        label.starts_with("tusk:figure,"),
         "label should have figure prefix: {label}"
     );
 }

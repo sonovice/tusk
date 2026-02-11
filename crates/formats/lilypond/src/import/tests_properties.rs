@@ -53,7 +53,7 @@ fn import_override_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:prop,"))
+                .is_some_and(|l| l.starts_with("tusk:prop,"))
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1, "expected one property dir");
@@ -78,7 +78,7 @@ fn import_set_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:prop,"))
+                .is_some_and(|l| l.starts_with("tusk:prop,"))
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1);
@@ -97,7 +97,7 @@ fn import_revert_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:prop,"))
+                .is_some_and(|l| l.starts_with("tusk:prop,"))
         })
         .collect();
     assert_eq!(prop_dirs.len(), 2, "expected two property dirs");
@@ -113,7 +113,7 @@ fn import_once_override_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:prop,"))
+                .is_some_and(|l| l.starts_with("tusk:prop,"))
         })
         .collect();
     assert_eq!(prop_dirs.len(), 1);

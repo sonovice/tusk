@@ -7,6 +7,33 @@ use tusk_model::elements::{
     SectionChild, Trill as MeiTrill, Turn as MeiTurn,
 };
 
+/// Assert a label matches a typed JSON articulation label with expected fields.
+fn assert_artic_label(label: Option<&str>, kind: &str, value: &str, direction: Option<&str>) {
+    let label = label.expect("label should be set");
+    let json = label
+        .strip_prefix("tusk:artic,")
+        .unwrap_or_else(|| panic!("expected tusk:artic, prefix, got: {label}"));
+    let info: tusk_model::ArticulationInfo =
+        serde_json::from_str(json).unwrap_or_else(|e| panic!("bad JSON: {e}: {json}"));
+    let expected_kind = match kind {
+        "Articulation" => tusk_model::ArticulationKind::Articulation,
+        "Fingering" => tusk_model::ArticulationKind::Fingering,
+        "StringNumber" => tusk_model::ArticulationKind::StringNumber,
+        _ => panic!("unknown kind: {kind}"),
+    };
+    assert_eq!(info.kind, expected_kind, "kind mismatch for {label}");
+    assert_eq!(info.value, value, "value mismatch for {label}");
+    let expected_dir = direction.map(|d| match d {
+        "Up" => tusk_model::DirectionExt::Up,
+        "Down" => tusk_model::DirectionExt::Down,
+        _ => panic!("unknown direction: {d}"),
+    });
+    assert_eq!(
+        info.direction, expected_dir,
+        "direction mismatch for {label}"
+    );
+}
+
 fn parse_and_import(src: &str) -> Mei {
     let file = Parser::new(src).unwrap().parse().unwrap();
     import(&file).unwrap()
@@ -248,14 +275,18 @@ fn import_articulation_creates_dir() {
     let mei = parse_and_import("{ c4-. d4-> }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2, "expected 2 dir control events for artics");
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,staccato")
+        "Articulation",
+        "staccato",
+        None,
     );
     assert!(dirs[0].dir_log.startid.is_some());
-    assert_eq!(
+    assert_artic_label(
         dirs[1].common.label.as_deref(),
-        Some("lilypond:artic,accent")
+        "Articulation",
+        "accent",
+        None,
     );
 }
 
@@ -264,13 +295,17 @@ fn import_articulation_with_direction() {
     let mei = parse_and_import("{ c4^. d4_- }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2);
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,staccato,dir=up")
+        "Articulation",
+        "staccato",
+        Some("Up"),
     );
-    assert_eq!(
+    assert_artic_label(
         dirs[1].common.label.as_deref(),
-        Some("lilypond:artic,tenuto,dir=down")
+        "Articulation",
+        "tenuto",
+        Some("Down"),
     );
 }
 
@@ -279,10 +314,12 @@ fn import_fingering_creates_dir() {
     let mei = parse_and_import("{ c4-1 d4^3 }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2, "expected 2 fingering dir events");
-    assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:fing,1"));
-    assert_eq!(
+    assert_artic_label(dirs[0].common.label.as_deref(), "Fingering", "1", None);
+    assert_artic_label(
         dirs[1].common.label.as_deref(),
-        Some("lilypond:fing,3,dir=up")
+        "Fingering",
+        "3",
+        Some("Up"),
     );
 }
 
@@ -291,9 +328,11 @@ fn import_named_articulation() {
     let mei = parse_and_import("{ c4-\\staccato }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 1);
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,staccato")
+        "Articulation",
+        "staccato",
+        None,
     );
 }
 
@@ -302,11 +341,13 @@ fn import_multiple_artics_on_one_note() {
     let mei = parse_and_import("{ c4-. -3 }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2, "expected staccato + fingering");
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,staccato")
+        "Articulation",
+        "staccato",
+        None,
     );
-    assert_eq!(dirs[1].common.label.as_deref(), Some("lilypond:fing,3"));
+    assert_artic_label(dirs[1].common.label.as_deref(), "Fingering", "3", None);
 }
 
 // ---------------------------------------------------------------------------
@@ -435,9 +476,11 @@ fn import_upbow_stays_as_dir() {
     let mei = parse_and_import("{ c4\\upbow }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 1);
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,upbow")
+        "Articulation",
+        "upbow",
+        None,
     );
     // Should NOT be a trill/mordent/turn/fermata/ornam
     assert_eq!(measure_trills(&mei).len(), 0);
@@ -453,11 +496,13 @@ fn import_string_number_creates_dir() {
     let mei = parse_and_import("{ c4-\\1 d4^\\2 }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2, "expected 2 string number dir events");
-    assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:string,1"));
+    assert_artic_label(dirs[0].common.label.as_deref(), "StringNumber", "1", None);
     assert!(dirs[0].dir_log.startid.is_some());
-    assert_eq!(
+    assert_artic_label(
         dirs[1].common.label.as_deref(),
-        Some("lilypond:string,2,dir=up")
+        "StringNumber",
+        "2",
+        Some("Up"),
     );
 }
 
@@ -466,7 +511,12 @@ fn import_open_creates_dir() {
     let mei = parse_and_import("{ c4\\open }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 1, "expected 1 dir for \\open");
-    assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:artic,open"));
+    assert_artic_label(
+        dirs[0].common.label.as_deref(),
+        "Articulation",
+        "open",
+        None,
+    );
     assert!(dirs[0].dir_log.startid.is_some());
 }
 
@@ -475,9 +525,11 @@ fn import_harmonic_creates_dir() {
     let mei = parse_and_import("{ c4\\harmonic }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 1, "expected 1 dir for \\harmonic");
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,harmonic")
+        "Articulation",
+        "harmonic",
+        None,
     );
 }
 
@@ -486,9 +538,11 @@ fn import_flageolet_creates_dir() {
     let mei = parse_and_import("{ c4\\flageolet }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 1, "expected 1 dir for \\flageolet");
-    assert_eq!(
+    assert_artic_label(
         dirs[0].common.label.as_deref(),
-        Some("lilypond:artic,flageolet")
+        "Articulation",
+        "flageolet",
+        None,
     );
 }
 
@@ -497,8 +551,13 @@ fn import_combined_string_and_open() {
     let mei = parse_and_import("{ c4-\\1 -\\open }");
     let dirs = measure_dirs(&mei);
     assert_eq!(dirs.len(), 2, "expected string number + open");
-    assert_eq!(dirs[0].common.label.as_deref(), Some("lilypond:string,1"));
-    assert_eq!(dirs[1].common.label.as_deref(), Some("lilypond:artic,open"));
+    assert_artic_label(dirs[0].common.label.as_deref(), "StringNumber", "1", None);
+    assert_artic_label(
+        dirs[1].common.label.as_deref(),
+        "Articulation",
+        "open",
+        None,
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -567,9 +626,12 @@ fn import_tuplet_with_span_duration() {
     assert_eq!(ts.tuplet_span_log.numbase.as_deref(), Some("2"));
     // Label should contain span duration info
     let label = ts.common.label.as_deref().unwrap();
-    assert!(
-        label.contains("span=4"),
-        "label should contain span=4: {label}"
+    let json = label.strip_prefix("tusk:tuplet,").unwrap();
+    let info: tusk_model::TupletInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(
+        info.span_duration.as_ref().map(|d| d.base),
+        Some(4),
+        "span duration base should be 4"
     );
 }
 
@@ -603,9 +665,13 @@ fn import_tuplet_label_format() {
     let spans = measure_tuplet_spans(&mei);
     let label = spans[0].common.label.as_deref().unwrap();
     assert!(
-        label.starts_with("lilypond:tuplet,3/2"),
-        "label should start with lilypond:tuplet,3/2: {label}"
+        label.starts_with("tusk:tuplet,"),
+        "label should start with tusk:tuplet,: {label}"
     );
+    let json = label.strip_prefix("tusk:tuplet,").unwrap();
+    let info: tusk_model::TupletInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(info.num, 3);
+    assert_eq!(info.denom, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -776,13 +842,15 @@ fn import_repeat_volta_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+                .is_some_and(|l| l.starts_with("tusk:repeat,"))
         })
         .collect();
     assert_eq!(repeat_dirs.len(), 1, "should create one repeat Dir");
     let label = repeat_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("volta"), "label: {label}");
-    assert!(label.contains(",2"), "label should contain count: {label}");
+    let json = label.strip_prefix("tusk:repeat,").unwrap();
+    let info: tusk_model::RepeatInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(info.repeat_type, tusk_model::RepeatTypeExt::Volta);
+    assert_eq!(info.count, 2);
     assert!(
         repeat_dirs[0].dir_log.startid.is_some(),
         "should have startid"
@@ -800,7 +868,7 @@ fn import_repeat_with_alternatives_creates_ending_dirs() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+                .is_some_and(|l| l.starts_with("tusk:repeat,"))
         })
         .collect();
     let ending_dirs: Vec<_> = dirs
@@ -809,20 +877,33 @@ fn import_repeat_with_alternatives_creates_ending_dirs() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:ending,"))
+                .is_some_and(|l| l.starts_with("tusk:ending,"))
         })
         .collect();
     assert_eq!(repeat_dirs.len(), 1, "one repeat Dir");
     assert_eq!(ending_dirs.len(), 2, "two ending Dirs");
     let repeat_label = repeat_dirs[0].common.label.as_deref().unwrap();
-    assert!(
-        repeat_label.contains("alts=2"),
-        "repeat label should note 2 alternatives: {repeat_label}"
-    );
-    let end0_label = ending_dirs[0].common.label.as_deref().unwrap();
-    let end1_label = ending_dirs[1].common.label.as_deref().unwrap();
-    assert_eq!(end0_label, "lilypond:ending,0");
-    assert_eq!(end1_label, "lilypond:ending,1");
+    let rjson = repeat_label.strip_prefix("tusk:repeat,").unwrap();
+    let rinfo: tusk_model::RepeatInfo = serde_json::from_str(rjson).unwrap();
+    assert_eq!(rinfo.alternative_count, Some(2));
+    let end0_json = ending_dirs[0]
+        .common
+        .label
+        .as_deref()
+        .unwrap()
+        .strip_prefix("tusk:ending,")
+        .unwrap();
+    let end0: tusk_model::EndingInfo = serde_json::from_str(end0_json).unwrap();
+    assert_eq!(end0.index, 0);
+    let end1_json = ending_dirs[1]
+        .common
+        .label
+        .as_deref()
+        .unwrap()
+        .strip_prefix("tusk:ending,")
+        .unwrap();
+    let end1: tusk_model::EndingInfo = serde_json::from_str(end1_json).unwrap();
+    assert_eq!(end1.index, 1);
 }
 
 #[test]
@@ -835,13 +916,15 @@ fn import_repeat_unfold_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+                .is_some_and(|l| l.starts_with("tusk:repeat,"))
         })
         .collect();
     assert_eq!(repeat_dirs.len(), 1);
     let label = repeat_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("unfold"), "label: {label}");
-    assert!(label.contains(",4"), "count=4: {label}");
+    let json = label.strip_prefix("tusk:repeat,").unwrap();
+    let info: tusk_model::RepeatInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(info.repeat_type, tusk_model::RepeatTypeExt::Unfold);
+    assert_eq!(info.count, 4);
 }
 
 #[test]
@@ -854,12 +937,14 @@ fn import_repeat_percent_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+                .is_some_and(|l| l.starts_with("tusk:repeat,"))
         })
         .collect();
     assert_eq!(repeat_dirs.len(), 1);
     let label = repeat_dirs[0].common.label.as_deref().unwrap();
-    assert!(label.contains("percent"), "label: {label}");
+    let json = label.strip_prefix("tusk:repeat,").unwrap();
+    let info: tusk_model::RepeatInfo = serde_json::from_str(json).unwrap();
+    assert_eq!(info.repeat_type, tusk_model::RepeatTypeExt::Percent);
 }
 
 #[test]
@@ -872,7 +957,7 @@ fn import_nested_repeat_creates_multiple_dirs() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:repeat,"))
+                .is_some_and(|l| l.starts_with("tusk:repeat,"))
         })
         .collect();
     assert_eq!(

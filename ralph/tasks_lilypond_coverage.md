@@ -1524,57 +1524,57 @@ Labels on MEI control events (`Dir`, `Slur`, `TupletSpan`, `Trill`, `Mordent`, `
 
 **Phrasing slur** — label: `lilypond:phrase` on `Slur`.
 
-- [ ] [I] Replace `lilypond:phrase` label with `PhrasingSlur` extension flag on Slur
-- [ ] [E] Update slur export to check extension
-- [ ] [T] Phrasing slur roundtrip tests pass
+- [x] [I] Replace `lilypond:phrase` label with `PhrasingSlur` extension flag on Slur
+- [x] [E] Update slur export to check extension
+- [x] [T] Phrasing slur roundtrip tests pass
 
 **Tuplet** — label: `lilypond:tuplet,NUM/DENOM[,span=DUR]` on `TupletSpan`.
 
-- [ ] [I] Replace `lilypond:tuplet,` label with `TupletInfo { num, denom, span_duration }` extension on TupletSpan
-- [ ] [E] Update `parse_tuplet_span_label()` to read from extension
-- [ ] [T] Tuplet roundtrip tests pass
+- [x] [I] Replace `lilypond:tuplet,` label with `TupletInfo { num, denom, span_duration }` extension on TupletSpan
+- [x] [E] Update `parse_tuplet_span_label()` to read from extension
+- [x] [T] Tuplet roundtrip tests pass
 
 **Ornaments** — labels: `lilypond:trill[,dir=]`, `lilypond:mordent[,dir=]`, `lilypond:turn[,dir=]`, `lilypond:fermata,NAME`, `lilypond:ornam,NAME[,dir=]` on respective MEI elements.
 
-- [ ] [I] Replace ornament-specific labels with `OrnamentInfo { name, direction }` extension on Trill/Mordent/Turn/Fermata/Ornam
-- [ ] [E] Update `collect_ornament_post_events()` to read from extensions
-- [ ] [T] Ornament roundtrip tests pass
+- [x] [I] Replace ornament-specific labels with `OrnamentInfo { name, direction }` extension on Trill/Mordent/Turn/Fermata/Ornam
+- [x] [E] Update `collect_ornament_post_events()` to read from extensions
+- [x] [T] Ornament roundtrip tests pass
 
 **Tremolo** — label: `lilypond:tremolo,VALUE` on `BTrem`.
 
-- [ ] [I] Replace `lilypond:tremolo,` label with `TremoloInfo { value }` extension on BTrem
-- [ ] [E] Update BTrem conversion to read from extension
-- [ ] [T] Tremolo roundtrip tests pass
+- [x] [I] Replace `lilypond:tremolo,` label with `TremoloInfo { value }` extension on BTrem
+- [x] [E] Update BTrem conversion to read from extension
+- [x] [T] Tremolo roundtrip tests pass
 
 **Articulations/fingerings/string numbers** — labels: `lilypond:artic,NAME[,dir=]`, `lilypond:fing,DIGIT[,dir=]`, `lilypond:string,NUMBER[,dir=]` on `Dir`.
 
-- [ ] [I] Replace `lilypond:artic,`/`lilypond:fing,`/`lilypond:string,` labels with `ArticulationInfo { kind, name_or_value, direction }` extension on Dir (single type covering all three)
-- [ ] [E] Update `collect_artic_post_events()` to read from extension
-- [ ] [T] All articulation/fingering/string number roundtrip tests pass
+- [x] [I] Replace `lilypond:artic,`/`lilypond:fing,`/`lilypond:string,` labels with `ArticulationInfo { kind, name_or_value, direction }` extension on Dir (single type covering all three)
+- [x] [E] Update `collect_artic_post_events()` to read from extension
+- [x] [T] All articulation/fingering/string number roundtrip tests pass
 
 **Tempo/mark/textmark** — labels: `lilypond:tempo,SERIALIZED`, `lilypond:mark,SERIALIZED`, `lilypond:textmark,SERIALIZED` on `Dir`/`Tempo`.
 
-- [ ] [I] Replace with `TempoInfo`/`MarkInfo`/`TextMarkInfo` extensions carrying typed fields (text, duration, bpm for tempo; label type for mark; etc.)
-- [ ] [E] Update tempo/mark/textmark export to read from extensions
-- [ ] [T] All tempo/mark roundtrip tests pass
+- [x] [I] Replace with `TempoInfo`/`MarkInfo`/`TextMarkInfo` extensions carrying typed fields (text, duration, bpm for tempo; label type for mark; etc.)
+- [x] [E] Update tempo/mark/textmark export to read from extensions
+- [x] [T] All tempo/mark roundtrip tests pass
 
 **Repeats/endings** — labels: `lilypond:repeat,TYPE,COUNT[,alts=N]`, `lilypond:ending,INDEX` on `Dir`.
 
-- [ ] [I] Replace with `RepeatInfo { repeat_type, count, num_alternatives }` and `EndingInfo { index }` extensions on Dir
-- [ ] [E] Update `collect_repeat_spans()` / `collect_ending_spans()` to read from extensions
-- [ ] [T] All repeat roundtrip tests pass
+- [x] [I] Replace with `RepeatInfo { repeat_type, count, num_alternatives }` and `EndingInfo { index }` extensions on Dir
+- [x] [E] Update `collect_repeat_spans()` / `collect_ending_spans()` to read from extensions
+- [x] [T] All repeat roundtrip tests pass
 
 **Chord mode/figured bass events** — labels: `lilypond:chord-mode,SERIALIZED` on `Harm`, `lilypond:figure,SERIALIZED` on `Fb`.
 
-- [ ] [I] Replace with `ChordModeInfo` / `FiguredBassInfo` typed extensions carrying the parsed event data (root, quality, inversion, etc. for chords; figure numbers, alterations, modifications for figures)
-- [ ] [E] Update chord mode and figured bass export to read from extensions
-- [ ] [T] All chord mode and figured bass roundtrip tests pass
+- [x] [I] Replace with `ChordModeInfo` / `FiguredBassInfo` typed extensions carrying the parsed event data (root, quality, inversion, etc. for chords; figure numbers, alterations, modifications for figures)
+- [x] [E] Update chord mode and figured bass export to read from extensions
+- [x] [T] All chord mode and figured bass roundtrip tests pass
 
 **Property ops / function calls** — labels: `lilypond:prop,SERIALIZED`, `lilypond:func,SERIALIZED` on `Dir`.
 
-- [ ] [I] Replace with `PropertyOp` and `FunctionCall` typed extensions on Dir
-- [ ] [E] Update `collect_property_ops()` / `collect_function_ops()` in `operations.rs` to read from extensions
-- [ ] [T] All property op and function call roundtrip tests pass
+- [x] [I] Replace with `PropertyOp` and `FunctionCall` typed extensions on Dir
+- [x] [E] Update `collect_property_ops()` / `collect_function_ops()` in `operations.rs` to read from extensions
+- [x] [T] All property op and function call roundtrip tests pass
 
 ### 33.6 Final Cleanup
 

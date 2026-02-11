@@ -17,7 +17,7 @@ pub(super) struct FiguredBassMeta {
 /// Collect figure events from Fb control events in the score.
 ///
 /// Returns a list of `Music::Figure` items extracted from
-/// `<fb>` elements with `lilypond:figure,` labels.
+/// `<fb>` elements with `tusk:figure,{JSON}` labels.
 pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score) -> Vec<Music> {
     let mut events = Vec::new();
     for child in &score.children {
@@ -38,17 +38,14 @@ pub(super) fn collect_figure_mode_fbs(score: &tusk_model::elements::Score) -> Ve
     events
 }
 
-/// Parse a FigureEvent from an Fb element's label.
-///
-/// Label format: `lilypond:figure,SERIALIZED`
+/// Parse a FigureEvent from an Fb element's typed JSON label.
 fn parse_figure_event_from_fb(
     fb: &tusk_model::elements::Fb,
 ) -> Option<crate::model::note::FigureEvent> {
     let label = fb.common.label.as_deref()?;
-    let serialized = label.strip_prefix("lilypond:figure,")?;
-    // Unescape label value
-    let unescaped = crate::import::signatures::unescape_label_value(serialized);
-    parse_figure_event_str(&unescaped)
+    let json = label.strip_prefix("tusk:figure,")?;
+    let info: tusk_model::FiguredBassInfo = serde_json::from_str(json).ok()?;
+    parse_figure_event_str(&info.serialized)
 }
 
 /// Parse a figure event string back into a FigureEvent.

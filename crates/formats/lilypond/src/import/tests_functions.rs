@@ -53,7 +53,7 @@ fn import_music_function_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:func,"))
+                .is_some_and(|l| l.starts_with("tusk:func,"))
         })
         .collect();
     assert_eq!(func_dirs.len(), 1, "expected one function dir");
@@ -74,7 +74,7 @@ fn import_music_function_with_string_arg() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:func,"))
+                .is_some_and(|l| l.starts_with("tusk:func,"))
         })
         .collect();
     assert_eq!(func_dirs.len(), 1);
@@ -92,7 +92,7 @@ fn import_music_function_has_startid() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:func,"))
+                .is_some_and(|l| l.starts_with("tusk:func,"))
         })
         .collect();
     assert_eq!(func_dirs.len(), 1);
@@ -113,7 +113,7 @@ fn import_partial_function_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:func,"))
+                .is_some_and(|l| l.starts_with("tusk:func,"))
         })
         .collect();
     assert_eq!(func_dirs.len(), 1, "expected one function dir for partial");

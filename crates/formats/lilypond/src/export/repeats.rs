@@ -1,13 +1,13 @@
 //! Repeat and alternative wrapping for MEI→LilyPond export.
 //!
-//! Collects `<dir>` elements with `lilypond:repeat,` and `lilypond:ending,` labels
+//! Collects `<dir>` elements with `tusk:repeat,{JSON}` and `tusk:ending,{JSON}` labels
 //! from MEI measure children and wraps Music items in `Music::Repeat` with alternatives.
 
 use tusk_model::elements::MeasureChild;
 
 use crate::model::Music;
 
-/// Collected repeat span info from Dir elements with `lilypond:repeat,` labels.
+/// Collected repeat span info from Dir elements.
 pub(super) struct RepeatSpanInfo {
     pub start_id: String,
     pub end_id: String,
@@ -16,11 +16,22 @@ pub(super) struct RepeatSpanInfo {
     pub num_alternatives: u32,
 }
 
-/// Collected ending span info from Dir elements with `lilypond:ending,` labels.
+/// Collected ending span info from Dir elements.
 pub(super) struct EndingSpanInfo {
     pub start_id: String,
     pub end_id: String,
     pub index: u32,
+}
+
+/// Convert RepeatTypeExt back to the LilyPond model RepeatType.
+fn repeat_type_ext_to_ly(rt: tusk_model::RepeatTypeExt) -> crate::model::RepeatType {
+    match rt {
+        tusk_model::RepeatTypeExt::Volta => crate::model::RepeatType::Volta,
+        tusk_model::RepeatTypeExt::Unfold => crate::model::RepeatType::Unfold,
+        tusk_model::RepeatTypeExt::Percent => crate::model::RepeatType::Percent,
+        tusk_model::RepeatTypeExt::Tremolo => crate::model::RepeatType::Tremolo,
+        tusk_model::RepeatTypeExt::Segno => crate::model::RepeatType::Segno,
+    }
 }
 
 /// Collect repeat spans from Dir elements in measure children.
@@ -29,7 +40,8 @@ pub(super) fn collect_repeat_spans(measure_children: &[MeasureChild]) -> Vec<Rep
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc
             && let Some(label) = dir.common.label.as_deref()
-            && let Some(rest) = label.strip_prefix("lilypond:repeat,")
+            && let Some(json) = label.strip_prefix("tusk:repeat,")
+            && let Ok(info) = serde_json::from_str::<tusk_model::RepeatInfo>(json)
         {
             let start_id = dir
                 .dir_log
@@ -44,34 +56,16 @@ pub(super) fn collect_repeat_spans(measure_children: &[MeasureChild]) -> Vec<Rep
                 .map(|u| u.0.trim_start_matches('#').to_string())
                 .unwrap_or_default();
 
-            if let Some((repeat_type, count, num_alts)) = parse_repeat_label(rest) {
-                spans.push(RepeatSpanInfo {
-                    start_id,
-                    end_id,
-                    repeat_type,
-                    count,
-                    num_alternatives: num_alts,
-                });
-            }
+            spans.push(RepeatSpanInfo {
+                start_id,
+                end_id,
+                repeat_type: repeat_type_ext_to_ly(info.repeat_type),
+                count: info.count,
+                num_alternatives: info.alternative_count.unwrap_or(0) as u32,
+            });
         }
     }
     spans
-}
-
-/// Parse repeat label value: `TYPE,COUNT[,alts=N]`
-fn parse_repeat_label(s: &str) -> Option<(crate::model::RepeatType, u32, u32)> {
-    let parts: Vec<&str> = s.split(',').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-    let repeat_type = crate::model::RepeatType::from_name(parts[0])?;
-    let count: u32 = parts[1].parse().ok()?;
-    let num_alts = parts
-        .iter()
-        .find_map(|p| p.strip_prefix("alts="))
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(0);
-    Some((repeat_type, count, num_alts))
 }
 
 /// Collect ending spans from Dir elements in measure children.
@@ -80,7 +74,8 @@ pub(super) fn collect_ending_spans(measure_children: &[MeasureChild]) -> Vec<End
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc
             && let Some(label) = dir.common.label.as_deref()
-            && let Some(rest) = label.strip_prefix("lilypond:ending,")
+            && let Some(json) = label.strip_prefix("tusk:ending,")
+            && let Ok(info) = serde_json::from_str::<tusk_model::EndingInfo>(json)
         {
             let start_id = dir
                 .dir_log
@@ -94,13 +89,11 @@ pub(super) fn collect_ending_spans(measure_children: &[MeasureChild]) -> Vec<End
                 .as_ref()
                 .map(|u| u.0.trim_start_matches('#').to_string())
                 .unwrap_or_default();
-            if let Ok(index) = rest.parse::<u32>() {
-                spans.push(EndingSpanInfo {
-                    start_id,
-                    end_id,
-                    index,
-                });
-            }
+            spans.push(EndingSpanInfo {
+                start_id,
+                end_id,
+                index: info.index,
+            });
         }
     }
     // Sort by index for deterministic ordering

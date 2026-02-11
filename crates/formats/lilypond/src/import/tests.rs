@@ -813,7 +813,15 @@ fn import_slur_creates_control_event() {
     assert!(slur.slur_log.startid.is_some());
     assert!(slur.slur_log.endid.is_some());
     // Not a phrase
-    assert!(slur.common.label.is_none() || slur.common.label.as_deref() != Some("lilypond:phrase"));
+    assert!(
+        slur.common.label.is_none()
+            || !slur
+                .common
+                .label
+                .as_deref()
+                .unwrap_or("")
+                .starts_with("tusk:phrase,")
+    );
 }
 
 #[test]
@@ -822,7 +830,13 @@ fn import_phrasing_slur_creates_labeled_control_event() {
     let slurs = measure_slurs(&mei);
     assert_eq!(slurs.len(), 1, "expected 1 phrase control event");
     let slur = slurs[0];
-    assert_eq!(slur.common.label.as_deref(), Some("lilypond:phrase"));
+    assert!(
+        slur.common
+            .label
+            .as_deref()
+            .unwrap()
+            .starts_with("tusk:phrase,")
+    );
     assert!(slur.slur_log.startid.is_some());
     assert!(slur.slur_log.endid.is_some());
 }

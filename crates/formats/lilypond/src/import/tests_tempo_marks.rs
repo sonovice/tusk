@@ -177,7 +177,7 @@ fn import_mark_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:mark,"))
+                .is_some_and(|l| l.starts_with("tusk:mark,"))
         })
         .collect();
     assert_eq!(mark_dirs.len(), 1, "should create one mark Dir");
@@ -193,7 +193,7 @@ fn import_mark_string() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:mark,"))
+                .is_some_and(|l| l.starts_with("tusk:mark,"))
         })
         .collect();
     assert_eq!(mark_dirs.len(), 1);
@@ -209,7 +209,7 @@ fn import_textmark_creates_dir() {
             d.common
                 .label
                 .as_deref()
-                .is_some_and(|l| l.starts_with("lilypond:textmark,"))
+                .is_some_and(|l| l.starts_with("tusk:textmark,"))
         })
         .collect();
     assert_eq!(textmark_dirs.len(), 1, "should create one textMark Dir");
@@ -275,9 +275,10 @@ fn import_fixture_tempo_marks() {
     let mark_dirs: Vec<_> = dirs
         .iter()
         .filter(|d| {
-            d.common.label.as_deref().is_some_and(|l| {
-                l.starts_with("lilypond:mark,") || l.starts_with("lilypond:textmark,")
-            })
+            d.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("tusk:mark,") || l.starts_with("tusk:textmark,"))
         })
         .collect();
     assert!(

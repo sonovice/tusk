@@ -1,6 +1,6 @@
 //! Property operation and music function call roundtrip for LilyPond export.
 //!
-//! Collects `<dir>` control events with `lilypond:prop,` and `lilypond:func,` labels
+//! Collects `<dir>` control events with `tusk:prop,{JSON}` and `tusk:func,{JSON}` labels
 //! from MEI measures, parses them back into LilyPond AST nodes, and injects them
 //! into the items list before their referenced notes.
 
@@ -20,7 +20,7 @@ pub(super) struct PropertyOpInfo {
     pub(super) music: Music,
 }
 
-/// Collect property operations from measure `<dir>` elements with `lilypond:prop,` labels.
+/// Collect property operations from measure `<dir>` elements with `tusk:prop,{JSON}` labels.
 pub(super) fn collect_property_ops(measure_children: &[MeasureChild]) -> Vec<PropertyOpInfo> {
     let mut ops = Vec::new();
     for mc in measure_children {
@@ -29,18 +29,17 @@ pub(super) fn collect_property_ops(measure_children: &[MeasureChild]) -> Vec<Pro
                 Some(l) => l,
                 None => continue,
             };
-            if let Some(serialized_escaped) = label.strip_prefix("lilypond:prop,") {
-                let serialized =
-                    crate::import::signatures::unescape_label_value(serialized_escaped);
-                if let Some(music) = parse_property_op_str(&serialized) {
-                    let start_id = dir
-                        .dir_log
-                        .startid
-                        .as_ref()
-                        .map(|u| u.0.trim_start_matches('#').to_string())
-                        .unwrap_or_default();
-                    ops.push(PropertyOpInfo { start_id, music });
-                }
+            if let Some(json) = label.strip_prefix("tusk:prop,")
+                && let Ok(info) = serde_json::from_str::<tusk_model::PropertyOpInfo>(json)
+                && let Some(music) = parse_property_op_str(&info.serialized)
+            {
+                let start_id = dir
+                    .dir_log
+                    .startid
+                    .as_ref()
+                    .map(|u| u.0.trim_start_matches('#').to_string())
+                    .unwrap_or_default();
+                ops.push(PropertyOpInfo { start_id, music });
             }
         }
     }
@@ -91,7 +90,7 @@ pub(super) struct FunctionOpInfo {
     pub(super) music: Music,
 }
 
-/// Collect music function calls from measure `<dir>` elements with `lilypond:func,` labels.
+/// Collect music function calls from measure `<dir>` elements with `tusk:func,{JSON}` labels.
 pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<FunctionOpInfo> {
     let mut ops = Vec::new();
     for mc in measure_children {
@@ -100,18 +99,17 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<Fun
                 Some(l) => l,
                 None => continue,
             };
-            if let Some(serialized_escaped) = label.strip_prefix("lilypond:func,") {
-                let serialized =
-                    crate::import::signatures::unescape_label_value(serialized_escaped);
-                if let Some(music) = parse_function_call_str(&serialized) {
-                    let start_id = dir
-                        .dir_log
-                        .startid
-                        .as_ref()
-                        .map(|u| u.0.trim_start_matches('#').to_string())
-                        .unwrap_or_default();
-                    ops.push(FunctionOpInfo { start_id, music });
-                }
+            if let Some(json) = label.strip_prefix("tusk:func,")
+                && let Ok(info) = serde_json::from_str::<tusk_model::FunctionCallInfo>(json)
+                && let Some(music) = parse_function_call_str(&info.serialized)
+            {
+                let start_id = dir
+                    .dir_log
+                    .startid
+                    .as_ref()
+                    .map(|u| u.0.trim_start_matches('#').to_string())
+                    .unwrap_or_default();
+                ops.push(FunctionOpInfo { start_id, music });
             }
         }
     }

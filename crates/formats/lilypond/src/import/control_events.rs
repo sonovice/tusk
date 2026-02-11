@@ -14,31 +14,45 @@ use crate::model::note::{
     BassFigure, ChordModeEvent, Direction, FigureAlteration, FigureEvent, FiguredBassModification,
 };
 
-/// Encode a Direction into a label suffix.
-pub(super) fn direction_label_suffix(dir: Direction) -> &'static str {
+/// Convert a LilyPond Direction to an extension DirectionExt.
+fn direction_to_ext(dir: Direction) -> Option<tusk_model::DirectionExt> {
     match dir {
-        Direction::Up => ",dir=up",
-        Direction::Down => ",dir=down",
-        Direction::Neutral => "",
+        Direction::Up => Some(tusk_model::DirectionExt::Up),
+        Direction::Down => Some(tusk_model::DirectionExt::Down),
+        Direction::Neutral => None,
     }
 }
 
-/// Format a LilyPond Duration as a compact string for label storage.
-///
-/// Format: `BASE[.DOTS][*N][*N/M]` e.g. `4`, `8.`, `4*3`, `8*2/3`
-pub(super) fn format_duration_for_label(dur: &crate::model::Duration) -> String {
-    let mut s = dur.base.to_string();
-    for _ in 0..dur.dots {
-        s.push('.');
+/// Build a typed JSON ornament label.
+fn ornament_label(name: &str, direction: Direction) -> String {
+    let info = tusk_model::OrnamentInfo {
+        name: name.to_string(),
+        direction: direction_to_ext(direction),
+    };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    format!("tusk:ornament,{json}")
+}
+
+/// Convert a LilyPond RepeatType to an extension RepeatTypeExt.
+fn repeat_type_to_ext(rt: crate::model::RepeatType) -> tusk_model::RepeatTypeExt {
+    match rt {
+        crate::model::RepeatType::Volta => tusk_model::RepeatTypeExt::Volta,
+        crate::model::RepeatType::Unfold => tusk_model::RepeatTypeExt::Unfold,
+        crate::model::RepeatType::Percent => tusk_model::RepeatTypeExt::Percent,
+        crate::model::RepeatType::Tremolo => tusk_model::RepeatTypeExt::Tremolo,
+        crate::model::RepeatType::Segno => tusk_model::RepeatTypeExt::Segno,
     }
-    for &(n, d) in &dur.multipliers {
-        if d == 1 {
-            s.push_str(&format!("*{n}"));
-        } else {
-            s.push_str(&format!("*{n}/{d}"));
-        }
-    }
-    s
+}
+
+/// Build a typed JSON articulation/fingering/string label.
+fn artic_label(kind: tusk_model::ArticulationKind, value: &str, direction: Direction) -> String {
+    let info = tusk_model::ArticulationInfo {
+        kind,
+        value: value.to_string(),
+        direction: direction_to_ext(direction),
+    };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    format!("tusk:artic,{json}")
 }
 
 /// Compute the number of tremolo slashes from the subdivision value.
@@ -66,7 +80,8 @@ pub(super) fn make_slur(
     slur.slur_log.endid = Some(DataUri(format!("#{end_id}")));
     slur.slur_log.staff = Some(staff_n.to_string());
     if is_phrase {
-        slur.common.label = Some("lilypond:phrase".to_string());
+        let json = serde_json::to_string(&tusk_model::PhrasingSlur).unwrap_or_default();
+        slur.common.label = Some(format!("tusk:phrase,{json}"));
     }
     slur
 }
@@ -119,13 +134,18 @@ pub(super) fn make_tuplet_span(
     ts.tuplet_span_log.num = Some(num.to_string());
     ts.tuplet_span_log.numbase = Some(numbase.to_string());
 
-    // Build roundtrip label
-    let mut label = format!("lilypond:tuplet,{num}/{numbase}");
-    if let Some(dur) = span_duration {
-        let dur_str = format_duration_for_label(dur);
-        label.push_str(&format!(",span={dur_str}"));
-    }
-    ts.common.label = Some(label);
+    // Build typed JSON label for roundtrip
+    let info = tusk_model::TupletInfo {
+        num,
+        denom: numbase,
+        span_duration: span_duration.map(|dur| tusk_model::DurationInfo {
+            base: dur.base,
+            dots: dur.dots,
+            multipliers: dur.multipliers.clone(),
+        }),
+    };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    ts.common.label = Some(format!("tusk:tuplet,{json}"));
 
     ts
 }
@@ -195,12 +215,7 @@ fn make_trill(startid: &str, staff_n: u32, direction: Direction, id: u32) -> Tri
     trill.common.xml_id = Some(format!("ly-ornam-{id}"));
     trill.trill_log.startid = Some(DataUri(format!("#{startid}")));
     trill.trill_log.staff = Some(staff_n.to_string());
-    if direction != Direction::Neutral {
-        trill.common.label = Some(format!(
-            "lilypond:trill{}",
-            direction_label_suffix(direction)
-        ));
-    }
+    trill.common.label = Some(ornament_label("trill", direction));
     trill
 }
 
@@ -212,7 +227,7 @@ fn make_mordent(
     form: &str,
     long: bool,
     id: u32,
-    label: Option<&str>,
+    ornament_name: Option<&str>,
 ) -> Mordent {
     let mut mordent = Mordent::default();
     mordent.common.xml_id = Some(format!("ly-ornam-{id}"));
@@ -222,19 +237,8 @@ fn make_mordent(
     if long {
         mordent.mordent_log.long = Some(tusk_model::generated::data::DataBoolean::True);
     }
-    if direction != Direction::Neutral || label.is_some() {
-        let mut lbl = label.unwrap_or("").to_string();
-        if direction != Direction::Neutral {
-            if !lbl.is_empty() {
-                lbl.push_str(direction_label_suffix(direction));
-            } else {
-                lbl = format!("lilypond:mordent{}", direction_label_suffix(direction));
-            }
-        }
-        if !lbl.is_empty() {
-            mordent.common.label = Some(lbl);
-        }
-    }
+    let name = ornament_name.unwrap_or(if form == "upper" { "prall" } else { "mordent" });
+    mordent.common.label = Some(ornament_label(name, direction));
     mordent
 }
 
@@ -245,12 +249,12 @@ fn make_turn(startid: &str, staff_n: u32, direction: Direction, form: &str, id: 
     turn.turn_log.startid = Some(DataUri(format!("#{startid}")));
     turn.turn_log.staff = Some(staff_n.to_string());
     turn.turn_log.form = Some(form.to_string());
-    if direction != Direction::Neutral {
-        turn.common.label = Some(format!(
-            "lilypond:turn{}",
-            direction_label_suffix(direction)
-        ));
-    }
+    let name = if form == "lower" {
+        "reverseturn"
+    } else {
+        "turn"
+    };
+    turn.common.label = Some(ornament_label(name, direction));
     turn
 }
 
@@ -269,23 +273,7 @@ fn make_fermata(name: &str, startid: &str, staff_n: u32, direction: Direction, i
     if let Some(s) = shape {
         fermata.fermata_vis.shape = Some(s.to_string());
     }
-    let variant_str = if name != "fermata" {
-        Some(format!("lilypond:fermata,{name}"))
-    } else {
-        None
-    };
-    if direction != Direction::Neutral || variant_str.is_some() {
-        let base = variant_str.unwrap_or_default();
-        let dir_suffix = direction_label_suffix(direction);
-        if !base.is_empty() || !dir_suffix.is_empty() {
-            let label = if base.is_empty() {
-                format!("lilypond:fermata{dir_suffix}")
-            } else {
-                format!("{base}{dir_suffix}")
-            };
-            fermata.common.label = Some(label);
-        }
-    }
+    fermata.common.label = Some(ornament_label(name, direction));
     fermata
 }
 
@@ -295,10 +283,7 @@ fn make_ornam(name: &str, startid: &str, staff_n: u32, direction: Direction, id:
     ornam.common.xml_id = Some(format!("ly-ornam-{id}"));
     ornam.ornam_log.startid = Some(DataUri(format!("#{startid}")));
     ornam.ornam_log.staff = Some(staff_n.to_string());
-    ornam.common.label = Some(format!(
-        "lilypond:ornam,{name}{}",
-        direction_label_suffix(direction)
-    ));
+    ornam.common.label = Some(ornament_label(name, direction));
     ornam.children.push(OrnamChild::Text(name.to_string()));
     ornam
 }
@@ -309,7 +294,9 @@ pub(super) fn wrap_last_in_btrem(layer: &mut Layer, value: u32, counter: &mut u3
         *counter += 1;
         let mut btrem = BTrem::default();
         btrem.common.xml_id = Some(format!("ly-btrem-{}", *counter));
-        btrem.common.label = Some(format!("lilypond:tremolo,{value}"));
+        let trem_info = tusk_model::TremoloInfo { value };
+        let json = serde_json::to_string(&trem_info).unwrap_or_default();
+        btrem.common.label = Some(format!("tusk:tremolo,{json}"));
         let num = tremolo_slash_count(value);
         if num > 0 {
             btrem.b_trem_log.num = Some(num.to_string());
@@ -327,8 +314,6 @@ pub(super) fn wrap_last_in_btrem(layer: &mut Layer, value: u32, counter: &mut u3
 }
 
 /// Create an MEI Dir for a LilyPond articulation.
-///
-/// Label format: `lilypond:artic,NAME[,dir=up|down]`
 pub(super) fn make_artic_dir(
     name: &str,
     direction: Direction,
@@ -340,17 +325,16 @@ pub(super) fn make_artic_dir(
     dir.common.xml_id = Some(format!("ly-artic-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!(
-        "lilypond:artic,{name}{}",
-        direction_label_suffix(direction)
+    dir.common.label = Some(artic_label(
+        tusk_model::ArticulationKind::Articulation,
+        name,
+        direction,
     ));
     dir.children.push(DirChild::Text(name.to_string()));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond fingering.
-///
-/// Label format: `lilypond:fing,DIGIT[,dir=up|down]`
 pub(super) fn make_fing_dir(
     digit: u8,
     direction: Direction,
@@ -362,17 +346,16 @@ pub(super) fn make_fing_dir(
     dir.common.xml_id = Some(format!("ly-artic-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!(
-        "lilypond:fing,{digit}{}",
-        direction_label_suffix(direction)
+    dir.common.label = Some(artic_label(
+        tusk_model::ArticulationKind::Fingering,
+        &digit.to_string(),
+        direction,
     ));
     dir.children.push(DirChild::Text(digit.to_string()));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond string number.
-///
-/// Label format: `lilypond:string,NUMBER[,dir=up|down]`
 pub(super) fn make_string_dir(
     number: u8,
     direction: Direction,
@@ -384,9 +367,10 @@ pub(super) fn make_string_dir(
     dir.common.xml_id = Some(format!("ly-artic-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!(
-        "lilypond:string,{number}{}",
-        direction_label_suffix(direction)
+    dir.common.label = Some(artic_label(
+        tusk_model::ArticulationKind::StringNumber,
+        &number.to_string(),
+        direction,
     ));
     dir.children.push(DirChild::Text(number.to_string()));
     dir
@@ -449,51 +433,47 @@ pub(super) fn make_tempo(
             .push(TempoChild::Text(text_str.trim().to_string()));
     }
 
-    // Store full serialized form in label for lossless roundtrip
+    // Store full serialized form as typed JSON label for lossless roundtrip
     let serialized = crate::serializer::serialize_tempo(tempo);
-    mei_tempo.common.label = Some(format!(
-        "lilypond:tempo,{}",
-        super::signatures::escape_label_value_pub(&serialized)
-    ));
+    let info = tusk_model::TempoInfo { serialized };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    mei_tempo.common.label = Some(format!("tusk:tempo,{json}"));
 
     mei_tempo
 }
 
 /// Create an MEI Dir for a LilyPond `\mark`.
-///
-/// Label format: `lilypond:mark,SERIALIZED`
 pub(super) fn make_mark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(format!("ly-mark-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!(
-        "lilypond:mark,{}",
-        super::signatures::escape_label_value_pub(serialized)
-    ));
+    let info = tusk_model::MarkInfo {
+        serialized: serialized.to_string(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:mark,{json}"));
     dir.children.push(DirChild::Text(serialized.to_string()));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond `\textMark`.
-///
-/// Label format: `lilypond:textmark,SERIALIZED`
 pub(super) fn make_textmark_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(format!("ly-mark-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!(
-        "lilypond:textmark,{}",
-        super::signatures::escape_label_value_pub(serialized)
-    ));
+    let info = tusk_model::TextMarkInfo {
+        serialized: serialized.to_string(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:textmark,{json}"));
     dir.children.push(DirChild::Text(serialized.to_string()));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond repeat structure.
 ///
-/// Label format: `lilypond:repeat,TYPE,COUNT[,alts=N]`
 /// Uses startid/endid to delimit the repeat body range.
 pub(super) fn make_repeat_dir(
     start_id: &str,
@@ -509,11 +489,18 @@ pub(super) fn make_repeat_dir(
     dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
     dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let mut label = format!("lilypond:repeat,{},{count}", repeat_type.as_str());
-    if num_alternatives > 0 {
-        label.push_str(&format!(",alts={num_alternatives}"));
-    }
-    dir.common.label = Some(label);
+    let info = tusk_model::RepeatInfo {
+        repeat_type: repeat_type_to_ext(repeat_type),
+        count,
+        alternative_count: if num_alternatives > 0 {
+            Some(num_alternatives as usize)
+        } else {
+            None
+        },
+        ending_index: None,
+    };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    dir.common.label = Some(format!("tusk:repeat,{json}"));
     dir.children.push(DirChild::Text(format!(
         "repeat {} {count}",
         repeat_type.as_str()
@@ -523,7 +510,6 @@ pub(super) fn make_repeat_dir(
 
 /// Create an MEI Dir for a LilyPond alternative ending.
 ///
-/// Label format: `lilypond:ending,INDEX`
 /// Uses startid/endid to delimit the alternative range.
 pub(super) fn make_ending_dir(
     start_id: &str,
@@ -537,7 +523,9 @@ pub(super) fn make_ending_dir(
     dir.dir_log.startid = Some(DataUri(format!("#{start_id}")));
     dir.dir_log.endid = Some(DataUri(format!("#{end_id}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    dir.common.label = Some(format!("lilypond:ending,{index}"));
+    let info = tusk_model::EndingInfo { index };
+    let json = serde_json::to_string(&info).unwrap_or_default();
+    dir.common.label = Some(format!("tusk:ending,{json}"));
     dir.children
         .push(DirChild::Text(format!("ending {}", index + 1)));
     dir
@@ -545,7 +533,6 @@ pub(super) fn make_ending_dir(
 
 /// Create an MEI Harm control event from a LilyPond chord-mode event.
 ///
-/// Label format: `lilypond:chord-mode,SERIALIZED`
 /// Text child: human-readable chord symbol (e.g. "c:m7/e").
 pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u32) -> Harm {
     let mut harm = Harm::default();
@@ -553,12 +540,13 @@ pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u3
     harm.harm_log.startid = Some(DataUri(format!("#{startid}")));
     harm.harm_log.staff = Some(staff_n.to_string());
 
-    // Serialize the chord mode event for label storage (lossless roundtrip)
+    // Serialize the chord mode event as typed JSON label for lossless roundtrip
     let serialized = crate::serializer::serialize_chord_mode_event(ce);
-    harm.common.label = Some(format!(
-        "lilypond:chord-mode,{}",
-        super::signatures::escape_label_value_pub(&serialized)
-    ));
+    let info = tusk_model::ChordModeInfo {
+        serialized: serialized.clone(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    harm.common.label = Some(format!("tusk:chord-mode,{json}"));
 
     // Human-readable text child
     harm.children.push(HarmChild::Text(serialized));
@@ -568,18 +556,16 @@ pub(super) fn make_harm(ce: &ChordModeEvent, startid: &str, staff_n: u32, id: u3
 
 /// Create an MEI `<fb>` control event from a LilyPond figure event.
 ///
-/// Label format: `lilypond:figure,SERIALIZED`
 /// `<f>` children carry human-readable text (e.g. "6+", "4", "_").
 pub(super) fn make_fb(fe: &FigureEvent, _staff_n: u32, id: u32) -> Fb {
     let mut fb = Fb::default();
     fb.common.xml_id = Some(format!("ly-fb-{id}"));
 
-    // Serialize the figure event for label storage (lossless roundtrip)
+    // Serialize the figure event as typed JSON label for lossless roundtrip
     let serialized = crate::serializer::serialize_figure_event(fe);
-    fb.common.label = Some(format!(
-        "lilypond:figure,{}",
-        super::signatures::escape_label_value_pub(&serialized)
-    ));
+    let info = tusk_model::FiguredBassInfo { serialized };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    fb.common.label = Some(format!("tusk:figure,{json}"));
 
     // Create <f> children with human-readable text
     for fig in &fe.figures {
@@ -621,29 +607,29 @@ fn bass_figure_to_text(fig: &BassFigure) -> String {
 }
 
 /// Create an MEI Dir for a generic LilyPond music function call.
-///
-/// Label format: `lilypond:func,{serialized}`
-/// The serialized text is the full LilyPond expression (e.g. `\tag "part" { c4 d e f }`).
 pub(super) fn make_function_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(format!("ly-func-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let escaped = crate::import::signatures::escape_label_value_pub(serialized);
-    dir.common.label = Some(format!("lilypond:func,{escaped}"));
+    let info = tusk_model::FunctionCallInfo {
+        serialized: serialized.to_string(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:func,{json}"));
     dir
 }
 
 /// Create an MEI Dir for a LilyPond property operation (`\override`, `\set`, etc.).
-///
-/// Label format: `lilypond:prop,{serialized}`
-/// The serialized text is the full LilyPond expression (e.g. `\override NoteHead.color = #red`).
 pub(super) fn make_property_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(format!("ly-prop-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let escaped = crate::import::signatures::escape_label_value_pub(serialized);
-    dir.common.label = Some(format!("lilypond:prop,{escaped}"));
+    let info = tusk_model::PropertyOpInfo {
+        serialized: serialized.to_string(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:prop,{json}"));
     dir
 }

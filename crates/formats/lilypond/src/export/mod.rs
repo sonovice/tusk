@@ -716,77 +716,15 @@ fn collect_tuplet_spans(measure_children: &[MeasureChild]) -> Vec<TupletSpanInfo
 
 /// Parse span duration from a tuplet label.
 ///
-/// Label format: `lilypond:tuplet,NUM/DENOM[,span=DUR]`
-/// Duration format: `BASE[.DOTS][*N][*N/M]`
+/// Label format: `tusk:tuplet,{JSON}` with TupletInfo struct.
 fn parse_tuplet_span_duration(label: &str) -> Option<Duration> {
-    let rest = label.strip_prefix("lilypond:tuplet,")?;
-    // Find span= part
-    let span_str = rest.split(',').find_map(|p| p.strip_prefix("span="))?;
-    parse_duration_from_label(span_str)
-}
-
-/// Parse a compact duration string from a label.
-///
-/// Format: `BASE[.DOTS][*N][*N/M]`
-fn parse_duration_from_label(s: &str) -> Option<Duration> {
-    let mut chars = s.chars().peekable();
-
-    // Parse base (digits before first dot or *)
-    let mut base_str = String::new();
-    while let Some(&c) = chars.peek() {
-        if c.is_ascii_digit() {
-            base_str.push(c);
-            chars.next();
-        } else {
-            break;
-        }
-    }
-    let base: u32 = base_str.parse().ok()?;
-
-    // Parse dots
-    let mut dots = 0u8;
-    while let Some(&'.') = chars.peek() {
-        dots += 1;
-        chars.next();
-    }
-
-    // Parse multipliers
-    let mut multipliers = Vec::new();
-    while let Some(&'*') = chars.peek() {
-        chars.next();
-        let mut num_str = String::new();
-        while let Some(&c) = chars.peek() {
-            if c.is_ascii_digit() {
-                num_str.push(c);
-                chars.next();
-            } else {
-                break;
-            }
-        }
-        let num: u32 = num_str.parse().ok()?;
-
-        if let Some(&'/') = chars.peek() {
-            chars.next();
-            let mut den_str = String::new();
-            while let Some(&c) = chars.peek() {
-                if c.is_ascii_digit() {
-                    den_str.push(c);
-                    chars.next();
-                } else {
-                    break;
-                }
-            }
-            let den: u32 = den_str.parse().ok()?;
-            multipliers.push((num, den));
-        } else {
-            multipliers.push((num, 1));
-        }
-    }
-
+    let json = label.strip_prefix("tusk:tuplet,")?;
+    let info: tusk_model::TupletInfo = serde_json::from_str(json).ok()?;
+    let dur_info = info.span_duration?;
     Some(Duration {
-        base,
-        dots,
-        multipliers,
+        base: dur_info.base,
+        dots: dur_info.dots,
+        multipliers: dur_info.multipliers,
     })
 }
 
@@ -1067,7 +1005,7 @@ fn collect_slur_post_events(measure_children: &[MeasureChild]) -> HashMap<String
                 .common
                 .label
                 .as_deref()
-                .is_some_and(|l| l == "lilypond:phrase");
+                .is_some_and(|l| l.starts_with("tusk:phrase,"));
 
             if let Some(ref startid) = slur.slur_log.startid {
                 let id = startid.0.trim_start_matches('#').to_string();
@@ -1154,7 +1092,7 @@ fn collect_hairpin_post_events(
 }
 
 /// Collect articulation/fingering/string-number control events from `<dir>` elements
-/// with `lilypond:artic,`, `lilypond:fing,`, or `lilypond:string,` labels.
+/// with `tusk:artic,{JSON}` labels.
 fn collect_artic_post_events(
     measure_children: &[MeasureChild],
     map: &mut HashMap<String, Vec<PostEvent>>,
@@ -1170,19 +1108,46 @@ fn collect_artic_post_events(
                 None => continue,
             };
 
-            if let Some(rest) = label.strip_prefix("lilypond:artic,")
-                && let Some(pe) = parse_artic_label(rest)
-            {
-                map.entry(startid).or_default().push(pe);
-            } else if let Some(rest) = label.strip_prefix("lilypond:fing,")
-                && let Some(pe) = parse_fing_label(rest)
-            {
-                map.entry(startid).or_default().push(pe);
-            } else if let Some(rest) = label.strip_prefix("lilypond:string,")
-                && let Some(pe) = parse_string_label(rest)
+            if let Some(json) = label.strip_prefix("tusk:artic,")
+                && let Ok(info) = serde_json::from_str::<tusk_model::ArticulationInfo>(json)
+                && let Some(pe) = artic_info_to_post_event(&info)
             {
                 map.entry(startid).or_default().push(pe);
             }
+        }
+    }
+}
+
+/// Convert an ArticulationInfo to the appropriate PostEvent.
+fn artic_info_to_post_event(info: &tusk_model::ArticulationInfo) -> Option<PostEvent> {
+    let dir = direction_ext_to_ly(info.direction);
+    match info.kind {
+        tusk_model::ArticulationKind::Articulation => {
+            if let Some(script) = name_to_script_abbreviation(&info.value) {
+                Some(PostEvent::Articulation {
+                    direction: dir,
+                    script,
+                })
+            } else {
+                Some(PostEvent::NamedArticulation {
+                    direction: dir,
+                    name: info.value.clone(),
+                })
+            }
+        }
+        tusk_model::ArticulationKind::Fingering => {
+            let digit: u8 = info.value.parse().ok()?;
+            Some(PostEvent::Fingering {
+                direction: dir,
+                digit,
+            })
+        }
+        tusk_model::ArticulationKind::StringNumber => {
+            let number: u8 = info.value.parse().ok()?;
+            Some(PostEvent::StringNumber {
+                direction: dir,
+                number,
+            })
         }
     }
 }
@@ -1198,78 +1163,64 @@ fn collect_ornament_post_events(
             MeasureChild::Trill(trill) => {
                 if let Some(ref startid) = trill.trill_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let direction = trill
-                        .common
-                        .label
-                        .as_deref()
-                        .map(parse_ornament_direction)
-                        .unwrap_or(Direction::Neutral);
+                    let (name, direction) =
+                        parse_ornament_label(trill.common.label.as_deref(), "trill");
                     map.entry(id)
                         .or_default()
-                        .push(PostEvent::NamedArticulation {
-                            direction,
-                            name: "trill".to_string(),
-                        });
+                        .push(PostEvent::NamedArticulation { direction, name });
                 }
             }
             MeasureChild::Mordent(mordent) => {
                 if let Some(ref startid) = mordent.mordent_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let direction = mordent
-                        .common
-                        .label
-                        .as_deref()
-                        .map(parse_ornament_direction)
-                        .unwrap_or(Direction::Neutral);
-                    let name = match mordent.mordent_log.form.as_deref() {
+                    let fallback = match mordent.mordent_log.form.as_deref() {
                         Some("upper") => "prall",
                         _ => "mordent",
                     };
+                    let (name, direction) =
+                        parse_ornament_label(mordent.common.label.as_deref(), fallback);
                     map.entry(id)
                         .or_default()
-                        .push(PostEvent::NamedArticulation {
-                            direction,
-                            name: name.to_string(),
-                        });
+                        .push(PostEvent::NamedArticulation { direction, name });
                 }
             }
             MeasureChild::Turn(turn) => {
                 if let Some(ref startid) = turn.turn_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let direction = turn
-                        .common
-                        .label
-                        .as_deref()
-                        .map(parse_ornament_direction)
-                        .unwrap_or(Direction::Neutral);
-                    let name = match turn.turn_log.form.as_deref() {
+                    let fallback = match turn.turn_log.form.as_deref() {
                         Some("lower") => "reverseturn",
                         _ => "turn",
                     };
+                    let (name, direction) =
+                        parse_ornament_label(turn.common.label.as_deref(), fallback);
                     map.entry(id)
                         .or_default()
-                        .push(PostEvent::NamedArticulation {
-                            direction,
-                            name: name.to_string(),
-                        });
+                        .push(PostEvent::NamedArticulation { direction, name });
                 }
             }
             MeasureChild::Fermata(fermata) => {
                 if let Some(ref startid) = fermata.fermata_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let (name, direction) = parse_fermata_label(fermata);
+                    let (name, direction) =
+                        parse_ornament_label(fermata.common.label.as_deref(), "fermata");
                     map.entry(id)
                         .or_default()
-                        .push(PostEvent::NamedArticulation {
-                            direction,
-                            name: name.to_string(),
-                        });
+                        .push(PostEvent::NamedArticulation { direction, name });
                 }
             }
             MeasureChild::Ornam(ornam) => {
                 if let Some(ref startid) = ornam.ornam_log.startid {
                     let id = startid.0.trim_start_matches('#').to_string();
-                    let (name, direction) = parse_ornam_label(ornam);
+                    let fallback_name = ornam
+                        .children
+                        .first()
+                        .map(|c| {
+                            let tusk_model::elements::OrnamChild::Text(t) = c;
+                            t.clone()
+                        })
+                        .unwrap_or_else(|| "ornam".to_string());
+                    let (name, direction) =
+                        parse_ornament_label(ornam.common.label.as_deref(), &fallback_name);
                     map.entry(id)
                         .or_default()
                         .push(PostEvent::NamedArticulation { direction, name });
@@ -1280,50 +1231,24 @@ fn collect_ornament_post_events(
     }
 }
 
-/// Parse direction from an ornament label (e.g., "lilypond:trill,dir=up").
-fn parse_ornament_direction(label: &str) -> Direction {
-    if label.ends_with(",dir=up") {
-        Direction::Up
-    } else if label.ends_with(",dir=down") {
-        Direction::Down
-    } else {
-        Direction::Neutral
-    }
-}
-
-/// Parse fermata variant and direction from a Fermata element's label.
-fn parse_fermata_label(fermata: &tusk_model::elements::Fermata) -> (&str, Direction) {
-    if let Some(label) = fermata.common.label.as_deref() {
-        if let Some(rest) = label.strip_prefix("lilypond:fermata,") {
-            let (name, dir) = split_label_direction(rest);
-            return (name, dir);
-        }
-        // Label exists but no variant prefix — check for direction only
-        let dir = parse_ornament_direction(label);
-        return ("fermata", dir);
-    }
-    ("fermata", Direction::Neutral)
-}
-
-/// Parse ornament name and direction from an Ornam element's label.
-fn parse_ornam_label(ornam: &tusk_model::elements::Ornam) -> (String, Direction) {
-    if let Some(label) = ornam.common.label.as_deref()
-        && let Some(rest) = label.strip_prefix("lilypond:ornam,")
+/// Parse name and direction from a typed ornament label.
+fn parse_ornament_label(label: Option<&str>, fallback_name: &str) -> (String, Direction) {
+    if let Some(json) = label.and_then(|l| l.strip_prefix("tusk:ornament,"))
+        && let Ok(info) = serde_json::from_str::<tusk_model::OrnamentInfo>(json)
     {
-        let (name, dir) = split_label_direction(rest);
-        return (name.to_string(), dir);
+        let dir = direction_ext_to_ly(info.direction);
+        return (info.name, dir);
     }
-    // Fallback: use text content
-    let name = ornam
-        .children
-        .iter()
-        .map(|c| {
-            let tusk_model::elements::OrnamChild::Text(t) = c;
-            t.clone()
-        })
-        .next()
-        .unwrap_or_else(|| "ornam".to_string());
-    (name, Direction::Neutral)
+    (fallback_name.to_string(), Direction::Neutral)
+}
+
+/// Convert an extension DirectionExt to a LilyPond Direction.
+fn direction_ext_to_ly(dir: Option<tusk_model::DirectionExt>) -> Direction {
+    match dir {
+        Some(tusk_model::DirectionExt::Up) => Direction::Up,
+        Some(tusk_model::DirectionExt::Down) => Direction::Down,
+        None => Direction::Neutral,
+    }
 }
 
 /// Convert an MEI BTrem (bowed tremolo) to a LilyPond Music expression.
@@ -1331,13 +1256,14 @@ fn parse_ornam_label(ornam: &tusk_model::elements::Ornam) -> (String, Direction)
 /// Extracts the inner note/chord and adds a `PostEvent::Tremolo` with the
 /// subdivision value restored from the label.
 fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem) -> Music {
-    // Restore subdivision value from label
+    // Restore subdivision value from typed JSON label
     let value = btrem
         .common
         .label
         .as_deref()
-        .and_then(|l| l.strip_prefix("lilypond:tremolo,"))
-        .and_then(|v| v.parse::<u32>().ok())
+        .and_then(|l| l.strip_prefix("tusk:tremolo,"))
+        .and_then(|json| serde_json::from_str::<tusk_model::TremoloInfo>(json).ok())
+        .map(|info| info.value)
         .unwrap_or_else(|| {
             // Fallback: compute from @num (slash count)
             let num: u32 = btrem
@@ -1371,64 +1297,6 @@ fn convert_mei_btrem(btrem: &tusk_model::elements::BTrem) -> Music {
     // Append tremolo post-event
     append_post_events(&mut music, &[PostEvent::Tremolo(value)]);
     music
-}
-
-/// Parse direction suffix from a label part.
-fn parse_direction(s: &str) -> Direction {
-    match s {
-        "up" => Direction::Up,
-        "down" => Direction::Down,
-        _ => Direction::Neutral,
-    }
-}
-
-/// Parse an `artic` label: `NAME[,dir=up|down]` → PostEvent.
-fn parse_artic_label(label: &str) -> Option<PostEvent> {
-    let (name, dir) = split_label_direction(label);
-    // Try to map to script abbreviation first
-    if let Some(script) = name_to_script_abbreviation(name) {
-        Some(PostEvent::Articulation {
-            direction: dir,
-            script,
-        })
-    } else {
-        Some(PostEvent::NamedArticulation {
-            direction: dir,
-            name: name.to_string(),
-        })
-    }
-}
-
-/// Parse a `fing` label: `DIGIT[,dir=up|down]` → PostEvent::Fingering.
-fn parse_fing_label(label: &str) -> Option<PostEvent> {
-    let (digit_str, dir) = split_label_direction(label);
-    let digit: u8 = digit_str.parse().ok()?;
-    Some(PostEvent::Fingering {
-        direction: dir,
-        digit,
-    })
-}
-
-/// Parse a `string` label: `NUMBER[,dir=up|down]` → PostEvent::StringNumber.
-fn parse_string_label(label: &str) -> Option<PostEvent> {
-    let (num_str, dir) = split_label_direction(label);
-    let number: u8 = num_str.parse().ok()?;
-    Some(PostEvent::StringNumber {
-        direction: dir,
-        number,
-    })
-}
-
-/// Split a label value into (main_value, Direction).
-///
-/// Input: `"staccato,dir=up"` → `("staccato", Direction::Up)`
-/// Input: `"staccato"` → `("staccato", Direction::Neutral)`
-fn split_label_direction(label: &str) -> (&str, Direction) {
-    if let Some((main, rest)) = label.split_once(",dir=") {
-        (main, parse_direction(rest))
-    } else {
-        (label, Direction::Neutral)
-    }
 }
 
 /// Map a LilyPond articulation name to its ScriptAbbreviation, if one exists.

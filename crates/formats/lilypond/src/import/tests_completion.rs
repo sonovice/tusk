@@ -290,7 +290,7 @@ fn nested_repeats_produce_multiple_dirs() {
                 && d.common
                     .label
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("lilypond:repeat"))
+                    .is_some_and(|l| l.starts_with("tusk:repeat"))
             {
                 return Some(d);
             }
@@ -329,7 +329,7 @@ fn property_override_stored_in_label() {
                 && d.common
                     .label
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("lilypond:prop"))
+                    .is_some_and(|l| l.starts_with("tusk:prop"))
             {
                 return Some(d);
             }
@@ -356,7 +356,7 @@ fn music_function_stored_in_label() {
                 && d.common
                     .label
                     .as_deref()
-                    .is_some_and(|l| l.starts_with("lilypond:func"))
+                    .is_some_and(|l| l.starts_with("tusk:func"))
             {
                 return Some(d);
             }
