@@ -135,6 +135,14 @@ pub enum PostEvent {
         path: super::PropertyPath,
         value: super::PropertyValue,
     },
+    /// Text script with direction: `^"dolce"`, `_\markup { \italic text }`, `-"text"`.
+    ///
+    /// Mirrors `gen_text_def` in the grammar: a direction prefix followed by a
+    /// string or markup expression, producing a `TextScriptEvent`.
+    TextScript {
+        direction: Direction,
+        text: super::markup::Markup,
+    },
     /// Lyric hyphen: `--` (syllable continuation).
     LyricHyphen,
     /// Lyric extender: `__` (melisma/note hold).

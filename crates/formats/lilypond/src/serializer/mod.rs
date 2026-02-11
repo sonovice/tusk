@@ -1154,6 +1154,20 @@ impl<'a> Serializer<'a> {
                     self.out.push(' ');
                     self.write_property_value(value);
                 }
+                PostEvent::TextScript { direction, text } => {
+                    self.write_direction(*direction);
+                    match text {
+                        markup::Markup::String(s) => {
+                            self.out.push('"');
+                            self.out.push_str(s);
+                            self.out.push('"');
+                        }
+                        _ => {
+                            self.out.push_str("\\markup ");
+                            self.write_markup(text);
+                        }
+                    }
+                }
                 PostEvent::Tremolo(n) => {
                     self.out.push(':');
                     if *n > 0 {

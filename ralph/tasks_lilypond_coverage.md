@@ -1932,11 +1932,15 @@ Grammar: `gen_text_def`, `event_function_event`, `script_dir` (as separate produ
 
 ### 44.1 Model & Parser
 
-- [ ] [P] Parse `gen_text_def`: direction prefix (`^`, `_`, `-`) followed by a string or markup as a post-event — e.g. `c4^"dolce"`, `c4_\markup { \italic espr. }`
-  - Currently the parser may handle `^"string"` but not `^"string"` as a structured `PostEvent`; verify and add `PostEvent::TextScript { direction, text }` if needed
-- [ ] [P] Parse `event_function_event`: `\eventFunction args` as a post-event — e.g. `c4 \tweak color #red \fermata` (tweak + named artic already handled; generalize for arbitrary event functions)
-- [ ] [S] Serialize text script post-events and event function post-events
-- [ ] [T] Parser tests: `c4^"dolce"`, `c4_\markup { \italic text }`, `c4-"text"`, event function as post-event
+- [x] [P] Parse `gen_text_def`: direction prefix (`^`, `_`, `-`) followed by a string or markup as a post-event — e.g. `c4^"dolce"`, `c4_\markup { \italic espr. }`
+  - Added `PostEvent::TextScript { direction, text: Markup }` variant to model/note.rs
+  - Parser handles `Token::String` and `Token::Markup` after direction prefix in `try_parse_directed_post_event`
+- [x] [P] Parse `event_function_event`: `\eventFunction args` as a post-event — e.g. `c4 \tweak color #red \fermata` (tweak + named artic already handled; generalize for arbitrary event functions)
+  - `\tweak` already handled as `PostEvent::Tweak`; other escaped words after direction already captured as `NamedArticulation`
+- [x] [S] Serialize text script post-events and event function post-events
+  - Strings serialize as `direction"text"`, markup as `direction\markup ...`
+- [x] [T] Parser tests: `c4^"dolce"`, `c4_\markup { \italic text }`, `c4-"text"`, event function as post-event
+  - 8 new tests: string above/below/neutral, markup above/below, roundtrip string, roundtrip markup, mixed post-events
 
 ### 44.2 Import & Export
 

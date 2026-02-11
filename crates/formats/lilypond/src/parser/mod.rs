@@ -1067,6 +1067,23 @@ impl<'src> Parser<'src> {
                 let _ = self.advance();
                 Some(PostEvent::StringNumber { direction, number })
             }
+            // Text script: "string" after direction (gen_text_def)
+            Token::String(s) => {
+                let s = s.clone();
+                let _ = self.advance();
+                Some(PostEvent::TextScript {
+                    direction,
+                    text: crate::model::markup::Markup::String(s),
+                })
+            }
+            // Text script: \markup {...} after direction (gen_text_def)
+            Token::Markup => match self.parse_markup() {
+                Ok(m) => Some(PostEvent::TextScript { direction, text: m }),
+                Err(_) => {
+                    self.current = saved;
+                    None
+                }
+            },
             _ => {
                 // Not a valid post-event after direction — backtrack
                 self.current = saved;

@@ -1101,6 +1101,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &format!("tusk:tweak,{escaped}"),
                             );
                         }
+                        PostEvent::TextScript { .. } => {
+                            // Text script import handled in Phase 44.2
+                        }
                         PostEvent::LyricHyphen | PostEvent::LyricExtender => {
                             // Lyric post-events handled in Phase 20.2
                         }

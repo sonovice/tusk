@@ -465,6 +465,7 @@ impl SpanCounts {
                 | note::PostEvent::StringNumber { .. }
                 | note::PostEvent::Tremolo(_)
                 | note::PostEvent::Tweak { .. }
+                | note::PostEvent::TextScript { .. }
                 | note::PostEvent::LyricHyphen
                 | note::PostEvent::LyricExtender => {}
             }

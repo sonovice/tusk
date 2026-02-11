@@ -1262,3 +1262,184 @@ fn roundtrip_technical_notations() {
 fn roundtrip_fragment_technical() {
     roundtrip_fixture("fragment_technical.ly");
 }
+
+// ── Phase 44 text script post-events ─────────────────────────
+
+#[test]
+fn parse_text_script_string_above() {
+    let ast = parse(r#"{ c4^"dolce" }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            assert_eq!(note.post_events.len(), 1);
+            match &note.post_events[0] {
+                PostEvent::TextScript { direction, text } => {
+                    assert_eq!(*direction, note::Direction::Up);
+                    assert_eq!(
+                        *text,
+                        crate::model::markup::Markup::String("dolce".to_string())
+                    );
+                }
+                other => panic!("expected TextScript, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_text_script_string_below() {
+    let ast = parse(r#"{ c4_"sotto voce" }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            assert_eq!(note.post_events.len(), 1);
+            match &note.post_events[0] {
+                PostEvent::TextScript { direction, text } => {
+                    assert_eq!(*direction, note::Direction::Down);
+                    assert_eq!(
+                        *text,
+                        crate::model::markup::Markup::String("sotto voce".to_string())
+                    );
+                }
+                other => panic!("expected TextScript, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_text_script_string_neutral() {
+    let ast = parse(r#"{ c4-"text" }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            match &note.post_events[0] {
+                PostEvent::TextScript { direction, text } => {
+                    assert_eq!(*direction, note::Direction::Neutral);
+                    assert_eq!(
+                        *text,
+                        crate::model::markup::Markup::String("text".to_string())
+                    );
+                }
+                other => panic!("expected TextScript, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_text_script_markup_above() {
+    let ast = parse(r#"{ c4^\markup { \italic "espr." } }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            assert_eq!(note.post_events.len(), 1);
+            match &note.post_events[0] {
+                PostEvent::TextScript { direction, text } => {
+                    assert_eq!(*direction, note::Direction::Up);
+                    // `\markup { \italic "espr." }` parses as List containing Command
+                    match text {
+                        crate::model::markup::Markup::List(items) => {
+                            assert_eq!(items.len(), 1);
+                            match &items[0] {
+                                crate::model::markup::Markup::Command { name, .. } => {
+                                    assert_eq!(name, "italic");
+                                }
+                                other => panic!("expected Command, got {other:?}"),
+                            }
+                        }
+                        other => panic!("expected List markup, got {other:?}"),
+                    }
+                }
+                other => panic!("expected TextScript, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_text_script_markup_below() {
+    let ast = parse(r#"{ c4_\markup { \bold loud } }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            match &note.post_events[0] {
+                PostEvent::TextScript { direction, .. } => {
+                    assert_eq!(*direction, note::Direction::Down);
+                }
+                other => panic!("expected TextScript, got {other:?}"),
+            }
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_text_script_string() {
+    let input = r#"{ c4^"dolce" d4_"sotto voce" e4-"text" }"#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_text_script_markup() {
+    let input = r#"{ c4^\markup { \italic "espr." } d4_\markup { \bold loud } }"#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn parse_text_script_with_other_post_events() {
+    // Text script mixed with articulations and dynamics
+    let ast = parse(r#"{ c4^"dolce"\p-.( }"#).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            let note = match &items[0] {
+                Music::Note(n) => n,
+                other => panic!("expected note, got {other:?}"),
+            };
+            // Should have: TextScript, Dynamic, Articulation, SlurStart
+            assert_eq!(note.post_events.len(), 4);
+            assert!(matches!(
+                &note.post_events[0],
+                PostEvent::TextScript {
+                    direction: note::Direction::Up,
+                    ..
+                }
+            ));
+            assert!(matches!(&note.post_events[1], PostEvent::Dynamic(s) if s == "p"));
+            assert!(matches!(
+                &note.post_events[2],
+                PostEvent::Articulation {
+                    direction: note::Direction::Neutral,
+                    script: note::ScriptAbbreviation::Dot,
+                }
+            ));
+            assert!(matches!(&note.post_events[3], PostEvent::SlurStart));
+        }
+        other => panic!("expected sequential, got {other:?}"),
+    }
+}
