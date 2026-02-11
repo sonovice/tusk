@@ -615,6 +615,16 @@ fn detect_pitch_context_inner(music: &Music) -> Option<ExtPitchContext> {
                 },
             })
         }
+        Music::Fixed { pitch, .. } => {
+            let p = extract_pitch_from_music(pitch)?;
+            Some(ExtPitchContext::Fixed {
+                ref_pitch: ExtPitch {
+                    step: p.step,
+                    alter: p.alter,
+                    octave: p.octave,
+                },
+            })
+        }
         Music::ContextedMusic { music, .. } => detect_pitch_context_inner(music),
         // Unwrap single-item Sequential (e.g. `{ \transpose c c' { } }` from export)
         Music::Sequential(items) if items.len() == 1 => detect_pitch_context_inner(&items[0]),

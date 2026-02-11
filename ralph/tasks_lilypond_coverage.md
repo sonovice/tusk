@@ -1670,9 +1670,12 @@ The parser handles `\fixed c' { ... }` and the import resolves pitches to absolu
 
 ### 36.1 Import
 
-- [ ] [I] Store `\fixed` pitch context in a `PitchContext` extension on the StaffDef (typed enum: `Relative { ref_pitch }` | `Fixed { ref_pitch }` | `Absolute`) instead of a `lilypond:fixed,` label string
-- [ ] [I] `detect_pitch_context()` already detects `\fixed`; ensure it writes the extension before resolving to absolute
-- [ ] [T] Import tests: fixed extension stored, fixed pitches resolved to absolute, fixed with accidentals
+- [x] [I] Store `\fixed` pitch context in a `PitchContext` extension on the StaffDef (typed enum: `Relative { ref_pitch }` | `Fixed { ref_pitch }` | `Absolute`) instead of a `lilypond:fixed,` label string
+  - Added `Music::Fixed` branch to `detect_pitch_context_inner()` in context_analysis.rs — extracts ref pitch and returns `ExtPitchContext::Fixed`
+- [x] [I] `detect_pitch_context()` already detects `\fixed`; ensure it writes the extension before resolving to absolute
+  - Added `fixed` field to events.rs `PitchContext` struct; `collect_events()` now sets fixed context and resolves pitches with `ref_oct + note.octave` (independent per-note, no sequential dependency)
+- [x] [T] Import tests: fixed extension stored, fixed pitches resolved to absolute, fixed with accidentals
+  - 5 tests: label_stored (Fixed variant in label), resolves_pitches (c d e f → all oct 4), with_octave_marks (c' → oct 5, c, → oct 3), with_accidentals (cis/bes), no_sequential_dependency (c g c g all oct 4)
 
 ### 36.2 Export
 

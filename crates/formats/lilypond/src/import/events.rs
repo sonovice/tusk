@@ -101,11 +101,14 @@ pub(super) enum GraceType {
     AfterGrace { fraction: Option<(u32, u32)> },
 }
 
-/// Pitch context tracking for relative mode and transposition.
+/// Pitch context tracking for relative/fixed mode and transposition.
 #[derive(Clone)]
 pub(super) struct PitchContext {
     /// If in relative mode, (ref_step, ref_oct in marks format).
     pub(super) relative: Option<(char, i8)>,
+    /// If in fixed mode, the reference octave (marks format).
+    /// Pitches are absolute with octave marks offset from this reference.
+    pub(super) fixed: Option<i8>,
     /// Stack of transpositions to apply: (from, to) pairs.
     transpositions: Vec<(crate::model::Pitch, crate::model::Pitch)>,
     /// Last chord pitches for `q` (chord repetition) expansion.
@@ -116,18 +119,30 @@ impl PitchContext {
     pub(super) fn new() -> Self {
         PitchContext {
             relative: None,
+            fixed: None,
             transpositions: Vec::new(),
             last_chord_pitches: Vec::new(),
         }
     }
 
-    /// Resolve a pitch through the current context (relative -> absolute, then transpose).
+    /// Resolve a pitch through the current context (relative/fixed -> absolute, then transpose).
     pub(super) fn resolve(&mut self, pitch: &crate::model::Pitch) -> crate::model::Pitch {
         let mut resolved = if let Some((ref_step, ref_oct)) = self.relative {
             let abs = pitch.resolve_relative(ref_step, ref_oct);
             // Update reference for next note
             self.relative = Some((abs.step, abs.octave));
             abs
+        } else if let Some(ref_oct) = self.fixed {
+            // Fixed mode: octave marks are offsets from the reference octave.
+            // Each pitch is resolved independently (no sequential dependency).
+            crate::model::Pitch {
+                step: pitch.step,
+                alter: pitch.alter,
+                octave: ref_oct + pitch.octave,
+                force_accidental: pitch.force_accidental,
+                cautionary: pitch.cautionary,
+                octave_check: pitch.octave_check,
+            }
         } else {
             pitch.clone()
         };
@@ -203,11 +218,15 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             inner_ctx.relative = Some((ref_step, ref_oct));
             collect_events(body, events, &mut inner_ctx);
         }
-        Music::Fixed { pitch: _, body } => {
-            // Fixed mode: pitches are already absolute relative to the given pitch.
-            // The pitch argument is the "origin" -- notes are absolute in that octave.
-            // For now, just collect from body (pitches are written absolute).
-            collect_events(body, events, ctx);
+        Music::Fixed { pitch, body } => {
+            // Fixed mode: pitches have octave marks relative to the reference pitch's octave.
+            // Each pitch is resolved independently (no sequential dependency like \relative).
+            let mut inner_ctx = ctx.clone();
+            let ref_oct = extract_pitch_from_music(pitch)
+                .map(|p| p.octave)
+                .unwrap_or(1); // default: c' (octave 4)
+            inner_ctx.fixed = Some(ref_oct);
+            collect_events(body, events, &mut inner_ctx);
         }
         Music::Tuplet {
             numerator,

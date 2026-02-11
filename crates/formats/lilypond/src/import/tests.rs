@@ -1292,4 +1292,118 @@ fn import_lyricsto_basic() {
     }
 }
 
+// --- Phase 36.1: Fixed pitch context import tests ---
+
+#[test]
+fn import_fixed_label_stored() {
+    let mei = parse_and_import("\\fixed c' { c4 d e f }");
+    let sdef = first_staff_def(&mei).unwrap();
+    let label = sdef.labelled.label.as_deref().unwrap();
+    assert!(
+        label.contains("tusk:pitch-context,"),
+        "label should contain pitch context: {label}"
+    );
+    // Verify it's stored as Fixed, not Relative
+    assert!(
+        label.contains("\"Fixed\""),
+        "label should contain Fixed variant: {label}"
+    );
+}
+
+#[test]
+fn import_fixed_resolves_pitches() {
+    // \fixed c' { c d e f } -> absolute: c' d' e' f' (all octave 4)
+    let mei = parse_and_import("\\fixed c' { c4 d e f }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 4);
+
+    for (i, expected) in ["c", "d", "e", "f"].iter().enumerate() {
+        if let LayerChild::Note(n) = &children[i] {
+            assert_eq!(n.note_log.pname.as_ref().unwrap().0, *expected);
+            assert_eq!(
+                n.note_log.oct.as_ref().unwrap().0,
+                4,
+                "note {expected} should be octave 4"
+            );
+        } else {
+            panic!("expected Note at index {i}");
+        }
+    }
+}
+
+#[test]
+fn import_fixed_with_octave_marks() {
+    // \fixed c' { c' c, } -> c'' (octave 5) and c (octave 3)
+    let mei = parse_and_import("\\fixed c' { c'4 c, }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 2);
+
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+        assert_eq!(
+            n.note_log.oct.as_ref().unwrap().0,
+            5,
+            "c' in fixed c' should be octave 5"
+        );
+    } else {
+        panic!("expected Note");
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+        assert_eq!(
+            n.note_log.oct.as_ref().unwrap().0,
+            3,
+            "c, in fixed c' should be octave 3"
+        );
+    } else {
+        panic!("expected Note");
+    }
+}
+
+#[test]
+fn import_fixed_with_accidentals() {
+    // \fixed c' { cis4 bes } -> cis' (octave 4, sharp) and bes' (octave 4, flat)
+    let mei = parse_and_import("\\fixed c' { cis4 bes }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 2);
+
+    if let LayerChild::Note(n) = &children[0] {
+        assert_eq!(n.note_log.pname.as_ref().unwrap().0, "c");
+        assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        assert!(n.note_ges.accid_ges.is_some(), "cis should have accid_ges");
+    } else {
+        panic!("expected Note");
+    }
+    if let LayerChild::Note(n) = &children[1] {
+        assert_eq!(n.note_log.pname.as_ref().unwrap().0, "b");
+        assert_eq!(n.note_log.oct.as_ref().unwrap().0, 4);
+        assert!(n.note_ges.accid_ges.is_some(), "bes should have accid_ges");
+    } else {
+        panic!("expected Note");
+    }
+}
+
+#[test]
+fn import_fixed_no_sequential_dependency() {
+    // Unlike \relative, \fixed does NOT update the reference pitch after each note.
+    // \fixed c' { c g c g } -> all at octave 4 (c' g' c' g')
+    // In \relative c' { c g c g } -> c'=4, g=3 (closest g below c), c=4 (up from g), g=3
+    let mei = parse_and_import("\\fixed c' { c4 g c g }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 4);
+
+    let expected_octs = [4, 4, 4, 4];
+    for (i, &oct) in expected_octs.iter().enumerate() {
+        if let LayerChild::Note(n) = &children[i] {
+            assert_eq!(
+                n.note_log.oct.as_ref().unwrap().0,
+                oct,
+                "note at index {i} should be octave {oct}"
+            );
+        } else {
+            panic!("expected Note at index {i}");
+        }
+    }
+}
+
 // Articulation, ornament, tremolo, and technical import tests moved to tests_control.rs
