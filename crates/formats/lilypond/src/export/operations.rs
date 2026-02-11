@@ -100,8 +100,7 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<Fun
                 None => continue,
             };
             if let Some(json) = label.strip_prefix("tusk:func,")
-                && let Ok(info) = serde_json::from_str::<tusk_model::FunctionCallInfo>(json)
-                && let Some(music) = parse_function_call_str(&info.serialized)
+                && let Ok(fc) = serde_json::from_str::<tusk_model::FunctionCall>(json)
             {
                 let start_id = dir
                     .dir_log
@@ -109,6 +108,7 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<Fun
                     .as_ref()
                     .map(|u| u.0.trim_start_matches('#').to_string())
                     .unwrap_or_default();
+                let music = function_call_to_music(&fc);
                 ops.push(FunctionOpInfo { start_id, music });
             }
         }
@@ -116,27 +116,88 @@ pub(super) fn collect_function_ops(measure_children: &[MeasureChild]) -> Vec<Fun
     ops
 }
 
-/// Parse a serialized music function call string back into a Music variant.
-fn parse_function_call_str(s: &str) -> Option<Music> {
-    use crate::parser::Parser;
-    let src = format!("{s}\nc4");
-    let file = Parser::new(&src).ok()?.parse().ok()?;
-    for item in &file.items {
-        if let crate::model::ToplevelExpression::Music(Music::Sequential(items)) = item {
-            for m in items {
-                match m {
-                    Music::MusicFunction { .. } | Music::PartialFunction { .. } => {
-                        return Some(m.clone());
-                    }
-                    _ => {}
-                }
+/// Convert a typed `FunctionCall` back into a LilyPond `Music` variant.
+fn function_call_to_music(fc: &tusk_model::FunctionCall) -> Music {
+    let args: Vec<crate::model::FunctionArg> =
+        fc.args.iter().map(ext_value_to_function_arg).collect();
+    if fc.is_partial {
+        Music::PartialFunction {
+            name: fc.name.clone(),
+            args,
+        }
+    } else {
+        Music::MusicFunction {
+            name: fc.name.clone(),
+            args,
+        }
+    }
+}
+
+/// Convert an `ExtValue` back into a LilyPond `FunctionArg`.
+fn ext_value_to_function_arg(val: &tusk_model::ExtValue) -> crate::model::FunctionArg {
+    use crate::model::FunctionArg;
+    match val {
+        tusk_model::ExtValue::Music(s) => {
+            // Parse serialized music back into AST
+            if let Some(m) = parse_music_str(s) {
+                FunctionArg::Music(m)
+            } else {
+                FunctionArg::Music(Music::Unparsed(s.clone()))
             }
         }
-        if let crate::model::ToplevelExpression::Music(
-            m @ (Music::MusicFunction { .. } | Music::PartialFunction { .. }),
-        ) = item
-        {
+        tusk_model::ExtValue::String(s) => FunctionArg::String(s.clone()),
+        tusk_model::ExtValue::Number(n) => FunctionArg::Number(*n),
+        tusk_model::ExtValue::Scheme(s) => {
+            if let Some(expr) = parse_scheme_str(s) {
+                FunctionArg::SchemeExpr(expr)
+            } else {
+                FunctionArg::SchemeExpr(crate::model::SchemeExpr::Raw(s.clone()))
+            }
+        }
+        tusk_model::ExtValue::Duration(base, dots) => {
+            FunctionArg::Duration(crate::model::Duration {
+                base: *base,
+                dots: *dots,
+                multipliers: vec![],
+            })
+        }
+        tusk_model::ExtValue::Identifier(name) => FunctionArg::Identifier(name.clone()),
+        tusk_model::ExtValue::Default => FunctionArg::Default,
+        tusk_model::ExtValue::SymbolList(segments) => FunctionArg::SymbolList(segments.clone()),
+        tusk_model::ExtValue::Bool(b) => {
+            FunctionArg::SchemeExpr(crate::model::SchemeExpr::Bool(*b))
+        }
+        tusk_model::ExtValue::Markup(s) => {
+            // Store as scheme-like form for roundtrip
+            FunctionArg::Music(Music::Unparsed(s.clone()))
+        }
+        tusk_model::ExtValue::MarkupList(s) => FunctionArg::Music(Music::Unparsed(s.clone())),
+    }
+}
+
+/// Parse a serialized music string back into a Music variant.
+fn parse_music_str(s: &str) -> Option<Music> {
+    use crate::parser::Parser;
+    let file = Parser::new(s).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Music(m) = item {
             return Some(m.clone());
+        }
+    }
+    None
+}
+
+/// Parse a serialized Scheme expression string back into a SchemeExpr.
+fn parse_scheme_str(s: &str) -> Option<crate::model::SchemeExpr> {
+    use crate::parser::Parser;
+    // Wrap as assignment value so the parser can handle it
+    let src = format!("x = {s}");
+    let file = Parser::new(&src).ok()?.parse().ok()?;
+    for item in &file.items {
+        if let crate::model::ToplevelExpression::Assignment(a) = item
+            && let crate::model::AssignmentValue::SchemeExpr(expr) = &a.value
+        {
+            return Some(expr.clone());
         }
     }
     None

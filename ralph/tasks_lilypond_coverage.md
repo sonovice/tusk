@@ -1811,8 +1811,14 @@ Grammar: `function_arglist_nonbackup`, `function_arglist_backup`, `function_argl
 
 ### 40.2 Import & Export
 
-- [ ] [I] Extended function arguments preserved through the `FunctionCall` extension type on MEI control events (replaces opaque `lilypond:func,` label strings)
-- [ ] [T] Roundtrip tests: functions with complex arguments
+- [x] [I] Extended function arguments preserved through the `FunctionCall` extension type on MEI control events (replaces opaque `lilypond:func,` label strings)
+  - `FunctionCall { name, args: Vec<ExtValue>, is_partial }` replaces `FunctionCallInfo { serialized }`
+  - Import: `function_arg_to_ext_value()` converts `FunctionArg` → `ExtValue` in events.rs
+  - Export: `function_call_to_music()` + `ext_value_to_function_arg()` converts back in operations.rs
+  - Added `Duration(u32, u8)`, `SymbolList(Vec<String>)`, `Default` variants to `ExtValue`
+  - Removed unused `FunctionCallInfo` from extensions.rs
+- [x] [T] Roundtrip tests: functions with complex arguments
+  - 9 new tests: scheme symbol, scheme bool, scheme integer, scheme string, default arg, duration arg, mixed args, partial with scheme, typed label verification
 
 ---
 

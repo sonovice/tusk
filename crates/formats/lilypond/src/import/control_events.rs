@@ -607,15 +607,17 @@ fn bass_figure_to_text(fig: &BassFigure) -> String {
 }
 
 /// Create an MEI Dir for a generic LilyPond music function call.
-pub(super) fn make_function_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
+pub(super) fn make_function_dir(
+    fc: &tusk_model::FunctionCall,
+    startid: &str,
+    staff_n: u32,
+    id: u32,
+) -> Dir {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(format!("ly-func-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let info = tusk_model::FunctionCallInfo {
-        serialized: serialized.to_string(),
-    };
-    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(fc).unwrap_or_default());
     dir.common.label = Some(format!("tusk:func,{json}"));
     dir
 }

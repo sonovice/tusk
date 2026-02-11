@@ -540,7 +540,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             // Pending property operations waiting for next note's startid
             let mut pending_property_ops: Vec<String> = Vec::new();
             // Pending music function calls waiting for next note's startid
-            let mut pending_function_ops: Vec<String> = Vec::new();
+            let mut pending_function_ops: Vec<tusk_model::FunctionCall> = Vec::new();
             // Cross-staff override from \change Staff = "name"
             let mut cross_staff_override: Option<String> = None;
 
@@ -801,8 +801,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pending_property_ops.push(serialized.clone());
                         continue;
                     }
-                    LyEvent::MusicFunction(serialized) => {
-                        pending_function_ops.push(serialized.clone());
+                    LyEvent::MusicFunction(fc) => {
+                        pending_function_ops.push(fc.clone());
                         continue;
                     }
                     LyEvent::ContextChange { context_type, name } => {
@@ -899,14 +899,9 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 }
 
                 // Flush pending music function calls
-                for func_serialized in pending_function_ops.drain(..) {
+                for fc in pending_function_ops.drain(..) {
                     func_counter += 1;
-                    let dir = make_function_dir(
-                        &func_serialized,
-                        &current_id,
-                        staff_info.n,
-                        func_counter,
-                    );
+                    let dir = make_function_dir(&fc, &current_id, staff_info.n, func_counter);
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
 

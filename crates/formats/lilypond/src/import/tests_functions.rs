@@ -119,5 +119,8 @@ fn import_partial_function_creates_dir() {
     assert_eq!(func_dirs.len(), 1, "expected one function dir for partial");
     let label = func_dirs[0].common.label.as_deref().unwrap();
     assert!(label.contains("tag"), "label should contain tag: {label}");
-    assert!(label.contains("etc"), "label should contain etc: {label}");
+    assert!(
+        label.contains("is_partial"),
+        "label should contain is_partial: {label}"
+    );
 }

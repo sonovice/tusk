@@ -219,6 +219,11 @@ fn ext_to_assignment_value(v: &ExtValue) -> AssignmentValue {
         }
         ExtValue::Identifier(s) => AssignmentValue::Identifier(s.clone()),
         ExtValue::MarkupList(s) => parse_markuplist_string(s),
+        ExtValue::Duration(base, dots) => {
+            AssignmentValue::Number(f64::from(*base) + f64::from(*dots) * 0.001)
+        }
+        ExtValue::SymbolList(segments) => AssignmentValue::String(segments.join(".")),
+        ExtValue::Default => AssignmentValue::Identifier("default".into()),
     }
 }
 
@@ -279,6 +284,13 @@ fn ext_to_property_value(v: &ExtValue) -> model::property::PropertyValue {
                 "{v:?}"
             )))
         }
+        ExtValue::Duration(base, dots) => {
+            model::property::PropertyValue::Number(f64::from(*base) + f64::from(*dots) * 0.001)
+        }
+        ExtValue::SymbolList(segments) => {
+            model::property::PropertyValue::String(segments.join("."))
+        }
+        ExtValue::Default => model::property::PropertyValue::Identifier("default".into()),
     }
 }
 

@@ -40,12 +40,11 @@ pub use extensions::{
     ContextChange, ContextKeywordExt, ControlEvent, DirectionExt, DrumEvent, DurationInfo,
     EndingInfo, EventSequence, ExtAssignment, ExtContextBlock, ExtContextModItem, ExtData,
     ExtPitch, ExtValue, ExtensionBag, ExtensionContent, ExtensionElement, ExtensionStore,
-    FiguredBassInfo, FormatOrigin, FunctionCall, FunctionCallInfo, GraceInfo, LyricExtender,
-    LyricsInfo, LyricsStyle, MarkInfo, MultiMeasureRestInfo, OrnamentInfo, OutputDef,
-    OutputDefKind, PhrasingSlur, PitchContext, PitchedRest, PositionedEvent, PropertyOp,
-    PropertyOpInfo, PropertyOpType, RepeatInfo, RepeatTypeExt, SourceFormat, StaffContext,
-    TUSK_EXT_NS, TempoInfo, TextMarkInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo,
-    TupletInfo, TweakInfo, VariableAssignments,
+    FiguredBassInfo, FormatOrigin, FunctionCall, GraceInfo, LyricExtender, LyricsInfo, LyricsStyle,
+    MarkInfo, MultiMeasureRestInfo, OrnamentInfo, OutputDef, OutputDefKind, PhrasingSlur,
+    PitchContext, PitchedRest, PositionedEvent, PropertyOp, PropertyOpInfo, PropertyOpType,
+    RepeatInfo, RepeatTypeExt, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo, TextMarkInfo,
+    ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo, TweakInfo, VariableAssignments,
 };
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 

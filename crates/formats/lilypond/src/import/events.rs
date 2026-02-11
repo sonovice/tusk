@@ -79,8 +79,8 @@ pub(super) enum LyEvent {
     DrumChordEvent(model::note::DrumChordEvent),
     /// A serialized property operation (`\override`, `\set`, `\revert`, `\unset`, `\once`).
     PropertyOp(String),
-    /// A serialized music function call (`\functionName args...`).
-    MusicFunction(String),
+    /// A structured music function call (`\functionName args...`).
+    MusicFunction(tusk_model::FunctionCall),
     /// A context change (`\change Staff = "name"`).
     ContextChange {
         context_type: String,
@@ -396,10 +396,21 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             let serialized = crate::serializer::serialize_property_op(music);
             events.push(LyEvent::PropertyOp(serialized));
         }
-        Music::MusicFunction { .. } | Music::PartialFunction { .. } => {
-            // Serialize the entire function call and store opaquely
-            let serialized = crate::serializer::serialize_property_op(music);
-            events.push(LyEvent::MusicFunction(serialized));
+        Music::MusicFunction { name, args } => {
+            let fc = tusk_model::FunctionCall {
+                name: name.clone(),
+                args: args.iter().map(function_arg_to_ext_value).collect(),
+                is_partial: false,
+            };
+            events.push(LyEvent::MusicFunction(fc));
+        }
+        Music::PartialFunction { name, args } => {
+            let fc = tusk_model::FunctionCall {
+                name: name.clone(),
+                args: args.iter().map(function_arg_to_ext_value).collect(),
+                is_partial: true,
+            };
+            events.push(LyEvent::MusicFunction(fc));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }
@@ -462,5 +473,22 @@ pub(super) fn extract_pitch_from_music(music: &Music) -> Option<crate::model::Pi
     match music {
         Music::Note(n) => Some(n.pitch.clone()),
         _ => None,
+    }
+}
+
+/// Convert a LilyPond `FunctionArg` to a typed `ExtValue` for MEI storage.
+fn function_arg_to_ext_value(arg: &crate::model::FunctionArg) -> tusk_model::ExtValue {
+    use crate::model::FunctionArg;
+    match arg {
+        FunctionArg::Music(m) => tusk_model::ExtValue::Music(crate::serializer::serialize_music(m)),
+        FunctionArg::String(s) => tusk_model::ExtValue::String(s.clone()),
+        FunctionArg::Number(n) => tusk_model::ExtValue::Number(*n),
+        FunctionArg::SchemeExpr(expr) => {
+            tusk_model::ExtValue::Scheme(crate::serializer::serialize_scheme_expr(expr))
+        }
+        FunctionArg::Duration(dur) => tusk_model::ExtValue::Duration(dur.base, dur.dots),
+        FunctionArg::Identifier(name) => tusk_model::ExtValue::Identifier(name.clone()),
+        FunctionArg::Default => tusk_model::ExtValue::Default,
+        FunctionArg::SymbolList(segments) => tusk_model::ExtValue::SymbolList(segments.clone()),
     }
 }

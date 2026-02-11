@@ -274,6 +274,12 @@ pub enum ExtValue {
     Identifier(String),
     /// A markup list.
     MarkupList(String),
+    /// A duration value (base, dots).
+    Duration(u32, u8),
+    /// A symbol list (dot-separated segments).
+    SymbolList(Vec<String>),
+    /// `\default` — explicit placeholder for an optional argument.
+    Default,
 }
 
 /// A `\context { ... }` block inside `\layout` or `\midi`.
@@ -451,9 +457,12 @@ pub enum PropertyOpType {
 pub struct FunctionCall {
     /// Function name (without leading backslash).
     pub name: String,
-    /// Serialized arguments.
+    /// Typed arguments.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<ExtValue>,
+    /// True when this is a partial application (`\etc`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_partial: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -842,13 +851,6 @@ pub struct FiguredBassInfo {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PropertyOpInfo {
     /// Full serialized LilyPond property operation.
-    pub serialized: String,
-}
-
-/// Serialized function call for lossless roundtrip on `<dir>`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct FunctionCallInfo {
-    /// Full serialized LilyPond function call.
     pub serialized: String,
 }
 
@@ -1265,6 +1267,7 @@ mod tests {
         let fc = FunctionCall {
             name: "breathe".into(),
             args: vec![],
+            is_partial: false,
         };
         let json = serde_json::to_string(&fc).unwrap();
         let back: FunctionCall = serde_json::from_str(&json).unwrap();
