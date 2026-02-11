@@ -35,6 +35,8 @@ mod tests_skip;
 #[cfg(test)]
 mod tests_tempo_marks;
 #[cfg(test)]
+mod tests_toplevel_markup;
+#[cfg(test)]
 mod tests_variables;
 
 use std::collections::HashMap;
@@ -42,7 +44,7 @@ use thiserror::Error;
 use tusk_model::elements::{
     LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
 };
-use tusk_model::{StaffContext, VariableAssignments};
+use tusk_model::{StaffContext, ToplevelMarkup, ToplevelMarkupKind, VariableAssignments};
 
 use crate::model::Duration;
 use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
@@ -77,29 +79,33 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
     let score = find_score(mei).ok_or(ExportError::NoMusic)?;
     let score_block = export_single_score(score);
 
-    // Build top-level items: assignments, header, paper, layout, midi, then score
-    let mut items = Vec::new();
+    // Build non-markup top-level items in natural order
+    let mut non_markup_items = Vec::new();
 
     let assignments = extract_assignments(score);
     for a in assignments {
-        items.push(ToplevelExpression::Assignment(a));
+        non_markup_items.push(ToplevelExpression::Assignment(a));
     }
 
     let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
     if let Some(hb) = top_header {
-        items.push(ToplevelExpression::Header(hb));
+        non_markup_items.push(ToplevelExpression::Header(hb));
     }
     if let Some(pb) = top_paper {
-        items.push(ToplevelExpression::Paper(pb));
+        non_markup_items.push(ToplevelExpression::Paper(pb));
     }
     if let Some(lb) = top_layout {
-        items.push(ToplevelExpression::Layout(lb));
+        non_markup_items.push(ToplevelExpression::Layout(lb));
     }
     if let Some(mb) = top_midi {
-        items.push(ToplevelExpression::Midi(mb));
+        non_markup_items.push(ToplevelExpression::Midi(mb));
     }
 
-    items.push(ToplevelExpression::Score(score_block));
+    non_markup_items.push(ToplevelExpression::Score(score_block));
+
+    // Merge with top-level markups at their original positions
+    let markup_items = extract_toplevel_markups(score);
+    let items = merge_items_with_markups(non_markup_items, markup_items);
 
     Ok(LilyPondFile {
         version: Some(Version {
@@ -111,34 +117,40 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
 
 /// Export a book-structured MEI (multiple mdivs with BookStructure labels).
 fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>]) -> Result<LilyPondFile, ExportError> {
-    let mut items = Vec::new();
+    let mut non_markup_items = Vec::new();
 
     // Extract top-level assignments from first score's scoreDef
-    if let Some(first) = entries.first() {
+    let markup_items = if let Some(first) = entries.first() {
         let assignments = extract_assignments(first.score);
         for a in assignments {
-            items.push(ToplevelExpression::Assignment(a));
+            non_markup_items.push(ToplevelExpression::Assignment(a));
         }
-    }
+        extract_toplevel_markups(first.score)
+    } else {
+        Vec::new()
+    };
 
     // Extract top-level blocks from MeiHead ExtMeta
     let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
     if let Some(hb) = top_header {
-        items.push(ToplevelExpression::Header(hb));
+        non_markup_items.push(ToplevelExpression::Header(hb));
     }
     if let Some(pb) = top_paper {
-        items.push(ToplevelExpression::Paper(pb));
+        non_markup_items.push(ToplevelExpression::Paper(pb));
     }
     if let Some(lb) = top_layout {
-        items.push(ToplevelExpression::Layout(lb));
+        non_markup_items.push(ToplevelExpression::Layout(lb));
     }
     if let Some(mb) = top_midi {
-        items.push(ToplevelExpression::Midi(mb));
+        non_markup_items.push(ToplevelExpression::Midi(mb));
     }
 
     // Reconstruct book/bookpart hierarchy
     let book_items = book::reconstruct_books(entries, &export_single_score);
-    items.extend(book_items);
+    non_markup_items.extend(book_items);
+
+    // Merge with top-level markups at their original positions
+    let items = merge_items_with_markups(non_markup_items, markup_items);
 
     Ok(LilyPondFile {
         version: Some(Version {
@@ -267,6 +279,109 @@ fn extract_assignments(score: &tusk_model::elements::Score) -> Vec<crate::model:
         }
     }
     Vec::new()
+}
+
+/// Extract stored top-level markup/markuplist entries from scoreDef label.
+///
+/// Reads `tusk:toplevel-markup,{json}` segments from the scoreDef's `@label`,
+/// then re-parses each serialized form through the LilyPond parser.
+fn extract_toplevel_markups(
+    score: &tusk_model::elements::Score,
+) -> Vec<(usize, ToplevelExpression)> {
+    let markups = extract_raw_toplevel_markups(score);
+    let mut result = Vec::new();
+    for m in markups {
+        if let Some(expr) = toplevel_markup_to_expr(&m) {
+            result.push((m.position, expr));
+        }
+    }
+    result
+}
+
+/// Read raw ToplevelMarkup vec from scoreDef label.
+fn extract_raw_toplevel_markups(score: &tusk_model::elements::Score) -> Vec<ToplevelMarkup> {
+    for child in &score.children {
+        if let ScoreChild::ScoreDef(score_def) = child
+            && let Some(label) = &score_def.common.label
+        {
+            for segment in label.split('|') {
+                if let Some(json) = segment.strip_prefix("tusk:toplevel-markup,")
+                    && let Ok(markups) = serde_json::from_str::<Vec<ToplevelMarkup>>(json)
+                {
+                    return markups;
+                }
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// Convert a ToplevelMarkup entry to a ToplevelExpression by re-parsing.
+fn toplevel_markup_to_expr(m: &ToplevelMarkup) -> Option<ToplevelExpression> {
+    use crate::parser::Parser;
+    match &m.kind {
+        ToplevelMarkupKind::Markup(serialized) => {
+            let src = format!("\\markup {serialized}");
+            let file = Parser::new(&src).ok()?.parse().ok()?;
+            file.items.into_iter().find_map(|item| {
+                if let ToplevelExpression::Markup(mk) = item {
+                    Some(ToplevelExpression::Markup(mk))
+                } else {
+                    None
+                }
+            })
+        }
+        ToplevelMarkupKind::MarkupList(serialized) => {
+            let src = format!("\\markuplist {serialized}");
+            let file = Parser::new(&src).ok()?.parse().ok()?;
+            file.items.into_iter().find_map(|item| {
+                if let ToplevelExpression::MarkupList(ml) = item {
+                    Some(ToplevelExpression::MarkupList(ml))
+                } else {
+                    None
+                }
+            })
+        }
+    }
+}
+
+/// Merge non-markup items with positioned markup items.
+///
+/// Markups carry their original 0-based position among all top-level items.
+/// Non-markup items fill the remaining slots in their natural order.
+fn merge_items_with_markups(
+    non_markup: Vec<ToplevelExpression>,
+    markups: Vec<(usize, ToplevelExpression)>,
+) -> Vec<ToplevelExpression> {
+    if markups.is_empty() {
+        return non_markup;
+    }
+
+    let total = non_markup.len() + markups.len();
+    let mut result = Vec::with_capacity(total);
+
+    // Build a set of positions occupied by markups
+    let mut markup_map: Vec<(usize, ToplevelExpression)> = markups;
+    markup_map.sort_by_key(|(pos, _)| *pos);
+
+    let mut nm_iter = non_markup.into_iter();
+    let mut mk_iter = markup_map.into_iter().peekable();
+
+    for pos in 0..total {
+        if mk_iter.peek().is_some_and(|(p, _)| *p == pos) {
+            let (_, expr) = mk_iter.next().unwrap();
+            result.push(expr);
+        } else if let Some(item) = nm_iter.next() {
+            result.push(item);
+        }
+    }
+    // Append any remaining items (defensive)
+    result.extend(nm_iter);
+    for (_, expr) in mk_iter {
+        result.push(expr);
+    }
+
+    result
 }
 
 /// Convert a typed ExtAssignment back to a model Assignment.

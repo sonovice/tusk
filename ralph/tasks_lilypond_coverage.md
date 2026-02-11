@@ -1707,9 +1707,14 @@ Standalone `\markup { ... }` and `\markuplist { ... }` at file top level (outsid
 
 ### 37.2 Export
 
-- [ ] [E] Read `ToplevelMarkup` extension entries from MEI; emit as `ToplevelExpression::Markup` / `ToplevelExpression::MarkupList` at correct positions in the output file
-- [ ] [T] Roundtrip tests: top-level markup, markuplist, mixed with scores
-- [ ] [T] Fixture: `fragment_toplevel_markup.ly` with standalone `\markup` between scores
+- [x] [E] Read `ToplevelMarkup` extension entries from MEI; emit as `ToplevelExpression::Markup` / `ToplevelExpression::MarkupList` at correct positions in the output file
+  - `extract_toplevel_markups()`, `extract_raw_toplevel_markups()`, `toplevel_markup_to_expr()` in export/mod.rs
+  - `merge_items_with_markups()` interleaves markup items at original positions
+  - Both `export()` and `export_book()` paths updated
+- [x] [T] Roundtrip tests: top-level markup, markuplist, mixed with scores
+  - 8 tests in tests_toplevel_markup.rs: single markup, markuplist, ordering, mixed, no-markup, AST variants, with assignments, fixture
+- [x] [T] Fixture: `fragment_toplevel_markup.ly` with standalone `\markup` between scores
+  - tests/fixtures/lilypond/fragment_toplevel_markup.ly: markup before/after score, bold markup
 
 ---
 
