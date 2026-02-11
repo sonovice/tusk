@@ -359,7 +359,11 @@ fn validate_midi(mb: &MidiBlock, errors: &mut Vec<ValidationError>) {
 }
 
 fn validate_context_mod_block(cb: &ContextModBlock, errors: &mut Vec<ValidationError>) {
-    for item in &cb.items {
+    validate_context_mod_items(&cb.items, errors);
+}
+
+fn validate_context_mod_items(items: &[ContextModItem], errors: &mut Vec<ValidationError>) {
+    for item in items {
         match item {
             ContextModItem::Override { path, .. } | ContextModItem::Set { path, .. } => {
                 if path.segments.is_empty() {
@@ -369,6 +373,14 @@ fn validate_context_mod_block(cb: &ContextModBlock, errors: &mut Vec<ValidationE
             ContextModItem::Revert { path } | ContextModItem::Unset { path } => {
                 if path.segments.is_empty() {
                     errors.push(ValidationError::EmptyPropertyPath);
+                }
+            }
+            ContextModItem::Denies(name)
+            | ContextModItem::Accepts(name)
+            | ContextModItem::Alias(name)
+            | ContextModItem::DefaultChild(name) => {
+                if !KNOWN_CONTEXT_TYPES.contains(&name.as_str()) {
+                    errors.push(ValidationError::UnknownContextType { name: name.clone() });
                 }
             }
             _ => {}
@@ -615,6 +627,7 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
         }
         Music::ContextedMusic {
             context_type,
+            with_block,
             music,
             ..
         } => {
@@ -622,6 +635,9 @@ fn validate_music(m: &Music, errors: &mut Vec<ValidationError>) {
                 errors.push(ValidationError::UnknownContextType {
                     name: context_type.clone(),
                 });
+            }
+            if let Some(items) = with_block {
+                validate_context_mod_items(items, errors);
             }
             validate_music(music, errors);
         }

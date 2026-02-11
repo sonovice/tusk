@@ -219,6 +219,18 @@ pub enum ContextModItem {
     Unset {
         path: PropertyPath,
     },
+    /// `\denies "ContextName"` — deny nested context type.
+    Denies(String),
+    /// `\accepts "ContextName"` — accept nested context type.
+    Accepts(String),
+    /// `\alias "ContextName"` — declare context alias.
+    Alias(String),
+    /// `\defaultchild "ContextName"` — set default child context.
+    DefaultChild(String),
+    /// `\description "text"` — context description string.
+    Description(String),
+    /// `\name "ContextName"` — set context name.
+    Name(String),
 }
 
 // ---------------------------------------------------------------------------

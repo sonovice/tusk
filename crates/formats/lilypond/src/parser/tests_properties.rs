@@ -328,6 +328,220 @@ fn roundtrip_in_sequence() {
     assert!(out.contains("\\revert NoteHead.color"));
 }
 
+// ── Context def mod keywords ─────────────────────────────────────────
+
+#[test]
+fn context_def_denies() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \denies "Voice"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    assert!(matches!(&cb.items[0], ContextModItem::ContextRef(n) if n == "Staff"));
+    match &cb.items[1] {
+        ContextModItem::Denies(name) => assert_eq!(name, "Voice"),
+        other => panic!("expected Denies, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_accepts() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \accepts "CueVoice"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    match &cb.items[1] {
+        ContextModItem::Accepts(name) => assert_eq!(name, "CueVoice"),
+        other => panic!("expected Accepts, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_alias() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \alias "Staff"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    match &cb.items[1] {
+        ContextModItem::Alias(name) => assert_eq!(name, "Staff"),
+        other => panic!("expected Alias, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_defaultchild() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Score
+    \defaultchild "Staff"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    match &cb.items[1] {
+        ContextModItem::DefaultChild(name) => assert_eq!(name, "Staff"),
+        other => panic!("expected DefaultChild, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_description() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \description "A custom staff"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    match &cb.items[1] {
+        ContextModItem::Description(text) => assert_eq!(text, "A custom staff"),
+        other => panic!("expected Description, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_name() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \name "CustomStaff"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    match &cb.items[1] {
+        ContextModItem::Name(name) => assert_eq!(name, "CustomStaff"),
+        other => panic!("expected Name, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_def_combined() {
+    let file = parse(
+        r#"\layout {
+  \context {
+    \Staff
+    \accepts "CueVoice"
+    \denies "Voice"
+    \alias "Staff"
+    \defaultchild "Voice"
+    \description "Custom context"
+    \name "MyStaff"
+    \remove "Bar_number_engraver"
+    \consists "Span_arpeggio_engraver"
+  }
+}"#,
+    )
+    .unwrap();
+    let layout = match &file.items[0] {
+        ToplevelExpression::Layout(lb) => lb,
+        other => panic!("expected Layout, got {other:?}"),
+    };
+    let cb = match &layout.body[0] {
+        crate::model::LayoutItem::ContextBlock(cb) => cb,
+        other => panic!("expected ContextBlock, got {other:?}"),
+    };
+    assert_eq!(cb.items.len(), 9);
+    assert!(matches!(&cb.items[0], ContextModItem::ContextRef(n) if n == "Staff"));
+    assert!(matches!(&cb.items[1], ContextModItem::Accepts(n) if n == "CueVoice"));
+    assert!(matches!(&cb.items[2], ContextModItem::Denies(n) if n == "Voice"));
+    assert!(matches!(&cb.items[3], ContextModItem::Alias(n) if n == "Staff"));
+    assert!(matches!(&cb.items[4], ContextModItem::DefaultChild(n) if n == "Voice"));
+    assert!(matches!(&cb.items[5], ContextModItem::Description(n) if n == "Custom context"));
+    assert!(matches!(&cb.items[6], ContextModItem::Name(n) if n == "MyStaff"));
+    assert!(matches!(&cb.items[7], ContextModItem::Remove(n) if n == "Bar_number_engraver"));
+    assert!(matches!(&cb.items[8], ContextModItem::Consists(n) if n == "Span_arpeggio_engraver"));
+}
+
+#[test]
+fn roundtrip_context_def_keywords() {
+    let src = r#"\layout {
+  \context {
+    \Staff
+    \accepts "CueVoice"
+    \denies "Voice"
+    \alias "Staff"
+    \defaultchild "Voice"
+    \description "Custom context"
+    \name "MyStaff"
+  }
+}
+"#;
+    let out = roundtrip(src);
+    assert!(out.contains(r#"\accepts "CueVoice""#));
+    assert!(out.contains(r#"\denies "Voice""#));
+    assert!(out.contains(r#"\alias "Staff""#));
+    assert!(out.contains(r#"\defaultchild "Voice""#));
+    assert!(out.contains(r#"\description "Custom context""#));
+    assert!(out.contains(r#"\name "MyStaff""#));
+}
+
 // ── Validation ───────────────────────────────────────────────────────
 
 #[test]

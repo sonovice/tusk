@@ -301,6 +301,18 @@ pub enum ExtContextModItem {
     Set { path: String, value: ExtValue },
     /// `\unset path`.
     Unset { path: String },
+    /// `\denies "ContextName"`.
+    Denies(String),
+    /// `\accepts "ContextName"`.
+    Accepts(String),
+    /// `\alias "ContextName"`.
+    Alias(String),
+    /// `\defaultchild "ContextName"`.
+    DefaultChild(String),
+    /// `\description "text"`.
+    Description(String),
+    /// `\name "ContextName"`.
+    Name(String),
 }
 
 // ---------------------------------------------------------------------------

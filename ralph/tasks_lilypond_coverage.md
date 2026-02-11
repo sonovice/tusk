@@ -1756,13 +1756,21 @@ Missing keywords: `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\descriptio
 
 ### 39.1 Model & Parser
 
-- [ ] [P] Add `ContextModItem` variants: `Denies(String)`, `Accepts(String)`, `Alias(String)`, `DefaultChild(String)`, `Description(String)`, `Name(String)`
-- [ ] [P] Parse `\denies "ContextName"`, `\accepts "ContextName"`, `\alias "ContextName"`, `\defaultchild "ContextName"`, `\description "text"`, `\name "ContextName"` inside `\context { }` blocks
-- [ ] [L] Add lexer tokens for `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\description`, `\name` (if not already present)
-- [ ] [S] Serialize new `ContextModItem` variants
-- [ ] [V] Validate context names in denies/accepts/alias
-- [ ] [T] Parser tests: each keyword individually, combined in context block
-- [ ] [T] Fixture: `fragment_context_def.ly` with `\layout { \context { \Staff \accepts "CueVoice" \denies "Voice" } }`
+- [x] [P] Add `ContextModItem` variants: `Denies(String)`, `Accepts(String)`, `Alias(String)`, `DefaultChild(String)`, `Description(String)`, `Name(String)`
+  - Added 6 new variants to model/mod.rs ContextModItem and extensions.rs ExtContextModItem
+- [x] [P] Parse `\denies "ContextName"`, `\accepts "ContextName"`, `\alias "ContextName"`, `\defaultchild "ContextName"`, `\description "text"`, `\name "ContextName"` inside `\context { }` blocks
+  - Added parsing in parser/properties.rs parse_context_mod_item() with parse_context_def_string_arg() helper
+- [x] [L] Add lexer tokens for `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\description`, `\name` (if not already present)
+  - Already present in lexer/tokens.rs (Accepts, Alias, DefaultChild, Denies, Description, Name)
+- [x] [S] Serialize new `ContextModItem` variants
+  - Added serialization in serializer/mod.rs write_context_mod_item() — outputs `\keyword "name"` form
+- [x] [V] Validate context names in denies/accepts/alias
+  - Added validation in validator/mod.rs for Denies/Accepts/Alias/DefaultChild against KNOWN_CONTEXT_TYPES
+  - Also added with_block validation in ContextedMusic
+- [x] [T] Parser tests: each keyword individually, combined in context block
+  - 8 new tests in parser/tests_properties.rs: each keyword + combined + serialization roundtrip
+- [x] [T] Fixture: `fragment_context_def.ly` with `\layout { \context { \Staff \accepts "CueVoice" \denies "Voice" } }`
+  - Created tests/fixtures/lilypond/fragment_context_def.ly
 
 ### 39.2 Import & Export
 

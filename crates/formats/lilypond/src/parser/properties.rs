@@ -220,6 +220,36 @@ impl<'src> Parser<'src> {
                 let name = self.parse_engraver_name()?;
                 Ok(ContextModItem::Remove(name))
             }
+            Token::Denies => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::Denies(name))
+            }
+            Token::Accepts => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::Accepts(name))
+            }
+            Token::Alias => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::Alias(name))
+            }
+            Token::DefaultChild => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::DefaultChild(name))
+            }
+            Token::Description => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::Description(name))
+            }
+            Token::Name => {
+                self.advance()?;
+                let name = self.parse_context_def_string_arg()?;
+                Ok(ContextModItem::Name(name))
+            }
             Token::EscapedWord(_) => {
                 let tok = self.advance()?;
                 match tok.token {
@@ -236,6 +266,26 @@ impl<'src> Parser<'src> {
                 offset: self.offset(),
                 expected: "context modifier (\\consists, \\remove, \\ContextName, or assignment)"
                     .into(),
+            }),
+        }
+    }
+
+    /// Parse a string or symbol argument for context_def_mod keywords
+    /// (`\denies`, `\accepts`, `\alias`, `\defaultchild`, `\description`, `\name`).
+    fn parse_context_def_string_arg(&mut self) -> Result<String, ParseError> {
+        match &self.current.token {
+            Token::String(_) => self.expect_string(),
+            Token::Symbol(_) => {
+                let tok = self.advance()?;
+                match tok.token {
+                    Token::Symbol(s) => Ok(s),
+                    _ => unreachable!(),
+                }
+            }
+            _ => Err(ParseError::Unexpected {
+                found: self.current.token.clone(),
+                offset: self.offset(),
+                expected: "string or symbol argument".into(),
             }),
         }
     }

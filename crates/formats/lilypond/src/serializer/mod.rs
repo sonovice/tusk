@@ -465,6 +465,36 @@ impl<'a> Serializer<'a> {
                 self.out.push_str("\\unset ");
                 self.write_property_path(path);
             }
+            ContextModItem::Denies(name) => {
+                self.out.push_str("\\denies \"");
+                self.out.push_str(name);
+                self.out.push('"');
+            }
+            ContextModItem::Accepts(name) => {
+                self.out.push_str("\\accepts \"");
+                self.out.push_str(name);
+                self.out.push('"');
+            }
+            ContextModItem::Alias(name) => {
+                self.out.push_str("\\alias \"");
+                self.out.push_str(name);
+                self.out.push('"');
+            }
+            ContextModItem::DefaultChild(name) => {
+                self.out.push_str("\\defaultchild \"");
+                self.out.push_str(name);
+                self.out.push('"');
+            }
+            ContextModItem::Description(text) => {
+                self.out.push_str("\\description \"");
+                self.out.push_str(text);
+                self.out.push('"');
+            }
+            ContextModItem::Name(name) => {
+                self.out.push_str("\\name \"");
+                self.out.push_str(name);
+                self.out.push('"');
+            }
         }
     }
 

@@ -131,6 +131,12 @@ fn context_mod_item_to_ext(item: &ContextModItem) -> ExtContextModItem {
         ContextModItem::Unset { path } => ExtContextModItem::Unset {
             path: path.to_dotted(),
         },
+        ContextModItem::Denies(name) => ExtContextModItem::Denies(name.clone()),
+        ContextModItem::Accepts(name) => ExtContextModItem::Accepts(name.clone()),
+        ContextModItem::Alias(name) => ExtContextModItem::Alias(name.clone()),
+        ContextModItem::DefaultChild(name) => ExtContextModItem::DefaultChild(name.clone()),
+        ContextModItem::Description(text) => ExtContextModItem::Description(text.clone()),
+        ContextModItem::Name(name) => ExtContextModItem::Name(name.clone()),
     }
 }
 
@@ -242,6 +248,12 @@ fn ext_to_context_mod_item(item: &ExtContextModItem) -> ContextModItem {
         ExtContextModItem::Unset { path } => ContextModItem::Unset {
             path: model::property::PropertyPath::new(path.split('.').map(String::from).collect()),
         },
+        ExtContextModItem::Denies(name) => ContextModItem::Denies(name.clone()),
+        ExtContextModItem::Accepts(name) => ContextModItem::Accepts(name.clone()),
+        ExtContextModItem::Alias(name) => ContextModItem::Alias(name.clone()),
+        ExtContextModItem::DefaultChild(name) => ContextModItem::DefaultChild(name.clone()),
+        ExtContextModItem::Description(text) => ContextModItem::Description(text.clone()),
+        ExtContextModItem::Name(name) => ContextModItem::Name(name.clone()),
     }
 }
 
