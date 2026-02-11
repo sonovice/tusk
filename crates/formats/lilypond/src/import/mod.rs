@@ -6,6 +6,7 @@ mod control_events;
 mod conversion;
 mod events;
 pub(crate) mod lyrics;
+pub(crate) mod output_def_conv;
 mod output_defs;
 pub(crate) mod signatures;
 pub(crate) mod variables;

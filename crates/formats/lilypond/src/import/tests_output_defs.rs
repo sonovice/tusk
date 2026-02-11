@@ -80,22 +80,33 @@ fn header_title_populates_mei_title() {
 }
 
 #[test]
-fn header_stored_as_ext_meta() {
+fn header_stored_as_typed_output_def() {
     let file = parse("\\header { title = \"Test\" composer = \"Bach\" }\n\\score { { c4 } }");
     let mei = import(&file).unwrap();
 
     let labels = ext_meta_labels(&mei);
-    let header_label = labels
+    let output_defs_label = labels
         .iter()
-        .find(|l| l.starts_with("lilypond:header,"))
-        .expect("header ExtMeta not found");
-    assert!(header_label.contains("title"));
-    assert!(header_label.contains("composer"));
+        .find(|l| l.starts_with("tusk:output-defs,"))
+        .expect("output-defs ExtMeta not found");
+    // JSON should contain Header kind with title and composer assignments
+    assert!(
+        output_defs_label.contains("Header"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("title"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("composer"),
+        "got: {output_defs_label}"
+    );
 }
 
 #[test]
-fn header_ext_meta_has_summary_text() {
-    let file = parse("\\header { title = \"Test\" composer = \"Bach\" }\n\\score { { c4 } }");
+fn output_defs_ext_meta_has_summary_text() {
+    let file = parse("\\header { title = \"Test\" }\n\\score { { c4 } }");
     let mei = import(&file).unwrap();
 
     for child in &mei.children {
@@ -106,54 +117,60 @@ fn header_ext_meta_has_summary_text() {
                         .common
                         .label
                         .as_deref()
-                        .is_some_and(|l| l.starts_with("lilypond:header,"))
+                        .is_some_and(|l| l.starts_with("tusk:output-defs,"))
                 {
                     assert!(!ext.children.is_empty());
                     let tusk_model::elements::ExtMetaChild::Text(t) = &ext.children[0];
-                    assert!(t.contains("title: Test"));
-                    assert!(t.contains("composer: Bach"));
+                    assert!(t.contains("Header"), "summary should list kind, got: {t}");
                     return;
                 }
             }
         }
     }
-    panic!("header ExtMeta not found");
+    panic!("output-defs ExtMeta not found");
 }
 
 #[test]
-fn paper_stored_as_ext_meta() {
+fn paper_stored_as_typed_output_def() {
     let file = parse("\\paper { indent = 0 }\n\\score { { c4 } }");
     let mei = import(&file).unwrap();
 
     let labels = ext_meta_labels(&mei);
-    let paper = labels
+    let output_defs_label = labels
         .iter()
-        .find(|l| l.starts_with("lilypond:paper,"))
-        .expect("paper ExtMeta not found");
-    assert!(paper.contains("indent"));
+        .find(|l| l.starts_with("tusk:output-defs,"))
+        .expect("output-defs ExtMeta not found");
+    assert!(
+        output_defs_label.contains("Paper"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("indent"),
+        "got: {output_defs_label}"
+    );
 }
 
 #[test]
-fn layout_stored_as_ext_meta() {
+fn layout_stored_as_typed_output_def() {
     let file = parse("\\layout { ragged-right = ##t }\n\\score { { c4 } }");
     let mei = import(&file).unwrap();
 
     let labels = ext_meta_labels(&mei);
     assert!(
-        labels.iter().any(|l| l.starts_with("lilypond:layout,")),
-        "layout ExtMeta not found"
+        labels.iter().any(|l| l.starts_with("tusk:output-defs,")),
+        "output-defs ExtMeta not found"
     );
 }
 
 #[test]
-fn midi_stored_as_ext_meta() {
+fn midi_stored_as_typed_output_def() {
     let file = parse("\\midi { }\n\\score { { c4 } }");
     let mei = import(&file).unwrap();
 
     let labels = ext_meta_labels(&mei);
     assert!(
-        labels.iter().any(|l| l.starts_with("lilypond:midi,")),
-        "midi ExtMeta not found"
+        labels.iter().any(|l| l.starts_with("tusk:output-defs,")),
+        "output-defs ExtMeta not found"
     );
 }
 
@@ -163,8 +180,12 @@ fn score_level_header_in_score_def_label() {
     let mei = import(&file).unwrap();
     let label = score_def_label(&mei);
     assert!(
-        label.contains("lilypond:score-header,"),
-        "score-header label missing, got: {label}"
+        label.contains("tusk:score-output-defs,"),
+        "score-output-defs label missing, got: {label}"
+    );
+    assert!(
+        label.contains("Header"),
+        "should contain Header kind, got: {label}"
     );
 }
 
@@ -174,8 +195,12 @@ fn score_level_layout_in_score_def_label() {
     let mei = import(&file).unwrap();
     let label = score_def_label(&mei);
     assert!(
-        label.contains("lilypond:score-layout,"),
-        "score-layout label missing, got: {label}"
+        label.contains("tusk:score-output-defs,"),
+        "score-output-defs label missing, got: {label}"
+    );
+    assert!(
+        label.contains("Layout"),
+        "should contain Layout kind, got: {label}"
     );
 }
 
@@ -185,8 +210,12 @@ fn score_level_midi_in_score_def_label() {
     let mei = import(&file).unwrap();
     let label = score_def_label(&mei);
     assert!(
-        label.contains("lilypond:score-midi,"),
-        "score-midi label missing, got: {label}"
+        label.contains("tusk:score-output-defs,"),
+        "score-output-defs label missing, got: {label}"
+    );
+    assert!(
+        label.contains("Midi"),
+        "should contain Midi kind, got: {label}"
     );
 }
 
@@ -219,12 +248,61 @@ fn layout_with_context_stored() {
     let mei = import(&file).unwrap();
 
     let labels = ext_meta_labels(&mei);
-    let layout_label = labels
+    let output_defs_label = labels
         .iter()
-        .find(|l| l.starts_with("lilypond:layout,"))
-        .expect("layout ExtMeta not found");
+        .find(|l| l.starts_with("tusk:output-defs,"))
+        .expect("output-defs ExtMeta not found");
+    // JSON should contain Layout kind with context block info
     assert!(
-        layout_label.contains("context") || layout_label.contains("Score"),
-        "layout label should contain context info, got: {layout_label}"
+        output_defs_label.contains("Layout"),
+        "should contain Layout, got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("Score") || output_defs_label.contains("context"),
+        "should contain context info, got: {output_defs_label}"
+    );
+}
+
+#[test]
+fn no_old_format_labels_produced() {
+    let file = parse(
+        "\\header { title = \"Test\" }\n\\paper { indent = 0 }\n\\layout { }\n\\midi { }\n\\score { { c4 } \\header { piece = \"P\" } \\layout { } \\midi { } }",
+    );
+    let mei = import(&file).unwrap();
+
+    // No old-format labels should exist
+    let labels = ext_meta_labels(&mei);
+    for label in &labels {
+        assert!(
+            !label.starts_with("lilypond:header,"),
+            "old lilypond:header, label found: {label}"
+        );
+        assert!(
+            !label.starts_with("lilypond:paper,"),
+            "old lilypond:paper, label found: {label}"
+        );
+        assert!(
+            !label.starts_with("lilypond:layout,"),
+            "old lilypond:layout, label found: {label}"
+        );
+        assert!(
+            !label.starts_with("lilypond:midi,"),
+            "old lilypond:midi, label found: {label}"
+        );
+    }
+
+    // ScoreDef should not have old-format labels
+    let sd_label = score_def_label(&mei);
+    assert!(
+        !sd_label.contains("lilypond:score-header,"),
+        "old lilypond:score-header label found: {sd_label}"
+    );
+    assert!(
+        !sd_label.contains("lilypond:score-layout,"),
+        "old lilypond:score-layout label found: {sd_label}"
+    );
+    assert!(
+        !sd_label.contains("lilypond:score-midi,"),
+        "old lilypond:score-midi label found: {sd_label}"
     );
 }

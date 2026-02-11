@@ -1412,12 +1412,21 @@ The most egregious technical debt: entire `\header`/`\paper`/`\layout`/`\midi` b
 
 Labels: `lilypond:header,`, `lilypond:paper,`, `lilypond:layout,`, `lilypond:midi,` (on `ExtMeta`), `lilypond:score-header,`, `lilypond:score-layout,`, `lilypond:score-midi,` (on `ScoreDef`).
 
-- [ ] [I] Replace `ExtMeta`-based header/paper/layout/midi storage with `OutputDef` extension types on the MEI root or `ScoreDef`; store typed key-value pairs + context blocks instead of serialized strings
-- [ ] [E] Read `OutputDef` extensions on export instead of parsing `ExtMeta` labels; remove `parse_header_from_label()`, `parse_paper_from_label()`, etc.
-- [ ] [I] Replace score-level `lilypond:score-header,`/`lilypond:score-layout,`/`lilypond:score-midi,` label segments on `ScoreDef` with typed extensions
-- [ ] [E] Read score-level output defs from extensions instead of label segments
-- [ ] [T] All existing output-def import/export/roundtrip tests pass with new storage
-- [ ] [T] Verify `ExtMeta` is no longer produced for output defs
+- [x] [I] Replace `ExtMeta`-based header/paper/layout/midi storage with `OutputDef` extension types on the MEI root or `ScoreDef`; store typed key-value pairs + context blocks instead of serialized strings
+  - New `import/output_def_conv.rs` module: bidirectional conversion between LilyPond model types (HeaderBlock, PaperBlock, LayoutBlock, MidiBlock) and typed `OutputDef`/`ExtAssignment`/`ExtContextBlock`/`ExtValue` structs
+  - Import stores all top-level output defs as JSON-serialized `Vec<OutputDef>` in single `ExtMeta` with `tusk:output-defs,{json}` label (replacing 4 separate `lilypond:TYPE,{escaped_source}` elements)
+  - Added `serialize_music`, `serialize_assignment_value`, `serialize_scheme_expr`, `serialize_property_value` public serializer functions
+- [x] [E] Read `OutputDef` extensions on export instead of parsing `ExtMeta` labels; remove `parse_header_from_label()`, `parse_paper_from_label()`, etc.
+  - Export deserializes `tusk:output-defs,{json}` → `Vec<OutputDef>` → LilyPond model types via `output_def_conv` converters
+  - Removed `parse_header_from_label()`, `parse_paper_from_label()`, `parse_layout_from_label()`, `parse_midi_from_label()` — no re-parsing needed
+- [x] [I] Replace score-level `lilypond:score-header,`/`lilypond:score-layout,`/`lilypond:score-midi,` label segments on `ScoreDef` with typed extensions
+  - Score-level blocks stored as `tusk:score-output-defs,{json}` label segment (single segment replacing 3 separate `lilypond:score-TYPE,` segments)
+- [x] [E] Read score-level output defs from extensions instead of label segments
+  - Export reads `tusk:score-output-defs,{json}` → `Vec<OutputDef>` → ScoreItem list
+- [x] [T] All existing output-def import/export/roundtrip tests pass with new storage
+  - All 42 output-def tests pass (12 export roundtrip + 14 import + 16 parser)
+- [x] [T] Verify `ExtMeta` is no longer produced for output defs
+  - New `no_old_format_labels_produced` test verifies no `lilypond:header,`/`lilypond:paper,`/`lilypond:layout,`/`lilypond:midi,`/`lilypond:score-*` labels exist
 
 ### 33.3 Migrate StaffDef/StaffGrp/ScoreDef Label-Based Storage
 

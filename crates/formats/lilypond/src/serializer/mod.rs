@@ -138,7 +138,38 @@ pub fn serialize_assignment(a: &Assignment) -> String {
     out
 }
 
-/// Serialize a tweak post-event to a string (e.g. `\tweak color #red`).
+/// Serialize a `Music` expression to its LilyPond string representation.
+pub fn serialize_music(m: &Music) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_music(m);
+    out
+}
+
+/// Serialize an `AssignmentValue` to its LilyPond string representation.
+pub fn serialize_assignment_value(v: &AssignmentValue) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_assignment_value(v);
+    out
+}
+
+/// Serialize a `SchemeExpr` to its LilyPond string representation (including leading `#`).
+pub fn serialize_scheme_expr(expr: &SchemeExpr) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_scheme_expr(expr);
+    out
+}
+
+/// Serialize a `PropertyValue` to its LilyPond string representation.
+pub fn serialize_property_value(v: &property::PropertyValue) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    ser.write_property_value(v);
+    out
+}
+
 pub fn serialize_tweak(path: &property::PropertyPath, value: &property::PropertyValue) -> String {
     let mut out = String::new();
     let mut ser = Serializer::new(&mut out);

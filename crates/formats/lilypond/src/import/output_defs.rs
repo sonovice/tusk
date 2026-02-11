@@ -1,20 +1,21 @@
 //! Import of header, paper, layout, and midi blocks.
 //!
-//! Stores LilyPond header/paper/layout/midi blocks in MEI `ExtMeta` elements
-//! (under `MeiHead`) and in `ScoreDef` labels for lossless roundtrip.
+//! Stores LilyPond header/paper/layout/midi blocks as typed `OutputDef` extensions
+//! in MEI `ExtMeta` elements (under `MeiHead`) and in `ScoreDef` labels for lossless
+//! roundtrip. Uses JSON-serialized `OutputDef` structs instead of serialized LilyPond
+//! source, eliminating re-parsing on export.
 
+use crate::model::{self, ScoreItem, ToplevelExpression};
 use tusk_model::elements::{
     ExtMeta, ExtMetaChild, FileDesc, FileDescChild, MeiHead, MeiHeadChild, Title, TitleChild,
     TitleStmt, TitleStmtChild,
 };
 
-use crate::model::{self, ScoreItem, ToplevelExpression};
-use crate::serializer;
-
+use super::output_def_conv;
 use super::signatures;
 
 /// Build MeiHead from LilyPond file, populating metadata from \header and
-/// storing all blocks (header/paper/layout/midi) as ExtMeta for lossless roundtrip.
+/// storing all blocks (header/paper/layout/midi) as typed OutputDef extensions.
 pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
     let mut head = MeiHead::default();
 
@@ -50,94 +51,67 @@ pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
     head.children
         .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
 
-    // Store top-level \header as ExtMeta for lossless roundtrip
+    // Collect all top-level output defs as typed OutputDef structs
+    let mut output_defs = Vec::new();
+
     if let Some(hb) = top_header {
-        let serialized = serializer::serialize_header_block(hb);
-        let escaped = signatures::escape_label_value_pub(&serialized);
+        output_defs.push(output_def_conv::header_to_output_def(hb));
+    }
+
+    for item in &file.items {
+        match item {
+            ToplevelExpression::Paper(pb) => {
+                output_defs.push(output_def_conv::paper_to_output_def(pb));
+            }
+            ToplevelExpression::Layout(lb) => {
+                output_defs.push(output_def_conv::layout_to_output_def(lb));
+            }
+            ToplevelExpression::Midi(mb) => {
+                output_defs.push(output_def_conv::midi_to_output_def(mb));
+            }
+            _ => {}
+        }
+    }
+
+    // Store all output defs as a single ExtMeta with JSON
+    if !output_defs.is_empty() {
+        let json = serde_json::to_string(&output_defs).unwrap_or_default();
+        let escaped = signatures::escape_label_value_pub(&json);
         let mut ext = ExtMeta::default();
-        ext.common.label = Some(format!("lilypond:header,{escaped}"));
-        ext.children.push(ExtMetaChild::Text(header_summary(hb)));
+        ext.common.label = Some(format!("tusk:output-defs,{escaped}"));
+        // Human-readable summary
+        let summary: Vec<String> = output_defs
+            .iter()
+            .map(|od| format!("{:?}", od.kind))
+            .collect();
+        ext.children.push(ExtMetaChild::Text(summary.join(", ")));
         head.children.push(MeiHeadChild::ExtMeta(Box::new(ext)));
-    }
-
-    // Store top-level \paper as ExtMeta
-    for item in &file.items {
-        if let ToplevelExpression::Paper(pb) = item {
-            let serialized = serializer::serialize_paper_block(pb);
-            let escaped = signatures::escape_label_value_pub(&serialized);
-            let mut ext = ExtMeta::default();
-            ext.common.label = Some(format!("lilypond:paper,{escaped}"));
-            head.children.push(MeiHeadChild::ExtMeta(Box::new(ext)));
-        }
-    }
-
-    // Store top-level \layout as ExtMeta
-    for item in &file.items {
-        if let ToplevelExpression::Layout(lb) = item {
-            let serialized = serializer::serialize_layout_block(lb);
-            let escaped = signatures::escape_label_value_pub(&serialized);
-            let mut ext = ExtMeta::default();
-            ext.common.label = Some(format!("lilypond:layout,{escaped}"));
-            head.children.push(MeiHeadChild::ExtMeta(Box::new(ext)));
-        }
-    }
-
-    // Store top-level \midi as ExtMeta
-    for item in &file.items {
-        if let ToplevelExpression::Midi(mb) = item {
-            let serialized = serializer::serialize_midi_block(mb);
-            let escaped = signatures::escape_label_value_pub(&serialized);
-            let mut ext = ExtMeta::default();
-            ext.common.label = Some(format!("lilypond:midi,{escaped}"));
-            head.children.push(MeiHeadChild::ExtMeta(Box::new(ext)));
-        }
     }
 
     head
 }
 
-/// Build a short human-readable summary of a header block for ExtMeta text content.
-fn header_summary(hb: &model::HeaderBlock) -> String {
-    let mut parts = Vec::new();
-    for field in &hb.fields {
-        if let model::AssignmentValue::String(s) = &field.value {
-            parts.push(format!("{}: {s}", field.name));
-        }
-    }
-    if parts.is_empty() {
-        "LilyPond header".to_string()
-    } else {
-        parts.join("; ")
-    }
-}
-
 /// Build a label segment for score-level \header/\layout/\midi blocks.
 ///
-/// Scans the LilyPond file for the first `\score` block and serializes
-/// its header/layout/midi items as label entries.
+/// Scans the LilyPond file for the first `\score` block and stores
+/// its header/layout/midi items as typed OutputDef JSON.
 ///
-/// Format: `lilypond:score-header,{escaped}|lilypond:score-layout,{escaped}|lilypond:score-midi,{escaped}`
+/// Format: `tusk:score-output-defs,{escaped_json}`
 pub(super) fn build_score_blocks_label(file: &model::LilyPondFile) -> String {
-    let mut segments = Vec::new();
+    let mut output_defs = Vec::new();
 
     for item in &file.items {
         if let ToplevelExpression::Score(sb) = item {
             for si in &sb.items {
                 match si {
                     ScoreItem::Header(hb) => {
-                        let serialized = serializer::serialize_header_block(hb);
-                        let escaped = signatures::escape_label_value_pub(&serialized);
-                        segments.push(format!("lilypond:score-header,{escaped}"));
+                        output_defs.push(output_def_conv::header_to_output_def(hb));
                     }
                     ScoreItem::Layout(lb) => {
-                        let serialized = serializer::serialize_layout_block(lb);
-                        let escaped = signatures::escape_label_value_pub(&serialized);
-                        segments.push(format!("lilypond:score-layout,{escaped}"));
+                        output_defs.push(output_def_conv::layout_to_output_def(lb));
                     }
                     ScoreItem::Midi(mb) => {
-                        let serialized = serializer::serialize_midi_block(mb);
-                        let escaped = signatures::escape_label_value_pub(&serialized);
-                        segments.push(format!("lilypond:score-midi,{escaped}"));
+                        output_defs.push(output_def_conv::midi_to_output_def(mb));
                     }
                     ScoreItem::Music(_) => {}
                 }
@@ -146,5 +120,11 @@ pub(super) fn build_score_blocks_label(file: &model::LilyPondFile) -> String {
         }
     }
 
-    segments.join("|")
+    if output_defs.is_empty() {
+        return String::new();
+    }
+
+    let json = serde_json::to_string(&output_defs).unwrap_or_default();
+    let escaped = signatures::escape_label_value_pub(&json);
+    format!("tusk:score-output-defs,{escaped}")
 }
