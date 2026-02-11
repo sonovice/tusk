@@ -1373,3 +1373,482 @@ When exporting MEI (or the internal model) to LilyPond we must **retain element 
   - Clippy: 0 warnings, 0 errors
 
 ---
+
+## Phase 33: Core Model Extensions for Format-Specific Concepts
+
+Currently, LilyPond-specific concepts that have no native MEI equivalent are stored using two ad-hoc mechanisms: (1) `@label` string attributes with `lilypond:` prefixes, and (2) `<extMeta>` elements in `<meiHead>`. Both approaches are fragile (string-typed, no schema), hard to query, and bypass the typed model. The existing `extensions.rs` module (`ExtensionBag`/`ExtensionElement`) is defined but unused.
+
+This phase introduces **proper typed extensions** in the core model (`crates/core/model/src/extensions.rs`) for concepts that don't map to native MEI elements. All subsequent phases and any refactoring of earlier phases should use these extensions instead of label hacks or `ExtMeta`.
+
+### 33.1 Extension Types
+
+- [x] [P] Design and add typed extension structs in `crates/core/model/src/extensions.rs` for format-specific roundtrip data. Each concept gets its own type rather than opaque strings. At minimum:
+  - `FormatOrigin` — enum indicating source format (`LilyPond`, `MusicXML`, etc.) and format-specific metadata (version, pitch mode, etc.)
+  - `PitchContext` — whether the staff uses `\relative`, `\fixed`, or absolute pitches, with the reference pitch
+  - `OutputDef` — typed representation of `\header`/`\paper`/`\layout`/`\midi` blocks (key-value pairs with typed values, context blocks)
+  - `BookStructure` — book/bookpart hierarchy metadata (which scores belong to which bookpart, book-level header/paper)
+  - `StaffContext` — format-specific staff context info (context type name, `\with` block contents, voice/staff naming)
+  - `RepeatInfo` — repeat type, count, alternative ranges (for concepts not fully in MEI repeat model)
+  - `GraceInfo` — grace type distinction (grace vs. acciaccatura vs. appoggiatura vs. afterGrace with fraction)
+  - `PropertyOp` — override/revert/set/unset/once/tweak with typed paths and values
+  - `FunctionCall` — music function name + typed arguments
+  - `EventSequence` — ordered list of control events (clef/key/time changes, bar checks, bar lines, auto-beam, tempo, marks, markup) at specific positions in the music stream
+  - `VariableAssignments` — named variable definitions for roundtrip
+  - `ToplevelMarkup` — standalone markup/markuplist at file top level
+  - Also added: `LyricsInfo`, `ChordRepetition`, `ContextChange`, `TweakInfo`, `ExtValue`, `ExtAssignment`, `ExtContextBlock`, `ExtContextModItem`, `ExtPitch`, `ContextKeywordExt`
+- [x] [P] Add an `ExtData` (or similar) container on the relevant MEI elements (e.g. `ScoreDef`, `StaffDef`, `StaffGrp`, `Note`, `Chord`, `Rest`, `MRest`, `Measure`) that holds `Option<T>` for each applicable extension — or use a single `HashMap<TypeId, Box<dyn Any>>` / an extension trait object per element
+  - Chose side table approach: `ExtensionStore` (HashMap<String, ExtData>) keyed by @xml:id — no modification of generated code
+  - `ExtData` struct with `Option<T>` for each extension type + `Vec<T>` for multi-value fields (tweaks, output_defs, property_ops)
+- [x] [P] Ensure `Serialize`/`Deserialize` (serde) is derived for all extension types so they can be persisted alongside MEI
+  - All 25+ types derive Serialize/Deserialize; skip_serializing_if on Option/Vec fields; #[serde(default)] on ExtData for roundtrip
+- [x] [T] Unit tests: create extension structs, attach to MEI elements, read back
+  - 29 unit tests covering serde roundtrip for all types, ExtensionStore CRUD operations, composite ExtData, skip-none serialization
+- [x] [T] Verify generated model types are NOT modified (extensions are purely additive)
+  - Confirmed: zero changes in crates/core/model/src/generated/
+
+### 33.2 Migrate ExtMeta-Based Storage (Top-Level Output Defs)
+
+The most egregious technical debt: entire `\header`/`\paper`/`\layout`/`\midi` blocks are serialized to escaped strings and stuffed into `<extMeta>` elements in `<meiHead>`, then re-parsed from strings on export. Four label patterns in `import/output_defs.rs` + `export/output_defs.rs`.
+
+Labels: `lilypond:header,`, `lilypond:paper,`, `lilypond:layout,`, `lilypond:midi,` (on `ExtMeta`), `lilypond:score-header,`, `lilypond:score-layout,`, `lilypond:score-midi,` (on `ScoreDef`).
+
+- [ ] [I] Replace `ExtMeta`-based header/paper/layout/midi storage with `OutputDef` extension types on the MEI root or `ScoreDef`; store typed key-value pairs + context blocks instead of serialized strings
+- [ ] [E] Read `OutputDef` extensions on export instead of parsing `ExtMeta` labels; remove `parse_header_from_label()`, `parse_paper_from_label()`, etc.
+- [ ] [I] Replace score-level `lilypond:score-header,`/`lilypond:score-layout,`/`lilypond:score-midi,` label segments on `ScoreDef` with typed extensions
+- [ ] [E] Read score-level output defs from extensions instead of label segments
+- [ ] [T] All existing output-def import/export/roundtrip tests pass with new storage
+- [ ] [T] Verify `ExtMeta` is no longer produced for output defs
+
+### 33.3 Migrate StaffDef/StaffGrp/ScoreDef Label-Based Storage
+
+Currently, staff/group context metadata, pitch context, event sequences, variable assignments, and lyrics metadata are all packed into `@label` strings on `StaffDef`, `StaffGrp`, and `ScoreDef`. These are the most complex label patterns — some carry entire serialized event streams.
+
+**Staff/group context** — labels: `lilypond:staff,TYPE[,name=][,with=]`, `lilypond:group,TYPE[,name=][,with=]`, `lilypond:chordnames[,name=][,with=]`, `lilypond:figuredbass[,name=][,with=]`.
+
+- [ ] [I] Replace `lilypond:staff,` / `lilypond:group,` labels on `StaffDef`/`StaffGrp` with `StaffContext` extension: typed fields for context_type, name, with_block contents
+- [ ] [E] Read `StaffContext` extension on export instead of parsing `lilypond:staff,` / `lilypond:group,` labels; update `extract_group_meta()`, `extract_staff_metas()`
+- [ ] [I] Replace `lilypond:chordnames` / `lilypond:figuredbass` labels with `StaffContext` extension (same type, different context_type field)
+- [ ] [E] Update `extract_chord_names_meta()`, `extract_figured_bass_meta()` to read from extensions
+- [ ] [T] All context/staff/group roundtrip tests pass
+
+**Pitch context** — labels: `lilypond:relative[,STEP.ALTER.OCT]`, `lilypond:transpose,FROM,TO`.
+
+- [ ] [I] Replace `lilypond:relative,` / `lilypond:transpose,` labels on `StaffDef` with `PitchContext` extension: enum `Relative { ref_pitch: Option<Pitch> }`, `Transpose { from: Pitch, to: Pitch }`, `Absolute`
+- [ ] [E] Update `extract_pitch_contexts()` in `pitch_context.rs` to read from `PitchContext` extension
+- [ ] [T] All relative/transpose roundtrip tests pass
+
+**Event sequence** — label: `lilypond:events,TYPE@POS;TYPE@POS;...` on `StaffDef`.
+
+This is the largest single label, encoding an ordered stream of control events (clef, key, time, barcheck, barline, autobeamon/off, tempo, mark, textmark, markup, markuplist) with positions.
+
+- [ ] [I] Replace `lilypond:events,` label on `StaffDef` with `EventSequence` extension: `Vec<(usize, ControlEvent)>` where `ControlEvent` is a typed enum (Clef, Key, Time, BarCheck, BarLine, AutoBeamOn, AutoBeamOff, Tempo, Mark, TextMark, Markup, MarkupList)
+- [ ] [E] Update `inject_signature_events()` in `signatures.rs` to read from `EventSequence` extension instead of parsing `lilypond:events,` label
+- [ ] [T] All clef/key/time/barcheck/barline/tempo/mark/markup roundtrip tests pass
+
+**Variable assignments** — label: `lilypond:vars,SERIALIZED` on `ScoreDef`.
+
+- [ ] [I] Replace `lilypond:vars,` label on `ScoreDef` with `VariableAssignments` extension: typed `Vec<(String, AssignmentValue)>`
+- [ ] [E] Update `extract_assignments()` to read from extension
+- [ ] [T] All variable roundtrip tests pass
+
+**Lyrics metadata** — label: `lilypond:lyrics,STYLE[,voice=ID][,count=N]` on `StaffDef`.
+
+- [ ] [I] Replace `lilypond:lyrics,` label on `StaffDef` with `LyricsInfo` extension: typed struct with style enum (AddLyrics, LyricsTo, LyricMode), voice_id, count
+- [ ] [E] Update lyrics export to read from extension
+- [ ] [T] All lyrics roundtrip tests pass
+
+### 33.4 Migrate Note/Chord/Rest Label-Based Storage
+
+Labels stored on individual music events via `@label` with pipe-separated segments.
+
+**Chord repetition** — label: `lilypond:chord-rep` on `Chord`.
+
+- [ ] [I] Replace `lilypond:chord-rep` label with a `ChordRepetition` extension flag (bool) on the MEI Chord element
+- [ ] [E] Update `convert_mei_chord()` to check extension instead of label
+- [ ] [T] Chord repetition roundtrip tests pass
+
+**Context change** — label: `lilypond:change,TYPE,NAME` on `Note`/`Chord`/`Rest`.
+
+- [ ] [I] Replace `lilypond:change,` label with `ContextChange { context_type, name }` extension on the note/chord/rest
+- [ ] [E] Update `extract_context_change_from_label()` to read from extension
+- [ ] [T] Context change roundtrip tests pass
+
+**Tweak post-events** — label: `lilypond:tweak,SERIALIZED` as pipe-segment on `Note`/`Chord`/`Rest`.
+
+- [ ] [I] Replace `lilypond:tweak,` label segments with `Vec<TweakInfo>` extension on note/chord/rest: typed tweak path + value
+- [ ] [E] Update `restore_tweak_post_events()` in `conversion.rs` to read from extension
+- [ ] [T] Tweak roundtrip tests pass
+
+**Grace type** — label: `lilypond:grace,TYPE[,fraction=N/D]` as pipe-segment on `Note`/`Chord`.
+
+- [ ] [I] Replace `lilypond:grace,` label segment with `GraceInfo` extension: typed enum (Grace, Acciaccatura, Appoggiatura, AfterGrace { fraction: Option<(u32,u32)> })
+- [ ] [E] Update `collect_grace_types()` in `grace.rs` to read from extension
+- [ ] [T] All grace note roundtrip tests pass
+
+**Pitched rest** — label: `lilypond:pitched-rest,PITCH` on `Rest`.
+
+- [ ] [I] Replace `lilypond:pitched-rest,` label with `PitchedRest { pitch }` extension on the MEI Rest element
+- [ ] [E] Update pitched rest detection in `conversion.rs`
+- [ ] [T] Pitched rest roundtrip tests pass
+
+**Multi-measure rest** — label: `lilypond:mrest,DATA` on `MRest`.
+
+- [ ] [I] Replace `lilypond:mrest,` label with `MultiMeasureRestInfo { duration, dots, multiplier }` extension on MRest
+- [ ] [E] Update `convert_mei_mrest()` to read from extension
+- [ ] [T] Multi-measure rest roundtrip tests pass
+
+**Drum events** — label: `lilypond:drum,SERIALIZED` on `Note`.
+
+- [ ] [I] Replace `lilypond:drum,` label with `DrumEvent { drum_type, ... }` extension on Note
+- [ ] [E] Update `try_convert_drum_label()` to read from extension
+- [ ] [T] Drum mode roundtrip tests pass
+
+**Lyric extender** — label: `lilypond:extender` on `Syl`.
+
+- [ ] [I] Replace `lilypond:extender` label with `LyricExtender` extension flag on Syl
+- [ ] [E] Update lyric export to read from extension
+- [ ] [T] Lyrics roundtrip tests pass
+
+### 33.5 Migrate Control Event Label-Based Storage
+
+Labels on MEI control events (`Dir`, `Slur`, `TupletSpan`, `Trill`, `Mordent`, `Turn`, `Fermata`, `Ornam`, `BTrem`) used to carry format-specific metadata.
+
+**Phrasing slur** — label: `lilypond:phrase` on `Slur`.
+
+- [ ] [I] Replace `lilypond:phrase` label with `PhrasingSlur` extension flag on Slur
+- [ ] [E] Update slur export to check extension
+- [ ] [T] Phrasing slur roundtrip tests pass
+
+**Tuplet** — label: `lilypond:tuplet,NUM/DENOM[,span=DUR]` on `TupletSpan`.
+
+- [ ] [I] Replace `lilypond:tuplet,` label with `TupletInfo { num, denom, span_duration }` extension on TupletSpan
+- [ ] [E] Update `parse_tuplet_span_label()` to read from extension
+- [ ] [T] Tuplet roundtrip tests pass
+
+**Ornaments** — labels: `lilypond:trill[,dir=]`, `lilypond:mordent[,dir=]`, `lilypond:turn[,dir=]`, `lilypond:fermata,NAME`, `lilypond:ornam,NAME[,dir=]` on respective MEI elements.
+
+- [ ] [I] Replace ornament-specific labels with `OrnamentInfo { name, direction }` extension on Trill/Mordent/Turn/Fermata/Ornam
+- [ ] [E] Update `collect_ornament_post_events()` to read from extensions
+- [ ] [T] Ornament roundtrip tests pass
+
+**Tremolo** — label: `lilypond:tremolo,VALUE` on `BTrem`.
+
+- [ ] [I] Replace `lilypond:tremolo,` label with `TremoloInfo { value }` extension on BTrem
+- [ ] [E] Update BTrem conversion to read from extension
+- [ ] [T] Tremolo roundtrip tests pass
+
+**Articulations/fingerings/string numbers** — labels: `lilypond:artic,NAME[,dir=]`, `lilypond:fing,DIGIT[,dir=]`, `lilypond:string,NUMBER[,dir=]` on `Dir`.
+
+- [ ] [I] Replace `lilypond:artic,`/`lilypond:fing,`/`lilypond:string,` labels with `ArticulationInfo { kind, name_or_value, direction }` extension on Dir (single type covering all three)
+- [ ] [E] Update `collect_artic_post_events()` to read from extension
+- [ ] [T] All articulation/fingering/string number roundtrip tests pass
+
+**Tempo/mark/textmark** — labels: `lilypond:tempo,SERIALIZED`, `lilypond:mark,SERIALIZED`, `lilypond:textmark,SERIALIZED` on `Dir`/`Tempo`.
+
+- [ ] [I] Replace with `TempoInfo`/`MarkInfo`/`TextMarkInfo` extensions carrying typed fields (text, duration, bpm for tempo; label type for mark; etc.)
+- [ ] [E] Update tempo/mark/textmark export to read from extensions
+- [ ] [T] All tempo/mark roundtrip tests pass
+
+**Repeats/endings** — labels: `lilypond:repeat,TYPE,COUNT[,alts=N]`, `lilypond:ending,INDEX` on `Dir`.
+
+- [ ] [I] Replace with `RepeatInfo { repeat_type, count, num_alternatives }` and `EndingInfo { index }` extensions on Dir
+- [ ] [E] Update `collect_repeat_spans()` / `collect_ending_spans()` to read from extensions
+- [ ] [T] All repeat roundtrip tests pass
+
+**Chord mode/figured bass events** — labels: `lilypond:chord-mode,SERIALIZED` on `Harm`, `lilypond:figure,SERIALIZED` on `Fb`.
+
+- [ ] [I] Replace with `ChordModeInfo` / `FiguredBassInfo` typed extensions carrying the parsed event data (root, quality, inversion, etc. for chords; figure numbers, alterations, modifications for figures)
+- [ ] [E] Update chord mode and figured bass export to read from extensions
+- [ ] [T] All chord mode and figured bass roundtrip tests pass
+
+**Property ops / function calls** — labels: `lilypond:prop,SERIALIZED`, `lilypond:func,SERIALIZED` on `Dir`.
+
+- [ ] [I] Replace with `PropertyOp` and `FunctionCall` typed extensions on Dir
+- [ ] [E] Update `collect_property_ops()` / `collect_function_ops()` in `operations.rs` to read from extensions
+- [ ] [T] All property op and function call roundtrip tests pass
+
+### 33.6 Final Cleanup
+
+- [ ] [P] Remove all `lilypond:` label-writing code from import once all categories are migrated
+- [ ] [P] Remove all `strip_prefix("lilypond:")` label-parsing code from export once all categories are migrated
+- [ ] [P] Remove `escape_label_value_pub` / `unescape_label_value` helpers once no longer needed
+- [ ] [P] Remove `ExtMeta`-based storage from `import/output_defs.rs` and `export/output_defs.rs`
+- [ ] [T] Full test suite passes with zero `lilypond:` label strings remaining in production code
+- [ ] [T] Grep for `"lilypond:"` in import/export `.rs` files returns zero hits (only in test assertions during transition, then those too)
+
+---
+
+## Phase 34: Book & BookPart Import/Export
+
+The parser and serializer already handle `\book` and `\bookpart` blocks, but the import and export pipelines ignore them entirely. Files using `\book { \bookpart { \score { ... } } }` have their hierarchical structure silently flattened.
+
+### 34.1 Import
+
+- [ ] [I] `\book { ... }` → walk into `BookItem` children to find scores, headers, paper blocks; store book-level structure in a `BookStructure` extension on the MEI root (or top-level `<mdiv>`) with typed fields for header, paper, and child bookparts
+- [ ] [I] `\bookpart { ... }` → walk into `BookPartItem` children similarly; store as `BookPartInfo` entries inside `BookStructure`, each referencing its scores and bookpart-level header/paper
+- [ ] [I] Multi-score books: when a `\book` contains multiple `\score` blocks (or multiple `\bookpart` with `\score`), create separate MEI `<mdiv>` elements per score/bookpart to preserve structure
+- [ ] [T] Import tests: book with single score, book with header+paper, bookpart with score, nested book>bookpart>score, multiple bookparts
+- [ ] [T] Fixture: `fragment_book.ly` with `\book { \header { } \bookpart { \score { ... } } \bookpart { \score { ... } } }`
+
+### 34.2 Export
+
+- [ ] [E] Read `BookStructure` extension from MEI; reconstruct `ToplevelExpression::Book` / `ToplevelExpression::BookPart` wrappers around scores with correct header/paper nesting
+- [ ] [E] Multi-`<mdiv>` MEI → reconstruct as separate `\score` blocks inside `\book`/`\bookpart` where extension data indicates original structure
+- [ ] [T] Roundtrip tests: book with single score, book+bookpart, multiple bookparts, book header/paper preserved
+- [ ] [T] Roundtrip fixture: `fragment_book.ly` survives LilyPond→MEI→LilyPond
+
+---
+
+## Phase 35: Skip Events Import/Export
+
+Skip events (`s4`, `s8`, etc.) are commonly used as spacing/placeholder elements in multi-voice and multi-staff arrangements. Currently they are parsed and serialized correctly but silently dropped during import (no MEI element created), making them lost on round-trip.
+
+### 35.1 Import
+
+- [ ] [I] `Music::Skip(SkipEvent)` → create MEI `<space>` element with @dur/@dots preserving duration and any post-events
+  - `<space>` is the native MEI element for invisible duration-filling events — use it directly (no extension needed for the element itself)
+  - If `<space>` is not available as a `LayerChild` variant in the generated model, add it as a model extension (new `LayerChild` variant or wrapper)
+- [ ] [I] Ensure skip events in all contexts are preserved: bare `s4`, inside voices, inside lyric mode (alignment skips)
+- [ ] [T] Import tests: single skip, skip with duration/dots, skip with post-events, skip in multi-voice, skip in lyric mode
+
+### 35.2 Export
+
+- [ ] [E] MEI `<space>` → `Music::Skip(SkipEvent)` with correct duration and post-events
+- [ ] [T] Roundtrip tests: skip basic, skip with duration, skip in voice context, skip in lyric mode
+- [ ] [T] Fixture: `fragment_skip.ly` with skip events in various contexts
+
+---
+
+## Phase 36: `\fixed` Pitch Context Roundtrip
+
+The parser handles `\fixed c' { ... }` and the import resolves pitches to absolute, but no metadata is stored to reconstruct the `\fixed` wrapper on export. After round-trip, `\fixed` blocks degrade to `\relative` or bare absolute pitches.
+
+### 36.1 Import
+
+- [ ] [I] Store `\fixed` pitch context in a `PitchContext` extension on the StaffDef (typed enum: `Relative { ref_pitch }` | `Fixed { ref_pitch }` | `Absolute`) instead of a `lilypond:fixed,` label string
+- [ ] [I] `detect_pitch_context()` already detects `\fixed`; ensure it writes the extension before resolving to absolute
+- [ ] [T] Import tests: fixed extension stored, fixed pitches resolved to absolute, fixed with accidentals
+
+### 36.2 Export
+
+- [ ] [E] When StaffDef has `PitchContext::Fixed` extension, reconstruct `Music::Fixed { pitch, body }` wrapper instead of `Music::Relative` or bare absolute
+- [ ] [E] `apply_pitch_contexts()` extended to handle fixed→absolute→fixed reconversion (pitches stay absolute inside `\fixed`)
+- [ ] [T] Roundtrip tests: fixed basic, fixed with accidentals, fixed vs relative preserved distinctly
+- [ ] [T] Fixture: `fragment_fixed.ly` with `\fixed c' { c d e f }` and comparison to `\relative`
+
+---
+
+## Phase 37: Top-Level Markup/MarkupList Import/Export
+
+Standalone `\markup { ... }` and `\markuplist { ... }` at file top level (outside `\score` or music contexts — e.g. title pages, standalone text between scores) are parsed but ignored by both import and export.
+
+### 37.1 Import
+
+- [ ] [I] `ToplevelExpression::Markup` → store as a `ToplevelMarkup` extension entry on the MEI root, preserving ordering relative to other top-level items (scores, assignments, etc.)
+- [ ] [I] `ToplevelExpression::MarkupList` → store as a `ToplevelMarkup::List` variant in the same extension
+- [ ] [T] Import tests: top-level markup stored, markuplist stored, ordering preserved
+
+### 37.2 Export
+
+- [ ] [E] Read `ToplevelMarkup` extension entries from MEI; emit as `ToplevelExpression::Markup` / `ToplevelExpression::MarkupList` at correct positions in the output file
+- [ ] [T] Roundtrip tests: top-level markup, markuplist, mixed with scores
+- [ ] [T] Fixture: `fragment_toplevel_markup.ly` with standalone `\markup` between scores
+
+---
+
+## Phase 38: Numeric Expressions in Parser
+
+The grammar supports arithmetic expressions in `\paper`/`\layout` blocks (e.g. `line-width = 180\mm - 2\cm`, `indent = 0\mm + 10\pt`). Currently only literal numbers are parsed; arithmetic operators and unit suffixes fail.
+
+Grammar: `number_expression`, `number_term`, `number_factor`, `bare_number_common`, `bare_number`.
+
+### 38.1 Model & Parser
+
+- [ ] [P] Add `NumericExpression` type to model: `Literal(f64)`, `Add(Box, Box)`, `Sub(Box, Box)`, `Mul(Box, Box)`, `Div(Box, Box)`, `Negate(Box)`, `WithUnit(f64, String)` — or keep as opaque text in `AssignmentValue`
+- [ ] [P] Parse `number_expression`: `term + term`, `term - term`; `number_term`: `factor * factor`; `number_factor`: with unary minus; units (`\mm`, `\cm`, `\pt`, `\in`, `\bp`, `\dd`, `\cc`, `\sp`)
+- [ ] [P] Integrate into `parse_assignment_value()` for paper/layout blocks where arithmetic appears
+- [ ] [S] Serialize numeric expressions back (either structured or as raw text)
+- [ ] [T] Parser tests: `180\mm`, `180\mm - 2\cm`, `3 + 4`, `10 * 2.5`, unary minus, units
+- [ ] [T] Fixture: `fragment_numeric_expr.ly` with `\paper { indent = 0\mm line-width = 180\mm - 2\cm }`
+
+---
+
+## Phase 39: Context Definition Internals
+
+The parser handles basic context modification items (`\consists`, `\remove`, `\override`, `\set`, `\unset`, assignment, `\ContextRef`) but does not handle the full `context_def_spec_body` and `context_def_mod` productions.
+
+Grammar: `context_def_spec_body`, `context_def_mod`, `context_mod_arg`.
+
+Missing keywords: `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\description`, `\name`.
+
+### 39.1 Model & Parser
+
+- [ ] [P] Add `ContextModItem` variants: `Denies(String)`, `Accepts(String)`, `Alias(String)`, `DefaultChild(String)`, `Description(String)`, `Name(String)`
+- [ ] [P] Parse `\denies "ContextName"`, `\accepts "ContextName"`, `\alias "ContextName"`, `\defaultchild "ContextName"`, `\description "text"`, `\name "ContextName"` inside `\context { }` blocks
+- [ ] [L] Add lexer tokens for `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\description`, `\name` (if not already present)
+- [ ] [S] Serialize new `ContextModItem` variants
+- [ ] [V] Validate context names in denies/accepts/alias
+- [ ] [T] Parser tests: each keyword individually, combined in context block
+- [ ] [T] Fixture: `fragment_context_def.ly` with `\layout { \context { \Staff \accepts "CueVoice" \denies "Voice" } }`
+
+### 39.2 Import & Export
+
+- [ ] [I] New `ContextModItem` variants roundtrip through the existing serialization pipeline (context blocks are already serialized as a whole; new variants just need to parse and serialize correctly)
+- [ ] [E] Roundtrip via existing serialization path
+- [ ] [T] Roundtrip tests: context with \accepts/\denies/\alias, fixture roundtrip
+
+---
+
+## Phase 40: Enhanced Function Argument Parsing
+
+The parser uses a simplified greedy approach for function arguments (1/17 grammar rules covered). The Bison grammar has 17 interrelated productions for argument lists with complex backtracking/reparsing logic for optional arguments. This causes failures on user-defined music/scheme functions with complex type signatures.
+
+Grammar: `function_arglist_nonbackup`, `function_arglist_backup`, `function_arglist_common`, `function_arglist_optional`, `function_arglist_partial`, `function_arglist_partial_optional`, `function_arglist_skip_nonbackup`, `function_arglist_skip_backup`, `function_arglist_common_reparse`, `function_arglist_nonbackup_reparse`, `reparsed_rhythm`, `symbol_list_arg`, `symbol_list_rev`, `symbol_list_part`, `symbol_list_element`, `symbol_list_part_bare`.
+
+### 40.1 Model & Parser
+
+- [ ] [P] Add `SymbolList` type to model for `symbol_list_arg` (used as function argument in Scheme API)
+- [ ] [P] Parse `symbol_list_arg`: sequences like `Staff.NoteHead.color` as a symbol list, not just a property path
+- [ ] [P] Improve function argument collection: add type-aware parsing that tries music, then string, then number, then scheme (matching the priority of `function_arglist_nonbackup`)
+- [ ] [P] Handle `\default` as explicit optional-argument placeholder (already done for `FunctionArg::Default`)
+- [ ] [P] Handle `reparsed_rhythm`: duration-as-argument (e.g. `\tuplet 3/2 4. { ... }`) — already partially handled for `\tuplet`; generalize for user functions
+- [ ] [T] Parser tests: function with symbol list arg, function with optional args, function with mixed type args, known problematic functions (\keepWithTag, \removeWithTag, \partCombine)
+
+### 40.2 Import & Export
+
+- [ ] [I] Extended function arguments preserved through the `FunctionCall` extension type on MEI control events (replaces opaque `lilypond:func,` label strings)
+- [ ] [T] Roundtrip tests: functions with complex arguments
+
+---
+
+## Phase 41: Scheme Function Calls & Music-as-Scheme
+
+The parser handles `#expr` basics but misses Scheme-as-music (`music_embedded`), Scheme function calls (`scm_function_call`), and active/bare Scheme forms. This limits parsing of scores that use Scheme-defined music functions.
+
+Grammar: `scm_function_call`, `embedded_scm_bare`, `embedded_scm_active`, `embedded_scm_bare_arg`, `embedded_scm_arg`, `music_embedded`, `music_embedded_backup`, `embedded_lilypond_number`.
+
+### 41.1 Model & Parser
+
+- [ ] [P] Parse `scm_function_call`: `#(function-name arg ...)` where the result is used in a music context — currently parsed as opaque `SchemeExpr::List`; add detection of music-returning Scheme calls
+- [ ] [P] Parse `music_embedded`: a `#expr` that produces a music expression (e.g. `#(make-music 'NoteEvent ...)`); represent as `Music::SchemeMusic(SchemeExpr)` or keep as opaque passthrough
+- [ ] [P] Parse `embedded_lilypond_number`: `##{ ... #}` that returns a numeric value (vs. music) — may require context from surrounding grammar
+- [ ] [P] Handle `embedded_scm_active`: Scheme expression in "active" position (e.g. as a standalone statement in a music sequence)
+- [ ] [S] Serialize music-as-Scheme back to `#(...)` form
+- [ ] [T] Parser tests: `#(ly:export ...)`, music from Scheme, Scheme in music position
+- [ ] [T] Fixture: `fragment_scheme_music.ly` with Scheme-generated music expressions
+
+### 41.2 Import & Export
+
+- [ ] [I] Music-as-Scheme → store as `FunctionCall` extension (or new `SchemeMusic` extension) on MEI control events, preserving the full Scheme expression tree
+- [ ] [E] Roundtrip via typed extension
+- [ ] [T] Roundtrip tests: Scheme function calls in music context
+
+---
+
+## Phase 42: Property Path Scheme Forms
+
+The parser handles dot-separated property paths (`Staff.NoteHead.color`) but misses Scheme-based property paths used in `\revert` and `\override` (e.g. `\revert #'(bound-details left text)`, `\override #'font-size = #3`).
+
+Grammar: `grob_prop_spec` (full form), `context_prop_spec`, `simple_revert_context`, `revert_arg_backup`, `revert_arg_part`.
+
+### 42.1 Model & Parser
+
+- [ ] [P] Parse Scheme-quoted property paths: `#'symbol` and `#'(symbol-list)` as property path components
+- [ ] [P] Extend `PropertyPath` to hold Scheme-based segments: e.g. `PropertyPath::SchemePath(SchemeExpr)` variant or mixed dot/scheme segments
+- [ ] [P] Parse `\revert #'(bound-details left text)` — Scheme list as revert target
+- [ ] [P] Parse `\override` with Scheme property spec: e.g. `\override #'font-size = #3`
+- [ ] [P] Parse `simple_revert_context`: bare context name before revert path (e.g. `\revert Staff #'fontSize`)
+- [ ] [S] Serialize Scheme-based property paths
+- [ ] [T] Parser tests: `\revert #'(bound-details left text)`, `\override #'font-size = #3`, mixed dot/scheme paths
+
+### 42.2 Import & Export
+
+- [ ] [I] Scheme property paths → stored in `PropertyOp` extension type (typed path + value); existing label-based path also works since serializer covers the forms
+- [ ] [T] Roundtrip tests: Scheme property paths in override/revert
+
+---
+
+## Phase 43: Markup Partial Functions & Extended Markup
+
+The parser handles core markup well (13/23 productions) but misses partial markup functions, some list/command variants, and `simple_markup_noword`.
+
+Grammar: `partial_markup`, `markup_partial_function`, `markup_arglist_partial`, `markup_uncomposed_list`, `markup_command_list`, `markup_command_list_arguments`, `markup_mode`, `markup_mode_word`, `simple_markup_noword`.
+
+### 42.1 Model & Parser
+
+- [ ] [P] Parse partial markup: `\markup \bold` (without arguments) — a partially applied markup function usable as a value
+- [ ] [P] Add `Markup::Partial { command, args }` variant for partially applied markup functions
+- [ ] [P] Parse `markup_uncomposed_list`: markup list without prefix composition (e.g. bare `{ word1 word2 }` in list context)
+- [ ] [P] Parse `markup_command_list`: commands that return markup lists (e.g. `\column-lines`, `\wordwrap-lines`)
+- [ ] [P] Parse `markup_command_list_arguments`: arguments specific to list-returning commands
+- [ ] [P] Parse `simple_markup_noword`: simple markup forms excluding bare words (for disambiguation in certain contexts)
+- [ ] [S] Serialize partial markup and list command variants
+- [ ] [V] Validate partial markup (command exists, arity compatible)
+- [ ] [T] Parser tests: `\markup \bold`, `\markuplist \column-lines { ... }`, bare word exclusion contexts
+
+---
+
+## Phase 44: Post-Event Gaps
+
+Two post-event grammar productions are not covered: `gen_text_def` (markup or string used as a directed post-event) and `event_function_event` (event-returning function calls as post-events).
+
+Grammar: `gen_text_def`, `event_function_event`, `script_dir` (as separate production).
+
+### 44.1 Model & Parser
+
+- [ ] [P] Parse `gen_text_def`: direction prefix (`^`, `_`, `-`) followed by a string or markup as a post-event — e.g. `c4^"dolce"`, `c4_\markup { \italic espr. }`
+  - Currently the parser may handle `^"string"` but not `^"string"` as a structured `PostEvent`; verify and add `PostEvent::TextScript { direction, text }` if needed
+- [ ] [P] Parse `event_function_event`: `\eventFunction args` as a post-event — e.g. `c4 \tweak color #red \fermata` (tweak + named artic already handled; generalize for arbitrary event functions)
+- [ ] [S] Serialize text script post-events and event function post-events
+- [ ] [T] Parser tests: `c4^"dolce"`, `c4_\markup { \italic text }`, `c4-"text"`, event function as post-event
+
+### 44.2 Import & Export
+
+- [ ] [I] Text script post-events → MEI `<dir>` with text content and @place from direction (native MEI — no extension needed)
+- [ ] [E] MEI `<dir>` with text → PostEvent::TextScript with direction
+- [ ] [T] Roundtrip tests: text scripts with directions, markup as post-event
+
+---
+
+## Phase 45: Error Recovery & Graceful Degradation
+
+Grammar productions for error handling and robustness that ensure the parser can process imperfect or partially understood input without failing entirely.
+
+Grammar: `erroneous_quotes` (error recovery for malformed octave marks).
+
+### 45.1 Parser
+
+- [ ] [P] Handle `erroneous_quotes`: mixed `'` and `,` in octave marks (e.g. `c',`) — emit warning but continue parsing, treating as best-effort octave
+- [ ] [P] Improve error messages for common mistakes: unmatched braces, missing duration, invalid note names
+- [ ] [P] Add recovery points: when a parse error occurs mid-expression, skip to next `}` or `|` and continue
+- [ ] [T] Parser tests: malformed octave marks parse with warning, recovery after parse error
+
+---
+
+## Phase 46: `pitch_or_music` and `contextable_music`
+
+Minor grammar productions that handle union types in certain contexts.
+
+Grammar: `pitch_or_music`, `contextable_music`, `pitch_as_music` (partial), `music_embedded`.
+
+### 46.1 Parser
+
+- [ ] [P] Parse `pitch_or_music`: in function argument contexts, a bare pitch (not followed by duration) can be either a pitch argument or a music expression — add disambiguation logic
+- [ ] [P] Parse `contextable_music`: music that can appear inside a `\context` definition body (subset of full music)
+- [ ] [T] Parser tests: pitch as function argument vs. music, contextable music in context body
+
+---
+
+## Phase 47: `optional_id` and Assignment LHS
+
+Minor grammar productions for identifier syntax.
+
+Grammar: `optional_id`, `assignment_id`.
+
+### 47.1 Parser
+
+- [ ] [P] Parse `optional_id`: `= "name"` syntax after context types (already partially handled in `parse_context_music`); ensure consistent handling across all contexts
+- [ ] [P] Parse `assignment_id`: full grammar for the left-hand side of assignments — currently only bare symbols are supported; the grammar also allows strings, lyric markup, and some other forms as LHS
+- [ ] [T] Parser tests: string as assignment LHS, special characters in assignment names
+
+---

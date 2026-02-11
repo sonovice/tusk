@@ -35,7 +35,14 @@ pub use generated::validation;
 // Re-export commonly used types
 pub use data::*;
 pub use elements::*;
-pub use extensions::{ExtensionBag, ExtensionContent, ExtensionElement, TUSK_EXT_NS};
+pub use extensions::{
+    BookStructure, ChordRepetition, ContextChange, ContextKeywordExt, ControlEvent, EventSequence,
+    ExtAssignment, ExtContextBlock, ExtContextModItem, ExtData, ExtPitch, ExtValue, ExtensionBag,
+    ExtensionContent, ExtensionElement, ExtensionStore, FormatOrigin, FunctionCall, GraceInfo,
+    LyricsInfo, LyricsStyle, OutputDef, OutputDefKind, PositionedEvent, PropertyOp, PropertyOpType,
+    RepeatInfo, RepeatTypeExt, SourceFormat, StaffContext, TUSK_EXT_NS, ToplevelMarkup, TweakInfo,
+    VariableAssignments,
+};
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
 #[cfg(test)]
