@@ -454,6 +454,14 @@ fn parse_accidental<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
     let editorial = get_attr(start, "editorial")?.and_then(|s| parse_yes_no_opt(&s));
     let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
     let bracket = get_attr(start, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
+    let size = get_attr(start, "size")?.and_then(|s| match s.as_str() {
+        "cue" => Some(SymbolSize::Cue),
+        "full" => Some(SymbolSize::Full),
+        "grace-cue" => Some(SymbolSize::GraceCue),
+        "large" => Some(SymbolSize::Large),
+        _ => None,
+    });
+    let smufl = get_attr(start, "smufl")?;
 
     let value_str = read_text(reader, b"accidental")?;
     let value = parse_accidental_value(&value_str)?;
@@ -464,8 +472,8 @@ fn parse_accidental<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> R
         editorial,
         parentheses,
         bracket,
-        size: None,
-        smufl: None,
+        size,
+        smufl,
     })
 }
 
@@ -519,6 +527,8 @@ fn parse_time_modification<R: BufRead>(reader: &mut Reader<R>) -> Result<TimeMod
 
 fn parse_stem<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Stem> {
     let default_y = get_attr(start, "default-y")?.and_then(|s| s.parse().ok());
+    let relative_y = get_attr(start, "relative-y")?.and_then(|s| s.parse().ok());
+    let color = get_attr(start, "color")?;
     let value_str = read_text(reader, b"stem")?;
     let value = match value_str.as_str() {
         "up" => StemValue::Up,
@@ -530,8 +540,8 @@ fn parse_stem<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
     Ok(Stem {
         value,
         default_y,
-        relative_y: None,
-        color: None,
+        relative_y,
+        color,
     })
 }
 

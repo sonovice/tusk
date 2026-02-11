@@ -1222,9 +1222,16 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.6 Note Attribute Completion
 
-- [ ] Parse `relative-y`, `color` on `<stem>` (currently only direction/default-x/y)
-- [ ] Parse `size`, `smufl` on `<accidental>` (currently only value + cautionary/editorial/parentheses/bracket)
-- [ ] Wire into model and serializer
+- [x] Parse `relative-y`, `color` on `<stem>` (currently only direction/default-x/y)
+  - Added `get_attr(start, "relative-y")` and `get_attr(start, "color")` in `parse_stem()`
+  - Model and serializer already had `relative_y` and `color` fields — no changes needed
+- [x] Parse `size`, `smufl` on `<accidental>` (currently only value + cautionary/editorial/parentheses/bracket)
+  - Added `size` parsing with match on cue/full/grace-cue/large in `parse_accidental()`
+  - Added `get_attr(start, "smufl")` in `parse_accidental()`
+  - Model and serializer already had `size` and `smufl` fields — no changes needed
+- [x] Wire into model and serializer
+  - Model already had all fields; serializer already handled them — parser was the only gap
+  - Added `test_parse_stem_attributes` and `test_parse_accidental_attributes` unit tests
 
 ### 28.7 Tests
 

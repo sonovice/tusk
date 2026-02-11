@@ -1978,3 +1978,133 @@ fn test_parse_caesura_text_content() {
         _ => panic!("Expected Note"),
     }
 }
+
+#[test]
+fn test_parse_stem_attributes() {
+    let xml = r##"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <stem default-y="-50" relative-y="5.5" color="#00FF00">down</stem>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <stem>up</stem>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"##;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+    let measure = &score.parts[0].measures[0];
+
+    // First note - all stem attributes
+    match &measure.content[0] {
+        MeasureContent::Note(note) => {
+            let stem = note.stem.as_ref().unwrap();
+            assert_eq!(stem.value, StemValue::Down);
+            assert_eq!(stem.default_y, Some(-50.0));
+            assert_eq!(stem.relative_y, Some(5.5));
+            assert_eq!(stem.color, Some("#00FF00".to_string()));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Second note - no optional attributes
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            let stem = note.stem.as_ref().unwrap();
+            assert_eq!(stem.value, StemValue::Up);
+            assert_eq!(stem.default_y, None);
+            assert_eq!(stem.relative_y, None);
+            assert_eq!(stem.color, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_accidental_attributes() {
+    let xml = r##"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch>
+          <step>F</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <accidental cautionary="yes" editorial="no" parentheses="yes" bracket="no" size="cue" smufl="accidentalSharp">sharp</accidental>
+      </note>
+      <note>
+        <pitch>
+          <step>B</step>
+          <alter>-1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <accidental size="large">flat</accidental>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"##;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+    let measure = &score.parts[0].measures[0];
+
+    // First note - all accidental attributes
+    match &measure.content[0] {
+        MeasureContent::Note(note) => {
+            let acc = note.accidental.as_ref().unwrap();
+            assert_eq!(acc.value, AccidentalValue::Sharp);
+            assert_eq!(acc.cautionary, Some(YesNo::Yes));
+            assert_eq!(acc.editorial, Some(YesNo::No));
+            assert_eq!(acc.parentheses, Some(YesNo::Yes));
+            assert_eq!(acc.bracket, Some(YesNo::No));
+            assert_eq!(acc.size, Some(SymbolSize::Cue));
+            assert_eq!(acc.smufl, Some("accidentalSharp".to_string()));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Second note - only size
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            let acc = note.accidental.as_ref().unwrap();
+            assert_eq!(acc.value, AccidentalValue::Flat);
+            assert_eq!(acc.cautionary, None);
+            assert_eq!(acc.editorial, None);
+            assert_eq!(acc.parentheses, None);
+            assert_eq!(acc.bracket, None);
+            assert_eq!(acc.size, Some(SymbolSize::Large));
+            assert_eq!(acc.smufl, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+}
