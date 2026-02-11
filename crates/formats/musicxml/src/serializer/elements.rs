@@ -767,6 +767,15 @@ impl MusicXmlSerialize for Clef {
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = Vec::new();
         push_opt_attr!(attrs, "number", self.number);
+        if let Some(ref additional) = self.additional {
+            attrs.push(("additional", yes_no_str(additional).to_string()));
+        }
+        if let Some(ref size) = self.size {
+            attrs.push(("size", symbol_size_str(size).to_string()));
+        }
+        if let Some(ref ab) = self.after_barline {
+            attrs.push(("after-barline", yes_no_str(ab).to_string()));
+        }
         if let Some(ref po) = self.print_object {
             attrs.push(("print-object", yes_no_str(po).to_string()));
         }

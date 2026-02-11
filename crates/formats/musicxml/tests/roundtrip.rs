@@ -1259,6 +1259,7 @@ fragment_roundtrip_test!(chord_element);
 fragment_roundtrip_test!(chord_element_multiple_stop);
 // Batch 10
 fragment_roundtrip_test!(circular_arrow_element);
+fragment_roundtrip_test!(clef_attributes);
 fragment_roundtrip_test!(coda_element);
 fragment_roundtrip_test!(cue_element);
 fragment_roundtrip_test!(damp_all_element);

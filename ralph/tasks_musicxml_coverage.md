@@ -1166,10 +1166,16 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.2 Clef Attribute Completion
 
-- [ ] Parse `size` attribute on `<clef>` (full, cue, large)
-- [ ] Parse `after-barline` attribute on `<clef>` (yes/no)
-- [ ] Parse `id` attribute on `<clef>`
-- [ ] Wire into model and serializer
+- [x] Parse `size` attribute on `<clef>` (full, cue, large)
+  - Added SymbolSize parsing (cue/full/grace-cue/large) from @size attr in parse_clef()
+- [x] Parse `after-barline` attribute on `<clef>` (yes/no)
+  - Added parse_yes_no_opt for @after-barline attr in parse_clef()
+- [x] Parse `id` attribute on `<clef>`
+  - Added get_attr for @id in parse_clef()
+- [x] Wire into model and serializer
+  - Model already had size/after_barline/id fields; parser now populates them
+  - Serializer now emits @additional, @size, @after-barline in correct XSD order
+  - Added clef_attributes.musicxml fragment fixture + roundtrip test
 
 ### 28.3 Transpose Attribute Completion
 

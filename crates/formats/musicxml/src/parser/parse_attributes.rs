@@ -355,7 +355,16 @@ fn parse_clef<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
     let mut buf = Vec::new();
     let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
     let additional = get_attr(start, "additional")?.and_then(|s| parse_yes_no_opt(&s));
+    let size = get_attr(start, "size")?.and_then(|s| match s.as_str() {
+        "cue" => Some(SymbolSize::Cue),
+        "full" => Some(SymbolSize::Full),
+        "grace-cue" => Some(SymbolSize::GraceCue),
+        "large" => Some(SymbolSize::Large),
+        _ => None,
+    });
+    let after_barline = get_attr(start, "after-barline")?.and_then(|s| parse_yes_no_opt(&s));
     let print_object = get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s));
+    let id = get_attr(start, "id")?;
 
     let mut sign = ClefSign::G;
     let mut line: Option<u32> = None;
@@ -404,10 +413,10 @@ fn parse_clef<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
     Ok(Clef {
         number,
         additional,
-        size: None,
-        after_barline: None,
+        size,
+        after_barline,
         print_object,
-        id: None,
+        id,
         sign,
         line,
         clef_octave_change,
