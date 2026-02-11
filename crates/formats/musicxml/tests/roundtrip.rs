@@ -1400,6 +1400,7 @@ fragment_roundtrip_test!(octave_element);
 fragment_roundtrip_test!(octave_shift_element);
 fragment_roundtrip_test!(open_element);
 fragment_roundtrip_test!(open_string_element);
+fragment_roundtrip_test!(other_direction_element);
 fragment_roundtrip_test!(p_element);
 fragment_roundtrip_test!(pan_and_elevation_elements);
 // Batch 34

@@ -1119,9 +1119,17 @@ This is the largest parser gap.
 
 ### 27.2 Tests
 
-- [ ] Add unit tests for each newly parsed direction type (parse → serialize roundtrip)
-- [ ] Add fragment fixtures for any missing direction types
-- [ ] Verify all existing roundtrip tests pass (0 regressions)
+- [x] Add unit tests for each newly parsed direction type (parse → serialize roundtrip)
+  - Created `parser/tests/directions.rs` with 28 tests covering all direction types
+  - Refactored `parser/tests.rs` → `parser/tests/mod.rs` + `parser/tests/directions.rs` for modularity
+  - Tests: symbol, dashes, bracket, harp-pedals, damp, damp-all, eyeglasses, string-mute (on/off), scordatura, image, principal-voice (start/stop), percussion (glass/timpani/stick/beater), accordion-registration (full/empty), staff-divide (down/up-down), other-direction (text/empty), segno, coda, rehearsal, pedal, octave-shift
+  - Each test verifies parsed model values + parse→serialize→parse roundtrip equality
+  - Fixed parser bug: self-closing `<principal-voice/>` was not handled in Event::Empty match
+- [x] Add fragment fixtures for any missing direction types
+  - Added `other_direction_element.musicxml` fixture (the only missing direction-type fixture)
+  - Added `fragment_roundtrip_test!(other_direction_element)` in roundtrip.rs
+- [x] Verify all existing roundtrip tests pass (0 regressions)
+  - All 2462+ tests pass, 0 clippy warnings
 
 ---
 

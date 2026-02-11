@@ -216,6 +216,28 @@ fn parse_direction_type<R: BufRead>(reader: &mut Reader<R>) -> Result<DirectionT
                     content = Some(DirectionTypeContent::StringMute(parse_string_mute(&e)?))
                 }
                 b"image" => content = Some(DirectionTypeContent::Image(parse_image(&e)?)),
+                b"principal-voice" => {
+                    let voice_type = match get_attr(&e, "type")?.unwrap_or_default().as_str() {
+                        "stop" => StartStop::Stop,
+                        _ => StartStop::Start,
+                    };
+                    let symbol = match get_attr(&e, "symbol")?.unwrap_or_default().as_str() {
+                        "Nebenstimme" => PrincipalVoiceSymbol::Nebenstimme,
+                        "plain" => PrincipalVoiceSymbol::Plain,
+                        "none" => PrincipalVoiceSymbol::None,
+                        _ => PrincipalVoiceSymbol::Hauptstimme,
+                    };
+                    content = Some(DirectionTypeContent::PrincipalVoice(PrincipalVoice {
+                        value: None,
+                        voice_type,
+                        symbol,
+                        default_x: get_attr(&e, "default-x")?.and_then(|s| s.parse().ok()),
+                        default_y: get_attr(&e, "default-y")?.and_then(|s| s.parse().ok()),
+                        halign: get_attr(&e, "halign")?.and_then(|s| parse_lcr(&s)),
+                        valign: get_attr(&e, "valign")?.and_then(|s| parse_valign(&s)),
+                        id: get_attr(&e, "id")?,
+                    }));
+                }
                 b"staff-divide" => {
                     content = Some(DirectionTypeContent::StaffDivide(parse_staff_divide(&e)?))
                 }
