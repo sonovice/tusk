@@ -2012,8 +2012,14 @@ Grammar: `optional_id`, `assignment_id`.
 
 ### 47.1 Parser
 
-- [ ] [P] Parse `optional_id`: `= "name"` syntax after context types (already partially handled in `parse_context_music`); ensure consistent handling across all contexts
-- [ ] [P] Parse `assignment_id`: full grammar for the left-hand side of assignments — currently only bare symbols are supported; the grammar also allows strings, lyric markup, and some other forms as LHS
-- [ ] [T] Parser tests: string as assignment LHS, special characters in assignment names
+- [x] [P] Parse `optional_id`: `= "name"` syntax after context types (already partially handled in `parse_context_music`); ensure consistent handling across all contexts
+  - Verified: `parse_context_music` already correctly handles `= simple_string` for `\new`/`\context` context types — matches grammar exactly
+- [x] [P] Parse `assignment_id`: full grammar for the left-hand side of assignments — currently only bare symbols are supported; the grammar also allows strings, lyric markup, and some other forms as LHS
+  - Added `Token::String` as valid LHS in: `parse_toplevel_expression`, `parse_book_item`, `parse_bookpart_item`, `parse_header_field`, `parse_output_def_assignment`
+  - Added `parse_string_assignment()` for toplevel string-keyed assignments (no backtracking needed)
+  - Serializer: `write_assignment` now quotes names that aren't valid bare symbols via `needs_quoting()` helper
+  - Split serializer notes/post-events into `serializer/notes.rs` submodule (mod.rs 1504→1209 LOC)
+- [x] [T] Parser tests: string as assignment LHS, special characters in assignment names
+  - 7 new tests: `parse_string_lhs_assignment`, `parse_string_lhs_assignment_music`, `parse_string_lhs_with_special_chars`, `roundtrip_string_lhs_assignment`, `roundtrip_string_lhs_music`, `parse_string_lhs_in_header`
 
 ---

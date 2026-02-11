@@ -285,11 +285,13 @@ impl<'src> Parser<'src> {
                 let ml = self.parse_markuplist()?;
                 Ok(ToplevelExpression::MarkupList(ml))
             }
-            // Assignment: symbol = ...
+            // Assignment: symbol/string = ...
             Token::Symbol(_) | Token::NoteName(_) => {
                 // Peek ahead for `=` to distinguish assignment from music
                 self.parse_assignment_or_music()
             }
+            // String as assignment LHS: "name" = value (grammar: assignment_id)
+            Token::String(_) => self.parse_string_assignment(),
             // Music expressions
             _ => {
                 let music = self.parse_music()?;
@@ -335,6 +337,16 @@ impl<'src> Parser<'src> {
             self.lexer = new_lexer;
             Ok(ToplevelExpression::Music(self.parse_music()?))
         }
+    }
+
+    /// Parse `"string" = value` assignment (grammar: assignment_id STRING).
+    /// No backtracking needed — a bare string at statement level can only be
+    /// an assignment LHS.
+    fn parse_string_assignment(&mut self) -> Result<ToplevelExpression, ParseError> {
+        let name = self.expect_string()?;
+        self.expect(&Token::Equals)?;
+        let value = self.parse_assignment_value()?;
+        Ok(ToplevelExpression::Assignment(Assignment { name, value }))
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -458,6 +470,12 @@ impl<'src> Parser<'src> {
                 // Could be assignment or music
                 self.parse_book_assignment_or_music()
             }
+            Token::String(_) => {
+                let name = self.expect_string()?;
+                self.expect(&Token::Equals)?;
+                let value = self.parse_assignment_value()?;
+                Ok(BookItem::Assignment(Assignment { name, value }))
+            }
             _ => Ok(BookItem::Music(self.parse_music()?)),
         }
     }
@@ -512,6 +530,12 @@ impl<'src> Parser<'src> {
             Token::Header => Ok(BookPartItem::Header(self.parse_header_block()?)),
             Token::Paper => Ok(BookPartItem::Paper(self.parse_paper_block()?)),
             Token::Symbol(_) | Token::NoteName(_) => self.parse_bookpart_assignment_or_music(),
+            Token::String(_) => {
+                let name = self.expect_string()?;
+                self.expect(&Token::Equals)?;
+                let value = self.parse_assignment_value()?;
+                Ok(BookPartItem::Assignment(Assignment { name, value }))
+            }
             _ => Ok(BookPartItem::Music(self.parse_music()?)),
         }
     }
@@ -563,6 +587,7 @@ impl<'src> Parser<'src> {
         let name = match &self.current.token {
             Token::Symbol(s) => s.clone(),
             Token::NoteName(s) => s.clone(),
+            Token::String(s) => s.clone(),
             _ => {
                 return Err(ParseError::Unexpected {
                     found: self.current.token.clone(),
@@ -686,6 +711,7 @@ impl<'src> Parser<'src> {
         let name = match &self.current.token {
             Token::Symbol(s) => s.clone(),
             Token::NoteName(s) => s.clone(),
+            Token::String(s) => s.clone(),
             _ => {
                 return Err(ParseError::Unexpected {
                     found: self.current.token.clone(),

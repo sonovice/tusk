@@ -194,3 +194,75 @@ fn roundtrip_assignment_with_score() {
 fn roundtrip_fragment_variables() {
     roundtrip_fixture("fragment_variables.ly");
 }
+
+// ── String as assignment LHS (assignment_id STRING) ─────────────────────
+
+#[test]
+fn parse_string_lhs_assignment() {
+    let input = r#""my variable" = "hello""#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Assignment(a) => {
+            assert_eq!(a.name, "my variable");
+            assert!(matches!(&a.value, AssignmentValue::String(s) if s == "hello"));
+        }
+        other => panic!("expected assignment, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_string_lhs_assignment_music() {
+    let input = r#""custom-name" = { c4 d4 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Assignment(a) => {
+            assert_eq!(a.name, "custom-name");
+            assert!(matches!(&a.value, AssignmentValue::Music(_)));
+        }
+        other => panic!("expected assignment, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_string_lhs_with_special_chars() {
+    let input = r#""name with spaces & stuff!" = 42"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Assignment(a) => {
+            assert_eq!(a.name, "name with spaces & stuff!");
+            assert!(matches!(&a.value, AssignmentValue::Number(n) if *n == 42.0));
+        }
+        other => panic!("expected assignment, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_string_lhs_assignment() {
+    let input = r#""my variable" = "hello""#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_string_lhs_music() {
+    let input = r#""custom-name" = { c4 d4 }"#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn parse_string_lhs_in_header() {
+    let input = "\\header {\n  \"custom field\" = \"value\"\n}";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Header(h) => {
+            assert_eq!(h.fields[0].name, "custom field");
+            assert!(matches!(&h.fields[0].value, AssignmentValue::String(s) if s == "value"));
+        }
+        other => panic!("expected header, got {other:?}"),
+    }
+}
