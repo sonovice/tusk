@@ -579,6 +579,7 @@ fn convert_metronome(
             beat_unit,
             beat_unit_dots,
             per_minute,
+            ..
         } => {
             // MEI @mm.unit
             if let Some(dur) = beat_unit_string_to_duration(beat_unit) {
@@ -607,6 +608,23 @@ fn convert_metronome(
             // Add text content for metric modulation
             let text = format!("{} = {}", modulation.beat_unit_1, modulation.beat_unit_2);
             tempo.children.push(TempoChild::Text(text));
+        }
+        MetronomeContent::MetronomeNotes(_) => {
+            // Complex metric relationship (e.g., swing notation)
+            // Set function to metricmod
+            tempo.tempo_log.func = Some("metricmod".to_string());
+
+            // Store text placeholder
+            tempo.children.push(TempoChild::Text("metric".to_string()));
+        }
+    }
+
+    // Store full metronome JSON in ExtensionStore for lossless roundtrip
+    // of beat-unit-tied, metronome-note, and other details not captured in MEI
+    if let Some(ref id) = tempo.common.xml_id {
+        if let Ok(json) = serde_json::to_string(metronome) {
+            let escaped = json.replace('|', "\\u007c");
+            ctx.ext_store_mut().entry(id.clone()).metronome_json = Some(escaped);
         }
     }
 

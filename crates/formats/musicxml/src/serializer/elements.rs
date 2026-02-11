@@ -1363,6 +1363,20 @@ impl MusicXmlSerialize for Metronome {
         if let Some(ref p) = self.parentheses {
             attrs.push(("parentheses", yes_no_str(p).to_string()));
         }
+        if let Some(ref po) = self.print_object {
+            attrs.push(("print-object", yes_no_str(po).to_string()));
+        }
+        if let Some(ref j) = self.justify {
+            attrs.push(("justify", left_center_right_str(j).to_string()));
+        }
+        push_opt_attr!(attrs, "default-x", self.default_x);
+        push_opt_attr!(attrs, "default-y", self.default_y);
+        if let Some(ref h) = self.halign {
+            attrs.push(("halign", left_center_right_str(h).to_string()));
+        }
+        if let Some(ref v) = self.valign {
+            attrs.push(("valign", valign_str(v).to_string()));
+        }
         push_opt_str_attr!(attrs, "id", self.id);
         attrs
     }
@@ -1376,11 +1390,15 @@ impl MusicXmlSerialize for Metronome {
             MetronomeContent::BeatUnit {
                 beat_unit,
                 beat_unit_dots,
+                beat_unit_tied,
                 per_minute,
             } => {
                 w.write_text_element("beat-unit", beat_unit)?;
                 for _ in beat_unit_dots {
                     w.write_empty(w.start_element("beat-unit-dot"))?;
+                }
+                for tied in beat_unit_tied {
+                    serialize_beat_unit_tied(w, tied)?;
                 }
                 w.write_text_element("per-minute", per_minute)?;
             }
@@ -1389,14 +1407,95 @@ impl MusicXmlSerialize for Metronome {
                 for _ in &modulation.beat_unit_dots_1 {
                     w.write_empty(w.start_element("beat-unit-dot"))?;
                 }
+                for tied in &modulation.beat_unit_tied_1 {
+                    serialize_beat_unit_tied(w, tied)?;
+                }
                 w.write_text_element("beat-unit", &modulation.beat_unit_2)?;
                 for _ in &modulation.beat_unit_dots_2 {
                     w.write_empty(w.start_element("beat-unit-dot"))?;
+                }
+                for tied in &modulation.beat_unit_tied_2 {
+                    serialize_beat_unit_tied(w, tied)?;
+                }
+            }
+            MetronomeContent::MetronomeNotes(content) => {
+                if content.arrows {
+                    w.write_empty(w.start_element("metronome-arrows"))?;
+                }
+                for note in &content.notes_1 {
+                    serialize_metronome_note(w, note)?;
+                }
+                if let Some(ref relation) = content.relation {
+                    w.write_text_element("metronome-relation", relation)?;
+                    for note in &content.notes_2 {
+                        serialize_metronome_note(w, note)?;
+                    }
                 }
             }
         }
         Ok(())
     }
+}
+
+fn serialize_beat_unit_tied<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    tied: &BeatUnitTied,
+) -> SerializeResult<()> {
+    let start = w.start_element("beat-unit-tied");
+    w.write_start(start)?;
+    w.write_text_element("beat-unit", &tied.beat_unit)?;
+    for _ in &tied.beat_unit_dots {
+        w.write_empty(w.start_element("beat-unit-dot"))?;
+    }
+    w.write_end("beat-unit-tied")?;
+    Ok(())
+}
+
+fn serialize_metronome_note<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    note: &MetronomeNote,
+) -> SerializeResult<()> {
+    let start = w.start_element("metronome-note");
+    w.write_start(start)?;
+    w.write_text_element("metronome-type", &note.note_type)?;
+    for _ in &note.dots {
+        w.write_empty(w.start_element("metronome-dot"))?;
+    }
+    for beam in &note.beams {
+        let mut bs = w.start_element("metronome-beam");
+        bs.push_attribute(("number", beam.number.to_string().as_str()));
+        w.write_start(bs)?;
+        w.write_text(&beam.value)?;
+        w.write_end("metronome-beam")?;
+    }
+    if let Some(ref tied) = note.tied {
+        let mut ts = w.start_element("metronome-tied");
+        ts.push_attribute(("type", start_stop_str(&tied.tied_type)));
+        w.write_empty(ts)?;
+    }
+    if let Some(ref tuplet) = note.tuplet {
+        let mut ts = w.start_element("metronome-tuplet");
+        ts.push_attribute(("type", start_stop_str(&tuplet.tuplet_type)));
+        if let Some(ref b) = tuplet.bracket {
+            ts.push_attribute(("bracket", yes_no_str(b)));
+        }
+        if let Some(ref sn) = tuplet.show_number {
+            ts.push_attribute(("show-number", sn.as_str()));
+        }
+        w.write_start(ts)?;
+        if let Some(an) = tuplet.actual_notes {
+            w.write_text_element("actual-notes", &an.to_string())?;
+        }
+        if let Some(nn) = tuplet.normal_notes {
+            w.write_text_element("normal-notes", &nn.to_string())?;
+        }
+        if let Some(ref nt) = tuplet.normal_type {
+            w.write_text_element("normal-type", nt)?;
+        }
+        w.write_end("metronome-tuplet")?;
+    }
+    w.write_end("metronome-note")?;
+    Ok(())
 }
 
 // ============================================================================

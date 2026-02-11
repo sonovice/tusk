@@ -455,9 +455,20 @@ pub fn convert_mei_tempo(
         .collect::<Vec<_>>()
         .join("");
 
-    // Metronome is present if mm_unit is set — mm may be None for non-numeric
-    // per-minute values like "132-144" or "c. 108"
-    let has_metronome = tempo.tempo_log.mm_unit.is_some();
+    // Check for stored metronome JSON for lossless roundtrip
+    let stored_metronome: Option<Metronome> = tempo
+        .common
+        .xml_id
+        .as_ref()
+        .and_then(|id| ctx.ext_store().get(id))
+        .and_then(|ext| ext.metronome_json.as_ref())
+        .and_then(|json| {
+            let unescaped = json.replace("\\u007c", "|");
+            serde_json::from_str(&unescaped).ok()
+        });
+
+    // Metronome is present if mm_unit is set or stored JSON exists
+    let has_metronome = tempo.tempo_log.mm_unit.is_some() || stored_metronome.is_some();
 
     // Add text content as words ONLY if no metronome is present.
     // When both exist, the metronome is sufficient — the import reconstructs
@@ -471,8 +482,12 @@ pub fn convert_mei_tempo(
         });
     }
 
-    // Add metronome marking if mm.unit is present
-    if let Some(mm_unit) = &tempo.tempo_log.mm_unit {
+    if let Some(metronome) = stored_metronome {
+        direction_types.push(DirectionType {
+            content: DirectionTypeContent::Metronome(metronome),
+            id: None,
+        });
+    } else if let Some(mm_unit) = &tempo.tempo_log.mm_unit {
         let beat_unit = convert_mei_duration_to_beat_unit(mm_unit);
         // Use numeric mm if available, otherwise extract per-minute from text
         // content (handles non-numeric values like "132-144", "c. 108")
@@ -499,6 +514,7 @@ pub fn convert_mei_tempo(
             content: MetronomeContent::BeatUnit {
                 beat_unit,
                 beat_unit_dots,
+                beat_unit_tied: Vec::new(),
                 per_minute,
             },
             parentheses: None,

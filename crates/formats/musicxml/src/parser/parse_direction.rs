@@ -5,6 +5,7 @@ use quick_xml::events::{BytesStart, Event};
 use std::io::BufRead;
 
 use super::parse_listening::parse_listening;
+use super::parse_metronome::parse_metronome;
 use super::{ParseError, Result, get_attr, read_text, skip_element};
 use crate::model::data::*;
 use crate::model::direction::*;
@@ -422,44 +423,6 @@ fn parse_rehearsal<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
         halign: get_attr(start, "halign")?.and_then(|s| parse_lcr(&s)),
         valign: get_attr(start, "valign")?.and_then(|s| parse_valign(&s)),
         id: get_attr(start, "id")?,
-    })
-}
-
-fn parse_metronome<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Metronome> {
-    let mut buf = Vec::new();
-    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
-
-    let mut beat_unit: Option<String> = None;
-    let mut per_minute: Option<String> = None;
-
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(e) => match e.name().as_ref() {
-                b"beat-unit" => beat_unit = Some(read_text(reader, b"beat-unit")?),
-                b"per-minute" => per_minute = Some(read_text(reader, b"per-minute")?),
-                _ => skip_element(reader, &e)?,
-            },
-            Event::End(e) if e.name().as_ref() == b"metronome" => break,
-            Event::Eof => return Err(ParseError::MissingElement("metronome end".to_string())),
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    Ok(Metronome {
-        content: MetronomeContent::BeatUnit {
-            beat_unit: beat_unit.unwrap_or_else(|| "quarter".to_string()),
-            beat_unit_dots: Vec::new(),
-            per_minute: per_minute.unwrap_or_else(|| "120".to_string()),
-        },
-        parentheses,
-        print_object: None,
-        justify: None,
-        default_x: None,
-        default_y: None,
-        halign: None,
-        valign: None,
-        id: None,
     })
 }
 

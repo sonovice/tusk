@@ -239,6 +239,11 @@ pub struct ExtData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub for_part: Option<crate::musicxml_ext::ForPartData>,
 
+    /// Full metronome JSON for lossless roundtrip of beat-unit-tied,
+    /// metronome-note, metronome-arrows, and other details not in MEI.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metronome_json: Option<String>,
+
     /// Staff-details roundtrip data.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staff_details_extras: Option<crate::musicxml_ext::StaffDetailsExtras>,

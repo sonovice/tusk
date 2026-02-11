@@ -1139,13 +1139,30 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.1 Metronome Completion
 
-- [ ] Parse `<beat-unit-dot>` in metronome (currently only `beat-unit` + `per-minute`)
-- [ ] Parse beat-unit-equivalent (metric modulation: two beat-unit groups with optional `metronome-relation`)
-- [ ] Parse `metronome-arrows` attribute
-- [ ] Parse `metronome-note` elements (metronome-type, metronome-dot, metronome-beam, metronome-tied, metronome-tuplet) for complex metric modulations
-- [ ] Extend `Metronome` model if needed for `metronome-note` patterns
-- [ ] Serialize the expanded metronome structures
-- [ ] Verify with roundtrip tests
+- [x] Parse `<beat-unit-dot>` in metronome (currently only `beat-unit` + `per-minute`)
+  - Parser now collects `<beat-unit-dot>` empty elements as tokens, tracked per beat-unit group
+- [x] Parse beat-unit-equivalent (metric modulation: two beat-unit groups with optional `metronome-relation`)
+  - Token-based parser detects two `<beat-unit>` without `<per-minute>` → `MetricModulation`
+  - Added `beat_unit_tied_1`/`beat_unit_tied_2` fields to `MetricModulation`
+- [x] Parse `metronome-arrows` attribute
+  - Parsed as `<metronome-arrows/>` empty element → `MetronomeNoteContent.arrows` bool
+- [x] Parse `metronome-note` elements (metronome-type, metronome-dot, metronome-beam, metronome-tied, metronome-tuplet) for complex metric modulations
+  - Full `MetronomeNote` struct with note_type, dots, beams, tied, tuplet
+  - `MetronomeTuplet` supports type, bracket, show-number, actual/normal-notes, normal-type
+  - `MetronomeBeam` supports number + value
+  - `MetronomeTied` supports start/stop type
+- [x] Extend `Metronome` model if needed for `metronome-note` patterns
+  - Added `MetronomeContent::MetronomeNotes(MetronomeNoteContent)` variant
+  - Added `BeatUnitTied` struct, `MetronomeNote`, `MetronomeBeam`, `MetronomeTied`, `MetronomeTuplet`
+  - Added `beat_unit_tied: Vec<BeatUnitTied>` to `BeatUnit` variant
+  - Parser extracted to `parse_metronome.rs` submodule (parse_direction.rs was over 1500 lines)
+- [x] Serialize the expanded metronome structures
+  - All three MetronomeContent variants serialized: BeatUnit, BeatUnitEquivalent, MetronomeNotes
+  - `serialize_beat_unit_tied()` and `serialize_metronome_note()` helpers
+  - All attributes (parentheses, print-object, justify, position, halign, valign, id) serialized
+- [x] Verify with roundtrip tests
+  - All 8 metronome fragment fixtures pass: metronome_element, beat_unit_element, beat_unit_dot_element, beat_unit_tied_element, per_minute_element, metronome_note_element, metronome_arrows_element, metronome_tied_element
+  - Full metronome JSON stored in ExtensionStore for lossless roundtrip of complex forms
 
 ### 28.2 Clef Attribute Completion
 

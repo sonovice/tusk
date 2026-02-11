@@ -1240,6 +1240,7 @@ mod parse_direction;
 mod parse_figured_bass;
 mod parse_harmony;
 mod parse_listening;
+mod parse_metronome;
 mod parse_notations;
 mod parse_note;
 mod parse_part_list;
