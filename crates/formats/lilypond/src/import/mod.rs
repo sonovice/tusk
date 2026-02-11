@@ -14,6 +14,8 @@ pub(crate) mod variables;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_book;
+#[cfg(test)]
 mod tests_chords;
 #[cfg(test)]
 mod tests_completion;
@@ -86,10 +88,6 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     let assignments = collect_assignments(file);
     let var_map = build_variable_map(&assignments);
 
-    // Find music, resolving identifier references through variable map
-    let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
-    let music = resolve_identifiers(raw_music, &var_map);
-
     let mut mei = Mei::default();
     mei.mei_version.meiversion = Some("6.0-dev".to_string());
 
@@ -97,21 +95,181 @@ pub fn import(file: &model::LilyPondFile) -> Result<Mei, ImportError> {
     let mei_head = output_defs::build_mei_head_from_file(file);
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
 
-    // Music -> Body -> Mdiv -> Score
-    let mei_music = build_music_owned(music, file, &assignments)?;
+    // Collect all score entries (handling book/bookpart hierarchy)
+    let entries = collect_score_entries(file);
+
+    // Use book-structured path only when \book wrappers exist
+    let has_book = entries.iter().any(|e| e.book_structure.is_some());
+
+    let mei_music = if has_book && !entries.is_empty() {
+        // Book-structured: one mdiv per score entry
+        build_music_multi(&entries, &assignments, &var_map)?
+    } else {
+        // Non-book: use find_music for backward-compatible behavior
+        let raw_music = find_music(file).ok_or(ImportError::NoMusic)?;
+        let music = resolve_identifiers(raw_music, &var_map);
+        let score_block = entries.first().map(|e| e.score_block);
+        build_music_single(music, score_block, &assignments)?
+    };
     mei.children.push(MeiChild::Music(Box::new(mei_music)));
 
     Ok(mei)
 }
 
-/// Find the first music expression in the LilyPond file.
+/// A score entry extracted from a book/bookpart/top-level structure.
+struct ScoreEntry<'a> {
+    music: &'a Music,
+    score_block: &'a model::ScoreBlock,
+    book_structure: Option<tusk_model::BookStructure>,
+}
+
+/// Collect all score entries from the file, walking into \book and \bookpart.
+fn collect_score_entries<'a>(file: &'a model::LilyPondFile) -> Vec<ScoreEntry<'a>> {
+    let mut entries = Vec::new();
+    let mut book_idx = 0usize;
+
+    for item in &file.items {
+        match item {
+            ToplevelExpression::Score(score) => {
+                if let Some(m) = find_music_in_score(score) {
+                    entries.push(ScoreEntry {
+                        music: m,
+                        score_block: score,
+                        book_structure: None,
+                    });
+                }
+            }
+            ToplevelExpression::Book(book) => {
+                let book_defs = collect_output_defs_from_book(book);
+                let mut bookpart_idx = 0usize;
+                let mut score_idx = 0usize;
+
+                for bi in &book.items {
+                    match bi {
+                        model::BookItem::Score(score) => {
+                            if let Some(m) = find_music_in_score(score) {
+                                entries.push(ScoreEntry {
+                                    music: m,
+                                    score_block: score,
+                                    book_structure: Some(tusk_model::BookStructure {
+                                        book_index: Some(book_idx),
+                                        bookpart_index: None,
+                                        score_index: Some(score_idx),
+                                        book_output_defs: book_defs.clone(),
+                                        bookpart_output_defs: vec![],
+                                    }),
+                                });
+                                score_idx += 1;
+                            }
+                        }
+                        model::BookItem::BookPart(bp) => {
+                            let bp_defs = collect_output_defs_from_bookpart(bp);
+                            let mut bp_score_idx = 0usize;
+
+                            for bpi in &bp.items {
+                                if let model::BookPartItem::Score(score) = bpi
+                                    && let Some(m) = find_music_in_score(score)
+                                {
+                                    entries.push(ScoreEntry {
+                                        music: m,
+                                        score_block: score,
+                                        book_structure: Some(tusk_model::BookStructure {
+                                            book_index: Some(book_idx),
+                                            bookpart_index: Some(bookpart_idx),
+                                            score_index: Some(bp_score_idx),
+                                            book_output_defs: book_defs.clone(),
+                                            bookpart_output_defs: bp_defs.clone(),
+                                        }),
+                                    });
+                                    bp_score_idx += 1;
+                                }
+                            }
+                            bookpart_idx += 1;
+                        }
+                        _ => {}
+                    }
+                }
+                book_idx += 1;
+            }
+            _ => {}
+        }
+    }
+
+    entries
+}
+
+/// Find music expression inside a score block.
+fn find_music_in_score(score: &model::ScoreBlock) -> Option<&Music> {
+    score.items.iter().find_map(|si| {
+        if let ScoreItem::Music(m) = si {
+            Some(m)
+        } else {
+            None
+        }
+    })
+}
+
+/// Collect output defs (header/paper) at book level.
+fn collect_output_defs_from_book(book: &model::BookBlock) -> Vec<tusk_model::OutputDef> {
+    let mut defs = Vec::new();
+    for item in &book.items {
+        match item {
+            model::BookItem::Header(hb) => {
+                defs.push(output_def_conv::header_to_output_def(hb));
+            }
+            model::BookItem::Paper(pb) => {
+                defs.push(output_def_conv::paper_to_output_def(pb));
+            }
+            _ => {}
+        }
+    }
+    defs
+}
+
+/// Collect output defs (header/paper) at bookpart level.
+fn collect_output_defs_from_bookpart(bp: &model::BookPartBlock) -> Vec<tusk_model::OutputDef> {
+    let mut defs = Vec::new();
+    for item in &bp.items {
+        match item {
+            model::BookPartItem::Header(hb) => {
+                defs.push(output_def_conv::header_to_output_def(hb));
+            }
+            model::BookPartItem::Paper(pb) => {
+                defs.push(output_def_conv::paper_to_output_def(pb));
+            }
+            _ => {}
+        }
+    }
+    defs
+}
+
+/// Find the first music expression in the LilyPond file (including inside books).
 fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
     for item in &file.items {
         match item {
             ToplevelExpression::Score(score) => {
-                for si in &score.items {
-                    if let ScoreItem::Music(m) = si {
-                        return Some(m);
+                if let Some(m) = find_music_in_score(score) {
+                    return Some(m);
+                }
+            }
+            ToplevelExpression::Book(book) => {
+                for bi in &book.items {
+                    match bi {
+                        model::BookItem::Score(score) => {
+                            if let Some(m) = find_music_in_score(score) {
+                                return Some(m);
+                            }
+                        }
+                        model::BookItem::BookPart(bp) => {
+                            for bpi in &bp.items {
+                                if let model::BookPartItem::Score(score) = bpi
+                                    && let Some(m) = find_music_in_score(score)
+                                {
+                                    return Some(m);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -124,34 +282,45 @@ fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
 
 use variables::{build_variable_map, collect_assignments, resolve_identifiers};
 
-/// Build MEI Music from an owned (identifier-resolved) LilyPond music tree.
-fn build_music_owned(
-    ly_music: Music,
-    file: &model::LilyPondFile,
+/// Build MEI Music with multiple mdivs for book-structured files.
+fn build_music_multi(
+    entries: &[ScoreEntry<'_>],
     assignments: &[Assignment],
+    var_map: &std::collections::HashMap<String, Music>,
 ) -> Result<tusk_model::elements::Music, ImportError> {
-    let mut score = Score::default();
+    let mut body = Body::default();
 
-    // Analyze context structure to determine staves
-    let staff_infos = analyze_staves(&ly_music);
+    for (i, entry) in entries.iter().enumerate() {
+        let resolved = resolve_identifiers(entry.music, var_map);
+        let mei_score = build_score_from_music(resolved, Some(entry.score_block), assignments)?;
 
-    // Build ScoreDef with staffDef(s) — typed extensions for staff context,
-    // event sequences, pitch context, lyrics info, and variable assignments
-    let mut score_def = build_score_def_from_staves(&staff_infos, assignments);
+        let mut mdiv = Mdiv::default();
+        mdiv.common.n = Some(DataWord((i + 1).to_string()));
 
-    // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
-    let score_blocks_label = output_defs::build_score_blocks_label(file);
-    if !score_blocks_label.is_empty() {
-        append_label(&mut score_def.common.label, &score_blocks_label);
+        if let Some(ref bs) = entry.book_structure {
+            let json = serde_json::to_string(bs).unwrap_or_default();
+            let escaped = signatures::escape_label_value(&json);
+            mdiv.common.label = Some(format!("tusk:book-structure,{escaped}"));
+        }
+
+        mdiv.children.push(MdivChild::Score(Box::new(mei_score)));
+        body.children.push(BodyChild::Mdiv(Box::new(mdiv)));
     }
 
-    score
+    let mut music = tusk_model::elements::Music::default();
+    music
         .children
-        .push(ScoreChild::ScoreDef(Box::new(score_def)));
+        .push(tusk_model::elements::MusicChild::Body(Box::new(body)));
+    Ok(music)
+}
 
-    // Section with measure(s) containing the notes
-    let section = build_section_from_staves(&staff_infos)?;
-    score.children.push(ScoreChild::Section(Box::new(section)));
+/// Build MEI Music from a single LilyPond music tree.
+fn build_music_single(
+    ly_music: Music,
+    score_block: Option<&model::ScoreBlock>,
+    assignments: &[Assignment],
+) -> Result<tusk_model::elements::Music, ImportError> {
+    let score = build_score_from_music(ly_music, score_block, assignments)?;
 
     let mut mdiv = Mdiv::default();
     mdiv.children.push(MdivChild::Score(Box::new(score)));
@@ -165,6 +334,42 @@ fn build_music_owned(
         .push(tusk_model::elements::MusicChild::Body(Box::new(body)));
 
     Ok(music)
+}
+
+/// Build an MEI Score element from a LilyPond music expression.
+///
+/// When `score_block` is provided, score-level output defs are extracted from it.
+/// Otherwise, falls back to scanning the file for the first `\score` block.
+fn build_score_from_music(
+    ly_music: Music,
+    score_block: Option<&model::ScoreBlock>,
+    assignments: &[Assignment],
+) -> Result<Score, ImportError> {
+    let mut score = Score::default();
+
+    // Analyze context structure to determine staves
+    let staff_infos = analyze_staves(&ly_music);
+
+    // Build ScoreDef with staffDef(s)
+    let mut score_def = build_score_def_from_staves(&staff_infos, assignments);
+
+    // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
+    if let Some(sb) = score_block {
+        let score_blocks_label = output_defs::build_score_blocks_label_from_block(sb);
+        if !score_blocks_label.is_empty() {
+            append_label(&mut score_def.common.label, &score_blocks_label);
+        }
+    }
+
+    score
+        .children
+        .push(ScoreChild::ScoreDef(Box::new(score_def)));
+
+    // Section with measure(s) containing the notes
+    let section = build_section_from_staves(&staff_infos)?;
+    score.children.push(ScoreChild::Section(Box::new(section)));
+
+    Ok(score)
 }
 
 /// Append a label segment to an existing label, using `|` separator.

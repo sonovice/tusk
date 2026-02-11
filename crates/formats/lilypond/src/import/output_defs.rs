@@ -91,32 +91,22 @@ pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
     head
 }
 
-/// Build a label segment for score-level \header/\layout/\midi blocks.
-///
-/// Scans the LilyPond file for the first `\score` block and stores
-/// its header/layout/midi items as typed OutputDef JSON.
-///
-/// Format: `tusk:score-output-defs,{escaped_json}`
-pub(super) fn build_score_blocks_label(file: &model::LilyPondFile) -> String {
+/// Build a label segment for score-level output defs from a specific score block.
+pub(super) fn build_score_blocks_label_from_block(sb: &model::ScoreBlock) -> String {
     let mut output_defs = Vec::new();
 
-    for item in &file.items {
-        if let ToplevelExpression::Score(sb) = item {
-            for si in &sb.items {
-                match si {
-                    ScoreItem::Header(hb) => {
-                        output_defs.push(output_def_conv::header_to_output_def(hb));
-                    }
-                    ScoreItem::Layout(lb) => {
-                        output_defs.push(output_def_conv::layout_to_output_def(lb));
-                    }
-                    ScoreItem::Midi(mb) => {
-                        output_defs.push(output_def_conv::midi_to_output_def(mb));
-                    }
-                    ScoreItem::Music(_) => {}
-                }
+    for si in &sb.items {
+        match si {
+            ScoreItem::Header(hb) => {
+                output_defs.push(output_def_conv::header_to_output_def(hb));
             }
-            break; // Only first score block
+            ScoreItem::Layout(lb) => {
+                output_defs.push(output_def_conv::layout_to_output_def(lb));
+            }
+            ScoreItem::Midi(mb) => {
+                output_defs.push(output_def_conv::midi_to_output_def(mb));
+            }
+            ScoreItem::Music(_) => {}
         }
     }
 

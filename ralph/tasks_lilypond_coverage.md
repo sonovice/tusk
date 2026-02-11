@@ -1599,11 +1599,21 @@ The parser and serializer already handle `\book` and `\bookpart` blocks, but the
 
 ### 34.1 Import
 
-- [ ] [I] `\book { ... }` → walk into `BookItem` children to find scores, headers, paper blocks; store book-level structure in a `BookStructure` extension on the MEI root (or top-level `<mdiv>`) with typed fields for header, paper, and child bookparts
-- [ ] [I] `\bookpart { ... }` → walk into `BookPartItem` children similarly; store as `BookPartInfo` entries inside `BookStructure`, each referencing its scores and bookpart-level header/paper
-- [ ] [I] Multi-score books: when a `\book` contains multiple `\score` blocks (or multiple `\bookpart` with `\score`), create separate MEI `<mdiv>` elements per score/bookpart to preserve structure
-- [ ] [T] Import tests: book with single score, book with header+paper, bookpart with score, nested book>bookpart>score, multiple bookparts
-- [ ] [T] Fixture: `fragment_book.ly` with `\book { \header { } \bookpart { \score { ... } } \bookpart { \score { ... } } }`
+- [x] [I] `\book { ... }` → walk into `BookItem` children to find scores, headers, paper blocks; store book-level structure in a `BookStructure` extension on the MEI root (or top-level `<mdiv>`) with typed fields for header, paper, and child bookparts
+  - `collect_score_entries()` walks book items, collecting scores with `BookStructure` metadata
+  - `collect_output_defs_from_book()` extracts book-level header/paper as typed `OutputDef`
+  - BookStructure JSON stored in mdiv `@label` as `tusk:book-structure,{json}`
+- [x] [I] `\bookpart { ... }` → walk into `BookPartItem` children similarly; store as `BookPartInfo` entries inside `BookStructure`, each referencing its scores and bookpart-level header/paper
+  - `collect_output_defs_from_bookpart()` extracts bookpart-level header/paper
+  - `bookpart_index` and `bookpart_output_defs` stored in each score's `BookStructure`
+- [x] [I] Multi-score books: when a `\book` contains multiple `\score` blocks (or multiple `\bookpart` with `\score`), create separate MEI `<mdiv>` elements per score/bookpart to preserve structure
+  - `build_music_multi()` creates one `<mdiv>` per score entry with `@n` numbering
+  - Non-book files use backward-compatible `find_music()` path via `build_music_single()`
+  - Refactored `build_score_from_music()` shared between single and multi paths
+- [x] [T] Import tests: book with single score, book with header+paper, bookpart with score, nested book>bookpart>score, multiple bookparts
+  - 10 tests in `import/tests_book.rs` covering all scenarios + backward compat
+- [x] [T] Fixture: `fragment_book.ly` with `\book { \header { } \bookpart { \score { ... } } \bookpart { \score { ... } } }`
+  - Created at `tests/fixtures/lilypond/fragment_book.ly`
 
 ### 34.2 Export
 
