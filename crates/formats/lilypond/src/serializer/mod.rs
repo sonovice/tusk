@@ -495,11 +495,10 @@ impl<'a> Serializer<'a> {
                 self.out.push('"');
             }
             AssignmentValue::Number(n) => {
-                if *n == (*n as i64) as f64 {
-                    self.out.push_str(&(*n as i64).to_string());
-                } else {
-                    self.out.push_str(&n.to_string());
-                }
+                self.write_number(*n);
+            }
+            AssignmentValue::NumericExpression(expr) => {
+                self.write_numeric_expression(expr);
             }
             AssignmentValue::Music(m) => self.write_music(m),
             AssignmentValue::Identifier(s) => {
@@ -514,6 +513,53 @@ impl<'a> Serializer<'a> {
             AssignmentValue::MarkupList(ml) => {
                 self.out.push_str("\\markuplist ");
                 self.write_markup_list(ml);
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Numeric expressions
+    // ──────────────────────────────────────────────────────────────────
+
+    fn write_number(&mut self, n: f64) {
+        if n == (n as i64) as f64 {
+            self.out.push_str(&(n as i64).to_string());
+        } else {
+            self.out.push_str(&n.to_string());
+        }
+    }
+
+    fn write_numeric_expression(&mut self, expr: &NumericExpression) {
+        match expr {
+            NumericExpression::Literal(n) => self.write_number(*n),
+            NumericExpression::WithUnit(n, unit) => {
+                self.write_number(*n);
+                self.out.push('\\');
+                self.out.push_str(unit);
+            }
+            NumericExpression::Negate(inner) => {
+                self.out.push('-');
+                self.write_numeric_expression(inner);
+            }
+            NumericExpression::Add(lhs, rhs) => {
+                self.write_numeric_expression(lhs);
+                self.out.push_str(" + ");
+                self.write_numeric_expression(rhs);
+            }
+            NumericExpression::Sub(lhs, rhs) => {
+                self.write_numeric_expression(lhs);
+                self.out.push_str(" - ");
+                self.write_numeric_expression(rhs);
+            }
+            NumericExpression::Mul(lhs, rhs) => {
+                self.write_numeric_expression(lhs);
+                self.out.push_str(" * ");
+                self.write_numeric_expression(rhs);
+            }
+            NumericExpression::Div(lhs, rhs) => {
+                self.write_numeric_expression(lhs);
+                self.out.push_str(" / ");
+                self.write_numeric_expression(rhs);
             }
         }
     }

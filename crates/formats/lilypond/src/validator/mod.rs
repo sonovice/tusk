@@ -324,10 +324,11 @@ fn validate_assignment_value(v: &AssignmentValue, errors: &mut Vec<ValidationErr
             }
         }
         AssignmentValue::SchemeExpr(expr) => validate_scheme_expr(expr, errors),
-        // Identifier refs, strings, numbers: no structural validation needed.
+        // Identifier refs, strings, numbers, numeric expressions: no structural validation needed.
         AssignmentValue::Identifier(_)
         | AssignmentValue::String(_)
-        | AssignmentValue::Number(_) => {}
+        | AssignmentValue::Number(_)
+        | AssignmentValue::NumericExpression(_) => {}
     }
 }
 

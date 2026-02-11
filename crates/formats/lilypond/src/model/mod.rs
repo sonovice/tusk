@@ -237,6 +237,8 @@ pub struct Assignment {
 pub enum AssignmentValue {
     String(String),
     Number(f64),
+    /// An arithmetic expression with optional units (e.g. `180\mm - 2\cm`).
+    NumericExpression(NumericExpression),
     Music(Box<Music>),
     /// A bare identifier reference (e.g. `\melody`).
     Identifier(String),
@@ -246,6 +248,32 @@ pub enum AssignmentValue {
     Markup(Markup),
     /// A structured markup list expression.
     MarkupList(MarkupList),
+}
+
+// ---------------------------------------------------------------------------
+// Numeric expressions
+// ---------------------------------------------------------------------------
+
+/// An arithmetic expression in output-def contexts (`\paper`, `\layout`).
+///
+/// Mirrors the `number_expression` / `number_term` / `number_factor` /
+/// `bare_number` productions in the LilyPond grammar.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NumericExpression {
+    /// A literal number: `42`, `3.5`.
+    Literal(f64),
+    /// A number with a unit suffix: `180\mm`, `2.5\cm`.
+    WithUnit(f64, String),
+    /// Unary negation: `-expr`.
+    Negate(Box<NumericExpression>),
+    /// Addition: `a + b`.
+    Add(Box<NumericExpression>, Box<NumericExpression>),
+    /// Subtraction: `a - b`.
+    Sub(Box<NumericExpression>, Box<NumericExpression>),
+    /// Multiplication: `a * b`.
+    Mul(Box<NumericExpression>, Box<NumericExpression>),
+    /// Division: `a / b`.
+    Div(Box<NumericExpression>, Box<NumericExpression>),
 }
 
 // ---------------------------------------------------------------------------

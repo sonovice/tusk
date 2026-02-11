@@ -98,6 +98,10 @@ fn assignment_value_to_ext(v: &AssignmentValue) -> ExtValue {
             let serialized = crate::serializer::serialize_markuplist(ml);
             ExtValue::MarkupList(serialized)
         }
+        AssignmentValue::NumericExpression(_) => {
+            let serialized = crate::serializer::serialize_assignment_value(v);
+            ExtValue::String(serialized)
+        }
     }
 }
 

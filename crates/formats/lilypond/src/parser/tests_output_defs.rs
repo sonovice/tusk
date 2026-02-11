@@ -331,3 +331,226 @@ fn parse_fixture_paper_layout_midi() {
     // Validate
     crate::validator::validate(&ast).unwrap();
 }
+
+// ── Numeric expressions ─────────────────────────────────────────────
+
+#[test]
+fn parse_number_with_unit() {
+    let input = r#"\paper { indent = 180\mm }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(pb.body[0].name, "indent");
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::WithUnit(180.0, "mm".into()))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_number_subtraction_with_units() {
+    let input = r#"\paper { line-width = 180\mm - 2\cm }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(pb.body[0].name, "line-width");
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Sub(
+                    Box::new(NumericExpression::WithUnit(180.0, "mm".into())),
+                    Box::new(NumericExpression::WithUnit(2.0, "cm".into())),
+                ))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_number_addition() {
+    let input = r#"\paper { indent = 3 + 4 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Add(
+                    Box::new(NumericExpression::Literal(3.0)),
+                    Box::new(NumericExpression::Literal(4.0)),
+                ))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_number_multiplication() {
+    let input = r#"\paper { indent = 10 * 2.5 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Mul(
+                    Box::new(NumericExpression::Literal(10.0)),
+                    Box::new(NumericExpression::Literal(2.5)),
+                ))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_unary_minus_number() {
+    let input = r#"\paper { indent = -5 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Negate(Box::new(
+                    NumericExpression::Literal(5.0)
+                )))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_unary_minus_with_unit() {
+    let input = r#"\paper { indent = -5\mm }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Negate(Box::new(
+                    NumericExpression::WithUnit(5.0, "mm".into())
+                )))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_all_units() {
+    for unit in &["mm", "cm", "pt", "in", "bp", "dd", "cc", "sp"] {
+        let input = format!("\\paper {{ indent = 10\\{unit} }}");
+        let ast = parse(&input).unwrap();
+        match &ast.items[0] {
+            ToplevelExpression::Paper(pb) => {
+                assert_eq!(
+                    pb.body[0].value,
+                    AssignmentValue::NumericExpression(NumericExpression::WithUnit(
+                        10.0,
+                        unit.to_string()
+                    ))
+                );
+            }
+            other => panic!("expected paper for unit {unit}, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn parse_complex_numeric_expression() {
+    // 180\mm - 2\cm + 10\pt
+    let input = r#"\paper { line-width = 180\mm - 2\cm + 10\pt }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            // Left-associative: (180\mm - 2\cm) + 10\pt
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Add(
+                    Box::new(NumericExpression::Sub(
+                        Box::new(NumericExpression::WithUnit(180.0, "mm".into())),
+                        Box::new(NumericExpression::WithUnit(2.0, "cm".into())),
+                    )),
+                    Box::new(NumericExpression::WithUnit(10.0, "pt".into())),
+                ))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_numeric_division() {
+    let input = r#"\paper { indent = 180\mm / 2 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(
+                pb.body[0].value,
+                AssignmentValue::NumericExpression(NumericExpression::Div(
+                    Box::new(NumericExpression::WithUnit(180.0, "mm".into())),
+                    Box::new(NumericExpression::Literal(2.0)),
+                ))
+            );
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn plain_number_not_promoted_to_expression() {
+    // A plain number without units or operators should stay as Number
+    let input = r#"\paper { indent = 0 }"#;
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Paper(pb) => {
+            assert_eq!(pb.body[0].value, AssignmentValue::Number(0.0));
+        }
+        other => panic!("expected paper, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_numeric_expression() {
+    let input = r#"\paper {
+  line-width = 180\mm - 2\cm
+  indent = 0\mm
+}"#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+#[test]
+fn roundtrip_unary_minus() {
+    let input = r#"\paper {
+  indent = -5\mm
+}"#;
+    let ast = parse(input).unwrap();
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}
+
+// ── Fixture test ────────────────────────────────────────────────────
+
+#[test]
+fn parse_fixture_numeric_expr() {
+    let input = include_str!("../../../../../tests/fixtures/lilypond/fragment_numeric_expr.ly");
+    let ast = parse(input).unwrap();
+    // Should have: paper, score
+    assert!(!ast.items.is_empty());
+    assert!(matches!(&ast.items[0], ToplevelExpression::Paper(_)));
+
+    // Validate the AST
+    crate::validator::validate(&ast).unwrap();
+
+    // Serialization roundtrip
+    let output = crate::serializer::serialize(&ast);
+    let ast2 = parse(&output).unwrap();
+    assert_eq!(ast, ast2);
+}

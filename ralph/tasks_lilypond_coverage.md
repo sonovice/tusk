@@ -1726,12 +1726,23 @@ Grammar: `number_expression`, `number_term`, `number_factor`, `bare_number_commo
 
 ### 38.1 Model & Parser
 
-- [ ] [P] Add `NumericExpression` type to model: `Literal(f64)`, `Add(Box, Box)`, `Sub(Box, Box)`, `Mul(Box, Box)`, `Div(Box, Box)`, `Negate(Box)`, `WithUnit(f64, String)` — or keep as opaque text in `AssignmentValue`
-- [ ] [P] Parse `number_expression`: `term + term`, `term - term`; `number_term`: `factor * factor`; `number_factor`: with unary minus; units (`\mm`, `\cm`, `\pt`, `\in`, `\bp`, `\dd`, `\cc`, `\sp`)
-- [ ] [P] Integrate into `parse_assignment_value()` for paper/layout blocks where arithmetic appears
-- [ ] [S] Serialize numeric expressions back (either structured or as raw text)
-- [ ] [T] Parser tests: `180\mm`, `180\mm - 2\cm`, `3 + 4`, `10 * 2.5`, unary minus, units
-- [ ] [T] Fixture: `fragment_numeric_expr.ly` with `\paper { indent = 0\mm line-width = 180\mm - 2\cm }`
+- [x] [P] Add `NumericExpression` type to model: `Literal(f64)`, `Add(Box, Box)`, `Sub(Box, Box)`, `Mul(Box, Box)`, `Div(Box, Box)`, `Negate(Box)`, `WithUnit(f64, String)` — or keep as opaque text in `AssignmentValue`
+  - Added `NumericExpression` enum with all variants to `model/mod.rs`
+  - Added `AssignmentValue::NumericExpression` variant
+  - Updated validator, import (output_def_conv, variables), export match arms
+- [x] [P] Parse `number_expression`: `term + term`, `term - term`; `number_term`: `factor * factor`; `number_factor`: with unary minus; units (`\mm`, `\cm`, `\pt`, `\in`, `\bp`, `\dd`, `\cc`, `\sp`)
+  - New `parser/numeric.rs` submodule with recursive-descent `number_expression` → `number_term` → `number_factor` → `bare_number`
+  - Units: mm, cm, pt, in, bp, dd, cc, sp
+- [x] [P] Integrate into `parse_assignment_value()` for paper/layout blocks where arithmetic appears
+  - `parse_assignment_number()` in numeric.rs: after consuming number, checks for continuation (unit/operator); promotes to NumericExpression or stays Number
+  - Unary minus (Dash token) also handled at start of assignment value
+- [x] [S] Serialize numeric expressions back (either structured or as raw text)
+  - `write_numeric_expression()` in serializer/mod.rs: recursive structured output with proper spacing
+  - Also extracted `write_number()` helper for consistent float formatting
+- [x] [T] Parser tests: `180\mm`, `180\mm - 2\cm`, `3 + 4`, `10 * 2.5`, unary minus, units
+  - 14 tests in tests_output_defs.rs covering: single unit, subtraction, addition, multiplication, division, unary minus, all 8 units, complex expressions, plain number non-promotion, roundtrips
+- [x] [T] Fixture: `fragment_numeric_expr.ly` with `\paper { indent = 0\mm line-width = 180\mm - 2\cm }`
+  - Created `tests/fixtures/lilypond/fragment_numeric_expr.ly` with paper block using units and arithmetic
 
 ---
 

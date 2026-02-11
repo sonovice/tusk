@@ -228,15 +228,11 @@ impl<'src> Parser<'src> {
                 let s = self.expect_string()?;
                 Ok(AssignmentValue::String(s))
             }
-            Token::Unsigned(n) => {
-                let n = *n as f64;
-                self.advance()?;
-                Ok(AssignmentValue::Number(n))
-            }
-            Token::Real(n) => {
-                let n = *n;
-                self.advance()?;
-                Ok(AssignmentValue::Number(n))
+            Token::Unsigned(_) | Token::Real(_) => self.parse_assignment_number(),
+            // Unary minus starting a numeric expression: `-5`, `-180\mm`
+            Token::Dash => {
+                let expr = self.parse_number_expression()?;
+                Ok(AssignmentValue::NumericExpression(expr))
             }
             Token::BraceOpen | Token::DoubleAngleOpen => {
                 let m = self.parse_music()?;
@@ -1432,6 +1428,7 @@ mod figures;
 mod functions;
 mod lyrics;
 mod markup;
+mod numeric;
 mod properties;
 mod raw_blocks;
 mod signatures;
