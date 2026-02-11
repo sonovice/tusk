@@ -426,10 +426,12 @@ fn parse_clef<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
 fn parse_transpose<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Transpose> {
     let mut buf = Vec::new();
     let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
+    let id = get_attr(start, "id")?;
 
     let mut diatonic: Option<i32> = None;
     let mut chromatic: f64 = 0.0;
     let mut octave_change: Option<i32> = None;
+    let mut double: Option<Double> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -453,8 +455,17 @@ fn parse_transpose<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
                             .map_err(|_| ParseError::ParseNumber("octave-change".to_string()))?,
                     )
                 }
+                b"double" => {
+                    let above = get_attr(&e, "above")?.and_then(|s| parse_yes_no_opt(&s));
+                    double = Some(Double { above });
+                    skip_element(reader, &e)?;
+                }
                 _ => skip_element(reader, &e)?,
             },
+            Event::Empty(e) if e.name().as_ref() == b"double" => {
+                let above = get_attr(&e, "above")?.and_then(|s| parse_yes_no_opt(&s));
+                double = Some(Double { above });
+            }
             Event::End(e) if e.name().as_ref() == b"transpose" => break,
             Event::Eof => return Err(ParseError::MissingElement("transpose end".to_string())),
             _ => {}
@@ -464,11 +475,11 @@ fn parse_transpose<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
 
     Ok(Transpose {
         number,
-        id: None,
+        id,
         diatonic,
         chromatic,
         octave_change,
-        double: None,
+        double,
     })
 }
 
@@ -881,6 +892,7 @@ fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
     let mut diatonic: Option<i32> = None;
     let mut chromatic: f64 = 0.0;
     let mut octave_change: Option<i32> = None;
+    let mut double: Option<Double> = None;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -891,6 +903,7 @@ fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                 b"part-transpose" => {
                     // Parse part-transpose children (same as transpose)
                     let mut tbuf = Vec::new();
+                    let mut pt_double: Option<Double> = None;
                     loop {
                         match reader.read_event_into(&mut tbuf)? {
                             Event::Start(te) => match te.name().as_ref() {
@@ -915,8 +928,19 @@ fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                                         )?,
                                     );
                                 }
+                                b"double" => {
+                                    let above =
+                                        get_attr(&te, "above")?.and_then(|s| parse_yes_no_opt(&s));
+                                    pt_double = Some(Double { above });
+                                    skip_element(reader, &te)?;
+                                }
                                 _ => skip_element(reader, &te)?,
                             },
+                            Event::Empty(te) if te.name().as_ref() == b"double" => {
+                                let above =
+                                    get_attr(&te, "above")?.and_then(|s| parse_yes_no_opt(&s));
+                                pt_double = Some(Double { above });
+                            }
                             Event::End(te) if te.name().as_ref() == b"part-transpose" => break,
                             Event::Eof => {
                                 return Err(ParseError::MissingElement(
@@ -927,6 +951,7 @@ fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
                         }
                         tbuf.clear();
                     }
+                    double = pt_double;
                 }
                 _ => skip_element(reader, &e)?,
             },
@@ -945,7 +970,7 @@ fn parse_for_part<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Res
             diatonic,
             chromatic,
             octave_change,
-            double: None,
+            double,
         },
     })
 }

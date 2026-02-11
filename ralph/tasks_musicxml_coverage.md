@@ -1179,9 +1179,15 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.3 Transpose Attribute Completion
 
-- [ ] Parse `double` attribute on `<transpose>` (yes/no, for instruments transposing 2 octaves)
-- [ ] Parse `id` attribute on `<transpose>`
-- [ ] Wire into model and serializer
+- [x] Parse `double` attribute on `<transpose>` (yes/no, for instruments transposing 2 octaves)
+  - Parse `<double>` element (empty or with @above) in parse_transpose() — handles both Event::Start and Event::Empty
+  - Also parse `<double>` inside `<part-transpose>` in parse_for_part()
+- [x] Parse `id` attribute on `<transpose>`
+  - Added `get_attr(start, "id")?` and wire to Transpose.id field
+- [x] Wire into model and serializer
+  - Model already had `id: Option<String>` and `double: Option<Double>` fields
+  - Serializer already emitted @id and <double> — no changes needed
+  - Added transpose_attributes.musicxml fixture + roundtrip test
 
 ### 28.4 Beam Attribute Completion
 
