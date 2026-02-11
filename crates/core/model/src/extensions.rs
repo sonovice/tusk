@@ -149,6 +149,22 @@ pub struct ExtData {
     /// Multiple property operations on a single element.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub property_ops: Vec<PropertyOp>,
+
+    /// Pitched rest position.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pitched_rest: Option<PitchedRest>,
+
+    /// Multi-measure rest duration info.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mrest_info: Option<MultiMeasureRestInfo>,
+
+    /// Drum event (serialized form).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drum_event: Option<DrumEvent>,
+
+    /// Lyric extender marker.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lyric_extender: Option<LyricExtender>,
 }
 
 // ---------------------------------------------------------------------------
@@ -573,6 +589,68 @@ pub struct TweakInfo {
     /// Value.
     pub value: ExtValue,
 }
+
+// ---------------------------------------------------------------------------
+// PitchedRest
+// ---------------------------------------------------------------------------
+
+/// A rest displayed at a specific pitch position (`c4\rest` in LilyPond).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PitchedRest {
+    /// Pitch as LilyPond note name + octave marks (e.g. "c'", "fis,,").
+    pub pitch: String,
+}
+
+// ---------------------------------------------------------------------------
+// MultiMeasureRestInfo
+// ---------------------------------------------------------------------------
+
+/// Duration details for a multi-measure rest (`R1`, `R2.*3` etc.).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MultiMeasureRestInfo {
+    pub base: u32,
+    #[serde(skip_serializing_if = "is_zero_u8")]
+    pub dots: u8,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub multipliers: Vec<(u32, u32)>,
+}
+
+impl Default for MultiMeasureRestInfo {
+    fn default() -> Self {
+        Self {
+            base: 1,
+            dots: 0,
+            multipliers: Vec::new(),
+        }
+    }
+}
+
+fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
+}
+
+// ---------------------------------------------------------------------------
+// DrumEvent
+// ---------------------------------------------------------------------------
+
+/// Serialized drum event for lossless roundtrip.
+///
+/// Stores the LilyPond serialized form of a drum note or drum chord
+/// (e.g. `sn4` or `<sn bd>8`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DrumEvent {
+    /// Serialized LilyPond drum event string.
+    pub serialized: String,
+}
+
+// ---------------------------------------------------------------------------
+// LyricExtender
+// ---------------------------------------------------------------------------
+
+/// Marker for a lyric extender line (`__` in LilyPond) on a `<syl>` element.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LyricExtender;
 
 // ---------------------------------------------------------------------------
 // ExtensionStore — side table for attaching extensions to MEI elements
@@ -1111,5 +1189,55 @@ mod tests {
             let back: OutputDefKind = serde_json::from_str(&json).unwrap();
             assert_eq!(kind, back);
         }
+    }
+
+    #[test]
+    fn pitched_rest_roundtrip() {
+        let pr = PitchedRest {
+            pitch: "fis'".into(),
+        };
+        let json = serde_json::to_string(&pr).unwrap();
+        let back: PitchedRest = serde_json::from_str(&json).unwrap();
+        assert_eq!(pr, back);
+    }
+
+    #[test]
+    fn multi_measure_rest_info_roundtrip() {
+        let info = MultiMeasureRestInfo {
+            base: 1,
+            dots: 0,
+            multipliers: vec![(4, 1)],
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        let back: MultiMeasureRestInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(info, back);
+
+        // With dots and fraction multiplier
+        let info2 = MultiMeasureRestInfo {
+            base: 2,
+            dots: 1,
+            multipliers: vec![(3, 2)],
+        };
+        let json2 = serde_json::to_string(&info2).unwrap();
+        let back2: MultiMeasureRestInfo = serde_json::from_str(&json2).unwrap();
+        assert_eq!(info2, back2);
+    }
+
+    #[test]
+    fn drum_event_roundtrip() {
+        let de = DrumEvent {
+            serialized: "bd4".into(),
+        };
+        let json = serde_json::to_string(&de).unwrap();
+        let back: DrumEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(de, back);
+    }
+
+    #[test]
+    fn lyric_extender_roundtrip() {
+        let le = LyricExtender;
+        let json = serde_json::to_string(&le).unwrap();
+        let back: LyricExtender = serde_json::from_str(&json).unwrap();
+        assert_eq!(le, back);
     }
 }

@@ -132,7 +132,7 @@ fn extract_pitch_from_note(note: &tusk_model::elements::Note) -> Pitch {
 
 /// Convert an MEI Chord to a LilyPond ChordEvent or ChordRepetitionEvent.
 ///
-/// If the chord has a `lilypond:chord-rep` label, it originated from a `q`
+/// If the chord has a `tusk:chord-rep,` label, it originated from a `q`
 /// (chord repetition) and is emitted as `Music::ChordRepetition` for lossless
 /// roundtrip.
 pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
@@ -154,13 +154,8 @@ pub(super) fn convert_mei_chord(chord: &tusk_model::elements::Chord) -> Music {
     // Emit \tweak id for non-auto-generated xml:ids
     emit_id_tweak_if_needed(chord.common.xml_id.as_deref(), &mut post_events);
 
-    // Check for chord repetition label
-    if chord
-        .common
-        .label
-        .as_deref()
-        .is_some_and(|l| l == "lilypond:chord-rep")
-    {
+    // Check for chord repetition label (typed JSON)
+    if has_label_segment(chord.common.label.as_deref(), "tusk:chord-rep,") {
         return Music::ChordRepetition(ChordRepetitionEvent {
             duration,
             post_events,
@@ -235,17 +230,11 @@ pub(super) fn convert_mei_note(note: &tusk_model::elements::Note) -> Music {
     })
 }
 
-/// Try to convert a note with a `lilypond:drum,` label back to drum mode music.
+/// Try to convert a note with a `tusk:drum,` label back to drum mode music.
 fn try_convert_drum_label(note: &tusk_model::elements::Note) -> Option<Music> {
-    let label = note.common.label.as_deref()?;
-    // Find the drum segment (may be pipe-separated)
-    for segment in label.split('|') {
-        if let Some(serialized) = segment.strip_prefix("lilypond:drum,") {
-            let unescaped = crate::import::signatures::unescape_label_value(serialized);
-            return parse_drum_event_str(&unescaped);
-        }
-    }
-    None
+    let json = extract_label_segment(note.common.label.as_deref(), "tusk:drum,")?;
+    let de: tusk_model::DrumEvent = serde_json::from_str(json).ok()?;
+    parse_drum_event_str(&de.serialized)
 }
 
 /// Parse a serialized drum event string back into Music::DrumNote or Music::DrumChord.
@@ -276,10 +265,10 @@ fn parse_drum_event_str(s: &str) -> Option<Music> {
 
 /// Convert an MEI Rest to a LilyPond RestEvent or pitched rest.
 pub(super) fn convert_mei_rest(rest: &tusk_model::elements::Rest) -> Music {
-    // Check for pitched rest label
-    if let Some(label) = &rest.common.label
-        && let Some(pitch_str) = label.strip_prefix("lilypond:pitched-rest,")
-        && let Some(mut note_event) = parse_pitched_rest_label(pitch_str, rest)
+    // Check for pitched rest label (typed JSON)
+    if let Some(json) = extract_label_segment(rest.common.label.as_deref(), "tusk:pitched-rest,")
+        && let Ok(pr) = serde_json::from_str::<tusk_model::PitchedRest>(json)
+        && let Some(mut note_event) = parse_pitched_rest_label(&pr.pitch, rest)
     {
         emit_id_tweak_if_needed(rest.common.xml_id.as_deref(), &mut note_event.post_events);
         return Music::Note(note_event);
@@ -334,13 +323,16 @@ fn parse_pitched_rest_label(
 
 /// Convert an MEI MRest to a LilyPond MultiMeasureRestEvent.
 pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest) -> Music {
-    // Restore duration from label
-    let duration = mrest
-        .common
-        .label
-        .as_ref()
-        .and_then(|l| l.strip_prefix("lilypond:mrest,"))
-        .and_then(parse_mrest_label);
+    // Restore duration from typed JSON label
+    let duration =
+        extract_label_segment(mrest.common.label.as_deref(), "tusk:mrest,").and_then(|json| {
+            let info: tusk_model::MultiMeasureRestInfo = serde_json::from_str(json).ok()?;
+            Some(Duration {
+                base: info.base,
+                dots: info.dots,
+                multipliers: info.multipliers,
+            })
+        });
 
     let mut post_events = Vec::new();
     emit_id_tweak_if_needed(mrest.common.xml_id.as_deref(), &mut post_events);
@@ -348,35 +340,6 @@ pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest) -> Music {
     Music::MultiMeasureRest(MultiMeasureRestEvent {
         duration,
         post_events,
-    })
-}
-
-/// Parse mrest label back to Duration.
-fn parse_mrest_label(label: &str) -> Option<Duration> {
-    let mut base = None;
-    let mut dots = 0u8;
-    let mut multipliers = Vec::new();
-
-    for part in label.split(',') {
-        if let Some(val) = part.strip_prefix("dur=") {
-            base = val.parse().ok();
-        } else if let Some(val) = part.strip_prefix("dots=") {
-            dots = val.parse().unwrap_or(0);
-        } else if let Some(val) = part.strip_prefix("mul=") {
-            if let Some((n, d)) = val.split_once('/') {
-                if let (Ok(n), Ok(d)) = (n.parse(), d.parse()) {
-                    multipliers.push((n, d));
-                }
-            } else if let Ok(n) = val.parse() {
-                multipliers.push((n, 1));
-            }
-        }
-    }
-
-    Some(Duration {
-        base: base?,
-        dots,
-        multipliers,
     })
 }
 
@@ -416,7 +379,7 @@ fn emit_id_tweak_if_needed(xml_id: Option<&str>, post_events: &mut Vec<PostEvent
 
 /// Restore tweak post-events from a label string.
 ///
-/// Scans pipe-separated label segments for `lilypond:tweak,{serialized}` and
+/// Scans pipe-separated label segments for `tusk:tweak,{json}` and
 /// re-parses them into `PostEvent::Tweak` entries.
 fn restore_tweak_post_events(label: Option<&str>, post_events: &mut Vec<PostEvent>) {
     let label = match label {
@@ -424,13 +387,23 @@ fn restore_tweak_post_events(label: Option<&str>, post_events: &mut Vec<PostEven
         None => return,
     };
     for segment in label.split('|') {
-        if let Some(serialized) = segment.strip_prefix("lilypond:tweak,") {
-            let unescaped = crate::import::signatures::unescape_label_value(serialized);
-            if let Some(tweak) = parse_tweak_str(&unescaped) {
-                post_events.push(tweak);
-            }
+        if let Some(json) = segment.strip_prefix("tusk:tweak,")
+            && let Ok(serialized) = serde_json::from_str::<String>(json)
+            && let Some(tweak) = parse_tweak_str(&serialized)
+        {
+            post_events.push(tweak);
         }
     }
+}
+
+/// Check if a label contains a segment with the given prefix.
+fn has_label_segment(label: Option<&str>, prefix: &str) -> bool {
+    label.is_some_and(|l| l.split('|').any(|seg| seg.starts_with(prefix)))
+}
+
+/// Find and extract a label segment with the given prefix, returning the rest after the prefix.
+fn extract_label_segment<'a>(label: Option<&'a str>, prefix: &str) -> Option<&'a str> {
+    label.and_then(|l| l.split('|').find_map(|seg| seg.strip_prefix(prefix)))
 }
 
 /// Parse a serialized tweak string (e.g. `\tweak color #red`) back into a PostEvent::Tweak.

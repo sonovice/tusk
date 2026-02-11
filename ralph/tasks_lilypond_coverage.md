@@ -1472,51 +1472,51 @@ Labels stored on individual music events via `@label` with pipe-separated segmen
 
 **Chord repetition** — label: `lilypond:chord-rep` on `Chord`.
 
-- [ ] [I] Replace `lilypond:chord-rep` label with a `ChordRepetition` extension flag (bool) on the MEI Chord element
-- [ ] [E] Update `convert_mei_chord()` to check extension instead of label
-- [ ] [T] Chord repetition roundtrip tests pass
+- [x] [I] Replace `lilypond:chord-rep` label with `tusk:chord-rep,{json}` typed JSON using `ChordRepetition` struct
+- [x] [E] Update `convert_mei_chord()` to check `tusk:chord-rep,` segment
+- [x] [T] Chord repetition roundtrip tests pass
 
 **Context change** — label: `lilypond:change,TYPE,NAME` on `Note`/`Chord`/`Rest`.
 
-- [ ] [I] Replace `lilypond:change,` label with `ContextChange { context_type, name }` extension on the note/chord/rest
-- [ ] [E] Update `extract_context_change_from_label()` to read from extension
-- [ ] [T] Context change roundtrip tests pass
+- [x] [I] Replace `lilypond:change,` label with `tusk:context-change,{json}` using `ContextChange` struct
+- [x] [E] Update `extract_context_change_from_label()` to deserialize from JSON
+- [x] [T] Context change roundtrip tests pass
 
 **Tweak post-events** — label: `lilypond:tweak,SERIALIZED` as pipe-segment on `Note`/`Chord`/`Rest`.
 
-- [ ] [I] Replace `lilypond:tweak,` label segments with `Vec<TweakInfo>` extension on note/chord/rest: typed tweak path + value
-- [ ] [E] Update `restore_tweak_post_events()` in `conversion.rs` to read from extension
-- [ ] [T] Tweak roundtrip tests pass
+- [x] [I] Replace `lilypond:tweak,` label segments with `tusk:tweak,{json_string}` — serialized tweak as JSON string
+- [x] [E] Update `restore_tweak_post_events()` to deserialize JSON string and re-parse
+- [x] [T] Tweak roundtrip tests pass
 
 **Grace type** — label: `lilypond:grace,TYPE[,fraction=N/D]` as pipe-segment on `Note`/`Chord`.
 
-- [ ] [I] Replace `lilypond:grace,` label segment with `GraceInfo` extension: typed enum (Grace, Acciaccatura, Appoggiatura, AfterGrace { fraction: Option<(u32,u32)> })
-- [ ] [E] Update `collect_grace_types()` in `grace.rs` to read from extension
-- [ ] [T] All grace note roundtrip tests pass
+- [x] [I] Replace `lilypond:grace,` with `tusk:grace,{json}` using `GraceInfo` enum
+- [x] [E] Update `parse_grace_label_from_note_label()` to deserialize `GraceInfo` from JSON
+- [x] [T] All grace note roundtrip tests pass
 
 **Pitched rest** — label: `lilypond:pitched-rest,PITCH` on `Rest`.
 
-- [ ] [I] Replace `lilypond:pitched-rest,` label with `PitchedRest { pitch }` extension on the MEI Rest element
-- [ ] [E] Update pitched rest detection in `conversion.rs`
-- [ ] [T] Pitched rest roundtrip tests pass
+- [x] [I] Replace `lilypond:pitched-rest,` with `tusk:pitched-rest,{json}` using `PitchedRest { pitch }` struct
+- [x] [E] Update `convert_mei_rest()` to deserialize `PitchedRest` from JSON
+- [x] [T] Pitched rest roundtrip tests pass
 
 **Multi-measure rest** — label: `lilypond:mrest,DATA` on `MRest`.
 
-- [ ] [I] Replace `lilypond:mrest,` label with `MultiMeasureRestInfo { duration, dots, multiplier }` extension on MRest
-- [ ] [E] Update `convert_mei_mrest()` to read from extension
-- [ ] [T] Multi-measure rest roundtrip tests pass
+- [x] [I] Replace `lilypond:mrest,` with `tusk:mrest,{json}` using `MultiMeasureRestInfo` struct
+- [x] [E] Update `convert_mei_mrest()` to deserialize `MultiMeasureRestInfo` from JSON
+- [x] [T] Multi-measure rest roundtrip tests pass
 
 **Drum events** — label: `lilypond:drum,SERIALIZED` on `Note`.
 
-- [ ] [I] Replace `lilypond:drum,` label with `DrumEvent { drum_type, ... }` extension on Note
-- [ ] [E] Update `try_convert_drum_label()` to read from extension
-- [ ] [T] Drum mode roundtrip tests pass
+- [x] [I] Replace `lilypond:drum,` with `tusk:drum,{json}` using `DrumEvent { serialized }` struct
+- [x] [E] Update `try_convert_drum_label()` to deserialize `DrumEvent` from JSON
+- [x] [T] Drum mode roundtrip tests pass
 
 **Lyric extender** — label: `lilypond:extender` on `Syl`.
 
-- [ ] [I] Replace `lilypond:extender` label with `LyricExtender` extension flag on Syl
-- [ ] [E] Update lyric export to read from extension
-- [ ] [T] Lyrics roundtrip tests pass
+- [x] [I] Replace `lilypond:extender` with `tusk:extender,{json}` using `LyricExtender` marker
+- [x] [E] Update lyric export to check for `tusk:extender,` segment
+- [x] [T] Lyrics roundtrip tests pass
 
 ### 33.5 Migrate Control Event Label-Based Storage
 

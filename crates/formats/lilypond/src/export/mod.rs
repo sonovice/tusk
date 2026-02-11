@@ -962,7 +962,7 @@ fn convert_layer_child_to_items(
 
 /// Extract a `\change` context change from a LayerChild's label.
 ///
-/// Looks for `lilypond:change,TYPE,NAME` label segment and returns a
+/// Looks for `tusk:context-change,{json}` label segment and returns a
 /// `Music::ContextChange` if found.
 fn extract_context_change_from_label(child: &LayerChild) -> Option<Music> {
     let label = match child {
@@ -972,14 +972,13 @@ fn extract_context_change_from_label(child: &LayerChild) -> Option<Music> {
         _ => return None,
     };
     for segment in label.split('|') {
-        if let Some(rest) = segment.strip_prefix("lilypond:change,") {
-            let parts: Vec<&str> = rest.splitn(2, ',').collect();
-            if parts.len() == 2 {
-                return Some(Music::ContextChange {
-                    context_type: parts[0].to_string(),
-                    name: parts[1].to_string(),
-                });
-            }
+        if let Some(json) = segment.strip_prefix("tusk:context-change,")
+            && let Ok(cc) = serde_json::from_str::<tusk_model::ContextChange>(json)
+        {
+            return Some(Music::ContextChange {
+                context_type: cc.context_type,
+                name: cc.name,
+            });
         }
     }
     None

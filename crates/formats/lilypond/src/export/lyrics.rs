@@ -148,12 +148,12 @@ fn verse_to_lyric_event(verse: &tusk_model::elements::Verse) -> Option<LyricEven
         post_events.push(PostEvent::LyricHyphen);
     }
 
-    // Extender: check for label
+    // Extender: check for typed JSON label
     if syl
         .common
         .label
         .as_deref()
-        .is_some_and(|l| l == "lilypond:extender")
+        .is_some_and(|l| l.split('|').any(|seg| seg.starts_with("tusk:extender,")))
     {
         post_events.push(PostEvent::LyricExtender);
     }

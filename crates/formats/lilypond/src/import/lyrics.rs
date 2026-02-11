@@ -231,9 +231,10 @@ fn build_verse(syl: &LyricSyllable, verse_n: u32) -> Verse {
         mei_syl.syl_log.con = Some("d".to_string());
     }
 
-    // Store extender in label for roundtrip
+    // Store extender as typed JSON label for roundtrip
     if syl.has_extender {
-        mei_syl.common.label = Some("lilypond:extender".to_string());
+        let json = serde_json::to_string(&tusk_model::LyricExtender).unwrap_or_default();
+        mei_syl.common.label = Some(format!("tusk:extender,{json}"));
     }
 
     verse.children.push(VerseChild::Syl(Box::new(mei_syl)));

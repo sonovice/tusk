@@ -198,9 +198,9 @@ fn import_multi_measure_rest() {
     if let LayerChild::MRest(mrest) = &children[0] {
         assert!(mrest.common.label.is_some());
         let label = mrest.common.label.as_ref().unwrap();
-        assert!(label.starts_with("lilypond:mrest,"));
-        assert!(label.contains("dur=1"));
-        assert!(label.contains("mul=4"));
+        assert!(label.starts_with("tusk:mrest,"));
+        assert!(label.contains("\"base\":1"));
+        assert!(label.contains("[4,1]"));
     } else {
         panic!("expected MRest");
     }
@@ -218,7 +218,7 @@ fn import_pitched_rest() {
                 .label
                 .as_ref()
                 .unwrap()
-                .starts_with("lilypond:pitched-rest,")
+                .starts_with("tusk:pitched-rest,")
         );
     } else {
         panic!("expected Rest for pitched rest");
@@ -1196,7 +1196,7 @@ fn import_addlyrics_extender() {
         assert_eq!(get_verse_text(n, "1").as_deref(), Some("hold"));
         assert_eq!(
             get_verse_syl_label(n, "1").as_deref(),
-            Some("lilypond:extender")
+            Some("tusk:extender,null")
         );
     }
     if let LayerChild::Note(n) = &children[1] {

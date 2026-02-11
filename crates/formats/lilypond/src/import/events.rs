@@ -388,20 +388,18 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
 
 /// Build a grace label string from a `GraceType`.
 ///
-/// Format: `lilypond:grace,TYPE[,fraction=N/D]`
+/// Format: `tusk:grace,{json}` using typed `GraceInfo`.
 pub(super) fn grace_type_label(gt: &GraceType) -> String {
-    match gt {
-        GraceType::Grace => "lilypond:grace,grace".to_string(),
-        GraceType::Acciaccatura => "lilypond:grace,acciaccatura".to_string(),
-        GraceType::Appoggiatura => "lilypond:grace,appoggiatura".to_string(),
-        GraceType::AfterGrace { fraction } => {
-            if let Some((n, d)) = fraction {
-                format!("lilypond:grace,after,fraction={n}/{d}")
-            } else {
-                "lilypond:grace,after".to_string()
-            }
-        }
-    }
+    let info = match gt {
+        GraceType::Grace => tusk_model::GraceInfo::Grace,
+        GraceType::Acciaccatura => tusk_model::GraceInfo::Acciaccatura,
+        GraceType::Appoggiatura => tusk_model::GraceInfo::Appoggiatura,
+        GraceType::AfterGrace { fraction } => tusk_model::GraceInfo::AfterGrace {
+            fraction: *fraction,
+        },
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    format!("tusk:grace,{json}")
 }
 
 /// Map a `GraceType` to the corresponding MEI `DataGrace` value.

@@ -36,12 +36,13 @@ pub use generated::validation;
 pub use data::*;
 pub use elements::*;
 pub use extensions::{
-    BookStructure, ChordRepetition, ContextChange, ContextKeywordExt, ControlEvent, EventSequence,
-    ExtAssignment, ExtContextBlock, ExtContextModItem, ExtData, ExtPitch, ExtValue, ExtensionBag,
-    ExtensionContent, ExtensionElement, ExtensionStore, FormatOrigin, FunctionCall, GraceInfo,
-    LyricsInfo, LyricsStyle, OutputDef, OutputDefKind, PitchContext, PositionedEvent, PropertyOp,
-    PropertyOpType, RepeatInfo, RepeatTypeExt, SourceFormat, StaffContext, TUSK_EXT_NS,
-    ToplevelMarkup, TweakInfo, VariableAssignments,
+    BookStructure, ChordRepetition, ContextChange, ContextKeywordExt, ControlEvent, DrumEvent,
+    EventSequence, ExtAssignment, ExtContextBlock, ExtContextModItem, ExtData, ExtPitch, ExtValue,
+    ExtensionBag, ExtensionContent, ExtensionElement, ExtensionStore, FormatOrigin, FunctionCall,
+    GraceInfo, LyricExtender, LyricsInfo, LyricsStyle, MultiMeasureRestInfo, OutputDef,
+    OutputDefKind, PitchContext, PitchedRest, PositionedEvent, PropertyOp, PropertyOpType,
+    RepeatInfo, RepeatTypeExt, SourceFormat, StaffContext, TUSK_EXT_NS, ToplevelMarkup, TweakInfo,
+    VariableAssignments,
 };
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 

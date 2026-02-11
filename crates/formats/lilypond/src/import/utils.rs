@@ -64,6 +64,11 @@ pub(super) fn extract_voices(music: &Music) -> Vec<Vec<&Music>> {
     }
 }
 
+/// Escape pipe characters in JSON so they don't break `|`-delimited label segments.
+pub(super) fn escape_json_pipe(json: &str) -> String {
+    json.replace('|', "\\u007c")
+}
+
 /// Append a label segment to the last note/rest/chord in a layer.
 pub(super) fn append_label_to_last_layer_child(layer: &mut Layer, segment: &str) {
     let last = layer.children.last_mut();

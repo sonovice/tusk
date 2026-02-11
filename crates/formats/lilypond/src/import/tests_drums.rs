@@ -64,7 +64,7 @@ fn drum_note_has_label() {
     assert_eq!(notes.len(), 1);
     let label = notes[0].common.label.as_deref().unwrap();
     assert!(
-        label.starts_with("lilypond:drum,"),
+        label.starts_with("tusk:drum,"),
         "label should have drum prefix: {label}"
     );
     assert!(
@@ -80,7 +80,7 @@ fn drum_chord_has_label() {
     assert_eq!(notes.len(), 1);
     let label = notes[0].common.label.as_deref().unwrap();
     assert!(
-        label.starts_with("lilypond:drum,"),
+        label.starts_with("tusk:drum,"),
         "label should have drum prefix: {label}"
     );
     assert!(label.contains("bd"), "label should contain bd: {label}");

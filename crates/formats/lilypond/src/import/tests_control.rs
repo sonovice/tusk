@@ -628,7 +628,7 @@ fn import_grace_sets_grace_attr() {
             Some(tusk_model::generated::data::DataGrace::Unacc)
         );
         let label = note.common.label.as_deref().unwrap();
-        assert!(label.contains("lilypond:grace,grace"), "label: {label}");
+        assert!(label.contains("tusk:grace,"), "label: {label}");
     } else {
         panic!("expected Note, got {:?}", lc[0]);
     }
@@ -652,7 +652,7 @@ fn import_acciaccatura_sets_unacc() {
         );
         let label = note.common.label.as_deref().unwrap();
         assert!(
-            label.contains("lilypond:grace,acciaccatura"),
+            label.contains("tusk:grace,") && label.contains("Acciaccatura"),
             "label: {label}"
         );
     } else {
@@ -671,7 +671,7 @@ fn import_appoggiatura_sets_acc() {
         );
         let label = note.common.label.as_deref().unwrap();
         assert!(
-            label.contains("lilypond:grace,appoggiatura"),
+            label.contains("tusk:grace,") && label.contains("Appoggiatura"),
             "label: {label}"
         );
     } else {
@@ -724,7 +724,7 @@ fn import_after_grace_main_not_grace() {
             );
             let label = note.common.label.as_deref().unwrap();
             assert!(
-                label.contains("lilypond:grace,after"),
+                label.contains("tusk:grace,") && label.contains("AfterGrace"),
                 "label should contain after: {label}"
             );
         }
@@ -739,8 +739,8 @@ fn import_after_grace_with_fraction() {
     if let LayerChild::Note(note) = &lc[1] {
         let label = note.common.label.as_deref().unwrap();
         assert!(
-            label.contains("fraction=3/4"),
-            "label should contain fraction=3/4: {label}"
+            label.contains("[3,4]"),
+            "label should contain fraction [3,4]: {label}"
         );
     }
 }
@@ -756,7 +756,7 @@ fn import_grace_chord() {
             "grace chord should have @grace"
         );
         let label = chord.common.label.as_deref().unwrap();
-        assert!(label.contains("lilypond:grace,grace"), "label: {label}");
+        assert!(label.contains("tusk:grace,"), "label: {label}");
     } else {
         panic!("expected Chord, got {:?}", lc[0]);
     }
@@ -1004,16 +1004,19 @@ fn import_chord_repetition_has_label() {
     if let LayerChild::Chord(c) = &lc[0] {
         let label = c.common.label.as_deref().unwrap_or("");
         assert!(
-            !label.contains("lilypond:chord-rep"),
+            !label.contains("tusk:chord-rep,"),
             "original chord should not have chord-rep label: {label}"
         );
     }
     // Second chord (from q) should have chord-rep label
     if let LayerChild::Chord(c) = &lc[1] {
-        assert_eq!(
-            c.common.label.as_deref(),
-            Some("lilypond:chord-rep"),
-            "chord from q should have chord-rep label"
+        assert!(
+            c.common
+                .label
+                .as_deref()
+                .is_some_and(|l| l.starts_with("tusk:chord-rep,")),
+            "chord from q should have chord-rep label: {:?}",
+            c.common.label
         );
     } else {
         panic!("expected Chord");

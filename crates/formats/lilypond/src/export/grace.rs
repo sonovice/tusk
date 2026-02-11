@@ -54,37 +54,32 @@ fn beam_child_grace_type(child: &tusk_model::elements::BeamChild) -> Option<Expo
 
 /// Parse grace type from a note/chord's label.
 ///
-/// Label segment: `lilypond:grace,TYPE[,fraction=N/D]`
+/// Label segment: `tusk:grace,{json}` using typed `GraceInfo`.
 fn parse_grace_label_from_note_label(label: Option<&str>) -> ExportGraceType {
     let label = match label {
         Some(l) => l,
         None => return ExportGraceType::Grace,
     };
-    // Find the `lilypond:grace,...` segment (may be pipe-separated)
+    // Find the `tusk:grace,...` segment (may be pipe-separated)
     for segment in label.split('|') {
-        if let Some(rest) = segment.strip_prefix("lilypond:grace,") {
-            return parse_grace_type_str(rest);
+        if let Some(json) = segment.strip_prefix("tusk:grace,")
+            && let Ok(info) = serde_json::from_str::<tusk_model::GraceInfo>(json)
+        {
+            return grace_info_to_export(&info);
         }
     }
     ExportGraceType::Grace
 }
 
-/// Parse grace type from the value after `lilypond:grace,`.
-fn parse_grace_type_str(s: &str) -> ExportGraceType {
-    if s == "grace" {
-        ExportGraceType::Grace
-    } else if s == "acciaccatura" {
-        ExportGraceType::Acciaccatura
-    } else if s == "appoggiatura" {
-        ExportGraceType::Appoggiatura
-    } else if let Some(rest) = s.strip_prefix("after") {
-        let fraction = rest
-            .strip_prefix(",fraction=")
-            .and_then(|f| f.split_once('/'))
-            .and_then(|(n, d)| Some((n.parse().ok()?, d.parse().ok()?)));
-        ExportGraceType::AfterGrace { fraction }
-    } else {
-        ExportGraceType::Grace
+/// Convert a typed `GraceInfo` to the export-side `ExportGraceType`.
+fn grace_info_to_export(info: &tusk_model::GraceInfo) -> ExportGraceType {
+    match info {
+        tusk_model::GraceInfo::Grace => ExportGraceType::Grace,
+        tusk_model::GraceInfo::Acciaccatura => ExportGraceType::Acciaccatura,
+        tusk_model::GraceInfo::Appoggiatura => ExportGraceType::Appoggiatura,
+        tusk_model::GraceInfo::AfterGrace { fraction } => ExportGraceType::AfterGrace {
+            fraction: *fraction,
+        },
     }
 }
 

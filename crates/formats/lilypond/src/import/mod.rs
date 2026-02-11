@@ -346,7 +346,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         let mut mei_chord =
                             convert_chord(pitches, duration.as_ref(), &mut id_counter);
                         if *is_chord_repetition {
-                            mei_chord.common.label = Some("lilypond:chord-rep".to_string());
+                            let json = serde_json::to_string(&tusk_model::ChordRepetition).unwrap();
+                            mei_chord.common.label = Some(format!("tusk:chord-rep,{json}"));
                         }
                         if tie_pending {
                             for child in &mut mei_chord.children {
@@ -545,9 +546,15 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         continue;
                     }
                     LyEvent::ContextChange { context_type, name } => {
-                        // Track cross-staff override; store label for roundtrip
-                        cross_staff_override =
-                            Some(format!("lilypond:change,{context_type},{name}"));
+                        // Track cross-staff override; store typed JSON label for roundtrip
+                        let cc = tusk_model::ContextChange {
+                            context_type: context_type.clone(),
+                            name: name.clone(),
+                        };
+                        let json = utils::escape_json_pipe(
+                            &serde_json::to_string(&cc).unwrap_or_default(),
+                        );
+                        cross_staff_override = Some(format!("tusk:context-change,{json}"));
                         continue;
                     }
                     LyEvent::Skip(_)
@@ -817,10 +824,12 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 set_xml_id_on_last_layer_child(&mut layer, &id_val);
                             }
                             let serialized = crate::serializer::serialize_tweak(path, value);
-                            let escaped = signatures::escape_label_value_pub(&serialized);
+                            let escaped = utils::escape_json_pipe(
+                                &serde_json::to_string(&serialized).unwrap_or_default(),
+                            );
                             append_label_to_last_layer_child(
                                 &mut layer,
-                                &format!("lilypond:tweak,{escaped}"),
+                                &format!("tusk:tweak,{escaped}"),
                             );
                         }
                         PostEvent::LyricHyphen | PostEvent::LyricExtender => {

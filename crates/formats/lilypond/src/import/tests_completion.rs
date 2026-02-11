@@ -194,7 +194,7 @@ fn tweak_id_preserved_in_label_for_roundtrip() {
     if let tusk_model::elements::LayerChild::Note(n) = &children[0] {
         let label = n.common.label.as_deref().unwrap_or("");
         assert!(
-            label.contains("lilypond:tweak"),
+            label.contains("tusk:tweak,"),
             "label should contain tweak: {label}"
         );
     } else {
@@ -237,7 +237,7 @@ fn context_change_produces_label_on_notes() {
         if let tusk_model::elements::LayerChild::Note(n) = child {
             let label = n.common.label.as_deref().unwrap_or("");
             assert!(
-                label.contains("lilypond:change,Staff,down"),
+                label.contains("tusk:context-change,"),
                 "note should have cross-staff label: {label}"
             );
         }
@@ -378,7 +378,7 @@ fn grace_notes_have_grace_attribute() {
         );
         let label = n.common.label.as_deref().unwrap_or("");
         assert!(
-            label.contains("lilypond:grace"),
+            label.contains("tusk:grace,"),
             "grace note should have grace label: {label}"
         );
     } else {

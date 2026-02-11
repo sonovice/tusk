@@ -153,7 +153,7 @@ fn import_tweak_on_note_label() {
                                                                 .as_deref()
                                                                 .unwrap_or("");
                                                             assert!(
-                                                                label.contains("lilypond:tweak,"),
+                                                                label.contains("tusk:tweak,"),
                                                                 "note label should contain tweak: {label}"
                                                             );
                                                             return;
