@@ -63,6 +63,14 @@ impl<'src> Lexer<'src> {
         self.pos
     }
 
+    /// Advance past a single byte. Used by the parser for error recovery
+    /// when the lexer cannot produce a valid token at the current position.
+    pub fn skip_byte(&mut self) {
+        if self.pos < self.bytes.len() {
+            self.pos += 1;
+        }
+    }
+
     /// Produce the next token, skipping whitespace and comments.
     pub fn next_token(&mut self) -> Result<SpannedToken, LexError> {
         self.skip_whitespace_and_comments()?;

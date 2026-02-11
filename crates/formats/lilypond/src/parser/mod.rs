@@ -4,13 +4,15 @@
 //! the productions in `specs/lilypond/repo/lily/parser.yy` but implemented as
 //! a hand-rolled recursive-descent parser in Rust.
 
+use std::fmt;
+
 use thiserror::Error;
 
 use crate::lexer::{LexError, Lexer, SpannedToken, Token};
 use crate::model::*;
 
 // ---------------------------------------------------------------------------
-// Errors
+// Errors & Warnings
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Error)]
@@ -32,6 +34,41 @@ pub enum ParseError {
     InvalidNoteName { name: String, offset: usize },
 }
 
+/// Non-fatal diagnostic emitted during parsing.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParseWarning {
+    /// Mixed `'` and `,` in a single octave mark sequence (e.g. `c',`).
+    MixedOctaveMarks { offset: usize },
+    /// Octave marks found after the duration (e.g. `c4''`).
+    OctaveAfterDuration { offset: usize, note_offset: usize },
+    /// A parse error occurred inside a `{ }` or `<< >>` block and the
+    /// parser skipped tokens to recover.
+    RecoveredError { offset: usize, message: String },
+}
+
+impl fmt::Display for ParseWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MixedOctaveMarks { offset } => {
+                write!(f, "mixed ' and , in octave marks at byte offset {offset}")
+            }
+            Self::OctaveAfterDuration {
+                offset,
+                note_offset,
+            } => {
+                write!(
+                    f,
+                    "octave marks at byte offset {offset} should precede duration \
+                     (note at byte offset {note_offset})"
+                )
+            }
+            Self::RecoveredError { offset, message } => {
+                write!(f, "recovered from error at byte offset {offset}: {message}")
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Parser
 // ---------------------------------------------------------------------------
@@ -47,6 +84,8 @@ pub struct Parser<'src> {
     current: SpannedToken,
     /// Optional second lookahead token (for two-token peek).
     lookahead: Option<SpannedToken>,
+    /// Non-fatal warnings collected during parsing.
+    warnings: Vec<ParseWarning>,
 }
 
 impl<'src> Parser<'src> {
@@ -59,12 +98,24 @@ impl<'src> Parser<'src> {
             src,
             current,
             lookahead: None,
+            warnings: Vec::new(),
         })
     }
 
     /// Parse the entire file and return the AST.
     pub fn parse(mut self) -> Result<LilyPondFile, ParseError> {
         self.parse_file()
+    }
+
+    /// Parse the entire file, returning the AST and any warnings.
+    pub fn parse_with_warnings(mut self) -> Result<(LilyPondFile, Vec<ParseWarning>), ParseError> {
+        let file = self.parse_file()?;
+        Ok((file, self.warnings))
+    }
+
+    /// Record a non-fatal warning.
+    pub(super) fn warn(&mut self, warning: ParseWarning) {
+        self.warnings.push(warning);
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -100,12 +151,30 @@ impl<'src> Parser<'src> {
     fn expect(&mut self, expected: &Token) -> Result<SpannedToken, ParseError> {
         if &self.current.token == expected {
             self.advance()
+        } else if self.at_eof() {
+            Err(ParseError::UnexpectedEof {
+                expected: Self::describe_token(expected),
+            })
         } else {
             Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
-                expected: format!("{expected:?}"),
+                expected: Self::describe_token(expected),
             })
+        }
+    }
+
+    /// Human-readable description of a token for error messages.
+    fn describe_token(token: &Token) -> String {
+        match token {
+            Token::BraceOpen => "opening brace '{'".into(),
+            Token::BraceClose => "closing brace '}'".into(),
+            Token::AngleOpen => "'<'".into(),
+            Token::AngleClose => "'>'".into(),
+            Token::DoubleAngleOpen => "'<<'".into(),
+            Token::DoubleAngleClose => "'>>'".into(),
+            Token::Equals => "'='".into(),
+            other => format!("{other:?}"),
         }
     }
 
@@ -128,6 +197,41 @@ impl<'src> Parser<'src> {
 
     fn at_eof(&self) -> bool {
         self.current.token == Token::Eof
+    }
+
+    /// Skip tokens until a recovery point is reached.
+    ///
+    /// Recovery points are: `}`, `|`, `>>`, EOF, or any token that can
+    /// start a new music expression. If a `|` is found it is consumed
+    /// (it's a bar check); closers `}` / `>>` are left in place for the
+    /// enclosing parse loop.
+    fn skip_to_recovery_point(&mut self) {
+        loop {
+            match self.peek() {
+                Token::BraceClose | Token::DoubleAngleClose | Token::Eof => break,
+                Token::Pipe => {
+                    let _ = self.advance(); // consume bar check
+                    break;
+                }
+                // Known music-start tokens — stop before them
+                Token::NoteName(_)
+                | Token::BraceOpen
+                | Token::AngleOpen
+                | Token::DoubleAngleOpen => break,
+                Token::Symbol(s) if s == "r" || s == "s" || s == "R" || s == "q" => break,
+                _ => {
+                    if self.advance().is_err() {
+                        // Lexer error — force position forward to avoid infinite loop
+                        self.lexer.skip_byte();
+                        // Re-read next valid token
+                        match self.lexer.next_token() {
+                            Ok(tok) => self.current = tok,
+                            Err(_) => continue, // will retry or hit EOF
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -688,503 +792,6 @@ impl<'src> Parser<'src> {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // Note event: pitch exclamations questions optional_duration [\rest]
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_note_event(&mut self) -> Result<Music, ParseError> {
-        let offset = self.offset();
-        let tok = self.advance()?;
-        let note_name = match tok.token {
-            Token::NoteName(s) => s,
-            _ => unreachable!(),
-        };
-
-        let (step, alter) =
-            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
-                name: note_name.clone(),
-                offset,
-            })?;
-
-        // Parse octave marks (quotes)
-        let octave = self.parse_quotes();
-
-        // Parse exclamations and questions (force/cautionary accidentals)
-        let force_accidental = self.try_consume(&Token::Exclamation);
-        let cautionary = self.try_consume(&Token::Question);
-
-        // Parse octave check: `=` followed by optional octave marks
-        let octave_check = if *self.peek() == Token::Equals {
-            self.advance()?; // consume `=`
-            Some(self.parse_quotes())
-        } else {
-            None
-        };
-
-        // Parse optional duration
-        let duration = self.parse_optional_duration()?;
-
-        // Parse optional tremolo `:N`
-        let tremolo = self.parse_optional_tremolo();
-
-        // Check for \rest (pitched rest)
-        let pitched_rest = self.try_consume(&Token::Rest);
-
-        let mut post_events = self.parse_post_events();
-        if let Some(t) = tremolo {
-            post_events.insert(0, t);
-        }
-
-        Ok(Music::Note(NoteEvent {
-            pitch: Pitch {
-                step,
-                alter,
-                octave,
-                force_accidental,
-                cautionary,
-                octave_check,
-            },
-            duration,
-            pitched_rest,
-            post_events,
-        }))
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Chord: < pitch1 pitch2 ... > duration post_events
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_chord(&mut self) -> Result<Music, ParseError> {
-        self.expect(&Token::AngleOpen)?;
-        let mut pitches = Vec::new();
-        while *self.peek() != Token::AngleClose && !self.at_eof() {
-            pitches.push(self.parse_chord_body_pitch()?);
-        }
-        self.expect(&Token::AngleClose)?;
-        let duration = self.parse_optional_duration()?;
-        let tremolo = self.parse_optional_tremolo();
-        let mut post_events = self.parse_post_events();
-        if let Some(t) = tremolo {
-            post_events.insert(0, t);
-        }
-        Ok(Music::Chord(ChordEvent {
-            pitches,
-            duration,
-            post_events,
-        }))
-    }
-
-    /// Parse a single pitch element inside a chord body.
-    ///
-    /// Mirrors `chord_body_element`: pitch with octave marks, accidental
-    /// markers (! ?), but no duration (duration is shared on the chord).
-    fn parse_chord_body_pitch(&mut self) -> Result<Pitch, ParseError> {
-        let offset = self.offset();
-        let tok = self.advance()?;
-        let note_name = match tok.token {
-            Token::NoteName(s) => s,
-            other => {
-                return Err(ParseError::Unexpected {
-                    found: other,
-                    offset,
-                    expected: "pitch in chord body".into(),
-                });
-            }
-        };
-
-        let (step, alter) =
-            Pitch::from_note_name(&note_name).ok_or_else(|| ParseError::InvalidNoteName {
-                name: note_name.clone(),
-                offset,
-            })?;
-
-        let octave = self.parse_quotes();
-        let force_accidental = self.try_consume(&Token::Exclamation);
-        let cautionary = self.try_consume(&Token::Question);
-
-        // Octave check inside chord body
-        let octave_check = if *self.peek() == Token::Equals {
-            self.advance()?;
-            Some(self.parse_quotes())
-        } else {
-            None
-        };
-
-        Ok(Pitch {
-            step,
-            alter,
-            octave,
-            force_accidental,
-            cautionary,
-            octave_check,
-        })
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Rest (r), skip (s), multi-measure rest (R)
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_rest_or_skip(&mut self) -> Result<Music, ParseError> {
-        let tok = self.advance()?;
-        let kind = match tok.token {
-            Token::Symbol(s) => s,
-            _ => unreachable!(),
-        };
-        let duration = self.parse_optional_duration()?;
-        let tremolo = self.parse_optional_tremolo();
-        let mut post_events = self.parse_post_events();
-        if let Some(t) = tremolo {
-            post_events.insert(0, t);
-        }
-        match kind.as_str() {
-            "r" => Ok(Music::Rest(RestEvent {
-                duration,
-                post_events,
-            })),
-            "s" => Ok(Music::Skip(SkipEvent {
-                duration,
-                post_events,
-            })),
-            "R" => Ok(Music::MultiMeasureRest(MultiMeasureRestEvent {
-                duration,
-                post_events,
-            })),
-            _ => unreachable!(),
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Chord repetition: q
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_chord_repetition(&mut self) -> Result<Music, ParseError> {
-        self.advance()?; // consume `q`
-        let duration = self.parse_optional_duration()?;
-        let tremolo = self.parse_optional_tremolo();
-        let mut post_events = self.parse_post_events();
-        if let Some(t) = tremolo {
-            post_events.insert(0, t);
-        }
-        Ok(Music::ChordRepetition(ChordRepetitionEvent {
-            duration,
-            post_events,
-        }))
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Post-events: tie ~, slur ( ), phrasing slur \( \)
-    // ──────────────────────────────────────────────────────────────────
-
-    /// Parse optional tremolo: `:` followed by optional unsigned integer.
-    ///
-    /// Mirrors the `tremolo_type` production in the grammar. Returns `None`
-    /// if no colon is present; returns `Tremolo(0)` for bare `:`.
-    fn parse_optional_tremolo(&mut self) -> Option<PostEvent> {
-        if *self.peek() != Token::Colon {
-            return None;
-        }
-        let _ = self.advance(); // consume `:`
-        if let Token::Unsigned(n) = self.peek() {
-            let n = *n as u32;
-            let _ = self.advance();
-            Some(PostEvent::Tremolo(n))
-        } else {
-            Some(PostEvent::Tremolo(0))
-        }
-    }
-
-    fn parse_post_events(&mut self) -> Vec<PostEvent> {
-        let mut events = Vec::new();
-        loop {
-            match self.peek() {
-                Token::Tilde => {
-                    let _ = self.advance();
-                    events.push(PostEvent::Tie);
-                }
-                Token::ParenOpen => {
-                    let _ = self.advance();
-                    events.push(PostEvent::SlurStart);
-                }
-                Token::ParenClose => {
-                    let _ = self.advance();
-                    events.push(PostEvent::SlurEnd);
-                }
-                Token::EscapedParenOpen => {
-                    let _ = self.advance();
-                    events.push(PostEvent::PhrasingSlurStart);
-                }
-                Token::EscapedParenClose => {
-                    let _ = self.advance();
-                    events.push(PostEvent::PhrasingSlurEnd);
-                }
-                Token::BracketOpen => {
-                    let _ = self.advance();
-                    events.push(PostEvent::BeamStart);
-                }
-                Token::BracketClose => {
-                    let _ = self.advance();
-                    events.push(PostEvent::BeamEnd);
-                }
-                Token::EscapedAngleOpen => {
-                    let _ = self.advance();
-                    events.push(PostEvent::Crescendo);
-                }
-                Token::EscapedAngleClose => {
-                    let _ = self.advance();
-                    events.push(PostEvent::Decrescendo);
-                }
-                Token::EscapedExclamation => {
-                    let _ = self.advance();
-                    events.push(PostEvent::HairpinEnd);
-                }
-                Token::EscapedWord(s) if note::is_dynamic_marking(s) => {
-                    let s = s.clone();
-                    let _ = self.advance();
-                    events.push(PostEvent::Dynamic(s));
-                }
-                // Tweak: \tweak path value
-                Token::Tweak => {
-                    if let Ok(ev) = self.parse_tweak_post_event() {
-                        events.push(ev);
-                    } else {
-                        break;
-                    }
-                }
-                // Undirected ornaments/scripts: \trill, \mordent, \turn, etc.
-                Token::EscapedWord(s) if note::is_ornament_or_script(s) => {
-                    let s = s.clone();
-                    let _ = self.advance();
-                    events.push(PostEvent::NamedArticulation {
-                        direction: note::Direction::Neutral,
-                        name: s,
-                    });
-                }
-                // Undirected string number: \1, \2, etc.
-                Token::EscapedUnsigned(n) if *n <= 9 => {
-                    let number = *n as u8;
-                    let _ = self.advance();
-                    events.push(PostEvent::StringNumber {
-                        direction: note::Direction::Neutral,
-                        number,
-                    });
-                }
-                // Direction prefixes: -, ^, _ followed by script/fingering/articulation
-                Token::Dash | Token::Caret | Token::Underscore => {
-                    if let Some(ev) = self.try_parse_directed_post_event() {
-                        events.push(ev);
-                    } else {
-                        break;
-                    }
-                }
-                _ => break,
-            }
-        }
-        events
-    }
-
-    /// Try to parse a direction-prefixed post-event: `-X`, `^X`, `_X`.
-    ///
-    /// Returns `None` if the token after the direction prefix isn't a valid
-    /// post-event (the direction token is NOT consumed in that case).
-    fn try_parse_directed_post_event(&mut self) -> Option<PostEvent> {
-        let direction = match self.peek() {
-            Token::Dash => note::Direction::Neutral,
-            Token::Caret => note::Direction::Up,
-            Token::Underscore => note::Direction::Down,
-            _ => return None,
-        };
-
-        // We need lookahead: peek past the direction to see what follows.
-        // Save state for potential backtrack.
-        let saved = self.current.clone();
-        let _ = self.advance(); // consume direction token
-
-        match self.peek() {
-            // Script abbreviation: . - > ^ + ! _
-            Token::Dot => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Dot,
-                })
-            }
-            Token::Dash => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Dash,
-                })
-            }
-            Token::AngleClose => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Accent,
-                })
-            }
-            Token::Caret => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Marcato,
-                })
-            }
-            Token::Plus => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Stopped,
-                })
-            }
-            Token::Exclamation => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Staccatissimo,
-                })
-            }
-            Token::Underscore => {
-                let _ = self.advance();
-                Some(PostEvent::Articulation {
-                    direction,
-                    script: note::ScriptAbbreviation::Portato,
-                })
-            }
-            // Fingering: digit 0-9
-            Token::Unsigned(n) if *n <= 9 => {
-                let digit = *n as u8;
-                let _ = self.advance();
-                Some(PostEvent::Fingering { direction, digit })
-            }
-            // Named articulation: \name (e.g. \staccato, \accent, \trill)
-            Token::EscapedWord(name) => {
-                let name = name.clone();
-                let _ = self.advance();
-                Some(PostEvent::NamedArticulation { direction, name })
-            }
-            // String number: \1, \2, etc.
-            Token::EscapedUnsigned(n) if *n <= 9 => {
-                let number = *n as u8;
-                let _ = self.advance();
-                Some(PostEvent::StringNumber { direction, number })
-            }
-            // Text script: "string" after direction (gen_text_def)
-            Token::String(s) => {
-                let s = s.clone();
-                let _ = self.advance();
-                Some(PostEvent::TextScript {
-                    direction,
-                    text: crate::model::markup::Markup::String(s),
-                })
-            }
-            // Text script: \markup {...} after direction (gen_text_def)
-            Token::Markup => match self.parse_markup() {
-                Ok(m) => Some(PostEvent::TextScript { direction, text: m }),
-                Err(_) => {
-                    self.current = saved;
-                    None
-                }
-            },
-            _ => {
-                // Not a valid post-event after direction — backtrack
-                self.current = saved;
-                None
-            }
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Quotes: octave marks (' and ,)
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_quotes(&mut self) -> i8 {
-        let mut octave: i8 = 0;
-        loop {
-            match self.peek() {
-                Token::Quote => {
-                    octave = octave.saturating_add(1);
-                    let _ = self.advance();
-                }
-                Token::Comma => {
-                    octave = octave.saturating_sub(1);
-                    let _ = self.advance();
-                }
-                _ => break,
-            }
-        }
-        octave
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // Optional duration: UNSIGNED dots multipliers
-    // ──────────────────────────────────────────────────────────────────
-
-    fn parse_optional_duration(&mut self) -> Result<Option<Duration>, ParseError> {
-        match self.peek() {
-            Token::Unsigned(_) => {
-                let tok = self.advance()?;
-                let base = match tok.token {
-                    Token::Unsigned(n) => n as u32,
-                    _ => unreachable!(),
-                };
-                let dots = self.parse_dots();
-                let multipliers = self.parse_multipliers()?;
-                Ok(Some(Duration {
-                    base,
-                    dots,
-                    multipliers,
-                }))
-            }
-            _ => Ok(None),
-        }
-    }
-
-    /// Parse dots: zero or more `.` tokens.
-    fn parse_dots(&mut self) -> u8 {
-        let mut dots: u8 = 0;
-        while *self.peek() == Token::Dot {
-            dots = dots.saturating_add(1);
-            let _ = self.advance();
-        }
-        dots
-    }
-
-    /// Parse multipliers: zero or more `*N` or `*N/M` sequences.
-    fn parse_multipliers(&mut self) -> Result<Vec<(u32, u32)>, ParseError> {
-        let mut multipliers = Vec::new();
-        while *self.peek() == Token::Star {
-            let _ = self.advance(); // consume `*`
-            if let Token::Unsigned(n) = self.peek() {
-                let n = *n as u32;
-                let _ = self.advance();
-                if *self.peek() == Token::Slash {
-                    let _ = self.advance(); // consume `/`
-                    if let Token::Unsigned(d) = self.peek() {
-                        let d = *d as u32;
-                        let _ = self.advance();
-                        multipliers.push((n, d));
-                    } else {
-                        // `*N/` without denominator — treat as `*N/1`
-                        multipliers.push((n, 1));
-                    }
-                } else {
-                    multipliers.push((n, 1));
-                }
-            }
-        }
-        Ok(multipliers)
-    }
-
-    /// Try to consume a specific token, returning true if consumed.
-    fn try_consume(&mut self, token: &Token) -> bool {
-        if self.peek() == token {
-            let _ = self.advance();
-            true
-        } else {
-            false
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────
     // Bar line: \bar "type"
     // ──────────────────────────────────────────────────────────────────
 
@@ -1259,9 +866,21 @@ impl<'src> Parser<'src> {
         self.expect(&Token::BraceOpen)?;
         let mut items = Vec::new();
         while *self.peek() != Token::BraceClose && !self.at_eof() {
-            let m = self.parse_music()?;
-            let m = self.try_wrap_addlyrics(m)?;
-            items.push(m);
+            match self.parse_music() {
+                Ok(m) => {
+                    let m = self.try_wrap_addlyrics(m)?;
+                    items.push(m);
+                }
+                Err(e) => {
+                    // Recovery: skip to next `|`, `}`, or known music-start token
+                    let offset = self.offset();
+                    self.warn(ParseWarning::RecoveredError {
+                        offset,
+                        message: e.to_string(),
+                    });
+                    self.skip_to_recovery_point();
+                }
+            }
         }
         self.expect(&Token::BraceClose)?;
         Ok(Music::Sequential(items))
@@ -1283,9 +902,20 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 continue;
             }
-            let m = self.parse_music()?;
-            let m = self.try_wrap_addlyrics(m)?;
-            items.push(m);
+            match self.parse_music() {
+                Ok(m) => {
+                    let m = self.try_wrap_addlyrics(m)?;
+                    items.push(m);
+                }
+                Err(e) => {
+                    let offset = self.offset();
+                    self.warn(ParseWarning::RecoveredError {
+                        offset,
+                        message: e.to_string(),
+                    });
+                    self.skip_to_recovery_point();
+                }
+            }
         }
         self.expect(&Token::DoubleAngleClose)?;
         Ok(Music::Simultaneous(items))
@@ -1466,6 +1096,7 @@ mod figures;
 mod functions;
 mod lyrics;
 mod markup;
+mod note_events;
 mod numeric;
 mod properties;
 mod raw_blocks;
@@ -1474,6 +1105,11 @@ mod signatures;
 /// Parse a LilyPond source string into an AST.
 pub fn parse(src: &str) -> Result<LilyPondFile, ParseError> {
     Parser::new(src)?.parse()
+}
+
+/// Parse a LilyPond source string, returning the AST and any warnings.
+pub fn parse_with_warnings(src: &str) -> Result<(LilyPondFile, Vec<ParseWarning>), ParseError> {
+    Parser::new(src)?.parse_with_warnings()
 }
 
 #[cfg(test)]
@@ -1486,6 +1122,8 @@ mod tests_chord_rep;
 mod tests_chords;
 #[cfg(test)]
 mod tests_drums;
+#[cfg(test)]
+mod tests_error_recovery;
 #[cfg(test)]
 mod tests_figures;
 #[cfg(test)]

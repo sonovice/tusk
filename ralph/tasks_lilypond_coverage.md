@@ -1967,10 +1967,22 @@ Grammar: `erroneous_quotes` (error recovery for malformed octave marks).
 
 ### 45.1 Parser
 
-- [ ] [P] Handle `erroneous_quotes`: mixed `'` and `,` in octave marks (e.g. `c',`) — emit warning but continue parsing, treating as best-effort octave
-- [ ] [P] Improve error messages for common mistakes: unmatched braces, missing duration, invalid note names
-- [ ] [P] Add recovery points: when a parse error occurs mid-expression, skip to next `}` or `|` and continue
-- [ ] [T] Parser tests: malformed octave marks parse with warning, recovery after parse error
+- [x] [P] Handle `erroneous_quotes`: mixed `'` and `,` in octave marks (e.g. `c',`) — emit warning but continue parsing, treating as best-effort octave
+  - `ParseWarning::MixedOctaveMarks` emitted when `'` and `,` mixed in same sequence
+  - `ParseWarning::OctaveAfterDuration` for misplaced quotes after duration (e.g. `c4''`)
+  - Erroneous post-duration quotes applied to pitch or octave_check (same as reference grammar)
+  - `parse_with_warnings()` API on Parser + free function
+- [x] [P] Improve error messages for common mistakes: unmatched braces, missing duration, invalid note names
+  - `describe_token()` helper for human-readable token descriptions in error messages
+  - `expect()` now produces `UnexpectedEof` when at EOF (mentions expected closing brace etc.)
+- [x] [P] Add recovery points: when a parse error occurs mid-expression, skip to next `}` or `|` and continue
+  - `skip_to_recovery_point()` skips to `}`, `|`, `>>`, EOF, or music-start tokens
+  - `parse_sequential_music` and `parse_simultaneous_music` catch errors and recover
+  - `ParseWarning::RecoveredError` emitted for each recovered error
+  - Lexer `skip_byte()` for recovery past unknown characters
+- [x] [T] Parser tests: malformed octave marks parse with warning, recovery after parse error
+  - 12 tests in `tests_error_recovery.rs`: mixed octave marks, octave after duration, recovery in sequential/simultaneous blocks, improved error messages, warning Display
+  - Extracted note/chord/rest/post-event/duration parsing to `note_events.rs` (mod.rs 1512→1154 lines)
 
 ---
 
