@@ -244,6 +244,10 @@ pub struct ExtData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metronome_json: Option<String>,
 
+    /// Wedge stop spread value for hairpin roundtrip.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wedge_stop_spread: Option<f64>,
+
     /// Staff-details roundtrip data.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staff_details_extras: Option<crate::musicxml_ext::StaffDetailsExtras>,

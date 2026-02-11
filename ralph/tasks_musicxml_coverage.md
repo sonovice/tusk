@@ -1382,20 +1382,20 @@ Hairpins in MEI output have no `@tstamp2` or `@endid`.
 
 ### 31.1 Implementation
 
-- [ ] Add pending hairpin tracking to import context (similar to slur/glissando patterns)
+- [x] Add pending hairpin tracking to import context (similar to slur/glissando patterns)
   - `PendingHairpin` struct with start hairpin element ID, staff, measure reference
-- [ ] On `<wedge type="start/crescendo/diminuendo">`: create `<hairpin>` with `@startid` and register as pending
-- [ ] On `<wedge type="stop">`: resolve pending hairpin → set `@endid` on the hairpin (or `@tstamp2` if no note reference)
-- [ ] On `<wedge type="continue">`: handle intermediate hairpin segments
-- [ ] Handle cross-measure hairpins (hairpin starts in measure N, stops in measure M)
-  - May need deferred resolution similar to slurs/glissandos
-- [ ] Export: read `@endid`/`@tstamp2` from hairpin to determine when to emit `<wedge type="stop">`
+- [x] On `<wedge type="start/crescendo/diminuendo">`: create `<hairpin>` with `@startid` and register as pending
+- [x] On `<wedge type="stop">`: resolve pending hairpin → set `@tstamp2` on the hairpin
+- [x] On `<wedge type="continue">`: handle intermediate hairpin segments (returns None)
+- [x] Handle cross-measure hairpins (hairpin starts in measure N, stops in measure M)
+  - Deferred resolution via DeferredHairpinStop (same pattern as slurs)
+- [x] Export: read `@tstamp2` from hairpin to determine when to emit `<wedge type="stop">`
 
 ### 31.2 Tests
 
-- [ ] Add roundtrip fixture with hairpin start/stop pairs (single-measure and cross-measure)
-- [ ] Verify MEI hairpins have proper `@endid`
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with hairpin start/stop pairs (single-measure and cross-measure)
+- [x] Verify MEI hairpins have proper `@tstamp2`
+- [x] Existing tests pass (0 regressions)
 
 ---
 

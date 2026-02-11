@@ -23,6 +23,7 @@
 //! ```
 
 mod glissandos;
+mod hairpins;
 mod ids;
 mod positions;
 mod slurs;
@@ -35,6 +36,7 @@ use crate::model::duration::DurationContext;
 use tusk_model::extensions::ExtensionStore;
 
 pub use glissandos::{CompletedGliss, PendingGliss};
+pub use hairpins::{CompletedHairpin, DeferredHairpinStop, PendingHairpin};
 pub use positions::{ConversionWarning, DocumentPosition};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
@@ -101,6 +103,15 @@ pub struct ConversionContext {
 
     /// Completed glissandos/slides ready to be emitted as MEI control events.
     pub(super) completed_glisses: Vec<glissandos::CompletedGliss>,
+
+    /// Pending hairpins (wedges) waiting for their stop.
+    pub(super) pending_hairpins: Vec<hairpins::PendingHairpin>,
+
+    /// Completed hairpins with tstamp2 resolved, ready to be patched onto MEI hairpin elements.
+    pub(super) completed_hairpins: Vec<hairpins::CompletedHairpin>,
+
+    /// Deferred hairpin stops for cross-measure hairpins (MEI→MusicXML export).
+    pub(super) deferred_hairpin_stops: Vec<hairpins::DeferredHairpinStop>,
 
     /// Ornament control events collected during note processing, emitted after all staves.
     pub(super) pending_ornament_events: Vec<tusk_model::elements::MeasureChild>,
@@ -170,6 +181,9 @@ impl ConversionContext {
             completed_tuplets: Vec::new(),
             pending_glisses: Vec::new(),
             completed_glisses: Vec::new(),
+            pending_hairpins: Vec::new(),
+            completed_hairpins: Vec::new(),
+            deferred_hairpin_stops: Vec::new(),
             pending_ornament_events: Vec::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
@@ -345,6 +359,9 @@ impl ConversionContext {
         self.completed_tuplets.clear();
         self.pending_glisses.clear();
         self.completed_glisses.clear();
+        self.pending_hairpins.clear();
+        self.completed_hairpins.clear();
+        self.deferred_hairpin_stops.clear();
         self.pending_ornament_events.clear();
         self.warnings.clear();
         self.position = DocumentPosition::default();

@@ -480,12 +480,11 @@ fn convert_dynamics(
 /// Convert MusicXML wedge to MEI hairpin element.
 ///
 /// Maps wedge types:
-/// - crescendo → hairpin with form="cres"
-/// - diminuendo → hairpin with form="dim"
-/// - stop → None (closes a previous hairpin via context)
+/// - crescendo/diminuendo → hairpin with form="cres"/"dim", registers as pending
+/// - stop → resolves pending hairpin, adds CompletedHairpin with tstamp2
+/// - continue → ignored (system-break continuation, no MEI equivalent)
 ///
-/// Returns None for stop wedges since they don't create new elements,
-/// but rather close existing ones.
+/// Returns Some(Hairpin) for start wedges, None for stop/continue.
 fn convert_wedge(
     wedge: &crate::model::direction::Wedge,
     tstamp: DataBeat,
@@ -493,6 +492,7 @@ fn convert_wedge(
     place: Option<DataStaffrel>,
     ctx: &mut ConversionContext,
 ) -> Option<Hairpin> {
+    use crate::context::PendingHairpin;
     use crate::model::data::YesNo;
     use tusk_model::data::{DataColor, DataColorvalues};
 
@@ -522,7 +522,7 @@ fn convert_wedge(
             }
 
             // Set timestamp and staff
-            hairpin.hairpin_log.tstamp = Some(tstamp);
+            hairpin.hairpin_log.tstamp = Some(tstamp.clone());
             hairpin.hairpin_log.staff = Some((staff as u64).to_string());
 
             // Set placement
@@ -535,12 +535,40 @@ fn convert_wedge(
                 )));
             }
 
+            // Register as pending for later stop resolution
+            let part_id = ctx.position().part_id.clone().unwrap_or_default();
+            ctx.add_pending_hairpin(PendingHairpin {
+                hairpin_id,
+                part_id,
+                number: wedge.number.unwrap_or(1),
+                start_measure_idx: ctx.measure_idx(),
+                start_tstamp: tstamp.0,
+                mei_staff: staff,
+                start_spread: wedge.spread,
+            });
+
             Some(hairpin)
         }
-        WedgeType::Stop | WedgeType::Continue => {
-            // Stop and continue wedges don't create new elements
-            // In a full implementation, we would update the corresponding
-            // start hairpin with tstamp2 or endid
+        WedgeType::Stop => {
+            // Resolve the pending hairpin and compute tstamp2
+            let part_id = ctx.position().part_id.clone().unwrap_or_default();
+            let number = wedge.number.unwrap_or(1);
+            if let Some(pending) = ctx.resolve_hairpin(&part_id, number) {
+                let stop_tstamp = tstamp.0; // 1-based beat at stop point
+                let measure_offset = ctx.measure_idx() - pending.start_measure_idx;
+                // MEI tstamp2 format: "Nm+B" where N = measures ahead, B = beat in target measure
+                let tstamp2 = format!("{measure_offset}m+{stop_tstamp}");
+                ctx.add_completed_hairpin(crate::context::CompletedHairpin {
+                    hairpin_id: pending.hairpin_id,
+                    tstamp2,
+                    stop_spread: wedge.spread,
+                });
+            }
+            None
+        }
+        WedgeType::Continue => {
+            // Continue wedges indicate system-break continuation;
+            // no separate MEI element needed
             None
         }
     }

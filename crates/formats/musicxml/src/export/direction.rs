@@ -11,6 +11,7 @@ use crate::model::direction::{
     Eyeglasses, HarpPedals, LineEnd, OctaveShift, OctaveShiftType, Pedal, PedalType,
     PrincipalVoice, Rehearsal, Segno, StaffDivide, Symbol, Words,
 };
+use crate::model::elements::MeasureContent;
 
 /// Convert an MEI dynam element to a MusicXML direction with dynamics.
 ///
@@ -208,13 +209,115 @@ pub fn convert_mei_hairpin(
     // Convert tstamp to offset for proper repositioning on reimport
     direction.offset = convert_tstamp_to_offset(&hairpin.hairpin_log.tstamp, ctx);
 
+    let staff_n = hairpin
+        .hairpin_log
+        .staff
+        .as_ref()
+        .and_then(|s| s.split_whitespace().next())
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1usize);
+
     directions.push(direction);
 
-    // If hairpin has tstamp2 (ending timestamp), we need to create a stop wedge
-    // This is handled separately by the caller who has measure context
-    // Note: MEI hairpins are span elements with start/end, MusicXML uses separate start/stop
+    // If hairpin has tstamp2, create a stop wedge (same measure or deferred)
+    if let Some(ref tstamp2) = hairpin.hairpin_log.tstamp2 {
+        let (measures_ahead, stop_beat) = parse_tstamp2(&tstamp2.0);
+
+        // Restore stop spread from extension store
+        let stop_spread = hairpin
+            .common
+            .xml_id
+            .as_ref()
+            .and_then(|id| ctx.ext_store().get(id))
+            .and_then(|ext| ext.wedge_stop_spread);
+
+        if measures_ahead == 0 {
+            // Same-measure stop: emit stop wedge immediately
+            let stop_dir = make_hairpin_stop_direction(stop_beat, stop_spread, ctx);
+            directions.push(stop_dir);
+        } else {
+            // Cross-measure: defer to future measure
+            // measures_remaining is 0-based: 0 means emit next time resolve is called
+            ctx.add_deferred_hairpin_stop(crate::context::DeferredHairpinStop {
+                measures_remaining: measures_ahead - 1,
+                beat: stop_beat,
+                staff: staff_n,
+                spread: stop_spread,
+            });
+        }
+    }
 
     directions
+}
+
+/// Parse MEI tstamp2 format "Nm+B" into (measures_ahead, beat).
+///
+/// Examples: "0m+3" → (0, 3.0), "2m+1" → (2, 1.0), "1m+2.5" → (1, 2.5)
+fn parse_tstamp2(s: &str) -> (usize, f64) {
+    if let Some((m_part, b_part)) = s.split_once("m+") {
+        let measures = m_part.parse().unwrap_or(0);
+        let beat = b_part.parse().unwrap_or(1.0);
+        (measures, beat)
+    } else {
+        // Fallback: treat as beat in same measure
+        (0, s.parse().unwrap_or(1.0))
+    }
+}
+
+/// Create a stop wedge direction at the given beat position.
+fn make_hairpin_stop_direction(
+    beat: f64,
+    spread: Option<f64>,
+    ctx: &ConversionContext,
+) -> crate::model::direction::Direction {
+    use crate::model::direction::{
+        Direction, DirectionType, DirectionTypeContent, Wedge, WedgeType,
+    };
+
+    let mut wedge = Wedge::new(WedgeType::Stop);
+    wedge.spread = spread;
+
+    let direction_type = DirectionType {
+        content: DirectionTypeContent::Wedge(wedge),
+        id: None,
+    };
+
+    let mut direction = Direction::new(vec![direction_type]);
+    direction.staff = Some(1);
+
+    // Convert beat to offset
+    let beat_position = beat - 1.0; // 1-based → 0-based
+    let offset_divisions = beat_position * ctx.divisions();
+    direction.offset = Some(crate::model::direction::Offset::new(offset_divisions));
+
+    direction
+}
+
+/// Resolve deferred hairpin stops that target the current measure.
+///
+/// Call at the start of each measure during export. Decrements the counter on
+/// each deferred stop; those reaching 0 are emitted as stop wedge directions.
+pub fn resolve_deferred_hairpin_stops(
+    staff_n: usize,
+    mxml_measure: &mut crate::model::elements::Measure,
+    ctx: &mut ConversionContext,
+) {
+    let deferred = ctx.drain_deferred_hairpin_stops();
+    for mut stop in deferred {
+        if stop.staff != staff_n {
+            // Not for this staff — re-defer without decrementing
+            ctx.add_deferred_hairpin_stop(stop);
+        } else if stop.measures_remaining > 0 {
+            stop.measures_remaining -= 1;
+            ctx.add_deferred_hairpin_stop(stop);
+        } else {
+            // Emit stop wedge in this measure
+            let stop_dir = make_hairpin_stop_direction(stop.beat, stop.spread, ctx);
+            mxml_measure
+                .content
+                .push(MeasureContent::Direction(Box::new(stop_dir)));
+        }
+    }
 }
 
 /// Convert an MEI dir (directive) element to a MusicXML direction.

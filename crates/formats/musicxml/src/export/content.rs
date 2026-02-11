@@ -796,6 +796,9 @@ fn convert_direction_events(
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
+    // Resolve any deferred hairpin stops from previous measures
+    super::direction::resolve_deferred_hairpin_stops(staff_n, mxml_measure, ctx);
+
     for child in &mei_measure.children {
         match child {
             MeasureChild::Dynam(dynam) => {

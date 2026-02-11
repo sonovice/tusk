@@ -401,6 +401,15 @@ fn attribute_values_equivalent(val1: &str, val2: &str) -> bool {
         }
     }
 
+    // Try tstamp2 comparison ("Nm+B" format) with float tolerance on the beat part
+    if let (Some((m1, b1)), Some((m2, b2))) =
+        (parse_tstamp2_parts(&norm1), parse_tstamp2_parts(&norm2))
+    {
+        if m1 == m2 && floats_equivalent(b1, b2) {
+            return true;
+        }
+    }
+
     // Try numeric comparison for whitespace-separated lists (like bezier coordinates)
     let parts1: Vec<&str> = norm1.split_whitespace().collect();
     let parts2: Vec<&str> = norm2.split_whitespace().collect();
@@ -554,6 +563,24 @@ fn collect_deep_text(elem: &CanonicalElement) -> String {
 
 /// Get element-specific key suffix for control events that need extra disambiguation.
 ///
+/// Parse a tstamp2 value ("Nm+B") into (measures, beat) parts.
+fn parse_tstamp2_parts(s: &str) -> Option<(&str, f64)> {
+    let (m_part, b_part) = s.split_once("m+")?;
+    let b = b_part.parse::<f64>().ok()?;
+    Some((m_part, b))
+}
+
+/// Normalize a tstamp2 value ("Nm+B") for float-stable comparison.
+/// Parses the beat portion as f64 and formats with fixed precision.
+fn normalize_tstamp2(s: &str) -> String {
+    if let Some((m_part, b_part)) = s.split_once("m+") {
+        if let Ok(b) = b_part.parse::<f64>() {
+            return format!("{}m+{:.10}", m_part, b);
+        }
+    }
+    s.to_string()
+}
+
 /// Some control events can share the same staff+tstamp but differ in type-specific
 /// attributes (e.g., two hairpins at same position with different @form, or two
 /// pedals with different @dir).
@@ -684,7 +711,7 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 let tstamp2_key = elem
                     .attributes
                     .get("tstamp2")
-                    .map(|t| format!(",tstamp2={}", t))
+                    .map(|t| format!(",tstamp2={}", normalize_tstamp2(t)))
                     .unwrap_or_default();
                 // Include element-specific attributes (e.g., @dir for pedal, @form for hairpin)
                 // Multiple control events can share the same startid (e.g., pedal down/up)
@@ -747,7 +774,7 @@ fn get_element_key(elem: &CanonicalElement) -> String {
                 let tstamp2_key = elem
                     .attributes
                     .get("tstamp2")
-                    .map(|t| format!(",tstamp2={}", t))
+                    .map(|t| format!(",tstamp2={}", normalize_tstamp2(t)))
                     .unwrap_or_default();
                 // Include visual positioning attributes to disambiguate
                 // otherwise-identical control events at the same position.

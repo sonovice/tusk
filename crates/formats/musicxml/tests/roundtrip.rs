@@ -1548,6 +1548,7 @@ fragment_roundtrip_test!(voice_element);
 fragment_roundtrip_test!(wait_element);
 fragment_roundtrip_test!(wavy_line_element);
 fragment_roundtrip_test!(wedge_element);
+fragment_roundtrip_test!(hairpin_cross_measure);
 fragment_roundtrip_test!(with_bar_element);
 fragment_roundtrip_test!(wood_element);
 // Multi-staff parts (Phase 2)

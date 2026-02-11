@@ -5,6 +5,8 @@ pub struct DocumentPosition {
     pub part_id: Option<String>,
     /// Current measure number.
     pub measure_number: Option<String>,
+    /// Current 0-based measure index within the score.
+    pub measure_idx: usize,
     /// Current staff number (1-based).
     pub staff: Option<u32>,
     /// Current voice number.
@@ -50,6 +52,16 @@ impl super::ConversionContext {
         self.position.measure_number = Some(measure_number.into());
         // Clear measure-local accidentals when entering a new measure
         self.measure_accidentals.clear();
+    }
+
+    /// Set the current 0-based measure index.
+    pub fn set_measure_idx(&mut self, idx: usize) {
+        self.position.measure_idx = idx;
+    }
+
+    /// Get the current 0-based measure index.
+    pub fn measure_idx(&self) -> usize {
+        self.position.measure_idx
     }
 
     /// Get the current MEI staff number.

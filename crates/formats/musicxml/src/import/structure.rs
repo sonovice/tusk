@@ -86,6 +86,10 @@ pub fn convert_section(
             .push(SectionChild::Measure(Box::new(mei_measure)));
     }
 
+    // Post-pass: patch completed hairpins with tstamp2.
+    // Completed hairpins reference hairpin elements in earlier measures by ID.
+    patch_hairpin_tstamp2(&mut section, ctx);
+
     Ok(section)
 }
 
@@ -105,6 +109,9 @@ pub fn convert_measure(
     use tusk_model::elements::Measure;
 
     let mut mei_measure = Measure::default();
+
+    // Track measure index for cross-measure spanner resolution (e.g. hairpin tstamp2)
+    ctx.set_measure_idx(measure_idx);
 
     // Get measure from first part to extract common attributes and barlines
     if let Some(first_part) = score.parts.first()
@@ -488,6 +495,49 @@ fn emit_gliss_events(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut 
         mei_measure
             .children
             .push(MeasureChild::Gliss(Box::new(gliss)));
+    }
+}
+
+/// Patch completed hairpins with @tstamp2 on their MEI hairpin elements.
+///
+/// After all measures are converted, completed hairpins (from wedge stop events)
+/// hold the hairpin_id and tstamp2 value. This function walks all measures in the
+/// section and sets @tstamp2 on the matching hairpin element.
+fn patch_hairpin_tstamp2(section: &mut Section, ctx: &mut ConversionContext) {
+    use tusk_model::generated::data::DataMeasurebeat;
+
+    let completed = ctx.drain_completed_hairpins();
+    if completed.is_empty() {
+        return;
+    }
+
+    // Build a lookup from hairpin_id → tstamp2
+    let mut lookup: std::collections::HashMap<String, (String, Option<f64>)> = completed
+        .into_iter()
+        .map(|c| (c.hairpin_id, (c.tstamp2, c.stop_spread)))
+        .collect();
+
+    // Walk all measures, find hairpin children, patch tstamp2
+    for section_child in &mut section.children {
+        if let SectionChild::Measure(measure) = section_child {
+            for measure_child in &mut measure.children {
+                if let MeasureChild::Hairpin(hairpin) = measure_child {
+                    if let Some(ref id) = hairpin.common.xml_id {
+                        if let Some((tstamp2, stop_spread)) = lookup.remove(id) {
+                            hairpin.hairpin_log.tstamp2 = Some(DataMeasurebeat::from(tstamp2));
+                            // Store stop spread in extension store for roundtrip
+                            if let Some(spread) = stop_spread {
+                                ctx.ext_store_mut().entry(id.clone()).wedge_stop_spread =
+                                    Some(spread);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if lookup.is_empty() {
+            break;
+        }
     }
 }
 
