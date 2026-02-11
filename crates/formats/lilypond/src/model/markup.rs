@@ -1,7 +1,8 @@
 //! Markup AST types for `\markup` and `\markuplist`.
 //!
 //! Mirrors the `full_markup`, `markup_top`, `markup_list`, `markup_braced_list`,
-//! `markup_head_1_list`, `simple_markup`, `markup_word` productions in the grammar.
+//! `markup_head_1_list`, `simple_markup`, `markup_word`, `partial_markup`,
+//! `markup_command_list`, and `simple_markup_noword` productions in the grammar.
 
 use super::ScoreBlock;
 
@@ -33,6 +34,17 @@ pub enum Markup {
     Scheme(super::SchemeExpr),
     /// A number literal inside markup (e.g. standalone `42` or `3.5`).
     Number(f64),
+    /// A partially applied markup function terminated by `\etc`.
+    ///
+    /// `\markup \bold \etc` — the prefix commands are stored without their
+    /// final argument, creating a reusable partial function.
+    /// Mirrors the `partial_markup` / `markup_partial_function` productions.
+    Partial {
+        /// Prefix command chain (outermost first).
+        commands: Vec<String>,
+        /// Arguments already supplied (from non-prefix commands in the chain).
+        args: Vec<Markup>,
+    },
 }
 
 /// A `\markuplist` expression.

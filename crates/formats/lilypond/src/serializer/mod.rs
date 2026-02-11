@@ -1407,6 +1407,20 @@ impl<'a> Serializer<'a> {
                     self.out.push_str(&n.to_string());
                 }
             }
+            markup::Markup::Partial { commands, args } => {
+                for (i, cmd) in commands.iter().enumerate() {
+                    if i > 0 {
+                        self.out.push(' ');
+                    }
+                    self.out.push('\\');
+                    self.out.push_str(cmd);
+                }
+                for arg in args {
+                    self.out.push(' ');
+                    self.write_markup(arg);
+                }
+                self.out.push_str(" \\etc");
+            }
         }
     }
 
@@ -1438,6 +1452,13 @@ fn is_markup_list_command(name: &str) -> bool {
             | "overlay"
             | "right-column"
             | "table"
+            // List-returning commands
+            | "column-lines"
+            | "map-markup-commands"
+            | "table-of-contents"
+            | "override-lines"
+            | "justified-lines"
+            | "wordwrap-internal"
             | "wordwrap"
             | "string-lines"
             | "wordwrap-lines"

@@ -443,6 +443,125 @@ fn roundtrip_markup_in_header_braced() {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Partial markup (\etc)
+// ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn parse_markup_partial_single() {
+    let m = parse_markup_expr("\\markup \\bold \\etc");
+    match &m {
+        Markup::Partial { commands, args } => {
+            assert_eq!(commands, &["bold"]);
+            assert!(args.is_empty());
+        }
+        other => panic!("expected Partial, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_markup_partial_chained() {
+    let m = parse_markup_expr("\\markup \\bold \\italic \\etc");
+    match &m {
+        Markup::Partial { commands, args } => {
+            assert_eq!(commands, &["bold", "italic"]);
+            assert!(args.is_empty());
+        }
+        other => panic!("expected Partial, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_markup_partial_triple() {
+    let m = parse_markup_expr("\\markup \\bold \\italic \\larger \\etc");
+    match &m {
+        Markup::Partial { commands, args } => {
+            assert_eq!(commands, &["bold", "italic", "larger"]);
+            assert!(args.is_empty());
+        }
+        other => panic!("expected Partial, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_markup_partial_single() {
+    roundtrip_markup("\\markup \\bold \\etc");
+}
+
+#[test]
+fn roundtrip_markup_partial_chained() {
+    roundtrip_markup("\\markup \\bold \\italic \\etc");
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Markuplist with list-returning commands
+// ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn parse_markuplist_column_lines() {
+    let expr = parse_toplevel("\\markuplist \\column-lines { \"one\" \"two\" }");
+    match expr {
+        ToplevelExpression::MarkupList(ml) => {
+            // The markuplist wraps the list-returning command as a single item
+            assert_eq!(ml.items.len(), 1);
+            match &ml.items[0] {
+                Markup::Command { name, args } => {
+                    assert_eq!(name, "column-lines");
+                    // Braced list items unpacked as individual args
+                    assert_eq!(args.len(), 2);
+                }
+                other => panic!("expected Command, got {other:?}"),
+            }
+        }
+        other => panic!("expected MarkupList, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_markuplist_wordwrap_lines() {
+    let expr = parse_toplevel("\\markuplist \\wordwrap-lines { hello world }");
+    match expr {
+        ToplevelExpression::MarkupList(ml) => {
+            assert_eq!(ml.items.len(), 1);
+            match &ml.items[0] {
+                Markup::Command { name, args } => {
+                    assert_eq!(name, "wordwrap-lines");
+                    assert_eq!(args.len(), 2);
+                }
+                other => panic!("expected Command, got {other:?}"),
+            }
+        }
+        other => panic!("expected MarkupList, got {other:?}"),
+    }
+}
+
+#[test]
+fn roundtrip_markuplist_column_lines() {
+    roundtrip_markup("\\markuplist \\column-lines { \"one\" \"two\" }");
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Partial markup in assignment
+// ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn parse_partial_markup_in_assignment() {
+    let file = parse("myBold = \\markup \\bold \\etc").expect("parse failed");
+    match &file.items[0] {
+        ToplevelExpression::Assignment(a) => {
+            assert_eq!(a.name, "myBold");
+            match &a.value {
+                AssignmentValue::Markup(Markup::Partial { commands, args }) => {
+                    assert_eq!(commands, &["bold"]);
+                    assert!(args.is_empty());
+                }
+                other => panic!("expected Markup Partial, got {other:?}"),
+            }
+        }
+        other => panic!("expected Assignment, got {other:?}"),
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Fixture roundtrip
 // ──────────────────────────────────────────────────────────────────
 

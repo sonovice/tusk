@@ -1903,15 +1903,24 @@ Grammar: `partial_markup`, `markup_partial_function`, `markup_arglist_partial`, 
 
 ### 42.1 Model & Parser
 
-- [ ] [P] Parse partial markup: `\markup \bold` (without arguments) — a partially applied markup function usable as a value
-- [ ] [P] Add `Markup::Partial { command, args }` variant for partially applied markup functions
-- [ ] [P] Parse `markup_uncomposed_list`: markup list without prefix composition (e.g. bare `{ word1 word2 }` in list context)
-- [ ] [P] Parse `markup_command_list`: commands that return markup lists (e.g. `\column-lines`, `\wordwrap-lines`)
-- [ ] [P] Parse `markup_command_list_arguments`: arguments specific to list-returning commands
-- [ ] [P] Parse `simple_markup_noword`: simple markup forms excluding bare words (for disambiguation in certain contexts)
-- [ ] [S] Serialize partial markup and list command variants
-- [ ] [V] Validate partial markup (command exists, arity compatible)
-- [ ] [T] Parser tests: `\markup \bold`, `\markuplist \column-lines { ... }`, bare word exclusion contexts
+- [x] [P] Parse partial markup: `\markup \bold` (without arguments) — a partially applied markup function usable as a value
+  - `parse_markup_composed()` detects `\etc` after prefix chain → `Markup::Partial`
+- [x] [P] Add `Markup::Partial { command, args }` variant for partially applied markup functions
+  - `Markup::Partial { commands: Vec<String>, args: Vec<Markup> }` in model/markup.rs
+- [x] [P] Parse `markup_uncomposed_list`: markup list without prefix composition (e.g. bare `{ word1 word2 }` in list context)
+  - `parse_markup_uncomposed_list()` handles braced list, list-returning command, or fallback
+- [x] [P] Parse `markup_command_list`: commands that return markup lists (e.g. `\column-lines`, `\wordwrap-lines`)
+  - `MARKUP_LIST_RETURNING_COMMANDS` constant + `parse_markup_command_list()` method
+- [x] [P] Parse `markup_command_list_arguments`: arguments specific to list-returning commands
+  - List-returning commands use same braced-list-unpacking logic as regular list commands
+- [x] [P] Parse `simple_markup_noword`: simple markup forms excluding bare words (for disambiguation in certain contexts)
+  - `parse_simple_markup_noword()` — same as `parse_simple_markup()` but excludes Symbol/NoteName
+- [x] [S] Serialize partial markup and list command variants
+  - `Markup::Partial` serializes as `\cmd1 \cmd2 \etc`; list-returning commands in `is_markup_list_command()`
+- [x] [V] Validate partial markup (command exists, arity compatible)
+  - Validates non-empty command list, recursively validates partial args
+- [x] [T] Parser tests: `\markup \bold`, `\markuplist \column-lines { ... }`, bare word exclusion contexts
+  - 8 new tests: partial single/chained/triple, roundtrip partials, markuplist column-lines/wordwrap-lines, assignment
 
 ---
 

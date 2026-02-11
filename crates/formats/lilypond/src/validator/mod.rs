@@ -902,6 +902,16 @@ fn validate_markup(m: &markup::Markup, errors: &mut Vec<ValidationError>) {
             }
         }
         markup::Markup::Scheme(expr) => validate_scheme_expr(expr, errors),
+        markup::Markup::Partial { commands, args } => {
+            if commands.is_empty() {
+                errors.push(ValidationError::Other(
+                    "partial markup must have at least one command".into(),
+                ));
+            }
+            for arg in args {
+                validate_markup(arg, errors);
+            }
+        }
         markup::Markup::Word(_)
         | markup::Markup::String(_)
         | markup::Markup::Identifier(_)
