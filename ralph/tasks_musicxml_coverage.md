@@ -917,3 +917,558 @@ Output is always version 4.1
   - All 338 existing roundtrip tests pass with version upgrade (many were version 4.0, now export as 4.1)
   - New fixtures: version_2_0.musicxml, version_3_1.musicxml, version_no_attr.musicxml
   - 505 unit tests, 31 integration tests, 338 roundtrip tests — all pass, 0 regressions
+
+---
+
+## Phase 26: Architectural — Migrate to Typed Core Model Extensions
+
+Currently, MusicXML roundtrip data uses two ad-hoc patterns:
+1. **extMeta with JSON in `@analog`** for header data (identification, work, defaults, credits, movement-number/title)
+2. **JSON-in-`@label`** with `musicxml:` prefixes on MEI elements (harmony, sound, print, listening, measure-style, barline extras, visual attrs, instrument/part/group details, key/time/for-part extras, note-level extras like stem/notehead-text/play/listen/footnote/level, etc.)
+
+The LilyPond import already uses **typed extension structs** defined in
+`crates/core/model/src/extensions.rs` (e.g. `StaffContext`, `OutputDef`, `LyricsInfo`,
+`GraceInfo`, `EventSequence`). These are serialized as JSON in `@label` but are
+format-neutral and part of the core model.
+
+MusicXML should follow the same pattern: define typed extension structs for musical
+concepts that MEI cannot natively represent, rather than storing opaque MusicXML model
+JSON. This:
+- Keeps the core model format-agnostic (both MusicXML and LilyPond map to the same types)
+- Eliminates extMeta elements from the MEI tree (cleaner MEI output)
+- Enables future cross-format fidelity (e.g. LilyPond → MusicXML harmony via shared `HarmonyData`)
+- Makes the extension data discoverable and type-safe
+
+### 26.1 New Core Model Extension Types
+
+Define typed structs in `crates/core/model/src/extensions.rs` and add corresponding
+fields to `ExtData`:
+
+- [ ] `HarmonyData` — structured harmony (root step/alter, kind, bass step/alter, degrees with value/alter/type, inversion, frame with frets/strings/barre, arrangement)
+  - Covers MusicXML `<harmony>` and LilyPond `\chordmode` concepts
+  - Add `harmony: Option<HarmonyData>` to `ExtData`
+- [ ] `TransposeData` — transposition info (chromatic, diatonic, octave-change, double)
+  - Covers MusicXML `<transpose>` and LilyPond `\transposition`
+  - Add `transpose: Option<TransposeData>` to `ExtData`
+- [ ] `SoundData` — playback/MIDI data (tempo, dynamics, dacapo, segno, coda, fine, forward-repeat, MIDI changes, swing)
+  - Covers standalone and direction-level `<sound>` elements
+  - Add `sound: Option<SoundData>` to `ExtData`
+- [ ] `ScoreHeaderData` — score-level metadata (identification with creators/rights/encoding, work number/title/opus, movement number/title, defaults, credits)
+  - Replaces the 6 extMeta elements currently on meiHead
+  - Add `score_header: Option<ScoreHeaderData>` to `ExtData`
+- [ ] `PrintData` — print/layout data (new-system, new-page, blank-page, page-number, staff-spacing, inline layouts)
+  - Covers MusicXML `<print>` elements beyond sb/pb
+  - Add `print_data: Option<PrintData>` to `ExtData`
+- [ ] `MeasureStyleData` — measure style info (multiple-rest, measure-repeat, beat-repeat, slash)
+  - Add `measure_style: Option<MeasureStyleData>` to `ExtData`
+- [ ] `BarlineData` — decorated barline extras (repeat, ending, fermata, segno, coda, wavy-line)
+  - Add `barline_data: Option<BarlineData>` to `ExtData`
+- [ ] `ListeningData` — listening/grouping/link/bookmark (opaque roundtrip for MusicXML 4.0 elements without MEI equivalent)
+  - Add `listening: Option<ListeningData>` to `ExtData`
+- [ ] `NoteVisualData` — note-level visual/position attributes (default-x/y, relative-x/y, color, print-object, dynamics, attack/release, pizzicato)
+  - Replace `musicxml:visual,{json}` label segments on notes
+  - Add `note_visual: Option<NoteVisualData>` to `ExtData`
+- [ ] `DirectionVisualData` — direction-level visual attributes (words font/position/color, wedge color/niente, etc.)
+  - Replace `musicxml:words-vis,{json}` label segments on dirs
+  - Add `direction_visual: Option<DirectionVisualData>` to `ExtData`
+- [ ] `InstrumentData` — score instrument + MIDI instrument details for parts
+  - Replace `musicxml:instrument,{json}` label on instrDef
+  - Add `instrument_data: Option<InstrumentData>` to `ExtData`
+- [ ] `PartDetailsData` — part-name-display, abbreviation-display, players, part-links, groups
+  - Replace `musicxml:part-details,{json}` label on staffDef
+  - Add `part_details: Option<PartDetailsData>` to `ExtData`
+- [ ] `GroupDetailsData` — group-name-display, abbreviation-display, group-time
+  - Replace `musicxml:group-details,{json}` label on staffGrp
+  - Add `group_details: Option<GroupDetailsData>` to `ExtData`
+- [ ] `NoteExtras` — note-level roundtrip data not representable in MEI (notehead-text, play, listen, footnote, level, notations-footnote, notations-level, instrument refs)
+  - Replace `musicxml:notehead-text,{json}`, `musicxml:play,{json}`, `musicxml:listen,{json}`, `musicxml:footnote,{json}`, `musicxml:level,{json}`, `musicxml:notations-footnote,{json}`, `musicxml:notations-level,{json}`, `musicxml:instruments,...` label segments on notes
+  - Add `note_extras: Option<NoteExtras>` to `ExtData`
+- [ ] `StemExtras` — stem roundtrip for double/none (currently `musicxml:stem,double` and `musicxml:stem,none` label segments)
+  - Can be folded into `NoteExtras` or kept separate
+- [ ] `KeyExtras` — non-traditional key and key-octave roundtrip data
+  - Replace `musicxml:key,{json}` label on staffDef
+  - Add `key_extras: Option<KeyExtras>` to `ExtData`
+- [ ] `TimeExtras` — interchangeable time signature roundtrip data
+  - Replace `musicxml:time,{json}` label on staffDef
+  - Add `time_extras: Option<TimeExtras>` to `ExtData`
+- [ ] `ForPartData` — for-part with part-clef/part-transpose roundtrip
+  - Replace `musicxml:for-part,{json}` label on staffDef
+  - Add `for_part: Option<ForPartData>` to `ExtData`
+- [ ] `StaffDetailsExtras` — staff-details roundtrip (staff-type, line-details, staff-tunings, capo, show-frets)
+  - Replace `musicxml:staff-details,{json}` label on staffDef
+- [ ] `PartSymbolExtras` — part-symbol extras (top-staff, bottom-staff, default-x, color)
+  - Replace `musicxml:part-symbol,{json}` label on staffGrp
+- [ ] `LyricExtras` — lyric extend type, elision details, visual/position attrs not captured by MEI verse/syl
+  - Replace lyric-specific label segments on verse elements
+- [ ] Wire all new types into `lib.rs` re-exports
+- [ ] Add serde roundtrip tests for all new types
+
+### 26.2 Migrate MusicXML Import to Typed Extensions
+
+Replace all extMeta and JSON-in-label patterns in `crates/formats/musicxml/src/import/` with
+`ExtensionStore` lookups:
+
+- [ ] Migrate header data: remove 6 extMeta creations in `import/mod.rs`, store `ScoreHeaderData` in `ExtensionStore` keyed by meiHead `@xml:id`
+- [ ] Migrate harmony: replace `musicxml:harmony,{json}` label on `<harm>` with `HarmonyData` in `ExtensionStore`
+- [ ] Migrate sound: replace `musicxml:sound,{json}` label on `<dir>` with `SoundData` in `ExtensionStore`
+- [ ] Migrate print: replace `musicxml:print,{json}` label on `<sb>`/`<pb>` with `PrintData` in `ExtensionStore`
+- [ ] Migrate measure-style: replace `musicxml:measure-style,{json}` label on `<dir>` with `MeasureStyleData` in `ExtensionStore`
+- [ ] Migrate barline extras: replace `musicxml:barline,{json}` label on `<dir>` with `BarlineData` in `ExtensionStore`
+- [ ] Migrate listening/grouping/link/bookmark: replace `musicxml:listening/grouping/link/bookmark,{json}` labels with `ListeningData` in `ExtensionStore`
+- [ ] Migrate note visual attrs: replace `musicxml:visual,{json}` label segments with `NoteVisualData` in `ExtensionStore`
+- [ ] Migrate direction visual attrs: replace `musicxml:words-vis,{json}` label segments with `DirectionVisualData` in `ExtensionStore`
+- [ ] Migrate note-level extras: replace `musicxml:notehead-text,`/`musicxml:play,`/`musicxml:listen,`/`musicxml:footnote,`/`musicxml:level,`/`musicxml:notations-*`/`musicxml:instruments,`/`musicxml:stem,` label segments with `NoteExtras`/`StemExtras` in `ExtensionStore`
+- [ ] Migrate key/time/for-part/staff-details/part-symbol extras: replace `musicxml:key,`/`musicxml:time,`/`musicxml:for-part,`/`musicxml:staff-details,`/`musicxml:part-symbol,` labels with typed extensions in `ExtensionStore`
+- [ ] Migrate instrument/part/group details: replace label-based JSON with `InstrumentData`/`PartDetailsData`/`GroupDetailsData` in `ExtensionStore`
+- [ ] Migrate lyric extras: replace lyric-specific label data with `LyricExtras` in `ExtensionStore`
+- [ ] Pass `ExtensionStore` through the import context and return it alongside the MEI document
+
+### 26.3 Migrate MusicXML Export to Typed Extensions
+
+Update all export code in `crates/formats/musicxml/src/export/` to read from `ExtensionStore`
+instead of parsing JSON from labels/extMeta:
+
+- [ ] Accept `ExtensionStore` as input alongside the MEI document
+- [ ] Migrate header export: read `ScoreHeaderData` from `ExtensionStore` instead of scanning extMeta children
+- [ ] Migrate harmony export: read `HarmonyData` from `ExtensionStore` instead of parsing label JSON
+- [ ] Migrate sound export: read `SoundData` from `ExtensionStore`
+- [ ] Migrate print export: read `PrintData` from `ExtensionStore`
+- [ ] Migrate measure-style export: read `MeasureStyleData` from `ExtensionStore`
+- [ ] Migrate barline export: read `BarlineData` from `ExtensionStore`
+- [ ] Migrate listening/grouping/link/bookmark export: read `ListeningData` from `ExtensionStore`
+- [ ] Migrate note/direction visual attrs export: read from `ExtensionStore`
+- [ ] Migrate note-level extras export: read `NoteExtras`/`StemExtras` from `ExtensionStore`
+- [ ] Migrate key/time/for-part/staff-details/part-symbol extras export
+- [ ] Migrate instrument/part/group detail exports
+- [ ] Migrate lyric extras export
+- [ ] Keep lossy fallback paths for non-roundtrip MEI (external MEI without extension data)
+
+### 26.4 Tests
+
+- [ ] All existing roundtrip tests must pass with zero regressions
+- [ ] MEI output should no longer contain extMeta elements for MusicXML data
+- [ ] MEI output should have cleaner @label attributes (no large JSON blobs)
+- [ ] Verify cross-format potential: LilyPond → MEI → MusicXML produces valid harmony/transpose data where shared extension types allow
+
+---
+
+## Phase 27: Parser — Missing Direction Types
+
+The parser in `parser/parse_direction.rs` silently drops 13 of the 24 direction-type
+children via `_ => skip_element`. The model and serializer already support all 24.
+This is the largest parser gap.
+
+### 27.1 Parse All Direction Types
+
+- [ ] Parse `<symbol>` → `DirectionTypeContent::Symbol` (text content + font/position attrs)
+- [ ] Parse `<harp-pedals>` → `DirectionTypeContent::HarpPedals` (pedal-tuning children with pedal-step + pedal-alter)
+- [ ] Parse `<damp>` → `DirectionTypeContent::Damp` (empty element with position attrs)
+- [ ] Parse `<damp-all>` → `DirectionTypeContent::DampAll` (empty element with position attrs)
+- [ ] Parse `<eyeglasses>` → `DirectionTypeContent::Eyeglasses` (empty element with position attrs)
+- [ ] Parse `<string-mute>` → `DirectionTypeContent::StringMute` (type on/off + position attrs)
+- [ ] Parse `<scordatura>` → `DirectionTypeContent::Scordatura` (accord children with string attr, tuning-step, tuning-alter, tuning-octave)
+- [ ] Parse `<image>` → `DirectionTypeContent::Image` (source, type, height, width, position attrs)
+- [ ] Parse `<principal-voice>` → `DirectionTypeContent::PrincipalVoice` (type start/stop, symbol Hauptstimme/Nebenstimme/plain/none, optional text)
+- [ ] Parse `<percussion>` → `DirectionTypeContent::Percussion` (complex content enum: glass/metal/wood/pitched/membrane/effect/timpani/beater/stick/stick-location/other-percussion)
+- [ ] Parse `<accordion-registration>` → `DirectionTypeContent::AccordionRegistration` (optional accordion-high/middle/low)
+- [ ] Parse `<staff-divide>` → `DirectionTypeContent::StaffDivide` (type down/up/up-down)
+- [ ] Parse `<other-direction>` → `DirectionTypeContent::OtherDirection` (optional text, print-object, smufl)
+- [ ] Remove `_ => skip_element` catch-all in direction-type parsing; replace with exhaustive match
+
+### 27.2 Tests
+
+- [ ] Add unit tests for each newly parsed direction type (parse → serialize roundtrip)
+- [ ] Add fragment fixtures for any missing direction types
+- [ ] Verify all existing roundtrip tests pass (0 regressions)
+
+---
+
+## Phase 28: Parser — Missing Element Details
+
+Various parser match arms silently skip attributes or simplify sub-element parsing.
+
+### 28.1 Metronome Completion
+
+- [ ] Parse `<beat-unit-dot>` in metronome (currently only `beat-unit` + `per-minute`)
+- [ ] Parse beat-unit-equivalent (metric modulation: two beat-unit groups with optional `metronome-relation`)
+- [ ] Parse `metronome-arrows` attribute
+- [ ] Parse `metronome-note` elements (metronome-type, metronome-dot, metronome-beam, metronome-tied, metronome-tuplet) for complex metric modulations
+- [ ] Extend `Metronome` model if needed for `metronome-note` patterns
+- [ ] Serialize the expanded metronome structures
+- [ ] Verify with roundtrip tests
+
+### 28.2 Clef Attribute Completion
+
+- [ ] Parse `size` attribute on `<clef>` (full, cue, large)
+- [ ] Parse `after-barline` attribute on `<clef>` (yes/no)
+- [ ] Parse `id` attribute on `<clef>`
+- [ ] Wire into model and serializer
+
+### 28.3 Transpose Attribute Completion
+
+- [ ] Parse `double` attribute on `<transpose>` (yes/no, for instruments transposing 2 octaves)
+- [ ] Parse `id` attribute on `<transpose>`
+- [ ] Wire into model and serializer
+
+### 28.4 Beam Attribute Completion
+
+- [ ] Parse `repeater` attribute on `<beam>` (yes/no)
+- [ ] Parse `fan` attribute on `<beam>` (accel/rit/none)
+- [ ] Parse `color` attribute on `<beam>`
+- [ ] Parse `id` attribute on `<beam>`
+- [ ] Wire into model and serializer
+
+### 28.5 Articulation Detail Completion
+
+- [ ] Parse `<breath-mark>` text content (comma, tick, upbow, salzedo, empty string)
+- [ ] Parse `<caesura>` text content (normal, thick, short, curved, single, empty string)
+- [ ] Wire into model and serializer (BreathMark/Caesura structs may need value field)
+
+### 28.6 Note Attribute Completion
+
+- [ ] Parse `relative-y`, `color` on `<stem>` (currently only direction/default-x/y)
+- [ ] Parse `size`, `smufl` on `<accidental>` (currently only value + cautionary/editorial/parentheses/bracket)
+- [ ] Wire into model and serializer
+
+### 28.7 Tests
+
+- [ ] Unit tests for each newly parsed attribute/element
+- [ ] Existing roundtrip tests pass (0 regressions)
+
+---
+
+## Phase 29: Model — Type Completeness
+
+### 29.1 Articulations
+
+- [ ] Add `other_articulation: Vec<OtherArticulation>` to `Articulations` struct
+  - `OtherArticulation` with placement, smufl, text content (matching the XSD `other-articulation` element)
+- [ ] Parse `<other-articulation>` in `parse_notations()`
+- [ ] Serialize `<other-articulation>` in serializer
+
+### 29.2 Editorial Groups on Container Elements
+
+The MusicXML XSD defines `footnote`/`level` editorial groups on several container elements
+where they are currently missing from the model. These are rarely used but required for
+full spec compliance.
+
+- [ ] Add `footnote: Option<FormattedText>` and `level: Option<Level>` to `Attributes` struct
+- [ ] Add `footnote`/`level` to `Barline` struct
+- [ ] Add `footnote`/`level` to `Harmony` struct
+- [ ] Add `footnote`/`level` to `FiguredBass` struct
+- [ ] Add `footnote`/`level` to `Lyric` struct
+- [ ] Add `footnote`/`level` to `Direction` struct (direction-type wrapper level)
+- [ ] Add `footnote`/`level` to `Print` struct
+- [ ] Parse editorial elements in each context
+- [ ] Serialize editorial elements in each context
+
+### 29.3 Advanced Metronome Model
+
+- [ ] Add `MetronomeNote` struct (metronome-type, metronome-dots, metronome-beams, metronome-tied, metronome-tuplet)
+- [ ] Add `MetronomeContent::NoteGroups` variant to support two groups of metronome-notes with optional `metronome-relation` text
+- [ ] Add `metronome_arrows` attribute to `Metronome`
+- [ ] Ensure serializer handles the new content variant
+
+### 29.4 Measure Attribute
+
+- [ ] Add `text: Option<String>` to `Measure` struct (MusicXML 4.0 measure @text for multi-line time signatures)
+- [ ] Parse and serialize the attribute
+
+### 29.5 Tests
+
+- [ ] Serde roundtrip tests for all new model types
+- [ ] Parser → serializer roundtrip tests for new elements
+- [ ] Existing roundtrip tests pass (0 regressions)
+
+---
+
+## Phase 30: Import — Transpose Semantic Mapping
+
+`<transpose>` is not mapped to MEI `@trans.semi`/`@trans.diat` attributes. This means
+the MEI output has no semantic transposition information.
+
+### 30.1 Implementation
+
+- [ ] In `import/attributes.rs`: extract `<chromatic>` → MEI `@trans.semi` on `<staffDef>`
+- [ ] Extract `<diatonic>` → MEI `@trans.diat` on `<staffDef>`
+- [ ] Extract `<octave-change>` → adjust `@trans.semi` by `octave-change * 12`
+- [ ] Handle `number` attribute (which staff in multi-staff parts the transpose applies to)
+- [ ] Store full transpose data (including `double`, id) in typed `TransposeData` extension for roundtrip
+- [ ] In `export/attributes.rs`: read `@trans.semi`/`@trans.diat` to reconstruct `<transpose>`
+  - Read `TransposeData` from `ExtensionStore` for lossless roundtrip (octave-change, double)
+  - Fallback: derive chromatic/diatonic from trans.semi/trans.diat attrs
+
+### 30.2 Tests
+
+- [ ] Add roundtrip fixture with transposing instruments (Bb clarinet, F horn, Eb alto sax)
+- [ ] Verify MEI output has correct `@trans.semi`/`@trans.diat` values
+- [ ] Verify roundtrip fidelity
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 31: Import — Hairpin Endpoint Resolution
+
+`<wedge type="stop">` currently returns `None` without closing the opening hairpin.
+Hairpins in MEI output have no `@tstamp2` or `@endid`.
+
+### 31.1 Implementation
+
+- [ ] Add pending hairpin tracking to import context (similar to slur/glissando patterns)
+  - `PendingHairpin` struct with start hairpin element ID, staff, measure reference
+- [ ] On `<wedge type="start/crescendo/diminuendo">`: create `<hairpin>` with `@startid` and register as pending
+- [ ] On `<wedge type="stop">`: resolve pending hairpin → set `@endid` on the hairpin (or `@tstamp2` if no note reference)
+- [ ] On `<wedge type="continue">`: handle intermediate hairpin segments
+- [ ] Handle cross-measure hairpins (hairpin starts in measure N, stops in measure M)
+  - May need deferred resolution similar to slurs/glissandos
+- [ ] Export: read `@endid`/`@tstamp2` from hairpin to determine when to emit `<wedge type="stop">`
+
+### 31.2 Tests
+
+- [ ] Add roundtrip fixture with hairpin start/stop pairs (single-measure and cross-measure)
+- [ ] Verify MEI hairpins have proper `@endid`
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 32: Import/Export — Mid-Score Attribute Changes
+
+Mid-measure clef/key/time changes update import context but do not emit inline MEI
+`<staffDef>` change elements. On export, only the first measure gets `<attributes>` from
+scoreDef/staffDef; subsequent changes are lost.
+
+### 32.1 Import — Inline Attribute Change Elements
+
+- [ ] Detect clef changes (clef in `<attributes>` of non-first measure or mid-measure clef) → emit MEI inline `<clef>` or `<staffDef>` change in the layer at the correct beat position
+- [ ] Detect key changes → emit MEI `<keySig>` or inline `<staffDef>` change
+- [ ] Detect time signature changes → emit MEI `<meterSig>` or inline `<scoreDef>` change
+- [ ] Detect `<staves>` changes mid-score (rare but valid)
+- [ ] Detect `<staff-details>` changes mid-score
+- [ ] Ensure attribute change elements are emitted at the correct position within the layer
+
+### 32.2 Export — Inline Attribute Changes to MusicXML
+
+- [ ] Detect inline `<clef>` / `<staffDef>` changes in MEI sections → emit `<attributes>` with the changed element in the correct MusicXML measure
+- [ ] Detect inline `<keySig>` changes → emit `<attributes><key>`
+- [ ] Detect inline `<meterSig>` / `<scoreDef>` changes → emit `<attributes><time>`
+- [ ] Handle attribute changes that coincide with measure starts vs mid-measure positions
+
+### 32.3 Tests
+
+- [ ] Add roundtrip fixture with mid-score key change (e.g. from C major to G major in measure 3)
+- [ ] Add roundtrip fixture with mid-score clef change (treble to bass)
+- [ ] Add roundtrip fixture with mid-score time signature change (4/4 to 3/4)
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 33: Export — Forward & Voice Generation
+
+`LayerChild::Space` is silently dropped (no `<forward>` generation), and `<voice>` is
+never assigned on notes. These are needed for multi-voice measures and correct MusicXML
+structure.
+
+### 33.1 Forward Generation
+
+- [ ] Convert `LayerChild::Space` → `MeasureContent::Forward` with correct duration
+  - Calculate forward duration from MEI space `@dur`/`@dots` (or from duration context)
+- [ ] Emit `<forward>` at correct position in measure content sequence
+- [ ] Handle space elements within beams (extract to measure level)
+
+### 33.2 Voice Assignment
+
+- [ ] Assign `<voice>` numbers to notes based on MEI layer structure
+  - Each `<layer>` in a `<staff>` corresponds to a voice number
+  - Layer `@n` → voice number (or 1-based sequential assignment)
+- [ ] Handle multi-staff parts: voice numbers should be unique across staves within a part
+  - Typical convention: staff 1 voices 1–2, staff 2 voices 3–4
+- [ ] Emit `<voice>` on each note element
+
+### 33.3 Tests
+
+- [ ] Add roundtrip fixture with multi-voice measure (two voices in one staff)
+- [ ] Add roundtrip fixture with rests-as-forward (voice padding)
+- [ ] Verify `<voice>` and `<forward>` appear in output
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 34: Articulation & Notation Completeness
+
+### 34.1 Multiple Articulations Support
+
+Currently only the first articulation is stored in MEI `@artic`; the rest are lost
+(warning emitted). MEI `@artic` is a space-separated list and supports multiple values.
+
+- [ ] Import: store all articulations as space-separated values in MEI `@artic` (e.g. `artic="acc stacc"`)
+  - MEI `DataArticulation` supports this via `SpaceSeparated<DataArticulation>`
+- [ ] Export: parse space-separated `@artic` → multiple `<articulations>` children
+
+### 34.2 Compound Articulations
+
+MEI has compound articulation values that MusicXML represents as separate elements.
+
+- [ ] Import: `<detached-legato>` → MEI `@artic="det-legato"` (add mapping if not present)
+- [ ] Export: MEI `@artic` containing `det-legato`/`marc-stacc`/`ten-stacc` → corresponding MusicXML elements
+  - `det-legato` → `<detached-legato>`
+  - `marc-stacc` → `<staccato>` + `<strong-accent>` (or use label roundtrip)
+  - `ten-stacc` → `<staccato>` + `<tenuto>` (or use label roundtrip)
+- [ ] Remove silent `_ => {}` drop in `note.rs` articulation match
+
+### 34.3 Other-Notation
+
+- [ ] Import: `<other-notation>` (start/stop/single with number, placement, smufl, text) → MEI annotation or extension
+- [ ] Export: reverse mapping
+- [ ] Add `other-notation` handling to the notations processing pipeline
+
+### 34.4 Direction Lossy Path Improvement
+
+- [ ] Export: `<image>` direction type → emit as `<image>` (currently emitted as `<words>`)
+- [ ] Export: `<percussion>` direction type → emit as `<percussion>` (currently emitted as `<words>`)
+  - Requires roundtrip label or `ExtensionStore` data (Phase 26) to recover structured percussion content
+
+### 34.5 Tests
+
+- [ ] Roundtrip fixture with multiple articulations on single note (e.g. accent + staccato)
+- [ ] Roundtrip fixture with detached-legato
+- [ ] Roundtrip fixture with other-notation
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 35: Technical Debt — Direction-Level Sound Preservation
+
+Phase 14 noted that direction-level `<sound>` (i.e., `<direction><sound tempo="120"/>`)
+is not preserved on import — only standalone `MeasureContent::Sound` roundtrips. When
+`<sound>` is a child of `<direction>`, its data is lost. Many MusicXML files attach
+tempo/dynamics playback to directions this way.
+
+### 35.1 Implementation
+
+- [ ] Import: when a `<direction>` has a `<sound>` child, preserve the sound data alongside the direction content
+  - Store `SoundData` in `ExtensionStore` keyed by the MEI dir/tempo/dynam element ID
+  - For tempo marks: MEI `<tempo>` already captures `@mm`; store full sound (dacapo, segno, etc.) as extension
+  - For dynamics: MEI `<dynam>` captures text; store playback dynamics value as extension
+  - For other directions: store full sound on the dir extension
+- [ ] Export: when emitting a `<direction>`, check `ExtensionStore` for associated `SoundData` → emit as `<sound>` child of the `<direction>`
+  - Fall back to `Sound::with_tempo()` for `<tempo>` elements (current behavior)
+
+### 35.2 Tests
+
+- [ ] Add roundtrip fixture with direction-level sound (tempo direction with dacapo + sound, dynamic direction with sound dynamics value)
+- [ ] Verify direction-level sound roundtrips losslessly
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 36: Technical Debt — Semantic MEI Mapping Improvements
+
+Several MusicXML concepts are imported as generic `<ornam>` or `<dir>` with labels when
+MEI has native or more specific elements available. Using native MEI elements improves
+interoperability with other MEI tools.
+
+### 36.1 Tremolo → Native MEI bTrem/fTrem on Import
+
+Currently, MusicXML `<tremolo type="single">` imports to `<ornam>` with
+`musicxml:tremolo,type=single,value=N` label. The export path already handles
+`<bTrem>` → tremolo (Phase 3), but the import doesn't produce `<bTrem>`.
+
+- [ ] Import: `<tremolo type="single">` → MEI `<bTrem>` container around the note, with `@unitdur` computed from tremolo value
+  - value=1 → unitdur=8, value=2 → unitdur=16, value=3 → unitdur=32
+- [ ] Import: `<tremolo type="start/stop">` → MEI `<fTrem>` container around the two notes, with `@unitdur`
+- [ ] Remove `musicxml:tremolo` label-based fallback (or keep as legacy compatibility)
+- [ ] Verify existing bTrem/fTrem export still works with the new import path
+
+### 36.2 Technical Notations → Native MEI Where Possible
+
+Phase 5 stores all 31 technical types as `<ornam>` with labels. Some have native MEI
+representations:
+
+- [ ] `<fingering>` → MEI `<fing>` element (MEI has a native fingering element)
+  - Import: create `<fing>` with text content instead of `<ornam>` with label
+  - Export: read `<fing>` → `<fingering>`
+- [ ] `<up-bow>` / `<down-bow>` → MEI `@artic` values (`upbow`/`dnbow`)
+  - These are standard MEI articulation values
+  - Import: add to note `@artic` instead of creating `<ornam>`
+  - Export: read `@artic` values → articulation or technical elements
+- [ ] Evaluate other technical elements for native MEI mapping:
+  - `<stopped>` → MEI `@artic="stop"` (if available)
+  - `<snap-pizzicato>` → MEI `@artic="snap"` (if available)
+  - `<harmonic>` → MEI `<harm>` with specific attrs (evaluate feasibility)
+- [ ] Keep label-based fallback for technical types with no MEI equivalent
+
+### 36.3 Breath-Mark / Caesura → Native MEI
+
+- [ ] `<breath-mark>` → MEI `<breath>` control event (MEI has a native breath mark element)
+  - Currently stored as `@artic` or label segment; MEI `<breath>` is more correct
+- [ ] `<caesura>` → MEI `<caesura>` control event (MEI has a native caesura element)
+  - Currently stored as label segment
+
+### 36.4 Tests
+
+- [ ] Roundtrip fixtures for tremolo (single and double) using native bTrem/fTrem
+- [ ] Roundtrip fixtures for fingering using native MEI fing
+- [ ] Roundtrip fixtures for bowing articulations
+- [ ] Verify external MEI with bTrem/fTrem/fing correctly exports to MusicXML
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 37: Technical Debt — Export Catch-All Cleanup
+
+The export code has several `_ => {}` catch-all match arms that silently drop content.
+These should be replaced with exhaustive matches or explicit logging.
+
+### 37.1 Identify and Fix Catch-Alls
+
+- [ ] `content.rs:679` — `SectionChild::_` catch-all: handle `SectionChild::Ending` (MEI ending/volta → MusicXML `<barline><ending>`), `SectionChild::Expansion`, and other section children
+- [ ] `content.rs:980` — `MeasureChild::_` in `convert_direction_events`: audit remaining unhandled MeasureChild variants; add explicit skip with comment or implement conversion
+- [ ] `content.rs:1534` — `_ => {}` in ornament event conversion: audit and document what's skipped
+- [ ] `content.rs:1895` — `LayerChild::_` catch-all ("Other layer children (space, tuplet, etc.) not handled yet"):
+  - `LayerChild::Space` addressed in Phase 33
+  - `LayerChild::Tuplet` (MEI container-style tuplet, distinct from tupletSpan): evaluate if conversion is needed
+  - `LayerChild::Clef` / `LayerChild::KeySig` / `LayerChild::MeterSig` — inline attribute changes, addressed in Phase 32
+  - Document any intentionally skipped types
+- [ ] `content.rs:2382` — `_ => {}` in duration calculation: ensure all duration-carrying elements are counted
+- [ ] `content.rs:2789` — `_ => {}` in technical label conversion: audit for missing technical types
+- [ ] `note.rs:468` — `DataArticulation::_` catch-all: replace with exhaustive match listing all MEI articulation values, mapping or explicitly skipping each (see Phase 34.2 for compound articulations)
+- [ ] `note.rs:633` — `DataTie::_` catch-all: audit and handle any missing tie variants
+- [ ] `note.rs:1390` — `_ => {}` in visual attribute parsing: audit
+
+### 37.2 Add Warnings for Intentional Skips
+
+- [ ] For elements that genuinely cannot be converted (MEI-only concepts), emit a structured warning/log instead of silent skip
+- [ ] Consider a conversion diagnostics system that collects warnings during export for user feedback
+
+### 37.3 Tests
+
+- [ ] No behavior change expected — this is a code quality improvement
+- [ ] Existing tests pass (0 regressions)
+
+---
+
+## Phase 38: Technical Debt — SectionChild Handling in Export
+
+The export only handles `SectionChild::Measure` and `SectionChild::Section` (nested).
+Other section children are silently dropped.
+
+### 38.1 Ending / Volta Support
+
+MEI `<ending>` is a section-level container that wraps measures in an alternative ending
+(volta bracket). MusicXML represents this as `<barline><ending>` on the relevant barlines.
+
+- [ ] Export: detect `SectionChild::Ending` → emit `<barline><ending number="N" type="start/stop/discontinue">` on the first/last measures within the ending
+- [ ] Import: detect `<barline><ending>` → create MEI `<ending>` section container wrapping the relevant measures
+  - Currently barline endings are stored as JSON-in-label barline extras; this would add semantic mapping
+
+### 38.2 Other Section Children
+
+- [ ] Evaluate `SectionChild::Expansion` — MEI `<expansion>` for navigation/playback ordering; no direct MusicXML equivalent (store as extension?)
+- [ ] Evaluate `SectionChild::ScoreDef` — inline `<scoreDef>` changes (relates to Phase 32)
+- [ ] Evaluate `SectionChild::StaffDef` — inline `<staffDef>` changes (relates to Phase 32)
+- [ ] Document intentionally skipped section children
+
+### 38.3 Tests
+
+- [ ] Add roundtrip fixture with volta brackets (first/second endings)
+- [ ] Existing tests pass (0 regressions)
