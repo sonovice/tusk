@@ -137,6 +137,7 @@ pub fn partwise_to_timewise(partwise: ScorePartwise) -> ScoreTimewise {
 
             let mut tw_measure = TimewiseMeasure::new(measure_number);
             if let Some(fm) = first_measure {
+                tw_measure.text = fm.text.clone();
                 tw_measure.implicit = fm.implicit;
                 tw_measure.non_controlling = fm.non_controlling;
                 tw_measure.width = fm.width;
@@ -184,6 +185,7 @@ fn build_partwise_measure(
 ) -> Measure {
     Measure {
         number: tw_measure.number.clone(),
+        text: tw_measure.text.clone(),
         implicit: tw_measure.implicit,
         non_controlling: tw_measure.non_controlling,
         width: tw_measure.width,
@@ -233,6 +235,7 @@ mod tests {
             part_list: make_part_list(&["P1"]),
             measures: vec![TimewiseMeasure {
                 number: "1".to_string(),
+                text: None,
                 implicit: None,
                 non_controlling: None,
                 width: Some(200.0),
@@ -260,6 +263,7 @@ mod tests {
             measures: vec![
                 TimewiseMeasure {
                     number: "1".to_string(),
+                    text: None,
                     implicit: Some(YesNo::Yes),
                     non_controlling: None,
                     width: None,
@@ -271,6 +275,7 @@ mod tests {
                 },
                 TimewiseMeasure {
                     number: "2".to_string(),
+                    text: None,
                     implicit: None,
                     non_controlling: None,
                     width: None,
@@ -305,6 +310,7 @@ mod tests {
             part_list: make_part_list(&["P1", "P2"]),
             measures: vec![TimewiseMeasure {
                 number: "0".to_string(),
+                text: None,
                 implicit: Some(YesNo::Yes),
                 non_controlling: Some(YesNo::Yes),
                 width: Some(150.0),
@@ -391,6 +397,7 @@ mod tests {
                 id: "P1".to_string(),
                 measures: vec![Measure {
                     number: "1".to_string(),
+                    text: None,
                     implicit: Some(YesNo::Yes),
                     non_controlling: None,
                     width: Some(200.0),

@@ -287,6 +287,7 @@ fn parse_timewise_measure<R: BufRead>(
 
     // Parse measure attributes
     let measure_number = get_attr_required(start, "number")?;
+    let measure_text = get_attr(start, "text")?;
     let implicit = get_attr(start, "implicit")?.and_then(|s| match s.as_str() {
         "yes" => Some(YesNo::Yes),
         "no" => Some(YesNo::No),
@@ -310,6 +311,7 @@ fn parse_timewise_measure<R: BufRead>(
                     // Create measure for this part
                     let measure = Measure {
                         number: measure_number.clone(),
+                        text: measure_text.clone(),
                         implicit,
                         non_controlling,
                         width,
@@ -334,6 +336,7 @@ fn parse_timewise_measure<R: BufRead>(
                     let part_id = get_attr_required(&e, "id")?;
                     let measure = Measure {
                         number: measure_number.clone(),
+                        text: measure_text.clone(),
                         implicit,
                         non_controlling,
                         width,
@@ -1118,6 +1121,7 @@ fn parse_measure<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Resu
     let mut buf = Vec::new();
     let mut measure = Measure {
         number: get_attr_required(start, "number")?,
+        text: get_attr(start, "text")?,
         implicit: get_attr(start, "implicit")?.and_then(|s| match s.as_str() {
             "yes" => Some(YesNo::Yes),
             "no" => Some(YesNo::No),

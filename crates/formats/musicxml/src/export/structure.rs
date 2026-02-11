@@ -49,6 +49,11 @@ pub fn convert_mei_measure(
 
     let mut mxml_measure = Measure::new(&measure_number);
 
+    // Convert @label to @text (displayed measure number)
+    if let Some(ref label) = mei_measure.common.label {
+        mxml_measure.text = Some(label.clone());
+    }
+
     // Convert xml:id to id
     if let Some(ref xml_id) = mei_measure.common.xml_id {
         mxml_measure.id = Some(xml_id.clone());

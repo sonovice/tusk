@@ -259,6 +259,14 @@ fn compare_scores(original: &ScoreTimewise, roundtripped: &ScoreTimewise) -> Dif
             ));
         }
 
+        // Check measure text
+        if orig_measure.text != rt_measure.text {
+            diffs.add(format!(
+                "Measure '{}': text mismatch: original={:?}, roundtripped={:?}",
+                measure_num, orig_measure.text, rt_measure.text
+            ));
+        }
+
         // Check part count within measure
         if orig_measure.parts.len() != rt_measure.parts.len() {
             diffs.add(format!(
@@ -1368,6 +1376,7 @@ fragment_roundtrip_test!(lyric_element);
 fragment_roundtrip_test!(measure_distance_element);
 fragment_roundtrip_test!(measure_numbering_element);
 fragment_roundtrip_test!(measure_repeat_element);
+fragment_roundtrip_test!(measure_text_attribute);
 // Batch 28
 fragment_roundtrip_test!(membrane_element);
 fragment_roundtrip_test!(metal_element);

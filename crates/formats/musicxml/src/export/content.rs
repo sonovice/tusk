@@ -353,6 +353,7 @@ pub fn convert_mei_score_content(
     // Collect measure metadata (number, implicit, etc.) for building output later
     struct MeasureMeta {
         number: String,
+        text: Option<String>,
         implicit: Option<crate::model::data::YesNo>,
         non_controlling: Option<crate::model::data::YesNo>,
         width: Option<f64>,
@@ -366,6 +367,7 @@ pub fn convert_mei_score_content(
 
         measure_metas.push(MeasureMeta {
             number: mxml_measure_base.number.clone(),
+            text: mxml_measure_base.text.clone(),
             implicit: mxml_measure_base.implicit,
             non_controlling: mxml_measure_base.non_controlling,
             width: mxml_measure_base.width,
@@ -600,6 +602,7 @@ pub fn convert_mei_score_content(
     for (measure_idx, meta) in measure_metas.iter().enumerate() {
         let mut tw_measure = TimewiseMeasure {
             number: meta.number.clone(),
+            text: meta.text.clone(),
             implicit: meta.implicit,
             non_controlling: meta.non_controlling,
             width: meta.width,

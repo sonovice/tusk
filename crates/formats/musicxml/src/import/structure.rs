@@ -570,6 +570,11 @@ fn convert_measure_attributes(
         musicxml_measure.number.clone(),
     ));
 
+    // text → @label (displayed measure number when different from @number)
+    if let Some(ref text) = musicxml_measure.text {
+        mei_measure.common.label = Some(text.clone());
+    }
+
     // implicit="yes" → metcon="false" (metrically non-conformant / pickup measure)
     // In MusicXML, implicit="yes" means the measure doesn't count in measure numbering
     // In MEI, metcon="false" means the measure content doesn't conform to the prevailing meter
@@ -1186,6 +1191,7 @@ mod tests {
         // Measure with all optional attributes
         let full_measure = Measure {
             number: "0".to_string(),
+            text: Some("Pickup".to_string()),
             implicit: Some(YesNo::Yes),
             non_controlling: Some(YesNo::Yes),
             width: Some(200.0),
@@ -1218,6 +1224,7 @@ mod tests {
             mei_measure.measure_vis.width.as_ref().map(|w| w.0.as_str()),
             Some("200vu")
         );
+        assert_eq!(mei_measure.common.label.as_deref(), Some("Pickup"));
         assert!(mei_measure.common.xml_id.is_some());
         assert!(ctx.get_mei_id("m0").is_some());
     }

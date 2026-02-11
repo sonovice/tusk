@@ -1046,6 +1046,7 @@ impl MusicXmlSerialize for Measure {
 
     fn collect_attributes(&self) -> Vec<(&'static str, String)> {
         let mut attrs = vec![("number", self.number.clone())];
+        push_opt_str_attr!(attrs, "text", self.text);
         if let Some(ref imp) = self.implicit {
             attrs.push(("implicit", yes_no_str(imp).to_string()));
         }
@@ -1718,6 +1719,9 @@ impl TimewiseMeasure {
     pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
         let mut start = w.start_element("measure");
         start.push_attribute(("number", self.number.as_str()));
+        if let Some(ref text) = self.text {
+            start.push_attribute(("text", text.as_str()));
+        }
         if let Some(ref imp) = self.implicit {
             start.push_attribute(("implicit", yes_no_str(imp)));
         }

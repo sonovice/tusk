@@ -1326,6 +1326,9 @@ pub struct TimewiseMeasure {
     /// Measure number (required)
     pub number: String,
 
+    /// Displayed measure number (when different from @number)
+    pub text: Option<String>,
+
     /// Implicit measure (pickup, anacrusis)
     pub implicit: Option<super::super::data::YesNo>,
 
@@ -1344,6 +1347,7 @@ impl TimewiseMeasure {
     pub fn new(number: &str) -> Self {
         Self {
             number: number.to_string(),
+            text: None,
             implicit: None,
             non_controlling: None,
             width: None,

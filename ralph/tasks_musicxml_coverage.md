@@ -1313,14 +1313,26 @@ full spec compliance.
 
 ### 29.4 Measure Attribute
 
-- [ ] Add `text: Option<String>` to `Measure` struct (MusicXML 4.0 measure @text for multi-line time signatures)
-- [ ] Parse and serialize the attribute
+- [x] Add `text: Option<String>` to `Measure` struct (MusicXML 4.0 measure @text for multi-line time signatures)
+  - Added to model/elements/measure.rs and model/elements/score.rs (TimewiseMeasure)
+  - Import: @text → MEI @label on measure
+  - Export: MEI @label → @text
+  - Propagated through partwise↔timewise conversion (convert.rs)
+- [x] Parse and serialize the attribute
+  - Parser: parse @text in both parse_measure() and parse_timewise_measure()
+  - Serializer: emit @text in Measure::collect_attributes() and TimewiseMeasure::serialize_timewise()
+  - Comparison: added @text check to compare_scores() in roundtrip.rs
 
 ### 29.5 Tests
 
-- [ ] Serde roundtrip tests for all new model types
-- [ ] Parser → serializer roundtrip tests for new elements
-- [ ] Existing roundtrip tests pass (0 regressions)
+- [x] Serde roundtrip tests for all new model types
+  - Added test_measure_text_attribute (serde JSON roundtrip)
+  - Added test_measure_text_none_not_serialized (skip_serializing_if verification)
+- [x] Parser → serializer roundtrip tests for new elements
+  - Added measure_text_attribute.musicxml fragment fixture (3 measures, 2 with @text)
+  - Full 4-level roundtrip via fragment_roundtrip_test macro
+- [x] Existing roundtrip tests pass (0 regressions)
+  - All 2476 tests pass, 0 failures, 0 clippy warnings
 
 ---
 

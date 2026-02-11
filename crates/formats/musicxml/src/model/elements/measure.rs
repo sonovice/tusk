@@ -24,6 +24,10 @@ pub struct Measure {
     #[serde(rename = "@number")]
     pub number: String,
 
+    /// Displayed measure number (when different from @number)
+    #[serde(rename = "@text", skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+
     /// Implicit measure (pickup, etc.)
     #[serde(rename = "@implicit", skip_serializing_if = "Option::is_none")]
     pub implicit: Option<YesNo>,
@@ -50,6 +54,7 @@ impl Measure {
     pub fn new(number: &str) -> Self {
         Self {
             number: number.to_string(),
+            text: None,
             implicit: None,
             non_controlling: None,
             width: None,
@@ -107,6 +112,7 @@ mod tests {
     fn test_measure() {
         let measure = Measure {
             number: "1".to_string(),
+            text: None,
             implicit: Some(YesNo::Yes),
             non_controlling: None,
             width: Some(200.0),
@@ -118,5 +124,33 @@ mod tests {
         assert_eq!(measure.implicit, Some(YesNo::Yes));
         assert_eq!(measure.width, Some(200.0));
         assert_eq!(measure.id.as_deref(), Some("m1"));
+    }
+
+    #[test]
+    fn test_measure_text_attribute() {
+        let measure = Measure {
+            number: "5".to_string(),
+            text: Some("5a".to_string()),
+            implicit: None,
+            non_controlling: None,
+            width: None,
+            id: None,
+            content: Vec::new(),
+        };
+
+        assert_eq!(measure.text.as_deref(), Some("5a"));
+
+        // Serde roundtrip
+        let json = serde_json::to_string(&measure).unwrap();
+        let deserialized: Measure = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.text, measure.text);
+        assert_eq!(deserialized.number, measure.number);
+    }
+
+    #[test]
+    fn test_measure_text_none_not_serialized() {
+        let measure = Measure::new("1");
+        let json = serde_json::to_string(&measure).unwrap();
+        assert!(!json.contains("@text"));
     }
 }
