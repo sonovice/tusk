@@ -1650,9 +1650,17 @@ Skip events (`s4`, `s8`, etc.) are commonly used as spacing/placeholder elements
 
 ### 35.2 Export
 
-- [ ] [E] MEI `<space>` → `Music::Skip(SkipEvent)` with correct duration and post-events
-- [ ] [T] Roundtrip tests: skip basic, skip with duration, skip in voice context, skip in lyric mode
-- [ ] [T] Fixture: `fragment_skip.ly` with skip events in various contexts
+- [x] [E] MEI `<space>` → `Music::Skip(SkipEvent)` with correct duration and post-events
+  - Already implemented in `export/conversion.rs`: `convert_mei_space()` extracts duration/dots and emits `Music::Skip`
+  - Wired into `convert_layer_child()` at `LayerChild::Space(space)` match arm
+- [x] [T] Roundtrip tests: skip basic, skip with duration, skip in voice context, skip in lyric mode
+  - `roundtrip_skip_basic`: `s4` between notes preserved
+  - `roundtrip_skip_with_duration`: standalone `s2`
+  - `roundtrip_skip_dotted`: `s4.` with dots
+  - `roundtrip_skip_in_voice`: `s4` in `\\\\` multi-voice context
+  - `roundtrip_skip_with_lyrics`: `s4` in music with `\addlyrics`
+- [x] [T] Fixture: `fragment_skip.ly` with skip events in various contexts
+  - `tests/fixtures/lilypond/fragment_skip.ly`: skips with different durations
 
 ---
 
