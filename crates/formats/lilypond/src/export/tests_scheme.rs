@@ -1,10 +1,11 @@
 //! Roundtrip tests for Scheme expressions through MEI labels.
 //!
-//! Scheme expressions never appear as standalone Music variants — they are
-//! always embedded in property operations, function calls, assignments, or
-//! output-definition fields.  The roundtrip strategy serializes the containing
-//! construct to text, stores it in an MEI @label, and re-parses on export.
-//! These tests verify that every `SchemeExpr` variant survives that cycle.
+//! Scheme expressions may appear embedded in property operations, function
+//! calls, assignments, or output-definition fields, as well as standalone
+//! `Music::SchemeMusic` in music position.  The roundtrip strategy serializes
+//! the expression to text, stores it in an MEI `<dir>` @label, and re-parses
+//! on export.  These tests verify that every `SchemeExpr` variant survives
+//! that cycle.
 
 use super::*;
 use crate::import;
@@ -227,4 +228,60 @@ fn roundtrip_fixture_scheme() {
     );
     // Bool in set
     assert!(output.contains("##t"), "missing ##t: {output}");
+}
+
+// ---------------------------------------------------------------------------
+// Music::SchemeMusic — Scheme expressions in music position
+// ---------------------------------------------------------------------------
+
+#[test]
+fn roundtrip_scheme_music_list() {
+    let output = roundtrip("{ c4 #(ly:export (make-music 'SkipEvent)) d4 }");
+    assert!(
+        output.contains("#(ly:export (make-music 'SkipEvent))"),
+        "output: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_scheme_music_identifier() {
+    let output = roundtrip("{ c4 #myMusicVar d4 }");
+    assert!(output.contains("#myMusicVar"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_scheme_music_embedded_lilypond() {
+    let output = roundtrip("{ c4 ##{ f4 #} g4 }");
+    assert!(output.contains("##{"), "output: {output}");
+    assert!(output.contains("f4"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_scheme_music_multiple() {
+    let output = roundtrip("{ c4 #myVar d4 #(ly:export (make-music 'NoteEvent)) e4 }");
+    assert!(output.contains("#myVar"), "output: {output}");
+    assert!(output.contains("#(ly:export"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_scheme_music_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_scheme_music.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+
+    // List call
+    assert!(
+        output.contains("#(ly:export (make-music 'SkipEvent))"),
+        "missing list call: {output}"
+    );
+    // Identifier
+    assert!(
+        output.contains("#myMusicVar"),
+        "missing identifier: {output}"
+    );
+    // Embedded LilyPond
+    assert!(output.contains("##{"), "missing embedded ly: {output}");
 }

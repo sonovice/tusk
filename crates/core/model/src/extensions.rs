@@ -854,6 +854,16 @@ pub struct PropertyOpInfo {
     pub serialized: String,
 }
 
+/// Serialized Scheme expression in music position for lossless roundtrip on `<dir>`.
+///
+/// Stores the full serialized LilyPond `#expr` text (e.g. `#(ly:export ...)`, `#myVar`)
+/// so it can be re-parsed on export.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SchemeMusicInfo {
+    /// Full serialized Scheme expression (including leading `#`).
+    pub serialized: String,
+}
+
 // ---------------------------------------------------------------------------
 // ExtensionStore — side table for attaching extensions to MEI elements
 // ---------------------------------------------------------------------------

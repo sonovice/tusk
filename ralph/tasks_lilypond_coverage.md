@@ -1847,9 +1847,14 @@ Grammar: `scm_function_call`, `embedded_scm_bare`, `embedded_scm_active`, `embed
 
 ### 41.2 Import & Export
 
-- [ ] [I] Music-as-Scheme → store as `FunctionCall` extension (or new `SchemeMusic` extension) on MEI control events, preserving the full Scheme expression tree
-- [ ] [E] Roundtrip via typed extension
-- [ ] [T] Roundtrip tests: Scheme function calls in music context
+- [x] [I] Music-as-Scheme → store as `FunctionCall` extension (or new `SchemeMusic` extension) on MEI control events, preserving the full Scheme expression tree
+  - Added `SchemeMusicInfo` typed extension to `tusk_model::extensions` (serialized field for lossless roundtrip)
+  - Updated `make_scheme_music_dir` to serialize via `serde_json` with `tusk:scheme-music,{JSON}` label (consistent with `PropertyOpInfo`/`FunctionCall` pattern)
+- [x] [E] Roundtrip via typed extension
+  - Updated `collect_scheme_music_ops` to deserialize `tusk_model::SchemeMusicInfo` from JSON label
+  - Renamed local `SchemeMusicInfo` → `SchemeMusicOp` to avoid collision with model type
+- [x] [T] Roundtrip tests: Scheme function calls in music context
+  - 5 new tests: `roundtrip_scheme_music_list`, `roundtrip_scheme_music_identifier`, `roundtrip_scheme_music_embedded_lilypond`, `roundtrip_scheme_music_multiple`, `roundtrip_scheme_music_fixture`
 
 ---
 

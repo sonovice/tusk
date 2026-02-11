@@ -642,7 +642,10 @@ pub(super) fn make_scheme_music_dir(serialized: &str, startid: &str, staff_n: u3
     dir.common.xml_id = Some(format!("ly-scm-{id}"));
     dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
     dir.dir_log.staff = Some(staff_n.to_string());
-    let escaped = super::utils::escape_json_pipe(serialized);
-    dir.common.label = Some(format!("tusk:scheme-music,{escaped}"));
+    let info = tusk_model::SchemeMusicInfo {
+        serialized: serialized.to_string(),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:scheme-music,{json}"));
     dir
 }

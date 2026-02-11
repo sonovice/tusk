@@ -277,14 +277,14 @@ pub(super) fn inject_function_ops(
 // Scheme music expressions
 // ---------------------------------------------------------------------------
 
-/// Collected Scheme music info: startid → Music.
-pub(super) struct SchemeMusicInfo {
+/// Collected Scheme music op: startid → Music.
+pub(super) struct SchemeMusicOp {
     pub(super) start_id: String,
     pub(super) music: Music,
 }
 
-/// Collect Scheme music expressions from measure `<dir>` elements with `tusk:scheme-music,` labels.
-pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec<SchemeMusicInfo> {
+/// Collect Scheme music expressions from measure `<dir>` elements with `tusk:scheme-music,{JSON}` labels.
+pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec<SchemeMusicOp> {
     let mut ops = Vec::new();
     for mc in measure_children {
         if let MeasureChild::Dir(dir) = mc {
@@ -292,7 +292,9 @@ pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec
                 Some(l) => l,
                 None => continue,
             };
-            if let Some(serialized) = label.strip_prefix("tusk:scheme-music,") {
+            if let Some(json) = label.strip_prefix("tusk:scheme-music,")
+                && let Ok(info) = serde_json::from_str::<tusk_model::SchemeMusicInfo>(json)
+            {
                 let start_id = dir
                     .dir_log
                     .startid
@@ -300,13 +302,13 @@ pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec
                     .map(|u| u.0.trim_start_matches('#').to_string())
                     .unwrap_or_default();
                 // Parse the serialized Scheme expression back into a SchemeExpr
-                let expr = if let Some(e) = parse_scheme_str(serialized) {
+                let expr = if let Some(e) = parse_scheme_str(&info.serialized) {
                     e
                 } else {
-                    crate::model::SchemeExpr::Raw(serialized.to_string())
+                    crate::model::SchemeExpr::Raw(info.serialized)
                 };
                 let music = Music::SchemeMusic(expr);
-                ops.push(SchemeMusicInfo { start_id, music });
+                ops.push(SchemeMusicOp { start_id, music });
             }
         }
     }
@@ -317,7 +319,7 @@ pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec
 pub(super) fn inject_scheme_music_ops(
     items: &mut Vec<Music>,
     item_ids: &[Option<String>],
-    ops: &[SchemeMusicInfo],
+    ops: &[SchemeMusicOp],
 ) {
     let pairs: Vec<(String, Music)> = ops
         .iter()
