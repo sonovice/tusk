@@ -355,12 +355,12 @@ fn major_fifths_to_pitch(fifths: i32) -> (char, f32) {
     }
 }
 
-/// Escape a string for safe inclusion in the label event sequence.
+/// Escape a string for safe inclusion in a label segment.
 ///
 /// Characters that conflict with the label format (`|`, `@`, `;`) are
 /// percent-encoded to `%7C`, `%40`, `%3B` respectively. `%` itself is
 /// encoded as `%25` to make the encoding reversible.
-fn escape_label_value(s: &str) -> String {
+pub(super) fn escape_label_value(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
@@ -372,11 +372,6 @@ fn escape_label_value(s: &str) -> String {
         }
     }
     out
-}
-
-/// Public wrapper for `escape_label_value` used by control_events.
-pub(super) fn escape_label_value_pub(s: &str) -> String {
-    escape_label_value(s)
 }
 
 /// Reverse the percent-encoding applied by `escape_label_value`.

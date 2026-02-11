@@ -76,7 +76,7 @@ pub(super) fn build_mei_head_from_file(file: &model::LilyPondFile) -> MeiHead {
     // Store all output defs as a single ExtMeta with JSON
     if !output_defs.is_empty() {
         let json = serde_json::to_string(&output_defs).unwrap_or_default();
-        let escaped = signatures::escape_label_value_pub(&json);
+        let escaped = signatures::escape_label_value(&json);
         let mut ext = ExtMeta::default();
         ext.common.label = Some(format!("tusk:output-defs,{escaped}"));
         // Human-readable summary
@@ -125,6 +125,6 @@ pub(super) fn build_score_blocks_label(file: &model::LilyPondFile) -> String {
     }
 
     let json = serde_json::to_string(&output_defs).unwrap_or_default();
-    let escaped = signatures::escape_label_value_pub(&json);
+    let escaped = signatures::escape_label_value(&json);
     format!("tusk:score-output-defs,{escaped}")
 }

@@ -882,7 +882,7 @@ fn convert_layer_child_to_items(
             }
         }
         _ => {
-            // Inject \change before notes with lilypond:change label
+            // Inject \change before notes with tusk:context-change label
             if let Some(change) = extract_context_change_from_label(child) {
                 items.push(change);
             }

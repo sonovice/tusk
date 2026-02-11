@@ -116,7 +116,7 @@ pub(super) fn make_hairpin(
 /// Create an MEI TupletSpan control event.
 ///
 /// Label stores the LilyPond-specific data for lossless roundtrip:
-/// `lilypond:tuplet,NUM/DENOM[,span=DUR]`
+/// `tusk:tuplet,{json}` (typed `TupletInfo` JSON)
 pub(super) fn make_tuplet_span(
     start_id: &str,
     end_id: &str,

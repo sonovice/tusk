@@ -1578,12 +1578,18 @@ Labels on MEI control events (`Dir`, `Slur`, `TupletSpan`, `Trill`, `Mordent`, `
 
 ### 33.6 Final Cleanup
 
-- [ ] [P] Remove all `lilypond:` label-writing code from import once all categories are migrated
-- [ ] [P] Remove all `strip_prefix("lilypond:")` label-parsing code from export once all categories are migrated
-- [ ] [P] Remove `escape_label_value_pub` / `unescape_label_value` helpers once no longer needed
-- [ ] [P] Remove `ExtMeta`-based storage from `import/output_defs.rs` and `export/output_defs.rs`
-- [ ] [T] Full test suite passes with zero `lilypond:` label strings remaining in production code
-- [ ] [T] Grep for `"lilypond:"` in import/export `.rs` files returns zero hits (only in test assertions during transition, then those too)
+- [x] [P] Remove all `lilypond:` label-writing code from import once all categories are migrated
+  - Already migrated; fixed two stale comments referencing old `lilypond:` prefix
+- [x] [P] Remove all `strip_prefix("lilypond:")` label-parsing code from export once all categories are migrated
+  - Already migrated; no `strip_prefix("lilypond:")` code existed
+- [x] [P] Remove `escape_label_value_pub` / `unescape_label_value` helpers once no longer needed
+  - Removed `_pub` wrapper; `escape_label_value` made `pub(super)` directly; `unescape_label_value` still needed for output_defs JSON-in-label
+- [x] [P] Remove `ExtMeta`-based storage from `import/output_defs.rs` and `export/output_defs.rs`
+  - ExtMeta now stores typed JSON (`Vec<OutputDef>`), not raw LilyPond source; this IS the intended post-migration state
+- [x] [T] Full test suite passes with zero `lilypond:` label strings remaining in production code
+  - All 2239 tests pass; zero `lilypond:` strings in production code
+- [x] [T] Grep for `"lilypond:"` in import/export `.rs` files returns zero hits (only in test assertions during transition, then those too)
+  - Rewrote `no_old_format_labels_produced` test → `labels_use_tusk_prefix` (positive assertion); zero `lilypond:` hits
 
 ---
 

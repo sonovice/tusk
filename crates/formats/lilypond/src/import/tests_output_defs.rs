@@ -264,45 +264,30 @@ fn layout_with_context_stored() {
 }
 
 #[test]
-fn no_old_format_labels_produced() {
+fn labels_use_tusk_prefix() {
     let file = parse(
         "\\header { title = \"Test\" }\n\\paper { indent = 0 }\n\\layout { }\n\\midi { }\n\\score { { c4 } \\header { piece = \"P\" } \\layout { } \\midi { } }",
     );
     let mei = import(&file).unwrap();
 
-    // No old-format labels should exist
+    // ExtMeta labels must use tusk: prefix
     let labels = ext_meta_labels(&mei);
+    assert!(!labels.is_empty(), "expected at least one ExtMeta label");
     for label in &labels {
         assert!(
-            !label.starts_with("lilypond:header,"),
-            "old lilypond:header, label found: {label}"
-        );
-        assert!(
-            !label.starts_with("lilypond:paper,"),
-            "old lilypond:paper, label found: {label}"
-        );
-        assert!(
-            !label.starts_with("lilypond:layout,"),
-            "old lilypond:layout, label found: {label}"
-        );
-        assert!(
-            !label.starts_with("lilypond:midi,"),
-            "old lilypond:midi, label found: {label}"
+            label.starts_with("tusk:"),
+            "expected tusk: prefix, got: {label}"
         );
     }
 
-    // ScoreDef should not have old-format labels
+    // ScoreDef label segments must use tusk: prefix
     let sd_label = score_def_label(&mei);
-    assert!(
-        !sd_label.contains("lilypond:score-header,"),
-        "old lilypond:score-header label found: {sd_label}"
-    );
-    assert!(
-        !sd_label.contains("lilypond:score-layout,"),
-        "old lilypond:score-layout label found: {sd_label}"
-    );
-    assert!(
-        !sd_label.contains("lilypond:score-midi,"),
-        "old lilypond:score-midi label found: {sd_label}"
-    );
+    for segment in sd_label.split('|') {
+        if !segment.is_empty() {
+            assert!(
+                segment.starts_with("tusk:"),
+                "expected tusk: prefix in ScoreDef label segment, got: {segment}"
+            );
+        }
+    }
 }
