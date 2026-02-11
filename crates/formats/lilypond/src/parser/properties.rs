@@ -9,42 +9,73 @@ use crate::model::*;
 
 impl<'src> Parser<'src> {
     // ──────────────────────────────────────────────────────────────────
-    // Property path: Symbol (.Symbol)*
+    // Property path: (NamedSegment | SchemeSegment) (. NamedSegment | SchemeSegment)*
     // ──────────────────────────────────────────────────────────────────
 
-    /// Parse a dot-separated property path (e.g. `Staff.TimeSignature.color`).
+    /// Parse a property path with optional Scheme-based segments.
     ///
-    /// Accepts `Symbol`, `NoteName`, and `String` as segments, separated by `.`.
+    /// Handles:
+    /// - `Staff.TimeSignature.color` — dot-separated named segments
+    /// - `#'font-size` — single Scheme quoted symbol
+    /// - `#'(bound-details left text)` — Scheme quoted list
+    /// - `Staff #'fontSize` — mixed: named context + Scheme property
+    /// - `NoteHead.bound-details #'(left text)` — mixed dot/scheme
     pub(super) fn parse_property_path(&mut self) -> Result<PropertyPath, ParseError> {
-        let first = self.parse_path_segment()?;
+        let first = self.parse_path_segment_mixed()?;
         let mut segments = vec![first];
-        while *self.peek() == Token::Dot {
-            self.advance()?; // consume `.`
-            segments.push(self.parse_path_segment()?);
+        loop {
+            if *self.peek() == Token::Dot {
+                self.advance()?; // consume `.`
+                segments.push(self.parse_path_segment_mixed()?);
+            } else if self.is_scheme_path_ahead()? {
+                // #'symbol or #'(list) — Scheme quoted path segment (no dot)
+                let expr = self.parse_scheme_expr()?;
+                segments.push(PathSegment::Scheme(expr));
+            } else {
+                break;
+            }
         }
-        Ok(PropertyPath::new(segments))
+        Ok(PropertyPath::new_segments(segments))
     }
 
-    /// Parse a single segment of a property path.
-    fn parse_path_segment(&mut self) -> Result<String, ParseError> {
+    /// Parse a single segment of a property path: named or Scheme.
+    fn parse_path_segment_mixed(&mut self) -> Result<PathSegment, ParseError> {
         match &self.current.token {
+            Token::Hash => {
+                let expr = self.parse_scheme_expr()?;
+                Ok(PathSegment::Scheme(expr))
+            }
             Token::Symbol(s) => {
                 let s = s.clone();
                 self.advance()?;
-                Ok(s)
+                Ok(PathSegment::Named(s))
             }
             Token::NoteName(s) => {
                 let s = s.clone();
                 self.advance()?;
-                Ok(s)
+                Ok(PathSegment::Named(s))
             }
-            Token::String(_) => self.expect_string(),
+            Token::String(_) => {
+                let s = self.expect_string()?;
+                Ok(PathSegment::Named(s))
+            }
             _ => Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
-                expected: "property path segment (symbol, note name, or string)".into(),
+                expected: "property path segment (symbol, note name, string, or #'scheme)".into(),
             }),
         }
+    }
+
+    /// Check if the next tokens form `#'` (a Scheme quoted path segment).
+    ///
+    /// Only `#'symbol` and `#'(list)` are valid as path components; bare
+    /// `#value` (like `#red`, `#3`) is a property value, not a path segment.
+    fn is_scheme_path_ahead(&mut self) -> Result<bool, ParseError> {
+        if *self.peek() != Token::Hash {
+            return Ok(false);
+        }
+        Ok(matches!(self.peek2()?, Token::Quote))
     }
 
     // ──────────────────────────────────────────────────────────────────

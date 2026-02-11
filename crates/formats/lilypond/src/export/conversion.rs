@@ -396,7 +396,7 @@ fn emit_id_tweak_if_needed(xml_id: Option<&str>, post_events: &mut Vec<PostEvent
 
     // Don't duplicate if an id tweak already exists from label restoration
     let has_id_tweak = post_events.iter().any(|pe| {
-        matches!(pe, PostEvent::Tweak { path, .. } if path.segments.last().is_some_and(|s| s == "id"))
+        matches!(pe, PostEvent::Tweak { path, .. } if path.segments.last().is_some_and(|s| matches!(s, crate::model::PathSegment::Named(n) if n == "id")))
     });
     if has_id_tweak {
         return;

@@ -1866,13 +1866,25 @@ Grammar: `grob_prop_spec` (full form), `context_prop_spec`, `simple_revert_conte
 
 ### 42.1 Model & Parser
 
-- [ ] [P] Parse Scheme-quoted property paths: `#'symbol` and `#'(symbol-list)` as property path components
-- [ ] [P] Extend `PropertyPath` to hold Scheme-based segments: e.g. `PropertyPath::SchemePath(SchemeExpr)` variant or mixed dot/scheme segments
-- [ ] [P] Parse `\revert #'(bound-details left text)` — Scheme list as revert target
-- [ ] [P] Parse `\override` with Scheme property spec: e.g. `\override #'font-size = #3`
-- [ ] [P] Parse `simple_revert_context`: bare context name before revert path (e.g. `\revert Staff #'fontSize`)
-- [ ] [S] Serialize Scheme-based property paths
-- [ ] [T] Parser tests: `\revert #'(bound-details left text)`, `\override #'font-size = #3`, mixed dot/scheme paths
+- [x] [P] Parse Scheme-quoted property paths: `#'symbol` and `#'(symbol-list)` as property path components
+  - Added `PathSegment::Scheme(SchemeExpr)` variant; `parse_path_segment_mixed()` handles `Token::Hash`
+  - Added `SchemeExpr::QuotedList` for `#'(symbol-list)` forms (distinct from `List`)
+  - `is_scheme_path_ahead()` uses 2-token lookahead (`#` + `'`) to distinguish path segments from values
+- [x] [P] Extend `PropertyPath` to hold Scheme-based segments: e.g. `PropertyPath::SchemePath(SchemeExpr)` variant or mixed dot/scheme segments
+  - `PropertyPath.segments` changed from `Vec<String>` to `Vec<PathSegment>`
+  - `PathSegment` enum: `Named(String)` | `Scheme(SchemeExpr)`
+  - `PropertyPath::new()` still accepts `Vec<String>` for backwards compat
+- [x] [P] Parse `\revert #'(bound-details left text)` — Scheme list as revert target
+  - `parse_scheme_after_hash` quote branch now handles `#'(...)` → `SchemeExpr::QuotedList`
+- [x] [P] Parse `\override` with Scheme property spec: e.g. `\override #'font-size = #3`
+  - `parse_property_path` accepts `#'symbol` as first segment via `parse_path_segment_mixed`
+- [x] [P] Parse `simple_revert_context`: bare context name before revert path (e.g. `\revert Staff #'fontSize`)
+  - Property path loop continues into Scheme segments when `is_scheme_path_ahead()` (no dot needed)
+- [x] [S] Serialize Scheme-based property paths
+  - `write_property_path` handles `PathSegment::Scheme` with space separator (no dot)
+  - `write_scheme_expr` handles `SchemeExpr::QuotedList` with `#'(...)` output
+- [x] [T] Parser tests: `\revert #'(bound-details left text)`, `\override #'font-size = #3`, mixed dot/scheme paths
+  - 11 new tests: override_scheme_symbol_path, override_mixed_dot_scheme, revert_scheme_quoted_list, revert_context_then_scheme, revert_scheme_quoted_symbol, + 4 serialization roundtrip tests
 
 ### 42.2 Import & Export
 

@@ -79,11 +79,38 @@ impl<'src> Parser<'src> {
                 }
             }
             Token::Quote => {
-                // #'symbol — quoted symbol
+                // #'symbol or #'(symbol-list) — quoted symbol or list
                 self.advance()?; // consume '
-                let tok = self.advance()?;
-                let name = self.src[tok.span.start..tok.span.end].to_string();
-                Ok(SchemeExpr::Symbol(name))
+                if matches!(self.peek(), Token::ParenOpen) {
+                    // #'(sym1 sym2 ...) — quoted list
+                    let start = self.offset();
+                    self.advance()?; // consume (
+                    let mut depth = 1u32;
+                    while depth > 0 && !self.at_eof() {
+                        match self.peek() {
+                            Token::ParenOpen => {
+                                depth += 1;
+                                self.advance()?;
+                            }
+                            Token::ParenClose => {
+                                depth -= 1;
+                                if depth > 0 {
+                                    self.advance()?;
+                                }
+                            }
+                            _ => {
+                                self.advance()?;
+                            }
+                        }
+                    }
+                    let close = self.expect(&Token::ParenClose)?;
+                    let raw = self.src[start..close.span.end].to_string();
+                    Ok(SchemeExpr::QuotedList(raw))
+                } else {
+                    let tok = self.advance()?;
+                    let name = self.src[tok.span.start..tok.span.end].to_string();
+                    Ok(SchemeExpr::Symbol(name))
+                }
             }
             Token::String(s) => {
                 // #"string"
@@ -183,6 +210,7 @@ pub(crate) fn scheme_expr_to_suffix(expr: &SchemeExpr) -> String {
         SchemeExpr::Symbol(s) => format!("'{s}"),
         SchemeExpr::Identifier(s) => s.clone(),
         SchemeExpr::List(raw) => raw.clone(),
+        SchemeExpr::QuotedList(raw) => format!("'{raw}"),
         SchemeExpr::EmbeddedLilypond(_) => "#{ ... #}".to_string(),
         SchemeExpr::Raw(raw) => raw.clone(),
     }

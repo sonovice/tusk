@@ -36,6 +36,10 @@ pub enum SchemeExpr {
     /// A full Scheme evaluator would parse into nested expressions,
     /// but for LilyPond roundtrip we preserve the exact text.
     List(String),
+    /// Quoted list: `#'(sym1 sym2 ...)`.
+    /// Stores the parenthesized content as raw text (including parens).
+    /// Distinct from `List` because it is quote-prefixed in source.
+    QuotedList(String),
     /// Embedded LilyPond: `##{ music-or-markup #}`.
     EmbeddedLilypond(Vec<Music>),
     /// Pair literal: `#(a . b)` — stored as raw text like List.

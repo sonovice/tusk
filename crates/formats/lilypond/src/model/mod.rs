@@ -20,7 +20,7 @@ pub use note::{
     StepAlteration,
 };
 pub use pitch::Pitch;
-pub use property::{PropertyPath, PropertyValue};
+pub use property::{PathSegment, PropertyPath, PropertyValue};
 pub use scheme::SchemeExpr;
 pub use signature::{
     Clef, KeySignature, Mark, MarkLabel, Mode, Tempo, TempoRange, TextMark, TimeSignature,

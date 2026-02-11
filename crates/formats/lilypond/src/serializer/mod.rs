@@ -1176,10 +1176,20 @@ impl<'a> Serializer<'a> {
 
     fn write_property_path(&mut self, path: &property::PropertyPath) {
         for (i, seg) in path.segments.iter().enumerate() {
-            if i > 0 {
-                self.out.push('.');
+            match seg {
+                property::PathSegment::Named(s) => {
+                    if i > 0 {
+                        self.out.push('.');
+                    }
+                    self.out.push_str(s);
+                }
+                property::PathSegment::Scheme(expr) => {
+                    if i > 0 {
+                        self.out.push(' ');
+                    }
+                    self.write_scheme_expr(expr);
+                }
             }
-            self.out.push_str(seg);
         }
     }
 
@@ -1314,6 +1324,10 @@ impl<'a> Serializer<'a> {
             }
             SchemeExpr::Identifier(s) => self.out.push_str(s),
             SchemeExpr::List(raw) => self.out.push_str(raw),
+            SchemeExpr::QuotedList(raw) => {
+                self.out.push('\'');
+                self.out.push_str(raw);
+            }
             SchemeExpr::EmbeddedLilypond(items) => {
                 self.out.push_str("#{ ");
                 for (i, item) in items.iter().enumerate() {

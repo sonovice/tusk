@@ -91,7 +91,9 @@ pub(super) fn append_label_to_last_layer_child(layer: &mut Layer, segment: &str)
 ///
 /// Matches paths like `id`, `NoteHead.id`, etc. — the last segment is `id`.
 pub(super) fn is_id_tweak(path: &crate::model::PropertyPath) -> bool {
-    path.segments.last().is_some_and(|s| s == "id")
+    path.segments
+        .last()
+        .is_some_and(|s| matches!(s, crate::model::PathSegment::Named(n) if n == "id"))
 }
 
 /// Extract a string value from a `PropertyValue`, if it is a `String` or `SchemeExpr::String`.

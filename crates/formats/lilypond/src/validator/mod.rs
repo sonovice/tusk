@@ -972,6 +972,24 @@ fn validate_scheme_expr(
                 validate_music(item, errors);
             }
         }
+        SchemeExpr::QuotedList(raw) => {
+            // Same balanced-paren check as List
+            let mut depth: i32 = 0;
+            for ch in raw.chars() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => depth -= 1,
+                    _ => {}
+                }
+                if depth < 0 {
+                    errors.push(ValidationError::SchemeUnbalancedParens);
+                    return;
+                }
+            }
+            if depth != 0 {
+                errors.push(ValidationError::SchemeUnbalancedParens);
+            }
+        }
         // Atomic expressions: no structural validation needed
         SchemeExpr::Bool(_)
         | SchemeExpr::Integer(_)

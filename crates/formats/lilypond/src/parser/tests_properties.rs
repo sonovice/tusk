@@ -1,5 +1,6 @@
 //! Tests for property operation parsing: override, revert, set, unset, tweak, once.
 
+use crate::model::property::PathSegment;
 use crate::model::scheme::SchemeExpr;
 use crate::model::*;
 use crate::parser::parse;
@@ -20,6 +21,14 @@ fn roundtrip(src: &str) -> String {
     serialize(&file)
 }
 
+/// Helper: build expected named-only segments for comparison.
+fn named(names: &[&str]) -> Vec<PathSegment> {
+    names
+        .iter()
+        .map(|s| PathSegment::Named(s.to_string()))
+        .collect()
+}
+
 // ── \override ────────────────────────────────────────────────────────
 
 #[test]
@@ -27,7 +36,7 @@ fn override_simple() {
     let m = parse_first_music("\\override NoteHead.color = #red");
     match m {
         Music::Override { path, value } => {
-            assert_eq!(path.segments, vec!["NoteHead", "color"]);
+            assert_eq!(path.segments, named(&["NoteHead", "color"]));
             assert_eq!(
                 value,
                 PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
@@ -42,7 +51,7 @@ fn override_with_context() {
     let m = parse_first_music("\\override Staff.TimeSignature.color = #green");
     match m {
         Music::Override { path, value } => {
-            assert_eq!(path.segments, vec!["Staff", "TimeSignature", "color"]);
+            assert_eq!(path.segments, named(&["Staff", "TimeSignature", "color"]));
             assert_eq!(
                 value,
                 PropertyValue::SchemeExpr(SchemeExpr::Identifier("green".into()))
@@ -57,7 +66,7 @@ fn override_number_value() {
     let m = parse_first_music("\\override Beam.gap-count = 5");
     match m {
         Music::Override { path, value } => {
-            assert_eq!(path.segments, vec!["Beam", "gap-count"]);
+            assert_eq!(path.segments, named(&["Beam", "gap-count"]));
             assert_eq!(value, PropertyValue::Number(5.0));
         }
         _ => panic!("expected Override, got {m:?}"),
@@ -69,13 +78,51 @@ fn override_scheme_compound() {
     let m = parse_first_music("\\override Glissando.color = #(rgb-color 1 0 0)");
     match m {
         Music::Override { path, value } => {
-            assert_eq!(path.segments, vec!["Glissando", "color"]);
+            assert_eq!(path.segments, named(&["Glissando", "color"]));
             match value {
                 PropertyValue::SchemeExpr(SchemeExpr::List(s)) => {
                     assert!(s.starts_with("("))
                 }
                 other => panic!("expected SchemeExpr::List, got {other:?}"),
             }
+        }
+        _ => panic!("expected Override, got {m:?}"),
+    }
+}
+
+// ── \override with Scheme property path ──────────────────────────────
+
+#[test]
+fn override_scheme_symbol_path() {
+    // \override #'font-size = #3
+    let m = parse_first_music("\\override #'font-size = #3");
+    match m {
+        Music::Override { path, value } => {
+            assert_eq!(
+                path.segments,
+                vec![PathSegment::Scheme(SchemeExpr::Symbol("font-size".into()))]
+            );
+            assert_eq!(value, PropertyValue::SchemeExpr(SchemeExpr::Integer(3)));
+        }
+        _ => panic!("expected Override, got {m:?}"),
+    }
+}
+
+#[test]
+fn override_mixed_dot_scheme() {
+    // \override Staff.NoteHead #'font-size = #3
+    let m = parse_first_music("\\override Staff.NoteHead #'font-size = #3");
+    match m {
+        Music::Override { path, value } => {
+            assert_eq!(
+                path.segments,
+                vec![
+                    PathSegment::Named("Staff".into()),
+                    PathSegment::Named("NoteHead".into()),
+                    PathSegment::Scheme(SchemeExpr::Symbol("font-size".into())),
+                ]
+            );
+            assert_eq!(value, PropertyValue::SchemeExpr(SchemeExpr::Integer(3)));
         }
         _ => panic!("expected Override, got {m:?}"),
     }
@@ -88,7 +135,7 @@ fn revert_simple() {
     let m = parse_first_music("\\revert NoteHead.color");
     match m {
         Music::Revert { path } => {
-            assert_eq!(path.segments, vec!["NoteHead", "color"]);
+            assert_eq!(path.segments, named(&["NoteHead", "color"]));
         }
         _ => panic!("expected Revert, got {m:?}"),
     }
@@ -99,7 +146,58 @@ fn revert_with_context() {
     let m = parse_first_music("\\revert Staff.BarLine.color");
     match m {
         Music::Revert { path } => {
-            assert_eq!(path.segments, vec!["Staff", "BarLine", "color"]);
+            assert_eq!(path.segments, named(&["Staff", "BarLine", "color"]));
+        }
+        _ => panic!("expected Revert, got {m:?}"),
+    }
+}
+
+#[test]
+fn revert_scheme_quoted_list() {
+    // \revert #'(bound-details left text)
+    let m = parse_first_music("\\revert #'(bound-details left text)");
+    match m {
+        Music::Revert { path } => {
+            assert_eq!(path.segments.len(), 1);
+            match &path.segments[0] {
+                PathSegment::Scheme(SchemeExpr::QuotedList(raw)) => {
+                    assert_eq!(raw, "(bound-details left text)");
+                }
+                other => panic!("expected Scheme(QuotedList), got {other:?}"),
+            }
+        }
+        _ => panic!("expected Revert, got {m:?}"),
+    }
+}
+
+#[test]
+fn revert_context_then_scheme() {
+    // \revert Staff #'fontSize — simple_revert_context pattern
+    let m = parse_first_music("\\revert Staff #'fontSize");
+    match m {
+        Music::Revert { path } => {
+            assert_eq!(
+                path.segments,
+                vec![
+                    PathSegment::Named("Staff".into()),
+                    PathSegment::Scheme(SchemeExpr::Symbol("fontSize".into())),
+                ]
+            );
+        }
+        _ => panic!("expected Revert, got {m:?}"),
+    }
+}
+
+#[test]
+fn revert_scheme_quoted_symbol() {
+    // \revert #'font-size
+    let m = parse_first_music("\\revert #'font-size");
+    match m {
+        Music::Revert { path } => {
+            assert_eq!(
+                path.segments,
+                vec![PathSegment::Scheme(SchemeExpr::Symbol("font-size".into()))]
+            );
         }
         _ => panic!("expected Revert, got {m:?}"),
     }
@@ -112,7 +210,7 @@ fn set_string_value() {
     let m = parse_first_music("\\set Staff.instrumentName = \"Piano\"");
     match m {
         Music::Set { path, value } => {
-            assert_eq!(path.segments, vec!["Staff", "instrumentName"]);
+            assert_eq!(path.segments, named(&["Staff", "instrumentName"]));
             assert_eq!(value, PropertyValue::String("Piano".into()));
         }
         _ => panic!("expected Set, got {m:?}"),
@@ -124,7 +222,7 @@ fn set_scheme_value() {
     let m = parse_first_music("\\set Staff.useBassFigureExtenders = ##t");
     match m {
         Music::Set { path, value } => {
-            assert_eq!(path.segments, vec!["Staff", "useBassFigureExtenders"]);
+            assert_eq!(path.segments, named(&["Staff", "useBassFigureExtenders"]));
             assert_eq!(value, PropertyValue::SchemeExpr(SchemeExpr::Bool(true)));
         }
         _ => panic!("expected Set, got {m:?}"),
@@ -137,7 +235,7 @@ fn set_single_prop() {
     let m = parse_first_music("\\set stanza = \"verse\"");
     match m {
         Music::Set { path, value } => {
-            assert_eq!(path.segments, vec!["stanza"]);
+            assert_eq!(path.segments, named(&["stanza"]));
             assert_eq!(value, PropertyValue::String("verse".into()));
         }
         _ => panic!("expected Set, got {m:?}"),
@@ -151,7 +249,7 @@ fn unset_simple() {
     let m = parse_first_music("\\unset Staff.keyAlterations");
     match m {
         Music::Unset { path } => {
-            assert_eq!(path.segments, vec!["Staff", "keyAlterations"]);
+            assert_eq!(path.segments, named(&["Staff", "keyAlterations"]));
         }
         _ => panic!("expected Unset, got {m:?}"),
     }
@@ -165,7 +263,7 @@ fn once_override() {
     match m {
         Music::Once { music } => match *music {
             Music::Override { path, value } => {
-                assert_eq!(path.segments, vec!["NoteHead", "color"]);
+                assert_eq!(path.segments, named(&["NoteHead", "color"]));
                 assert_eq!(
                     value,
                     PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
@@ -199,7 +297,7 @@ fn tweak_post_event() {
     assert_eq!(tweaks.len(), 1);
     match &tweaks[0] {
         note::PostEvent::Tweak { path, value } => {
-            assert_eq!(path.segments, vec!["color"]);
+            assert_eq!(path.segments, named(&["color"]));
             assert_eq!(
                 *value,
                 PropertyValue::SchemeExpr(SchemeExpr::Identifier("red".into()))
@@ -228,7 +326,7 @@ fn context_mod_override() {
             let items = with_block.as_ref().unwrap();
             match &items[0] {
                 ContextModItem::Override { path, value } => {
-                    assert_eq!(path.segments, vec!["TimeSignature", "color"]);
+                    assert_eq!(path.segments, named(&["TimeSignature", "color"]));
                     assert_eq!(
                         *value,
                         PropertyValue::SchemeExpr(SchemeExpr::Identifier("green".into()))
@@ -260,14 +358,14 @@ fn context_mod_set_unset() {
             assert_eq!(items.len(), 2);
             match &items[0] {
                 ContextModItem::Set { path, value } => {
-                    assert_eq!(path.segments, vec!["instrumentName"]);
+                    assert_eq!(path.segments, named(&["instrumentName"]));
                     assert_eq!(*value, PropertyValue::String("Piano".into()));
                 }
                 other => panic!("expected Set, got {other:?}"),
             }
             match &items[1] {
                 ContextModItem::Unset { path } => {
-                    assert_eq!(path.segments, vec!["shortInstrumentName"]);
+                    assert_eq!(path.segments, named(&["shortInstrumentName"]));
                 }
                 other => panic!("expected Unset, got {other:?}"),
             }
@@ -326,6 +424,36 @@ fn roundtrip_in_sequence() {
     let out = roundtrip(src);
     assert!(out.contains("\\override NoteHead.color = #red"));
     assert!(out.contains("\\revert NoteHead.color"));
+}
+
+// ── Scheme property path serialization roundtrip ────────────────────
+
+#[test]
+fn roundtrip_override_scheme_symbol() {
+    let src = "\\override #'font-size = #3\n";
+    let out = roundtrip(src);
+    assert!(out.contains("\\override #'font-size = #3"));
+}
+
+#[test]
+fn roundtrip_revert_scheme_quoted_list() {
+    let src = "\\revert #'(bound-details left text)\n";
+    let out = roundtrip(src);
+    assert!(out.contains("\\revert #'(bound-details left text)"));
+}
+
+#[test]
+fn roundtrip_revert_context_scheme() {
+    let src = "\\revert Staff #'fontSize\n";
+    let out = roundtrip(src);
+    assert!(out.contains("\\revert Staff #'fontSize"));
+}
+
+#[test]
+fn roundtrip_override_mixed_dot_scheme() {
+    let src = "\\override Staff.NoteHead #'font-size = #3\n";
+    let out = roundtrip(src);
+    assert!(out.contains("\\override Staff.NoteHead #'font-size = #3"));
 }
 
 // ── Context def mod keywords ─────────────────────────────────────────
