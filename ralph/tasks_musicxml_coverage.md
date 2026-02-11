@@ -1205,9 +1205,20 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.5 Articulation Detail Completion
 
-- [ ] Parse `<breath-mark>` text content (comma, tick, upbow, salzedo, empty string)
-- [ ] Parse `<caesura>` text content (normal, thick, short, curved, single, empty string)
-- [ ] Wire into model and serializer (BreathMark/Caesura structs may need value field)
+- [x] Parse `<breath-mark>` text content (comma, tick, upbow, salzedo, empty string)
+  - Added `parse_articulation_with_text()` in parse_note.rs to read text content from `Event::Start`
+  - BreathMarkValue enum already had all variants; parser now maps text to enum values
+- [x] Parse `<caesura>` text content (normal, thick, short, curved, single, empty string)
+  - Added `Single` variant to `CaesuraValue` enum (was missing from XSD mapping)
+  - Renamed `CaesuraValue::Normal` (was mapped to empty string) → `CaesuraValue::Empty` for empty, `Normal` for "normal" text
+  - Parser reads text content via `read_text()` and maps to enum values
+- [x] Wire into model and serializer (BreathMark/Caesura structs may need value field)
+  - Added `serialize_breath_mark()` and `serialize_caesura()` in serializer/notations.rs
+  - Elements with text content serialize as start+text+end; empty elements as self-closing
+  - Import: stores full BreathMark/Caesura as JSON-in-label (`musicxml:breath-mark,{json}`) for lossless roundtrip
+  - Export: reads JSON-in-label and restores full structs with value + placement
+  - Updated test fixtures to include text content (breath_mark_element: comma, caesura_element: normal)
+  - Added unit tests: `test_parse_breath_mark_text_content`, `test_parse_caesura_text_content`
 
 ### 28.6 Note Attribute Completion
 

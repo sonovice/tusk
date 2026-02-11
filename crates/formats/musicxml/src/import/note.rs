@@ -592,16 +592,16 @@ fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote, ctx: &mut 
             }
             mei_note.note_anl.artic = tokens.first().copied();
 
-            // Store breath-mark and/or caesura in label for roundtrip
-            let mut labels = Vec::<&str>::new();
-            if artics.breath_mark.is_some() {
-                labels.push("musicxml:breath-mark");
+            // Store breath-mark and/or caesura as JSON-in-label for lossless roundtrip
+            if let Some(ref bm) = artics.breath_mark {
+                if let Ok(json) = serde_json::to_string(bm) {
+                    append_note_label(mei_note, &format!("musicxml:breath-mark,{json}"));
+                }
             }
-            if artics.caesura.is_some() {
-                labels.push("musicxml:caesura");
-            }
-            if !labels.is_empty() {
-                mei_note.common.label = Some(labels.join(","));
+            if let Some(ref cs) = artics.caesura {
+                if let Ok(json) = serde_json::to_string(cs) {
+                    append_note_label(mei_note, &format!("musicxml:caesura,{json}"));
+                }
             }
         }
     }

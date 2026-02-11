@@ -436,17 +436,21 @@ pub struct BreathMark {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CaesuraValue {
-    /// Normal caesura.
+    /// Empty caesura value (default).
     #[serde(rename = "")]
+    Empty,
+    /// Normal caesura.
     Normal,
     Short,
     Thick,
     Curved,
+    /// Single caesura.
+    Single,
 }
 
 impl Default for CaesuraValue {
     fn default() -> Self {
-        Self::Normal
+        Self::Empty
     }
 }
 

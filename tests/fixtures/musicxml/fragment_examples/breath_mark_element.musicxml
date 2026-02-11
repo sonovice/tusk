@@ -30,7 +30,7 @@
         <type>quarter</type>
         <notations>
            <articulations>
-              <breath-mark default-x="41" default-y="11" placement="above"/>
+              <breath-mark placement="above">comma</breath-mark>
            </articulations>
         </notations>
       </note>

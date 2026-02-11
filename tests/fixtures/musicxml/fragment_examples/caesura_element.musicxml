@@ -30,7 +30,7 @@
         <type>quarter</type>
         <notations>
            <articulations>
-              <caesura default-x="31"/>
+              <caesura placement="above">normal</caesura>
            </articulations>
         </notations>
       </note>

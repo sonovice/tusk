@@ -283,6 +283,12 @@ impl MusicXmlSerialize for notations::Articulations {
         if let Some(ref a) = self.soft_accent {
             serialize_empty_placement(w, "soft-accent", a)?;
         }
+        if let Some(ref bm) = self.breath_mark {
+            serialize_breath_mark(w, bm)?;
+        }
+        if let Some(ref c) = self.caesura {
+            serialize_caesura(w, c)?;
+        }
         Ok(())
     }
 }
@@ -333,6 +339,65 @@ fn serialize_strong_accent<W: Write>(
         elem.push_attribute(("default-y", s.as_str()));
     }
     w.write_empty(elem)?;
+    Ok(())
+}
+
+/// Serialize a breath-mark element with optional text content and placement.
+fn serialize_breath_mark<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    bm: &notations::BreathMark,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("breath-mark");
+    if let Some(ref p) = bm.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    let text = bm.value.map(|v| match v {
+        notations::BreathMarkValue::Empty => "",
+        notations::BreathMarkValue::Comma => "comma",
+        notations::BreathMarkValue::Tick => "tick",
+        notations::BreathMarkValue::Upbow => "upbow",
+        notations::BreathMarkValue::Salzedo => "salzedo",
+    });
+    match text {
+        Some(t) if !t.is_empty() => {
+            w.write_start(elem)?;
+            w.write_text(t)?;
+            w.write_end("breath-mark")?;
+        }
+        _ => {
+            w.write_empty(elem)?;
+        }
+    }
+    Ok(())
+}
+
+/// Serialize a caesura element with optional text content and placement.
+fn serialize_caesura<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    c: &notations::Caesura,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("caesura");
+    if let Some(ref p) = c.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    let text = c.value.map(|v| match v {
+        notations::CaesuraValue::Empty => "",
+        notations::CaesuraValue::Normal => "normal",
+        notations::CaesuraValue::Thick => "thick",
+        notations::CaesuraValue::Short => "short",
+        notations::CaesuraValue::Curved => "curved",
+        notations::CaesuraValue::Single => "single",
+    });
+    match text {
+        Some(t) if !t.is_empty() => {
+            w.write_start(elem)?;
+            w.write_text(t)?;
+            w.write_end("caesura")?;
+        }
+        _ => {
+            w.write_empty(elem)?;
+        }
+    }
     Ok(())
 }
 

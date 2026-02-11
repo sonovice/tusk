@@ -1726,3 +1726,255 @@ fn test_backup_forward_with_divisions_context() {
         _ => panic!("Expected Note"),
     }
 }
+
+#[test]
+fn test_parse_breath_mark_text_content() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <breath-mark placement="above">comma</breath-mark>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <breath-mark>tick</breath-mark>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <breath-mark placement="below">salzedo</breath-mark>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>F</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <breath-mark/>
+        </articulations></notations>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+    let measure = &score.parts[0].measures[0];
+
+    use crate::model::data::AboveBelow;
+    use crate::model::notations::BreathMarkValue;
+
+    // Note 1: breath-mark with "comma" text + placement above
+    match &measure.content[0] {
+        MeasureContent::Note(n) => {
+            let bm = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .breath_mark
+                .as_ref()
+                .unwrap();
+            assert_eq!(bm.value, Some(BreathMarkValue::Comma));
+            assert_eq!(bm.placement, Some(AboveBelow::Above));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 2: breath-mark with "tick" text, no placement
+    match &measure.content[1] {
+        MeasureContent::Note(n) => {
+            let bm = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .breath_mark
+                .as_ref()
+                .unwrap();
+            assert_eq!(bm.value, Some(BreathMarkValue::Tick));
+            assert_eq!(bm.placement, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 3: breath-mark with "salzedo" + placement below
+    match &measure.content[2] {
+        MeasureContent::Note(n) => {
+            let bm = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .breath_mark
+                .as_ref()
+                .unwrap();
+            assert_eq!(bm.value, Some(BreathMarkValue::Salzedo));
+            assert_eq!(bm.placement, Some(AboveBelow::Below));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 4: self-closing breath-mark (no text content)
+    match &measure.content[3] {
+        MeasureContent::Note(n) => {
+            let bm = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .breath_mark
+                .as_ref()
+                .unwrap();
+            assert_eq!(bm.value, None);
+            assert_eq!(bm.placement, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
+fn test_parse_caesura_text_content() {
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.1">
+  <part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch><step>C</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <caesura placement="above">normal</caesura>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>D</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <caesura>thick</caesura>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>E</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <caesura>single</caesura>
+        </articulations></notations>
+      </note>
+      <note>
+        <pitch><step>F</step><octave>4</octave></pitch>
+        <duration>1</duration>
+        <type>quarter</type>
+        <notations><articulations>
+          <caesura/>
+        </articulations></notations>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"#;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+    let measure = &score.parts[0].measures[0];
+
+    use crate::model::data::AboveBelow;
+    use crate::model::notations::CaesuraValue;
+
+    // Note 1: caesura "normal" + placement above
+    match &measure.content[0] {
+        MeasureContent::Note(n) => {
+            let cs = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .caesura
+                .as_ref()
+                .unwrap();
+            assert_eq!(cs.value, Some(CaesuraValue::Normal));
+            assert_eq!(cs.placement, Some(AboveBelow::Above));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 2: caesura "thick", no placement
+    match &measure.content[1] {
+        MeasureContent::Note(n) => {
+            let cs = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .caesura
+                .as_ref()
+                .unwrap();
+            assert_eq!(cs.value, Some(CaesuraValue::Thick));
+            assert_eq!(cs.placement, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 3: caesura "single" (new variant)
+    match &measure.content[2] {
+        MeasureContent::Note(n) => {
+            let cs = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .caesura
+                .as_ref()
+                .unwrap();
+            assert_eq!(cs.value, Some(CaesuraValue::Single));
+            assert_eq!(cs.placement, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Note 4: self-closing caesura
+    match &measure.content[3] {
+        MeasureContent::Note(n) => {
+            let cs = n
+                .notations
+                .as_ref()
+                .unwrap()
+                .articulations
+                .as_ref()
+                .unwrap()
+                .caesura
+                .as_ref()
+                .unwrap();
+            assert_eq!(cs.value, None);
+            assert_eq!(cs.placement, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+}

@@ -1216,10 +1216,15 @@ fn parse_articulations<R: BufRead>(reader: &mut Reader<R>) -> Result<Articulatio
 
     loop {
         match reader.read_event_into(&mut buf)? {
-            Event::Start(e) => {
-                parse_articulation_element(&e, &mut artics);
-                skip_element(reader, &e)?;
-            }
+            Event::Start(e) => match e.name().as_ref() {
+                b"breath-mark" | b"caesura" => {
+                    parse_articulation_with_text(reader, &e, &mut artics)?;
+                }
+                _ => {
+                    parse_articulation_element(&e, &mut artics);
+                    skip_element(reader, &e)?;
+                }
+            },
             Event::Empty(e) => {
                 parse_articulation_element(&e, &mut artics);
             }
@@ -1303,6 +1308,53 @@ fn parse_articulation_element(e: &BytesStart, artics: &mut Articulations) {
         }
         _ => {}
     }
+}
+
+/// Parse breath-mark or caesura with text content (called for Event::Start).
+fn parse_articulation_with_text<R: BufRead>(
+    reader: &mut Reader<R>,
+    e: &BytesStart,
+    artics: &mut Articulations,
+) -> Result<()> {
+    let placement = get_attr(e, "placement")
+        .ok()
+        .flatten()
+        .and_then(|s| match s.as_str() {
+            "above" => Some(AboveBelow::Above),
+            "below" => Some(AboveBelow::Below),
+            _ => None,
+        });
+
+    let tag = e.name().as_ref().to_vec();
+    let text = read_text(reader, &tag)?;
+
+    match tag.as_slice() {
+        b"breath-mark" => {
+            let value = match text.as_str() {
+                "" => None,
+                "comma" => Some(BreathMarkValue::Comma),
+                "tick" => Some(BreathMarkValue::Tick),
+                "upbow" => Some(BreathMarkValue::Upbow),
+                "salzedo" => Some(BreathMarkValue::Salzedo),
+                _ => None,
+            };
+            artics.breath_mark = Some(BreathMark { value, placement });
+        }
+        b"caesura" => {
+            let value = match text.as_str() {
+                "" => None,
+                "normal" => Some(CaesuraValue::Normal),
+                "thick" => Some(CaesuraValue::Thick),
+                "short" => Some(CaesuraValue::Short),
+                "curved" => Some(CaesuraValue::Curved),
+                "single" => Some(CaesuraValue::Single),
+                _ => None,
+            };
+            artics.caesura = Some(Caesura { value, placement });
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 // ============================================================================

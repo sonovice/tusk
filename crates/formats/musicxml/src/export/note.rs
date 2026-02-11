@@ -488,7 +488,7 @@ fn convert_mei_artic(
     }
 }
 
-/// Apply breath-mark and caesura from MEI note label (marker-only, no typed ext).
+/// Apply breath-mark and caesura from MEI note label (JSON-in-label for lossless roundtrip).
 fn convert_mei_note_label_articulations(
     mei_note: &tusk_model::elements::Note,
     mxml_note: &mut crate::model::note::Note,
@@ -498,21 +498,27 @@ fn convert_mei_note_label_articulations(
         Some(l) => l,
         None => return,
     };
-    let has_breath = label.contains("musicxml:breath-mark");
-    let has_caesura = label.contains("musicxml:caesura");
-    if !has_breath && !has_caesura {
-        return;
-    }
+
     use crate::model::notations::{Articulations, BreathMark, Caesura, Notations};
-    let notations = mxml_note.notations.get_or_insert_with(Notations::default);
-    let artics = notations
-        .articulations
-        .get_or_insert_with(Articulations::default);
-    if has_breath {
-        artics.breath_mark = Some(BreathMark::default());
-    }
-    if has_caesura {
-        artics.caesura = Some(Caesura::default());
+
+    for segment in label.split('|') {
+        if let Some(json) = segment.strip_prefix("musicxml:breath-mark,") {
+            if let Ok(bm) = serde_json::from_str::<BreathMark>(json) {
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                let artics = notations
+                    .articulations
+                    .get_or_insert_with(Articulations::default);
+                artics.breath_mark = Some(bm);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:caesura,") {
+            if let Ok(cs) = serde_json::from_str::<Caesura>(json) {
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                let artics = notations
+                    .articulations
+                    .get_or_insert_with(Articulations::default);
+                artics.caesura = Some(cs);
+            }
+        }
     }
 }
 
