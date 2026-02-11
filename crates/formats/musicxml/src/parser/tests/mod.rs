@@ -658,6 +658,90 @@ fn test_parse_beams() {
 }
 
 #[test]
+fn test_parse_beam_attributes() {
+    let xml = r##"<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1">
+      <part-name>Piano</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>eighth</type>
+        <beam number="1" repeater="yes" fan="accel" color="#FF0000" id="beam1">begin</beam>
+      </note>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>eighth</type>
+        <beam number="1" fan="rit">continue</beam>
+      </note>
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>1</duration>
+        <type>eighth</type>
+        <beam number="1" repeater="no" fan="none">end</beam>
+      </note>
+    </measure>
+  </part>
+</score-partwise>"##;
+
+    let score = parse_score_partwise(xml).expect("parse failed");
+    let measure = &score.parts[0].measures[0];
+
+    // First note - all attributes
+    match &measure.content[0] {
+        MeasureContent::Note(note) => {
+            let beam = &note.beams[0];
+            assert_eq!(beam.value, BeamValue::Begin);
+            assert_eq!(beam.number, Some(1));
+            assert_eq!(beam.repeater, Some(YesNo::Yes));
+            assert_eq!(beam.fan, Some(Fan::Accel));
+            assert_eq!(beam.color, Some("#FF0000".to_string()));
+            assert_eq!(beam.id, Some("beam1".to_string()));
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Second note - fan only
+    match &measure.content[1] {
+        MeasureContent::Note(note) => {
+            let beam = &note.beams[0];
+            assert_eq!(beam.value, BeamValue::Continue);
+            assert_eq!(beam.repeater, None);
+            assert_eq!(beam.fan, Some(Fan::Rit));
+            assert_eq!(beam.color, None);
+            assert_eq!(beam.id, None);
+        }
+        _ => panic!("Expected Note"),
+    }
+
+    // Third note - repeater=no, fan=none
+    match &measure.content[2] {
+        MeasureContent::Note(note) => {
+            let beam = &note.beams[0];
+            assert_eq!(beam.value, BeamValue::End);
+            assert_eq!(beam.repeater, Some(YesNo::No));
+            assert_eq!(beam.fan, Some(Fan::None));
+        }
+        _ => panic!("Expected Note"),
+    }
+}
+
+#[test]
 fn test_parse_ties() {
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">

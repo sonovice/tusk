@@ -1191,11 +1191,17 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.4 Beam Attribute Completion
 
-- [ ] Parse `repeater` attribute on `<beam>` (yes/no)
-- [ ] Parse `fan` attribute on `<beam>` (accel/rit/none)
-- [ ] Parse `color` attribute on `<beam>`
-- [ ] Parse `id` attribute on `<beam>`
-- [ ] Wire into model and serializer
+- [x] Parse `repeater` attribute on `<beam>` (yes/no)
+  - Added `get_attr(start, "repeater")` → `parse_yes_no_opt()` in `parse_beam()`
+- [x] Parse `fan` attribute on `<beam>` (accel/rit/none)
+  - Added `get_attr(start, "fan")` with match on accel/rit/none in `parse_beam()`
+- [x] Parse `color` attribute on `<beam>`
+  - Added `get_attr(start, "color")` in `parse_beam()`
+- [x] Parse `id` attribute on `<beam>`
+  - Added `get_attr(start, "id")` in `parse_beam()`
+- [x] Wire into model and serializer
+  - Model already had `repeater`, `fan`, `color`, `id` fields; serializer already handled them
+  - Added `test_parse_beam_attributes` unit test verifying all four attributes parse correctly
 
 ### 28.5 Articulation Detail Completion
 

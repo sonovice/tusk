@@ -537,6 +537,15 @@ fn parse_stem<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
 
 fn parse_beam<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Beam> {
     let number = get_attr(start, "number")?.and_then(|s| s.parse().ok());
+    let repeater = get_attr(start, "repeater")?.and_then(|s| parse_yes_no_opt(&s));
+    let fan = get_attr(start, "fan")?.and_then(|s| match s.as_str() {
+        "accel" => Some(Fan::Accel),
+        "rit" => Some(Fan::Rit),
+        "none" => Some(Fan::None),
+        _ => Option::None,
+    });
+    let color = get_attr(start, "color")?;
+    let id = get_attr(start, "id")?;
     let value_str = read_text(reader, b"beam")?;
     let value = match value_str.as_str() {
         "begin" => BeamValue::Begin,
@@ -549,10 +558,10 @@ fn parse_beam<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<
     Ok(Beam {
         value,
         number,
-        repeater: None,
-        fan: None,
-        color: None,
-        id: None,
+        repeater,
+        fan,
+        color,
+        id,
     })
 }
 
