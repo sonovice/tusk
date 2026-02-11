@@ -156,8 +156,7 @@ fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), 
     let tw1 = export_timewise_with_ext(&mei1, &ext1)
         .map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
     let pw1 = timewise_to_partwise(tw1.clone());
-    let (mei2, ext2) =
-        import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let (mei2, ext2) = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     let tw2 = export_timewise_with_ext(&mei2, &ext2)
         .map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
     Ok((tw1, tw2))

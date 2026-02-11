@@ -27,9 +27,7 @@ pub fn convert_mei_fb(
     if let Some(id) = &fb.common.xml_id {
         if let Some(ext) = ctx.ext_store().get(id) {
             if let Some(ref val) = ext.mxml_json {
-                if let Ok(mut figured_bass) =
-                    serde_json::from_value::<FiguredBass>(val.clone())
-                {
+                if let Ok(mut figured_bass) = serde_json::from_value::<FiguredBass>(val.clone()) {
                     figured_bass.staff = Some(local_staff_n as u32);
                     return Some(MeasureContent::FiguredBass(Box::new(figured_bass)));
                 }

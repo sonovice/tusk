@@ -1,16 +1,15 @@
 //! Measure-style conversion from MusicXML to MEI.
 //!
 //! Converts MusicXML `<measure-style>` elements (inside `<attributes>`) to MEI
-//! `<dir>` control events with JSON-in-label for lossless roundtrip. Uses the
-//! same pattern as standalone sound and print conversions.
+//! `<dir>` control events with ExtensionStore data for lossless roundtrip.
 
 use crate::context::ConversionContext;
 use crate::model::attributes::MeasureStyle;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::{MeasureStyleContentData, MeasureStyleData};
 
-/// Label prefix for MEI dir elements carrying measure-style JSON data.
-pub const MEASURE_STYLE_LABEL_PREFIX: &str = "musicxml:measure-style,";
+/// Label marker for MEI dir elements carrying measure-style data (via ExtensionStore).
+pub const MEASURE_STYLE_LABEL_PREFIX: &str = "musicxml:measure-style";
 
 /// Convert MusicXML `<measure-style>` elements to MEI `<dir>` measure children.
 ///
@@ -27,14 +26,11 @@ pub fn convert_measure_styles(
 }
 
 fn convert_one(ms: &MeasureStyle, ctx: &mut ConversionContext) -> Option<MeasureChild> {
-    let json = serde_json::to_string(ms).ok()?;
-    let label = format!("{}{}", MEASURE_STYLE_LABEL_PREFIX, json);
-
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("mstyle"));
-    dir.common.label = Some(label);
+    dir.common.label = Some(MEASURE_STYLE_LABEL_PREFIX.to_string());
 
-    // Dual-path: store typed MeasureStyleData + raw JSON in ExtensionStore
+    // Store typed MeasureStyleData + raw JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
         let entry = ctx.ext_store_mut().entry(id.clone());
         entry.measure_style = Some(build_measure_style_data(ms));
@@ -106,8 +102,11 @@ fn build_measure_style_data(ms: &MeasureStyle) -> MeasureStyleData {
     }
 }
 
-/// Deserialize a MeasureStyle from a roundtrip label string.
+/// Deserialize a MeasureStyle from a legacy JSON roundtrip label.
 pub fn measure_style_from_label(label: &str) -> Option<MeasureStyle> {
-    let json = label.strip_prefix(MEASURE_STYLE_LABEL_PREFIX)?;
+    if label == MEASURE_STYLE_LABEL_PREFIX {
+        return None;
+    }
+    let json = label.strip_prefix("musicxml:measure-style,")?;
     serde_json::from_str(json).ok()
 }

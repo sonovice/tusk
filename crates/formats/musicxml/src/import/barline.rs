@@ -1,7 +1,7 @@
 //! Barline children conversion from MusicXML to MEI.
 //!
 //! Barlines with extra children (repeat, ending, fermata, segno, coda,
-//! wavy-line) are stored as JSON-in-label on MEI `<dir>` control events
+//! wavy-line) are stored in ExtensionStore on MEI `<dir>` control events
 //! for lossless roundtrip. The basic bar-style is still set on MEI
 //! measure @left/@right via the existing bar_style_to_mei_barrendition
 //! mapping. This module handles the extra children only.
@@ -11,26 +11,20 @@ use crate::model::elements::Barline;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::{BarlineData, EndingData, RepeatData};
 
-/// Label prefix for MEI dir elements carrying barline JSON data.
-pub const BARLINE_LABEL_PREFIX: &str = "musicxml:barline,";
+/// Label marker for MEI dir elements carrying barline data (via ExtensionStore).
+pub const BARLINE_LABEL_PREFIX: &str = "musicxml:barline";
 
 /// Convert a MusicXML `<barline>` with extra children to an MEI `<dir>` measure child.
 ///
 /// Only called for barlines that have children beyond bar-style (repeat, ending,
 /// fermata, segno, coda, wavy-line) or extra attributes (segno, coda, divisions).
-/// The full Barline struct is serialized as JSON in the dir's `@label` attribute.
+/// Data is stored in ExtensionStore; the label is a short marker for identification.
 pub fn convert_barline(barline: &Barline, ctx: &mut ConversionContext) -> MeasureChild {
-    let json_label = serde_json::to_string(barline)
-        .ok()
-        .map(|json| format!("{}{}", BARLINE_LABEL_PREFIX, json));
-
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("barline"));
-    if let Some(label) = json_label {
-        dir.common.label = Some(label);
-    }
+    dir.common.label = Some(BARLINE_LABEL_PREFIX.to_string());
 
-    // Dual-path: store typed BarlineData + raw JSON in ExtensionStore
+    // Store typed BarlineData + raw JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
         let entry = ctx.ext_store_mut().entry(id.clone());
         entry.barline_data = Some(build_barline_data(barline));
@@ -133,8 +127,16 @@ fn build_barline_data(b: &Barline) -> BarlineData {
     }
 }
 
-/// Deserialize a Barline from a roundtrip label string.
+/// Deserialize a Barline from a legacy JSON roundtrip label string.
+///
+/// Handles old-format labels like `"musicxml:barline,{json}"`. New imports use
+/// ExtensionStore instead, with a simple `"musicxml:barline"` marker label.
 pub fn barline_from_label(label: &str) -> Option<Barline> {
-    let json = label.strip_prefix(BARLINE_LABEL_PREFIX)?;
+    // New format: just the marker — data is in ExtensionStore, not here
+    if label == BARLINE_LABEL_PREFIX {
+        return None;
+    }
+    // Legacy format: "musicxml:barline,{json}"
+    let json = label.strip_prefix("musicxml:barline,")?;
     serde_json::from_str(json).ok()
 }

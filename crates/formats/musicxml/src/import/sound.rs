@@ -1,33 +1,26 @@
 //! Sound element conversion from MusicXML to MEI.
 //!
 //! Converts standalone MusicXML `<sound>` elements to MEI `<dir>` control events
-//! with JSON-in-label for lossless roundtrip. Uses the same pattern as
-//! harmony, figured-bass, and print conversions.
+//! with ExtensionStore data for lossless roundtrip.
 
 use crate::context::ConversionContext;
 use crate::model::direction::Sound;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::SoundData;
 
-/// Label prefix for MEI dir elements carrying standalone sound JSON data.
-pub const SOUND_LABEL_PREFIX: &str = "musicxml:sound,";
+/// Label marker for MEI dir elements carrying standalone sound data (via ExtensionStore).
+pub const SOUND_LABEL_PREFIX: &str = "musicxml:sound";
 
 /// Convert a standalone MusicXML `<sound>` element to an MEI `<dir>` measure child.
 ///
-/// The full Sound struct is serialized as JSON in the dir's `@label` attribute
-/// for lossless roundtrip. A human-readable summary is stored as the text child.
+/// Data is stored in ExtensionStore for lossless roundtrip.
+/// A human-readable summary is stored as the text child.
 pub fn convert_sound(sound: &Sound, ctx: &mut ConversionContext) -> MeasureChild {
-    let json_label = serde_json::to_string(sound)
-        .ok()
-        .map(|json| format!("{}{}", SOUND_LABEL_PREFIX, json));
-
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("sound"));
-    if let Some(label) = json_label {
-        dir.common.label = Some(label);
-    }
+    dir.common.label = Some(SOUND_LABEL_PREFIX.to_string());
 
-    // Dual-path: store typed SoundData + raw MusicXML JSON in ExtensionStore
+    // Store typed SoundData + raw MusicXML JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
         let entry = ctx.ext_store_mut().entry(id.clone());
         entry.sound = Some(build_sound_data(sound));
@@ -137,8 +130,11 @@ fn build_sound_data(s: &Sound) -> SoundData {
     }
 }
 
-/// Deserialize a Sound from a roundtrip label string (standalone sound).
+/// Deserialize a Sound from a legacy JSON roundtrip label.
 pub fn sound_from_label(label: &str) -> Option<Sound> {
-    let json = label.strip_prefix(SOUND_LABEL_PREFIX)?;
+    if label == SOUND_LABEL_PREFIX {
+        return None;
+    }
+    let json = label.strip_prefix("musicxml:sound,")?;
     serde_json::from_str(json).ok()
 }

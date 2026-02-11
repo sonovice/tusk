@@ -26,10 +26,7 @@ const CLEF_JIANPU_LABEL: &str = "musicxml:clef-jianpu";
 /// Preferred: read from ExtensionStore typed data.
 /// Fallback 1: recover full StaffDetails from JSON in @label (lossless roundtrip).
 /// Fallback 2: build minimal StaffDetails from @lines only.
-fn extract_staff_details(
-    staff_def: &StaffDef,
-    ctx: &ConversionContext,
-) -> Option<StaffDetails> {
+fn extract_staff_details(staff_def: &StaffDef, ctx: &ConversionContext) -> Option<StaffDetails> {
     // Try ExtensionStore first
     if let Some(ref id) = staff_def.basic.xml_id {
         if let Some(ext) = ctx.ext_store().get(id) {

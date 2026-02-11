@@ -28,9 +28,7 @@ pub fn convert_mei_harm(
     if let Some(id) = &harm.common.xml_id {
         if let Some(ext) = ctx.ext_store().get(id) {
             if let Some(ref val) = ext.mxml_json {
-                if let Ok(mut harmony) =
-                    serde_json::from_value::<Harmony>(val.clone())
-                {
+                if let Ok(mut harmony) = serde_json::from_value::<Harmony>(val.clone()) {
                     harmony.staff = Some(local_staff_n as u32);
                     return Some(MeasureContent::Harmony(Box::new(harmony)));
                 }

@@ -60,7 +60,7 @@ pub fn convert_score_def(
 ///
 /// Creates a pgHead containing AnchoredText elements for each credit-words
 /// entry. Credit-image entries are omitted (MEI pgHead doesn't support inline
-/// graphics). The full credit data is preserved in extMeta JSON for roundtrip.
+/// graphics). The full credit data is preserved in ExtensionStore for roundtrip.
 fn convert_credits_to_pg_head(
     credits: &[crate::model::elements::Credit],
 ) -> Option<tusk_model::elements::PgHead> {

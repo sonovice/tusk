@@ -238,10 +238,7 @@ struct HeaderData {
 /// First tries typed `ScoreHeaderData` from the `ExtensionStore` (keyed by the
 /// meiHead `@xml:id`). Falls back to scanning `<extMeta>` children for
 /// JSON roundtrip data. Falls back further to minimal header from `<titleStmt>`.
-fn convert_header(
-    mei_head: &MeiHead,
-    ctx: &mut ConversionContext,
-) -> ConversionResult<HeaderData> {
+fn convert_header(mei_head: &MeiHead, ctx: &mut ConversionContext) -> ConversionResult<HeaderData> {
     let mut work: Option<Work> = None;
     let mut identification: Option<Identification> = None;
     let mut defaults: Option<Defaults> = None;
@@ -343,9 +340,7 @@ fn header_from_ext_store(
     movement_number: &mut Option<String>,
     movement_title: &mut Option<String>,
 ) {
-    use crate::model::elements::{
-        Encoding, Miscellaneous, MiscellaneousField, Opus, TypedText,
-    };
+    use crate::model::elements::{Encoding, Miscellaneous, MiscellaneousField, Opus, TypedText};
 
     // Identification
     if let Some(id_data) = &hdr.identification {
@@ -466,8 +461,7 @@ fn header_from_ext_meta(
                         *defaults = Some(d);
                     }
                 } else if let Some(json) = analog.strip_prefix(CREDITS_LABEL_PREFIX) {
-                    if let Ok(c) =
-                        serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
+                    if let Ok(c) = serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
                     {
                         *credits = c;
                     }

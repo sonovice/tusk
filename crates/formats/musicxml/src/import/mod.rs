@@ -62,17 +62,17 @@ use crate::model::elements::ScorePartwise;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
 use tusk_model::extensions::ExtensionStore;
 
-/// Label prefix for MEI extMeta carrying roundtrip identification JSON.
+/// Label prefix for legacy extMeta identification JSON (kept for export fallback).
 pub(crate) const IDENTIFICATION_LABEL_PREFIX: &str = "musicxml:identification,";
-/// Label prefix for MEI extMeta carrying roundtrip work JSON.
+/// Label prefix for legacy extMeta work JSON (kept for export fallback).
 pub(crate) const WORK_LABEL_PREFIX: &str = "musicxml:work,";
-/// Label prefix for MEI extMeta carrying roundtrip movement-number.
+/// Label prefix for legacy extMeta movement-number (kept for export fallback).
 pub(crate) const MOVEMENT_NUMBER_LABEL_PREFIX: &str = "musicxml:movement-number,";
-/// Label prefix for MEI extMeta carrying roundtrip movement-title.
+/// Label prefix for legacy extMeta movement-title (kept for export fallback).
 pub(crate) const MOVEMENT_TITLE_LABEL_PREFIX: &str = "musicxml:movement-title,";
-/// Label prefix for MEI extMeta carrying roundtrip defaults JSON.
+/// Label prefix for legacy extMeta defaults JSON (kept for export fallback).
 pub(crate) const DEFAULTS_LABEL_PREFIX: &str = "musicxml:defaults,";
-/// Label prefix for MEI extMeta carrying roundtrip credits JSON.
+/// Label prefix for legacy extMeta credits JSON (kept for export fallback).
 pub(crate) const CREDITS_LABEL_PREFIX: &str = "musicxml:credits,";
 
 /// Convert a MusicXML score-partwise document to MEI.
@@ -135,144 +135,20 @@ fn convert_header(score: &ScorePartwise, ctx: &mut ConversionContext) -> Convers
         .children
         .push(MeiHeadChild::EncodingDesc(Box::new(encoding_desc)));
 
-    // Store full identification as JSON in extMeta for lossless roundtrip.
-    // The generated MEI model's header types are too limited to hold all
-    // MusicXML identification fields (TitleStmt only has Title, PubStmt
-    // only has Unpub, NotesStmt has no children, etc.), so we use extMeta
-    // which is designed for "non-MEI metadata formats".
-    //
-    // Only store when there's meaningful data beyond the default Tusk
-    // encoding that the export creates. This prevents the triangle MEI
-    // roundtrip from diverging: without this guard, export adds a default
-    // Identification (Tusk software), the next import stores it in extMeta,
-    // and MEI₂ gets an extMeta that MEI₁ didn't have.
-    if let Some(identification) = &score.identification {
-        if has_meaningful_identification(identification) {
-            if let Ok(json) = serde_json::to_string(identification) {
-                let ext_meta = create_ext_meta(
-                    ctx,
-                    "identification",
-                    IDENTIFICATION_LABEL_PREFIX,
-                    &json,
-                    &identification_summary(identification),
-                );
-                mei_head
-                    .children
-                    .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-            }
-        }
-    }
-
-    // Store work data (work-number, opus) in extMeta for roundtrip of
-    // fields beyond the basic work-title already in titleStmt.
-    if let Some(work) = &score.work {
-        if work.work_number.is_some() || work.opus.is_some() {
-            if let Ok(json) = serde_json::to_string(work) {
-                let ext_meta =
-                    create_ext_meta(ctx, "work", WORK_LABEL_PREFIX, &json, &work_summary(work));
-                mei_head
-                    .children
-                    .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-            }
-        }
-    }
-
-    // Store movement-number if present
-    if let Some(movement_number) = &score.movement_number {
-        let ext_meta = create_ext_meta(
-            ctx,
-            "mvmt-num",
-            MOVEMENT_NUMBER_LABEL_PREFIX,
-            movement_number,
-            movement_number,
-        );
-        mei_head
-            .children
-            .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-    }
-
-    // Store movement-title if present
-    if let Some(movement_title) = &score.movement_title {
-        let ext_meta = create_ext_meta(
-            ctx,
-            "mvmt-title",
-            MOVEMENT_TITLE_LABEL_PREFIX,
-            movement_title,
-            movement_title,
-        );
-        mei_head
-            .children
-            .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-    }
-
-    // Store defaults (layout, appearance, fonts) in extMeta for lossless roundtrip.
-    // MEI scoreDef attributes can hold some of these (page dimensions, margins,
-    // spacing, fonts) but not all (appearance line-widths, note-sizes, glyphs,
-    // system-dividers, etc.). The extMeta JSON preserves the full Defaults struct.
-    if let Some(defaults) = &score.defaults {
-        if let Ok(json) = serde_json::to_string(defaults) {
-            let ext_meta = create_ext_meta(
-                ctx,
-                "defaults",
-                DEFAULTS_LABEL_PREFIX,
-                &json,
-                &defaults_summary(defaults),
-            );
-            mei_head
-                .children
-                .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-        }
-    }
-
-    // Store credits in extMeta for lossless roundtrip. MEI pgHead/pgFoot only
-    // support text and anchoredText children — no structured credit-type, font
-    // attributes, positioning, or images. The extMeta JSON preserves the full
-    // Vec<Credit> with all formatting, positioning, links, and bookmarks.
-    if !score.credits.is_empty() {
-        if let Ok(json) = serde_json::to_string(&score.credits) {
-            let ext_meta = create_ext_meta(
-                ctx,
-                "credits",
-                CREDITS_LABEL_PREFIX,
-                &json,
-                &credits_summary(&score.credits),
-            );
-            mei_head
-                .children
-                .push(MeiHeadChild::ExtMeta(Box::new(ext_meta)));
-        }
-    }
-
-    // --- Dual path: also populate ScoreHeaderData in ExtensionStore ---
+    // Populate ScoreHeaderData in ExtensionStore for lossless roundtrip.
+    // Header data (identification, work, movement, defaults, credits) is stored
+    // in typed ExtensionStore fields instead of extMeta elements, keeping the
+    // MEI output clean.
     populate_ext_store_header(score, &mut mei_head, ctx);
 
     Ok(mei_head)
 }
 
-/// Create an extMeta element with a label prefix + data and human-readable text.
-fn create_ext_meta(
-    ctx: &mut ConversionContext,
-    id_suffix: &str,
-    label_prefix: &str,
-    data: &str,
-    summary_text: &str,
-) -> tusk_model::elements::ExtMeta {
-    use tusk_model::elements::{ExtMeta, ExtMetaChild};
-
-    let mut ext_meta = ExtMeta::default();
-    ext_meta.common.xml_id = Some(ctx.generate_id_with_suffix(id_suffix));
-    ext_meta.bibl.analog = Some(format!("{label_prefix}{data}"));
-    ext_meta
-        .children
-        .push(ExtMetaChild::Text(summary_text.to_string()));
-    ext_meta
-}
-
 /// Populate a ScoreHeaderData in the ExtensionStore keyed by the meiHead xml:id.
 ///
-/// This is the typed dual path alongside the extMeta JSON labels. Both paths
-/// are written during import so that export can migrate to the typed store
-/// while the extMeta path remains for backward compatibility.
+/// Stores all header metadata (identification, work, movement, defaults, credits)
+/// as typed data in the ExtensionStore for lossless roundtrip without polluting
+/// the MEI tree with extMeta elements.
 fn populate_ext_store_header(
     score: &ScorePartwise,
     mei_head: &mut MeiHead,
@@ -379,7 +255,7 @@ fn populate_ext_store_header(
 ///
 /// Returns false for identifications that only contain the Tusk software
 /// entry (which is the default added by the export path). This prevents
-/// a growing extMeta on each roundtrip.
+/// growing extension data on each roundtrip.
 fn has_meaningful_identification(ident: &crate::model::elements::Identification) -> bool {
     if !ident.creators.is_empty()
         || !ident.rights.is_empty()
@@ -408,112 +284,6 @@ fn has_meaningful_identification(ident: &crate::model::elements::Identification)
         }
     }
     false
-}
-
-/// Build a human-readable summary of identification metadata.
-fn identification_summary(ident: &crate::model::elements::Identification) -> String {
-    let mut parts = Vec::new();
-    for creator in &ident.creators {
-        if let Some(t) = &creator.text_type {
-            parts.push(format!("{}: {}", t, creator.value));
-        } else {
-            parts.push(creator.value.clone());
-        }
-    }
-    for right in &ident.rights {
-        parts.push(format!("rights: {}", right.value));
-    }
-    if let Some(source) = &ident.source {
-        parts.push(format!("source: {source}"));
-    }
-    if let Some(enc) = &ident.encoding {
-        for sw in &enc.software {
-            parts.push(format!("software: {sw}"));
-        }
-    }
-    if parts.is_empty() {
-        "identification".to_string()
-    } else {
-        parts.join("; ")
-    }
-}
-
-/// Build a human-readable summary of work metadata.
-fn work_summary(work: &crate::model::elements::Work) -> String {
-    let mut parts = Vec::new();
-    if let Some(n) = &work.work_number {
-        parts.push(format!("number: {n}"));
-    }
-    if let Some(opus) = &work.opus {
-        parts.push(format!("opus: {}", opus.href));
-    }
-    if parts.is_empty() {
-        "work".to_string()
-    } else {
-        parts.join("; ")
-    }
-}
-
-/// Build a human-readable summary of defaults metadata.
-fn defaults_summary(defaults: &crate::model::elements::Defaults) -> String {
-    let mut parts = Vec::new();
-    if let Some(scaling) = &defaults.scaling {
-        parts.push(format!(
-            "scaling: {}mm/{}tenths",
-            scaling.millimeters, scaling.tenths
-        ));
-    }
-    if let Some(pl) = &defaults.page_layout {
-        if let (Some(h), Some(w)) = (pl.page_height, pl.page_width) {
-            parts.push(format!("page: {w}x{h}"));
-        }
-    }
-    if defaults.system_layout.is_some() {
-        parts.push("system-layout".to_string());
-    }
-    if !defaults.staff_layouts.is_empty() {
-        parts.push(format!("{} staff-layout(s)", defaults.staff_layouts.len()));
-    }
-    if defaults.appearance.is_some() {
-        parts.push("appearance".to_string());
-    }
-    if defaults.music_font.is_some() {
-        parts.push("music-font".to_string());
-    }
-    if defaults.word_font.is_some() {
-        parts.push("word-font".to_string());
-    }
-    if !defaults.lyric_fonts.is_empty() {
-        parts.push("lyric-font".to_string());
-    }
-    if parts.is_empty() {
-        "defaults".to_string()
-    } else {
-        parts.join("; ")
-    }
-}
-
-/// Build a human-readable summary of credits.
-fn credits_summary(credits: &[crate::model::elements::Credit]) -> String {
-    use crate::model::elements::CreditContent;
-    let mut parts = Vec::new();
-    for credit in credits {
-        if let Some(CreditContent::Words(words)) = &credit.content {
-            for w in &words.words {
-                if !w.value.is_empty() {
-                    let truncated: String = w.value.chars().take(40).collect();
-                    parts.push(truncated);
-                }
-            }
-        } else if let Some(CreditContent::Image(_)) = &credit.content {
-            parts.push("[image]".to_string());
-        }
-    }
-    if parts.is_empty() {
-        "credits".to_string()
-    } else {
-        parts.join("; ")
-    }
 }
 
 /// Convert MusicXML identification to MEI fileDesc.

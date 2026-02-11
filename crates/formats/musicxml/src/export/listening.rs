@@ -5,16 +5,13 @@ use crate::context::ConversionContext;
 use crate::import::listening::{
     bookmark_from_label, grouping_from_label, link_from_label, listening_from_label,
 };
-use crate::model::elements::score::{Bookmark, Link};
 use crate::model::elements::MeasureContent;
+use crate::model::elements::score::{Bookmark, Link};
 use crate::model::listening::{Grouping, Listening};
 use tusk_model::elements::Dir;
 
 /// Convert an MEI `<dir>` with a listening label to MusicXML `<listening>`.
-pub fn convert_mei_listening_dir(
-    dir: &Dir,
-    ctx: &mut ConversionContext,
-) -> Option<MeasureContent> {
+pub fn convert_mei_listening_dir(dir: &Dir, ctx: &mut ConversionContext) -> Option<MeasureContent> {
     // Preferred: reconstruct from ExtensionStore mxml_json
     if let Some(id) = &dir.common.xml_id {
         if let Some(ext) = ctx.ext_store().get(id) {

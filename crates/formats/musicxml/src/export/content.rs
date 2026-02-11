@@ -557,11 +557,9 @@ pub fn convert_mei_score_content(
             // Replace basic barlines with decorated versions from barline dirs
             for child in &mei_measure.children {
                 if let MeasureChild::Dir(dir) = child {
-                    let is_barline_dir = dir
-                        .common
-                        .label
-                        .as_deref()
-                        .is_some_and(|l| l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX));
+                    let is_barline_dir = dir.common.label.as_deref().is_some_and(|l| {
+                        l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX)
+                    });
                     if !is_barline_dir {
                         continue;
                     }
@@ -585,11 +583,7 @@ pub fn convert_mei_score_content(
                         });
                     if let Some(full_barline) = barline_opt {
                         let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
-                        replace_barline_at_location(
-                            &mut mxml_measure.content,
-                            &full_barline,
-                            loc,
-                        );
+                        replace_barline_at_location(&mut mxml_measure.content, &full_barline, loc);
                     }
                 }
             }

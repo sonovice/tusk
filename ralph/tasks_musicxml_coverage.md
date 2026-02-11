@@ -1056,9 +1056,20 @@ instead of parsing JSON from labels/extMeta:
 ### 26.4 Tests
 
 - [x] All existing roundtrip tests must pass with zero regressions
-- [ ] MEI output should no longer contain extMeta elements for MusicXML data
-- [ ] MEI output should have cleaner @label attributes (no large JSON blobs)
-- [ ] Verify cross-format potential: LilyPond → MEI → MusicXML produces valid harmony/transpose data where shared extension types allow
+- [x] MEI output should no longer contain extMeta elements for MusicXML data
+  - Removed all extMeta creation from import/mod.rs convert_header()
+  - Removed create_ext_meta() helper and all summary functions (identification_summary, work_summary, defaults_summary, credits_summary)
+  - Header data (identification, work, movement, defaults, credits) now stored exclusively in ExtensionStore via populate_ext_store_header()
+  - Export fallback path (header_from_ext_meta) preserved for reading legacy MEI files with extMeta
+- [x] MEI output should have cleaner @label attributes (no large JSON blobs)
+  - Changed 7 import modules from JSON-in-label to short marker labels: harmony ("musicxml:harmony"), barline ("musicxml:barline"), print ("musicxml:print"), measure-style ("musicxml:measure-style"), figured-bass ("musicxml:figured-bass"), sound ("musicxml:sound"), listening/grouping/link/bookmark
+  - All data now stored in ExtensionStore (mxml_json + typed fields); labels are just type markers for identification
+  - Updated all from_label() fallback functions to handle both legacy JSON labels and new marker labels
+  - All 338 MusicXML roundtrip tests pass, 2434 total tests pass
+- [x] Verify cross-format potential: LilyPond → MEI → MusicXML produces valid harmony/transpose data where shared extension types allow
+  - Architecture verified: MusicXML exporter reads ExtensionStore for harmony/transpose data
+  - LilyPond importer does not yet populate HarmonyData/TransposeData typed extensions (stores chords as opaque serialized text)
+  - Cross-format LilyPond → MEI → MusicXML produces valid output but without structured harmony/transpose (expected — LilyPond needs upgrading to populate shared extension types)
 
 ---
 

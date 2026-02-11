@@ -1,9 +1,8 @@
 //! Harmony conversion from MusicXML to MEI.
 //!
 //! Converts MusicXML `<harmony>` elements to MEI `<harm>` control events.
-//! The full MusicXML Harmony struct is serialized as JSON in the `@label`
-//! attribute for lossless roundtrip; a human-readable chord text summary
-//! is stored as the `<harm>` text child.
+//! Full MusicXML data is stored in ExtensionStore for lossless roundtrip;
+//! a human-readable chord text summary is stored as the `<harm>` text child.
 
 use crate::context::ConversionContext;
 use crate::model::data::{AboveBelow, Step, YesNo};
@@ -15,12 +14,12 @@ use tusk_model::musicxml_ext::{
     NumeralKeyData, OffsetData, VisualAttrs,
 };
 
-/// Label prefix for MEI harm elements carrying roundtrip JSON data.
-pub const HARM_LABEL_PREFIX: &str = "musicxml:harmony,";
+/// Label marker for MEI harm elements carrying MusicXML harmony data (via ExtensionStore).
+pub const HARM_LABEL_PREFIX: &str = "musicxml:harmony";
 
 /// Convert a MusicXML `<harmony>` element to an MEI `<harm>` control event.
 ///
-/// The full `Harmony` struct is JSON-encoded in `@label` for lossless roundtrip.
+/// Data is stored in ExtensionStore for lossless roundtrip.
 /// A human-readable chord symbol (e.g. "Cmaj7", "Am/E") is stored as text.
 pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
     let tstamp = calculate_harmony_tstamp(harmony, ctx);
@@ -33,14 +32,12 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
     let harm_id = ctx.generate_id_with_suffix("harm");
     harm.common.xml_id = Some(harm_id);
 
-    // Encode full MusicXML Harmony as JSON in label for lossless roundtrip.
-    // Normalize: clear `staff` (handled via MEI @staff), and canonicalize
-    // `offset` to encode the absolute beat position in divisions. On export,
-    // harmony elements are placed before notes (like directions), so
+    // Normalize for ExtensionStore: clear `staff` (handled via MEI @staff),
+    // and canonicalize `offset` to encode the absolute beat position in divisions.
+    // On export, harmony elements are placed before notes (like directions), so
     // beat_position=0 on re-import — the offset ensures correct tstamp.
     let mut harmony_for_json = harmony.clone();
     harmony_for_json.staff = None;
-    // Compute absolute position in divisions = current_beat_position + existing_offset
     let abs_position =
         ctx.beat_position() + harmony.offset.as_ref().map(|o| o.value).unwrap_or(0.0);
     if abs_position != 0.0 || harmony.offset.is_some() {
@@ -51,11 +48,11 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
     } else {
         harmony_for_json.offset = None;
     }
-    if let Ok(json) = serde_json::to_string(&harmony_for_json) {
-        harm.common.label = Some(format!("{}{}", HARM_LABEL_PREFIX, json));
-    }
 
-    // Dual-path: store typed HarmonyData + raw MusicXML JSON in ExtensionStore
+    // Short marker label for identification
+    harm.common.label = Some(HARM_LABEL_PREFIX.to_string());
+
+    // Store typed HarmonyData + raw MusicXML JSON in ExtensionStore
     if let Some(ref id) = harm.common.xml_id {
         let entry = ctx.ext_store_mut().entry(id.clone());
         entry.harmony = Some(build_harmony_data(&harmony_for_json));
@@ -394,8 +391,17 @@ fn build_harmony_data(h: &Harmony) -> HarmonyData {
 /// Reconstruct a MusicXML `Harmony` from the `@label` JSON data.
 ///
 /// Returns `None` if the label doesn't contain valid harmony JSON data.
+/// Deserialize a Harmony from a legacy JSON roundtrip label.
+///
+/// Handles old-format labels like `"musicxml:harmony,{json}"`. New imports use
+/// ExtensionStore instead, with a simple `"musicxml:harmony"` marker label.
 pub fn harmony_from_label(label: &str) -> Option<Harmony> {
-    let json = label.strip_prefix(HARM_LABEL_PREFIX)?;
+    // New format: just the marker — data is in ExtensionStore
+    if label == HARM_LABEL_PREFIX {
+        return None;
+    }
+    // Legacy format: "musicxml:harmony,{json}"
+    let json = label.strip_prefix("musicxml:harmony,")?;
     serde_json::from_str(json).ok()
 }
 
@@ -596,9 +602,13 @@ mod tests {
             id: None,
         };
 
+        // Test legacy format label roundtrip
         let json = serde_json::to_string(&harmony).unwrap();
-        let label = format!("{}{}", HARM_LABEL_PREFIX, json);
+        let label = format!("musicxml:harmony,{}", json);
         let recovered = harmony_from_label(&label).unwrap();
         assert_eq!(harmony, recovered);
+
+        // New marker label returns None (data is in ExtensionStore)
+        assert!(harmony_from_label(HARM_LABEL_PREFIX).is_none());
     }
 }

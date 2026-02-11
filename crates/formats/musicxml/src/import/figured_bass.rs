@@ -1,33 +1,29 @@
 //! Figured bass conversion from MusicXML to MEI.
 //!
 //! Converts MusicXML `<figured-bass>` elements to MEI `<fb>` measure-level
-//! elements with `<f>` children. The full MusicXML FiguredBass struct is
-//! serialized as JSON in the `@label` attribute for lossless roundtrip;
-//! human-readable figure text is stored in `<f>` children.
+//! elements with `<f>` children. Full MusicXML data is stored in ExtensionStore
+//! for lossless roundtrip; human-readable figure text is stored in `<f>` children.
 
 use crate::context::ConversionContext;
 use crate::model::figured_bass::FiguredBass;
 use tusk_model::elements::{F, FChild, Fb, FbChild};
 
-/// Label prefix for MEI fb elements carrying roundtrip JSON data.
-pub const FB_LABEL_PREFIX: &str = "musicxml:figured-bass,";
+/// Label marker for MEI fb elements carrying figured-bass data (via ExtensionStore).
+pub const FB_LABEL_PREFIX: &str = "musicxml:figured-bass";
 
 /// Convert a MusicXML `<figured-bass>` element to an MEI `<fb>` element.
 ///
-/// The full `FiguredBass` struct is JSON-encoded in `@label` for lossless roundtrip.
+/// Data is stored in ExtensionStore for lossless roundtrip.
 /// Human-readable figure text (e.g. "b7", "6", "#") is stored in `<f>` children.
 pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb {
     let mut mei_fb = Fb::default();
 
-    // Generate unique ID
     let fb_id = ctx.generate_id_with_suffix("fb");
     mei_fb.common.xml_id = Some(fb_id);
 
-    // Encode full MusicXML FiguredBass as JSON in label for lossless roundtrip.
     // Normalize: clear staff (handled via context), canonicalize offset.
     let mut fb_for_json = fb.clone();
     fb_for_json.staff = None;
-    // Compute absolute position: current beat position + existing offset
     let abs_position = ctx.beat_position() + fb.offset.as_ref().map(|o| o.value).unwrap_or(0.0);
     if abs_position != 0.0 || fb.offset.is_some() {
         fb_for_json.offset = Some(crate::model::direction::Offset {
@@ -37,14 +33,13 @@ pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb
     } else {
         fb_for_json.offset = None;
     }
-    if let Ok(json) = serde_json::to_string(&fb_for_json) {
-        mei_fb.common.label = Some(format!("{}{}", FB_LABEL_PREFIX, json));
-    }
+
+    // Short marker label for identification
+    mei_fb.common.label = Some(FB_LABEL_PREFIX.to_string());
 
     // Store raw MusicXML JSON in ExtensionStore for direct roundtrip
     if let Some(ref id) = mei_fb.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).mxml_json =
-            serde_json::to_value(&fb_for_json).ok();
+        ctx.ext_store_mut().entry(id.clone()).mxml_json = serde_json::to_value(&fb_for_json).ok();
     }
 
     // Create <f> children with human-readable text
@@ -63,8 +58,12 @@ pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb
 /// Reconstruct a MusicXML `FiguredBass` from the `@label` JSON data.
 ///
 /// Returns `None` if the label doesn't contain valid figured-bass JSON data.
+/// Deserialize a FiguredBass from a legacy JSON roundtrip label.
 pub fn figured_bass_from_label(label: &str) -> Option<FiguredBass> {
-    let json = label.strip_prefix(FB_LABEL_PREFIX)?;
+    if label == FB_LABEL_PREFIX {
+        return None;
+    }
+    let json = label.strip_prefix("musicxml:figured-bass,")?;
     serde_json::from_str(json).ok()
 }
 
@@ -149,10 +148,14 @@ mod tests {
             id: None,
         };
 
+        // Test legacy format label roundtrip
         let json = serde_json::to_string(&fb).unwrap();
-        let label = format!("{}{}", FB_LABEL_PREFIX, json);
+        let label = format!("musicxml:figured-bass,{}", json);
         let recovered = figured_bass_from_label(&label).unwrap();
         assert_eq!(fb, recovered);
+
+        // New marker label returns None (data is in ExtensionStore)
+        assert!(figured_bass_from_label(FB_LABEL_PREFIX).is_none());
     }
 
     #[test]
