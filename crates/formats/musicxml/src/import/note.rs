@@ -603,6 +603,11 @@ fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote, ctx: &mut 
                     append_note_label(mei_note, &format!("musicxml:caesura,{json}"));
                 }
             }
+            for oa in &artics.other_articulation {
+                if let Ok(json) = serde_json::to_string(oa) {
+                    append_note_label(mei_note, &format!("musicxml:other-articulation,{json}"));
+                }
+            }
         }
     }
 }

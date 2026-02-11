@@ -499,7 +499,9 @@ fn convert_mei_note_label_articulations(
         None => return,
     };
 
-    use crate::model::notations::{Articulations, BreathMark, Caesura, Notations};
+    use crate::model::notations::{
+        Articulations, BreathMark, Caesura, Notations, OtherArticulation,
+    };
 
     for segment in label.split('|') {
         if let Some(json) = segment.strip_prefix("musicxml:breath-mark,") {
@@ -517,6 +519,14 @@ fn convert_mei_note_label_articulations(
                     .articulations
                     .get_or_insert_with(Articulations::default);
                 artics.caesura = Some(cs);
+            }
+        } else if let Some(json) = segment.strip_prefix("musicxml:other-articulation,") {
+            if let Ok(oa) = serde_json::from_str::<OtherArticulation>(json) {
+                let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                let artics = notations
+                    .articulations
+                    .get_or_insert_with(Articulations::default);
+                artics.other_articulation.push(oa);
             }
         }
     }
@@ -1500,6 +1510,9 @@ pub fn convert_mei_chord(
         if i == 0 {
             convert_mei_artic(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
         }
+
+        // Restore breath-mark, caesura, other-articulation from note label
+        convert_mei_note_label_articulations(mei_note, &mut mxml_note, ctx);
 
         // Convert ties from MEI @tie attribute to MusicXML <tie> elements
         convert_mei_ties(mei_note, &mut mxml_note);

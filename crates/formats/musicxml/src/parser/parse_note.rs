@@ -1230,14 +1230,26 @@ fn parse_articulations<R: BufRead>(reader: &mut Reader<R>) -> Result<Articulatio
                 b"breath-mark" | b"caesura" => {
                     parse_articulation_with_text(reader, &e, &mut artics)?;
                 }
+                b"other-articulation" => {
+                    artics
+                        .other_articulation
+                        .push(parse_other_articulation(reader, &e)?);
+                }
                 _ => {
                     parse_articulation_element(&e, &mut artics);
                     skip_element(reader, &e)?;
                 }
             },
-            Event::Empty(e) => {
-                parse_articulation_element(&e, &mut artics);
-            }
+            Event::Empty(e) => match e.name().as_ref() {
+                b"other-articulation" => {
+                    artics
+                        .other_articulation
+                        .push(parse_other_articulation_empty(&e)?);
+                }
+                _ => {
+                    parse_articulation_element(&e, &mut artics);
+                }
+            },
             Event::End(e) if e.name().as_ref() == b"articulations" => break,
             Event::Eof => return Err(ParseError::MissingElement("articulations end".to_string())),
             _ => {}
@@ -1365,6 +1377,39 @@ fn parse_articulation_with_text<R: BufRead>(
         _ => {}
     }
     Ok(())
+}
+
+/// Parse `<other-articulation>` from Start event (has text content).
+fn parse_other_articulation<R: BufRead>(
+    reader: &mut Reader<R>,
+    e: &BytesStart,
+) -> Result<OtherArticulation> {
+    let placement = parse_placement_attr(e);
+    let smufl = get_attr(e, "smufl")?;
+    let default_x = get_attr(e, "default-x")?.and_then(|s| s.parse().ok());
+    let default_y = get_attr(e, "default-y")?.and_then(|s| s.parse().ok());
+    let color = get_attr(e, "color")?;
+    let value = read_text(reader, b"other-articulation")?;
+    Ok(OtherArticulation {
+        value,
+        placement,
+        smufl,
+        default_x,
+        default_y,
+        color,
+    })
+}
+
+/// Parse `<other-articulation/>` from Empty event (self-closing, no text).
+fn parse_other_articulation_empty(e: &BytesStart) -> Result<OtherArticulation> {
+    Ok(OtherArticulation {
+        value: String::new(),
+        placement: parse_placement_attr(e),
+        smufl: get_attr(e, "smufl")?,
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        color: get_attr(e, "color")?,
+    })
 }
 
 // ============================================================================

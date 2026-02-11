@@ -532,6 +532,45 @@ pub struct Articulations {
     /// Soft accent.
     #[serde(rename = "soft-accent", skip_serializing_if = "Option::is_none")]
     pub soft_accent: Option<EmptyPlacement>,
+
+    /// Other articulations (extensibility).
+    #[serde(
+        rename = "other-articulation",
+        default,
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub other_articulation: Vec<OtherArticulation>,
+}
+
+/// Other articulation element (extensibility, `other-placement-text` type in XSD).
+///
+/// Matches the MusicXML `other-articulation` element with text content,
+/// print-style (position/color), placement, and smufl attributes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OtherArticulation {
+    /// Text content.
+    #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]
+    pub value: String,
+
+    /// Placement above or below.
+    #[serde(rename = "@placement", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<AboveBelow>,
+
+    /// SMuFL glyph name.
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
+    pub smufl: Option<String>,
+
+    /// Default X position.
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
+    pub default_x: Option<f64>,
+
+    /// Default Y position.
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
+    pub default_y: Option<f64>,
+
+    /// Color.
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 // ============================================================================

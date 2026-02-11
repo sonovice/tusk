@@ -1248,10 +1248,18 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 29.1 Articulations
 
-- [ ] Add `other_articulation: Vec<OtherArticulation>` to `Articulations` struct
-  - `OtherArticulation` with placement, smufl, text content (matching the XSD `other-articulation` element)
-- [ ] Parse `<other-articulation>` in `parse_notations()`
-- [ ] Serialize `<other-articulation>` in serializer
+- [x] Add `other_articulation: Vec<OtherArticulation>` to `Articulations` struct
+  - `OtherArticulation` with value, placement, smufl, default_x, default_y, color (matching XSD `other-placement-text` type)
+  - Added to model/notations.rs; Vec allows multiple other-articulation elements per articulations container
+- [x] Parse `<other-articulation>` in `parse_notations()`
+  - Handles both Start (with text content) and Empty (self-closing) events in parse_articulations()
+  - Extracts placement, smufl, default-x, default-y, color attributes
+- [x] Serialize `<other-articulation>` in serializer
+  - Added serialize_other_articulation() in serializer/notations.rs
+  - Emits text content when non-empty, self-closing when empty
+- [x] Import/export roundtrip via JSON-in-label (musicxml:other-articulation prefix on MEI note label)
+  - Same pattern as breath-mark/caesura; also added to chord note export path
+- [x] Added other_articulation_element.musicxml roundtrip fixture (smufl, placement, multiple, combined with accent)
 
 ### 29.2 Editorial Groups on Container Elements
 

@@ -289,6 +289,9 @@ impl MusicXmlSerialize for notations::Articulations {
         if let Some(ref c) = self.caesura {
             serialize_caesura(w, c)?;
         }
+        for oa in &self.other_articulation {
+            serialize_other_articulation(w, oa)?;
+        }
         Ok(())
     }
 }
@@ -397,6 +400,29 @@ fn serialize_caesura<W: Write>(
         _ => {
             w.write_empty(elem)?;
         }
+    }
+    Ok(())
+}
+
+/// Serialize an other-articulation element.
+fn serialize_other_articulation<W: Write>(
+    w: &mut MusicXmlWriter<W>,
+    oa: &notations::OtherArticulation,
+) -> SerializeResult<()> {
+    let mut elem = w.start_element("other-articulation");
+    if let Some(ref p) = oa.placement {
+        elem.push_attribute(("placement", above_below_str(p)));
+    }
+    push_opt_str_attr_start(&mut elem, "smufl", &oa.smufl);
+    push_opt_attr_start(&mut elem, "default-x", &oa.default_x);
+    push_opt_attr_start(&mut elem, "default-y", &oa.default_y);
+    push_opt_str_attr_start(&mut elem, "color", &oa.color);
+    if oa.value.is_empty() {
+        w.write_empty(elem)?;
+    } else {
+        w.write_start(elem)?;
+        w.write_text(&oa.value)?;
+        w.write_end("other-articulation")?;
     }
     Ok(())
 }
