@@ -990,6 +990,17 @@ impl<'src> Parser<'src> {
         Ok(Music::Transpose { from, to, body })
     }
 
+    /// Parse `\new`/`\context` followed by context type, optional name,
+    /// optional `\with` block, and a `contextable_music` body.
+    ///
+    /// Grammar: `\new CONTEXT_TYPE [= STRING] [optional_context_mods]
+    ///           contextable_music`
+    ///
+    /// `contextable_music` accepts `basic_music | pitch_as_music | event_chord`
+    /// — a subset of full music that excludes standalone `\addlyrics` and other
+    /// constructs requiring wrapping. In practice, `parse_music()` already
+    /// rejects standalone `\addlyrics`, so this uses `parse_pitch_or_music()`
+    /// which additionally handles bare pitches as music events.
     fn parse_context_music(&mut self) -> Result<Music, ParseError> {
         // \new or \context
         let keyword = match self.peek() {
@@ -1024,8 +1035,8 @@ impl<'src> Parser<'src> {
         // Optional \with { ... } (can repeat per grammar)
         let with_block = self.parse_optional_context_mods()?;
 
-        // Music body
-        let music = Box::new(self.parse_music()?);
+        // contextable_music body (pitch_or_music handles bare pitches too)
+        let music = Box::new(self.parse_pitch_or_music()?);
         Ok(Music::ContextedMusic {
             keyword,
             context_type,

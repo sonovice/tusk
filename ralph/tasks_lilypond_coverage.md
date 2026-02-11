@@ -1994,9 +1994,13 @@ Grammar: `pitch_or_music`, `contextable_music`, `pitch_as_music` (partial), `mus
 
 ### 46.1 Parser
 
-- [ ] [P] Parse `pitch_or_music`: in function argument contexts, a bare pitch (not followed by duration) can be either a pitch argument or a music expression — add disambiguation logic
-- [ ] [P] Parse `contextable_music`: music that can appear inside a `\context` definition body (subset of full music)
-- [ ] [T] Parser tests: pitch as function argument vs. music, contextable music in context body
+- [x] [P] Parse `pitch_or_music`: in function argument contexts, a bare pitch (not followed by duration) can be either a pitch argument or a music expression — add disambiguation logic
+  - `parse_pitch_or_music()` in functions.rs: NoteName → parse_note_event, else → parse_music
+  - Documented in `parse_function_args()` why bare pitches are NOT consumed as generic args
+- [x] [P] Parse `contextable_music`: music that can appear inside a `\context` definition body (subset of full music)
+  - `parse_context_music()` uses `parse_pitch_or_music()` for body
+- [x] [T] Parser tests: pitch as function argument vs. music, contextable music in context body
+  - 9 tests in tests_music_functions.rs: bare pitch not consumed as func arg, transpose/relative pitch args, context body variants (sequential, simultaneous, bare note, identifier, with-block)
 
 ---
 

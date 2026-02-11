@@ -415,3 +415,37 @@ fn roundtrip_fixture_score_with_lyrics() {
     let reparsed = parse(&output).expect("reparse failed");
     assert_eq!(file, reparsed);
 }
+
+#[test]
+fn parse_lyricsto_with_lyricmode_in_simultaneous_voice() {
+    // Verify \lyricsto with explicit \lyricmode parses correctly inside << >>
+    let input = r#"\score {
+  \new Voice = "melody" << { c4 d e f } \lyricsto "melody" \lyricmode { do re mi fa } >>
+}
+"#;
+    let file = parse(input).expect("parse failed");
+    let score = match &file.items[0] {
+        ToplevelExpression::Score(s) => s,
+        _ => panic!("expected Score"),
+    };
+    let music = match &score.items[0] {
+        ScoreItem::Music(m) => m,
+        _ => panic!("expected Music"),
+    };
+    if let Music::ContextedMusic {
+        context_type,
+        music: inner,
+        ..
+    } = music
+    {
+        assert_eq!(context_type, "Voice");
+        if let Music::Simultaneous(items) = inner.as_ref() {
+            assert_eq!(items.len(), 2);
+            assert!(matches!(items[1], Music::LyricsTo { .. }));
+        } else {
+            panic!("expected Simultaneous inner");
+        }
+    } else {
+        panic!("expected ContextedMusic");
+    }
+}

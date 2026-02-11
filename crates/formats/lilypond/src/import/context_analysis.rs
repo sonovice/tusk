@@ -134,7 +134,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
         // Single contexted staff (e.g. \new Staff { ... })
         if is_staff_context(context_type) {
             let voices = extract_voices(inner);
-            return StaffLayout {
+            let mut layout = StaffLayout {
                 group: None,
                 staves: vec![StaffInfo {
                     n: 1,
@@ -148,6 +148,11 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                 chord_names: Vec::new(),
                 figured_bass: Vec::new(),
             };
+            // Check for \lyricsto in a Simultaneous inner music
+            if let Music::Simultaneous(items) = inner.as_ref() {
+                attach_lyricsto_from_simultaneous(items, &mut layout.staves);
+            }
+            return layout;
         }
 
         // FiguredBass context at top level (e.g. \figures { ... })
@@ -162,6 +167,43 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     music: inner,
                 }],
             };
+        }
+
+        // Voice context with lyrics: when the inner music is a Simultaneous
+        // containing \lyricsto (e.g. after export wraps voice + lyrics together),
+        // handle as a single staff with lyrics attachment.
+        if is_voice_context(context_type)
+            && let Music::Simultaneous(items) = inner.as_ref()
+            && items.iter().any(|item| {
+                matches!(item, Music::LyricsTo { .. })
+                    || matches!(
+                        item,
+                        Music::ContextedMusic {
+                            context_type: ct,
+                            music: m,
+                            ..
+                        } if ct == "Lyrics"
+                            && matches!(m.as_ref(), Music::LyricsTo { .. })
+                    )
+            })
+        {
+            let voices = extract_voices(inner);
+            let mut layout = StaffLayout {
+                group: None,
+                staves: vec![StaffInfo {
+                    n: 1,
+                    name: name.clone(),
+                    context_type: context_type.clone(),
+                    keyword: Some(*keyword),
+                    with_block: with_block.clone(),
+                    voices,
+                    lyrics: Vec::new(),
+                }],
+                chord_names: Vec::new(),
+                figured_bass: Vec::new(),
+            };
+            attach_lyricsto_from_simultaneous(items, &mut layout.staves);
+            return layout;
         }
 
         // Unknown context type -- treat inner music as bare

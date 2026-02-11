@@ -81,7 +81,7 @@ impl<'src> Parser<'src> {
     /// Parse a lyric body: a `{ ... }` block where content is interpreted as
     /// lyric elements (syllables, hyphens, extenders) rather than notes.
     fn parse_lyric_body(&mut self) -> Result<Music, ParseError> {
-        // Accept both { ... } and identifier references
+        // Accept { ... }, \lyricmode { ... }, and identifier references
         match self.peek() {
             Token::BraceOpen => {
                 self.advance()?; // consume {
@@ -91,6 +91,10 @@ impl<'src> Parser<'src> {
                 }
                 self.expect(&Token::BraceClose)?;
                 Ok(Music::Sequential(items))
+            }
+            Token::LyricMode => {
+                // \lyricmode { ... } — explicit lyric mode wrapper
+                self.parse_lyric_mode()
             }
             Token::EscapedWord(_) => {
                 // Identifier reference (e.g. \text)
@@ -103,7 +107,7 @@ impl<'src> Parser<'src> {
             _ => Err(ParseError::Unexpected {
                 found: self.current.token.clone(),
                 offset: self.offset(),
-                expected: "lyric body (braces or identifier)".into(),
+                expected: "lyric body (braces, \\lyricmode, or identifier)".into(),
             }),
         }
     }

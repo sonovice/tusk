@@ -53,6 +53,13 @@ impl<'src> Parser<'src> {
     /// - Identifier arguments (`\varName`)
     /// - Braced music `{ ... }` and simultaneous music `<< ... >>`
     ///
+    /// **`pitch_or_music` note**: Bare note names (`Token::NoteName`) are NOT
+    /// consumed here because we lack function signature information to
+    /// disambiguate pitch arguments from music events. Functions that need
+    /// bare pitch arguments (`\transpose`, `\fixed`, `\relative`) are handled
+    /// as special cases in `parse_music()`. For generic `\identifier` calls,
+    /// a following pitch is parsed as a separate music event by the caller.
+    ///
     /// Stops when encountering tokens that can't be function arguments.
     fn parse_function_args(&mut self) -> Result<Vec<FunctionArg>, ParseError> {
         let mut args = Vec::new();
@@ -120,6 +127,28 @@ impl<'src> Parser<'src> {
             }
         }
         Ok(args)
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // pitch_or_music disambiguation
+    // ──────────────────────────────────────────────────────────────────
+
+    /// Parse a `pitch_or_music` argument: either a bare pitch (note name with
+    /// optional octave/accidental marks) or a full music expression.
+    ///
+    /// Mirrors the grammar's `pitch_or_music` production:
+    /// - If the current token is a `NoteName`, parse it as a note event
+    ///   (which may have duration and post-events, or be bare).
+    /// - Otherwise, parse a full music expression.
+    ///
+    /// Used by callers that know they expect a pitch or music argument
+    /// (e.g. context music bodies, some function argument positions).
+    pub(super) fn parse_pitch_or_music(&mut self) -> Result<Music, ParseError> {
+        if matches!(self.peek(), Token::NoteName(_)) {
+            self.parse_note_event()
+        } else {
+            self.parse_music()
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────

@@ -354,6 +354,164 @@ fn serialize_partial_function_roundtrip() {
     assert_eq!(ast, ast2);
 }
 
+// ── pitch_or_music disambiguation ────────────────────────────────────────
+
+#[test]
+fn bare_pitch_not_consumed_as_function_arg() {
+    // A bare note after a generic \identifier should NOT be consumed as
+    // a function argument — it should be a separate music event.
+    let input = "{ \\myFunc c4 }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Sequential(items)) => {
+            assert_eq!(items.len(), 2, "expected identifier + note, got {items:?}");
+            assert!(matches!(&items[0], Music::Identifier(s) if s == "myFunc"));
+            assert!(matches!(&items[1], Music::Note(_)));
+        }
+        other => panic!("expected Sequential, got {other:?}"),
+    }
+}
+
+#[test]
+fn pitch_or_music_in_transpose() {
+    // \transpose consumes two bare pitches as Note events
+    let input = "\\transpose c d { c4 d e f }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Transpose { from, to, body }) => {
+            assert!(matches!(from.as_ref(), Music::Note(_)));
+            assert!(matches!(to.as_ref(), Music::Note(_)));
+            assert!(matches!(body.as_ref(), Music::Sequential(_)));
+        }
+        other => panic!("expected Transpose, got {other:?}"),
+    }
+}
+
+#[test]
+fn pitch_or_music_in_relative() {
+    // \relative accepts optional pitch then music
+    let input = "\\relative c' { c4 d e f }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Relative { pitch, body }) => {
+            assert!(pitch.is_some());
+            assert!(matches!(pitch.as_deref().unwrap(), Music::Note(_)));
+            assert!(matches!(body.as_ref(), Music::Sequential(_)));
+        }
+        other => panic!("expected Relative, got {other:?}"),
+    }
+}
+
+#[test]
+fn pitch_or_music_accepts_music_expression() {
+    // \relative can also take music directly (no pitch)
+    let input = "\\relative { c4 d e f }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::Relative { pitch, body }) => {
+            assert!(pitch.is_none());
+            assert!(matches!(body.as_ref(), Music::Sequential(_)));
+        }
+        other => panic!("expected Relative, got {other:?}"),
+    }
+}
+
+// ── contextable_music (context body) ─────────────────────────────────────
+
+#[test]
+fn context_body_sequential() {
+    // Standard case: \new Staff { ... }
+    let input = "\\new Staff { c4 d e f }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic {
+            context_type,
+            music,
+            ..
+        }) => {
+            assert_eq!(context_type, "Staff");
+            assert!(matches!(music.as_ref(), Music::Sequential(_)));
+        }
+        other => panic!("expected ContextedMusic, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_body_simultaneous() {
+    // \new Staff << ... >>
+    let input = "\\new Staff << c4 d e f >>";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic {
+            context_type,
+            music,
+            ..
+        }) => {
+            assert_eq!(context_type, "Staff");
+            assert!(matches!(music.as_ref(), Music::Simultaneous(_)));
+        }
+        other => panic!("expected ContextedMusic, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_body_bare_note() {
+    // \new Voice c4 — bare pitch as context body (pitch_or_music)
+    let input = "\\new Voice c4";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic {
+            context_type,
+            music,
+            ..
+        }) => {
+            assert_eq!(context_type, "Voice");
+            assert!(matches!(music.as_ref(), Music::Note(_)));
+        }
+        other => panic!("expected ContextedMusic, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_body_identifier() {
+    // \new Staff \myMusic — identifier as context body
+    let input = "\\new Staff \\myMusic";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic {
+            context_type,
+            music,
+            ..
+        }) => {
+            assert_eq!(context_type, "Staff");
+            assert!(matches!(music.as_ref(), Music::Identifier(s) if s == "myMusic"));
+        }
+        other => panic!("expected ContextedMusic, got {other:?}"),
+    }
+}
+
+#[test]
+fn context_body_with_name_and_with_block() {
+    // \new Staff = "main" \with { \consists "Foo" } { c4 }
+    let input = "\\new Staff = \"main\" \\with { \\consists \"Foo\" } { c4 }";
+    let ast = parse(input).unwrap();
+    match &ast.items[0] {
+        ToplevelExpression::Music(Music::ContextedMusic {
+            context_type,
+            name,
+            with_block,
+            music,
+            ..
+        }) => {
+            assert_eq!(context_type, "Staff");
+            assert_eq!(name.as_deref(), Some("main"));
+            assert!(with_block.is_some());
+            assert!(matches!(music.as_ref(), Music::Sequential(_)));
+        }
+        other => panic!("expected ContextedMusic, got {other:?}"),
+    }
+}
+
 // ── Fixture roundtrip ────────────────────────────────────────────────────
 
 #[test]
