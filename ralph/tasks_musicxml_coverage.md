@@ -1235,8 +1235,12 @@ Various parser match arms silently skip attributes or simplify sub-element parsi
 
 ### 28.7 Tests
 
-- [ ] Unit tests for each newly parsed attribute/element
-- [ ] Existing roundtrip tests pass (0 regressions)
+- [x] Unit tests for each newly parsed attribute/element
+  - Parser unit tests already added inline in 28.4-28.6: test_parse_beam_attributes, test_parse_breath_mark_text_content, test_parse_caesura_text_content, test_parse_stem_attributes, test_parse_accidental_attributes
+  - Added beam_attributes.musicxml roundtrip fixture exercising fan, repeater, color, id attrs on beams
+  - Added stem_accidental_attributes.musicxml roundtrip fixture exercising stem relative-y/color and accidental size/smufl attrs
+- [x] Existing roundtrip tests pass (0 regressions)
+  - All 2472 tests pass; 343 MusicXML roundtrip, 538 unit, 31 integration
 
 ---
 

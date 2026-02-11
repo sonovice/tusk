@@ -1236,6 +1236,7 @@ fragment_roundtrip_test!(bass_clef_down_octave);
 // Batch 6
 fragment_roundtrip_test!(bass_separator_element);
 fragment_roundtrip_test!(bass_step_element);
+fragment_roundtrip_test!(beam_attributes);
 fragment_roundtrip_test!(beam_element);
 fragment_roundtrip_test!(beat_repeat_element);
 fragment_roundtrip_test!(beat_type_element);
@@ -1477,6 +1478,7 @@ fragment_roundtrip_test!(staff_tuning_element);
 fragment_roundtrip_test!(staff_type_element);
 fragment_roundtrip_test!(staves_element);
 // Batch 46
+fragment_roundtrip_test!(stem_accidental_attributes);
 fragment_roundtrip_test!(step_element);
 fragment_roundtrip_test!(stick_element);
 fragment_roundtrip_test!(stick_location_element);
