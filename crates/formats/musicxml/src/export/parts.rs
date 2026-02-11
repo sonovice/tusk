@@ -421,7 +421,6 @@ fn extract_instruments_from_staff_def(staff_def: &StaffDef, score_part: &mut Sco
                     }
                 }
             }
-            // Fallback: no JSON label, skip (shouldn't happen in roundtrip)
         }
     }
 }

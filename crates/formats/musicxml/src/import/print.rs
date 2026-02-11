@@ -30,6 +30,7 @@ pub fn convert_print(print: &Print, ctx: &mut ConversionContext) -> Vec<MeasureC
     let mut children = Vec::new();
 
     let print_ext = build_print_data(print);
+    let mxml_json = serde_json::to_value(print).ok();
 
     if has_new_page {
         // Page break (implies system break too)
@@ -39,7 +40,9 @@ pub fn convert_print(print: &Print, ctx: &mut ConversionContext) -> Vec<MeasureC
             pb.common.label = Some(label.clone());
         }
         if let Some(ref id) = pb.common.xml_id {
-            ctx.ext_store_mut().entry(id.clone()).print_data = Some(print_ext.clone());
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.print_data = Some(print_ext.clone());
+            entry.mxml_json = mxml_json.clone();
         }
         children.push(MeasureChild::Pb(Box::new(pb)));
     } else if has_new_system {
@@ -50,7 +53,9 @@ pub fn convert_print(print: &Print, ctx: &mut ConversionContext) -> Vec<MeasureC
             sb.common.label = Some(label.clone());
         }
         if let Some(ref id) = sb.common.xml_id {
-            ctx.ext_store_mut().entry(id.clone()).print_data = Some(print_ext.clone());
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.print_data = Some(print_ext.clone());
+            entry.mxml_json = mxml_json.clone();
         }
         children.push(MeasureChild::Sb(Box::new(sb)));
     } else {
@@ -61,7 +66,9 @@ pub fn convert_print(print: &Print, ctx: &mut ConversionContext) -> Vec<MeasureC
             sb.common.label = Some(label.clone());
         }
         if let Some(ref id) = sb.common.xml_id {
-            ctx.ext_store_mut().entry(id.clone()).print_data = Some(print_ext);
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.print_data = Some(print_ext);
+            entry.mxml_json = mxml_json;
         }
         children.push(MeasureChild::Sb(Box::new(sb)));
     }

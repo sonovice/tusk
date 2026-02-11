@@ -32,7 +32,9 @@ pub fn convert_listening(listening: &Listening, ctx: &mut ConversionContext) -> 
 
     if let Some(ref id) = dir.common.xml_id {
         if let Ok(val) = serde_json::to_value(listening) {
-            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Listening(val));
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.listening = Some(ListeningData::Listening(val.clone()));
+            entry.mxml_json = Some(val);
         }
     }
 
@@ -57,7 +59,9 @@ pub fn convert_grouping(grouping: &Grouping, ctx: &mut ConversionContext) -> Mea
 
     if let Some(ref id) = dir.common.xml_id {
         if let Ok(val) = serde_json::to_value(grouping) {
-            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Grouping(val));
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.listening = Some(ListeningData::Grouping(val.clone()));
+            entry.mxml_json = Some(val);
         }
     }
 
@@ -82,7 +86,9 @@ pub fn convert_link(link: &Link, ctx: &mut ConversionContext) -> MeasureChild {
 
     if let Some(ref id) = dir.common.xml_id {
         if let Ok(val) = serde_json::to_value(link) {
-            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Link(val));
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.listening = Some(ListeningData::Link(val.clone()));
+            entry.mxml_json = Some(val);
         }
     }
 
@@ -107,7 +113,9 @@ pub fn convert_bookmark(bookmark: &Bookmark, ctx: &mut ConversionContext) -> Mea
 
     if let Some(ref id) = dir.common.xml_id {
         if let Ok(val) = serde_json::to_value(bookmark) {
-            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Bookmark(val));
+            let entry = ctx.ext_store_mut().entry(id.clone());
+            entry.listening = Some(ListeningData::Bookmark(val.clone()));
+            entry.mxml_json = Some(val);
         }
     }
 

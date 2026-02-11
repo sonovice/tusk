@@ -21,9 +21,23 @@ use tusk_model::elements::Fb;
 pub fn convert_mei_fb(
     fb: &Fb,
     local_staff_n: usize,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> Option<MeasureContent> {
-    // Try to reconstruct from roundtrip label
+    // Preferred: reconstruct from ExtensionStore mxml_json
+    if let Some(id) = &fb.common.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref val) = ext.mxml_json {
+                if let Ok(mut figured_bass) =
+                    serde_json::from_value::<FiguredBass>(val.clone())
+                {
+                    figured_bass.staff = Some(local_staff_n as u32);
+                    return Some(MeasureContent::FiguredBass(Box::new(figured_bass)));
+                }
+            }
+        }
+    }
+
+    // Fallback: reconstruct from roundtrip label
     if let Some(label) = fb.common.label.as_deref() {
         if let Some(mut figured_bass) = figured_bass_from_label(label) {
             figured_bass.staff = Some(local_staff_n as u32);

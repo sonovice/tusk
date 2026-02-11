@@ -41,7 +41,8 @@ use tusk_musicxml::model::elements::{MeasureContent, ScoreTimewise};
 use tusk_musicxml::model::note::FullNoteContent;
 use tusk_musicxml::parser::{parse_score_partwise, parse_score_timewise};
 use tusk_musicxml::{
-    export, export_timewise, import, import_timewise, serialize, timewise_to_partwise,
+    export_timewise_with_ext, export_with_ext, import, import_timewise, serialize,
+    timewise_to_partwise,
 };
 
 /// Read a file and convert from UTF-16 to UTF-8 if needed.
@@ -94,10 +95,10 @@ fn conversion_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), Str
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
     let original_tw = import_timewise(&partwise);
-    let (mei, _ext_store) =
+    let (mei, ext_store) =
         import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
-    let exported_tw =
-        export_timewise(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    let exported_tw = export_timewise_with_ext(&mei, &ext_store)
+        .map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
     Ok((original_tw, exported_tw))
 }
 
@@ -111,9 +112,10 @@ fn full_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
     let original_tw = import_timewise(&partwise);
-    let (mei, _ext_store) =
+    let (mei, ext_store) =
         import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
-    let exported_pw = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
+    let exported_pw = export_with_ext(&mei, &ext_store)
+        .map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
     let xml2 = serialize(&exported_pw).map_err(|e| format!("Serialize error: {}", e))?;
     let roundtripped_pw =
         parse_score_partwise(&xml2).map_err(|e| format!("Re-parse error: {}", e))?;
@@ -130,9 +132,10 @@ fn triangle_mei_roundtrip(xml: &str) -> Result<(Mei, Mei), String> {
     } else {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
-    let (mei1, _ext1) =
+    let (mei1, ext1) =
         import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
-    let mxml1_pw = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let mxml1_pw = export_with_ext(&mei1, &ext1)
+        .map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
     let (mei2, _ext2) =
         import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     Ok((mei1, mei2))
@@ -148,12 +151,15 @@ fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), 
     } else {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
-    let (mei1, _ext1) =
+    let (mei1, ext1) =
         import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
-    let tw1 = export_timewise(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
+    let tw1 = export_timewise_with_ext(&mei1, &ext1)
+        .map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
     let pw1 = timewise_to_partwise(tw1.clone());
-    let (mei2, _ext2) = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
-    let tw2 = export_timewise(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
+    let (mei2, ext2) =
+        import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let tw2 = export_timewise_with_ext(&mei2, &ext2)
+        .map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
     Ok((tw1, tw2))
 }
 
@@ -1693,10 +1699,10 @@ fn assert_version_upgrade_roundtrip(
     );
 
     // Full roundtrip through MEI: import → export → serialize → reparse
-    let (mei, _ext_store) =
+    let (mei, ext_store) =
         import(&partwise).unwrap_or_else(|e| panic!("Import failed for {}: {}", fixture_name, e));
-    let exported =
-        export(&mei).unwrap_or_else(|e| panic!("Export failed for {}: {}", fixture_name, e));
+    let exported = export_with_ext(&mei, &ext_store)
+        .unwrap_or_else(|e| panic!("Export failed for {}: {}", fixture_name, e));
 
     // Output should always be 4.1
     assert_eq!(

@@ -41,6 +41,12 @@ pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb
         mei_fb.common.label = Some(format!("{}{}", FB_LABEL_PREFIX, json));
     }
 
+    // Store raw MusicXML JSON in ExtensionStore for direct roundtrip
+    if let Some(ref id) = mei_fb.common.xml_id {
+        ctx.ext_store_mut().entry(id.clone()).mxml_json =
+            serde_json::to_value(&fb_for_json).ok();
+    }
+
     // Create <f> children with human-readable text
     for figure in &fb.figures {
         let mut mei_f = F::default();

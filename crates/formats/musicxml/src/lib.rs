@@ -137,8 +137,19 @@ pub fn import_timewise(score: &model::elements::ScorePartwise) -> model::element
 /// let musicxml = export(&mei)?;
 /// ```
 pub fn export(mei: &tusk_model::elements::Mei) -> ConversionResult<model::elements::ScorePartwise> {
-    let timewise = export::convert_mei_to_timewise(mei)?;
-    Ok(convert::timewise_to_partwise(timewise))
+    export::convert_mei(mei)
+}
+
+/// Export an MEI document to MusicXML score-partwise with typed extension data.
+///
+/// When an `ExtensionStore` from a prior import is available, export will
+/// read typed roundtrip data from it (preferred), falling back to label-based
+/// parsing when no entry exists.
+pub fn export_with_ext(
+    mei: &tusk_model::elements::Mei,
+    ext_store: &tusk_model::extensions::ExtensionStore,
+) -> ConversionResult<model::elements::ScorePartwise> {
+    export::convert_mei_with_ext(mei, ext_store)
 }
 
 /// Export an MEI document to MusicXML timewise (lossy conversion).
@@ -149,6 +160,14 @@ pub fn export_timewise(
     mei: &tusk_model::elements::Mei,
 ) -> ConversionResult<model::elements::ScoreTimewise> {
     export::convert_mei_to_timewise(mei)
+}
+
+/// Export an MEI document to MusicXML timewise with typed extension data.
+pub fn export_timewise_with_ext(
+    mei: &tusk_model::elements::Mei,
+    ext_store: &tusk_model::extensions::ExtensionStore,
+) -> ConversionResult<model::elements::ScoreTimewise> {
+    export::convert_mei_to_timewise_with_ext(mei, ext_store)
 }
 
 /// Import a compressed .mxl archive to MEI (lossless conversion).
@@ -176,6 +195,16 @@ pub fn import_mxl(
 pub fn export_mxl(mei: &tusk_model::elements::Mei) -> Result<Vec<u8>, MxlError> {
     let score =
         export(mei).map_err(|e| MxlError::InvalidContainer(format!("conversion error: {}", e)))?;
+    mxl::write_mxl(&score)
+}
+
+/// Export an MEI document to a compressed .mxl archive with typed extension data.
+pub fn export_mxl_with_ext(
+    mei: &tusk_model::elements::Mei,
+    ext_store: &tusk_model::extensions::ExtensionStore,
+) -> Result<Vec<u8>, MxlError> {
+    let score = export_with_ext(mei, ext_store)
+        .map_err(|e| MxlError::InvalidContainer(format!("conversion error: {}", e)))?;
     mxl::write_mxl(&score)
 }
 

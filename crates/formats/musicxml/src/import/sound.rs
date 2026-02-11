@@ -27,9 +27,11 @@ pub fn convert_sound(sound: &Sound, ctx: &mut ConversionContext) -> MeasureChild
         dir.common.label = Some(label);
     }
 
-    // Dual-path: store typed SoundData in ExtensionStore
+    // Dual-path: store typed SoundData + raw MusicXML JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).sound = Some(build_sound_data(sound));
+        let entry = ctx.ext_store_mut().entry(id.clone());
+        entry.sound = Some(build_sound_data(sound));
+        entry.mxml_json = serde_json::to_value(sound).ok();
     }
 
     // Human-readable summary

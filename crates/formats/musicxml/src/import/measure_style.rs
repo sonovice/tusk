@@ -34,9 +34,11 @@ fn convert_one(ms: &MeasureStyle, ctx: &mut ConversionContext) -> Option<Measure
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("mstyle"));
     dir.common.label = Some(label);
 
-    // Dual-path: store typed MeasureStyleData in ExtensionStore
+    // Dual-path: store typed MeasureStyleData + raw JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).measure_style = Some(build_measure_style_data(ms));
+        let entry = ctx.ext_store_mut().entry(id.clone());
+        entry.measure_style = Some(build_measure_style_data(ms));
+        entry.mxml_json = serde_json::to_value(ms).ok();
     }
 
     // Human-readable summary as text child

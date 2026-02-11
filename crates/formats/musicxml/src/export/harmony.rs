@@ -22,12 +22,25 @@ use tusk_model::elements::{Harm, HarmChild};
 pub fn convert_mei_harm(
     harm: &Harm,
     local_staff_n: usize,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> Option<MeasureContent> {
-    // Try to reconstruct from roundtrip label
+    // Preferred: reconstruct from ExtensionStore mxml_json
+    if let Some(id) = &harm.common.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref val) = ext.mxml_json {
+                if let Ok(mut harmony) =
+                    serde_json::from_value::<Harmony>(val.clone())
+                {
+                    harmony.staff = Some(local_staff_n as u32);
+                    return Some(MeasureContent::Harmony(Box::new(harmony)));
+                }
+            }
+        }
+    }
+
+    // Fallback: reconstruct from roundtrip label
     if let Some(label) = harm.common.label.as_deref() {
         if let Some(mut harmony) = harmony_from_label(label) {
-            // Override staff with correct within-part number
             harmony.staff = Some(local_staff_n as u32);
             return Some(MeasureContent::Harmony(Box::new(harmony)));
         }

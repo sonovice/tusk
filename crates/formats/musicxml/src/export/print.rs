@@ -13,7 +13,19 @@ use crate::model::print::Print;
 use tusk_model::elements::{Pb, Sb};
 
 /// Convert an MEI `<sb>` element to a MusicXML `<print>` measure content.
-pub fn convert_mei_sb(sb: &Sb, _ctx: &mut ConversionContext) -> Option<MeasureContent> {
+pub fn convert_mei_sb(sb: &Sb, ctx: &mut ConversionContext) -> Option<MeasureContent> {
+    // Preferred: reconstruct from ExtensionStore mxml_json
+    if let Some(id) = &sb.common.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref val) = ext.mxml_json {
+                if let Ok(print) = serde_json::from_value::<Print>(val.clone()) {
+                    return Some(MeasureContent::Print(Box::new(print)));
+                }
+            }
+        }
+    }
+
+    // Fallback: reconstruct from label
     if let Some(label) = sb.common.label.as_deref() {
         if let Some(print) = print_from_label(label) {
             return Some(MeasureContent::Print(Box::new(print)));
@@ -40,7 +52,19 @@ pub fn convert_mei_sb(sb: &Sb, _ctx: &mut ConversionContext) -> Option<MeasureCo
 }
 
 /// Convert an MEI `<pb>` element to a MusicXML `<print>` measure content.
-pub fn convert_mei_pb(pb: &Pb, _ctx: &mut ConversionContext) -> Option<MeasureContent> {
+pub fn convert_mei_pb(pb: &Pb, ctx: &mut ConversionContext) -> Option<MeasureContent> {
+    // Preferred: reconstruct from ExtensionStore mxml_json
+    if let Some(id) = &pb.common.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref val) = ext.mxml_json {
+                if let Ok(print) = serde_json::from_value::<Print>(val.clone()) {
+                    return Some(MeasureContent::Print(Box::new(print)));
+                }
+            }
+        }
+    }
+
+    // Fallback: reconstruct from label
     if let Some(label) = pb.common.label.as_deref() {
         if let Some(print) = print_from_label(label) {
             return Some(MeasureContent::Print(Box::new(print)));

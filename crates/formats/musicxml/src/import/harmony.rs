@@ -55,9 +55,11 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
         harm.common.label = Some(format!("{}{}", HARM_LABEL_PREFIX, json));
     }
 
-    // Dual-path: store typed HarmonyData in ExtensionStore
+    // Dual-path: store typed HarmonyData + raw MusicXML JSON in ExtensionStore
     if let Some(ref id) = harm.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).harmony = Some(build_harmony_data(&harmony_for_json));
+        let entry = ctx.ext_store_mut().entry(id.clone());
+        entry.harmony = Some(build_harmony_data(&harmony_for_json));
+        entry.mxml_json = serde_json::to_value(&harmony_for_json).ok();
     }
 
     // Set tstamp and staff

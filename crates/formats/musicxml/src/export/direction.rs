@@ -343,13 +343,31 @@ pub fn convert_mei_dir(
             })
         }
         _ => {
-            // Check for stored words visual attrs in label
-            let restored_words = dir.common.label.as_deref().and_then(|label| {
-                label.split('|').find_map(|seg| {
-                    seg.strip_prefix("musicxml:words-vis,")
-                        .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
+            // Check for stored words visual attrs — prefer ExtensionStore
+            let restored_words = dir
+                .common
+                .xml_id
+                .as_ref()
+                .and_then(|id| ctx.ext_store().get(id))
+                .and_then(|ext| ext.direction_visual.as_ref())
+                .and_then(|dv| {
+                    if dv.words.is_empty() {
+                        None
+                    } else {
+                        // Convert WordsVisualData back to Vec<Words>
+                        let val = serde_json::to_value(&dv.words).ok()?;
+                        serde_json::from_value::<Vec<Words>>(val).ok()
+                    }
                 })
-            });
+                .or_else(|| {
+                    // Fallback: parse from label
+                    dir.common.label.as_deref().and_then(|label| {
+                        label.split('|').find_map(|seg| {
+                            seg.strip_prefix("musicxml:words-vis,")
+                                .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
+                        })
+                    })
+                });
             if let Some(words) = restored_words {
                 DirectionTypeContent::Words(words)
             } else {

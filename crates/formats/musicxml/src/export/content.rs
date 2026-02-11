@@ -557,17 +557,39 @@ pub fn convert_mei_score_content(
             // Replace basic barlines with decorated versions from barline dirs
             for child in &mei_measure.children {
                 if let MeasureChild::Dir(dir) = child {
-                    if let Some(label) = dir.common.label.as_deref() {
-                        if let Some(full_barline) =
-                            crate::import::barline::barline_from_label(label)
-                        {
-                            let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
-                            replace_barline_at_location(
-                                &mut mxml_measure.content,
-                                &full_barline,
-                                loc,
-                            );
-                        }
+                    let is_barline_dir = dir
+                        .common
+                        .label
+                        .as_deref()
+                        .is_some_and(|l| l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX));
+                    if !is_barline_dir {
+                        continue;
+                    }
+                    // Preferred: reconstruct from ExtensionStore mxml_json
+                    let barline_opt = dir
+                        .common
+                        .xml_id
+                        .as_ref()
+                        .and_then(|id| ctx.ext_store().get(id))
+                        .and_then(|ext| ext.mxml_json.as_ref())
+                        .and_then(|val| {
+                            serde_json::from_value::<crate::model::elements::Barline>(val.clone())
+                                .ok()
+                        })
+                        .or_else(|| {
+                            // Fallback: reconstruct from label
+                            dir.common
+                                .label
+                                .as_deref()
+                                .and_then(crate::import::barline::barline_from_label)
+                        });
+                    if let Some(full_barline) = barline_opt {
+                        let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
+                        replace_barline_at_location(
+                            &mut mxml_measure.content,
+                            &full_barline,
+                            loc,
+                        );
                     }
                 }
             }

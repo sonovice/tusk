@@ -30,9 +30,11 @@ pub fn convert_barline(barline: &Barline, ctx: &mut ConversionContext) -> Measur
         dir.common.label = Some(label);
     }
 
-    // Dual-path: store typed BarlineData in ExtensionStore
+    // Dual-path: store typed BarlineData + raw JSON in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).barline_data = Some(build_barline_data(barline));
+        let entry = ctx.ext_store_mut().entry(id.clone());
+        entry.barline_data = Some(build_barline_data(barline));
+        entry.mxml_json = serde_json::to_value(barline).ok();
     }
 
     // Human-readable summary

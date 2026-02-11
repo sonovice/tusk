@@ -21,12 +21,27 @@ const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
 /// Label marker for Jianpu clef stored on staffDef @label.
 const CLEF_JIANPU_LABEL: &str = "musicxml:clef-jianpu";
 
-/// Extract MusicXML StaffDetails from a MEI StaffDef.
+/// Extract MusicXML StaffDetails from ExtensionStore or MEI StaffDef label.
 ///
-/// Primary: recover full StaffDetails from JSON in @label (lossless roundtrip).
-/// Fallback: build minimal StaffDetails from @lines only.
-fn extract_staff_details(staff_def: &StaffDef) -> Option<StaffDetails> {
-    // Try JSON label first (supports |‐separated multi-segment labels)
+/// Preferred: read from ExtensionStore typed data.
+/// Fallback 1: recover full StaffDetails from JSON in @label (lossless roundtrip).
+/// Fallback 2: build minimal StaffDetails from @lines only.
+fn extract_staff_details(
+    staff_def: &StaffDef,
+    ctx: &ConversionContext,
+) -> Option<StaffDetails> {
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref sde) = ext.staff_details_extras {
+                if let Ok(sd) = serde_json::from_value::<StaffDetails>(sde.details.clone()) {
+                    return Some(sd);
+                }
+            }
+        }
+    }
+
+    // Fallback: try JSON label
     if let Some(ref label) = staff_def.labelled.label {
         if let Some(json) = extract_label_segment(label, STAFF_DETAILS_LABEL_PREFIX) {
             if let Ok(sd) = serde_json::from_str::<StaffDetails>(json) {
@@ -48,24 +63,73 @@ fn extract_staff_details(staff_def: &StaffDef) -> Option<StaffDetails> {
     })
 }
 
-/// Extract MusicXML Key from a MEI StaffDef label (non-traditional or key-octave roundtrip).
-fn extract_key_from_label(staff_def: &StaffDef) -> Option<crate::model::attributes::Key> {
+/// Extract MusicXML Key from ExtensionStore or MEI StaffDef label.
+fn extract_key_from_label(
+    staff_def: &StaffDef,
+    ctx: &ConversionContext,
+) -> Option<crate::model::attributes::Key> {
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref ke) = ext.key_extras {
+                if let Ok(key) =
+                    serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone())
+                {
+                    return Some(key);
+                }
+            }
+        }
+    }
+    // Fallback: label
     let label = staff_def.labelled.label.as_ref()?;
     let json = extract_label_segment(label, KEY_LABEL_PREFIX)?;
     serde_json::from_str(json).ok()
 }
 
-/// Extract MusicXML Time from a MEI StaffDef label (interchangeable/separator roundtrip).
-fn extract_time_from_label(staff_def: &StaffDef) -> Option<crate::model::attributes::Time> {
+/// Extract MusicXML Time from ExtensionStore or MEI StaffDef label.
+fn extract_time_from_label(
+    staff_def: &StaffDef,
+    ctx: &ConversionContext,
+) -> Option<crate::model::attributes::Time> {
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref te) = ext.time_extras {
+                if let Ok(time) =
+                    serde_json::from_value::<crate::model::attributes::Time>(te.time.clone())
+                {
+                    return Some(time);
+                }
+            }
+        }
+    }
+    // Fallback: label
     let label = staff_def.labelled.label.as_ref()?;
     let json = extract_label_segment(label, TIME_LABEL_PREFIX)?;
     serde_json::from_str(json).ok()
 }
 
-/// Extract ForPart vec from a MEI StaffDef label (concert score roundtrip).
+/// Extract ForPart vec from ExtensionStore or MEI StaffDef label.
 fn extract_for_parts_from_label(
     staff_def: &StaffDef,
+    ctx: &ConversionContext,
 ) -> Option<Vec<crate::model::attributes::ForPart>> {
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref fpd) = ext.for_part {
+                let entries: Vec<crate::model::attributes::ForPart> = fpd
+                    .entries
+                    .iter()
+                    .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                    .collect();
+                if !entries.is_empty() {
+                    return Some(entries);
+                }
+            }
+        }
+    }
+    // Fallback: label
     let label = staff_def.labelled.label.as_ref()?;
     let json = extract_label_segment(label, FOR_PART_LABEL_PREFIX)?;
     serde_json::from_str(json).ok()
@@ -318,7 +382,7 @@ pub fn convert_mei_score_def_to_attributes(
 /// A MusicXML Attributes element.
 pub fn convert_mei_staff_def_to_attributes(
     staff_def: &StaffDef,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
@@ -328,7 +392,7 @@ pub fn convert_mei_staff_def_to_attributes(
     let mut attrs = Attributes::default();
 
     // Convert key signature — try JSON label first for lossless roundtrip
-    if let Some(key) = extract_key_from_label(staff_def) {
+    if let Some(key) = extract_key_from_label(staff_def, ctx) {
         attrs.keys.push(key);
     } else if let Some(keysig) = staff_def.staff_def_log.keysig.as_ref()
         && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
@@ -347,7 +411,7 @@ pub fn convert_mei_staff_def_to_attributes(
     }
 
     // Convert time signature — try JSON label first for lossless roundtrip
-    if let Some(time) = extract_time_from_label(staff_def) {
+    if let Some(time) = extract_time_from_label(staff_def, ctx) {
         attrs.times.push(time);
     } else if staff_def.staff_def_log.meter_sym.as_ref()
         == Some(&tusk_model::data::DataMetersign::Open)
@@ -425,7 +489,7 @@ pub fn convert_mei_staff_def_to_attributes(
     }
 
     // Convert for-part (concert score per-part transposition) from label
-    if let Some(for_parts) = extract_for_parts_from_label(staff_def) {
+    if let Some(for_parts) = extract_for_parts_from_label(staff_def, ctx) {
         attrs.for_parts = for_parts;
     }
 
@@ -455,7 +519,7 @@ pub fn convert_mei_staff_def_to_attributes(
     }
 
     // Convert staff details from label JSON or fallback to @lines
-    if let Some(sd) = extract_staff_details(staff_def) {
+    if let Some(sd) = extract_staff_details(staff_def, ctx) {
         attrs.staff_details.push(sd);
     }
 
@@ -483,7 +547,7 @@ pub fn build_first_measure_attributes(
     attrs.divisions = Some(divisions);
 
     // Key signature — try JSON label on staffDef for lossless roundtrip
-    if let Some(key) = staff_def.and_then(extract_key_from_label) {
+    if let Some(key) = staff_def.and_then(|sd| extract_key_from_label(sd, ctx)) {
         attrs.keys.push(key);
     } else {
         let keysig = score_def
@@ -508,7 +572,7 @@ pub fn build_first_measure_attributes(
     }
 
     // Time signature — try JSON label on staffDef for lossless roundtrip
-    if let Some(time) = staff_def.and_then(extract_time_from_label) {
+    if let Some(time) = staff_def.and_then(|sd| extract_time_from_label(sd, ctx)) {
         attrs.times.push(time);
     } else {
         let meter_sym = score_def
@@ -589,7 +653,7 @@ pub fn build_first_measure_attributes(
         }
 
         // Get for-part from label (concert score per-part transposition)
-        if let Some(for_parts) = extract_for_parts_from_label(staff_def) {
+        if let Some(for_parts) = extract_for_parts_from_label(staff_def, ctx) {
             attrs.for_parts = for_parts;
         }
 
@@ -621,7 +685,7 @@ pub fn build_first_measure_attributes(
         }
 
         // Get staff details from label JSON or fallback to @lines
-        if let Some(sd) = extract_staff_details(staff_def) {
+        if let Some(sd) = extract_staff_details(staff_def, ctx) {
             attrs.staff_details.push(sd);
         }
     }
@@ -671,7 +735,7 @@ pub fn build_first_measure_attributes_multi(
     };
 
     // Key signature — try JSON label on first staffDef for lossless roundtrip
-    if let Some(key) = first_def.and_then(extract_key_from_label) {
+    if let Some(key) = first_def.and_then(|sd| extract_key_from_label(sd, ctx)) {
         attrs.keys.push(key);
     } else {
         let keysig = score_def
@@ -695,7 +759,7 @@ pub fn build_first_measure_attributes_multi(
     }
 
     // Time signature — try JSON label on first staffDef for lossless roundtrip
-    if let Some(time) = first_def.and_then(extract_time_from_label) {
+    if let Some(time) = first_def.and_then(|sd| extract_time_from_label(sd, ctx)) {
         attrs.times.push(time);
     } else {
         let meter_sym = score_def
@@ -771,7 +835,7 @@ pub fn build_first_measure_attributes_multi(
     }
 
     // For-part from first staffDef
-    if let Some(for_parts) = first_def.and_then(extract_for_parts_from_label) {
+    if let Some(for_parts) = first_def.and_then(|sd| extract_for_parts_from_label(sd, ctx)) {
         attrs.for_parts = for_parts;
     }
 
@@ -803,7 +867,7 @@ pub fn build_first_measure_attributes_multi(
         }
 
         // Staff details from first staffDef (label JSON or @lines fallback)
-        if let Some(sd) = extract_staff_details(staff_def) {
+        if let Some(sd) = extract_staff_details(staff_def, ctx) {
             attrs.staff_details.push(sd);
         }
     }

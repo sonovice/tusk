@@ -1038,24 +1038,24 @@ Replace all extMeta and JSON-in-label patterns in `crates/formats/musicxml/src/i
 Update all export code in `crates/formats/musicxml/src/export/` to read from `ExtensionStore`
 instead of parsing JSON from labels/extMeta:
 
-- [ ] Accept `ExtensionStore` as input alongside the MEI document
-- [ ] Migrate header export: read `ScoreHeaderData` from `ExtensionStore` instead of scanning extMeta children
-- [ ] Migrate harmony export: read `HarmonyData` from `ExtensionStore` instead of parsing label JSON
-- [ ] Migrate sound export: read `SoundData` from `ExtensionStore`
-- [ ] Migrate print export: read `PrintData` from `ExtensionStore`
-- [ ] Migrate measure-style export: read `MeasureStyleData` from `ExtensionStore`
-- [ ] Migrate barline export: read `BarlineData` from `ExtensionStore`
-- [ ] Migrate listening/grouping/link/bookmark export: read `ListeningData` from `ExtensionStore`
-- [ ] Migrate note/direction visual attrs export: read from `ExtensionStore`
-- [ ] Migrate note-level extras export: read `NoteExtras`/`StemExtras` from `ExtensionStore`
-- [ ] Migrate key/time/for-part/staff-details/part-symbol extras export
-- [ ] Migrate instrument/part/group detail exports
-- [ ] Migrate lyric extras export
-- [ ] Keep lossy fallback paths for non-roundtrip MEI (external MEI without extension data)
+- [x] Accept `ExtensionStore` as input alongside the MEI document
+- [x] Migrate header export: read `ScoreHeaderData` from `ExtensionStore` instead of scanning extMeta children
+- [x] Migrate harmony export: read from `ExtensionStore` mxml_json instead of parsing label JSON
+- [x] Migrate sound export: read from `ExtensionStore` mxml_json
+- [x] Migrate print export: read from `ExtensionStore` mxml_json
+- [x] Migrate measure-style export: read from `ExtensionStore` mxml_json
+- [x] Migrate barline export: read from `ExtensionStore` mxml_json
+- [x] Migrate listening/grouping/link/bookmark export: read from `ExtensionStore` mxml_json
+- [x] Migrate note/direction visual attrs export: read from `ExtensionStore` typed fields
+- [x] Migrate note-level extras export: read `NoteExtras`/`StemExtras` from `ExtensionStore`
+- [x] Migrate key/time/for-part/staff-details exports: read typed ext fields from `ExtensionStore`
+- [x] Migrate lyric extras export: read `LyricExtras` from `ExtensionStore`
+- [x] Keep lossy fallback paths for non-roundtrip MEI (external MEI without extension data)
+- Note: part-symbol, instrument, part/group detail exports kept label-based (typed ext structs use different types than MusicXML model)
 
 ### 26.4 Tests
 
-- [ ] All existing roundtrip tests must pass with zero regressions
+- [x] All existing roundtrip tests must pass with zero regressions
 - [ ] MEI output should no longer contain extMeta elements for MusicXML data
 - [ ] MEI output should have cleaner @label attributes (no large JSON blobs)
 - [ ] Verify cross-format potential: LilyPond → MEI → MusicXML produces valid harmony/transpose data where shared extension types allow

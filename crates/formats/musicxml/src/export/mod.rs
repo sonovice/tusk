@@ -62,6 +62,7 @@ use crate::model::elements::{
     Defaults, Encoding, Identification, PartList, PartListItem, ScorePart, ScoreTimewise, Work,
 };
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild};
+use tusk_model::extensions::ExtensionStore;
 use utils::{
     extract_title_from_file_desc, find_body_in_music, find_first_mdiv_in_body, find_score_def,
     find_score_in_mdiv,
@@ -86,7 +87,19 @@ use utils::{
 /// This conversion is lossy. MEI-specific features without MusicXML equivalents
 /// will generate warnings in the context. Check `ctx.warnings()` after conversion.
 pub fn convert_mei(mei: &Mei) -> ConversionResult<crate::model::elements::ScorePartwise> {
-    let timewise = convert_mei_to_timewise(mei)?;
+    convert_mei_with_ext(mei, &ExtensionStore::new())
+}
+
+/// Convert an MEI document to MusicXML score-partwise with typed extension data.
+///
+/// When an `ExtensionStore` is available (e.g. from a prior MusicXML→MEI import),
+/// export functions will read typed data from the store first, falling back to
+/// label-based parsing if no entry exists for a given element.
+pub fn convert_mei_with_ext(
+    mei: &Mei,
+    ext_store: &ExtensionStore,
+) -> ConversionResult<crate::model::elements::ScorePartwise> {
+    let timewise = convert_mei_to_timewise_with_ext(mei, ext_store)?;
     Ok(crate::convert::timewise_to_partwise(timewise))
 }
 
@@ -101,7 +114,16 @@ pub fn convert_mei(mei: &Mei) -> ConversionResult<crate::model::elements::ScoreP
 /// - Part list from MEI `<scoreDef>/<staffGrp>`
 /// - Measures (each containing parts) from MEI `<section>/<measure>/<staff>/<layer>`
 pub fn convert_mei_to_timewise(mei: &Mei) -> ConversionResult<ScoreTimewise> {
+    convert_mei_to_timewise_with_ext(mei, &ExtensionStore::new())
+}
+
+/// Convert an MEI document to MusicXML timewise with typed extension data.
+pub fn convert_mei_to_timewise_with_ext(
+    mei: &Mei,
+    ext_store: &ExtensionStore,
+) -> ConversionResult<ScoreTimewise> {
     let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+    ctx.set_ext_store(ext_store.clone());
     convert_mei_to_timewise_with_context(mei, &mut ctx)
 }
 
@@ -213,19 +235,13 @@ struct HeaderData {
 
 /// Convert MEI meiHead to MusicXML header elements.
 ///
-/// Extracts title from `<fileDesc>/<titleStmt>/<title>`, and recovers full
-/// MusicXML `Identification`, `Work`, `movement-number`, and `movement-title`
-/// from `<extMeta>` elements that store JSON roundtrip data. Falls back to
-/// minimal data when no JSON is available.
+/// First tries typed `ScoreHeaderData` from the `ExtensionStore` (keyed by the
+/// meiHead `@xml:id`). Falls back to scanning `<extMeta>` children for
+/// JSON roundtrip data. Falls back further to minimal header from `<titleStmt>`.
 fn convert_header(
     mei_head: &MeiHead,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<HeaderData> {
-    use crate::import::{
-        CREDITS_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX,
-        MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, WORK_LABEL_PREFIX,
-    };
-
     let mut work: Option<Work> = None;
     let mut identification: Option<Identification> = None;
     let mut defaults: Option<Defaults> = None;
@@ -233,7 +249,7 @@ fn convert_header(
     let mut movement_number: Option<String> = None;
     let mut movement_title: Option<String> = None;
 
-    // Extract title from fileDesc
+    // Extract title from fileDesc (always available, used as canonical fallback)
     let mut title_text: Option<String> = None;
     for child in &mei_head.children {
         if let MeiHeadChild::FileDesc(file_desc) = child {
@@ -241,41 +257,45 @@ fn convert_header(
         }
     }
 
-    // Scan extMeta elements for JSON roundtrip data
-    for child in &mei_head.children {
-        if let MeiHeadChild::ExtMeta(ext_meta) = child {
-            if let Some(analog) = &ext_meta.bibl.analog {
-                if let Some(json) = analog.strip_prefix(IDENTIFICATION_LABEL_PREFIX) {
-                    if let Ok(ident) = serde_json::from_str::<Identification>(json) {
-                        identification = Some(ident);
-                    }
-                } else if let Some(json) = analog.strip_prefix(WORK_LABEL_PREFIX) {
-                    if let Ok(mut w) = serde_json::from_str::<Work>(json) {
-                        // Merge work-title from titleStmt (canonical source)
-                        if w.work_title.is_none() {
-                            w.work_title = title_text.clone();
-                        }
-                        work = Some(w);
-                    }
-                } else if let Some(data) = analog.strip_prefix(MOVEMENT_NUMBER_LABEL_PREFIX) {
-                    movement_number = Some(data.to_string());
-                } else if let Some(data) = analog.strip_prefix(MOVEMENT_TITLE_LABEL_PREFIX) {
-                    movement_title = Some(data.to_string());
-                } else if let Some(json) = analog.strip_prefix(DEFAULTS_LABEL_PREFIX) {
-                    if let Ok(d) = serde_json::from_str::<Defaults>(json) {
-                        defaults = Some(d);
-                    }
-                } else if let Some(json) = analog.strip_prefix(CREDITS_LABEL_PREFIX) {
-                    if let Ok(c) = serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
-                    {
-                        credits = c;
-                    }
-                }
+    // Preferred path: read typed data from ExtensionStore
+    let ext_found = if let Some(head_id) = &mei_head.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(head_id) {
+            if let Some(hdr) = &ext.score_header {
+                header_from_ext_store(
+                    hdr,
+                    &mut work,
+                    &mut identification,
+                    &mut defaults,
+                    &mut credits,
+                    &mut movement_number,
+                    &mut movement_title,
+                );
+                true
+            } else {
+                false
             }
+        } else {
+            false
         }
+    } else {
+        false
+    };
+
+    // Fallback path: scan extMeta elements for JSON roundtrip data
+    if !ext_found {
+        header_from_ext_meta(
+            mei_head,
+            &title_text,
+            &mut work,
+            &mut identification,
+            &mut defaults,
+            &mut credits,
+            &mut movement_number,
+            &mut movement_title,
+        );
     }
 
-    // If no work was recovered from extMeta, create one from title
+    // If no work was recovered, create one from title
     if work.is_none() {
         if let Some(title) = &title_text {
             if title != "Untitled" {
@@ -311,6 +331,150 @@ fn convert_header(
         movement_number,
         movement_title,
     })
+}
+
+/// Populate header fields from typed `ScoreHeaderData` in the `ExtensionStore`.
+fn header_from_ext_store(
+    hdr: &tusk_model::musicxml_ext::ScoreHeaderData,
+    work: &mut Option<Work>,
+    identification: &mut Option<Identification>,
+    defaults: &mut Option<Defaults>,
+    credits: &mut Vec<crate::model::elements::Credit>,
+    movement_number: &mut Option<String>,
+    movement_title: &mut Option<String>,
+) {
+    use crate::model::elements::{
+        Encoding, Miscellaneous, MiscellaneousField, Opus, TypedText,
+    };
+
+    // Identification
+    if let Some(id_data) = &hdr.identification {
+        let mut ident = Identification::default();
+        for c in &id_data.creators {
+            ident.creators.push(TypedText {
+                text_type: c.text_type.clone(),
+                value: c.value.clone(),
+            });
+        }
+        for r in &id_data.rights {
+            ident.rights.push(TypedText {
+                text_type: r.text_type.clone(),
+                value: r.value.clone(),
+            });
+        }
+        if let Some(enc_val) = &id_data.encoding {
+            if let Ok(enc) = serde_json::from_value::<Encoding>(enc_val.clone()) {
+                ident.encoding = Some(enc);
+            }
+        }
+        ident.source = id_data.source.clone();
+        for rel in &id_data.relations {
+            ident.relations.push(TypedText {
+                text_type: rel.text_type.clone(),
+                value: rel.value.clone(),
+            });
+        }
+        if !id_data.miscellaneous.is_empty() {
+            ident.miscellaneous = Some(Miscellaneous {
+                fields: id_data
+                    .miscellaneous
+                    .iter()
+                    .map(|f| MiscellaneousField {
+                        name: f.name.clone(),
+                        value: f.value.clone(),
+                    })
+                    .collect(),
+            });
+        }
+        *identification = Some(ident);
+    }
+
+    // Work
+    if let Some(w_data) = &hdr.work {
+        let mut w = Work {
+            work_number: w_data.work_number.clone(),
+            work_title: w_data.work_title.clone(),
+            opus: None,
+        };
+        if let Some(href) = &w_data.opus {
+            w.opus = Some(Opus {
+                href: href.clone(),
+                ..Default::default()
+            });
+        }
+        *work = Some(w);
+    }
+
+    // Movement number/title
+    *movement_number = hdr.movement_number.clone();
+    *movement_title = hdr.movement_title.clone();
+
+    // Defaults (stored as serde_json::Value)
+    if let Some(def_val) = &hdr.defaults {
+        if let Ok(d) = serde_json::from_value::<Defaults>(def_val.clone()) {
+            *defaults = Some(d);
+        }
+    }
+
+    // Credits (stored as Vec<serde_json::Value>)
+    for credit_val in &hdr.credits {
+        if let Ok(c) = serde_json::from_value::<crate::model::elements::Credit>(credit_val.clone())
+        {
+            credits.push(c);
+        }
+    }
+}
+
+/// Populate header fields by scanning extMeta elements for JSON roundtrip data.
+/// This is the legacy fallback path for MEI documents without ExtensionStore.
+#[allow(clippy::too_many_arguments)]
+fn header_from_ext_meta(
+    mei_head: &MeiHead,
+    title_text: &Option<String>,
+    work: &mut Option<Work>,
+    identification: &mut Option<Identification>,
+    defaults: &mut Option<Defaults>,
+    credits: &mut Vec<crate::model::elements::Credit>,
+    movement_number: &mut Option<String>,
+    movement_title: &mut Option<String>,
+) {
+    use crate::import::{
+        CREDITS_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX,
+        MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, WORK_LABEL_PREFIX,
+    };
+
+    for child in &mei_head.children {
+        if let MeiHeadChild::ExtMeta(ext_meta) = child {
+            if let Some(analog) = &ext_meta.bibl.analog {
+                if let Some(json) = analog.strip_prefix(IDENTIFICATION_LABEL_PREFIX) {
+                    if let Ok(ident) = serde_json::from_str::<Identification>(json) {
+                        *identification = Some(ident);
+                    }
+                } else if let Some(json) = analog.strip_prefix(WORK_LABEL_PREFIX) {
+                    if let Ok(mut w) = serde_json::from_str::<Work>(json) {
+                        if w.work_title.is_none() {
+                            w.work_title = title_text.clone();
+                        }
+                        *work = Some(w);
+                    }
+                } else if let Some(data) = analog.strip_prefix(MOVEMENT_NUMBER_LABEL_PREFIX) {
+                    *movement_number = Some(data.to_string());
+                } else if let Some(data) = analog.strip_prefix(MOVEMENT_TITLE_LABEL_PREFIX) {
+                    *movement_title = Some(data.to_string());
+                } else if let Some(json) = analog.strip_prefix(DEFAULTS_LABEL_PREFIX) {
+                    if let Ok(d) = serde_json::from_str::<Defaults>(json) {
+                        *defaults = Some(d);
+                    }
+                } else if let Some(json) = analog.strip_prefix(CREDITS_LABEL_PREFIX) {
+                    if let Ok(c) =
+                        serde_json::from_str::<Vec<crate::model::elements::Credit>>(json)
+                    {
+                        *credits = c;
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Build MusicXML credits from MEI scoreDef pgHead text (lossy fallback).

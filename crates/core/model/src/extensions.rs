@@ -250,6 +250,15 @@ pub struct ExtData {
     /// Lyric roundtrip extras.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lyric_extras: Option<crate::musicxml_ext::LyricExtras>,
+
+    /// Raw MusicXML element JSON for direct roundtrip deserialization.
+    ///
+    /// When an import stores both typed extension data and the original MusicXML
+    /// model struct, this field holds the latter as a `serde_json::Value`. Export
+    /// can deserialize it directly to the target MusicXML model type without
+    /// needing typed → MusicXML conversion logic.
+    #[serde(rename = "mxml", skip_serializing_if = "Option::is_none")]
+    pub mxml_json: Option<serde_json::Value>,
 }
 
 // ---------------------------------------------------------------------------

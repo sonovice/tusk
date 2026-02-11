@@ -307,6 +307,11 @@ impl ConversionContext {
         std::mem::take(&mut self.ext_store)
     }
 
+    /// Replace the extension store with the given one (used to seed export context).
+    pub fn set_ext_store(&mut self, store: ExtensionStore) {
+        self.ext_store = store;
+    }
+
     // ========================================================================
     // Ornament Events
     // ========================================================================
