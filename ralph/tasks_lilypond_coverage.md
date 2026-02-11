@@ -1888,8 +1888,10 @@ Grammar: `grob_prop_spec` (full form), `context_prop_spec`, `simple_revert_conte
 
 ### 42.2 Import & Export
 
-- [ ] [I] Scheme property paths → stored in `PropertyOp` extension type (typed path + value); existing label-based path also works since serializer covers the forms
-- [ ] [T] Roundtrip tests: Scheme property paths in override/revert
+- [x] [I] Scheme property paths → stored in `PropertyOp` extension type (typed path + value); existing label-based path also works since serializer covers the forms
+  - No import/export code changes needed: existing text-serialization roundtrip (serialize_property_op → JSON label → re-parse) already handles Scheme property paths via 42.1's parser+serializer support
+- [x] [T] Roundtrip tests: Scheme property paths in override/revert
+  - 6 new full-pipeline roundtrip tests in tests_properties.rs: override_scheme_symbol_path, override_mixed_dot_scheme_path, revert_scheme_quoted_list, revert_scheme_symbol, revert_context_scheme_path, once_override_scheme_path
 
 ---
 

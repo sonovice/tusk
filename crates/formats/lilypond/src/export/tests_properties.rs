@@ -132,3 +132,59 @@ fn roundtrip_override_compound_scheme() {
         "output: {output}"
     );
 }
+
+// --- Scheme property path roundtrips (Phase 42.2) ---
+
+#[test]
+fn roundtrip_override_scheme_symbol_path() {
+    let output = roundtrip("{ \\override #'font-size = #3 c4 d e f }");
+    assert!(
+        output.contains("\\override #'font-size = #3"),
+        "output: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_override_mixed_dot_scheme_path() {
+    let output = roundtrip("{ \\override Staff.NoteHead #'font-size = #3 c4 d e f }");
+    assert!(
+        output.contains("\\override Staff.NoteHead #'font-size = #3"),
+        "output: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_revert_scheme_quoted_list() {
+    let output = roundtrip(
+        "{ \\override NoteHead.color = #red c4 \\revert #'(bound-details left text) d e f }",
+    );
+    assert!(
+        output.contains("\\revert #'(bound-details left text)"),
+        "output: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_revert_scheme_symbol() {
+    let output = roundtrip("{ \\override NoteHead.color = #red c4 \\revert #'font-size d e f }");
+    assert!(output.contains("\\revert #'font-size"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_revert_context_scheme_path() {
+    let output =
+        roundtrip("{ \\override NoteHead.color = #red c4 \\revert Staff #'fontSize d e f }");
+    assert!(
+        output.contains("\\revert Staff #'fontSize"),
+        "output: {output}"
+    );
+}
+
+#[test]
+fn roundtrip_once_override_scheme_path() {
+    let output = roundtrip("{ \\once \\override #'font-size = #5 c4 d e f }");
+    assert!(
+        output.contains("\\once \\override #'font-size = #5"),
+        "output: {output}"
+    );
+}
