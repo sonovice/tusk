@@ -4,6 +4,7 @@
 //! lyric mode constructs (`\addlyrics`, `\lyricsto`, `\lyricmode`).
 
 use tusk_model::elements::{LayerChild, NoteChild, SylChild, VerseChild};
+use tusk_model::{LyricsInfo as ExtLyricsInfo, LyricsStyle};
 
 use crate::model::Music;
 use crate::model::note::{LyricEvent, PostEvent};
@@ -25,42 +26,22 @@ pub(super) enum LyricsExportStyle {
     LyricMode,
 }
 
-/// Parse lyrics export info from a staffDef label segment.
+/// Parse lyrics export info from a typed JSON label segment.
 ///
-/// Label format: `lilypond:lyrics,STYLE[,voice=ID][,count=N]`
-pub(super) fn parse_lyrics_label(label: &str) -> Option<LyricsExportInfo> {
-    let rest = label.strip_prefix("lilypond:lyrics,")?;
-    let parts: Vec<&str> = rest.split(',').collect();
-    if parts.is_empty() {
-        return None;
-    }
-
-    match parts[0] {
-        "addlyrics" => {
-            let count = parts
-                .iter()
-                .find_map(|p| p.strip_prefix("count="))
-                .and_then(|c| c.parse().ok())
-                .unwrap_or(1);
-            Some(LyricsExportInfo {
-                style: LyricsExportStyle::AddLyrics { count },
-            })
-        }
-        "lyricsto" => {
-            let voice_id = parts
-                .iter()
-                .find_map(|p| p.strip_prefix("voice="))
-                .unwrap_or("")
-                .to_string();
-            Some(LyricsExportInfo {
-                style: LyricsExportStyle::LyricsTo { voice_id },
-            })
-        }
-        "lyricmode" => Some(LyricsExportInfo {
-            style: LyricsExportStyle::LyricMode,
-        }),
-        _ => None,
-    }
+/// Label format: `tusk:lyrics-info,{json}`
+pub(super) fn parse_lyrics_info_json(segment: &str) -> Option<LyricsExportInfo> {
+    let json = segment.strip_prefix("tusk:lyrics-info,")?;
+    let ext: ExtLyricsInfo = serde_json::from_str(json).ok()?;
+    let style = match ext.style {
+        LyricsStyle::AddLyrics => LyricsExportStyle::AddLyrics {
+            count: ext.count.unwrap_or(1),
+        },
+        LyricsStyle::LyricsTo => LyricsExportStyle::LyricsTo {
+            voice_id: ext.voice_id.unwrap_or_default(),
+        },
+        LyricsStyle::LyricMode => LyricsExportStyle::LyricMode,
+    };
+    Some(LyricsExportInfo { style })
 }
 
 /// Extract lyric events from notes in a layer, for a given verse number.

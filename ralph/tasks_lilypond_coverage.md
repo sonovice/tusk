@@ -1434,37 +1434,37 @@ Currently, staff/group context metadata, pitch context, event sequences, variabl
 
 **Staff/group context** — labels: `lilypond:staff,TYPE[,name=][,with=]`, `lilypond:group,TYPE[,name=][,with=]`, `lilypond:chordnames[,name=][,with=]`, `lilypond:figuredbass[,name=][,with=]`.
 
-- [ ] [I] Replace `lilypond:staff,` / `lilypond:group,` labels on `StaffDef`/`StaffGrp` with `StaffContext` extension: typed fields for context_type, name, with_block contents
-- [ ] [E] Read `StaffContext` extension on export instead of parsing `lilypond:staff,` / `lilypond:group,` labels; update `extract_group_meta()`, `extract_staff_metas()`
-- [ ] [I] Replace `lilypond:chordnames` / `lilypond:figuredbass` labels with `StaffContext` extension (same type, different context_type field)
-- [ ] [E] Update `extract_chord_names_meta()`, `extract_figured_bass_meta()` to read from extensions
-- [ ] [T] All context/staff/group roundtrip tests pass
+- [x] [I] Replace `lilypond:staff,` / `lilypond:group,` labels on `StaffDef`/`StaffGrp` with `StaffContext` extension: typed fields for context_type, name, with_block contents
+- [x] [E] Read `StaffContext` extension on export instead of parsing `lilypond:staff,` / `lilypond:group,` labels; update `extract_group_meta()`, `extract_staff_metas()`
+- [x] [I] Replace `lilypond:chordnames` / `lilypond:figuredbass` labels with `StaffContext` extension (same type, different context_type field)
+- [x] [E] Update `extract_chord_names_meta()`, `extract_figured_bass_meta()` to read from extensions
+- [x] [T] All context/staff/group roundtrip tests pass
 
 **Pitch context** — labels: `lilypond:relative[,STEP.ALTER.OCT]`, `lilypond:transpose,FROM,TO`.
 
-- [ ] [I] Replace `lilypond:relative,` / `lilypond:transpose,` labels on `StaffDef` with `PitchContext` extension: enum `Relative { ref_pitch: Option<Pitch> }`, `Transpose { from: Pitch, to: Pitch }`, `Absolute`
-- [ ] [E] Update `extract_pitch_contexts()` in `pitch_context.rs` to read from `PitchContext` extension
-- [ ] [T] All relative/transpose roundtrip tests pass
+- [x] [I] Replace `lilypond:relative,` / `lilypond:transpose,` labels on `StaffDef` with `PitchContext` extension: enum `Relative { ref_pitch: Option<Pitch> }`, `Transpose { from: Pitch, to: Pitch }`, `Absolute`
+- [x] [E] Update `extract_pitch_contexts()` in `pitch_context.rs` to read from `PitchContext` extension
+- [x] [T] All relative/transpose roundtrip tests pass
 
 **Event sequence** — label: `lilypond:events,TYPE@POS;TYPE@POS;...` on `StaffDef`.
 
 This is the largest single label, encoding an ordered stream of control events (clef, key, time, barcheck, barline, autobeamon/off, tempo, mark, textmark, markup, markuplist) with positions.
 
-- [ ] [I] Replace `lilypond:events,` label on `StaffDef` with `EventSequence` extension: `Vec<(usize, ControlEvent)>` where `ControlEvent` is a typed enum (Clef, Key, Time, BarCheck, BarLine, AutoBeamOn, AutoBeamOff, Tempo, Mark, TextMark, Markup, MarkupList)
-- [ ] [E] Update `inject_signature_events()` in `signatures.rs` to read from `EventSequence` extension instead of parsing `lilypond:events,` label
-- [ ] [T] All clef/key/time/barcheck/barline/tempo/mark/markup roundtrip tests pass
+- [x] [I] Replace `lilypond:events,` label on `StaffDef` with `EventSequence` extension: `Vec<(usize, ControlEvent)>` where `ControlEvent` is a typed enum (Clef, Key, Time, BarCheck, BarLine, AutoBeamOn, AutoBeamOff, Tempo, Mark, TextMark, Markup, MarkupList)
+- [x] [E] Update `inject_signature_events()` in `signatures.rs` to read from `EventSequence` extension instead of parsing `lilypond:events,` label
+- [x] [T] All clef/key/time/barcheck/barline/tempo/mark/markup roundtrip tests pass
 
 **Variable assignments** — label: `lilypond:vars,SERIALIZED` on `ScoreDef`.
 
-- [ ] [I] Replace `lilypond:vars,` label on `ScoreDef` with `VariableAssignments` extension: typed `Vec<(String, AssignmentValue)>`
-- [ ] [E] Update `extract_assignments()` to read from extension
-- [ ] [T] All variable roundtrip tests pass
+- [x] [I] Replace `lilypond:vars,` label on `ScoreDef` with `VariableAssignments` extension: typed `Vec<(String, AssignmentValue)>`
+- [x] [E] Update `extract_assignments()` to read from extension
+- [x] [T] All variable roundtrip tests pass
 
 **Lyrics metadata** — label: `lilypond:lyrics,STYLE[,voice=ID][,count=N]` on `StaffDef`.
 
-- [ ] [I] Replace `lilypond:lyrics,` label on `StaffDef` with `LyricsInfo` extension: typed struct with style enum (AddLyrics, LyricsTo, LyricMode), voice_id, count
-- [ ] [E] Update lyrics export to read from extension
-- [ ] [T] All lyrics roundtrip tests pass
+- [x] [I] Replace `lilypond:lyrics,` label on `StaffDef` with `LyricsInfo` extension: typed struct with style enum (AddLyrics, LyricsTo, LyricMode), voice_id, count
+- [x] [E] Update lyrics export to read from extension
+- [x] [T] All lyrics roundtrip tests pass
 
 ### 33.4 Migrate Note/Chord/Rest Label-Based Storage
 

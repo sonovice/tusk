@@ -6,10 +6,10 @@
 
 use std::collections::HashMap;
 
+use tusk_model::{ExtAssignment, ExtValue, VariableAssignments};
+
 use crate::model::{Assignment, AssignmentValue, FunctionArg, Music, ToplevelExpression};
 use crate::serializer;
-
-use super::signatures;
 
 /// Collect all top-level assignments from the LilyPond file.
 pub(super) fn collect_assignments(file: &crate::model::LilyPondFile) -> Vec<Assignment> {
@@ -185,43 +185,33 @@ fn resolve_function_args(
         .collect()
 }
 
-/// Build a label segment for top-level assignments.
+/// Build a typed `VariableAssignments` extension from assignments.
 ///
-/// Format: `lilypond:vars,{escaped_serialized_assignments}`
-/// Each assignment is serialized to LilyPond text, joined by `\n`, then escaped.
-pub(super) fn build_assignments_label(assignments: &[Assignment]) -> String {
-    if assignments.is_empty() {
-        return String::new();
-    }
-    let serialized: Vec<String> = assignments
+/// Each assignment is serialized to LilyPond text and stored as a
+/// name → ExtValue pair.
+pub(super) fn build_assignments_ext(assignments: &[Assignment]) -> VariableAssignments {
+    let exts = assignments
         .iter()
-        .map(serializer::serialize_assignment)
+        .map(|a| {
+            let value = match &a.value {
+                AssignmentValue::String(s) => ExtValue::String(s.clone()),
+                AssignmentValue::Number(n) => ExtValue::Number(*n),
+                _ => {
+                    // Music, Identifier, SchemeExpr, Markup, MarkupList
+                    // Serialize the whole assignment, extract value part
+                    let serialized = serializer::serialize_assignment(a);
+                    let val_str = serialized
+                        .find(" = ")
+                        .map(|i| serialized[i + 3..].to_string())
+                        .unwrap_or(serialized);
+                    ExtValue::Music(val_str)
+                }
+            };
+            ExtAssignment {
+                name: a.name.clone(),
+                value,
+            }
+        })
         .collect();
-    let joined = serialized.join("\n");
-    let escaped = signatures::escape_label_value_pub(&joined);
-    format!("lilypond:vars,{escaped}")
-}
-
-/// Parse a `lilypond:vars,` label segment back into assignments.
-///
-/// Returns `None` if the label doesn't start with the expected prefix.
-pub(crate) fn parse_assignments_label(label: &str) -> Option<Vec<Assignment>> {
-    let escaped = label.strip_prefix("lilypond:vars,")?;
-    let serialized = signatures::unescape_label_value(escaped);
-
-    // Parse each line as an assignment
-    use crate::parser::Parser;
-
-    let file = Parser::new(&serialized).ok()?.parse().ok()?;
-    let mut assignments = Vec::new();
-    for item in file.items {
-        if let ToplevelExpression::Assignment(a) = item {
-            assignments.push(a);
-        }
-    }
-    if assignments.is_empty() {
-        None
-    } else {
-        Some(assignments)
-    }
+    VariableAssignments { assignments: exts }
 }

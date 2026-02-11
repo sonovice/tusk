@@ -5,14 +5,19 @@
 //! metadata for lossless roundtrip.
 
 use tusk_model::elements::{ScoreDef, ScoreDefChild, StaffDef, StaffGrp, StaffGrpChild};
+use tusk_model::{
+    ContextKeywordExt, ExtPitch, LyricsInfo as ExtLyricsInfo, LyricsStyle,
+    PitchContext as ExtPitchContext, StaffContext,
+};
 
 use crate::model::{self, ContextKeyword, ContextModItem, Music, ToplevelExpression};
 use crate::serializer;
 
 use super::events::{PitchContext, collect_events, extract_pitch_from_music};
 use super::lyrics;
-use super::signatures::apply_signatures_to_staff_def;
+use super::signatures::build_event_sequence;
 use super::utils::extract_voices;
+use super::variables;
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -26,6 +31,8 @@ pub(super) struct StaffInfo<'a> {
     pub name: Option<String>,
     /// Context type (e.g. "Staff").
     pub context_type: String,
+    /// Whether `\new` or `\context` keyword was used (None for bare music).
+    pub keyword: Option<ContextKeyword>,
     /// `\with { ... }` block items, if present.
     pub with_block: Option<Vec<ContextModItem>>,
     /// The music content for this staff (one or more voice streams).
@@ -98,7 +105,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
 
     // Unwrap score-level context (e.g. \new StaffGroup << ... >>)
     if let Music::ContextedMusic {
-        keyword: _,
+        keyword,
         context_type,
         name,
         with_block,
@@ -133,6 +140,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                     n: 1,
                     name: name.clone(),
                     context_type: context_type.clone(),
+                    keyword: Some(*keyword),
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
@@ -186,6 +194,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
                 n: 1,
                 name: None,
                 context_type: "DrumStaff".to_string(),
+                keyword: None,
                 with_block: None,
                 voices,
                 lyrics: Vec::new(),
@@ -203,6 +212,7 @@ pub(super) fn analyze_staves(music: &Music) -> StaffLayout<'_> {
             n: 1,
             name: None,
             context_type: "Staff".to_string(),
+            keyword: None,
             with_block: None,
             voices,
             lyrics: Vec::new(),
@@ -309,11 +319,11 @@ fn extract_staves_chords_figures_from_simultaneous<'a>(
 
     for item in items {
         if let Music::ContextedMusic {
+            keyword,
             context_type,
             name,
             with_block,
             music: inner,
-            ..
         } = item
         {
             if is_staff_context(context_type) || is_voice_context(context_type) {
@@ -322,6 +332,7 @@ fn extract_staves_chords_figures_from_simultaneous<'a>(
                     n,
                     name: name.clone(),
                     context_type: context_type.clone(),
+                    keyword: Some(*keyword),
                     with_block: with_block.clone(),
                     voices,
                     lyrics: Vec::new(),
@@ -366,7 +377,10 @@ fn group_context_to_symbol(context_type: &str) -> Option<&'static str> {
 }
 
 /// Build a ScoreDef from analyzed staff structure, setting initial clef/key/time.
-pub(super) fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef {
+pub(super) fn build_score_def_from_staves(
+    layout: &StaffLayout<'_>,
+    assignments: &[crate::model::Assignment],
+) -> ScoreDef {
     let mut staff_grp = StaffGrp::default();
 
     // Set group symbol if present
@@ -374,8 +388,8 @@ pub(super) fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef 
         staff_grp.staff_grp_vis.symbol =
             group_context_to_symbol(&group.context_type).map(String::from);
 
-        // Store group context metadata in label for roundtrip
-        let label = build_group_label(group);
+        // Store group context metadata as typed JSON in label for roundtrip
+        let label = build_group_label_json(group);
         if !label.is_empty() {
             staff_grp.common.label = Some(label);
         }
@@ -394,38 +408,41 @@ pub(super) fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef 
             }
         }
 
-        // Set initial clef/key/time on staffDef and collect event sequence for label
-        let event_sequence = apply_signatures_to_staff_def(&events, &mut staff_def);
+        // Set initial clef/key/time on staffDef and build event sequence
+        let event_seq = build_event_sequence(&events, &mut staff_def);
 
         // Detect relative/transpose context from the music tree
-        let pitch_context_label = build_pitch_context_label(&staff_info.voices);
+        let pitch_ctx = detect_pitch_context_ext(&staff_info.voices);
 
-        // Build label: start with context metadata, append event sequence and pitch context
-        let mut label = build_staff_label(staff_info);
-        if !event_sequence.is_empty() {
-            if !label.is_empty() {
-                label.push('|');
-            }
-            label.push_str(&event_sequence);
-        }
-        if !pitch_context_label.is_empty() {
-            if !label.is_empty() {
-                label.push('|');
-            }
-            label.push_str(&pitch_context_label);
-        }
+        // Build label from typed JSON segments
+        let mut segments: Vec<String> = Vec::new();
 
-        // Store lyrics style info in label for roundtrip
-        let lyrics_label = lyrics::build_lyrics_label(&staff_info.lyrics);
-        if !lyrics_label.is_empty() {
-            if !label.is_empty() {
-                label.push('|');
-            }
-            label.push_str(&lyrics_label);
+        // Staff context
+        let staff_ctx = build_staff_context(staff_info);
+        let json = escape_json_pipe(&serde_json::to_string(&staff_ctx).unwrap_or_default());
+        segments.push(format!("tusk:staff-context,{json}"));
+
+        // Event sequence
+        if let Some(seq) = event_seq {
+            let json = escape_json_pipe(&serde_json::to_string(&seq).unwrap_or_default());
+            segments.push(format!("tusk:events,{json}"));
         }
 
-        if !label.is_empty() {
-            staff_def.labelled.label = Some(label);
+        // Pitch context
+        if let Some(pc) = pitch_ctx {
+            let json = escape_json_pipe(&serde_json::to_string(&pc).unwrap_or_default());
+            segments.push(format!("tusk:pitch-context,{json}"));
+        }
+
+        // Lyrics info
+        let lyrics_ext = build_lyrics_info_ext(&staff_info.lyrics);
+        if let Some(li) = lyrics_ext {
+            let json = escape_json_pipe(&serde_json::to_string(&li).unwrap_or_default());
+            segments.push(format!("tusk:lyrics-info,{json}"));
+        }
+
+        if !segments.is_empty() {
+            staff_def.labelled.label = Some(segments.join("|"));
         }
 
         staff_grp
@@ -435,29 +452,21 @@ pub(super) fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef 
 
     // Store chord-names context info in staffGrp label for roundtrip
     if !layout.chord_names.is_empty() {
-        let cn_label = build_chord_names_label(&layout.chord_names);
-        if !cn_label.is_empty() {
-            match &mut staff_grp.common.label {
-                Some(existing) => {
-                    existing.push('|');
-                    existing.push_str(&cn_label);
-                }
-                None => staff_grp.common.label = Some(cn_label),
-            }
+        let cn_ctx = build_chord_names_context(&layout.chord_names);
+        if let Some(ctx) = cn_ctx {
+            let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
+            let segment = format!("tusk:chord-names-context,{json}");
+            append_label_segment(&mut staff_grp.common.label, &segment);
         }
     }
 
     // Store figured-bass context info in staffGrp label for roundtrip
     if !layout.figured_bass.is_empty() {
-        let fb_label = build_figured_bass_label(&layout.figured_bass);
-        if !fb_label.is_empty() {
-            match &mut staff_grp.common.label {
-                Some(existing) => {
-                    existing.push('|');
-                    existing.push_str(&fb_label);
-                }
-                None => staff_grp.common.label = Some(fb_label),
-            }
+        let fb_ctx = build_figured_bass_context(&layout.figured_bass);
+        if let Some(ctx) = fb_ctx {
+            let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
+            let segment = format!("tusk:figured-bass-context,{json}");
+            append_label_segment(&mut staff_grp.common.label, &segment);
         }
     }
 
@@ -465,89 +474,181 @@ pub(super) fn build_score_def_from_staves(layout: &StaffLayout<'_>) -> ScoreDef 
     score_def
         .children
         .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
+
+    // Store variable assignments on ScoreDef label
+    if !assignments.is_empty() {
+        let vars = variables::build_assignments_ext(assignments);
+        let json = escape_json_pipe(&serde_json::to_string(&vars).unwrap_or_default());
+        let segment = format!("tusk:vars,{json}");
+        score_def.common.label = Some(segment);
+    }
+
     score_def
 }
 
 // ---------------------------------------------------------------------------
-// Label builders
+// Typed extension builders
 // ---------------------------------------------------------------------------
 
-/// Build a label segment for chord-names context info.
-///
-/// Format: `lilypond:chordnames[,name=Name][,with={serialized}]`
-fn build_chord_names_label(chord_names: &[ChordNamesInfo<'_>]) -> String {
-    // For now, support one ChordNames context
-    if let Some(cn) = chord_names.first() {
-        let mut parts = vec!["lilypond:chordnames".to_string()];
-        if let Some(name) = &cn.name {
-            parts.push(format!("name={name}"));
+/// Escape pipe characters in JSON so they don't break `|`-delimited label segments.
+fn escape_json_pipe(json: &str) -> String {
+    json.replace('|', "\\u007c")
+}
+
+/// Append a segment to an optional label, creating it if needed.
+fn append_label_segment(label: &mut Option<String>, segment: &str) {
+    match label {
+        Some(existing) => {
+            existing.push('|');
+            existing.push_str(segment);
         }
-        if let Some(with_items) = &cn.with_block
-            && !with_items.is_empty()
-        {
-            let with_str = serialize_with_block(with_items);
-            parts.push(format!("with={with_str}"));
-        }
-        parts.join(",")
-    } else {
-        String::new()
+        None => *label = Some(segment.to_string()),
     }
 }
 
-/// Build a label segment for figured-bass context info.
-///
-/// Format: `lilypond:figuredbass[,name=Name][,with={serialized}]`
-fn build_figured_bass_label(figured_bass: &[FiguredBassInfo<'_>]) -> String {
-    // Support one FiguredBass context (same pattern as ChordNames)
-    if let Some(fb) = figured_bass.first() {
-        let mut parts = vec!["lilypond:figuredbass".to_string()];
-        if let Some(name) = &fb.name {
-            parts.push(format!("name={name}"));
-        }
-        if let Some(with_items) = &fb.with_block
-            && !with_items.is_empty()
-        {
-            let with_str = serialize_with_block(with_items);
-            parts.push(format!("with={with_str}"));
-        }
-        parts.join(",")
-    } else {
-        String::new()
+/// Build a StaffContext extension from staff info.
+fn build_staff_context(staff: &StaffInfo<'_>) -> StaffContext {
+    StaffContext {
+        context_type: staff.context_type.clone(),
+        name: staff.name.clone(),
+        with_block: staff
+            .with_block
+            .as_ref()
+            .filter(|items| !items.is_empty())
+            .map(|items| serialize_with_block(items)),
+        keyword: staff.keyword.map(|kw| match kw {
+            ContextKeyword::New => ContextKeywordExt::New,
+            ContextKeyword::Context => ContextKeywordExt::Context,
+        }),
     }
 }
 
-/// Build a label string for group context metadata.
-///
-/// Format: `lilypond:group,ContextType[,name=Name][,with={serialized}]`
-fn build_group_label(group: &GroupInfo) -> String {
-    let mut parts = vec![format!("lilypond:group,{}", group.context_type)];
-    if let Some(name) = &group.name {
-        parts.push(format!("name={name}"));
-    }
-    if let Some(with_items) = &group.with_block
-        && !with_items.is_empty()
-    {
-        let with_str = serialize_with_block(with_items);
-        parts.push(format!("with={with_str}"));
-    }
-    parts.join(",")
+/// Build a StaffContext extension from group info (as JSON label on StaffGrp).
+fn build_group_label_json(group: &GroupInfo) -> String {
+    let ctx = StaffContext {
+        context_type: group.context_type.clone(),
+        name: group.name.clone(),
+        with_block: group
+            .with_block
+            .as_ref()
+            .filter(|items| !items.is_empty())
+            .map(|items| serialize_with_block(items)),
+        keyword: None,
+    };
+    let json = escape_json_pipe(&serde_json::to_string(&ctx).unwrap_or_default());
+    format!("tusk:group-context,{json}")
 }
 
-/// Build a label string for staff context metadata.
-///
-/// Format: `lilypond:staff,ContextType[,name=Name][,with={serialized}]`
-fn build_staff_label(staff: &StaffInfo<'_>) -> String {
-    let mut parts = vec![format!("lilypond:staff,{}", staff.context_type)];
-    if let Some(name) = &staff.name {
-        parts.push(format!("name={name}"));
+/// Build a StaffContext extension for a ChordNames context.
+fn build_chord_names_context(chord_names: &[ChordNamesInfo<'_>]) -> Option<StaffContext> {
+    let cn = chord_names.first()?;
+    Some(StaffContext {
+        context_type: "ChordNames".to_string(),
+        name: cn.name.clone(),
+        with_block: cn
+            .with_block
+            .as_ref()
+            .filter(|items| !items.is_empty())
+            .map(|items| serialize_with_block(items)),
+        keyword: None,
+    })
+}
+
+/// Build a StaffContext extension for a FiguredBass context.
+fn build_figured_bass_context(figured_bass: &[FiguredBassInfo<'_>]) -> Option<StaffContext> {
+    let fb = figured_bass.first()?;
+    Some(StaffContext {
+        context_type: "FiguredBass".to_string(),
+        name: fb.name.clone(),
+        with_block: fb
+            .with_block
+            .as_ref()
+            .filter(|items| !items.is_empty())
+            .map(|items| serialize_with_block(items)),
+        keyword: None,
+    })
+}
+
+/// Build an ExtPitchContext from the outermost relative/transpose wrapper.
+fn detect_pitch_context_ext(voices: &[Vec<&Music>]) -> Option<ExtPitchContext> {
+    for voice in voices {
+        for m in voice {
+            if let Some(pc) = detect_pitch_context_inner(m) {
+                return Some(pc);
+            }
+        }
     }
-    if let Some(with_items) = &staff.with_block
-        && !with_items.is_empty()
-    {
-        let with_str = serialize_with_block(with_items);
-        parts.push(format!("with={with_str}"));
+    None
+}
+
+/// Detect outermost relative/transpose wrapper in a music tree.
+fn detect_pitch_context_inner(music: &Music) -> Option<ExtPitchContext> {
+    match music {
+        Music::Relative { pitch, .. } => {
+            if let Some(ref_pitch_music) = pitch
+                && let Some(p) = extract_pitch_from_music(ref_pitch_music)
+            {
+                Some(ExtPitchContext::Relative {
+                    ref_pitch: Some(ExtPitch {
+                        step: p.step,
+                        alter: p.alter,
+                        octave: p.octave,
+                    }),
+                })
+            } else {
+                Some(ExtPitchContext::Relative { ref_pitch: None })
+            }
+        }
+        Music::Transpose { from, to, .. } => {
+            let fp = extract_pitch_from_music(from)?;
+            let tp = extract_pitch_from_music(to)?;
+            Some(ExtPitchContext::Transpose {
+                from: ExtPitch {
+                    step: fp.step,
+                    alter: fp.alter,
+                    octave: fp.octave,
+                },
+                to: ExtPitch {
+                    step: tp.step,
+                    alter: tp.alter,
+                    octave: tp.octave,
+                },
+            })
+        }
+        Music::ContextedMusic { music, .. } => detect_pitch_context_inner(music),
+        // Unwrap single-item Sequential (e.g. `{ \transpose c c' { } }` from export)
+        Music::Sequential(items) if items.len() == 1 => detect_pitch_context_inner(&items[0]),
+        _ => None,
     }
-    parts.join(",")
+}
+
+/// Build a LyricsInfo extension from import lyrics info.
+fn build_lyrics_info_ext(infos: &[lyrics::LyricsInfo]) -> Option<ExtLyricsInfo> {
+    if infos.is_empty() {
+        return None;
+    }
+    let first = &infos[0];
+    match &first.style {
+        lyrics::LyricsStyle::AddLyrics { .. } => Some(ExtLyricsInfo {
+            style: LyricsStyle::AddLyrics,
+            voice_id: None,
+            count: if infos.len() > 1 {
+                Some(infos.len())
+            } else {
+                None
+            },
+        }),
+        lyrics::LyricsStyle::LyricsTo { voice_id } => Some(ExtLyricsInfo {
+            style: LyricsStyle::LyricsTo,
+            voice_id: Some(voice_id.clone()),
+            count: None,
+        }),
+        lyrics::LyricsStyle::LyricMode => Some(ExtLyricsInfo {
+            style: LyricsStyle::LyricMode,
+            voice_id: None,
+            count: None,
+        }),
+    }
 }
 
 /// Serialize a \with { ... } block to a compact string for label storage.
@@ -575,53 +676,6 @@ fn serialize_with_block(items: &[ContextModItem]) -> String {
         }
     }
     String::new()
-}
-
-/// Build a label segment encoding the outermost relative/transpose context.
-///
-/// Detects the first `\relative` or `\transpose` wrapper in the music tree for
-/// a staff's voices and encodes it as:
-/// - `lilypond:relative,STEP.ALTER.OCT` (with reference pitch) or `lilypond:relative` (no pitch)
-/// - `lilypond:transpose,FROM_STEP.FROM_ALTER.FROM_OCT,TO_STEP.TO_ALTER.TO_OCT`
-fn build_pitch_context_label(voices: &[Vec<&Music>]) -> String {
-    // Look at each voice's music to find the outermost relative/transpose
-    for voice in voices {
-        for m in voice {
-            if let Some(label) = detect_pitch_context(m) {
-                return label;
-            }
-        }
-    }
-    String::new()
-}
-
-/// Detect the outermost relative/transpose wrapper in a music tree.
-fn detect_pitch_context(music: &Music) -> Option<String> {
-    match music {
-        Music::Relative { pitch, .. } => {
-            if let Some(ref_pitch_music) = pitch
-                && let Some(p) = extract_pitch_from_music(ref_pitch_music)
-            {
-                Some(format!(
-                    "lilypond:relative,{}.{}.{}",
-                    p.step, p.alter, p.octave
-                ))
-            } else {
-                Some("lilypond:relative".to_string())
-            }
-        }
-        Music::Transpose { from, to, .. } => {
-            let fp = extract_pitch_from_music(from)?;
-            let tp = extract_pitch_from_music(to)?;
-            Some(format!(
-                "lilypond:transpose,{}.{}.{},{}.{}.{}",
-                fp.step, fp.alter, fp.octave, tp.step, tp.alter, tp.octave
-            ))
-        }
-        // Unwrap transparent wrappers to find nested relative/transpose
-        Music::ContextedMusic { music, .. } => detect_pitch_context(music),
-        _ => None,
-    }
 }
 
 /// Find the position of the matching closing brace, handling nesting.

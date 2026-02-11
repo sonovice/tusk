@@ -37,6 +37,7 @@ use thiserror::Error;
 use tusk_model::elements::{
     LayerChild, MeasureChild, Mei, MeiChild, ScoreChild, ScoreDefChild, SectionChild, StaffGrpChild,
 };
+use tusk_model::{StaffContext, VariableAssignments};
 
 use crate::model::Duration;
 use crate::model::note::{Direction, PostEvent, ScriptAbbreviation};
@@ -227,23 +228,94 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
 
 /// Extract stored variable assignments from scoreDef label.
 ///
-/// Looks for `lilypond:vars,...` segments in the scoreDef's `@label` attribute
-/// and parses them back into `Assignment` items.
+/// Reads typed `tusk:vars,{json}` segments from the scoreDef's `@label` attribute,
+/// then re-parses the serialized assignment values through the LilyPond parser.
 fn extract_assignments(score: &tusk_model::elements::Score) -> Vec<crate::model::Assignment> {
     for child in &score.children {
         if let ScoreChild::ScoreDef(score_def) = child
             && let Some(label) = &score_def.common.label
         {
             for segment in label.split('|') {
-                if let Some(assignments) =
-                    crate::import::variables::parse_assignments_label(segment)
+                if let Some(json) = segment.strip_prefix("tusk:vars,")
+                    && let Ok(vars) = serde_json::from_str::<VariableAssignments>(json)
                 {
-                    return assignments;
+                    return vars
+                        .assignments
+                        .into_iter()
+                        .filter_map(ext_assignment_to_model)
+                        .collect();
                 }
             }
         }
     }
     Vec::new()
+}
+
+/// Convert a typed ExtAssignment back to a model Assignment.
+fn ext_assignment_to_model(ea: tusk_model::ExtAssignment) -> Option<crate::model::Assignment> {
+    use crate::model::{Assignment, AssignmentValue};
+    use crate::parser::Parser;
+
+    let value = match ea.value {
+        tusk_model::ExtValue::String(s) => AssignmentValue::String(s),
+        tusk_model::ExtValue::Number(n) => AssignmentValue::Number(n),
+        tusk_model::ExtValue::Music(src) => {
+            // Re-parse: wrap as `name = VALUE`
+            let full = format!("{} = {src}", ea.name);
+            if let Ok(file) = Parser::new(&full).and_then(|p| p.parse()) {
+                for item in file.items {
+                    if let ToplevelExpression::Assignment(a) = item {
+                        return Some(a);
+                    }
+                }
+            }
+            return None;
+        }
+        tusk_model::ExtValue::Scheme(src) => {
+            let full = format!("{} = {src}", ea.name);
+            if let Ok(file) = Parser::new(&full).and_then(|p| p.parse()) {
+                for item in file.items {
+                    if let ToplevelExpression::Assignment(a) = item {
+                        return Some(a);
+                    }
+                }
+            }
+            return None;
+        }
+        tusk_model::ExtValue::Markup(src) => {
+            let full = format!("{} = {src}", ea.name);
+            if let Ok(file) = Parser::new(&full).and_then(|p| p.parse()) {
+                for item in file.items {
+                    if let ToplevelExpression::Assignment(a) = item {
+                        return Some(a);
+                    }
+                }
+            }
+            return None;
+        }
+        _ => {
+            // Identifier, MarkupList, Bool — serialize and re-parse
+            let src_str = match &ea.value {
+                tusk_model::ExtValue::Identifier(s) => s.clone(),
+                tusk_model::ExtValue::MarkupList(s) => s.clone(),
+                tusk_model::ExtValue::Bool(b) => format!("#{}", if *b { "#t" } else { "#f" }),
+                _ => return None,
+            };
+            let full = format!("{} = {src_str}", ea.name);
+            if let Ok(file) = Parser::new(&full).and_then(|p| p.parse()) {
+                for item in file.items {
+                    if let ToplevelExpression::Assignment(a) = item {
+                        return Some(a);
+                    }
+                }
+            }
+            return None;
+        }
+    };
+    Some(Assignment {
+        name: ea.name,
+        value,
+    })
 }
 
 /// Extract lyrics export info from all staffDef labels.
@@ -258,7 +330,7 @@ fn extract_lyrics_infos(
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
                             let info = sdef.labelled.label.as_deref().and_then(|label| {
-                                label.split('|').find_map(lyrics::parse_lyrics_label)
+                                label.split('|').find_map(lyrics::parse_lyrics_info_json)
                             });
                             infos.push(info);
                         }
@@ -286,6 +358,8 @@ struct StaffMeta {
     context_type: String,
     name: Option<String>,
     with_block_str: Option<String>,
+    /// True when the staff was created with an explicit `\new` or `\context` keyword.
+    has_explicit_context: bool,
 }
 
 /// Extract group metadata from scoreDef's staffGrp.
@@ -294,14 +368,19 @@ fn extract_group_meta(score: &tusk_model::elements::Score) -> Option<GroupMeta> 
         if let ScoreChild::ScoreDef(score_def) = child {
             for sd_child in &score_def.children {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
-                    // Check label for group info
-                    if let Some(rest) = grp
-                        .common
-                        .label
-                        .as_deref()
-                        .and_then(|l| l.strip_prefix("lilypond:group,"))
-                    {
-                        return Some(parse_context_label(rest));
+                    // Check label for typed JSON group context
+                    if let Some(label) = &grp.common.label {
+                        for segment in label.split('|') {
+                            if let Some(json) = segment.strip_prefix("tusk:group-context,")
+                                && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
+                            {
+                                return Some(GroupMeta {
+                                    context_type: ctx.context_type,
+                                    name: ctx.name,
+                                    with_block_str: ctx.with_block,
+                                });
+                            }
+                        }
                     }
                     // Fallback: infer from symbol
                     if let Some(symbol) = &grp.staff_grp_vis.symbol {
@@ -332,28 +411,7 @@ fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            let meta = if let Some(label) = &sdef.labelled.label {
-                                if let Some(rest) = label.strip_prefix("lilypond:staff,") {
-                                    let gm = parse_context_label(rest);
-                                    StaffMeta {
-                                        context_type: gm.context_type,
-                                        name: gm.name,
-                                        with_block_str: gm.with_block_str,
-                                    }
-                                } else {
-                                    StaffMeta {
-                                        context_type: "Staff".to_string(),
-                                        name: None,
-                                        with_block_str: None,
-                                    }
-                                }
-                            } else {
-                                StaffMeta {
-                                    context_type: "Staff".to_string(),
-                                    name: None,
-                                    with_block_str: None,
-                                }
-                            };
+                            let meta = extract_staff_meta_from_label(sdef);
                             metas.push(meta);
                         }
                     }
@@ -364,49 +422,27 @@ fn extract_staff_metas(score: &tusk_model::elements::Score) -> Vec<StaffMeta> {
     metas
 }
 
-/// Parse a context label string into metadata.
-///
-/// Format: `ContextType[,name=Name][,with=...]`
-fn parse_context_label(s: &str) -> GroupMeta {
-    let mut context_type = String::new();
-    let mut name = None;
-    let mut with_block_str = None;
-
-    // Split carefully -- the "with=" part may contain commas in its content
-    let mut parts = Vec::new();
-    let mut current = String::new();
-    let mut in_with = false;
-
-    for c in s.chars() {
-        if in_with {
-            current.push(c);
-        } else if c == ',' {
-            parts.push(std::mem::take(&mut current));
-        } else {
-            current.push(c);
-            if current == "with=" {
-                in_with = true;
+/// Extract a single staff's metadata from its label.
+fn extract_staff_meta_from_label(sdef: &tusk_model::elements::StaffDef) -> StaffMeta {
+    if let Some(label) = &sdef.labelled.label {
+        for segment in label.split('|') {
+            if let Some(json) = segment.strip_prefix("tusk:staff-context,")
+                && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
+            {
+                return StaffMeta {
+                    context_type: ctx.context_type,
+                    name: ctx.name,
+                    with_block_str: ctx.with_block,
+                    has_explicit_context: ctx.keyword.is_some(),
+                };
             }
         }
     }
-    if !current.is_empty() {
-        parts.push(current);
-    }
-
-    for (i, part) in parts.iter().enumerate() {
-        if i == 0 {
-            context_type = part.clone();
-        } else if let Some(n) = part.strip_prefix("name=") {
-            name = Some(n.to_string());
-        } else if let Some(w) = part.strip_prefix("with=") {
-            with_block_str = Some(w.to_string());
-        }
-    }
-
-    GroupMeta {
-        context_type,
-        name,
-        with_block_str,
+    StaffMeta {
+        context_type: "Staff".to_string(),
+        name: None,
+        with_block_str: None,
+        has_explicit_context: false,
     }
 }
 
@@ -454,7 +490,8 @@ fn build_music_with_contexts(
             || (staff_metas.len() == 1
                 && staff_metas[0].name.is_none()
                 && staff_metas[0].with_block_str.is_none()
-                && staff_metas[0].context_type == "Staff"))
+                && staff_metas[0].context_type == "Staff"
+                && !staff_metas[0].has_explicit_context))
     {
         let mut music = build_flat_music(staff_music);
         // Apply lyrics wrapping for single-staff case

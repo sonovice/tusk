@@ -338,26 +338,3 @@ fn collect_syls_from_note_children<'a>(
         }
     }
 }
-
-/// Build a label segment encoding lyrics attachment style.
-///
-/// Format: `lilypond:lyrics,STYLE[,voice=ID][,count=N]`
-pub(super) fn build_lyrics_label(infos: &[LyricsInfo]) -> String {
-    if infos.is_empty() {
-        return String::new();
-    }
-    let first = &infos[0];
-    match &first.style {
-        LyricsStyle::AddLyrics { .. } => {
-            if infos.len() > 1 {
-                format!("lilypond:lyrics,addlyrics,count={}", infos.len())
-            } else {
-                "lilypond:lyrics,addlyrics".to_string()
-            }
-        }
-        LyricsStyle::LyricsTo { voice_id } => {
-            format!("lilypond:lyrics,lyricsto,voice={voice_id}")
-        }
-        LyricsStyle::LyricMode => "lilypond:lyrics,lyricmode".to_string(),
-    }
-}

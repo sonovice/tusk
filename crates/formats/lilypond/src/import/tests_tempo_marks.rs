@@ -224,8 +224,8 @@ fn import_tempo_in_event_sequence() {
     let mei = parse_and_import(r#"{ \tempo 4 = 100 c'4 d'4 }"#);
     let label = staff_def_label(&mei).expect("should have staffDef label");
     assert!(
-        label.contains("tempo:"),
-        "event sequence should contain tempo: {label}"
+        label.contains("\"Tempo\""),
+        "event sequence should contain Tempo: {label}"
     );
 }
 
@@ -234,8 +234,8 @@ fn import_mark_in_event_sequence() {
     let mei = parse_and_import(r#"{ \mark \default c'4 d'4 }"#);
     let label = staff_def_label(&mei).expect("should have staffDef label");
     assert!(
-        label.contains("mark:"),
-        "event sequence should contain mark: {label}"
+        label.contains("\"Mark\""),
+        "event sequence should contain Mark: {label}"
     );
 }
 
@@ -244,8 +244,8 @@ fn import_textmark_in_event_sequence() {
     let mei = parse_and_import(r#"{ \textMark "Fine" c'4 d'4 }"#);
     let label = staff_def_label(&mei).expect("should have staffDef label");
     assert!(
-        label.contains("textmark:"),
-        "event sequence should contain textmark: {label}"
+        label.contains("\"TextMark\""),
+        "event sequence should contain TextMark: {label}"
     );
 }
 
@@ -289,15 +289,15 @@ fn import_fixture_tempo_marks() {
     // Event sequence should have all entries
     let label = staff_def_label(&mei).expect("should have staffDef label");
     assert!(
-        label.contains("tempo:"),
-        "event sequence should contain tempo entries: {label}"
+        label.contains("\"Tempo\""),
+        "event sequence should contain Tempo entries: {label}"
     );
     assert!(
-        label.contains("mark:"),
-        "event sequence should contain mark entries: {label}"
+        label.contains("\"Mark\""),
+        "event sequence should contain Mark entries: {label}"
     );
     assert!(
-        label.contains("textmark:"),
-        "event sequence should contain textmark entries: {label}"
+        label.contains("\"TextMark\""),
+        "event sequence should contain TextMark entries: {label}"
     );
 }

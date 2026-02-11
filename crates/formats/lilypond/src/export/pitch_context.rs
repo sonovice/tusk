@@ -1,5 +1,6 @@
 //! Pitch context (relative / transpose) extraction and application for LilyPond export.
 
+use tusk_model::PitchContext as ExtPitchContext;
 use tusk_model::elements::{ScoreDefChild, StaffGrpChild};
 
 use crate::model::pitch::Pitch;
@@ -20,7 +21,7 @@ pub(super) enum PitchCtx {
     Transpose { from: Pitch, to: Pitch },
 }
 
-/// Extract pitch context labels from all staffDefs.
+/// Extract pitch context from all staffDefs.
 pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec<Option<PitchCtx>> {
     let mut result = Vec::new();
     for child in &score.children {
@@ -29,7 +30,7 @@ pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            result.push(parse_pitch_context_label(sdef));
+                            result.push(parse_pitch_context_json(sdef));
                         }
                     }
                 }
@@ -39,65 +40,65 @@ pub(super) fn extract_pitch_contexts(score: &tusk_model::elements::Score) -> Vec
     result
 }
 
-/// Parse the `lilypond:relative,...` or `lilypond:transpose,...` segment from a staffDef label.
-fn parse_pitch_context_label(staff_def: &tusk_model::elements::StaffDef) -> Option<PitchCtx> {
+/// Parse the `tusk:pitch-context,{json}` segment from a staffDef label.
+fn parse_pitch_context_json(staff_def: &tusk_model::elements::StaffDef) -> Option<PitchCtx> {
     let label = staff_def.labelled.label.as_deref()?;
 
     for segment in label.split('|') {
-        if segment == "lilypond:relative" {
-            // No reference pitch
-            return Some(PitchCtx::Relative {
-                step: 'f',
-                alter: 0.0,
-                octave: 0,
-                has_pitch: false,
-            });
-        }
-        if let Some(rest) = segment.strip_prefix("lilypond:relative,") {
-            let parts: Vec<&str> = rest.splitn(3, '.').collect();
-            if parts.len() == 3 {
-                let step = parts[0].chars().next().unwrap_or('c');
-                let alter: f32 = parts[1].parse().unwrap_or(0.0);
-                let octave: i8 = parts[2].parse().unwrap_or(0);
-                return Some(PitchCtx::Relative {
-                    step,
-                    alter,
-                    octave,
-                    has_pitch: true,
-                });
-            }
-        }
-        if let Some(rest) = segment.strip_prefix("lilypond:transpose,") {
-            let pitches: Vec<&str> = rest.splitn(2, ',').collect();
-            if pitches.len() == 2 {
-                let from = parse_pitch_label(pitches[0]);
-                let to = parse_pitch_label(pitches[1]);
-                if let (Some(f), Some(t)) = (from, to) {
-                    return Some(PitchCtx::Transpose { from: f, to: t });
-                }
-            }
+        if let Some(json) = segment.strip_prefix("tusk:pitch-context,")
+            && let Ok(ext) = serde_json::from_str::<ExtPitchContext>(json)
+        {
+            return Some(ext_pitch_context_to_pitch_ctx(ext));
         }
     }
     None
 }
 
-/// Parse a pitch label `STEP.ALTER.OCT` into a Pitch.
-fn parse_pitch_label(s: &str) -> Option<Pitch> {
-    let parts: Vec<&str> = s.splitn(3, '.').collect();
-    if parts.len() == 3 {
-        let step = parts[0].chars().next()?;
-        let alter: f32 = parts[1].parse().ok()?;
-        let octave: i8 = parts[2].parse().ok()?;
-        Some(Pitch {
-            step,
-            alter,
-            octave,
-            force_accidental: false,
-            cautionary: false,
-            octave_check: None,
-        })
-    } else {
-        None
+/// Convert a typed ExtPitchContext to the export PitchCtx.
+fn ext_pitch_context_to_pitch_ctx(ext: ExtPitchContext) -> PitchCtx {
+    match ext {
+        ExtPitchContext::Relative { ref_pitch: None } => PitchCtx::Relative {
+            step: 'f',
+            alter: 0.0,
+            octave: 0,
+            has_pitch: false,
+        },
+        ExtPitchContext::Relative { ref_pitch: Some(p) } => PitchCtx::Relative {
+            step: p.step,
+            alter: p.alter,
+            octave: p.octave,
+            has_pitch: true,
+        },
+        ExtPitchContext::Transpose { from, to } => PitchCtx::Transpose {
+            from: Pitch {
+                step: from.step,
+                alter: from.alter,
+                octave: from.octave,
+                force_accidental: false,
+                cautionary: false,
+                octave_check: None,
+            },
+            to: Pitch {
+                step: to.step,
+                alter: to.alter,
+                octave: to.octave,
+                force_accidental: false,
+                cautionary: false,
+                octave_check: None,
+            },
+        },
+        ExtPitchContext::Fixed { ref_pitch } => PitchCtx::Relative {
+            step: ref_pitch.step,
+            alter: ref_pitch.alter,
+            octave: ref_pitch.octave,
+            has_pitch: true,
+        },
+        ExtPitchContext::Absolute => PitchCtx::Relative {
+            step: 'f',
+            alter: 0.0,
+            octave: 0,
+            has_pitch: false,
+        },
     }
 }
 
@@ -191,7 +192,9 @@ pub(super) fn apply_pitch_contexts(
 }
 
 /// Convert a list of Music items from absolute to relative octave marks.
-fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) {
+///
+/// Returns the final reference pitch (step, octave in marks) after processing.
+fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) -> (char, i8) {
     let mut current_step = ref_step;
     let mut current_oct = ref_oct;
 
@@ -204,26 +207,72 @@ fn convert_to_relative(items: &mut [Music], ref_step: char, ref_oct: i8) {
                 note.pitch.octave = rel_marks;
             }
             Music::Chord(chord) => {
-                // In relative mode, the first pitch in a chord is relative to
-                // the previous note; subsequent pitches are relative to the first.
-                // Capture first pitch's absolute position before mutating.
+                // In relative mode, the first pitch is relative to the previous
+                // note; each subsequent pitch is relative to the preceding pitch
+                // within the chord. Capture absolute values before mutating.
                 let first_step = chord.pitches[0].step;
                 let first_oct = chord.pitches[0].octave;
-                for (i, pitch) in chord.pitches.iter_mut().enumerate() {
-                    let (rs, ro) = if i == 0 {
-                        (current_step, current_oct)
-                    } else {
-                        (first_step, first_oct)
-                    };
-                    let rel_marks = pitch.to_relative_marks(rs, ro);
+                let mut chord_ref_step = current_step;
+                let mut chord_ref_oct = current_oct;
+                for pitch in chord.pitches.iter_mut() {
+                    let abs_step = pitch.step;
+                    let abs_oct = pitch.octave;
+                    let rel_marks = pitch.to_relative_marks(chord_ref_step, chord_ref_oct);
                     pitch.octave = rel_marks;
+                    chord_ref_step = abs_step;
+                    chord_ref_oct = abs_oct;
                 }
                 // Update reference for next event to the first chord pitch
                 current_step = first_step;
                 current_oct = first_oct;
             }
+            // Recurse into nested structures
+            Music::Tuplet { body, .. }
+            | Music::Grace { body, .. }
+            | Music::Acciaccatura { body, .. }
+            | Music::Appoggiatura { body, .. } => {
+                let (s, o) = convert_to_relative_music(body, current_step, current_oct);
+                current_step = s;
+                current_oct = o;
+            }
+            Music::AfterGrace { main, grace, .. } => {
+                let (s, o) = convert_to_relative_music(main, current_step, current_oct);
+                let (s2, o2) = convert_to_relative_music(grace, s, o);
+                current_step = s2;
+                current_oct = o2;
+            }
+            Music::Repeat {
+                body, alternatives, ..
+            } => {
+                let (s, o) = convert_to_relative_music(body, current_step, current_oct);
+                current_step = s;
+                current_oct = o;
+                if let Some(alts) = alternatives {
+                    for alt in alts {
+                        let (s2, o2) = convert_to_relative_music(alt, current_step, current_oct);
+                        current_step = s2;
+                        current_oct = o2;
+                    }
+                }
+            }
+            Music::Sequential(inner) | Music::Simultaneous(inner) => {
+                let (s, o) = convert_to_relative(inner, current_step, current_oct);
+                current_step = s;
+                current_oct = o;
+            }
             _ => {}
         }
+    }
+    (current_step, current_oct)
+}
+
+/// Convert a single Music node from absolute to relative.
+fn convert_to_relative_music(music: &mut Music, ref_step: char, ref_oct: i8) -> (char, i8) {
+    match music {
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            convert_to_relative(items, ref_step, ref_oct)
+        }
+        _ => convert_to_relative(std::slice::from_mut(music), ref_step, ref_oct),
     }
 }
 
@@ -239,7 +288,40 @@ fn untranspose_items(items: &mut [Music], from: &Pitch, to: &Pitch) {
                     *pitch = pitch.untranspose(from, to);
                 }
             }
+            Music::Tuplet { body, .. }
+            | Music::Grace { body, .. }
+            | Music::Acciaccatura { body, .. }
+            | Music::Appoggiatura { body, .. } => {
+                untranspose_music(body, from, to);
+            }
+            Music::AfterGrace { main, grace, .. } => {
+                untranspose_music(main, from, to);
+                untranspose_music(grace, from, to);
+            }
+            Music::Repeat {
+                body, alternatives, ..
+            } => {
+                untranspose_music(body, from, to);
+                if let Some(alts) = alternatives {
+                    for alt in alts {
+                        untranspose_music(alt, from, to);
+                    }
+                }
+            }
+            Music::Sequential(inner) | Music::Simultaneous(inner) => {
+                untranspose_items(inner, from, to);
+            }
             _ => {}
         }
+    }
+}
+
+/// Un-transpose a single Music node.
+fn untranspose_music(music: &mut Music, from: &Pitch, to: &Pitch) {
+    match music {
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            untranspose_items(items, from, to);
+        }
+        _ => untranspose_items(std::slice::from_mut(music), from, to),
     }
 }

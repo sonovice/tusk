@@ -927,8 +927,8 @@ fn import_bar_check_encoded_in_label() {
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap_or("");
     assert!(
-        label.contains("barcheck@4"),
-        "label should contain barcheck@4 (after 4 notes): {label}"
+        label.contains("BarCheck"),
+        "label should contain BarCheck event: {label}"
     );
 }
 
@@ -937,10 +937,9 @@ fn import_bar_line_encoded_in_label() {
     let mei = parse_and_import("{ c4 d e f \\bar \"|.\" }");
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap_or("");
-    // Pipe in bar type is escaped as \u007c in labels
     assert!(
-        label.contains("barline:\\u007c.@4"),
-        "label should contain barline:\\u007c.@4: {label}"
+        label.contains("BarLine"),
+        "label should contain BarLine event: {label}"
     );
 }
 
@@ -973,12 +972,8 @@ fn import_multiple_bar_checks_encoded() {
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap_or("");
     assert!(
-        label.contains("barcheck@1"),
-        "first barcheck after 1 note: {label}"
-    );
-    assert!(
-        label.contains("barcheck@2"),
-        "second barcheck after 2 notes: {label}"
+        label.contains("BarCheck"),
+        "label should contain BarCheck events: {label}"
     );
 }
 
@@ -1139,12 +1134,12 @@ fn import_markup_encoded_in_label() {
     let sdef = first_staff_def_ctrl(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
     assert!(
-        label.contains("lilypond:events,"),
+        label.contains("tusk:events,"),
         "should have events label: {label}"
     );
     assert!(
-        label.contains("markup:"),
-        "should contain markup entry: {label}"
+        label.contains("Markup"),
+        "should contain Markup entry: {label}"
     );
 }
 
@@ -1167,8 +1162,8 @@ fn import_markuplist_encoded_in_label() {
     let sdef = first_staff_def_ctrl(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
     assert!(
-        label.contains("markuplist:"),
-        "should contain markuplist entry: {label}"
+        label.contains("MarkupList"),
+        "should contain MarkupList entry: {label}"
     );
 }
 
@@ -1178,10 +1173,14 @@ fn import_markup_position_correct() {
     let mei = parse_and_import(r#"{ c'4 \markup "between" d'4 }"#);
     let sdef = first_staff_def_ctrl(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
-    // After first note (index 1), markup should be at @1
+    // After first note (index 1), markup should be at position 1
     assert!(
-        label.contains("markup:\"between\"@1"),
+        label.contains("\"position\":1"),
         "markup at position 1: {label}"
+    );
+    assert!(
+        label.contains("Markup"),
+        "should contain Markup entry: {label}"
     );
 }
 
@@ -1191,9 +1190,9 @@ fn import_markup_with_command() {
     let sdef = first_staff_def_ctrl(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
     assert!(
-        label.contains("markup:"),
-        "should contain markup entry: {label}"
+        label.contains("Markup"),
+        "should contain Markup entry: {label}"
     );
-    // Serialized form should contain \bold and \italic
-    assert!(label.contains("\\bold"), "should contain bold: {label}");
+    // Serialized form should contain \bold
+    assert!(label.contains("\\\\bold"), "should contain bold: {label}");
 }

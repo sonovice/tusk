@@ -156,6 +156,13 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
         }
         Music::Chord(chord) => {
             let resolved_pitches: Vec<_> = chord.pitches.iter().map(|p| ctx.resolve(p)).collect();
+            // In relative mode, the reference for the NEXT event is the FIRST
+            // chord pitch (per LilyPond spec), not the last.
+            if ctx.relative.is_some()
+                && let Some(first) = resolved_pitches.first()
+            {
+                ctx.relative = Some((first.step, first.octave));
+            }
             ctx.last_chord_pitches = resolved_pitches.clone();
             events.push(LyEvent::Chord {
                 pitches: resolved_pitches,

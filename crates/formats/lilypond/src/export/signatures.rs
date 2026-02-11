@@ -2,6 +2,7 @@
 
 use tusk_model::elements::ScoreDefChild;
 use tusk_model::elements::StaffGrpChild;
+use tusk_model::{ControlEvent, EventSequence};
 
 use crate::model::pitch::Pitch;
 use crate::model::signature::{Clef, KeySignature, TimeSignature};
@@ -26,7 +27,7 @@ pub(super) fn extract_event_sequences(
                 if let ScoreDefChild::StaffGrp(grp) = sd_child {
                     for grp_child in &grp.children {
                         if let StaffGrpChild::StaffDef(sdef) = grp_child {
-                            result.push(parse_event_sequence_label(sdef));
+                            result.push(parse_event_sequence_json(sdef));
                         }
                     }
                 }
@@ -36,126 +37,101 @@ pub(super) fn extract_event_sequences(
     result
 }
 
-/// Parse the `lilypond:events,...` segment from a staffDef label.
-fn parse_event_sequence_label(staff_def: &tusk_model::elements::StaffDef) -> Vec<SignatureEvent> {
+/// Parse the `tusk:events,{json}` segment from a staffDef label.
+fn parse_event_sequence_json(staff_def: &tusk_model::elements::StaffDef) -> Vec<SignatureEvent> {
     let label = match &staff_def.labelled.label {
         Some(l) => l.as_str(),
         None => return Vec::new(),
     };
 
-    // Find the lilypond:events segment (label may have multiple | separated segments)
-    let events_str = label
-        .split('|')
-        .find_map(|seg| seg.strip_prefix("lilypond:events,"));
-
-    let events_str = match events_str {
-        Some(s) => s,
-        None => {
-            // No event sequence -- try to reconstruct from staffDef attributes
-            return reconstruct_initial_signatures(staff_def);
-        }
-    };
-
-    let mut events = Vec::new();
-    for entry in events_str.split(';') {
-        if entry.is_empty() {
-            continue;
-        }
-        let (type_str, pos_str) = match entry.rsplit_once('@') {
-            Some(pair) => pair,
-            None => continue,
-        };
-        let position: u32 = match pos_str.parse() {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
-
-        if let Some(name) = type_str.strip_prefix("clef:") {
-            events.push(SignatureEvent {
-                position,
-                music: Music::Clef(Clef {
-                    name: name.to_string(),
-                }),
-            });
-        } else if let Some(key_str) = type_str.strip_prefix("key:") {
-            if let Some(ks) = parse_key_label(key_str) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::KeySignature(ks),
-                });
-            }
-        } else if let Some(time_str) = type_str.strip_prefix("time:")
-            && let Some(ts) = parse_time_label(time_str)
+    // Find the tusk:events JSON segment
+    for segment in label.split('|') {
+        if let Some(json) = segment.strip_prefix("tusk:events,")
+            && let Ok(seq) = serde_json::from_str::<EventSequence>(json)
         {
-            events.push(SignatureEvent {
-                position,
-                music: Music::TimeSignature(ts),
-            });
-        } else if type_str == "autobeamon" {
-            events.push(SignatureEvent {
-                position,
-                music: Music::AutoBeamOn,
-            });
-        } else if type_str == "autobeamoff" {
-            events.push(SignatureEvent {
-                position,
-                music: Music::AutoBeamOff,
-            });
-        } else if type_str == "barcheck" {
-            events.push(SignatureEvent {
-                position,
-                music: Music::BarCheck,
-            });
-        } else if let Some(bar_type) = type_str.strip_prefix("barline:") {
-            // Unescape pipe characters
-            let bar_type = bar_type.replace("\\u007c", "|");
-            events.push(SignatureEvent {
-                position,
-                music: Music::BarLine { bar_type },
-            });
-        } else if let Some(markup_str) = type_str.strip_prefix("markup:") {
-            let unescaped = crate::import::signatures::unescape_label_value(markup_str);
-            if let Some(m) = parse_markup_from_label(&unescaped) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::Markup(m),
-                });
-            }
-        } else if let Some(markuplist_str) = type_str.strip_prefix("markuplist:") {
-            let unescaped = crate::import::signatures::unescape_label_value(markuplist_str);
-            if let Some(ml) = parse_markuplist_from_label(&unescaped) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::MarkupList(ml),
-                });
-            }
-        } else if let Some(tempo_str) = type_str.strip_prefix("tempo:") {
-            let unescaped = crate::import::signatures::unescape_label_value(tempo_str);
-            if let Some(t) = parse_tempo_from_label(&unescaped) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::Tempo(t),
-                });
-            }
-        } else if let Some(mark_str) = type_str.strip_prefix("mark:") {
-            let unescaped = crate::import::signatures::unescape_label_value(mark_str);
-            if let Some(m) = parse_mark_from_label(&unescaped) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::Mark(m),
-                });
-            }
-        } else if let Some(textmark_str) = type_str.strip_prefix("textmark:") {
-            let unescaped = crate::import::signatures::unescape_label_value(textmark_str);
-            if let Some(tm) = parse_textmark_from_label(&unescaped) {
-                events.push(SignatureEvent {
-                    position,
-                    music: Music::TextMark(tm),
-                });
-            }
+            return convert_event_sequence(seq);
         }
     }
 
+    // No event sequence -- try to reconstruct from staffDef attributes
+    reconstruct_initial_signatures(staff_def)
+}
+
+/// Convert a typed EventSequence to SignatureEvents.
+fn convert_event_sequence(seq: EventSequence) -> Vec<SignatureEvent> {
+    let mut events = Vec::new();
+    for pe in seq.events {
+        let music = match pe.event {
+            ControlEvent::Clef { name } => Music::Clef(Clef { name }),
+            ControlEvent::Key { step, alter, mode } => {
+                if let Some(m) = Mode::from_name(&mode) {
+                    Music::KeySignature(KeySignature {
+                        pitch: Pitch {
+                            step,
+                            alter,
+                            octave: 0,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        mode: m,
+                    })
+                } else {
+                    continue;
+                }
+            }
+            ControlEvent::Time {
+                numerators,
+                denominator,
+            } => Music::TimeSignature(TimeSignature {
+                numerators,
+                denominator,
+            }),
+            ControlEvent::BarCheck => Music::BarCheck,
+            ControlEvent::BarLine { bar_type } => Music::BarLine { bar_type },
+            ControlEvent::AutoBeamOn => Music::AutoBeamOn,
+            ControlEvent::AutoBeamOff => Music::AutoBeamOff,
+            ControlEvent::Tempo { serialized } => {
+                if let Some(t) = parse_tempo_from_label(&serialized) {
+                    Music::Tempo(t)
+                } else {
+                    continue;
+                }
+            }
+            ControlEvent::Mark { serialized } => {
+                if let Some(m) = parse_mark_from_label(&serialized) {
+                    Music::Mark(m)
+                } else {
+                    continue;
+                }
+            }
+            ControlEvent::TextMark { serialized } => {
+                if let Some(tm) = parse_textmark_from_label(&serialized) {
+                    Music::TextMark(tm)
+                } else {
+                    continue;
+                }
+            }
+            ControlEvent::Markup { serialized } => {
+                if let Some(m) = parse_markup_from_label(&serialized) {
+                    Music::Markup(m)
+                } else {
+                    continue;
+                }
+            }
+            ControlEvent::MarkupList { serialized } => {
+                if let Some(ml) = parse_markuplist_from_label(&serialized) {
+                    Music::MarkupList(ml)
+                } else {
+                    continue;
+                }
+            }
+        };
+        events.push(SignatureEvent {
+            position: pe.position,
+            music,
+        });
+    }
     events
 }
 
@@ -217,47 +193,6 @@ fn reconstruct_initial_signatures(
     }
 
     events
-}
-
-/// Parse a key signature label: `STEP.ALTER.MODE`
-fn parse_key_label(s: &str) -> Option<KeySignature> {
-    let mut parts = s.splitn(3, '.');
-    let step_str = parts.next()?;
-    let alter_str = parts.next()?;
-    let mode_str = parts.next()?;
-
-    let step = step_str.chars().next()?;
-    let alter: f32 = alter_str.parse().ok()?;
-    let mode = Mode::from_name(mode_str)?;
-
-    Some(KeySignature {
-        pitch: Pitch {
-            step,
-            alter,
-            octave: 0,
-            force_accidental: false,
-            cautionary: false,
-            octave_check: None,
-        },
-        mode,
-    })
-}
-
-/// Parse a time signature label: `N+M/D`
-fn parse_time_label(s: &str) -> Option<TimeSignature> {
-    let (num_str, den_str) = s.split_once('/')?;
-    let numerators: Vec<u32> = num_str
-        .split('+')
-        .filter_map(|n| n.trim().parse().ok())
-        .collect();
-    let denominator: u32 = den_str.trim().parse().ok()?;
-    if numerators.is_empty() {
-        return None;
-    }
-    Some(TimeSignature {
-        numerators,
-        denominator,
-    })
 }
 
 /// Inject signature events into layer items at the correct positions.

@@ -3,6 +3,7 @@
 //! Extracts chord-mode events from MEI `<harm>` control events and
 //! reconstructs `\new ChordNames \chordmode { ... }` context structure.
 
+use tusk_model::StaffContext;
 use tusk_model::elements::{MeasureChild, ScoreChild, ScoreDefChild, SectionChild};
 
 use crate::model::Music;
@@ -85,8 +86,13 @@ pub(super) fn extract_chord_names_meta(
                     && let Some(label) = &grp.common.label
                 {
                     for segment in label.split('|') {
-                        if let Some(rest) = segment.strip_prefix("lilypond:chordnames") {
-                            return Some(parse_chord_names_meta(rest));
+                        if let Some(json) = segment.strip_prefix("tusk:chord-names-context,")
+                            && let Ok(ctx) = serde_json::from_str::<StaffContext>(json)
+                        {
+                            return Some(ChordNamesMeta {
+                                name: ctx.name,
+                                with_block_str: ctx.with_block,
+                            });
                         }
                     }
                 }
@@ -94,24 +100,4 @@ pub(super) fn extract_chord_names_meta(
         }
     }
     None
-}
-
-/// Parse ChordNames metadata from the label suffix.
-///
-/// Format: `[,name=Name][,with=...]`
-fn parse_chord_names_meta(s: &str) -> ChordNamesMeta {
-    let mut name = None;
-    let mut with_block_str = None;
-    let parts: Vec<&str> = s.split(',').collect();
-    for part in &parts {
-        if let Some(n) = part.strip_prefix("name=") {
-            name = Some(n.to_string());
-        } else if let Some(w) = part.strip_prefix("with=") {
-            with_block_str = Some(w.to_string());
-        }
-    }
-    ChordNamesMeta {
-        name,
-        with_block_str,
-    }
 }

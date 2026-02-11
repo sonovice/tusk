@@ -122,9 +122,7 @@ fn find_music(file: &model::LilyPondFile) -> Option<&Music> {
     None
 }
 
-use variables::{
-    build_assignments_label, build_variable_map, collect_assignments, resolve_identifiers,
-};
+use variables::{build_variable_map, collect_assignments, resolve_identifiers};
 
 /// Build MEI Music from an owned (identifier-resolved) LilyPond music tree.
 fn build_music_owned(
@@ -137,19 +135,14 @@ fn build_music_owned(
     // Analyze context structure to determine staves
     let staff_infos = analyze_staves(&ly_music);
 
-    // Build ScoreDef with staffDef(s)
-    let mut score_def = build_score_def_from_staves(&staff_infos);
+    // Build ScoreDef with staffDef(s) — typed extensions for staff context,
+    // event sequences, pitch context, lyrics info, and variable assignments
+    let mut score_def = build_score_def_from_staves(&staff_infos, assignments);
 
     // Store score-level \header/\layout/\midi in ScoreDef label for roundtrip
     let score_blocks_label = output_defs::build_score_blocks_label(file);
     if !score_blocks_label.is_empty() {
         append_label(&mut score_def.common.label, &score_blocks_label);
-    }
-
-    // Store top-level assignments in ScoreDef label for roundtrip
-    let vars_label = build_assignments_label(assignments);
-    if !vars_label.is_empty() {
-        append_label(&mut score_def.common.label, &vars_label);
     }
 
     score

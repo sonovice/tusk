@@ -4,31 +4,34 @@ use tusk_model::elements::StaffDef;
 use tusk_model::generated::data::{
     DataClefline, DataClefshape, DataKeyfifths, DataOctaveDis, DataStaffrelBasic,
 };
+use tusk_model::{ControlEvent, EventSequence, PositionedEvent};
 
 use crate::model;
 
 use super::LyEvent;
 
-/// Apply clef/key/time from the event stream onto a staffDef and return
-/// a label segment encoding the full event sequence for roundtrip.
+/// Build a typed `EventSequence` from the event stream and set initial clef/key/time on staffDef.
 ///
-/// The label format is `lilypond:events,TYPE@POS;TYPE@POS;...` where:
-/// - TYPE is `clef:NAME`, `key:STEP.ALTER.MODE`, or `time:N+M/D`
-/// - POS is the 0-based index in the note/rest event stream
-pub(super) fn apply_signatures_to_staff_def(
+/// Returns `Some(EventSequence)` if there are control events, `None` otherwise.
+pub(super) fn build_event_sequence(
     events: &[LyEvent],
     staff_def: &mut StaffDef,
-) -> String {
+) -> Option<EventSequence> {
     let mut first_clef = true;
     let mut first_key = true;
     let mut first_time = true;
     let mut note_index = 0u32;
-    let mut entries = Vec::new();
+    let mut positioned = Vec::new();
 
     for event in events {
         match event {
             LyEvent::Clef(c) => {
-                entries.push(format!("clef:{}@{note_index}", c.name));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Clef {
+                        name: c.name.clone(),
+                    },
+                });
                 if first_clef {
                     apply_clef_to_staff_def(c, staff_def);
                     first_clef = false;
@@ -36,12 +39,14 @@ pub(super) fn apply_signatures_to_staff_def(
             }
             LyEvent::KeySig(ks) => {
                 let fifths = key_to_fifths(&ks.pitch, &ks.mode);
-                entries.push(format!(
-                    "key:{}.{}.{}@{note_index}",
-                    ks.pitch.step,
-                    ks.pitch.alter,
-                    ks.mode.as_str()
-                ));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Key {
+                        step: ks.pitch.step,
+                        alter: ks.pitch.alter,
+                        mode: ks.mode.as_str().to_string(),
+                    },
+                });
                 if first_key {
                     staff_def.staff_def_log.keysig = Some(DataKeyfifths(fifths.to_string()));
                     first_key = false;
@@ -54,7 +59,13 @@ pub(super) fn apply_signatures_to_staff_def(
                     .map(|n| n.to_string())
                     .collect::<Vec<_>>()
                     .join("+");
-                entries.push(format!("time:{}/{}@{note_index}", count, ts.denominator));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Time {
+                        numerators: ts.numerators.clone(),
+                        denominator: ts.denominator,
+                    },
+                });
                 if first_time {
                     staff_def.staff_def_log.meter_count = Some(count);
                     staff_def.staff_def_log.meter_unit = Some(ts.denominator.to_string());
@@ -62,38 +73,70 @@ pub(super) fn apply_signatures_to_staff_def(
                 }
             }
             LyEvent::AutoBeamOn => {
-                entries.push(format!("autobeamon@{note_index}"));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::AutoBeamOn,
+                });
             }
             LyEvent::AutoBeamOff => {
-                entries.push(format!("autobeamoff@{note_index}"));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::AutoBeamOff,
+                });
             }
             LyEvent::BarCheck => {
-                entries.push(format!("barcheck@{note_index}"));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::BarCheck,
+                });
             }
             LyEvent::BarLine(bar_type) => {
-                // Escape pipe characters — pipe is the label segment separator
-                let escaped = bar_type.replace('|', "\\u007c");
-                entries.push(format!("barline:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::BarLine {
+                        bar_type: bar_type.clone(),
+                    },
+                });
             }
             LyEvent::Markup(serialized) => {
-                let escaped = escape_label_value(serialized);
-                entries.push(format!("markup:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Markup {
+                        serialized: serialized.clone(),
+                    },
+                });
             }
             LyEvent::MarkupList(serialized) => {
-                let escaped = escape_label_value(serialized);
-                entries.push(format!("markuplist:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::MarkupList {
+                        serialized: serialized.clone(),
+                    },
+                });
             }
             LyEvent::Tempo(serialized) => {
-                let escaped = escape_label_value(serialized);
-                entries.push(format!("tempo:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Tempo {
+                        serialized: serialized.clone(),
+                    },
+                });
             }
             LyEvent::Mark(serialized) => {
-                let escaped = escape_label_value(serialized);
-                entries.push(format!("mark:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::Mark {
+                        serialized: serialized.clone(),
+                    },
+                });
             }
             LyEvent::TextMark(serialized) => {
-                let escaped = escape_label_value(serialized);
-                entries.push(format!("textmark:{}@{note_index}", escaped));
+                positioned.push(PositionedEvent {
+                    position: note_index,
+                    event: ControlEvent::TextMark {
+                        serialized: serialized.clone(),
+                    },
+                });
             }
             LyEvent::Note(_)
             | LyEvent::Chord { .. }
@@ -121,10 +164,10 @@ pub(super) fn apply_signatures_to_staff_def(
         }
     }
 
-    if entries.is_empty() {
-        String::new()
+    if positioned.is_empty() {
+        None
     } else {
-        format!("lilypond:events,{}", entries.join(";"))
+        Some(EventSequence { events: positioned })
     }
 }
 

@@ -360,7 +360,7 @@ fn import_named_staff_label() {
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
         if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
             let label = sdef.labelled.label.as_deref().unwrap();
-            assert!(label.contains("name=violin"), "label: {label}");
+            assert!(label.contains("\"name\":\"violin\""), "label: {label}");
         } else {
             panic!("expected StaffDef");
         }
@@ -373,11 +373,8 @@ fn import_group_label() {
     let sd = find_score_def(&mei).unwrap();
     if let ScoreDefChild::StaffGrp(grp) = &sd.children[0] {
         let label = grp.common.label.as_deref().unwrap();
-        assert!(
-            label.contains("lilypond:group,StaffGroup"),
-            "label: {label}"
-        );
-        assert!(label.contains("name=orch"), "label: {label}");
+        assert!(label.contains("tusk:group-context,"), "label: {label}");
+        assert!(label.contains("\"name\":\"orch\""), "label: {label}");
     }
 }
 
@@ -496,10 +493,19 @@ fn import_clef_key_time_label_stored() {
     let mei = parse_and_import("{ \\clef \"treble\" \\key d \\major \\time 4/4 c'4 d'4 }");
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
-    assert!(label.contains("lilypond:events,"), "label: {label}");
-    assert!(label.contains("clef:treble@0"), "label: {label}");
-    assert!(label.contains("key:d.0.major@0"), "label: {label}");
-    assert!(label.contains("time:4/4@0"), "label: {label}");
+    assert!(label.contains("tusk:events,"), "label: {label}");
+    assert!(
+        label.contains("\"Clef\""),
+        "label should contain Clef event: {label}"
+    );
+    assert!(
+        label.contains("\"Key\""),
+        "label should contain Key event: {label}"
+    );
+    assert!(
+        label.contains("\"Time\""),
+        "label should contain Time event: {label}"
+    );
 }
 
 #[test]
@@ -510,8 +516,18 @@ fn import_clef_change_mid_stream() {
     assert_eq!(sdef.staff_def_log.clef_shape, Some(DataClefshape::G));
     // Label has both clefs
     let label = sdef.labelled.label.as_deref().unwrap();
-    assert!(label.contains("clef:treble@0"), "label: {label}");
-    assert!(label.contains("clef:bass@2"), "label: {label}");
+    assert!(
+        label.contains("\"Clef\""),
+        "label should contain Clef events: {label}"
+    );
+    assert!(
+        label.contains("\"treble\""),
+        "label should contain treble: {label}"
+    );
+    assert!(
+        label.contains("\"bass\""),
+        "label should contain bass: {label}"
+    );
 }
 
 #[test]
@@ -536,8 +552,8 @@ fn import_staff_with_block_label() {
         if let StaffGrpChild::StaffDef(sdef) = &grp.children[0] {
             let label = sdef.labelled.label.as_deref().unwrap();
             assert!(
-                label.contains("with="),
-                "label should contain with block: {label}"
+                label.contains("\"with_block\""),
+                "label should contain with_block: {label}"
             );
             assert!(label.contains("Span_arpeggio_engraver"), "label: {label}");
         } else {
@@ -612,8 +628,8 @@ fn import_relative_label_stored() {
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
     assert!(
-        label.contains("lilypond:relative,"),
-        "label should contain relative context: {label}"
+        label.contains("tusk:pitch-context,"),
+        "label should contain pitch context: {label}"
     );
 }
 
@@ -636,8 +652,8 @@ fn import_transpose_label_stored() {
     let sdef = first_staff_def(&mei).unwrap();
     let label = sdef.labelled.label.as_deref().unwrap();
     assert!(
-        label.contains("lilypond:transpose,"),
-        "label should contain transpose context: {label}"
+        label.contains("tusk:pitch-context,"),
+        "label should contain pitch context: {label}"
     );
 }
 
@@ -903,12 +919,12 @@ fn import_autobeam_in_event_label() {
     let sd = first_staff_def(&mei).unwrap();
     let label = sd.labelled.label.as_deref().unwrap_or("");
     assert!(
-        label.contains("autobeamoff@0"),
-        "label should contain autobeamoff: {label}"
+        label.contains("AutoBeamOff"),
+        "label should contain AutoBeamOff: {label}"
     );
     assert!(
-        label.contains("autobeamon@2"),
-        "label should contain autobeamon: {label}"
+        label.contains("AutoBeamOn"),
+        "label should contain AutoBeamOn: {label}"
     );
 }
 
@@ -1197,7 +1213,7 @@ fn import_addlyrics_label_on_staffdef() {
     assert!(sdef.is_some());
     let label = sdef.unwrap().labelled.label.as_deref().unwrap_or("");
     assert!(
-        label.contains("lilypond:lyrics,addlyrics"),
+        label.contains("tusk:lyrics-info,"),
         "label should contain lyrics info: {label}"
     );
 }

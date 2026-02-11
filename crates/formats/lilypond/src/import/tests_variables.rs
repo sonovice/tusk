@@ -107,7 +107,7 @@ fn import_variable_label_stored_on_score_def() {
     let mei = parse_and_import(src);
     let label = score_def_label(&mei).unwrap_or_default();
     assert!(
-        label.contains("lilypond:vars,"),
+        label.contains("tusk:vars,"),
         "scoreDef label should contain lilypond:vars: {label}"
     );
     // The serialized assignment should be present (escaped)
@@ -132,7 +132,7 @@ fn import_non_music_assignments_stored() {
     let mei = parse_and_import(src);
     let label = score_def_label(&mei).unwrap_or_default();
     assert!(
-        label.contains("lilypond:vars,"),
+        label.contains("tusk:vars,"),
         "should store non-music assignments: {label}"
     );
     assert!(label.contains("myTitle"), "label: {label}");
@@ -145,7 +145,7 @@ fn import_no_assignments_no_vars_label() {
     let mei = parse_and_import(src);
     let label = score_def_label(&mei).unwrap_or_default();
     assert!(
-        !label.contains("lilypond:vars,"),
+        !label.contains("tusk:vars,"),
         "no vars label when no assignments: {label}"
     );
 }
@@ -167,5 +167,5 @@ fn import_fixture_variables() {
     );
     // Assignments should be stored
     let label = score_def_label(&mei).unwrap_or_default();
-    assert!(label.contains("lilypond:vars,"), "label: {label}");
+    assert!(label.contains("tusk:vars,"), "label: {label}");
 }
