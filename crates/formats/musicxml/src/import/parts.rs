@@ -18,7 +18,8 @@ use tusk_model::elements::{
     StaffGrp, StaffGrpChild,
 };
 use tusk_model::musicxml_ext::{
-    GroupDetailsData, KeyExtras, PartDetailsData, PartSymbolExtras, StaffDetailsExtras, TimeExtras,
+    DoubleData, GroupDetailsData, KeyExtras, PartDetailsData, PartSymbolExtras, StaffDetailsExtras,
+    TimeExtras, TransposeData,
 };
 
 /// Convert MusicXML part-list to MEI scoreDef.
@@ -709,6 +710,63 @@ pub fn convert_staff_def_from_score_part(
         };
         if let Some(sd) = sd {
             apply_staff_details_to_staff_def(sd, &mut staff_def, ctx);
+        }
+
+        // Apply transposition
+        if let Some(t) = attrs.transposes.first() {
+            // Effective chromatic = chromatic + octave_change * 12
+            let effective_semi = t.chromatic as i32 + t.octave_change.unwrap_or(0) * 12;
+            staff_def.staff_def_log.trans_semi = Some(effective_semi.to_string());
+
+            if let Some(diat) = t.diatonic {
+                let effective_diat = diat + t.octave_change.unwrap_or(0) * 7;
+                staff_def.staff_def_log.trans_diat = Some(effective_diat.to_string());
+            }
+
+            // Store full TransposeData for lossless roundtrip
+            let td = TransposeData {
+                number: t.number,
+                diatonic: t.diatonic,
+                chromatic: t.chromatic,
+                octave_change: t.octave_change,
+                double: t.double.as_ref().map(|d| DoubleData {
+                    above: d.above.map(|v| v == crate::model::data::YesNo::Yes),
+                }),
+                id: t.id.clone(),
+            };
+            if let Ok(json) = serde_json::to_string(&td) {
+                crate::import::attributes::append_label(
+                    &mut staff_def,
+                    format!(
+                        "{}{}",
+                        crate::import::attributes::TRANSPOSE_LABEL_PREFIX,
+                        json
+                    ),
+                );
+            }
+            ctx.ext_store_mut().entry(score_part.id.clone()).transpose = Some(td);
+        }
+
+        // Apply for-part (concert score per-part transposition)
+        if !attrs.for_parts.is_empty() {
+            if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
+                crate::import::attributes::append_label(
+                    &mut staff_def,
+                    format!(
+                        "{}{}",
+                        crate::import::attributes::FOR_PART_LABEL_PREFIX,
+                        json
+                    ),
+                );
+            }
+            ctx.ext_store_mut().entry(score_part.id.clone()).for_part =
+                Some(tusk_model::musicxml_ext::ForPartData {
+                    entries: attrs
+                        .for_parts
+                        .iter()
+                        .filter_map(|fp| serde_json::to_value(fp).ok())
+                        .collect(),
+                });
         }
     }
 

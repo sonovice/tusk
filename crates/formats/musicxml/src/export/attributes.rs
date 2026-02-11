@@ -10,7 +10,8 @@
 
 use crate::context::ConversionContext;
 use crate::import::attributes::{
-    FOR_PART_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, extract_label_segment,
+    FOR_PART_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, TRANSPOSE_LABEL_PREFIX,
+    extract_label_segment,
 };
 use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
@@ -139,6 +140,82 @@ fn has_jianpu_clef_label(staff_def: &StaffDef) -> bool {
         .label
         .as_deref()
         .is_some_and(|l| l.split('|').any(|seg| seg == CLEF_JIANPU_LABEL))
+}
+
+/// Extract MusicXML Transpose from ExtensionStore or MEI StaffDef label.
+///
+/// Returns a fully reconstructed Transpose including octave-change and double.
+/// Falls back to MEI @trans.semi / @trans.diat if no stored data available.
+fn extract_transpose_from_ext(
+    staff_def: &StaffDef,
+    ctx: &ConversionContext,
+) -> Option<crate::model::attributes::Transpose> {
+    use crate::model::attributes::Transpose;
+    use tusk_model::musicxml_ext::TransposeData;
+
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref td) = ext.transpose {
+                return Some(transpose_data_to_mxml(td));
+            }
+        }
+    }
+
+    // Fallback: try JSON label
+    if let Some(ref label) = staff_def.labelled.label {
+        if let Some(json) = extract_label_segment(label, TRANSPOSE_LABEL_PREFIX) {
+            if let Ok(td) = serde_json::from_str::<TransposeData>(json) {
+                return Some(transpose_data_to_mxml(&td));
+            }
+        }
+    }
+
+    // Fallback: derive from MEI @trans.semi / @trans.diat
+    if staff_def.staff_def_log.trans_diat.is_some() || staff_def.staff_def_log.trans_semi.is_some()
+    {
+        let chromatic = staff_def
+            .staff_def_log
+            .trans_semi
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0) as f64;
+        let diatonic = staff_def
+            .staff_def_log
+            .trans_diat
+            .as_ref()
+            .and_then(|s| s.parse().ok());
+
+        return Some(Transpose {
+            number: None,
+            id: None,
+            diatonic,
+            chromatic,
+            octave_change: None,
+            double: None,
+        });
+    }
+
+    None
+}
+
+/// Convert TransposeData to MusicXML Transpose.
+fn transpose_data_to_mxml(
+    td: &tusk_model::musicxml_ext::TransposeData,
+) -> crate::model::attributes::Transpose {
+    use crate::model::attributes::{Double, Transpose};
+    use crate::model::data::YesNo;
+
+    Transpose {
+        number: td.number,
+        id: td.id.clone(),
+        diatonic: td.diatonic,
+        chromatic: td.chromatic,
+        octave_change: td.octave_change,
+        double: td.double.as_ref().map(|d| Double {
+            above: d.above.map(|v| if v { YesNo::Yes } else { YesNo::No }),
+        }),
+    }
 }
 
 /// Convert MEI keysig attribute to MusicXML fifths value.
@@ -383,7 +460,7 @@ pub fn convert_mei_staff_def_to_attributes(
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
-        TimeSignature, TraditionalKey, Transpose,
+        TimeSignature, TraditionalKey,
     };
 
     let mut attrs = Attributes::default();
@@ -490,29 +567,9 @@ pub fn convert_mei_staff_def_to_attributes(
         attrs.for_parts = for_parts;
     }
 
-    // Convert transposition; MEI @trans.semi and @trans.diat are Option<String>
-    if staff_def.staff_def_log.trans_diat.is_some() || staff_def.staff_def_log.trans_semi.is_some()
-    {
-        let chromatic = staff_def
-            .staff_def_log
-            .trans_semi
-            .as_ref()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0) as f64;
-        let diatonic = staff_def
-            .staff_def_log
-            .trans_diat
-            .as_ref()
-            .and_then(|s| s.parse().ok());
-
-        attrs.transposes.push(Transpose {
-            number: None,
-            id: None,
-            diatonic,
-            chromatic,
-            octave_change: None,
-            double: None,
-        });
+    // Convert transposition from ext store / label / MEI attrs
+    if let Some(transpose) = extract_transpose_from_ext(staff_def, ctx) {
+        attrs.transposes.push(transpose);
     }
 
     // Convert staff details from label JSON or fallback to @lines
@@ -534,7 +591,7 @@ pub fn build_first_measure_attributes(
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
-        TimeSignature, TraditionalKey, Transpose,
+        TimeSignature, TraditionalKey,
     };
 
     let mut attrs = Attributes::default();
@@ -654,31 +711,9 @@ pub fn build_first_measure_attributes(
             attrs.for_parts = for_parts;
         }
 
-        // Get transposition from staffDef (MEI uses Option<String>)
-        if staff_def.staff_def_log.trans_diat.is_some()
-            || staff_def.staff_def_log.trans_semi.is_some()
-        {
-            let chromatic = staff_def
-                .staff_def_log
-                .trans_semi
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0) as f64;
-            let diatonic = staff_def
-                .staff_def_log
-                .trans_diat
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .map(|d: i32| d);
-
-            attrs.transposes.push(Transpose {
-                number: None,
-                id: None,
-                diatonic,
-                chromatic,
-                octave_change: None,
-                double: None,
-            });
+        // Get transposition from ext store / label / MEI attrs
+        if let Some(transpose) = extract_transpose_from_ext(staff_def, ctx) {
+            attrs.transposes.push(transpose);
         }
 
         // Get staff details from label JSON or fallback to @lines
@@ -706,7 +741,7 @@ pub fn build_first_measure_attributes_multi(
 ) -> crate::model::attributes::Attributes {
     use crate::model::attributes::{
         Attributes, Clef, Key, KeyContent, SenzaMisura, StandardTime, Time, TimeContent,
-        TimeSignature, TraditionalKey, Transpose,
+        TimeSignature, TraditionalKey,
     };
 
     // Find the staffDefs belonging to this part via context mapping
@@ -838,29 +873,8 @@ pub fn build_first_measure_attributes_multi(
 
     // Transposition from first staffDef
     if let Some(staff_def) = first_def {
-        if staff_def.staff_def_log.trans_diat.is_some()
-            || staff_def.staff_def_log.trans_semi.is_some()
-        {
-            let chromatic = staff_def
-                .staff_def_log
-                .trans_semi
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0) as f64;
-            let diatonic = staff_def
-                .staff_def_log
-                .trans_diat
-                .as_ref()
-                .and_then(|s| s.parse().ok())
-                .map(|d: i32| d);
-            attrs.transposes.push(Transpose {
-                number: None,
-                id: None,
-                diatonic,
-                chromatic,
-                octave_change: None,
-                double: None,
-            });
+        if let Some(transpose) = extract_transpose_from_ext(staff_def, ctx) {
+            attrs.transposes.push(transpose);
         }
 
         // Staff details from first staffDef (label JSON or @lines fallback)

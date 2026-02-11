@@ -1524,6 +1524,7 @@ fragment_roundtrip_test!(timpani_element);
 fragment_roundtrip_test!(toe_element);
 fragment_roundtrip_test!(transpose_element);
 fragment_roundtrip_test!(transpose_attributes);
+fragment_roundtrip_test!(transpose_instruments);
 fragment_roundtrip_test!(treble_clef);
 // Batch 52
 fragment_roundtrip_test!(tremolo_element_double);

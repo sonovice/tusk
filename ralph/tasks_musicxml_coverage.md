@@ -1343,21 +1343,35 @@ the MEI output has no semantic transposition information.
 
 ### 30.1 Implementation
 
-- [ ] In `import/attributes.rs`: extract `<chromatic>` → MEI `@trans.semi` on `<staffDef>`
-- [ ] Extract `<diatonic>` → MEI `@trans.diat` on `<staffDef>`
-- [ ] Extract `<octave-change>` → adjust `@trans.semi` by `octave-change * 12`
-- [ ] Handle `number` attribute (which staff in multi-staff parts the transpose applies to)
-- [ ] Store full transpose data (including `double`, id) in typed `TransposeData` extension for roundtrip
-- [ ] In `export/attributes.rs`: read `@trans.semi`/`@trans.diat` to reconstruct `<transpose>`
-  - Read `TransposeData` from `ExtensionStore` for lossless roundtrip (octave-change, double)
-  - Fallback: derive chromatic/diatonic from trans.semi/trans.diat attrs
+- [x] In `import/attributes.rs`: extract `<chromatic>` → MEI `@trans.semi` on `<staffDef>`
+  - Added TRANSPOSE_LABEL_PREFIX constant and transpose handling in process_attributes()
+  - Effective trans.semi = chromatic + octave_change * 12
+- [x] Extract `<diatonic>` → MEI `@trans.diat` on `<staffDef>`
+  - Effective trans.diat = diatonic + octave_change * 7
+- [x] Extract `<octave-change>` → adjust `@trans.semi` by `octave-change * 12`
+  - Octave-change folds into effective trans.semi/trans.diat values
+- [x] Handle `number` attribute (which staff in multi-staff parts the transpose applies to)
+  - Stored in TransposeData.number for roundtrip; MEI attrs applied to first staff
+- [x] Store full transpose data (including `double`, id) in typed `TransposeData` extension for roundtrip
+  - TransposeData (already in musicxml_ext) stored in ExtensionStore and JSON-in-label
+  - Also added transpose import to build_staff_def() in parts.rs for initial attributes
+- [x] In `export/attributes.rs`: read `@trans.semi`/`@trans.diat` to reconstruct `<transpose>`
+  - Added extract_transpose_from_ext() and transpose_data_to_mxml() helpers
+  - Three-tier fallback: ExtensionStore → JSON label → MEI attrs
+  - Updated all three export paths (convert_mei_staff_def_to_attributes, build_first_measure_attributes, build_first_measure_attributes_multi)
 
 ### 30.2 Tests
 
-- [ ] Add roundtrip fixture with transposing instruments (Bb clarinet, F horn, Eb alto sax)
-- [ ] Verify MEI output has correct `@trans.semi`/`@trans.diat` values
-- [ ] Verify roundtrip fidelity
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with transposing instruments (Bb clarinet, F horn, Eb alto sax)
+  - Added transpose_instruments.musicxml (3-part: Bb clarinet, F horn, Eb alto sax with octave-change)
+- [x] Verify MEI output has correct `@trans.semi`/`@trans.diat` values
+  - Bb clarinet: trans.diat="-1" trans.semi="-2"
+  - F horn: trans.diat="-4" trans.semi="-7"
+  - Eb alto sax: trans.diat="2" trans.semi="3" (with octave-change=1 folded in)
+- [x] Verify roundtrip fidelity
+  - All 3 transpose fixtures pass 4-level roundtrip (transpose_element, transpose_attributes, transpose_instruments)
+- [x] Existing tests pass (0 regressions)
+  - 2477 tests pass, 0 failures, 0 clippy warnings
 
 ---
 

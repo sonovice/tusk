@@ -11,7 +11,7 @@ use tusk_model::data::{
     DataClefline, DataClefshape, DataKeyfifths, DataMetersign, DataOctaveDis, DataStaffrelBasic,
 };
 use tusk_model::elements::StaffDef;
-use tusk_model::musicxml_ext::{ForPartData, KeyExtras, TimeExtras};
+use tusk_model::musicxml_ext::{DoubleData, ForPartData, KeyExtras, TimeExtras, TransposeData};
 
 /// Label prefix for non-traditional key JSON stored on staffDef @label.
 pub const KEY_LABEL_PREFIX: &str = "musicxml:key,";
@@ -21,6 +21,9 @@ pub const TIME_LABEL_PREFIX: &str = "musicxml:time,";
 
 /// Label prefix for for-part JSON stored on staffDef @label.
 pub const FOR_PART_LABEL_PREFIX: &str = "musicxml:for-part,";
+
+/// Label prefix for transpose JSON stored on staffDef @label.
+pub const TRANSPOSE_LABEL_PREFIX: &str = "musicxml:transpose,";
 
 /// Append a prefixed JSON segment to a staffDef label, using `|` separator.
 pub fn append_label(staff_def: &mut StaffDef, segment: String) {
@@ -276,6 +279,41 @@ pub fn process_attributes(
             // Store Jianpu clef in label for lossless roundtrip (mapped to G in MEI)
             if clef.sign == ClefSign::Jianpu {
                 append_label(sd, "musicxml:clef-jianpu".to_string());
+            }
+        }
+    }
+
+    // Process transposition
+    if !attrs.transposes.is_empty() {
+        if let Some(sd) = staff_def.as_deref_mut() {
+            // Apply the first transpose to MEI @trans.semi / @trans.diat
+            let t = &attrs.transposes[0];
+
+            // Effective chromatic = chromatic + octave_change * 12
+            let effective_semi = t.chromatic as i32 + t.octave_change.unwrap_or(0) * 12;
+            sd.staff_def_log.trans_semi = Some(effective_semi.to_string());
+
+            if let Some(diat) = t.diatonic {
+                let effective_diat = diat + t.octave_change.unwrap_or(0) * 7;
+                sd.staff_def_log.trans_diat = Some(effective_diat.to_string());
+            }
+
+            // Store full TransposeData for lossless roundtrip (octave_change, double, number, id)
+            let td = TransposeData {
+                number: t.number,
+                diatonic: t.diatonic,
+                chromatic: t.chromatic,
+                octave_change: t.octave_change,
+                double: t.double.as_ref().map(|d| DoubleData {
+                    above: d.above.map(|v| v == crate::model::data::YesNo::Yes),
+                }),
+                id: t.id.clone(),
+            };
+            if let Ok(json) = serde_json::to_string(&td) {
+                append_label(sd, format!("{}{}", TRANSPOSE_LABEL_PREFIX, json));
+            }
+            if let Some(ref id) = sd.basic.xml_id {
+                ctx.ext_store_mut().entry(id.clone()).transpose = Some(td);
             }
         }
     }
