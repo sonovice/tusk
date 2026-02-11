@@ -306,6 +306,7 @@ fn parse_metronome_tuplet<R: BufRead>(
     let mut actual_notes: Option<u32> = None;
     let mut normal_notes: Option<u32> = None;
     let mut normal_type: Option<String> = None;
+    let mut normal_dots = 0usize;
 
     loop {
         match reader.read_event_into(&mut buf)? {
@@ -321,6 +322,7 @@ fn parse_metronome_tuplet<R: BufRead>(
                 }
                 _ => skip_element(reader, &e)?,
             },
+            Event::Empty(e) if e.name().as_ref() == b"normal-dot" => normal_dots += 1,
             Event::End(e) if e.name().as_ref() == b"metronome-tuplet" => break,
             Event::Eof => {
                 return Err(ParseError::MissingElement("metronome-tuplet end".into()));
@@ -337,6 +339,7 @@ fn parse_metronome_tuplet<R: BufRead>(
         actual_notes,
         normal_notes,
         normal_type,
+        normal_dots: vec![(); normal_dots],
     })
 }
 

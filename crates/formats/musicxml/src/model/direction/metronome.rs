@@ -230,6 +230,9 @@ pub struct MetronomeTuplet {
     /// Normal note type
     #[serde(rename = "normal-type", skip_serializing_if = "Option::is_none")]
     pub normal_type: Option<String>,
+    /// Normal dots (for dotted normal types)
+    #[serde(rename = "normal-dot", default, skip_serializing_if = "Vec::is_empty")]
+    pub normal_dots: Vec<()>,
 }
 
 impl Metronome {

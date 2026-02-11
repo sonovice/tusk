@@ -1299,10 +1299,17 @@ full spec compliance.
 
 ### 29.3 Advanced Metronome Model
 
-- [ ] Add `MetronomeNote` struct (metronome-type, metronome-dots, metronome-beams, metronome-tied, metronome-tuplet)
-- [ ] Add `MetronomeContent::NoteGroups` variant to support two groups of metronome-notes with optional `metronome-relation` text
-- [ ] Add `metronome_arrows` attribute to `Metronome`
-- [ ] Ensure serializer handles the new content variant
+- [x] Add `MetronomeNote` struct (metronome-type, metronome-dots, metronome-beams, metronome-tied, metronome-tuplet)
+  - Already existed in model/direction/metronome.rs with all fields
+  - Added missing `normal_dots: Vec<()>` to `MetronomeTuplet` for XSD `time-modification` completeness
+  - Updated parser (parse_metronome.rs) to handle `<normal-dot>` inside `<metronome-tuplet>`
+  - Updated serializer (elements.rs) to emit `<normal-dot>` elements
+- [x] Add `MetronomeContent::NoteGroups` variant to support two groups of metronome-notes with optional `metronome-relation` text
+  - Already existed as `MetronomeContent::MetronomeNotes(MetronomeNoteContent)` with notes_1/relation/notes_2
+- [x] Add `metronome_arrows` attribute to `Metronome`
+  - Already existed as `arrows: bool` in `MetronomeNoteContent` (correct per XSD — element in note sequence)
+- [x] Ensure serializer handles the new content variant
+  - Already handled in elements.rs serialize_children match arm for MetronomeNotes
 
 ### 29.4 Measure Attribute
 

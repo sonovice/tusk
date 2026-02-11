@@ -1517,6 +1517,9 @@ fn serialize_metronome_note<W: Write>(
         if let Some(ref nt) = tuplet.normal_type {
             w.write_text_element("normal-type", nt)?;
         }
+        for _ in &tuplet.normal_dots {
+            w.write_empty(w.start_element("normal-dot"))?;
+        }
         w.write_end("metronome-tuplet")?;
     }
     w.write_end("metronome-note")?;
