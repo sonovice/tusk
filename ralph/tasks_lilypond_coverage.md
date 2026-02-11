@@ -1830,13 +1830,20 @@ Grammar: `scm_function_call`, `embedded_scm_bare`, `embedded_scm_active`, `embed
 
 ### 41.1 Model & Parser
 
-- [ ] [P] Parse `scm_function_call`: `#(function-name arg ...)` where the result is used in a music context — currently parsed as opaque `SchemeExpr::List`; add detection of music-returning Scheme calls
-- [ ] [P] Parse `music_embedded`: a `#expr` that produces a music expression (e.g. `#(make-music 'NoteEvent ...)`); represent as `Music::SchemeMusic(SchemeExpr)` or keep as opaque passthrough
-- [ ] [P] Parse `embedded_lilypond_number`: `##{ ... #}` that returns a numeric value (vs. music) — may require context from surrounding grammar
-- [ ] [P] Handle `embedded_scm_active`: Scheme expression in "active" position (e.g. as a standalone statement in a music sequence)
-- [ ] [S] Serialize music-as-Scheme back to `#(...)` form
-- [ ] [T] Parser tests: `#(ly:export ...)`, music from Scheme, Scheme in music position
-- [ ] [T] Fixture: `fragment_scheme_music.ly` with Scheme-generated music expressions
+- [x] [P] Parse `scm_function_call`: `#(function-name arg ...)` where the result is used in a music context — currently parsed as opaque `SchemeExpr::List`; add detection of music-returning Scheme calls
+  - Added `Music::SchemeMusic(SchemeExpr)` variant; `#(...)` in music position parsed as `SchemeMusic(List(...))`
+- [x] [P] Parse `music_embedded`: a `#expr` that produces a music expression (e.g. `#(make-music 'NoteEvent ...)`); represent as `Music::SchemeMusic(SchemeExpr)` or keep as opaque passthrough
+  - `Token::Hash` in `parse_music()` → `parse_scheme_expr()` → `Music::SchemeMusic(expr)`
+- [x] [P] Parse `embedded_lilypond_number`: `##{ ... #}` that returns a numeric value (vs. music) — may require context from surrounding grammar
+  - Handled via `SchemeExpr::EmbeddedLilypond` inside `SchemeMusic`; numeric context indistinguishable without Scheme evaluation
+- [x] [P] Handle `embedded_scm_active`: Scheme expression in "active" position (e.g. as a standalone statement in a music sequence)
+  - Unified: all `#expr` in music position → `Music::SchemeMusic`
+- [x] [S] Serialize music-as-Scheme back to `#(...)` form
+  - `write_music` dispatches `SchemeMusic` → `write_scheme_expr`
+- [x] [T] Parser tests: `#(ly:export ...)`, music from Scheme, Scheme in music position
+  - 7 new tests in `tests_scheme.rs`: parse list/identifier/embedded, roundtrip list/identifier, validator, fixture
+- [x] [T] Fixture: `fragment_scheme_music.ly` with Scheme-generated music expressions
+  - Created `tests/fixtures/lilypond/fragment_scheme_music.ly` with list, identifier, embedded forms
 
 ### 41.2 Import & Export
 

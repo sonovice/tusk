@@ -847,6 +847,7 @@ impl<'a> Serializer<'a> {
                 self.write_function_args(args);
                 self.out.push_str(" \\etc");
             }
+            Music::SchemeMusic(expr) => self.write_scheme_expr(expr),
             Music::Event(text) => self.out.push_str(text),
             Music::Identifier(name) => {
                 self.out.push('\\');

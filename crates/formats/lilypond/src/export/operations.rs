@@ -272,3 +272,56 @@ pub(super) fn inject_function_ops(
         .collect();
     inject_ops_by_startid(items, item_ids, &pairs);
 }
+
+// ---------------------------------------------------------------------------
+// Scheme music expressions
+// ---------------------------------------------------------------------------
+
+/// Collected Scheme music info: startid → Music.
+pub(super) struct SchemeMusicInfo {
+    pub(super) start_id: String,
+    pub(super) music: Music,
+}
+
+/// Collect Scheme music expressions from measure `<dir>` elements with `tusk:scheme-music,` labels.
+pub(super) fn collect_scheme_music_ops(measure_children: &[MeasureChild]) -> Vec<SchemeMusicInfo> {
+    let mut ops = Vec::new();
+    for mc in measure_children {
+        if let MeasureChild::Dir(dir) = mc {
+            let label = match dir.common.label.as_deref() {
+                Some(l) => l,
+                None => continue,
+            };
+            if let Some(serialized) = label.strip_prefix("tusk:scheme-music,") {
+                let start_id = dir
+                    .dir_log
+                    .startid
+                    .as_ref()
+                    .map(|u| u.0.trim_start_matches('#').to_string())
+                    .unwrap_or_default();
+                // Parse the serialized Scheme expression back into a SchemeExpr
+                let expr = if let Some(e) = parse_scheme_str(serialized) {
+                    e
+                } else {
+                    crate::model::SchemeExpr::Raw(serialized.to_string())
+                };
+                let music = Music::SchemeMusic(expr);
+                ops.push(SchemeMusicInfo { start_id, music });
+            }
+        }
+    }
+    ops
+}
+
+/// Inject Scheme music expressions into the items list before their referenced notes.
+pub(super) fn inject_scheme_music_ops(
+    items: &mut Vec<Music>,
+    item_ids: &[Option<String>],
+    ops: &[SchemeMusicInfo],
+) {
+    let pairs: Vec<(String, Music)> = ops
+        .iter()
+        .map(|op| (op.start_id.clone(), op.music.clone()))
+        .collect();
+    inject_ops_by_startid(items, item_ids, &pairs);
+}

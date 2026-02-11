@@ -183,6 +183,7 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
 
                     let property_ops = collect_property_ops(&measure.children);
                     let function_ops = collect_function_ops(&measure.children);
+                    let scheme_music_ops = collect_scheme_music_ops(&measure.children);
                     let tuplet_spans = collect_tuplet_spans(&measure.children);
                     let repeat_spans = collect_repeat_spans(&measure.children);
                     let ending_spans = collect_ending_spans(&measure.children);
@@ -205,6 +206,7 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
                                 }
                                 inject_property_ops(&mut items, &item_ids, &property_ops);
                                 inject_function_ops(&mut items, &item_ids, &function_ops);
+                                inject_scheme_music_ops(&mut items, &item_ids, &scheme_music_ops);
                                 apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
                                 apply_grace_wrapping(&mut items, &grace_types);
                                 apply_repeat_wrapping(
@@ -968,7 +970,8 @@ use figured_bass::{FiguredBassMeta, collect_figure_mode_fbs, extract_figured_bas
 
 mod operations;
 use operations::{
-    collect_function_ops, collect_property_ops, inject_function_ops, inject_property_ops,
+    collect_function_ops, collect_property_ops, collect_scheme_music_ops, inject_function_ops,
+    inject_property_ops, inject_scheme_music_ops,
 };
 
 /// Find the Score element in the MEI hierarchy.

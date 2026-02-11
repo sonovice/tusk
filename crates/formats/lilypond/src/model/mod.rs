@@ -506,6 +506,12 @@ pub enum Music {
         /// Arguments supplied so far.
         args: Vec<FunctionArg>,
     },
+    /// A Scheme expression in music position (grammar: `music_embedded`).
+    ///
+    /// Represents `#expr` where the Scheme value is used as a music expression,
+    /// e.g. `#(make-music 'NoteEvent ...)` or `#(ly:export ...)`.
+    /// We cannot evaluate Scheme, so we store the expression opaquely.
+    SchemeMusic(SchemeExpr),
     /// A note/rest/chord event stored as raw text (for tokens not yet
     /// decomposed into structured types).
     Event(String),

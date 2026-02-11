@@ -81,6 +81,8 @@ pub(super) enum LyEvent {
     PropertyOp(String),
     /// A structured music function call (`\functionName args...`).
     MusicFunction(tusk_model::FunctionCall),
+    /// A Scheme expression in music position (`#expr`), serialized.
+    SchemeMusic(String),
     /// A context change (`\change Staff = "name"`).
     ContextChange {
         context_type: String,
@@ -411,6 +413,10 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
                 is_partial: true,
             };
             events.push(LyEvent::MusicFunction(fc));
+        }
+        Music::SchemeMusic(expr) => {
+            let serialized = crate::serializer::serialize_scheme_expr(expr);
+            events.push(LyEvent::SchemeMusic(serialized));
         }
         Music::Event(_) | Music::Identifier(_) | Music::Unparsed(_) => {}
     }

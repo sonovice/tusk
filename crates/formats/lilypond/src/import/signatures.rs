@@ -160,6 +160,7 @@ pub(super) fn build_event_sequence(
             | LyEvent::FigureEvent(_)
             | LyEvent::PropertyOp(_)
             | LyEvent::MusicFunction(_)
+            | LyEvent::SchemeMusic(_)
             | LyEvent::ContextChange { .. } => {}
         }
     }

@@ -669,6 +669,12 @@ impl<'src> Parser<'src> {
                 self.advance()?;
                 Ok(Music::BarCheck)
             }
+            Token::Hash => {
+                // #expr in music position (grammar: music_embedded / embedded_scm_active).
+                // We can't evaluate Scheme, so wrap as Music::SchemeMusic.
+                let expr = self.parse_scheme_expr()?;
+                Ok(Music::SchemeMusic(expr))
+            }
             Token::EscapedWord(_) => self.parse_identifier_or_function_call(),
             Token::NoteName(_) => self.parse_note_event(),
             Token::Symbol(s) if s == "r" || s == "s" || s == "R" => self.parse_rest_or_skip(),

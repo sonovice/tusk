@@ -232,6 +232,87 @@ fn parse_fragment_scheme() {
     crate::validator::validate(&file2).unwrap();
 }
 
+// ── Scheme in music position (music_embedded) ──────────────────────
+
+#[test]
+fn scheme_music_list_in_sequence() {
+    let m = parse_first_music("{ c4 #(ly:export (make-music 'SkipEvent)) d4 }");
+    match m {
+        Music::Sequential(items) => {
+            assert!(items.len() >= 3);
+            match &items[1] {
+                Music::SchemeMusic(SchemeExpr::List(raw)) => {
+                    assert!(raw.contains("ly:export"));
+                }
+                other => panic!("expected SchemeMusic(List), got {other:?}"),
+            }
+        }
+        _ => panic!("expected Sequential"),
+    }
+}
+
+#[test]
+fn scheme_music_identifier_in_sequence() {
+    let m = parse_first_music("{ c4 #myMusicVar d4 }");
+    match m {
+        Music::Sequential(items) => {
+            assert!(items.len() >= 3);
+            match &items[1] {
+                Music::SchemeMusic(SchemeExpr::Identifier(name)) => {
+                    assert_eq!(name, "myMusicVar");
+                }
+                other => panic!("expected SchemeMusic(Identifier), got {other:?}"),
+            }
+        }
+        _ => panic!("expected Sequential"),
+    }
+}
+
+#[test]
+fn scheme_music_embedded_lilypond() {
+    let m = parse_first_music("{ c4 ##{ d4 #} e4 }");
+    match m {
+        Music::Sequential(items) => {
+            assert!(items.len() >= 3);
+            assert!(matches!(
+                &items[1],
+                Music::SchemeMusic(SchemeExpr::EmbeddedLilypond(_))
+            ));
+        }
+        _ => panic!("expected Sequential"),
+    }
+}
+
+#[test]
+fn roundtrip_scheme_music_list() {
+    let out = roundtrip("{ c4 #(ly:export (make-music 'SkipEvent)) d4 }\n");
+    assert!(out.contains("#(ly:export (make-music 'SkipEvent))"));
+}
+
+#[test]
+fn roundtrip_scheme_music_identifier() {
+    let out = roundtrip("{ c4 #myMusicVar d4 }\n");
+    assert!(out.contains("#myMusicVar"));
+}
+
+#[test]
+fn validator_scheme_music_in_sequence() {
+    let file = parse("{ c4 #(make-music 'NoteEvent) d4 }").unwrap();
+    crate::validator::validate(&file).unwrap();
+}
+
+// ── Fixture parse (scheme music) ──────────────────────────────────
+
+#[test]
+fn parse_fragment_scheme_music() {
+    let src = include_str!("../../../../../tests/fixtures/lilypond/fragment_scheme_music.ly");
+    let file = parse(src).unwrap();
+    crate::validator::validate(&file).unwrap();
+    let out = serialize(&file);
+    let file2 = parse(&out).unwrap();
+    crate::validator::validate(&file2).unwrap();
+}
+
 // ── Validator ──────────────────────────────────────────────────────
 
 #[test]

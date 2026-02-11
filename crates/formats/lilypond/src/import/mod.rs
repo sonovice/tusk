@@ -503,6 +503,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut harm_counter = 0u32;
     let mut fb_counter = 0u32;
     let mut func_counter = 0u32;
+    let mut scm_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -541,6 +542,8 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
             let mut pending_property_ops: Vec<String> = Vec::new();
             // Pending music function calls waiting for next note's startid
             let mut pending_function_ops: Vec<tusk_model::FunctionCall> = Vec::new();
+            // Pending Scheme music expressions waiting for next note's startid
+            let mut pending_scheme_music: Vec<String> = Vec::new();
             // Cross-staff override from \change Staff = "name"
             let mut cross_staff_override: Option<String> = None;
 
@@ -805,6 +808,10 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         pending_function_ops.push(fc.clone());
                         continue;
                     }
+                    LyEvent::SchemeMusic(serialized) => {
+                        pending_scheme_music.push(serialized.clone());
+                        continue;
+                    }
                     LyEvent::ContextChange { context_type, name } => {
                         // Track cross-staff override; store typed JSON label for roundtrip
                         let cc = tusk_model::ContextChange {
@@ -902,6 +909,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                 for fc in pending_function_ops.drain(..) {
                     func_counter += 1;
                     let dir = make_function_dir(&fc, &current_id, staff_info.n, func_counter);
+                    measure.children.push(MeasureChild::Dir(Box::new(dir)));
+                }
+
+                // Flush pending Scheme music expressions
+                for serialized in pending_scheme_music.drain(..) {
+                    scm_counter += 1;
+                    let dir =
+                        make_scheme_music_dir(&serialized, &current_id, staff_info.n, scm_counter);
                     measure.children.push(MeasureChild::Dir(Box::new(dir)));
                 }
 
@@ -1170,8 +1185,8 @@ use beams::{duration_to_beats, group_beamed_notes};
 use control_events::{
     make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_function_dir,
     make_hairpin, make_harm, make_mark_dir, make_ornament_control_event, make_property_dir,
-    make_repeat_dir, make_slur, make_string_dir, make_tempo, make_textmark_dir, make_tuplet_span,
-    wrap_last_in_btrem,
+    make_repeat_dir, make_scheme_music_dir, make_slur, make_string_dir, make_tempo,
+    make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };
 
 mod utils;
