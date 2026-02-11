@@ -1048,16 +1048,28 @@ pub enum TipDirection {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AccordionRegistration {
     /// High section dot present
-    #[serde(rename = "accordion-high", skip_serializing_if = "Option::is_none")]
-    pub accordion_high: Option<()>,
+    #[serde(
+        rename = "accordion-high",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub accordion_high: Option<bool>,
 
     /// Middle section (1, 2, or 3 dots)
-    #[serde(rename = "accordion-middle", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "accordion-middle",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub accordion_middle: Option<u8>,
 
     /// Low section dot present
-    #[serde(rename = "accordion-low", skip_serializing_if = "Option::is_none")]
-    pub accordion_low: Option<()>,
+    #[serde(
+        rename = "accordion-low",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub accordion_low: Option<bool>,
 
     /// Default X position
     #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
@@ -1338,7 +1350,7 @@ mod tests {
     #[test]
     fn test_accordion_registration() {
         let reg = AccordionRegistration {
-            accordion_high: Some(()),
+            accordion_high: Some(true),
             accordion_middle: Some(2),
             accordion_low: None,
             ..Default::default()

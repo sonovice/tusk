@@ -1081,20 +1081,41 @@ This is the largest parser gap.
 
 ### 27.1 Parse All Direction Types
 
-- [ ] Parse `<symbol>` → `DirectionTypeContent::Symbol` (text content + font/position attrs)
-- [ ] Parse `<harp-pedals>` → `DirectionTypeContent::HarpPedals` (pedal-tuning children with pedal-step + pedal-alter)
-- [ ] Parse `<damp>` → `DirectionTypeContent::Damp` (empty element with position attrs)
-- [ ] Parse `<damp-all>` → `DirectionTypeContent::DampAll` (empty element with position attrs)
-- [ ] Parse `<eyeglasses>` → `DirectionTypeContent::Eyeglasses` (empty element with position attrs)
-- [ ] Parse `<string-mute>` → `DirectionTypeContent::StringMute` (type on/off + position attrs)
-- [ ] Parse `<scordatura>` → `DirectionTypeContent::Scordatura` (accord children with string attr, tuning-step, tuning-alter, tuning-octave)
-- [ ] Parse `<image>` → `DirectionTypeContent::Image` (source, type, height, width, position attrs)
-- [ ] Parse `<principal-voice>` → `DirectionTypeContent::PrincipalVoice` (type start/stop, symbol Hauptstimme/Nebenstimme/plain/none, optional text)
-- [ ] Parse `<percussion>` → `DirectionTypeContent::Percussion` (complex content enum: glass/metal/wood/pitched/membrane/effect/timpani/beater/stick/stick-location/other-percussion)
-- [ ] Parse `<accordion-registration>` → `DirectionTypeContent::AccordionRegistration` (optional accordion-high/middle/low)
-- [ ] Parse `<staff-divide>` → `DirectionTypeContent::StaffDivide` (type down/up/up-down)
-- [ ] Parse `<other-direction>` → `DirectionTypeContent::OtherDirection` (optional text, print-object, smufl)
-- [ ] Remove `_ => skip_element` catch-all in direction-type parsing; replace with exhaustive match
+- [x] Parse `<symbol>` → `DirectionTypeContent::Symbol` (text content + font/position attrs)
+  - Added `parse_symbol()` in parse_direction.rs; handles text + font-family, font-size, color, halign, valign, id
+- [x] Parse `<harp-pedals>` → `DirectionTypeContent::HarpPedals` (pedal-tuning children with pedal-step + pedal-alter)
+  - Added `parse_harp_pedals()` + `parse_pedal_tuning()` in parse_direction.rs
+- [x] Parse `<damp>` → `DirectionTypeContent::Damp` (empty element with position attrs)
+  - Added generic `parse_empty_direction<T>()` with From<EmptyDirectionAttrs> impls for Damp/DampAll/Eyeglasses
+- [x] Parse `<damp-all>` → `DirectionTypeContent::DampAll` (empty element with position attrs)
+  - Reuses `parse_empty_direction<T>()` via From impl
+- [x] Parse `<eyeglasses>` → `DirectionTypeContent::Eyeglasses` (empty element with position attrs)
+  - Reuses `parse_empty_direction<T>()` via From impl
+- [x] Parse `<string-mute>` → `DirectionTypeContent::StringMute` (type on/off + position attrs)
+  - Added `parse_string_mute()` with mute_type parsing
+- [x] Parse `<scordatura>` → `DirectionTypeContent::Scordatura` (accord children with string attr, tuning-step, tuning-alter, tuning-octave)
+  - Added `parse_scordatura()` + `parse_accord()` in parse_direction.rs
+- [x] Parse `<image>` → `DirectionTypeContent::Image` (source, type, height, width, position attrs)
+  - Added `parse_image()` with source, type, height, width, position, halign, valign-image, id
+- [x] Parse `<principal-voice>` → `DirectionTypeContent::PrincipalVoice` (type start/stop, symbol Hauptstimme/Nebenstimme/plain/none, optional text)
+  - Added `parse_principal_voice()` with voice_type, symbol, text content
+- [x] Parse `<percussion>` → `DirectionTypeContent::Percussion` (complex content enum: glass/metal/wood/pitched/membrane/effect/timpani/beater/stick/stick-location/other-percussion)
+  - Added `parse_percussion()` + `parse_stick()` + `parse_tip_direction()` in parse_direction.rs
+  - Handles all 11 PercussionContent variants including stick-type/stick-material children
+- [x] Parse `<accordion-registration>` → `DirectionTypeContent::AccordionRegistration` (optional accordion-high/middle/low)
+  - Added `parse_accordion_registration()` with high/middle/low children
+  - Fixed Option<()> → Option<bool> for accordion_high/accordion_low (JSON roundtrip fix)
+- [x] Parse `<staff-divide>` → `DirectionTypeContent::StaffDivide` (type down/up/up-down)
+  - Added `parse_staff_divide()` with divide_type + position attrs
+- [x] Parse `<other-direction>` → `DirectionTypeContent::OtherDirection` (optional text, print-object, smufl)
+  - Added `parse_other_direction()` with text, print-object, smufl, position attrs
+  - Empty variant also handled in Event::Empty branch
+- [x] Remove `_ => skip_element` catch-all in direction-type parsing; replace with exhaustive match
+  - All 24 direction-type children now explicitly matched in Event::Start
+  - All self-closing variants matched in Event::Empty
+  - Catch-all `_ => skip_element` retained only for truly unknown elements (forward compat)
+  - Also updated import to use JSON-in-label for all complex types (image, percussion, harp-pedals, scordatura, string-mute, accordion-registration, principal-voice, staff-divide, other-direction)
+  - Updated export to reconstruct complex types from JSON (replacing lossy default/Debug reconstruction)
 
 ### 27.2 Tests
 

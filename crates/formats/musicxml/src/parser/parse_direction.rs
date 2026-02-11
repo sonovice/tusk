@@ -128,6 +128,71 @@ fn parse_direction_type<R: BufRead>(reader: &mut Reader<R>) -> Result<DirectionT
                     content = Some(DirectionTypeContent::Coda(vec![parse_coda(&e)?]));
                     skip_to_end(reader, b"coda")?;
                 }
+                b"symbol" => {
+                    let sym = parse_symbol(reader, &e)?;
+                    if let Some(DirectionTypeContent::Symbol(ref mut v)) = content {
+                        v.push(sym);
+                    } else {
+                        content = Some(DirectionTypeContent::Symbol(vec![sym]));
+                    }
+                }
+                b"harp-pedals" => {
+                    content = Some(DirectionTypeContent::HarpPedals(parse_harp_pedals(
+                        reader, &e,
+                    )?))
+                }
+                b"damp" => {
+                    content = Some(DirectionTypeContent::Damp(parse_empty_direction(&e)?));
+                    skip_to_end(reader, b"damp")?;
+                }
+                b"damp-all" => {
+                    content = Some(DirectionTypeContent::DampAll(parse_empty_direction(&e)?));
+                    skip_to_end(reader, b"damp-all")?;
+                }
+                b"eyeglasses" => {
+                    content = Some(DirectionTypeContent::Eyeglasses(parse_empty_direction(&e)?));
+                    skip_to_end(reader, b"eyeglasses")?;
+                }
+                b"string-mute" => {
+                    content = Some(DirectionTypeContent::StringMute(parse_string_mute(&e)?));
+                    skip_to_end(reader, b"string-mute")?;
+                }
+                b"scordatura" => {
+                    content = Some(DirectionTypeContent::Scordatura(parse_scordatura(
+                        reader, &e,
+                    )?))
+                }
+                b"image" => {
+                    content = Some(DirectionTypeContent::Image(parse_image(&e)?));
+                    skip_to_end(reader, b"image")?;
+                }
+                b"principal-voice" => {
+                    content = Some(DirectionTypeContent::PrincipalVoice(parse_principal_voice(
+                        reader, &e,
+                    )?))
+                }
+                b"percussion" => {
+                    let perc = parse_percussion(reader, &e)?;
+                    if let Some(DirectionTypeContent::Percussion(ref mut v)) = content {
+                        v.push(perc);
+                    } else {
+                        content = Some(DirectionTypeContent::Percussion(vec![perc]));
+                    }
+                }
+                b"accordion-registration" => {
+                    content = Some(DirectionTypeContent::AccordionRegistration(
+                        parse_accordion_registration(reader, &e)?,
+                    ))
+                }
+                b"staff-divide" => {
+                    content = Some(DirectionTypeContent::StaffDivide(parse_staff_divide(&e)?));
+                    skip_to_end(reader, b"staff-divide")?;
+                }
+                b"other-direction" => {
+                    content = Some(DirectionTypeContent::OtherDirection(parse_other_direction(
+                        reader, &e,
+                    )?))
+                }
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -140,6 +205,38 @@ fn parse_direction_type<R: BufRead>(reader: &mut Reader<R>) -> Result<DirectionT
                 b"bracket" => content = Some(DirectionTypeContent::Bracket(parse_bracket(&e)?)),
                 b"segno" => content = Some(DirectionTypeContent::Segno(vec![parse_segno(&e)?])),
                 b"coda" => content = Some(DirectionTypeContent::Coda(vec![parse_coda(&e)?])),
+                b"damp" => content = Some(DirectionTypeContent::Damp(parse_empty_direction(&e)?)),
+                b"damp-all" => {
+                    content = Some(DirectionTypeContent::DampAll(parse_empty_direction(&e)?))
+                }
+                b"eyeglasses" => {
+                    content = Some(DirectionTypeContent::Eyeglasses(parse_empty_direction(&e)?))
+                }
+                b"string-mute" => {
+                    content = Some(DirectionTypeContent::StringMute(parse_string_mute(&e)?))
+                }
+                b"image" => content = Some(DirectionTypeContent::Image(parse_image(&e)?)),
+                b"staff-divide" => {
+                    content = Some(DirectionTypeContent::StaffDivide(parse_staff_divide(&e)?))
+                }
+                b"accordion-registration" => {
+                    content = Some(DirectionTypeContent::AccordionRegistration(
+                        AccordionRegistration::default(),
+                    ))
+                }
+                b"other-direction" => {
+                    content = Some(DirectionTypeContent::OtherDirection(OtherDirection {
+                        value: None,
+                        print_object: get_attr(&e, "print-object")?
+                            .and_then(|s| parse_yes_no_opt(&s)),
+                        smufl: get_attr(&e, "smufl")?,
+                        default_x: get_attr(&e, "default-x")?.and_then(|s| s.parse().ok()),
+                        default_y: get_attr(&e, "default-y")?.and_then(|s| s.parse().ok()),
+                        halign: get_attr(&e, "halign")?.and_then(|s| parse_lcr(&s)),
+                        valign: get_attr(&e, "valign")?.and_then(|s| parse_valign(&s)),
+                        id: get_attr(&e, "id")?,
+                    }));
+                }
                 _ => {}
             },
             Event::End(e) if e.name().as_ref() == b"direction-type" => break,
@@ -482,6 +579,481 @@ pub(crate) fn parse_coda(e: &BytesStart) -> Result<Coda> {
         valign: get_attr(e, "valign")?.and_then(|s| parse_valign(&s)),
         id: get_attr(e, "id")?,
     })
+}
+
+fn parse_symbol<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Symbol> {
+    let value = read_text(reader, b"symbol")?;
+    Ok(Symbol {
+        value,
+        font_family: get_attr(start, "font-family")?,
+        font_size: get_attr(start, "font-size")?.and_then(|s| s.parse().ok().map(FontSize::Points)),
+        color: get_attr(start, "color")?,
+        halign: get_attr(start, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(start, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(start, "id")?,
+    })
+}
+
+fn parse_harp_pedals<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<HarpPedals> {
+    let mut pedal_tunings = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"pedal-tuning" => pedal_tunings.push(parse_pedal_tuning(reader)?),
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"harp-pedals" => break,
+            Event::Eof => return Err(ParseError::MissingElement("harp-pedals end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(HarpPedals {
+        pedal_tunings,
+        default_x: get_attr(start, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(start, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(start, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(start, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(start, "id")?,
+    })
+}
+
+fn parse_pedal_tuning<R: BufRead>(reader: &mut Reader<R>) -> Result<PedalTuning> {
+    let mut pedal_step = None;
+    let mut pedal_alter = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"pedal-step" => pedal_step = Some(read_text(reader, b"pedal-step")?),
+                b"pedal-alter" => {
+                    pedal_alter = Some(
+                        read_text(reader, b"pedal-alter")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("pedal-alter".to_string()))?,
+                    )
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"pedal-tuning" => break,
+            Event::Eof => return Err(ParseError::MissingElement("pedal-tuning end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(PedalTuning {
+        pedal_step: pedal_step.unwrap_or_default(),
+        pedal_alter: pedal_alter.unwrap_or(0.0),
+    })
+}
+
+/// Parse an empty direction element that has only position/alignment attrs.
+/// Returns fields needed for Damp/DampAll/Eyeglasses (they share the same shape).
+fn parse_empty_direction_attrs(e: &BytesStart) -> Result<EmptyDirectionAttrs> {
+    Ok(EmptyDirectionAttrs {
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(e, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(e, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(e, "id")?,
+    })
+}
+
+struct EmptyDirectionAttrs {
+    default_x: Option<f64>,
+    default_y: Option<f64>,
+    halign: Option<LeftCenterRight>,
+    valign: Option<Valign>,
+    id: Option<String>,
+}
+
+/// Generic parse for Damp/DampAll/Eyeglasses — they have identical attribute sets.
+/// Returns a type that impls Into<Damp>, Into<DampAll>, Into<Eyeglasses> via the
+/// identical field layout — we use a helper to avoid code duplication.
+fn parse_empty_direction<T: From<EmptyDirectionAttrs>>(e: &BytesStart) -> Result<T> {
+    Ok(T::from(parse_empty_direction_attrs(e)?))
+}
+
+impl From<EmptyDirectionAttrs> for Damp {
+    fn from(a: EmptyDirectionAttrs) -> Self {
+        Damp {
+            default_x: a.default_x,
+            default_y: a.default_y,
+            halign: a.halign,
+            valign: a.valign,
+            id: a.id,
+        }
+    }
+}
+
+impl From<EmptyDirectionAttrs> for DampAll {
+    fn from(a: EmptyDirectionAttrs) -> Self {
+        DampAll {
+            default_x: a.default_x,
+            default_y: a.default_y,
+            halign: a.halign,
+            valign: a.valign,
+            id: a.id,
+        }
+    }
+}
+
+impl From<EmptyDirectionAttrs> for Eyeglasses {
+    fn from(a: EmptyDirectionAttrs) -> Self {
+        Eyeglasses {
+            default_x: a.default_x,
+            default_y: a.default_y,
+            halign: a.halign,
+            valign: a.valign,
+            id: a.id,
+        }
+    }
+}
+
+fn parse_string_mute(e: &BytesStart) -> Result<StringMute> {
+    let mute_type = match get_attr(e, "type")?.unwrap_or_default().as_str() {
+        "off" => StringMuteType::Off,
+        _ => StringMuteType::On,
+    };
+    Ok(StringMute {
+        mute_type,
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(e, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(e, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_scordatura<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Scordatura> {
+    let mut accords = Vec::new();
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"accord" => accords.push(parse_accord(reader, e)?),
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"scordatura" => break,
+            Event::Eof => return Err(ParseError::MissingElement("scordatura end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Scordatura {
+        accords,
+        id: get_attr(start, "id")?,
+    })
+}
+
+fn parse_accord<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Accord> {
+    let string: u32 = get_attr(start, "string")?
+        .unwrap_or_default()
+        .parse()
+        .map_err(|_| ParseError::ParseNumber("accord string".to_string()))?;
+    let mut tuning_step = None;
+    let mut tuning_alter = None;
+    let mut tuning_octave = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"tuning-step" => tuning_step = Some(read_text(reader, b"tuning-step")?),
+                b"tuning-alter" => tuning_alter = read_text(reader, b"tuning-alter")?.parse().ok(),
+                b"tuning-octave" => {
+                    tuning_octave = Some(
+                        read_text(reader, b"tuning-octave")?
+                            .parse()
+                            .map_err(|_| ParseError::ParseNumber("tuning-octave".to_string()))?,
+                    )
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"accord" => break,
+            Event::Eof => return Err(ParseError::MissingElement("accord end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Accord {
+        string,
+        tuning_step: tuning_step.unwrap_or_default(),
+        tuning_alter,
+        tuning_octave: tuning_octave.unwrap_or(4),
+    })
+}
+
+fn parse_image(e: &BytesStart) -> Result<DirectionImage> {
+    Ok(DirectionImage {
+        source: get_attr(e, "source")?.unwrap_or_default(),
+        image_type: get_attr(e, "type")?.unwrap_or_default(),
+        height: get_attr(e, "height")?.and_then(|s| s.parse().ok()),
+        width: get_attr(e, "width")?.and_then(|s| s.parse().ok()),
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(e, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(e, "valign")?.and_then(|s| parse_valign_image(&s)),
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_principal_voice<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<PrincipalVoice> {
+    let voice_type = match get_attr(start, "type")?.unwrap_or_default().as_str() {
+        "stop" => StartStop::Stop,
+        _ => StartStop::Start,
+    };
+    let symbol = match get_attr(start, "symbol")?.unwrap_or_default().as_str() {
+        "Nebenstimme" => PrincipalVoiceSymbol::Nebenstimme,
+        "plain" => PrincipalVoiceSymbol::Plain,
+        "none" => PrincipalVoiceSymbol::None,
+        _ => PrincipalVoiceSymbol::Hauptstimme,
+    };
+    let text = read_text(reader, b"principal-voice")?;
+    let value = if text.is_empty() { None } else { Some(text) };
+    Ok(PrincipalVoice {
+        value,
+        voice_type,
+        symbol,
+        default_x: get_attr(start, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(start, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(start, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(start, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(start, "id")?,
+    })
+}
+
+fn parse_percussion<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Percussion> {
+    let enclosure = get_attr(start, "enclosure")?.and_then(|s| parse_enclosure(&s));
+    let default_x = get_attr(start, "default-x")?.and_then(|s| s.parse().ok());
+    let default_y = get_attr(start, "default-y")?.and_then(|s| s.parse().ok());
+    let halign = get_attr(start, "halign")?.and_then(|s| parse_lcr(&s));
+    let valign = get_attr(start, "valign")?.and_then(|s| parse_valign(&s));
+    let id = get_attr(start, "id")?;
+
+    let mut content: Option<PercussionContent> = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"glass" => content = Some(PercussionContent::Glass(read_text(reader, b"glass")?)),
+                b"metal" => content = Some(PercussionContent::Metal(read_text(reader, b"metal")?)),
+                b"wood" => content = Some(PercussionContent::Wood(read_text(reader, b"wood")?)),
+                b"pitched" => {
+                    content = Some(PercussionContent::Pitched(read_text(reader, b"pitched")?))
+                }
+                b"membrane" => {
+                    content = Some(PercussionContent::Membrane(read_text(reader, b"membrane")?))
+                }
+                b"effect" => {
+                    content = Some(PercussionContent::Effect(read_text(reader, b"effect")?))
+                }
+                b"timpani" => {
+                    content = Some(PercussionContent::Timpani);
+                    skip_to_end(reader, b"timpani")?;
+                }
+                b"beater" => {
+                    let tip = parse_tip_direction(e)?;
+                    let value = read_text(reader, b"beater")?;
+                    content = Some(PercussionContent::Beater(Beater { value, tip }));
+                }
+                b"stick" => {
+                    content = Some(PercussionContent::Stick(parse_stick(reader, e)?));
+                }
+                b"stick-location" => {
+                    content = Some(PercussionContent::StickLocation(read_text(
+                        reader,
+                        b"stick-location",
+                    )?))
+                }
+                b"other-percussion" => {
+                    content = Some(PercussionContent::OtherPercussion(read_text(
+                        reader,
+                        b"other-percussion",
+                    )?))
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::Empty(ref e) => {
+                if e.name().as_ref() == b"timpani" {
+                    content = Some(PercussionContent::Timpani);
+                }
+            }
+            Event::End(ref e) if e.name().as_ref() == b"percussion" => break,
+            Event::Eof => return Err(ParseError::MissingElement("percussion end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Percussion {
+        content: content.unwrap_or(PercussionContent::OtherPercussion(String::new())),
+        enclosure,
+        default_x,
+        default_y,
+        halign,
+        valign,
+        id,
+    })
+}
+
+fn parse_tip_direction(e: &BytesStart) -> Result<Option<TipDirection>> {
+    Ok(get_attr(e, "tip")?.and_then(|s| match s.as_str() {
+        "up" => Some(TipDirection::Up),
+        "down" => Some(TipDirection::Down),
+        "left" => Some(TipDirection::Left),
+        "right" => Some(TipDirection::Right),
+        "northwest" => Some(TipDirection::Northwest),
+        "northeast" => Some(TipDirection::Northeast),
+        "southeast" => Some(TipDirection::Southeast),
+        "southwest" => Some(TipDirection::Southwest),
+        _ => None,
+    }))
+}
+
+fn parse_stick<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Stick> {
+    let tip = parse_tip_direction(start)?;
+    let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
+    let dashed_circle = get_attr(start, "dashed-circle")?.and_then(|s| parse_yes_no_opt(&s));
+    let mut stick_type = None;
+    let mut stick_material = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"stick-type" => stick_type = Some(read_text(reader, b"stick-type")?),
+                b"stick-material" => stick_material = Some(read_text(reader, b"stick-material")?),
+                _ => skip_element(reader, e)?,
+            },
+            Event::End(ref e) if e.name().as_ref() == b"stick" => break,
+            Event::Eof => return Err(ParseError::MissingElement("stick end".to_string())),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(Stick {
+        stick_type: stick_type.unwrap_or_default(),
+        stick_material: stick_material.unwrap_or_default(),
+        tip,
+        parentheses,
+        dashed_circle,
+    })
+}
+
+fn parse_accordion_registration<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<AccordionRegistration> {
+    let default_x = get_attr(start, "default-x")?.and_then(|s| s.parse().ok());
+    let default_y = get_attr(start, "default-y")?.and_then(|s| s.parse().ok());
+    let halign = get_attr(start, "halign")?.and_then(|s| parse_lcr(&s));
+    let valign = get_attr(start, "valign")?.and_then(|s| parse_valign(&s));
+    let id = get_attr(start, "id")?;
+
+    let mut accordion_high = None;
+    let mut accordion_middle = None;
+    let mut accordion_low = None;
+    let mut buf = Vec::new();
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(ref e) => match e.name().as_ref() {
+                b"accordion-high" => {
+                    accordion_high = Some(true);
+                    skip_to_end(reader, b"accordion-high")?;
+                }
+                b"accordion-middle" => {
+                    accordion_middle = read_text(reader, b"accordion-middle")?.parse().ok();
+                }
+                b"accordion-low" => {
+                    accordion_low = Some(true);
+                    skip_to_end(reader, b"accordion-low")?;
+                }
+                _ => skip_element(reader, e)?,
+            },
+            Event::Empty(ref e) => match e.name().as_ref() {
+                b"accordion-high" => accordion_high = Some(true),
+                b"accordion-low" => accordion_low = Some(true),
+                _ => {}
+            },
+            Event::End(ref e) if e.name().as_ref() == b"accordion-registration" => break,
+            Event::Eof => {
+                return Err(ParseError::MissingElement(
+                    "accordion-registration end".to_string(),
+                ));
+            }
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok(AccordionRegistration {
+        accordion_high,
+        accordion_middle,
+        accordion_low,
+        default_x,
+        default_y,
+        halign,
+        valign,
+        id,
+    })
+}
+
+fn parse_staff_divide(e: &BytesStart) -> Result<StaffDivide> {
+    let divide_type = match get_attr(e, "type")?.unwrap_or_default().as_str() {
+        "up" => StaffDivideType::Up,
+        "up-down" => StaffDivideType::UpDown,
+        _ => StaffDivideType::Down,
+    };
+    Ok(StaffDivide {
+        divide_type,
+        default_x: get_attr(e, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(e, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(e, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(e, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(e, "id")?,
+    })
+}
+
+fn parse_other_direction<R: BufRead>(
+    reader: &mut Reader<R>,
+    start: &BytesStart,
+) -> Result<OtherDirection> {
+    let text = read_text(reader, b"other-direction")?;
+    let value = if text.is_empty() { None } else { Some(text) };
+    Ok(OtherDirection {
+        value,
+        print_object: get_attr(start, "print-object")?.and_then(|s| parse_yes_no_opt(&s)),
+        smufl: get_attr(start, "smufl")?,
+        default_x: get_attr(start, "default-x")?.and_then(|s| s.parse().ok()),
+        default_y: get_attr(start, "default-y")?.and_then(|s| s.parse().ok()),
+        halign: get_attr(start, "halign")?.and_then(|s| parse_lcr(&s)),
+        valign: get_attr(start, "valign")?.and_then(|s| parse_valign(&s)),
+        id: get_attr(start, "id")?,
+    })
+}
+
+fn parse_valign_image(s: &str) -> Option<ValignImage> {
+    match s {
+        "top" => Some(ValignImage::Top),
+        "middle" => Some(ValignImage::Middle),
+        "bottom" => Some(ValignImage::Bottom),
+        _ => None,
+    }
 }
 
 fn parse_offset<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Offset> {

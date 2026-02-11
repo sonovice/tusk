@@ -206,14 +206,15 @@ pub fn convert_direction(
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::HarpPedals(_) => {
+            DirectionTypeContent::HarpPedals(hp) => {
+                let json = serde_json::to_string(hp).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:harp-pedals",
-                    "",
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
@@ -250,95 +251,99 @@ pub fn convert_direction(
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::StringMute(_) => {
+            DirectionTypeContent::StringMute(sm) => {
+                let json = serde_json::to_string(sm).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:string-mute",
-                    "",
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::Scordatura(_) => {
+            DirectionTypeContent::Scordatura(sc) => {
+                let json = serde_json::to_string(sc).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:scordatura",
-                    "",
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::Image(_) => {
+            DirectionTypeContent::Image(img) => {
+                let json = serde_json::to_string(img).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:image",
-                    "",
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::PrincipalVoice(pv) => {
-                let text = format!("{}:{:?}", pv.voice_type, pv.symbol);
+                let json = serde_json::to_string(pv).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:principal-voice",
-                    &text,
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Percussion(perc) => {
-                let text = format!("{:?}", perc);
+                let json = serde_json::to_string(perc).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:percussion",
-                    &text,
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::AccordionRegistration(_) => {
+            DirectionTypeContent::AccordionRegistration(ar) => {
+                let json = serde_json::to_string(ar).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:accordion-registration",
-                    "",
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::StaffDivide(sd) => {
-                let text = format!("{:?}", sd.divide_type);
+                let json = serde_json::to_string(sd).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:staff-divide",
-                    &text,
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::OtherDirection(other) => {
-                let text = other.value.as_deref().unwrap_or("");
+                let json = serde_json::to_string(other).unwrap_or_default();
                 let dir = dir_with_label(
                     tstamp.clone(),
                     staff,
                     place.clone(),
                     ctx,
                     "musicxml:other",
-                    text,
+                    &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
             }
