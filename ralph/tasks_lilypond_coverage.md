@@ -1793,12 +1793,21 @@ Grammar: `function_arglist_nonbackup`, `function_arglist_backup`, `function_argl
 
 ### 40.1 Model & Parser
 
-- [ ] [P] Add `SymbolList` type to model for `symbol_list_arg` (used as function argument in Scheme API)
-- [ ] [P] Parse `symbol_list_arg`: sequences like `Staff.NoteHead.color` as a symbol list, not just a property path
-- [ ] [P] Improve function argument collection: add type-aware parsing that tries music, then string, then number, then scheme (matching the priority of `function_arglist_nonbackup`)
-- [ ] [P] Handle `\default` as explicit optional-argument placeholder (already done for `FunctionArg::Default`)
-- [ ] [P] Handle `reparsed_rhythm`: duration-as-argument (e.g. `\tuplet 3/2 4. { ... }`) — already partially handled for `\tuplet`; generalize for user functions
-- [ ] [T] Parser tests: function with symbol list arg, function with optional args, function with mixed type args, known problematic functions (\keepWithTag, \removeWithTag, \partCombine)
+- [x] [P] Add `SymbolList` type to model for `symbol_list_arg` (used as function argument in Scheme API)
+  - Added `FunctionArg::SymbolList(Vec<String>)` variant to model
+  - Added two-token lookahead (`peek2`) to parser for Symbol.Dot detection
+- [x] [P] Parse `symbol_list_arg`: sequences like `Staff.NoteHead.color` as a symbol list, not just a property path
+  - `parse_symbol_list_arg` and `parse_symbol_list_element` in parser/functions.rs
+  - Serializer outputs dot-joined segments
+- [x] [P] Improve function argument collection: add type-aware parsing that tries music, then string, then number, then scheme (matching the priority of `function_arglist_nonbackup`)
+  - Added duration-as-argument detection (steno duration + dot suffix)
+  - Added symbol list detection before main match (two-token lookahead)
+- [x] [P] Handle `\default` as explicit optional-argument placeholder (already done for `FunctionArg::Default`)
+  - Verified: already working in parser, serializer, and tested
+- [x] [P] Handle `reparsed_rhythm`: duration-as-argument (e.g. `\tuplet 3/2 4. { ... }`) — already partially handled for `\tuplet`; generalize for user functions
+  - Generic duration arg parsing: unsigned matching STENO_DURATIONS + dot → FunctionArg::Duration
+- [x] [T] Parser tests: function with symbol list arg, function with optional args, function with mixed type args, known problematic functions (\keepWithTag, \removeWithTag, \partCombine)
+  - 12 new tests in tests_music_functions.rs (symbol list, two-segment, multiple defaults, mixed args, duration arg, keepWithTag, removeWithTag, partCombine, roundtrips)
 
 ### 40.2 Import & Export
 

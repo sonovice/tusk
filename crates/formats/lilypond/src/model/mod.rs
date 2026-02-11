@@ -536,4 +536,10 @@ pub enum FunctionArg {
     Identifier(String),
     /// `\default` — explicit placeholder for an optional argument.
     Default,
+    /// A symbol list argument (e.g. `Staff.NoteHead.color`).
+    ///
+    /// Used by functions like `\keepWithTag`, `\removeWithTag`, etc.
+    /// Mirrors the `symbol_list_arg` production in the grammar. Elements are
+    /// dot-separated symbols, strings, or integers stored as strings.
+    SymbolList(Vec<String>),
 }

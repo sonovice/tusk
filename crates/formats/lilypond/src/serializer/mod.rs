@@ -1278,6 +1278,9 @@ impl<'a> Serializer<'a> {
                     self.out.push_str(name);
                 }
                 FunctionArg::Default => self.out.push_str("\\default"),
+                FunctionArg::SymbolList(segments) => {
+                    self.out.push_str(&segments.join("."));
+                }
             }
         }
     }

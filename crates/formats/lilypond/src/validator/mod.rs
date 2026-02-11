@@ -937,7 +937,8 @@ fn validate_function_args(args: &[FunctionArg], errors: &mut Vec<ValidationError
             FunctionArg::String(_)
             | FunctionArg::Number(_)
             | FunctionArg::Identifier(_)
-            | FunctionArg::Default => {}
+            | FunctionArg::Default
+            | FunctionArg::SymbolList(_) => {}
         }
     }
 }

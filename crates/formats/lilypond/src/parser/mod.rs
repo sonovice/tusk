@@ -45,6 +45,8 @@ pub struct Parser<'src> {
     src: &'src str,
     /// One-token lookahead.
     current: SpannedToken,
+    /// Optional second lookahead token (for two-token peek).
+    lookahead: Option<SpannedToken>,
 }
 
 impl<'src> Parser<'src> {
@@ -56,6 +58,7 @@ impl<'src> Parser<'src> {
             lexer,
             src,
             current,
+            lookahead: None,
         })
     }
 
@@ -78,8 +81,20 @@ impl<'src> Parser<'src> {
 
     fn advance(&mut self) -> Result<SpannedToken, ParseError> {
         let prev = self.current.clone();
-        self.current = self.lexer.next_token()?;
+        self.current = if let Some(la) = self.lookahead.take() {
+            la
+        } else {
+            self.lexer.next_token()?
+        };
         Ok(prev)
+    }
+
+    /// Peek at the second token (two-token lookahead).
+    fn peek2(&mut self) -> Result<&Token, ParseError> {
+        if self.lookahead.is_none() {
+            self.lookahead = Some(self.lexer.next_token()?);
+        }
+        Ok(&self.lookahead.as_ref().unwrap().token)
     }
 
     fn expect(&mut self, expected: &Token) -> Result<SpannedToken, ParseError> {
