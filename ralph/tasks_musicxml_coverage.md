@@ -944,64 +944,74 @@ JSON. This:
 Define typed structs in `crates/core/model/src/extensions.rs` and add corresponding
 fields to `ExtData`:
 
-- [ ] `HarmonyData` — structured harmony (root step/alter, kind, bass step/alter, degrees with value/alter/type, inversion, frame with frets/strings/barre, arrangement)
-  - Covers MusicXML `<harmony>` and LilyPond `\chordmode` concepts
-  - Add `harmony: Option<HarmonyData>` to `ExtData`
-- [ ] `TransposeData` — transposition info (chromatic, diatonic, octave-change, double)
-  - Covers MusicXML `<transpose>` and LilyPond `\transposition`
-  - Add `transpose: Option<TransposeData>` to `ExtData`
-- [ ] `SoundData` — playback/MIDI data (tempo, dynamics, dacapo, segno, coda, fine, forward-repeat, MIDI changes, swing)
-  - Covers standalone and direction-level `<sound>` elements
-  - Add `sound: Option<SoundData>` to `ExtData`
-- [ ] `ScoreHeaderData` — score-level metadata (identification with creators/rights/encoding, work number/title/opus, movement number/title, defaults, credits)
-  - Replaces the 6 extMeta elements currently on meiHead
-  - Add `score_header: Option<ScoreHeaderData>` to `ExtData`
-- [ ] `PrintData` — print/layout data (new-system, new-page, blank-page, page-number, staff-spacing, inline layouts)
-  - Covers MusicXML `<print>` elements beyond sb/pb
-  - Add `print_data: Option<PrintData>` to `ExtData`
-- [ ] `MeasureStyleData` — measure style info (multiple-rest, measure-repeat, beat-repeat, slash)
-  - Add `measure_style: Option<MeasureStyleData>` to `ExtData`
-- [ ] `BarlineData` — decorated barline extras (repeat, ending, fermata, segno, coda, wavy-line)
-  - Add `barline_data: Option<BarlineData>` to `ExtData`
-- [ ] `ListeningData` — listening/grouping/link/bookmark (opaque roundtrip for MusicXML 4.0 elements without MEI equivalent)
-  - Add `listening: Option<ListeningData>` to `ExtData`
-- [ ] `NoteVisualData` — note-level visual/position attributes (default-x/y, relative-x/y, color, print-object, dynamics, attack/release, pizzicato)
-  - Replace `musicxml:visual,{json}` label segments on notes
-  - Add `note_visual: Option<NoteVisualData>` to `ExtData`
-- [ ] `DirectionVisualData` — direction-level visual attributes (words font/position/color, wedge color/niente, etc.)
-  - Replace `musicxml:words-vis,{json}` label segments on dirs
-  - Add `direction_visual: Option<DirectionVisualData>` to `ExtData`
-- [ ] `InstrumentData` — score instrument + MIDI instrument details for parts
-  - Replace `musicxml:instrument,{json}` label on instrDef
-  - Add `instrument_data: Option<InstrumentData>` to `ExtData`
-- [ ] `PartDetailsData` — part-name-display, abbreviation-display, players, part-links, groups
-  - Replace `musicxml:part-details,{json}` label on staffDef
-  - Add `part_details: Option<PartDetailsData>` to `ExtData`
-- [ ] `GroupDetailsData` — group-name-display, abbreviation-display, group-time
-  - Replace `musicxml:group-details,{json}` label on staffGrp
-  - Add `group_details: Option<GroupDetailsData>` to `ExtData`
-- [ ] `NoteExtras` — note-level roundtrip data not representable in MEI (notehead-text, play, listen, footnote, level, notations-footnote, notations-level, instrument refs)
-  - Replace `musicxml:notehead-text,{json}`, `musicxml:play,{json}`, `musicxml:listen,{json}`, `musicxml:footnote,{json}`, `musicxml:level,{json}`, `musicxml:notations-footnote,{json}`, `musicxml:notations-level,{json}`, `musicxml:instruments,...` label segments on notes
-  - Add `note_extras: Option<NoteExtras>` to `ExtData`
-- [ ] `StemExtras` — stem roundtrip for double/none (currently `musicxml:stem,double` and `musicxml:stem,none` label segments)
-  - Can be folded into `NoteExtras` or kept separate
-- [ ] `KeyExtras` — non-traditional key and key-octave roundtrip data
-  - Replace `musicxml:key,{json}` label on staffDef
-  - Add `key_extras: Option<KeyExtras>` to `ExtData`
-- [ ] `TimeExtras` — interchangeable time signature roundtrip data
-  - Replace `musicxml:time,{json}` label on staffDef
-  - Add `time_extras: Option<TimeExtras>` to `ExtData`
-- [ ] `ForPartData` — for-part with part-clef/part-transpose roundtrip
-  - Replace `musicxml:for-part,{json}` label on staffDef
-  - Add `for_part: Option<ForPartData>` to `ExtData`
-- [ ] `StaffDetailsExtras` — staff-details roundtrip (staff-type, line-details, staff-tunings, capo, show-frets)
-  - Replace `musicxml:staff-details,{json}` label on staffDef
-- [ ] `PartSymbolExtras` — part-symbol extras (top-staff, bottom-staff, default-x, color)
-  - Replace `musicxml:part-symbol,{json}` label on staffGrp
-- [ ] `LyricExtras` — lyric extend type, elision details, visual/position attrs not captured by MEI verse/syl
-  - Replace lyric-specific label segments on verse elements
-- [ ] Wire all new types into `lib.rs` re-exports
-- [ ] Add serde roundtrip tests for all new types
+- [x] `HarmonyData` — structured harmony (root step/alter, kind, bass step/alter, degrees with value/alter/type, inversion, frame with frets/strings/barre, arrangement)
+  - Defined in `musicxml_ext/mod.rs` with sub-types: HarmonyChordData, NumeralKeyData, KindData, BassData, DegreeData, FrameData, FirstFretData, FrameNoteData, OffsetData
+  - Added `harmony: Option<HarmonyData>` to `ExtData`
+- [x] `TransposeData` — transposition info (chromatic, diatonic, octave-change, double)
+  - Defined with sub-type DoubleData
+  - Added `transpose: Option<TransposeData>` to `ExtData`
+- [x] `SoundData` — playback/MIDI data (tempo, dynamics, dacapo, segno, coda, fine, forward-repeat, MIDI changes, swing)
+  - Defined with sub-types: SoundMidiGroupData, InstrumentChangeData, SwingData
+  - Added `sound: Option<SoundData>` to `ExtData`
+- [x] `ScoreHeaderData` — score-level metadata (identification with creators/rights/encoding, work number/title/opus, movement number/title, defaults, credits)
+  - Defined with sub-types: IdentificationData, TypedTextData, MiscFieldData, WorkData
+  - Added `score_header: Option<ScoreHeaderData>` to `ExtData`
+- [x] `PrintData` — print/layout data (new-system, new-page, blank-page, page-number, staff-spacing, inline layouts)
+  - Defined with system/page/staff layout sub-structures as serde_json::Value
+  - Added `print_data: Option<PrintData>` to `ExtData`
+- [x] `MeasureStyleData` — measure style info (multiple-rest, measure-repeat, beat-repeat, slash)
+  - Defined with MeasureStyleContentData enum (MultipleRest, MeasureRepeat, BeatRepeat, Slash)
+  - Added `measure_style: Option<MeasureStyleData>` to `ExtData`
+- [x] `BarlineData` — decorated barline extras (repeat, ending, fermata, segno, coda, wavy-line)
+  - Defined with sub-types: RepeatData, EndingData; fermatas/segno/coda as serde_json::Value
+  - Added `barline_data: Option<BarlineData>` to `ExtData`
+- [x] `ListeningData` — listening/grouping/link/bookmark (opaque roundtrip for MusicXML 4.0 elements without MEI equivalent)
+  - Defined as enum with Listening/Grouping/Link/Bookmark variants wrapping serde_json::Value
+  - Added `listening: Option<ListeningData>` to `ExtData`
+- [x] `NoteVisualData` — note-level visual/position attributes (default-x/y, relative-x/y, color, print-object, dynamics, attack/release, pizzicato)
+  - Defined with all position, color, playback, and print attrs
+  - Added `note_visual: Option<NoteVisualData>` to `ExtData`
+- [x] `DirectionVisualData` — direction-level visual attributes (words font/position/color, wedge color/niente, etc.)
+  - Defined with WordsVisualData sub-type using shared VisualAttrs
+  - Added `direction_visual: Option<DirectionVisualData>` to `ExtData`
+- [x] `InstrumentData` — score instrument + MIDI instrument details for parts
+  - Defined with sub-types: ScoreInstrumentData, VirtualInstrumentData, MidiAssignmentData, MidiDeviceData, MidiInstrumentDataInner
+  - Added `instrument_data: Option<InstrumentData>` to `ExtData`
+- [x] `PartDetailsData` — part-name-display, abbreviation-display, players, part-links, groups
+  - Defined with display/players/part-links as serde_json::Value
+  - Added `part_details: Option<PartDetailsData>` to `ExtData`
+- [x] `GroupDetailsData` — group-name-display, abbreviation-display, group-time
+  - Defined with display fields as serde_json::Value
+  - Added `group_details: Option<GroupDetailsData>` to `ExtData`
+- [x] `NoteExtras` — note-level roundtrip data not representable in MEI (notehead-text, play, listen, footnote, level, notations-footnote, notations-level, instrument refs)
+  - Defined with PlayData sub-type; notehead/listen/footnote/level as serde_json::Value
+  - Added `note_extras: Option<NoteExtras>` to `ExtData`
+- [x] `StemExtras` — stem roundtrip for double/none
+  - Defined as enum (Double, None) — kept separate from NoteExtras for clarity
+  - Added `stem_extras: Option<StemExtras>` to `ExtData`
+- [x] `KeyExtras` — non-traditional key and key-octave roundtrip data
+  - Defined wrapping serde_json::Value for complex key structures
+  - Added `key_extras: Option<KeyExtras>` to `ExtData`
+- [x] `TimeExtras` — interchangeable time signature roundtrip data
+  - Defined wrapping serde_json::Value for interchangeable time
+  - Added `time_extras: Option<TimeExtras>` to `ExtData`
+- [x] `ForPartData` — for-part with part-clef/part-transpose roundtrip
+  - Defined with entries as Vec<serde_json::Value>
+  - Added `for_part: Option<ForPartData>` to `ExtData`
+- [x] `StaffDetailsExtras` — staff-details roundtrip (staff-type, line-details, staff-tunings, capo, show-frets)
+  - Defined wrapping serde_json::Value for complex staff details
+  - Added `staff_details_extras: Option<StaffDetailsExtras>` to `ExtData`
+- [x] `PartSymbolExtras` — part-symbol extras (top-staff, bottom-staff, default-x, color)
+  - Defined with typed fields for all part-symbol attributes
+  - Added `part_symbol_extras: Option<PartSymbolExtras>` to `ExtData`
+- [x] `LyricExtras` — lyric extend type, elision details, visual/position attrs not captured by MEI verse/syl
+  - Defined wrapping serde_json::Value for complex lyric attributes
+  - Added `lyric_extras: Option<LyricExtras>` to `ExtData`
+- [x] Wire all new types into `lib.rs` re-exports
+  - Added `pub mod musicxml_ext` and comprehensive `pub use musicxml_ext::*` re-exports
+  - ListeningData aliased as ListeningDataExt to avoid conflicts
+- [x] Add serde roundtrip tests for all new types
+  - 25 tests in `musicxml_ext/tests.rs` covering all types including sub-types
 
 ### 26.2 Migrate MusicXML Import to Typed Extensions
 

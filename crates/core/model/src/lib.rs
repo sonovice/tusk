@@ -22,6 +22,7 @@
 
 pub mod extensions;
 pub mod generated;
+pub mod musicxml_ext;
 
 // Re-export all generated modules at crate root for cleaner imports
 pub use generated::SpaceSeparated;
@@ -46,6 +47,17 @@ pub use extensions::{
     RepeatInfo, RepeatTypeExt, SchemeMusicInfo, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo,
     TextMarkInfo, TextScriptInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo,
     TweakInfo, VariableAssignments,
+};
+pub use musicxml_ext::{
+    BarlineData, BassData, DegreeData, DirectionVisualData, DoubleData, EndingData, FirstFretData,
+    ForPartData, FrameData, FrameNoteData, GroupDetailsData, HarmonyChordData, HarmonyData,
+    IdentificationData, InstrumentChangeData, InstrumentData, KeyExtras, KindData,
+    ListeningData as ListeningDataExt, LyricExtras, MeasureStyleContentData, MeasureStyleData,
+    MidiAssignmentData, MidiDeviceData, MidiInstrumentDataInner, MiscFieldData, NoteExtras,
+    NoteVisualData, NumeralKeyData, OffsetData, PartDetailsData, PartSymbolExtras, PlayData,
+    PrintData, RepeatData, ScoreHeaderData, ScoreInstrumentData, SoundData, SoundMidiGroupData,
+    StaffDetailsExtras, StemExtras, SwingData, TimeExtras, TransposeData, TypedTextData,
+    VirtualInstrumentData, VisualAttrs, WordsVisualData, WorkData,
 };
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 

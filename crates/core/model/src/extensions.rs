@@ -165,6 +165,91 @@ pub struct ExtData {
     /// Lyric extender marker.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lyric_extender: Option<LyricExtender>,
+
+    // ----- MusicXML-specific extension data -----
+    /// Structured harmony data (chords, frame, degrees).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harmony: Option<crate::musicxml_ext::HarmonyData>,
+
+    /// Transposition info.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transpose: Option<crate::musicxml_ext::TransposeData>,
+
+    /// Playback/MIDI sound data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sound: Option<crate::musicxml_ext::SoundData>,
+
+    /// Score-level header metadata.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score_header: Option<crate::musicxml_ext::ScoreHeaderData>,
+
+    /// Print/layout data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub print_data: Option<crate::musicxml_ext::PrintData>,
+
+    /// Measure style info.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub measure_style: Option<crate::musicxml_ext::MeasureStyleData>,
+
+    /// Decorated barline extras.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub barline_data: Option<crate::musicxml_ext::BarlineData>,
+
+    /// Listening/grouping/link/bookmark data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listening: Option<crate::musicxml_ext::ListeningData>,
+
+    /// Note-level visual/position attributes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_visual: Option<crate::musicxml_ext::NoteVisualData>,
+
+    /// Direction-level visual attributes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction_visual: Option<crate::musicxml_ext::DirectionVisualData>,
+
+    /// Score instrument + MIDI instrument details.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_data: Option<crate::musicxml_ext::InstrumentData>,
+
+    /// Part display names, players, part-links, groups.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub part_details: Option<crate::musicxml_ext::PartDetailsData>,
+
+    /// Group display names, group-time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_details: Option<crate::musicxml_ext::GroupDetailsData>,
+
+    /// Note-level roundtrip extras (notehead, play, listen, etc).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_extras: Option<crate::musicxml_ext::NoteExtras>,
+
+    /// Stem roundtrip for double/none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stem_extras: Option<crate::musicxml_ext::StemExtras>,
+
+    /// Non-traditional key roundtrip data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_extras: Option<crate::musicxml_ext::KeyExtras>,
+
+    /// Interchangeable time signature roundtrip data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_extras: Option<crate::musicxml_ext::TimeExtras>,
+
+    /// For-part with part-clef/part-transpose roundtrip.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub for_part: Option<crate::musicxml_ext::ForPartData>,
+
+    /// Staff-details roundtrip data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staff_details_extras: Option<crate::musicxml_ext::StaffDetailsExtras>,
+
+    /// Part-symbol extras.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub part_symbol_extras: Option<crate::musicxml_ext::PartSymbolExtras>,
+
+    /// Lyric roundtrip extras.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lyric_extras: Option<crate::musicxml_ext::LyricExtras>,
 }
 
 // ---------------------------------------------------------------------------
