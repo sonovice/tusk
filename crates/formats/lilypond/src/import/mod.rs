@@ -504,6 +504,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
     let mut fb_counter = 0u32;
     let mut func_counter = 0u32;
     let mut scm_counter = 0u32;
+    let mut text_script_counter = 0u32;
 
     for staff_info in &layout.staves {
         let mut staff = Staff::default();
@@ -1101,8 +1102,18 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                                 &format!("tusk:tweak,{escaped}"),
                             );
                         }
-                        PostEvent::TextScript { .. } => {
-                            // Text script import handled in Phase 44.2
+                        PostEvent::TextScript {
+                            direction, text, ..
+                        } => {
+                            text_script_counter += 1;
+                            let dir = make_text_script_dir(
+                                text,
+                                *direction,
+                                &current_id,
+                                staff_info.n,
+                                text_script_counter,
+                            );
+                            measure.children.push(MeasureChild::Dir(Box::new(dir)));
                         }
                         PostEvent::LyricHyphen | PostEvent::LyricExtender => {
                             // Lyric post-events handled in Phase 20.2
@@ -1189,7 +1200,7 @@ use control_events::{
     make_artic_dir, make_dynam, make_ending_dir, make_fb, make_fing_dir, make_function_dir,
     make_hairpin, make_harm, make_mark_dir, make_ornament_control_event, make_property_dir,
     make_repeat_dir, make_scheme_music_dir, make_slur, make_string_dir, make_tempo,
-    make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
+    make_text_script_dir, make_textmark_dir, make_tuplet_span, wrap_last_in_btrem,
 };
 
 mod utils;

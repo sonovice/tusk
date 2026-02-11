@@ -864,6 +864,18 @@ pub struct SchemeMusicInfo {
     pub serialized: String,
 }
 
+/// Serialized text script post-event for lossless roundtrip on `<dir>`.
+///
+/// Stores the serialized markup/string text and direction so complex markup
+/// expressions survive the MEI roundtrip intact.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TextScriptInfo {
+    /// Full serialized text content (markup or quoted string).
+    pub serialized: String,
+    /// Placement direction.
+    pub direction: Option<DirectionExt>,
+}
+
 // ---------------------------------------------------------------------------
 // ExtensionStore — side table for attaching extensions to MEI elements
 // ---------------------------------------------------------------------------

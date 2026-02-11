@@ -180,6 +180,7 @@ fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
                     collect_hairpin_post_events(&measure.children, &mut post_event_map);
                     collect_artic_post_events(&measure.children, &mut post_event_map);
                     collect_ornament_post_events(&measure.children, &mut post_event_map);
+                    collect_text_script_post_events(&measure.children, &mut post_event_map);
 
                     let property_ops = collect_property_ops(&measure.children);
                     let function_ops = collect_function_ops(&measure.children);
@@ -1287,6 +1288,63 @@ fn artic_info_to_post_event(info: &tusk_model::ArticulationInfo) -> Option<PostE
                 number,
             })
         }
+    }
+}
+
+/// Collect text script post-events from `<dir>` elements with `tusk:text-script,{JSON}` labels.
+fn collect_text_script_post_events(
+    measure_children: &[MeasureChild],
+    map: &mut HashMap<String, Vec<PostEvent>>,
+) {
+    for mc in measure_children {
+        if let MeasureChild::Dir(dir) = mc {
+            let label = match dir.common.label.as_deref() {
+                Some(l) => l,
+                None => continue,
+            };
+            let startid = match dir.dir_log.startid.as_ref() {
+                Some(s) => s.0.trim_start_matches('#').to_string(),
+                None => continue,
+            };
+
+            if let Some(json) = label.strip_prefix("tusk:text-script,")
+                && let Ok(info) = serde_json::from_str::<tusk_model::TextScriptInfo>(json)
+                && let Some(pe) = text_script_info_to_post_event(&info)
+            {
+                map.entry(startid).or_default().push(pe);
+            }
+        }
+    }
+}
+
+/// Convert a TextScriptInfo to a PostEvent::TextScript.
+fn text_script_info_to_post_event(info: &tusk_model::TextScriptInfo) -> Option<PostEvent> {
+    let direction = direction_ext_to_ly(info.direction);
+    let text = parse_text_script_text(&info.serialized)?;
+    Some(PostEvent::TextScript { direction, text })
+}
+
+/// Re-parse a serialized text script text into a Markup AST.
+///
+/// Handles both `"string"` (quoted string) and `\markup ...` forms.
+fn parse_text_script_text(s: &str) -> Option<crate::model::markup::Markup> {
+    let trimmed = s.trim();
+    if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2 {
+        // Quoted string: extract the content between quotes
+        let inner = &trimmed[1..trimmed.len() - 1];
+        Some(crate::model::markup::Markup::String(inner.to_string()))
+    } else if trimmed.starts_with("\\markup") {
+        // Markup expression: re-parse through the LilyPond parser
+        use crate::parser::Parser;
+        let file = Parser::new(trimmed).ok()?.parse().ok()?;
+        for item in &file.items {
+            if let crate::model::ToplevelExpression::Markup(m) = item {
+                return Some(m.clone());
+            }
+        }
+        None
+    } else {
+        None
     }
 }
 

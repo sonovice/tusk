@@ -636,6 +636,56 @@ pub(super) fn make_property_dir(serialized: &str, startid: &str, staff_n: u32, i
     dir
 }
 
+/// Create an MEI Dir for a LilyPond text script post-event.
+///
+/// The text is stored both as human-readable `<dir>` text content and as a typed
+/// JSON label (`tusk:text-script,{json}`) for lossless markup roundtrip.
+/// Direction maps to `@place` (above/below) on the native MEI element.
+pub(super) fn make_text_script_dir(
+    text: &crate::model::markup::Markup,
+    direction: Direction,
+    startid: &str,
+    staff_n: u32,
+    id: u32,
+) -> Dir {
+    let mut dir = Dir::default();
+    dir.common.xml_id = Some(format!("ly-textscript-{id}"));
+    dir.dir_log.startid = Some(DataUri(format!("#{startid}")));
+    dir.dir_log.staff = Some(staff_n.to_string());
+
+    // Map direction to @place
+    use tusk_model::generated::data::{DataStaffrel, DataStaffrelBasic};
+    match direction {
+        Direction::Up => {
+            dir.dir_vis.place = Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above));
+        }
+        Direction::Down => {
+            dir.dir_vis.place = Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below));
+        }
+        Direction::Neutral => {}
+    }
+
+    // Serialize text for display
+    let display_text = match text {
+        crate::model::markup::Markup::String(s) => s.clone(),
+        other => crate::serializer::serialize_markup(other),
+    };
+    if !display_text.is_empty() {
+        dir.children.push(DirChild::Text(display_text));
+    }
+
+    // Typed JSON label for lossless roundtrip
+    let serialized = crate::serializer::serialize_text_script_text(text);
+    let info = tusk_model::TextScriptInfo {
+        serialized,
+        direction: direction_to_ext(direction),
+    };
+    let json = super::utils::escape_json_pipe(&serde_json::to_string(&info).unwrap_or_default());
+    dir.common.label = Some(format!("tusk:text-script,{json}"));
+
+    dir
+}
+
 /// Create an MEI Dir for a Scheme expression in music position (`#expr`).
 pub(super) fn make_scheme_music_dir(serialized: &str, startid: &str, staff_n: u32, id: u32) -> Dir {
     let mut dir = Dir::default();

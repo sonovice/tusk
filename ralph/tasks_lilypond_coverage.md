@@ -1944,9 +1944,18 @@ Grammar: `gen_text_def`, `event_function_event`, `script_dir` (as separate produ
 
 ### 44.2 Import & Export
 
-- [ ] [I] Text script post-events → MEI `<dir>` with text content and @place from direction (native MEI — no extension needed)
-- [ ] [E] MEI `<dir>` with text → PostEvent::TextScript with direction
-- [ ] [T] Roundtrip tests: text scripts with directions, markup as post-event
+- [x] [I] Text script post-events → MEI `<dir>` with text content and @place from direction (native MEI — no extension needed)
+  - `make_text_script_dir` in control_events.rs: creates `<dir>` with @place (above/below), text child, `tusk:text-script,{json}` label
+  - `TextScriptInfo` extension type for lossless markup roundtrip (serialized text + direction)
+  - Import wired in mod.rs with `text_script_counter`
+- [x] [E] MEI `<dir>` with text → PostEvent::TextScript with direction
+  - `collect_text_script_post_events` in export/mod.rs: finds `tusk:text-script,` labels, re-parses markup
+  - `parse_text_script_text`: handles both `"string"` and `\markup ...` forms
+  - Wired into export loop alongside other post-event collectors
+- [x] [T] Roundtrip tests: text scripts with directions, markup as post-event
+  - Fixture: `fragment_text_scripts.ly` (string above/below/neutral, markup above/below)
+  - Roundtrip tests: `roundtrip_text_scripts`, `roundtrip_inline_text_script_string`, `roundtrip_inline_text_script_markup`
+  - All 3 levels pass: serialization, triangle MEI, pipeline stable
 
 ---
 

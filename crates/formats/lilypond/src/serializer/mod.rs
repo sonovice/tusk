@@ -90,6 +90,27 @@ pub fn serialize_drum_chord_event(dc: &note::DrumChordEvent) -> String {
     out
 }
 
+/// Serialize the text portion of a text script post-event.
+///
+/// For `Markup::String(s)`, produces `"s"` (quoted).
+/// For other markup, produces `\markup ...`.
+pub fn serialize_text_script_text(text: &markup::Markup) -> String {
+    let mut out = String::new();
+    let mut ser = Serializer::new(&mut out);
+    match text {
+        markup::Markup::String(s) => {
+            ser.out.push('"');
+            ser.out.push_str(s);
+            ser.out.push('"');
+        }
+        _ => {
+            ser.out.push_str("\\markup ");
+            ser.write_markup(text);
+        }
+    }
+    out
+}
+
 /// Serialize a property operation (`Music::Override`, `Set`, `Revert`, `Unset`, `Once`).
 pub fn serialize_property_op(music: &Music) -> String {
     let mut out = String::new();

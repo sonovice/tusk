@@ -694,3 +694,29 @@ fn roundtrip_inline_grace() {
     assert_serialization_roundtrip(src);
     assert_pipeline_stable(src);
 }
+
+// --- Phase 44: Text scripts ---
+
+#[test]
+fn roundtrip_text_scripts() {
+    let src = load_fixture("fragment_text_scripts.ly");
+    assert_serialization_roundtrip(&src);
+    assert_triangle_mei_roundtrip(&src);
+    assert_pipeline_stable(&src);
+}
+
+#[test]
+fn roundtrip_inline_text_script_string() {
+    let src = r#"{ c4^"dolce" d4_"sotto voce" e4-"text" }"#;
+    assert_serialization_roundtrip(src);
+    assert_triangle_mei_roundtrip(src);
+    assert_pipeline_stable(src);
+}
+
+#[test]
+fn roundtrip_inline_text_script_markup() {
+    let src = r#"{ c4^\markup { \italic "espr." } d4_\markup { \bold loud } }"#;
+    assert_serialization_roundtrip(src);
+    assert_triangle_mei_roundtrip(src);
+    assert_pipeline_stable(src);
+}

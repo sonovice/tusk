@@ -44,8 +44,8 @@ pub use extensions::{
     MarkInfo, MultiMeasureRestInfo, OrnamentInfo, OutputDef, OutputDefKind, PhrasingSlur,
     PitchContext, PitchedRest, PositionedEvent, PropertyOp, PropertyOpInfo, PropertyOpType,
     RepeatInfo, RepeatTypeExt, SchemeMusicInfo, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo,
-    TextMarkInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo, TweakInfo,
-    VariableAssignments,
+    TextMarkInfo, TextScriptInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo,
+    TweakInfo, VariableAssignments,
 };
 pub use validation::{Validate, ValidationContext, ValidationError, ValidationResult};
 
