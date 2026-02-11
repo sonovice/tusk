@@ -173,4 +173,10 @@ pub struct Lyric {
 
     /// End-paragraph indicator (for karaoke).
     pub end_paragraph: bool,
+
+    /// Editorial footnote.
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level.
+    pub level: Option<super::note::Level>,
 }

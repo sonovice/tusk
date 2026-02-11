@@ -65,6 +65,13 @@ impl MusicXmlSerialize for Harmony {
             w.write_text(&format_decimal(offset.value))?;
             w.write_end("offset")?;
         }
+        // Editorial (footnote, level) — XSD: after offset, before staff
+        if let Some(ref ft) = self.footnote {
+            super::elements::serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            super::elements::serialize_level(w, lv)?;
+        }
         if let Some(staff) = self.staff {
             w.write_text_element("staff", &staff.to_string())?;
         }

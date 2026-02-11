@@ -129,6 +129,8 @@ mod tests {
                 extend: None,
             }],
             duration: None,
+            footnote: None,
+            level: None,
             offset: None,
             staff: None,
             parentheses: None,

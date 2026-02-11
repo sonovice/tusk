@@ -816,7 +816,7 @@ fn parse_note_play<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Re
 // Editorial Parsing (footnote, level)
 // ============================================================================
 
-fn parse_formatted_text<R: BufRead>(
+pub(crate) fn parse_formatted_text<R: BufRead>(
     reader: &mut Reader<R>,
     start: &BytesStart,
     end_tag: &[u8],
@@ -858,7 +858,7 @@ fn parse_formatted_text<R: BufRead>(
     })
 }
 
-fn parse_level<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Level> {
+pub(crate) fn parse_level<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result<Level> {
     let parentheses = get_attr(start, "parentheses")?.and_then(|s| parse_yes_no_opt(&s));
     let bracket = get_attr(start, "bracket")?.and_then(|s| parse_yes_no_opt(&s));
     let reference = get_attr(start, "reference")?.and_then(|s| parse_yes_no_opt(&s));
@@ -1813,6 +1813,8 @@ fn parse_lyric_attrs(start: &BytesStart) -> Result<Lyric> {
         content: LyricContent::Laughing, // placeholder, will be replaced
         end_line: false,
         end_paragraph: false,
+        footnote: None,
+        level: None,
     })
 }
 
@@ -1915,6 +1917,12 @@ fn parse_lyric<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> Result
                         extend_type: ext_type,
                     });
                     skip_to_end(reader, b"extend")?;
+                }
+                b"footnote" => {
+                    lyric.footnote = Some(parse_formatted_text(reader, &e, b"footnote")?);
+                }
+                b"level" => {
+                    lyric.level = Some(parse_level(reader, &e)?);
                 }
                 _ => skip_element(reader, &e)?,
             },

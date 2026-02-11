@@ -38,6 +38,14 @@ pub struct Direction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<Offset>,
 
+    /// Editorial footnote.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<super::note::Level>,
+
     /// Staff number if different from default
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staff: Option<u32>,
@@ -69,6 +77,8 @@ impl Direction {
         Self {
             direction_types,
             offset: None,
+            footnote: None,
+            level: None,
             staff: None,
             sound: None,
             listening: None,

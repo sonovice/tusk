@@ -568,6 +568,14 @@ impl MusicXmlSerialize for Attributes {
     }
 
     fn serialize_children<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
+        // Editorial (footnote, level) — XSD: before divisions
+        if let Some(ref ft) = self.footnote {
+            serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            serialize_level(w, lv)?;
+        }
+
         // Divisions
         if let Some(div) = self.divisions {
             w.write_text_element("divisions", &div.to_string())?;
@@ -1137,6 +1145,14 @@ impl MusicXmlSerialize for Direction {
             w.write_end("offset")?;
         }
 
+        // Editorial (footnote, level) — XSD: after offset, before staff
+        if let Some(ref ft) = self.footnote {
+            serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            serialize_level(w, lv)?;
+        }
+
         // Staff
         if let Some(staff) = self.staff {
             w.write_text_element("staff", &staff.to_string())?;
@@ -1639,6 +1655,13 @@ impl MusicXmlSerialize for Lyric {
         }
         if self.end_paragraph {
             w.write_empty(w.start_element("end-paragraph"))?;
+        }
+        // Editorial (footnote, level) — XSD: after end-paragraph
+        if let Some(ref ft) = self.footnote {
+            serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            serialize_level(w, lv)?;
         }
         Ok(())
     }

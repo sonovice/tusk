@@ -26,6 +26,12 @@ pub struct FiguredBass {
     /// Optional duration in divisions
     pub duration: Option<f64>,
 
+    /// Editorial footnote.
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level.
+    pub level: Option<super::note::Level>,
+
     /// Optional offset from current position
     pub offset: Option<Offset>,
 

@@ -26,6 +26,8 @@ pub fn parse_direction<R: BufRead>(
 
     let mut direction_types: Vec<DirectionType> = Vec::new();
     let mut offset: Option<Offset> = None;
+    let mut footnote = None;
+    let mut level = None;
     let mut staff: Option<u32> = None;
     let mut sound: Option<Sound> = None;
     let mut listening: Option<Listening> = None;
@@ -35,6 +37,14 @@ pub fn parse_direction<R: BufRead>(
             Event::Start(e) => match e.name().as_ref() {
                 b"direction-type" => direction_types.push(parse_direction_type(reader)?),
                 b"offset" => offset = Some(parse_offset(reader, &e)?),
+                b"footnote" => {
+                    footnote = Some(super::parse_note::parse_formatted_text(
+                        reader,
+                        &e,
+                        b"footnote",
+                    )?)
+                }
+                b"level" => level = Some(super::parse_note::parse_level(reader, &e)?),
                 b"staff" => {
                     staff = Some(
                         read_text(reader, b"staff")?
@@ -65,6 +75,8 @@ pub fn parse_direction<R: BufRead>(
     Ok(Direction {
         direction_types,
         offset,
+        footnote,
+        level,
         staff,
         sound,
         listening,

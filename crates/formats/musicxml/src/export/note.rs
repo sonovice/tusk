@@ -1018,6 +1018,8 @@ fn convert_mei_lyrics(
             content,
             end_line,
             end_paragraph,
+            footnote: None,
+            level: None,
         };
 
         mxml_note.lyrics.push(lyric);

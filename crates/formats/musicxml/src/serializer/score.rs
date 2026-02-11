@@ -1119,6 +1119,12 @@ impl MusicXmlSerialize for crate::model::elements::Barline {
         if let Some(ref style) = self.bar_style {
             w.write_text_element("bar-style", style.to_musicxml_str())?;
         }
+        if let Some(ref ft) = self.footnote {
+            super::elements::serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            super::elements::serialize_level(w, lv)?;
+        }
         if let Some(ref wl) = self.wavy_line {
             super::notations::serialize_wavy_line(w, wl)?;
         }

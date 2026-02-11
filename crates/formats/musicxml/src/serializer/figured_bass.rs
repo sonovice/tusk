@@ -59,7 +59,13 @@ impl MusicXmlSerialize for FiguredBass {
         if let Some(dur) = self.duration {
             w.write_text_element("duration", &format_decimal(dur))?;
         }
-        // editorial group (footnote, level) skipped — not modeled
+        // Editorial (footnote, level) — XSD: after duration, before offset
+        if let Some(ref ft) = self.footnote {
+            super::elements::serialize_formatted_text(w, "footnote", ft)?;
+        }
+        if let Some(ref lv) = self.level {
+            super::elements::serialize_level(w, lv)?;
+        }
         if let Some(ref offset) = self.offset {
             let mut start = w.start_element("offset");
             if let Some(ref sound) = offset.sound {

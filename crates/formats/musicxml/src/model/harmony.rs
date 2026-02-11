@@ -27,6 +27,12 @@ pub struct Harmony {
     /// Offset from current position in divisions
     pub offset: Option<Offset>,
 
+    /// Editorial footnote.
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level.
+    pub level: Option<super::note::Level>,
+
     /// Staff number
     pub staff: Option<u32>,
 

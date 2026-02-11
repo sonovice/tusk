@@ -1267,15 +1267,35 @@ The MusicXML XSD defines `footnote`/`level` editorial groups on several containe
 where they are currently missing from the model. These are rarely used but required for
 full spec compliance.
 
-- [ ] Add `footnote: Option<FormattedText>` and `level: Option<Level>` to `Attributes` struct
-- [ ] Add `footnote`/`level` to `Barline` struct
-- [ ] Add `footnote`/`level` to `Harmony` struct
-- [ ] Add `footnote`/`level` to `FiguredBass` struct
-- [ ] Add `footnote`/`level` to `Lyric` struct
-- [ ] Add `footnote`/`level` to `Direction` struct (direction-type wrapper level)
-- [ ] Add `footnote`/`level` to `Print` struct
-- [ ] Parse editorial elements in each context
-- [ ] Serialize editorial elements in each context
+- [x] Add `footnote: Option<FormattedText>` and `level: Option<Level>` to `Attributes` struct
+  - Added to model/attributes.rs, XSD order: editorial before divisions
+- [x] Add `footnote`/`level` to `Barline` struct
+  - Added to model/elements/barline.rs, XSD order: after bar-style, before wavy-line
+- [x] Add `footnote`/`level` to `Harmony` struct
+  - Added to model/harmony.rs, XSD order: after offset, before staff
+- [x] Add `footnote`/`level` to `FiguredBass` struct
+  - Added to model/figured_bass.rs, XSD order: after duration, before offset
+- [x] Add `footnote`/`level` to `Lyric` struct
+  - Added to model/lyric.rs, XSD order: after end-paragraph
+- [x] Add `footnote`/`level` to `Direction` struct (direction-type wrapper level)
+  - Added to model/direction/mod.rs, XSD order: after offset, before staff (editorial-voice-direction group)
+- [x] Add `footnote`/`level` to `Print` struct
+  - N/A — XSD `print` complex type does NOT include an editorial group; skipped
+- [x] Parse editorial elements in each context
+  - parse_attributes.rs: footnote/level before divisions
+  - parser.rs (parse_barline): footnote/level after bar-style
+  - parse_harmony.rs: footnote/level after offset, before staff
+  - parse_figured_bass.rs: replaced skip_element with actual parsing
+  - parse_note.rs (parse_lyric): footnote/level after extend
+  - parse_direction.rs: footnote/level after offset, before staff
+  - Made parse_formatted_text and parse_level pub(crate) in parse_note.rs
+- [x] Serialize editorial elements in each context
+  - elements.rs (Attributes): before divisions
+  - score.rs (Barline): after bar-style, before wavy-line
+  - harmony.rs: after offset, before staff
+  - figured_bass.rs: replaced skip comment with serialization
+  - elements.rs (Lyric): after end-paragraph
+  - elements.rs (Direction): after offset, before staff
 
 ### 29.3 Advanced Metronome Model
 

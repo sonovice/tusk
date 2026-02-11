@@ -101,6 +101,8 @@ fn create_text_harmony(text: &str, local_staff_n: usize) -> Harmony {
         }],
         frame: None,
         offset: None,
+        footnote: None,
+        level: None,
         staff: Some(local_staff_n as u32),
         harmony_type: None,
         print_object: None,

@@ -38,6 +38,8 @@ pub fn parse_harmony<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> 
     let mut chords: Vec<HarmonyChord> = Vec::new();
     let mut frame: Option<Frame> = None;
     let mut offset: Option<Offset> = None;
+    let mut footnote = None;
+    let mut level = None;
     let mut staff: Option<u32> = None;
 
     // Temporary state for building a chord
@@ -106,6 +108,14 @@ pub fn parse_harmony<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> 
                 b"offset" => {
                     offset = Some(parse_offset(reader, &e)?);
                 }
+                b"footnote" => {
+                    footnote = Some(super::parse_note::parse_formatted_text(
+                        reader,
+                        &e,
+                        b"footnote",
+                    )?)
+                }
+                b"level" => level = Some(super::parse_note::parse_level(reader, &e)?),
                 b"staff" => {
                     staff = Some(
                         read_text(reader, b"staff")?
@@ -148,6 +158,8 @@ pub fn parse_harmony<R: BufRead>(reader: &mut Reader<R>, start: &BytesStart) -> 
         chords,
         frame,
         offset,
+        footnote,
+        level,
         staff,
         harmony_type,
         print_object,

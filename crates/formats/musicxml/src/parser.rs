@@ -1387,6 +1387,13 @@ fn parse_barline<R: BufRead>(
                         barline.bar_style = Some(style);
                     }
                 }
+                b"footnote" => {
+                    barline.footnote =
+                        Some(parse_note::parse_formatted_text(reader, &e, b"footnote")?);
+                }
+                b"level" => {
+                    barline.level = Some(parse_note::parse_level(reader, &e)?);
+                }
                 b"fermata" => {
                     barline
                         .fermatas

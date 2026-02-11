@@ -16,6 +16,14 @@ pub fn parse_attributes<R: BufRead>(reader: &mut Reader<R>) -> Result<Attributes
     loop {
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => match e.name().as_ref() {
+                b"footnote" => {
+                    attrs.footnote = Some(super::parse_note::parse_formatted_text(
+                        reader,
+                        &e,
+                        b"footnote",
+                    )?)
+                }
+                b"level" => attrs.level = Some(super::parse_note::parse_level(reader, &e)?),
                 b"divisions" => {
                     attrs.divisions = Some(
                         read_text(reader, b"divisions")?

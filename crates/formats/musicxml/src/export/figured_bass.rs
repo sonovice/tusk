@@ -91,6 +91,8 @@ fn create_fallback_figured_bass(fb: &Fb, local_staff_n: usize) -> FiguredBass {
     FiguredBass {
         figures,
         duration: None,
+        footnote: None,
+        level: None,
         offset: None,
         staff: Some(local_staff_n as u32),
         parentheses: None,

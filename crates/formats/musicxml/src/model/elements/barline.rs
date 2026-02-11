@@ -233,6 +233,14 @@ pub struct Barline {
     #[serde(rename = "bar-style", skip_serializing_if = "Option::is_none")]
     pub bar_style: Option<BarStyle>,
 
+    /// Editorial footnote.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub footnote: Option<crate::model::note::FormattedText>,
+
+    /// Editorial level.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<crate::model::note::Level>,
+
     /// Wavy-line (trill continuation at barline).
     #[serde(rename = "wavy-line", skip_serializing_if = "Option::is_none")]
     pub wavy_line: Option<WavyLine>,

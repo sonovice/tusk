@@ -39,6 +39,8 @@ pub fn parse_figured_bass<R: BufRead>(
 
     let mut figures: Vec<Figure> = Vec::new();
     let mut duration: Option<f64> = None;
+    let mut footnote = None;
+    let mut level = None;
     let mut offset: Option<Offset> = None;
     let mut staff: Option<u32> = None;
 
@@ -67,7 +69,14 @@ pub fn parse_figured_bass<R: BufRead>(
                             .map_err(|_| ParseError::ParseNumber("staff".to_string()))?,
                     );
                 }
-                b"footnote" | b"level" => skip_element(reader, &e)?,
+                b"footnote" => {
+                    footnote = Some(super::parse_note::parse_formatted_text(
+                        reader,
+                        &e,
+                        b"footnote",
+                    )?)
+                }
+                b"level" => level = Some(super::parse_note::parse_level(reader, &e)?),
                 _ => skip_element(reader, &e)?,
             },
             Event::Empty(e) => match e.name().as_ref() {
@@ -93,6 +102,8 @@ pub fn parse_figured_bass<R: BufRead>(
     Ok(FiguredBass {
         figures,
         duration,
+        footnote,
+        level,
         offset,
         staff,
         parentheses,

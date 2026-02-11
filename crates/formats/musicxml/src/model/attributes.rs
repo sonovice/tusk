@@ -19,6 +19,14 @@ use super::data::*;
 /// not in MusicXML document order.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Attributes {
+    /// Editorial footnote.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub footnote: Option<super::note::FormattedText>,
+
+    /// Editorial level.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<super::note::Level>,
+
     /// Musical notation divisions per quarter note for duration calculations.
     ///
     /// For example, if duration = 1 and divisions = 2, this is an eighth note.
