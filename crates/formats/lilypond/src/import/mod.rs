@@ -59,7 +59,7 @@ pub use signatures::{fifths_to_key, mei_clef_to_name};
 
 use conversion::{
     convert_chord, convert_drum_chord, convert_drum_note, convert_mrest, convert_note,
-    convert_pitched_rest, convert_rest,
+    convert_pitched_rest, convert_rest, convert_skip,
 };
 
 #[derive(Debug, Error)]
@@ -541,6 +541,14 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         layer.children.push(LayerChild::Rest(Box::new(mei_rest)));
                         (pe, id_str)
                     }
+                    LyEvent::Skip(skip) => {
+                        id_counter += 1;
+                        let mei_space = convert_skip(skip, id_counter);
+                        let id_str = format!("ly-space-{}", id_counter);
+                        let pe = skip.post_events.clone();
+                        layer.children.push(LayerChild::Space(Box::new(mei_space)));
+                        (pe, id_str)
+                    }
                     LyEvent::Chord {
                         pitches,
                         duration,
@@ -762,8 +770,7 @@ fn build_section_from_staves(layout: &StaffLayout<'_>) -> Result<Section, Import
                         cross_staff_override = Some(format!("tusk:context-change,{json}"));
                         continue;
                     }
-                    LyEvent::Skip(_)
-                    | LyEvent::Clef(_)
+                    LyEvent::Clef(_)
                     | LyEvent::KeySig(_)
                     | LyEvent::TimeSig(_)
                     | LyEvent::AutoBeamOn

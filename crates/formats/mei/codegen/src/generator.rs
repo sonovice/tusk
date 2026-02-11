@@ -1166,6 +1166,7 @@ const EXTRA_CHILDREN: &[(&str, &str)] = &[
     ("layer", "mRest"),
     ("layer", "bTrem"),
     ("layer", "fTrem"),
+    ("layer", "space"),
     ("beam", "note"),
     ("beam", "bTrem"),
     ("beam", "fTrem"),

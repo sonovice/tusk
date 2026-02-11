@@ -1,13 +1,13 @@
 //! Pitch / duration / accidental and event conversion for LilyPond import.
 
-use tusk_model::elements::{Accid, Chord, ChordChild, MRest, Note, NoteChild, Rest};
+use tusk_model::elements::{Accid, Chord, ChordChild, MRest, Note, NoteChild, Rest, Space};
 use tusk_model::generated::data::{
     DataAccidentalGestural, DataAccidentalGesturalBasic, DataAccidentalWritten,
     DataAccidentalWrittenBasic, DataAugmentdot, DataDuration, DataDurationCmn, DataDurationrests,
     DataOctave, DataPitchname,
 };
 
-use crate::model::{self, Duration, NoteEvent, RestEvent};
+use crate::model::{self, Duration, NoteEvent, RestEvent, SkipEvent};
 
 /// Convert LilyPond step char to MEI pitch name string.
 fn step_to_pname(step: char) -> DataPitchname {
@@ -207,6 +207,23 @@ pub(super) fn convert_rest(rest: &RestEvent, id: u32) -> Rest {
     }
 
     mei_rest
+}
+
+/// Convert a LilyPond SkipEvent to an MEI Space.
+pub(super) fn convert_skip(skip: &SkipEvent, id: u32) -> Space {
+    let mut mei_space = Space::default();
+    mei_space.common.xml_id = Some(format!("ly-space-{id}"));
+
+    if let Some(ref dur) = skip.duration {
+        if let Some(cmn) = duration_base_to_mei(dur.base) {
+            mei_space.space_log.dur = Some(DataDuration::MeiDataDurationCmn(cmn));
+        }
+        if dur.dots > 0 {
+            mei_space.space_log.dots = Some(DataAugmentdot(dur.dots as u64));
+        }
+    }
+
+    mei_space
 }
 
 /// Convert a pitched rest (note with \rest) to an MEI Rest with label.

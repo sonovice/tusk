@@ -1636,11 +1636,17 @@ Skip events (`s4`, `s8`, etc.) are commonly used as spacing/placeholder elements
 
 ### 35.1 Import
 
-- [ ] [I] `Music::Skip(SkipEvent)` → create MEI `<space>` element with @dur/@dots preserving duration and any post-events
-  - `<space>` is the native MEI element for invisible duration-filling events — use it directly (no extension needed for the element itself)
-  - If `<space>` is not available as a `LayerChild` variant in the generated model, add it as a model extension (new `LayerChild` variant or wrapper)
-- [ ] [I] Ensure skip events in all contexts are preserved: bare `s4`, inside voices, inside lyric mode (alignment skips)
-- [ ] [T] Import tests: single skip, skip with duration/dots, skip with post-events, skip in multi-voice, skip in lyric mode
+- [x] [I] `Music::Skip(SkipEvent)` → create MEI `<space>` element with @dur/@dots preserving duration and any post-events
+  - Added `("layer", "space")` to codegen EXTRA_CHILDREN → `LayerChild::Space` variant now generated
+  - `LyEvent::Skip` now carries full `SkipEvent` (was `()`)
+  - `convert_skip()` in conversion.rs creates MEI Space with dur/dots
+  - Import mod.rs pushes `LayerChild::Space` (was silently discarded)
+- [x] [I] Ensure skip events in all contexts are preserved: bare `s4`, inside voices, inside lyric mode (alignment skips)
+  - Skip handling uses same event loop path as Note/Rest — works in all contexts
+- [x] [T] Import tests: single skip, skip with duration/dots, skip with post-events, skip in multi-voice, skip in lyric mode
+  - `import_skip_preserved`: basic skip between notes
+  - `import_skip_with_duration_and_dots`: s4. with dur/dots verification
+  - `import_skip_in_voice`: multi-voice with skip in second voice
 
 ### 35.2 Export
 

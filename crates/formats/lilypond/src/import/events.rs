@@ -23,7 +23,7 @@ pub(super) enum LyEvent {
     Rest(RestEvent),
     PitchedRest(NoteEvent),
     MeasureRest(model::MultiMeasureRestEvent),
-    Skip(()),
+    Skip(model::SkipEvent),
     Clef(model::Clef),
     KeySig(model::KeySignature),
     TimeSig(model::TimeSignature),
@@ -183,7 +183,7 @@ pub(super) fn collect_events(music: &Music, events: &mut Vec<LyEvent>, ctx: &mut
             }
         }
         Music::Rest(rest) => events.push(LyEvent::Rest(rest.clone())),
-        Music::Skip(_) => events.push(LyEvent::Skip(())),
+        Music::Skip(skip) => events.push(LyEvent::Skip(skip.clone())),
         Music::MultiMeasureRest(mrest) => events.push(LyEvent::MeasureRest(mrest.clone())),
         Music::Sequential(items) | Music::Simultaneous(items) => {
             for item in items {

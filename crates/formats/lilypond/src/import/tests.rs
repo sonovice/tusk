@@ -237,11 +237,38 @@ fn import_multiple_events() {
 }
 
 #[test]
-fn import_skip_ignored() {
+fn import_skip_preserved() {
     let mei = parse_and_import("{ c4 s4 d4 }");
     let children = layer_children(&mei);
-    // Skip is ignored, so only c4 and d4
+    assert_eq!(children.len(), 3);
+    assert!(matches!(&children[0], LayerChild::Note(_)));
+    assert!(matches!(&children[1], LayerChild::Space(_)));
+    assert!(matches!(&children[2], LayerChild::Note(_)));
+}
+
+#[test]
+fn import_skip_with_duration_and_dots() {
+    let mei = parse_and_import("{ s4. }");
+    let children = layer_children(&mei);
+    assert_eq!(children.len(), 1);
+    let LayerChild::Space(space) = &children[0] else {
+        panic!("expected Space");
+    };
+    // Check dur = quarter
+    assert!(space.space_log.dur.is_some());
+    // Check dots = 1
+    assert_eq!(space.space_log.dots.as_ref().map(|d| d.0), Some(1));
+}
+
+#[test]
+fn import_skip_in_voice() {
+    // Multi-voice: skip used as spacer in second voice
+    let mei = parse_and_import("<< { c4 d4 } \\\\ { s4 e4 } >>");
+    // Second voice (layer index 1) should have s4 e4
+    let children = nth_layer_children(&mei, 1);
     assert_eq!(children.len(), 2);
+    assert!(matches!(&children[0], LayerChild::Space(_)));
+    assert!(matches!(&children[1], LayerChild::Note(_)));
 }
 
 #[test]

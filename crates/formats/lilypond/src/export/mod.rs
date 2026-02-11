@@ -48,7 +48,9 @@ use crate::model::{
     ContextKeyword, LilyPondFile, Music, ScoreBlock, ScoreItem, ToplevelExpression, Version,
 };
 
-use conversion::{convert_mei_chord, convert_mei_mrest, convert_mei_note, convert_mei_rest};
+use conversion::{
+    convert_mei_chord, convert_mei_mrest, convert_mei_note, convert_mei_rest, convert_mei_space,
+};
 use pitch_context::{apply_pitch_contexts, extract_pitch_contexts};
 use signatures::{extract_event_sequences, inject_signature_events};
 
@@ -944,6 +946,7 @@ fn convert_layer_child(child: &LayerChild) -> Option<Music> {
         LayerChild::MRest(mrest) => Some(convert_mei_mrest(mrest)),
         LayerChild::Chord(chord) => Some(convert_mei_chord(chord)),
         LayerChild::BTrem(btrem) => Some(convert_mei_btrem(btrem)),
+        LayerChild::Space(space) => Some(convert_mei_space(space)),
         _ => None,
     }
 }
@@ -984,6 +987,7 @@ fn layer_child_xml_id(child: &LayerChild) -> Option<&str> {
         LayerChild::MRest(mrest) => mrest.common.xml_id.as_deref(),
         LayerChild::Chord(chord) => chord.common.xml_id.as_deref(),
         LayerChild::BTrem(btrem) => btrem_inner_xml_id(btrem),
+        LayerChild::Space(space) => space.common.xml_id.as_deref(),
         _ => None,
     }
 }

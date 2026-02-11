@@ -7,7 +7,7 @@ use crate::model::note::{ChordEvent, ChordRepetitionEvent, PostEvent};
 use crate::model::pitch::Pitch;
 use crate::model::{
     Duration, MultiMeasureRestEvent, Music, NoteEvent, PropertyPath, PropertyValue, RestEvent,
-    SchemeExpr,
+    SchemeExpr, SkipEvent,
 };
 
 /// Convert MEI DataDurationCmn to LilyPond duration base.
@@ -339,6 +339,37 @@ pub(super) fn convert_mei_mrest(mrest: &tusk_model::elements::MRest) -> Music {
 
     Music::MultiMeasureRest(MultiMeasureRestEvent {
         duration,
+        post_events,
+    })
+}
+
+/// Extract duration from an MEI space.
+fn extract_space_duration(space: &tusk_model::elements::Space) -> Option<Duration> {
+    let dur = space.space_log.dur.as_ref()?;
+    let base = match dur {
+        tusk_model::generated::data::DataDuration::MeiDataDurationCmn(cmn) => mei_dur_to_base(cmn),
+        _ => return None,
+    };
+    let dots = space
+        .space_log
+        .dots
+        .as_ref()
+        .map(|d| d.0 as u8)
+        .unwrap_or(0);
+    Some(Duration {
+        base,
+        dots,
+        multipliers: Vec::new(),
+    })
+}
+
+/// Convert an MEI Space to a LilyPond SkipEvent.
+pub(super) fn convert_mei_space(space: &tusk_model::elements::Space) -> Music {
+    let mut post_events = Vec::new();
+    emit_id_tweak_if_needed(space.common.xml_id.as_deref(), &mut post_events);
+
+    Music::Skip(SkipEvent {
+        duration: extract_space_duration(space),
         post_events,
     })
 }
