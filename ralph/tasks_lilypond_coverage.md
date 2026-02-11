@@ -1679,10 +1679,14 @@ The parser handles `\fixed c' { ... }` and the import resolves pitches to absolu
 
 ### 36.2 Export
 
-- [ ] [E] When StaffDef has `PitchContext::Fixed` extension, reconstruct `Music::Fixed { pitch, body }` wrapper instead of `Music::Relative` or bare absolute
-- [ ] [E] `apply_pitch_contexts()` extended to handle fixed→absolute→fixed reconversion (pitches stay absolute inside `\fixed`)
-- [ ] [T] Roundtrip tests: fixed basic, fixed with accidentals, fixed vs relative preserved distinctly
-- [ ] [T] Fixture: `fragment_fixed.ly` with `\fixed c' { c d e f }` and comparison to `\relative`
+- [x] [E] When StaffDef has `PitchContext::Fixed` extension, reconstruct `Music::Fixed { pitch, body }` wrapper instead of `Music::Relative` or bare absolute
+  - Added `Fixed` variant to `PitchCtx` enum; `ext_pitch_context_to_pitch_ctx` maps `ExtPitchContext::Fixed` → `PitchCtx::Fixed` (not Relative)
+- [x] [E] `apply_pitch_contexts()` extended to handle fixed→absolute→fixed reconversion (pitches stay absolute inside `\fixed`)
+  - `convert_to_fixed()` subtracts ref_oct from each pitch's octave independently (no sequential dependency); wraps in `Music::Fixed`
+- [x] [T] Roundtrip tests: fixed basic, fixed with accidentals, fixed vs relative preserved distinctly
+  - 6 tests: roundtrip_fixed_basic, _with_accidentals, _vs_relative_distinct, _octave_marks, _no_sequential_dependency, _fixture
+- [x] [T] Fixture: `fragment_fixed.ly` with `\fixed c' { c d e f }` and comparison to `\relative`
+  - Created `tests/fixtures/lilypond/fragment_fixed.ly`
 
 ---
 

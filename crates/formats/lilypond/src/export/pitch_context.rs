@@ -17,6 +17,8 @@ pub(super) enum PitchCtx {
         octave: i8,
         has_pitch: bool,
     },
+    /// `\fixed pitch { ... }` -- reference pitch in marks format.
+    Fixed { step: char, alter: f32, octave: i8 },
     /// `\transpose from to { ... }`.
     Transpose { from: Pitch, to: Pitch },
 }
@@ -87,11 +89,10 @@ fn ext_pitch_context_to_pitch_ctx(ext: ExtPitchContext) -> PitchCtx {
                 octave_check: None,
             },
         },
-        ExtPitchContext::Fixed { ref_pitch } => PitchCtx::Relative {
+        ExtPitchContext::Fixed { ref_pitch } => PitchCtx::Fixed {
             step: ref_pitch.step,
             alter: ref_pitch.alter,
             octave: ref_pitch.octave,
-            has_pitch: true,
         },
         ExtPitchContext::Absolute => PitchCtx::Relative {
             step: 'f',
@@ -159,6 +160,40 @@ pub(super) fn apply_pitch_contexts(
                     // Put back as a single layer with the wrapped music
                     layers.push(vec![wrapped]);
                 }
+                PitchCtx::Fixed {
+                    step,
+                    alter,
+                    octave,
+                } => {
+                    // Convert absolute pitches to fixed offsets (independent per note)
+                    for layer_items in layers.iter_mut() {
+                        convert_to_fixed(layer_items, *octave);
+                    }
+
+                    let all_items: Vec<Vec<Music>> = std::mem::take(layers);
+                    let inner = build_layers_music(all_items);
+
+                    let ref_pitch = Box::new(Music::Note(NoteEvent {
+                        pitch: Pitch {
+                            step: *step,
+                            alter: *alter,
+                            octave: *octave,
+                            force_accidental: false,
+                            cautionary: false,
+                            octave_check: None,
+                        },
+                        duration: None,
+                        pitched_rest: false,
+                        post_events: vec![],
+                    }));
+
+                    let wrapped = Music::Fixed {
+                        pitch: ref_pitch,
+                        body: Box::new(inner),
+                    };
+
+                    layers.push(vec![wrapped]);
+                }
                 PitchCtx::Transpose { from, to } => {
                     // Un-transpose pitches in all layers
                     for layer_items in layers.iter_mut() {
@@ -188,6 +223,59 @@ pub(super) fn apply_pitch_contexts(
                 }
             }
         }
+    }
+}
+
+/// Convert a list of Music items from absolute to fixed octave offsets.
+///
+/// In `\fixed` mode each pitch's octave marks are independent offsets from the
+/// reference octave (no sequential dependency).
+fn convert_to_fixed(items: &mut [Music], ref_oct: i8) {
+    for item in items.iter_mut() {
+        match item {
+            Music::Note(note) => {
+                note.pitch.octave -= ref_oct;
+            }
+            Music::Chord(chord) => {
+                for pitch in &mut chord.pitches {
+                    pitch.octave -= ref_oct;
+                }
+            }
+            Music::Tuplet { body, .. }
+            | Music::Grace { body, .. }
+            | Music::Acciaccatura { body, .. }
+            | Music::Appoggiatura { body, .. } => {
+                convert_to_fixed_music(body, ref_oct);
+            }
+            Music::AfterGrace { main, grace, .. } => {
+                convert_to_fixed_music(main, ref_oct);
+                convert_to_fixed_music(grace, ref_oct);
+            }
+            Music::Repeat {
+                body, alternatives, ..
+            } => {
+                convert_to_fixed_music(body, ref_oct);
+                if let Some(alts) = alternatives {
+                    for alt in alts {
+                        convert_to_fixed_music(alt, ref_oct);
+                    }
+                }
+            }
+            Music::Sequential(inner) | Music::Simultaneous(inner) => {
+                convert_to_fixed(inner, ref_oct);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Convert a single Music node from absolute to fixed offsets.
+fn convert_to_fixed_music(music: &mut Music, ref_oct: i8) {
+    match music {
+        Music::Sequential(items) | Music::Simultaneous(items) => {
+            convert_to_fixed(items, ref_oct);
+        }
+        _ => convert_to_fixed(std::slice::from_mut(music), ref_oct),
     }
 }
 

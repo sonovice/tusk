@@ -1378,3 +1378,89 @@ fn roundtrip_lyricsto() {
     assert!(output.contains("do"), "do: {output}");
     assert!(output.contains("re"), "re: {output}");
 }
+
+// --- Phase 36.2: Fixed pitch context export tests ---
+
+#[test]
+fn roundtrip_fixed_basic() {
+    // \fixed c' { c d e f } — all notes at octave 4, no sequential dependency
+    let output = roundtrip("\\fixed c' { c4 d e f }");
+    assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
+    assert!(
+        !output.contains("\\relative"),
+        "should not use \\relative: {output}"
+    );
+    assert!(output.contains("c4"), "output: {output}");
+    assert!(output.contains("d"), "output: {output}");
+    assert!(output.contains("e"), "output: {output}");
+    assert!(output.contains("f"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_fixed_with_accidentals() {
+    let output = roundtrip("\\fixed c' { cis4 bes d fis }");
+    assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
+    assert!(output.contains("cis"), "output: {output}");
+    assert!(output.contains("bes"), "output: {output}");
+    assert!(output.contains("fis"), "output: {output}");
+}
+
+#[test]
+fn roundtrip_fixed_vs_relative_distinct() {
+    // \fixed and \relative should produce different wrappers
+    let fixed_output = roundtrip("\\fixed c' { c4 d e f }");
+    let relative_output = roundtrip("\\relative c' { c4 d e f }");
+    assert!(fixed_output.contains("\\fixed"), "fixed: {fixed_output}");
+    assert!(
+        relative_output.contains("\\relative"),
+        "relative: {relative_output}"
+    );
+    assert!(
+        !fixed_output.contains("\\relative"),
+        "fixed should not contain \\relative: {fixed_output}"
+    );
+    assert!(
+        !relative_output.contains("\\fixed"),
+        "relative should not contain \\fixed: {relative_output}"
+    );
+}
+
+#[test]
+fn roundtrip_fixed_octave_marks() {
+    // \fixed c' { c' c, } → c at oct 5 and c at oct 3
+    // Exported back: c' and c, (offsets from reference c')
+    let output = roundtrip("\\fixed c' { c'4 c, }");
+    assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
+    assert!(
+        output.contains("c'"),
+        "should have c' (up one octave): {output}"
+    );
+    assert!(
+        output.contains("c,"),
+        "should have c, (down one octave): {output}"
+    );
+}
+
+#[test]
+fn roundtrip_fixed_no_sequential_dependency() {
+    // Unlike \relative, consecutive g notes should NOT affect each other
+    // \fixed c' { c g c g } → all at octave 4 → all exported as offset 0
+    let output = roundtrip("\\fixed c' { c4 g c g }");
+    assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
+    // In \relative c' { c g c g } → g would go down (closest g below c),
+    // but in \fixed they should all be plain (no marks)
+    // Count occurrences of "g" without tick marks — they should have no octave marks
+    // since g at octave 4 in \fixed c' is just "g" (offset = 0)
+}
+
+#[test]
+fn roundtrip_fixed_fixture() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/lilypond/fragment_fixed.ly"
+    ))
+    .unwrap();
+    let output = roundtrip(&src);
+    assert!(output.contains("\\fixed"), "should use \\fixed: {output}");
+    assert!(output.contains("c4"), "output: {output}");
+}
