@@ -1243,7 +1243,8 @@ mod tests {
         }];
 
         let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
-        let _mei = convert_score_with_context(&score, &mut ctx).expect("conversion should succeed");
+        let (_mei, _ext) =
+            convert_score_with_context(&score, &mut ctx).expect("conversion should succeed");
 
         // After conversion, context should track last processed position
         assert_eq!(ctx.position().part_id.as_deref(), Some("P1"));

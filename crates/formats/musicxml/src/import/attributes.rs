@@ -11,6 +11,7 @@ use tusk_model::data::{
     DataClefline, DataClefshape, DataKeyfifths, DataMetersign, DataOctaveDis, DataStaffrelBasic,
 };
 use tusk_model::elements::StaffDef;
+use tusk_model::musicxml_ext::{ForPartData, KeyExtras, TimeExtras};
 
 /// Label prefix for non-traditional key JSON stored on staffDef @label.
 pub const KEY_LABEL_PREFIX: &str = "musicxml:key,";
@@ -215,6 +216,12 @@ pub fn process_attributes(
                     if !key.key_octaves.is_empty() {
                         if let Ok(json) = serde_json::to_string(key) {
                             append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
+                            if let Some(ref id) = sd.basic.xml_id {
+                                ctx.ext_store_mut().entry(id.clone()).key_extras =
+                                    Some(KeyExtras {
+                                        key: serde_json::to_value(key).unwrap_or_default(),
+                                    });
+                            }
                         }
                     }
                 }
@@ -222,6 +229,11 @@ pub fn process_attributes(
                     // No MEI @keysig equivalent; store full Key as JSON
                     if let Ok(json) = serde_json::to_string(key) {
                         append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
+                        if let Some(ref id) = sd.basic.xml_id {
+                            ctx.ext_store_mut().entry(id.clone()).key_extras = Some(KeyExtras {
+                                key: serde_json::to_value(key).unwrap_or_default(),
+                            });
+                        }
                     }
                 }
             }
@@ -242,6 +254,11 @@ pub fn process_attributes(
             if has_extra {
                 if let Ok(json) = serde_json::to_string(time) {
                     append_label(sd, format!("{}{}", TIME_LABEL_PREFIX, json));
+                    if let Some(ref id) = sd.basic.xml_id {
+                        ctx.ext_store_mut().entry(id.clone()).time_extras = Some(TimeExtras {
+                            time: serde_json::to_value(time).unwrap_or_default(),
+                        });
+                    }
                 }
             }
         }
@@ -268,6 +285,15 @@ pub fn process_attributes(
         if let Some(sd) = staff_def {
             if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
                 append_label(sd, format!("{}{}", FOR_PART_LABEL_PREFIX, json));
+                if let Some(ref id) = sd.basic.xml_id {
+                    ctx.ext_store_mut().entry(id.clone()).for_part = Some(ForPartData {
+                        entries: attrs
+                            .for_parts
+                            .iter()
+                            .filter_map(|fp| serde_json::to_value(fp).ok())
+                            .collect(),
+                    });
+                }
             }
         }
     }

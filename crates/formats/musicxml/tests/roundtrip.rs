@@ -94,7 +94,8 @@ fn conversion_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), Str
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
     let original_tw = import_timewise(&partwise);
-    let mei = import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
+    let (mei, _ext_store) =
+        import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
     let exported_tw =
         export_timewise(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
     Ok((original_tw, exported_tw))
@@ -110,7 +111,8 @@ fn full_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), String> {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
     let original_tw = import_timewise(&partwise);
-    let mei = import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
+    let (mei, _ext_store) =
+        import(&partwise).map_err(|e| format!("Import (MusicXML→MEI) error: {}", e))?;
     let exported_pw = export(&mei).map_err(|e| format!("Export (MEI→MusicXML) error: {}", e))?;
     let xml2 = serialize(&exported_pw).map_err(|e| format!("Serialize error: {}", e))?;
     let roundtripped_pw =
@@ -128,9 +130,11 @@ fn triangle_mei_roundtrip(xml: &str) -> Result<(Mei, Mei), String> {
     } else {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
-    let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let (mei1, _ext1) =
+        import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
     let mxml1_pw = export(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
-    let mei2 = import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let (mei2, _ext2) =
+        import(&mxml1_pw).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     Ok((mei1, mei2))
 }
 
@@ -144,10 +148,11 @@ fn triangle_mxml_roundtrip(xml: &str) -> Result<(ScoreTimewise, ScoreTimewise), 
     } else {
         parse_score_partwise(xml).map_err(|e| format!("Parse error (partwise): {}", e))?
     };
-    let mei1 = import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
+    let (mei1, _ext1) =
+        import(&partwise).map_err(|e| format!("Import₁ (MusicXML→MEI) error: {}", e))?;
     let tw1 = export_timewise(&mei1).map_err(|e| format!("Export₁ (MEI→MusicXML) error: {}", e))?;
     let pw1 = timewise_to_partwise(tw1.clone());
-    let mei2 = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
+    let (mei2, _ext2) = import(&pw1).map_err(|e| format!("Import₂ (MusicXML→MEI) error: {}", e))?;
     let tw2 = export_timewise(&mei2).map_err(|e| format!("Export₂ (MEI→MusicXML) error: {}", e))?;
     Ok((tw1, tw2))
 }
@@ -1571,13 +1576,13 @@ fn assert_mxl_mei_roundtrip(fixture_name: &str) {
     } else {
         parse_score_partwise(&xml).expect("parse partwise")
     };
-    let mei1 = import(&partwise).expect("import to MEI");
+    let (mei1, _ext1) = import(&partwise).expect("import to MEI");
 
     // MEI → .mxl
     let mxl_bytes = tusk_musicxml::export_mxl(&mei1).expect("export_mxl failed");
 
     // .mxl → MEI
-    let mei2 = tusk_musicxml::import_mxl(&mxl_bytes).expect("import_mxl failed");
+    let (mei2, _ext2) = tusk_musicxml::import_mxl(&mxl_bytes).expect("import_mxl failed");
 
     // Compare MEI documents
     assert_mei_equal(&mei1, &mei2, &format!("mxl_mei_{}", fixture_name));
@@ -1688,7 +1693,7 @@ fn assert_version_upgrade_roundtrip(
     );
 
     // Full roundtrip through MEI: import → export → serialize → reparse
-    let mei =
+    let (mei, _ext_store) =
         import(&partwise).unwrap_or_else(|e| panic!("Import failed for {}: {}", fixture_name, e));
     let exported =
         export(&mei).unwrap_or_else(|e| panic!("Export failed for {}: {}", fixture_name, e));

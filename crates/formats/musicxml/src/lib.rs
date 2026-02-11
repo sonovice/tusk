@@ -105,7 +105,10 @@ pub use mxl::{MxlArchive, MxlError, MxlResult, MxlWriteOptions, Rootfile};
 /// ```
 pub fn import(
     score: &model::elements::ScorePartwise,
-) -> ConversionResult<tusk_model::elements::Mei> {
+) -> ConversionResult<(
+    tusk_model::elements::Mei,
+    tusk_model::extensions::ExtensionStore,
+)> {
     import::convert_score(score)
 }
 
@@ -152,7 +155,15 @@ pub fn export_timewise(
 ///
 /// Reads the ZIP archive, extracts the primary MusicXML rootfile,
 /// parses it, and converts to MEI.
-pub fn import_mxl(data: &[u8]) -> Result<tusk_model::elements::Mei, MxlError> {
+pub fn import_mxl(
+    data: &[u8],
+) -> Result<
+    (
+        tusk_model::elements::Mei,
+        tusk_model::extensions::ExtensionStore,
+    ),
+    MxlError,
+> {
     let score = mxl::read_mxl_score(data)?;
     import::convert_score(&score)
         .map_err(|e| MxlError::InvalidContainer(format!("conversion error: {}", e)))
@@ -239,7 +250,9 @@ impl tusk_format::Importer for MusicXmlFormat {
         let score = crate::parse_score_partwise(input)
             .or_else(|_| crate::parse_score_timewise(input))
             .map_err(tusk_format::FormatError::parse)?;
-        crate::import(&score).map_err(tusk_format::FormatError::conversion)
+        let (mei, _ext_store) =
+            crate::import(&score).map_err(tusk_format::FormatError::conversion)?;
+        Ok(mei)
     }
 }
 
@@ -257,7 +270,9 @@ mod tests {
     #[test]
     fn import_empty_score_succeeds() {
         let score = model::elements::ScorePartwise::default();
-        assert!(import(&score).is_ok());
+        let result = import(&score);
+        assert!(result.is_ok());
+        let (_mei, _ext_store) = result.unwrap();
     }
 
     #[test]

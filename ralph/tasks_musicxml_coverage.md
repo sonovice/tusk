@@ -1018,20 +1018,20 @@ fields to `ExtData`:
 Replace all extMeta and JSON-in-label patterns in `crates/formats/musicxml/src/import/` with
 `ExtensionStore` lookups:
 
-- [ ] Migrate header data: remove 6 extMeta creations in `import/mod.rs`, store `ScoreHeaderData` in `ExtensionStore` keyed by meiHead `@xml:id`
-- [ ] Migrate harmony: replace `musicxml:harmony,{json}` label on `<harm>` with `HarmonyData` in `ExtensionStore`
-- [ ] Migrate sound: replace `musicxml:sound,{json}` label on `<dir>` with `SoundData` in `ExtensionStore`
-- [ ] Migrate print: replace `musicxml:print,{json}` label on `<sb>`/`<pb>` with `PrintData` in `ExtensionStore`
-- [ ] Migrate measure-style: replace `musicxml:measure-style,{json}` label on `<dir>` with `MeasureStyleData` in `ExtensionStore`
-- [ ] Migrate barline extras: replace `musicxml:barline,{json}` label on `<dir>` with `BarlineData` in `ExtensionStore`
-- [ ] Migrate listening/grouping/link/bookmark: replace `musicxml:listening/grouping/link/bookmark,{json}` labels with `ListeningData` in `ExtensionStore`
-- [ ] Migrate note visual attrs: replace `musicxml:visual,{json}` label segments with `NoteVisualData` in `ExtensionStore`
-- [ ] Migrate direction visual attrs: replace `musicxml:words-vis,{json}` label segments with `DirectionVisualData` in `ExtensionStore`
-- [ ] Migrate note-level extras: replace `musicxml:notehead-text,`/`musicxml:play,`/`musicxml:listen,`/`musicxml:footnote,`/`musicxml:level,`/`musicxml:notations-*`/`musicxml:instruments,`/`musicxml:stem,` label segments with `NoteExtras`/`StemExtras` in `ExtensionStore`
-- [ ] Migrate key/time/for-part/staff-details/part-symbol extras: replace `musicxml:key,`/`musicxml:time,`/`musicxml:for-part,`/`musicxml:staff-details,`/`musicxml:part-symbol,` labels with typed extensions in `ExtensionStore`
-- [ ] Migrate instrument/part/group details: replace label-based JSON with `InstrumentData`/`PartDetailsData`/`GroupDetailsData` in `ExtensionStore`
-- [ ] Migrate lyric extras: replace lyric-specific label data with `LyricExtras` in `ExtensionStore`
-- [ ] Pass `ExtensionStore` through the import context and return it alongside the MEI document
+- [x] Migrate header data: store `ScoreHeaderData` in `ExtensionStore` keyed by meiHead `@xml:id` (dual-path: labels kept)
+- [x] Migrate harmony: store `HarmonyData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate sound: store `SoundData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate print: store `PrintData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate measure-style: store `MeasureStyleData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate barline extras: store `BarlineData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate listening/grouping/link/bookmark: store `ListeningData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate note visual attrs: store `NoteVisualData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate direction visual attrs: store `DirectionVisualData` in `ExtensionStore` alongside label (dual-path)
+- [x] Migrate note-level extras: store `NoteExtras`/`StemExtras` in `ExtensionStore` alongside labels (dual-path)
+- [x] Migrate key/time/for-part/staff-details/part-symbol extras: store typed extensions in `ExtensionStore` alongside labels (dual-path)
+- [x] Migrate instrument/part/group details: store `InstrumentData`/`PartDetailsData`/`GroupDetailsData` in `ExtensionStore` alongside labels (dual-path)
+- [x] Migrate lyric extras: store `LyricExtras` in `ExtensionStore` alongside labels (dual-path)
+- [x] Pass `ExtensionStore` through the import context and return it alongside the MEI document
 
 ### 26.3 Migrate MusicXML Export to Typed Extensions
 

@@ -17,6 +17,9 @@ use tusk_model::elements::{
     InstrDef, Label, LabelAbbr, LabelAbbrChild, LabelChild, ScoreDef, StaffDef, StaffDefChild,
     StaffGrp, StaffGrpChild,
 };
+use tusk_model::musicxml_ext::{
+    GroupDetailsData, KeyExtras, PartDetailsData, PartSymbolExtras, StaffDetailsExtras, TimeExtras,
+};
 
 /// Convert MusicXML part-list to MEI scoreDef.
 ///
@@ -336,7 +339,7 @@ pub fn convert_staff_grp(
                     )?;
 
                     // Add instrument definitions
-                    apply_instruments_to_staff_def(score_part, &mut staff_def);
+                    apply_instruments_to_staff_def(score_part, &mut staff_def, ctx);
 
                     // Add to innermost open group, or root if none
                     if let Some((_, grp)) = group_stack.last_mut() {
@@ -483,6 +486,19 @@ fn convert_staff_grp_from_part_group(
                 format!("{}{}", GROUP_DETAILS_LABEL_PREFIX, json),
             );
         }
+        if let Some(ref id) = staff_grp.common.xml_id {
+            ctx.ext_store_mut().entry(id.clone()).group_details = Some(GroupDetailsData {
+                group_name_display: part_group
+                    .group_name_display
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
+                group_abbreviation_display: part_group
+                    .group_abbreviation_display
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
+                group_time: part_group.group_time.map(|_| true),
+            });
+        }
     }
 
     Ok(staff_grp)
@@ -586,6 +602,11 @@ pub fn convert_staff_def_from_score_part(
     ctx.set_divisions(divs);
     staff_def.staff_def_ges.ppq = Some((divs as u64).to_string());
 
+    // Use the original MusicXML part ID as the staffDef xml:id
+    // This preserves the ID through the roundtrip conversion
+    // Set early so ExtensionStore writes can use it
+    staff_def.basic.xml_id = Some(score_part.id.clone());
+
     // Apply initial attributes from the first measure (key, time, clef)
     if let Some(attrs) = initial_attrs {
         // Apply key signature
@@ -603,6 +624,10 @@ pub fn convert_staff_def_from_score_part(
                                 format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                             );
                         }
+                        ctx.ext_store_mut().entry(score_part.id.clone()).key_extras =
+                            Some(KeyExtras {
+                                key: serde_json::to_value(key).unwrap_or_default(),
+                            });
                     }
                 }
                 KeyContent::NonTraditional(_) => {
@@ -613,6 +638,9 @@ pub fn convert_staff_def_from_score_part(
                             format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                         );
                     }
+                    ctx.ext_store_mut().entry(score_part.id.clone()).key_extras = Some(KeyExtras {
+                        key: serde_json::to_value(key).unwrap_or_default(),
+                    });
                 }
             }
         }
@@ -635,6 +663,9 @@ pub fn convert_staff_def_from_score_part(
                         format!("{}{}", crate::import::attributes::TIME_LABEL_PREFIX, json),
                     );
                 }
+                ctx.ext_store_mut().entry(score_part.id.clone()).time_extras = Some(TimeExtras {
+                    time: serde_json::to_value(time).unwrap_or_default(),
+                });
             }
         }
 
@@ -677,13 +708,9 @@ pub fn convert_staff_def_from_score_part(
                 .or_else(|| attrs.staff_details.first()),
         };
         if let Some(sd) = sd {
-            apply_staff_details_to_staff_def(sd, &mut staff_def);
+            apply_staff_details_to_staff_def(sd, &mut staff_def, ctx);
         }
     }
-
-    // Use the original MusicXML part ID as the staffDef xml:id
-    // This preserves the ID through the roundtrip conversion
-    staff_def.basic.xml_id = Some(score_part.id.clone());
 
     if include_label {
         // Convert part-name → label (if not empty)
@@ -731,6 +758,29 @@ pub fn convert_staff_def_from_score_part(
                 format!("{}{}", PART_DETAILS_LABEL_PREFIX, json),
             );
         }
+        ctx.ext_store_mut()
+            .entry(score_part.id.clone())
+            .part_details = Some(PartDetailsData {
+            part_name_display: score_part
+                .part_name_display
+                .as_ref()
+                .and_then(|v| serde_json::to_value(v).ok()),
+            part_abbreviation_display: score_part
+                .part_abbreviation_display
+                .as_ref()
+                .and_then(|v| serde_json::to_value(v).ok()),
+            players: score_part
+                .players
+                .iter()
+                .filter_map(|p| serde_json::to_value(p).ok())
+                .collect(),
+            part_links: score_part
+                .part_links
+                .iter()
+                .filter_map(|p| serde_json::to_value(p).ok())
+                .collect(),
+            groups: score_part.groups.clone(),
+        });
     }
 
     Ok(staff_def)
@@ -796,6 +846,7 @@ pub(crate) const PART_SYMBOL_LABEL_PREFIX: &str = "musicxml:part-symbol,";
 fn apply_staff_details_to_staff_def(
     sd: &crate::model::attributes::StaffDetails,
     staff_def: &mut StaffDef,
+    ctx: &mut ConversionContext,
 ) {
     // Map staff_lines → @lines
     if let Some(lines) = sd.staff_lines {
@@ -828,6 +879,12 @@ fn apply_staff_details_to_staff_def(
                 staff_def,
                 format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json),
             );
+            if let Some(ref id) = staff_def.basic.xml_id {
+                ctx.ext_store_mut().entry(id.clone()).staff_details_extras =
+                    Some(StaffDetailsExtras {
+                        details: serde_json::to_value(&sd_for_json).unwrap_or_default(),
+                    });
+            }
         }
     }
 }
@@ -855,7 +912,11 @@ pub(crate) struct InstrumentData {
 /// - MIDI pan → `@midi.pan`
 ///
 /// Full data stored as JSON in `@label` for lossless roundtrip.
-fn apply_instruments_to_staff_def(score_part: &ScorePart, staff_def: &mut StaffDef) {
+fn apply_instruments_to_staff_def(
+    score_part: &ScorePart,
+    staff_def: &mut StaffDef,
+    ctx: &mut ConversionContext,
+) {
     use crate::model::elements::MidiAssignment;
     use tusk_model::data::{
         DataMidichannel, DataMidivalue, DataMidivaluePan, DataMidivaluePercent,
@@ -923,11 +984,13 @@ fn apply_instruments_to_staff_def(score_part: &ScorePart, staff_def: &mut StaffD
             // Store full instrument data as JSON in @label for lossless roundtrip
             let data = InstrumentData {
                 score_instrument: si.clone(),
-                midi_assignments: matching_midi,
+                midi_assignments: matching_midi.clone(),
             };
             if let Ok(json) = serde_json::to_string(&data) {
                 instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
             }
+            ctx.ext_store_mut().entry(si.id.clone()).instrument_data =
+                Some(convert_to_ext_instrument_data(si, &matching_midi));
 
             staff_def
                 .children
@@ -968,11 +1031,16 @@ fn apply_instruments_to_staff_def(score_part: &ScorePart, staff_def: &mut StaffD
             virtual_instrument: None,
         };
         let data = InstrumentData {
-            score_instrument: dummy_si,
+            score_instrument: dummy_si.clone(),
             midi_assignments: score_part.midi_assignments.clone(),
         };
         if let Ok(json) = serde_json::to_string(&data) {
             instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
+        }
+        if let Some(ref id) = instr_def.basic.xml_id {
+            ctx.ext_store_mut().entry(id.clone()).instrument_data = Some(
+                convert_to_ext_instrument_data(&dummy_si, &score_part.midi_assignments),
+            );
         }
 
         staff_def
@@ -1029,7 +1097,33 @@ fn convert_multi_staff_part(
 
     // Generate ID for the staffGrp
     let grp_id = ctx.generate_id_with_suffix("staffgrp");
-    nested_grp.common.xml_id = Some(grp_id);
+    nested_grp.common.xml_id = Some(grp_id.clone());
+
+    // Store part symbol extras in ExtensionStore (after ID is set)
+    if let Some(attrs) = clef_attrs
+        && let Some(ref ps) = attrs.part_symbol
+    {
+        use crate::model::attributes::PartSymbolValue;
+        let has_extra = ps.top_staff.is_some()
+            || ps.bottom_staff.is_some()
+            || ps.default_x.is_some()
+            || ps.color.is_some();
+        if has_extra {
+            ctx.ext_store_mut().entry(grp_id.clone()).part_symbol_extras = Some(PartSymbolExtras {
+                value: match ps.value {
+                    PartSymbolValue::Brace => "brace".to_string(),
+                    PartSymbolValue::Bracket => "bracket".to_string(),
+                    PartSymbolValue::Square => "bracketsq".to_string(),
+                    PartSymbolValue::Line => "line".to_string(),
+                    PartSymbolValue::None => "none".to_string(),
+                },
+                top_staff: ps.top_staff,
+                bottom_staff: ps.bottom_staff,
+                default_x: ps.default_x,
+                color: ps.color.clone(),
+            });
+        }
+    }
 
     // Add label/labelAbbr to the staffGrp (not individual staffDefs)
     if !score_part.part_name.value.is_empty() {
@@ -1077,7 +1171,7 @@ fn convert_multi_staff_part(
         // Instruments go on the first staffDef only
         if local_staff == 1 {
             staff_def.basic.xml_id = Some(score_part.id.clone());
-            apply_instruments_to_staff_def(score_part, &mut staff_def);
+            apply_instruments_to_staff_def(score_part, &mut staff_def, ctx);
         } else {
             staff_def.basic.xml_id = Some(format!("{}-staff-{}", score_part.id, local_staff));
         }
@@ -1117,6 +1211,83 @@ fn extract_attributes_with_staves<'a>(
     }
 
     None
+}
+
+/// Convert local ScoreInstrument + MidiAssignment to model InstrumentData.
+fn convert_to_ext_instrument_data(
+    si: &crate::model::elements::ScoreInstrument,
+    midi: &[crate::model::elements::MidiAssignment],
+) -> tusk_model::musicxml_ext::InstrumentData {
+    use crate::model::elements::MidiAssignment;
+    use tusk_model::musicxml_ext::{
+        InstrumentData as ExtInstrumentData, MidiAssignmentData, MidiDeviceData,
+        MidiInstrumentDataInner, ScoreInstrumentData, VirtualInstrumentData,
+    };
+
+    let score_instrument = ScoreInstrumentData {
+        id: si.id.clone(),
+        name: si.instrument_name.clone(),
+        abbreviation: si.instrument_abbreviation.clone(),
+        sound: si.instrument_sound.clone(),
+        solo: si.solo,
+        ensemble: si.ensemble.as_ref().map(|e| e.value),
+        virtual_instrument: si
+            .virtual_instrument
+            .as_ref()
+            .map(|vi| VirtualInstrumentData {
+                library: vi.virtual_library.clone(),
+                name: vi.virtual_name.clone(),
+            }),
+    };
+
+    // Group midi-device + midi-instrument pairs per instrument ID
+    let mut assignments = Vec::new();
+    let mut device_for_id: Option<MidiDeviceData> = None;
+    let mut instrument_for_id: Option<MidiInstrumentDataInner> = None;
+
+    for ma in midi {
+        match ma {
+            MidiAssignment::MidiDevice(md) => {
+                // If we have a pending instrument, flush it
+                if instrument_for_id.is_some() || device_for_id.is_some() {
+                    assignments.push(MidiAssignmentData {
+                        device: device_for_id.take(),
+                        instrument: instrument_for_id.take(),
+                    });
+                }
+                device_for_id = Some(MidiDeviceData {
+                    value: md.value.clone(),
+                    port: md.port,
+                    id: md.id.clone(),
+                });
+            }
+            MidiAssignment::MidiInstrument(mi) => {
+                instrument_for_id = Some(MidiInstrumentDataInner {
+                    id: mi.id.clone(),
+                    channel: mi.midi_channel,
+                    name: mi.midi_name.clone(),
+                    bank: mi.midi_bank,
+                    program: mi.midi_program,
+                    unpitched: mi.midi_unpitched,
+                    volume: mi.volume,
+                    pan: mi.pan,
+                    elevation: mi.elevation,
+                });
+            }
+        }
+    }
+    // Flush remaining
+    if instrument_for_id.is_some() || device_for_id.is_some() {
+        assignments.push(MidiAssignmentData {
+            device: device_for_id,
+            instrument: instrument_for_id,
+        });
+    }
+
+    ExtInstrumentData {
+        score_instrument,
+        midi_assignments: assignments,
+    }
 }
 
 #[cfg(test)]

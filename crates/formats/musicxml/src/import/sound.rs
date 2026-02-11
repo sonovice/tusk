@@ -7,6 +7,7 @@
 use crate::context::ConversionContext;
 use crate::model::direction::Sound;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
+use tusk_model::musicxml_ext::SoundData;
 
 /// Label prefix for MEI dir elements carrying standalone sound JSON data.
 pub const SOUND_LABEL_PREFIX: &str = "musicxml:sound,";
@@ -24,6 +25,11 @@ pub fn convert_sound(sound: &Sound, ctx: &mut ConversionContext) -> MeasureChild
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("sound"));
     if let Some(label) = json_label {
         dir.common.label = Some(label);
+    }
+
+    // Dual-path: store typed SoundData in ExtensionStore
+    if let Some(ref id) = dir.common.xml_id {
+        ctx.ext_store_mut().entry(id.clone()).sound = Some(build_sound_data(sound));
     }
 
     // Human-readable summary
@@ -86,6 +92,47 @@ fn sound_summary(sound: &Sound) -> String {
     }
 
     parts.join("; ")
+}
+
+fn build_sound_data(s: &Sound) -> SoundData {
+    use crate::model::data::YesNo;
+    use tusk_model::musicxml_ext::OffsetData;
+
+    SoundData {
+        tempo: s.tempo,
+        dynamics: s.dynamics,
+        dacapo: s.dacapo.map(|v| matches!(v, YesNo::Yes)),
+        segno: s.segno.clone(),
+        dalsegno: s.dalsegno.clone(),
+        coda: s.coda.clone(),
+        tocoda: s.tocoda.clone(),
+        divisions: s.divisions,
+        forward_repeat: s.forward_repeat.map(|v| matches!(v, YesNo::Yes)),
+        fine: s.fine.clone(),
+        time_only: s.time_only.clone(),
+        pizzicato: s.pizzicato.map(|v| matches!(v, YesNo::Yes)),
+        pan: s.pan,
+        elevation: s.elevation,
+        damper_pedal: s.damper_pedal.clone(),
+        soft_pedal: s.soft_pedal.clone(),
+        sostenuto_pedal: s.sostenuto_pedal.clone(),
+        midi_groups: s
+            .midi_instrument_changes
+            .iter()
+            .filter_map(|g| serde_json::to_value(g).ok())
+            .filter_map(|v| serde_json::from_value(v).ok())
+            .collect(),
+        swing: s.swing.as_ref().and_then(|sw| {
+            serde_json::to_value(sw)
+                .ok()
+                .and_then(|v| serde_json::from_value(v).ok())
+        }),
+        offset: s.offset.as_ref().map(|o| OffsetData {
+            value: o.value,
+            sound: o.sound.map(|v| matches!(v, YesNo::Yes)),
+        }),
+        id: s.id.clone(),
+    }
 }
 
 /// Deserialize a Sound from a roundtrip label string (standalone sound).

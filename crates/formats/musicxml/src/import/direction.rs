@@ -671,6 +671,43 @@ fn convert_words(
         }
     }
 
+    // Dual-path: store typed DirectionVisualData in ExtensionStore
+    if has_visual_attrs {
+        if let Some(ref id) = dir.common.xml_id {
+            use tusk_model::musicxml_ext::{DirectionVisualData, VisualAttrs, WordsVisualData};
+            let words_vis: Vec<WordsVisualData> = words
+                .iter()
+                .map(|w| WordsVisualData {
+                    value: w.value.clone(),
+                    visual: VisualAttrs {
+                        font_family: w.font_family.clone(),
+                        font_size: w
+                            .font_size
+                            .as_ref()
+                            .and_then(|fs| serde_json::to_value(fs).ok().and_then(|v| v.as_f64())),
+                        font_style: w.font_style.as_ref().map(|s| s.to_string()),
+                        font_weight: w.font_weight.as_ref().map(|wt| wt.to_string()),
+                        color: w.color.clone(),
+                        default_x: w.default_x,
+                        default_y: w.default_y,
+                        relative_x: w.relative_x,
+                        relative_y: w.relative_y,
+                    },
+                    enclosure: w.enclosure.as_ref().map(|e| e.to_string()),
+                    halign: w.halign.as_ref().map(|h| h.to_string()),
+                    valign: w.valign.as_ref().map(|v| v.to_string()),
+                    justify: w.justify.as_ref().map(|j| j.to_string()),
+                    id: w.id.clone(),
+                })
+                .collect();
+            ctx.ext_store_mut().entry(id.clone()).direction_visual = Some(DirectionVisualData {
+                words: words_vis,
+                wedge_color: None,
+                wedge_niente: None,
+            });
+        }
+    }
+
     dir
 }
 

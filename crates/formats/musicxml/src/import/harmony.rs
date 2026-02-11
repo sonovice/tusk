@@ -6,10 +6,14 @@
 //! is stored as the `<harm>` text child.
 
 use crate::context::ConversionContext;
-use crate::model::data::{AboveBelow, Step};
+use crate::model::data::{AboveBelow, Step, YesNo};
 use crate::model::harmony::{Harmony, HarmonyChord, HarmonyChordRoot, KindValue, Root};
 use tusk_model::data::{DataBeat, DataStaffrel, DataStaffrelBasic};
 use tusk_model::elements::{Harm, HarmChild};
+use tusk_model::musicxml_ext::{
+    BassData, DegreeData, FrameData, FrameNoteData, HarmonyChordData, HarmonyData, KindData,
+    NumeralKeyData, OffsetData, VisualAttrs,
+};
 
 /// Label prefix for MEI harm elements carrying roundtrip JSON data.
 pub const HARM_LABEL_PREFIX: &str = "musicxml:harmony,";
@@ -49,6 +53,11 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
     }
     if let Ok(json) = serde_json::to_string(&harmony_for_json) {
         harm.common.label = Some(format!("{}{}", HARM_LABEL_PREFIX, json));
+    }
+
+    // Dual-path: store typed HarmonyData in ExtensionStore
+    if let Some(ref id) = harm.common.xml_id {
+        ctx.ext_store_mut().entry(id.clone()).harmony = Some(build_harmony_data(&harmony_for_json));
     }
 
     // Set tstamp and staff
@@ -216,6 +225,167 @@ fn kind_abbreviation(kind: KindValue) -> &'static str {
         KindValue::Tristan => "Tris",
         KindValue::Other => "other",
         KindValue::None => "",
+    }
+}
+
+fn build_harmony_data(h: &Harmony) -> HarmonyData {
+    use crate::model::harmony::{Bass, Degree, Frame};
+
+    fn enum_to_string<T: serde::Serialize>(v: &T) -> String {
+        serde_json::to_value(v)
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default()
+    }
+
+    fn build_chord(chord: &HarmonyChord) -> HarmonyChordData {
+        let (root_type, root_step, root_alter, root_text, numeral_value, numeral_key, function) =
+            match &chord.root_type {
+                HarmonyChordRoot::Root(root) => (
+                    "root".to_string(),
+                    Some(step_to_str(root.root_step.value)),
+                    root.root_alter.as_ref().map(|a| a.value),
+                    root.root_step.text.clone(),
+                    None,
+                    None,
+                    None,
+                ),
+                HarmonyChordRoot::Numeral(num) => (
+                    "numeral".to_string(),
+                    None,
+                    num.numeral_alter.as_ref().map(|a| a.value),
+                    num.numeral_root.text.clone(),
+                    Some(num.numeral_root.value),
+                    num.numeral_key.as_ref().map(|k| NumeralKeyData {
+                        fifths: k.numeral_fifths,
+                        mode: k.numeral_mode.as_str().to_string(),
+                    }),
+                    None,
+                ),
+                HarmonyChordRoot::Function(func) => (
+                    "function".to_string(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(func.value.clone()),
+                ),
+            };
+
+        HarmonyChordData {
+            root_type,
+            root_step,
+            root_alter,
+            root_text,
+            numeral_value,
+            numeral_key,
+            function,
+            kind: KindData {
+                value: chord.kind.value.as_str().to_string(),
+                text: chord.kind.text.clone(),
+                use_symbols: chord.kind.use_symbols.map(|v| matches!(v, YesNo::Yes)),
+                stack_degrees: chord.kind.stack_degrees.map(|v| matches!(v, YesNo::Yes)),
+                parentheses_degrees: chord
+                    .kind
+                    .parentheses_degrees
+                    .map(|v| matches!(v, YesNo::Yes)),
+                bracket_degrees: chord.kind.bracket_degrees.map(|v| matches!(v, YesNo::Yes)),
+                halign: chord.kind.halign.as_ref().map(|h| h.to_string()),
+            },
+            inversion: chord.inversion.as_ref().map(|i| i.value),
+            bass: chord.bass.as_ref().map(build_bass),
+            degrees: chord.degrees.iter().map(build_degree).collect(),
+        }
+    }
+
+    fn build_bass(b: &Bass) -> BassData {
+        BassData {
+            step: step_to_str(b.bass_step.value),
+            alter: b.bass_alter.as_ref().map(|a| a.value),
+            text: b.bass_step.text.clone(),
+            separator: b
+                .bass_separator
+                .as_ref()
+                .and_then(|s| serde_json::to_value(s).ok())
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .or_else(|| b.bass_separator.as_ref().map(|s| s.value.clone())),
+            arrangement: b.arrangement.as_ref().map(enum_to_string),
+        }
+    }
+
+    fn build_degree(d: &Degree) -> DegreeData {
+        DegreeData {
+            value: d.degree_value.value,
+            alter: d.degree_alter.value,
+            degree_type: d.degree_type.value.as_str().to_string(),
+            symbol: d
+                .degree_value
+                .symbol
+                .as_ref()
+                .map(|s| s.as_str().to_string()),
+            value_text: d.degree_value.text.clone(),
+            plus_minus: d.degree_alter.plus_minus.map(|v| matches!(v, YesNo::Yes)),
+        }
+    }
+
+    fn build_frame(f: &Frame) -> FrameData {
+        use tusk_model::musicxml_ext::FirstFretData;
+        FrameData {
+            strings: f.frame_strings,
+            frets: f.frame_frets,
+            first_fret: f.first_fret.as_ref().map(|ff| FirstFretData {
+                value: ff.value,
+                text: ff.text.clone(),
+                location: ff.location.as_ref().map(|l| l.to_string()),
+            }),
+            notes: f
+                .frame_notes
+                .iter()
+                .map(|n| FrameNoteData {
+                    string: n.string.value,
+                    fret: n.fret.value,
+                    fingering: n.fingering.as_ref().map(|fg| fg.value.clone()),
+                    barre: n.barre.as_ref().map(|b| b.barre_type.to_string()),
+                })
+                .collect(),
+            visual: Some(VisualAttrs {
+                default_x: f.default_x,
+                default_y: f.default_y,
+                color: f.color.clone(),
+                ..VisualAttrs::default()
+            }),
+            unplayed: f.unplayed.clone(),
+            id: f.id.clone(),
+        }
+    }
+
+    HarmonyData {
+        chords: h.chords.iter().map(build_chord).collect(),
+        frame: h.frame.as_ref().map(build_frame),
+        offset: h.offset.as_ref().map(|o| OffsetData {
+            value: o.value,
+            sound: o.sound.map(|v| matches!(v, YesNo::Yes)),
+        }),
+        harmony_type: h.harmony_type.as_ref().map(enum_to_string),
+        print_object: h.print_object.map(|v| matches!(v, YesNo::Yes)),
+        print_frame: h.print_frame.map(|v| matches!(v, YesNo::Yes)),
+        arrangement: h.arrangement.as_ref().map(enum_to_string),
+        placement: h.placement.as_ref().map(|p| match p {
+            AboveBelow::Above => "above".to_string(),
+            AboveBelow::Below => "below".to_string(),
+        }),
+        visual: Some(VisualAttrs {
+            font_family: h.font_family.clone(),
+            font_size: h.font_size,
+            font_style: h.font_style.clone(),
+            font_weight: h.font_weight.clone(),
+            color: h.color.clone(),
+            default_x: h.default_x,
+            default_y: h.default_y,
+            ..VisualAttrs::default()
+        }),
+        id: h.id.clone(),
     }
 }
 

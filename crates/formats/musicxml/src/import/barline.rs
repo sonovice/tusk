@@ -9,6 +9,7 @@
 use crate::context::ConversionContext;
 use crate::model::elements::Barline;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
+use tusk_model::musicxml_ext::{BarlineData, EndingData, RepeatData};
 
 /// Label prefix for MEI dir elements carrying barline JSON data.
 pub const BARLINE_LABEL_PREFIX: &str = "musicxml:barline,";
@@ -27,6 +28,11 @@ pub fn convert_barline(barline: &Barline, ctx: &mut ConversionContext) -> Measur
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("barline"));
     if let Some(label) = json_label {
         dir.common.label = Some(label);
+    }
+
+    // Dual-path: store typed BarlineData in ExtensionStore
+    if let Some(ref id) = dir.common.xml_id {
+        ctx.ext_store_mut().entry(id.clone()).barline_data = Some(build_barline_data(barline));
     }
 
     // Human-readable summary
@@ -78,6 +84,51 @@ fn barline_summary(barline: &Barline) -> String {
     }
 
     parts.join("; ")
+}
+
+fn build_barline_data(b: &Barline) -> BarlineData {
+    use crate::model::data::YesNo;
+
+    BarlineData {
+        location: b.location.as_ref().map(|l| l.to_musicxml_str().to_string()),
+        bar_style: b
+            .bar_style
+            .as_ref()
+            .map(|s| s.to_musicxml_str().to_string()),
+        repeat: b.repeat.as_ref().map(|r| RepeatData {
+            direction: match r.direction {
+                crate::model::elements::BackwardForward::Forward => "forward".to_string(),
+                crate::model::elements::BackwardForward::Backward => "backward".to_string(),
+            },
+            times: r.times,
+            after_jump: r.after_jump.map(|v| matches!(v, YesNo::Yes)),
+            winged: r
+                .winged
+                .as_ref()
+                .and_then(|w| serde_json::to_value(w).ok())
+                .and_then(|v| v.as_str().map(|s| s.to_string())),
+        }),
+        ending: b.ending.as_ref().map(|e| EndingData {
+            number: e.number.clone(),
+            ending_type: e.ending_type.to_string(),
+            text: e.text.clone(),
+            visual: None,
+        }),
+        fermatas: b
+            .fermatas
+            .iter()
+            .filter_map(|f| serde_json::to_value(f).ok())
+            .collect(),
+        segno: b.segno.as_ref().and_then(|s| serde_json::to_value(s).ok()),
+        coda: b.coda.as_ref().and_then(|c| serde_json::to_value(c).ok()),
+        wavy_line: b
+            .wavy_line
+            .as_ref()
+            .and_then(|w| serde_json::to_value(w).ok()),
+        segno_attr: b.segno_attr.clone(),
+        coda_attr: b.coda_attr.clone(),
+        divisions: b.divisions,
+    }
 }
 
 /// Deserialize a Barline from a roundtrip label string.

@@ -230,6 +230,9 @@ pub fn convert_note(
     // Import visual/position/print attributes
     convert_note_visual_attrs(note, &mut mei_note);
 
+    // Dual-path: store typed extension data in ExtensionStore
+    populate_note_ext_store(note, &mei_note, ctx);
+
     Ok(mei_note)
 }
 
@@ -1896,6 +1899,138 @@ fn strip_label_segment(mei_note: &mut tusk_model::elements::Note, prefix: &str) 
             mei_note.common.label = None;
         } else {
             mei_note.common.label = Some(remaining.join("|"));
+        }
+    }
+}
+
+/// Populate ExtensionStore with typed note-level extension data.
+fn populate_note_ext_store(
+    note: &crate::model::note::Note,
+    mei_note: &tusk_model::elements::Note,
+    ctx: &mut ConversionContext,
+) {
+    use crate::model::note::{NoteVisualAttrs, StemValue};
+    use tusk_model::musicxml_ext::{LyricExtras, NoteExtras, NoteVisualData, PlayData, StemExtras};
+
+    let note_id = match mei_note.common.xml_id {
+        Some(ref id) => id.clone(),
+        None => return,
+    };
+
+    // StemExtras
+    if let Some(ref stem) = note.stem {
+        let stem_ext = match stem.value {
+            StemValue::Double => Some(StemExtras::Double),
+            StemValue::None => Some(StemExtras::None),
+            _ => None,
+        };
+        if let Some(ext) = stem_ext {
+            ctx.ext_store_mut().entry(note_id.clone()).stem_extras = Some(ext);
+        }
+    }
+
+    // NoteVisualData
+    let vis = NoteVisualAttrs::from_note(note);
+    if !vis.is_empty() {
+        let nvd = NoteVisualData {
+            default_x: vis.default_x,
+            default_y: vis.default_y,
+            relative_x: vis.relative_x,
+            relative_y: vis.relative_y,
+            print_object: vis
+                .print_object
+                .map(|v| matches!(v, crate::model::data::YesNo::Yes)),
+            print_leger: vis
+                .print_leger
+                .map(|v| matches!(v, crate::model::data::YesNo::Yes)),
+            print_spacing: vis
+                .print_spacing
+                .map(|v| matches!(v, crate::model::data::YesNo::Yes)),
+            color: vis.color.clone(),
+            dynamics: vis.dynamics,
+            end_dynamics: vis.end_dynamics,
+            attack: vis.attack,
+            release: vis.release,
+            pizzicato: vis
+                .pizzicato
+                .map(|v| matches!(v, crate::model::data::YesNo::Yes)),
+        };
+        ctx.ext_store_mut().entry(note_id.clone()).note_visual = Some(nvd);
+    }
+
+    // NoteExtras
+    let mut extras = NoteExtras::default();
+    let mut has_extras = false;
+
+    if let Some(ref nh) = note.notehead {
+        if let Ok(val) = serde_json::to_value(nh) {
+            extras.notehead = Some(val);
+            has_extras = true;
+        }
+    }
+    if let Some(ref nht) = note.notehead_text {
+        if let Ok(val) = serde_json::to_value(nht) {
+            extras.notehead_text = Some(val);
+            has_extras = true;
+        }
+    }
+    if let Some(ref play) = note.play {
+        if let Ok(val) = serde_json::to_value(play) {
+            extras.play = serde_json::from_value::<PlayData>(val).ok();
+            if extras.play.is_some() {
+                has_extras = true;
+            }
+        }
+    }
+    if let Some(ref listen) = note.listen {
+        if let Ok(val) = serde_json::to_value(listen) {
+            extras.listen = Some(val);
+            has_extras = true;
+        }
+    }
+    if let Some(ref ft) = note.footnote {
+        if let Ok(val) = serde_json::to_value(ft) {
+            extras.footnote = Some(val);
+            has_extras = true;
+        }
+    }
+    if let Some(ref lv) = note.level {
+        if let Ok(val) = serde_json::to_value(lv) {
+            extras.level = Some(val);
+            has_extras = true;
+        }
+    }
+    if let Some(ref notations) = note.notations {
+        if let Some(ref ft) = notations.footnote {
+            if let Ok(val) = serde_json::to_value(ft) {
+                extras.notations_footnote = Some(val);
+                has_extras = true;
+            }
+        }
+        if let Some(ref lv) = notations.level {
+            if let Ok(val) = serde_json::to_value(lv) {
+                extras.notations_level = Some(val);
+                has_extras = true;
+            }
+        }
+    }
+    if !note.instruments.is_empty() {
+        extras.instruments = note.instruments.iter().map(|i| i.id.clone()).collect();
+        has_extras = true;
+    }
+
+    if has_extras {
+        ctx.ext_store_mut().entry(note_id.clone()).note_extras = Some(extras);
+    }
+
+    // LyricExtras — store per-verse ext data on note id with verse suffix
+    for lyric in &note.lyrics {
+        if let Ok(val) = serde_json::to_value(lyric) {
+            let verse_key = match &lyric.number {
+                Some(num) => format!("{}_v{}", note_id, num),
+                None => format!("{}_v", note_id),
+            };
+            ctx.ext_store_mut().entry(verse_key).lyric_extras = Some(LyricExtras { lyric: val });
         }
     }
 }

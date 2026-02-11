@@ -32,6 +32,7 @@ mod tuplets;
 use std::collections::HashMap;
 
 use crate::model::duration::DurationContext;
+use tusk_model::extensions::ExtensionStore;
 
 pub use glissandos::{CompletedGliss, PendingGliss};
 pub use positions::{ConversionWarning, DocumentPosition};
@@ -139,6 +140,9 @@ pub struct ConversionContext {
     /// MusicXML part-symbol for multi-staff parts, keyed by part_id.
     /// Set during export (MEI→MusicXML) when reading staffGrp labels.
     part_symbols: HashMap<String, crate::model::attributes::PartSymbol>,
+
+    /// Extension store for typed roundtrip data keyed by element xml:id.
+    pub(super) ext_store: ExtensionStore,
 }
 
 impl Default for ConversionContext {
@@ -176,6 +180,7 @@ impl ConversionContext {
             part_divisions: HashMap::new(),
             part_staff_map: HashMap::new(),
             part_symbols: HashMap::new(),
+            ext_store: ExtensionStore::new(),
         }
     }
 
@@ -284,6 +289,25 @@ impl ConversionContext {
     }
 
     // ========================================================================
+    // Extension Store
+    // ========================================================================
+
+    /// Get a reference to the extension store.
+    pub fn ext_store(&self) -> &ExtensionStore {
+        &self.ext_store
+    }
+
+    /// Get a mutable reference to the extension store.
+    pub fn ext_store_mut(&mut self) -> &mut ExtensionStore {
+        &mut self.ext_store
+    }
+
+    /// Take ownership of the extension store, replacing it with an empty one.
+    pub fn take_ext_store(&mut self) -> ExtensionStore {
+        std::mem::take(&mut self.ext_store)
+    }
+
+    // ========================================================================
     // Ornament Events
     // ========================================================================
 
@@ -322,6 +346,7 @@ impl ConversionContext {
         self.key_fifths = 0;
         self.key_mode = None;
         self.measure_accidentals.clear();
+        self.ext_store = ExtensionStore::new();
     }
 }
 

@@ -8,6 +8,7 @@ use crate::context::ConversionContext;
 use crate::model::elements::score::{Bookmark, Link};
 use crate::model::listening::{Grouping, Listening};
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
+use tusk_model::musicxml_ext::ListeningData;
 
 pub const LISTENING_LABEL_PREFIX: &str = "musicxml:listening,";
 pub const GROUPING_LABEL_PREFIX: &str = "musicxml:grouping,";
@@ -29,6 +30,12 @@ pub fn convert_listening(listening: &Listening, ctx: &mut ConversionContext) -> 
     dir.dir_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
     dir.dir_log.staff = Some("1".to_string());
 
+    if let Some(ref id) = dir.common.xml_id {
+        if let Ok(val) = serde_json::to_value(listening) {
+            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Listening(val));
+        }
+    }
+
     MeasureChild::Dir(Box::new(dir))
 }
 
@@ -47,6 +54,12 @@ pub fn convert_grouping(grouping: &Grouping, ctx: &mut ConversionContext) -> Mea
     dir.children.push(DirChild::Text(summary));
     dir.dir_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
     dir.dir_log.staff = Some("1".to_string());
+
+    if let Some(ref id) = dir.common.xml_id {
+        if let Ok(val) = serde_json::to_value(grouping) {
+            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Grouping(val));
+        }
+    }
 
     MeasureChild::Dir(Box::new(dir))
 }
@@ -67,6 +80,12 @@ pub fn convert_link(link: &Link, ctx: &mut ConversionContext) -> MeasureChild {
     dir.dir_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
     dir.dir_log.staff = Some("1".to_string());
 
+    if let Some(ref id) = dir.common.xml_id {
+        if let Ok(val) = serde_json::to_value(link) {
+            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Link(val));
+        }
+    }
+
     MeasureChild::Dir(Box::new(dir))
 }
 
@@ -85,6 +104,12 @@ pub fn convert_bookmark(bookmark: &Bookmark, ctx: &mut ConversionContext) -> Mea
         .push(DirChild::Text(format!("bookmark:{}", bookmark.id)));
     dir.dir_log.tstamp = Some(tusk_model::data::DataBeat::from(1.0));
     dir.dir_log.staff = Some("1".to_string());
+
+    if let Some(ref id) = dir.common.xml_id {
+        if let Ok(val) = serde_json::to_value(bookmark) {
+            ctx.ext_store_mut().entry(id.clone()).listening = Some(ListeningData::Bookmark(val));
+        }
+    }
 
     MeasureChild::Dir(Box::new(dir))
 }

@@ -60,6 +60,7 @@ use crate::context::{ConversionContext, ConversionDirection};
 use crate::convert_error::ConversionResult;
 use crate::model::elements::ScorePartwise;
 use tusk_model::elements::{Mei, MeiChild, MeiHead, MeiHeadChild, Music};
+use tusk_model::extensions::ExtensionStore;
 
 /// Label prefix for MEI extMeta carrying roundtrip identification JSON.
 pub(crate) const IDENTIFICATION_LABEL_PREFIX: &str = "musicxml:identification,";
@@ -88,7 +89,7 @@ pub(crate) const CREDITS_LABEL_PREFIX: &str = "musicxml:credits,";
 /// # Returns
 ///
 /// A complete MEI document, or an error if conversion fails.
-pub fn convert_score(score: &ScorePartwise) -> ConversionResult<Mei> {
+pub fn convert_score(score: &ScorePartwise) -> ConversionResult<(Mei, ExtensionStore)> {
     let mut ctx = ConversionContext::new(ConversionDirection::MusicXmlToMei);
     convert_score_with_context(score, &mut ctx)
 }
@@ -100,7 +101,7 @@ pub fn convert_score(score: &ScorePartwise) -> ConversionResult<Mei> {
 pub fn convert_score_with_context(
     score: &ScorePartwise,
     ctx: &mut ConversionContext,
-) -> ConversionResult<Mei> {
+) -> ConversionResult<(Mei, ExtensionStore)> {
     // Build MEI document structure
     let mei_head = convert_header(score, ctx)?;
     let music = convert_music(score, ctx)?;
@@ -112,7 +113,10 @@ pub fn convert_score_with_context(
     mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
     mei.children.push(MeiChild::Music(Box::new(music)));
 
-    Ok(mei)
+    // Take the extension store from the context
+    let ext_store = ctx.take_ext_store();
+
+    Ok((mei, ext_store))
 }
 
 /// Convert MusicXML header information to MEI meiHead.
@@ -239,6 +243,9 @@ fn convert_header(score: &ScorePartwise, ctx: &mut ConversionContext) -> Convers
         }
     }
 
+    // --- Dual path: also populate ScoreHeaderData in ExtensionStore ---
+    populate_ext_store_header(score, &mut mei_head, ctx);
+
     Ok(mei_head)
 }
 
@@ -259,6 +266,113 @@ fn create_ext_meta(
         .children
         .push(ExtMetaChild::Text(summary_text.to_string()));
     ext_meta
+}
+
+/// Populate a ScoreHeaderData in the ExtensionStore keyed by the meiHead xml:id.
+///
+/// This is the typed dual path alongside the extMeta JSON labels. Both paths
+/// are written during import so that export can migrate to the typed store
+/// while the extMeta path remains for backward compatibility.
+fn populate_ext_store_header(
+    score: &ScorePartwise,
+    mei_head: &mut MeiHead,
+    ctx: &mut ConversionContext,
+) {
+    use tusk_model::musicxml_ext::{
+        IdentificationData, MiscFieldData, ScoreHeaderData, TypedTextData, WorkData,
+    };
+
+    let mut header = ScoreHeaderData::default();
+    let mut has_data = false;
+
+    // Identification
+    if let Some(ident) = &score.identification {
+        if has_meaningful_identification(ident) {
+            let mut id_data = IdentificationData::default();
+            for c in &ident.creators {
+                id_data.creators.push(TypedTextData {
+                    text_type: c.text_type.clone(),
+                    value: c.value.clone(),
+                });
+            }
+            for r in &ident.rights {
+                id_data.rights.push(TypedTextData {
+                    text_type: r.text_type.clone(),
+                    value: r.value.clone(),
+                });
+            }
+            if let Some(enc) = &ident.encoding {
+                id_data.encoding = serde_json::to_value(enc).ok();
+            }
+            id_data.source = ident.source.clone();
+            for rel in &ident.relations {
+                id_data.relations.push(TypedTextData {
+                    text_type: rel.text_type.clone(),
+                    value: rel.value.clone(),
+                });
+            }
+            if let Some(misc) = &ident.miscellaneous {
+                for f in &misc.fields {
+                    id_data.miscellaneous.push(MiscFieldData {
+                        name: f.name.clone(),
+                        value: f.value.clone(),
+                    });
+                }
+            }
+            header.identification = Some(id_data);
+            has_data = true;
+        }
+    }
+
+    // Work
+    if let Some(work) = &score.work {
+        if work.work_number.is_some() || work.work_title.is_some() || work.opus.is_some() {
+            header.work = Some(WorkData {
+                work_number: work.work_number.clone(),
+                work_title: work.work_title.clone(),
+                opus: work.opus.as_ref().map(|o| o.href.clone()),
+            });
+            has_data = true;
+        }
+    }
+
+    // Movement number
+    if score.movement_number.is_some() {
+        header.movement_number = score.movement_number.clone();
+        has_data = true;
+    }
+
+    // Movement title
+    if score.movement_title.is_some() {
+        header.movement_title = score.movement_title.clone();
+        has_data = true;
+    }
+
+    // Defaults
+    if let Some(defaults) = &score.defaults {
+        if let Ok(val) = serde_json::to_value(defaults) {
+            header.defaults = Some(val);
+            has_data = true;
+        }
+    }
+
+    // Credits
+    if !score.credits.is_empty() {
+        for credit in &score.credits {
+            if let Ok(val) = serde_json::to_value(credit) {
+                header.credits.push(val);
+            }
+        }
+        if !header.credits.is_empty() {
+            has_data = true;
+        }
+    }
+
+    if has_data {
+        let head_id = ctx.generate_id_with_suffix("meihead");
+        mei_head.basic.xml_id = Some(head_id.clone());
+        ctx.ext_store_mut().entry(head_id).score_header = Some(header);
+    }
 }
 
 /// Check if identification has meaningful data beyond the default Tusk encoding.
@@ -530,7 +644,7 @@ mod tests {
     #[test]
     fn convert_empty_score_creates_valid_mei_structure() {
         let score = ScorePartwise::default();
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         // Check MEI version is set
         assert!(mei.mei_version.meiversion.is_some());
@@ -544,7 +658,7 @@ mod tests {
     #[test]
     fn convert_score_sets_mei_version() {
         let score = ScorePartwise::default();
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         // Should set MEI version to 6.0-dev (current dev version from RNG schema)
         assert_eq!(mei.mei_version.meiversion.as_deref(), Some("6.0-dev"));
@@ -557,7 +671,7 @@ mod tests {
     #[test]
     fn convert_header_creates_file_desc() {
         let score = ScorePartwise::default();
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         if let MeiChild::MeiHead(head) = &mei.children[0] {
             // Should have fileDesc as first child
@@ -578,7 +692,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         if let MeiChild::MeiHead(head) = &mei.children[0] {
             if let MeiHeadChild::FileDesc(file_desc) = &head.children[0] {
@@ -628,7 +742,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         if let MeiChild::MeiHead(head) = &mei.children[0] {
             if let MeiHeadChild::FileDesc(file_desc) = &head.children[0] {
@@ -645,7 +759,7 @@ mod tests {
     #[test]
     fn convert_header_uses_untitled_when_no_title() {
         let score = ScorePartwise::default();
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         if let MeiChild::MeiHead(head) = &mei.children[0] {
             if let MeiHeadChild::FileDesc(file_desc) = &head.children[0] {
@@ -662,7 +776,7 @@ mod tests {
     #[test]
     fn convert_header_includes_encoding_desc() {
         let score = ScorePartwise::default();
-        let mei = convert_score(&score).expect("conversion should succeed");
+        let (mei, _ext) = convert_score(&score).expect("conversion should succeed");
 
         if let MeiChild::MeiHead(head) = &mei.children[0] {
             let has_encoding_desc = head
