@@ -427,4 +427,37 @@ mod tests {
             panic!("expected ContextBlock");
         }
     }
+
+    #[test]
+    fn context_def_keywords_roundtrip() {
+        let lb = LayoutBlock {
+            body: vec![LayoutItem::ContextBlock(ContextModBlock {
+                items: vec![
+                    ContextModItem::ContextRef("Staff".into()),
+                    ContextModItem::Accepts("CueVoice".into()),
+                    ContextModItem::Denies("Voice".into()),
+                    ContextModItem::Alias("RhythmicStaff".into()),
+                    ContextModItem::DefaultChild("Voice".into()),
+                    ContextModItem::Description("A custom staff".into()),
+                    ContextModItem::Name("MyStaff".into()),
+                ],
+            })],
+        };
+        let od = layout_to_output_def(&lb);
+        assert_eq!(od.context_blocks.len(), 1);
+        assert_eq!(od.context_blocks[0].items.len(), 7);
+
+        let back = output_def_to_layout(&od);
+        let LayoutItem::ContextBlock(cb) = &back.body[0] else {
+            panic!("expected ContextBlock");
+        };
+        assert_eq!(cb.items.len(), 7);
+        assert!(matches!(&cb.items[0], ContextModItem::ContextRef(s) if s == "Staff"));
+        assert!(matches!(&cb.items[1], ContextModItem::Accepts(s) if s == "CueVoice"));
+        assert!(matches!(&cb.items[2], ContextModItem::Denies(s) if s == "Voice"));
+        assert!(matches!(&cb.items[3], ContextModItem::Alias(s) if s == "RhythmicStaff"));
+        assert!(matches!(&cb.items[4], ContextModItem::DefaultChild(s) if s == "Voice"));
+        assert!(matches!(&cb.items[5], ContextModItem::Description(s) if s == "A custom staff"));
+        assert!(matches!(&cb.items[6], ContextModItem::Name(s) if s == "MyStaff"));
+    }
 }

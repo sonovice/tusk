@@ -203,3 +203,79 @@ fn roundtrip_paper_layout_midi_fixture() {
         "should have top-level + score midi, got: {output}"
     );
 }
+
+#[test]
+fn roundtrip_context_def_accepts_denies() {
+    let src = r#"\layout {
+  \context {
+    \Staff
+    \accepts "CueVoice"
+    \denies "Voice"
+  }
+}
+\score { { c4 } }"#;
+    let output = roundtrip(src);
+    assert!(output.contains("\\accepts \"CueVoice\""), "got: {output}");
+    assert!(output.contains("\\denies \"Voice\""), "got: {output}");
+    assert!(output.contains("\\Staff"), "got: {output}");
+}
+
+#[test]
+fn roundtrip_context_def_alias_defaultchild_description_name() {
+    let src = r#"\layout {
+  \context {
+    \Score
+    \alias "Score"
+    \defaultchild "Staff"
+    \description "The main score context"
+    \name "Score"
+  }
+}
+\score { { c4 } }"#;
+    let output = roundtrip(src);
+    assert!(output.contains("\\alias \"Score\""), "got: {output}");
+    assert!(output.contains("\\defaultchild \"Staff\""), "got: {output}");
+    assert!(
+        output.contains("\\description \"The main score context\""),
+        "got: {output}"
+    );
+    assert!(output.contains("\\name \"Score\""), "got: {output}");
+}
+
+#[test]
+fn roundtrip_context_def_fixture() {
+    let src = r#"\version "2.24.0"
+
+\layout {
+  \context {
+    \Staff
+    \accepts "CueVoice"
+    \denies "Voice"
+  }
+  \context {
+    \Score
+    \defaultchild "Staff"
+    \description "The main score context"
+    \name "Score"
+    \alias "Score"
+  }
+}
+
+\new Staff {
+  c4 d e f
+}"#;
+    let output = roundtrip(src);
+
+    // First context block
+    assert!(output.contains("\\accepts \"CueVoice\""), "got: {output}");
+    assert!(output.contains("\\denies \"Voice\""), "got: {output}");
+
+    // Second context block
+    assert!(output.contains("\\defaultchild \"Staff\""), "got: {output}");
+    assert!(
+        output.contains("\\description \"The main score context\""),
+        "got: {output}"
+    );
+    assert!(output.contains("\\name \"Score\""), "got: {output}");
+    assert!(output.contains("\\alias \"Score\""), "got: {output}");
+}

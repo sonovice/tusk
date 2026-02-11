@@ -291,3 +291,41 @@ fn labels_use_tusk_prefix() {
         }
     }
 }
+
+#[test]
+fn layout_with_context_def_keywords_stored() {
+    let src = "\\layout {\n  \\context {\n    \\Staff\n    \\accepts \"CueVoice\"\n    \\denies \"Voice\"\n    \\alias \"RhythmicStaff\"\n    \\defaultchild \"Voice\"\n    \\description \"Custom staff\"\n    \\name \"MyStaff\"\n  }\n}\n\\score { { c4 } }";
+    let file = parse(src);
+    let mei = import(&file).unwrap();
+
+    let labels = ext_meta_labels(&mei);
+    let output_defs_label = labels
+        .iter()
+        .find(|l| l.starts_with("tusk:output-defs,"))
+        .expect("output-defs ExtMeta not found");
+    // All context-def keywords should be in the JSON
+    assert!(
+        output_defs_label.contains("Accepts"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("Denies"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("Alias"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("DefaultChild"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("Description"),
+        "got: {output_defs_label}"
+    );
+    assert!(
+        output_defs_label.contains("Name"),
+        "got: {output_defs_label}"
+    );
+}

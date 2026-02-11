@@ -1774,9 +1774,14 @@ Missing keywords: `\denies`, `\accepts`, `\alias`, `\defaultchild`, `\descriptio
 
 ### 39.2 Import & Export
 
-- [ ] [I] New `ContextModItem` variants roundtrip through the existing serialization pipeline (context blocks are already serialized as a whole; new variants just need to parse and serialize correctly)
-- [ ] [E] Roundtrip via existing serialization path
-- [ ] [T] Roundtrip tests: context with \accepts/\denies/\alias, fixture roundtrip
+- [x] [I] New `ContextModItem` variants roundtrip through the existing serialization pipeline (context blocks are already serialized as a whole; new variants just need to parse and serialize correctly)
+  - All 6 variants (Accepts, Denies, Alias, DefaultChild, Description, Name) already handled in context_mod_item_to_ext/ext_to_context_mod_item; verified with unit test
+- [x] [E] Roundtrip via existing serialization path
+  - Full pipeline roundtrip verified: parse → import → MEI → export → serialize preserves all 6 keywords
+- [x] [T] Roundtrip tests: context with \accepts/\denies/\alias, fixture roundtrip
+  - Unit test: context_def_keywords_roundtrip in output_def_conv.rs
+  - Import test: layout_with_context_def_keywords_stored in import/tests_output_defs.rs
+  - Roundtrip tests: 3 tests in export/tests_output_defs.rs (accepts/denies, alias/defaultchild/description/name, fixture)
 
 ---
 
