@@ -1617,10 +1617,16 @@ The parser and serializer already handle `\book` and `\bookpart` blocks, but the
 
 ### 34.2 Export
 
-- [ ] [E] Read `BookStructure` extension from MEI; reconstruct `ToplevelExpression::Book` / `ToplevelExpression::BookPart` wrappers around scores with correct header/paper nesting
-- [ ] [E] Multi-`<mdiv>` MEI → reconstruct as separate `\score` blocks inside `\book`/`\bookpart` where extension data indicates original structure
-- [ ] [T] Roundtrip tests: book with single score, book+bookpart, multiple bookparts, book header/paper preserved
-- [ ] [T] Roundtrip fixture: `fragment_book.ly` survives LilyPond→MEI→LilyPond
+- [x] [E] Read `BookStructure` extension from MEI; reconstruct `ToplevelExpression::Book` / `ToplevelExpression::BookPart` wrappers around scores with correct header/paper nesting
+  - `export/book.rs`: `find_book_entries()` reads `tusk:book-structure,{json}` labels from mdivs; `reconstruct_books()` groups by book_index/bookpart_index and builds `BookBlock`/`BookPartBlock` hierarchy
+  - `export/mod.rs`: refactored `export()` to detect book-structured MEI and call `export_book()` path; extracted `export_single_score()` for reuse across single/multi-score paths
+- [x] [E] Multi-`<mdiv>` MEI → reconstruct as separate `\score` blocks inside `\book`/`\bookpart` where extension data indicates original structure
+  - `book::build_book_block()` separates direct scores from bookpart-grouped scores; `build_bookpart_block()` sorts scores by `score_index`
+  - Book/bookpart-level output defs (header/paper) restored via `output_def_conv::output_def_to_header/paper()`
+- [x] [T] Roundtrip tests: book with single score, book+bookpart, multiple bookparts, book header/paper preserved
+  - `export/tests_book.rs`: 12 roundtrip tests covering single score, bookpart, multiple bookparts, headers, paper, full hierarchy, direct scores, non-book unchanged, fixture
+- [x] [T] Roundtrip fixture: `fragment_book.ly` survives LilyPond→MEI→LilyPond
+  - `roundtrip_fragment_book_fixture` test verifies book/bookpart/header preservation
 
 ---
 

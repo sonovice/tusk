@@ -1,5 +1,6 @@
 //! Conversion from MEI to LilyPond AST.
 
+mod book;
 mod conversion;
 pub(crate) mod lyrics;
 mod output_defs;
@@ -9,6 +10,8 @@ mod signatures;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_book;
 #[cfg(test)]
 mod tests_chords;
 #[cfg(test)]
@@ -61,147 +64,23 @@ pub enum ExportError {
 
 /// Convert an MEI document to a LilyPond AST.
 pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
-    // Find the Music -> Body -> Mdiv -> Score path
-    let score = find_score(mei).ok_or(ExportError::NoMusic)?;
-
-    // Extract staffGrp metadata for context reconstruction
-    let group_meta = extract_group_meta(score);
-    let staff_metas = extract_staff_metas(score);
-
-    // Extract event sequences from staffDef labels (for clef/key/time roundtrip)
-    let event_sequences = extract_event_sequences(score);
-
-    // Extract pitch context labels (relative/transpose) from staffDefs
-    let pitch_contexts = extract_pitch_contexts(score);
-
-    // Extract lyrics info from staffDef labels
-    let lyrics_infos = extract_lyrics_infos(score);
-
-    // Walk section -> measures -> staves -> layers -> notes/rests
-    let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new(); // staff -> layer -> items
-    // Also collect raw layer children per staff for lyrics extraction
-    let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
-
-    for child in &score.children {
-        if let ScoreChild::Section(section) = child {
-            for section_child in &section.children {
-                if let SectionChild::Measure(measure) = section_child {
-                    // Collect control events → note-id post-event map
-                    let mut post_event_map = collect_slur_post_events(&measure.children);
-                    collect_dynam_post_events(&measure.children, &mut post_event_map);
-                    collect_hairpin_post_events(&measure.children, &mut post_event_map);
-                    collect_artic_post_events(&measure.children, &mut post_event_map);
-                    collect_ornament_post_events(&measure.children, &mut post_event_map);
-
-                    // Collect property operations for injection
-                    let property_ops = collect_property_ops(&measure.children);
-
-                    // Collect music function calls for injection
-                    let function_ops = collect_function_ops(&measure.children);
-
-                    // Collect tuplet spans for wrapping
-                    let tuplet_spans = collect_tuplet_spans(&measure.children);
-
-                    // Collect repeat/ending spans for wrapping
-                    let repeat_spans = collect_repeat_spans(&measure.children);
-                    let ending_spans = collect_ending_spans(&measure.children);
-
-                    let mut staff_idx = 0usize;
-                    for mc in &measure.children {
-                        if let MeasureChild::Staff(staff) = mc {
-                            let mut layers: Vec<Vec<Music>> = Vec::new();
-                            let mut raw_layers: Vec<&[LayerChild]> = Vec::new();
-                            for sc in &staff.children {
-                                let tusk_model::elements::StaffChild::Layer(layer) = sc;
-                                raw_layers.push(&layer.children);
-                                // Collect grace type info before converting
-                                let grace_types = collect_grace_types(&layer.children);
-                                let mut items = Vec::new();
-                                let mut item_ids = Vec::new();
-                                for lc in &layer.children {
-                                    let start = items.len();
-                                    convert_layer_child_to_items(lc, &post_event_map, &mut items);
-                                    // Track xml:ids for newly added items
-                                    collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
-                                }
-                                // Inject property operations before their referenced notes
-                                inject_property_ops(&mut items, &item_ids, &property_ops);
-                                // Inject music function calls before their referenced notes
-                                inject_function_ops(&mut items, &item_ids, &function_ops);
-                                // Wrap tuplet ranges in Music::Tuplet
-                                apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
-                                // Wrap grace notes in Music::Grace/Acciaccatura/etc.
-                                apply_grace_wrapping(&mut items, &grace_types);
-                                // Wrap repeat/alternative ranges in Music::Repeat
-                                apply_repeat_wrapping(
-                                    &mut items,
-                                    &item_ids,
-                                    &repeat_spans,
-                                    &ending_spans,
-                                );
-                                layers.push(items);
-                            }
-
-                            // Inject clef/key/time events from the event sequence
-                            if let Some(seq) = event_sequences.get(staff_idx) {
-                                inject_signature_events(&mut layers, seq);
-                            }
-
-                            staff_music.push(layers);
-                            staff_layer_children.push(raw_layers);
-                            staff_idx += 1;
-                        }
-                    }
-                }
-            }
-        }
+    // Check for book-structured multi-mdiv layout
+    if let Some(entries) = book::find_book_entries(mei) {
+        return export_book(mei, &entries);
     }
 
-    // Collect chord-mode events from Harm control events
-    let chord_mode_events = collect_chord_mode_harms(score);
-
-    // Extract chord-names context metadata from staffGrp label
-    let chord_names_meta = extract_chord_names_meta(score);
-
-    // Collect figure-mode events from Fb control events
-    let figure_mode_events = collect_figure_mode_fbs(score);
-
-    // Extract figured-bass context metadata from staffGrp label
-    let figured_bass_meta = extract_figured_bass_meta(score);
-
-    // Apply pitch context wrappers (relative/transpose) to each staff's music
-    apply_pitch_contexts(&mut staff_music, &pitch_contexts);
-
-    // Build music expression from collected layers, wrapping in contexts
-    let music = build_music_with_contexts(
-        staff_music,
-        &group_meta,
-        &staff_metas,
-        &lyrics_infos,
-        &staff_layer_children,
-        &chord_mode_events,
-        &chord_names_meta,
-        &figure_mode_events,
-        &figured_bass_meta,
-    );
-
-    // Build score block with score-level header/layout/midi
-    let mut score_items = vec![ScoreItem::Music(music)];
-    let score_blocks = output_defs::extract_score_blocks(score);
-    score_items.extend(score_blocks);
-
-    let score_block = ScoreBlock { items: score_items };
+    // Single-score path (backward compatible)
+    let score = find_score(mei).ok_or(ExportError::NoMusic)?;
+    let score_block = export_single_score(score);
 
     // Build top-level items: assignments, header, paper, layout, midi, then score
     let mut items = Vec::new();
 
-    // Extract stored variable assignments from scoreDef label
     let assignments = extract_assignments(score);
     for a in assignments {
         items.push(ToplevelExpression::Assignment(a));
     }
 
-    // Extract top-level blocks from MeiHead ExtMeta
     let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
     if let Some(hb) = top_header {
         items.push(ToplevelExpression::Header(hb));
@@ -224,6 +103,141 @@ pub fn export(mei: &Mei) -> Result<LilyPondFile, ExportError> {
         }),
         items,
     })
+}
+
+/// Export a book-structured MEI (multiple mdivs with BookStructure labels).
+fn export_book(mei: &Mei, entries: &[book::MdivEntry<'_>]) -> Result<LilyPondFile, ExportError> {
+    let mut items = Vec::new();
+
+    // Extract top-level assignments from first score's scoreDef
+    if let Some(first) = entries.first() {
+        let assignments = extract_assignments(first.score);
+        for a in assignments {
+            items.push(ToplevelExpression::Assignment(a));
+        }
+    }
+
+    // Extract top-level blocks from MeiHead ExtMeta
+    let (top_header, top_paper, top_layout, top_midi) = output_defs::extract_toplevel_blocks(mei);
+    if let Some(hb) = top_header {
+        items.push(ToplevelExpression::Header(hb));
+    }
+    if let Some(pb) = top_paper {
+        items.push(ToplevelExpression::Paper(pb));
+    }
+    if let Some(lb) = top_layout {
+        items.push(ToplevelExpression::Layout(lb));
+    }
+    if let Some(mb) = top_midi {
+        items.push(ToplevelExpression::Midi(mb));
+    }
+
+    // Reconstruct book/bookpart hierarchy
+    let book_items = book::reconstruct_books(entries, &export_single_score);
+    items.extend(book_items);
+
+    Ok(LilyPondFile {
+        version: Some(Version {
+            version: "2.24.0".to_string(),
+        }),
+        items,
+    })
+}
+
+/// Export a single MEI Score to a LilyPond ScoreBlock.
+fn export_single_score(score: &tusk_model::elements::Score) -> ScoreBlock {
+    let group_meta = extract_group_meta(score);
+    let staff_metas = extract_staff_metas(score);
+    let event_sequences = extract_event_sequences(score);
+    let pitch_contexts = extract_pitch_contexts(score);
+    let lyrics_infos = extract_lyrics_infos(score);
+
+    let mut staff_music: Vec<Vec<Vec<Music>>> = Vec::new();
+    let mut staff_layer_children: Vec<Vec<&[LayerChild]>> = Vec::new();
+
+    for child in &score.children {
+        if let ScoreChild::Section(section) = child {
+            for section_child in &section.children {
+                if let SectionChild::Measure(measure) = section_child {
+                    let mut post_event_map = collect_slur_post_events(&measure.children);
+                    collect_dynam_post_events(&measure.children, &mut post_event_map);
+                    collect_hairpin_post_events(&measure.children, &mut post_event_map);
+                    collect_artic_post_events(&measure.children, &mut post_event_map);
+                    collect_ornament_post_events(&measure.children, &mut post_event_map);
+
+                    let property_ops = collect_property_ops(&measure.children);
+                    let function_ops = collect_function_ops(&measure.children);
+                    let tuplet_spans = collect_tuplet_spans(&measure.children);
+                    let repeat_spans = collect_repeat_spans(&measure.children);
+                    let ending_spans = collect_ending_spans(&measure.children);
+
+                    let mut staff_idx = 0usize;
+                    for mc in &measure.children {
+                        if let MeasureChild::Staff(staff) = mc {
+                            let mut layers: Vec<Vec<Music>> = Vec::new();
+                            let mut raw_layers: Vec<&[LayerChild]> = Vec::new();
+                            for sc in &staff.children {
+                                let tusk_model::elements::StaffChild::Layer(layer) = sc;
+                                raw_layers.push(&layer.children);
+                                let grace_types = collect_grace_types(&layer.children);
+                                let mut items = Vec::new();
+                                let mut item_ids = Vec::new();
+                                for lc in &layer.children {
+                                    let start = items.len();
+                                    convert_layer_child_to_items(lc, &post_event_map, &mut items);
+                                    collect_layer_child_ids(lc, &mut item_ids, items.len() - start);
+                                }
+                                inject_property_ops(&mut items, &item_ids, &property_ops);
+                                inject_function_ops(&mut items, &item_ids, &function_ops);
+                                apply_tuplet_wrapping(&mut items, &item_ids, &tuplet_spans);
+                                apply_grace_wrapping(&mut items, &grace_types);
+                                apply_repeat_wrapping(
+                                    &mut items,
+                                    &item_ids,
+                                    &repeat_spans,
+                                    &ending_spans,
+                                );
+                                layers.push(items);
+                            }
+
+                            if let Some(seq) = event_sequences.get(staff_idx) {
+                                inject_signature_events(&mut layers, seq);
+                            }
+
+                            staff_music.push(layers);
+                            staff_layer_children.push(raw_layers);
+                            staff_idx += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let chord_mode_events = collect_chord_mode_harms(score);
+    let chord_names_meta = extract_chord_names_meta(score);
+    let figure_mode_events = collect_figure_mode_fbs(score);
+    let figured_bass_meta = extract_figured_bass_meta(score);
+
+    apply_pitch_contexts(&mut staff_music, &pitch_contexts);
+
+    let music = build_music_with_contexts(
+        staff_music,
+        &group_meta,
+        &staff_metas,
+        &lyrics_infos,
+        &staff_layer_children,
+        &chord_mode_events,
+        &chord_names_meta,
+        &figure_mode_events,
+        &figured_bass_meta,
+    );
+
+    let mut score_items = vec![ScoreItem::Music(music)];
+    let score_blocks = output_defs::extract_score_blocks(score);
+    score_items.extend(score_blocks);
+
+    ScoreBlock { items: score_items }
 }
 
 /// Extract stored variable assignments from scoreDef label.
