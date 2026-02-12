@@ -1438,7 +1438,6 @@ scoreDef/staffDef; subsequent changes are lost.
 - [x] Existing tests pass (0 regressions)
   - 350 roundtrip, 540 unit, 97 MEI, 50 MEI→MusicXML integration
 
-(Don't forget to commit the changes here.)
 ---
 
 ## Phase 33: Export — Forward & Voice Generation
@@ -1449,10 +1448,14 @@ structure.
 
 ### 33.1 Forward Generation
 
-- [ ] Convert `LayerChild::Space` → `MeasureContent::Forward` with correct duration
+- [x] Convert `LayerChild::Space` → `MeasureContent::Forward` with correct duration
   - Calculate forward duration from MEI space `@dur`/`@dots` (or from duration context)
-- [ ] Emit `<forward>` at correct position in measure content sequence
-- [ ] Handle space elements within beams (extract to measure level)
+  - Added `convert_mei_space()` in export/content.rs: reads @dur/@dots, falls back to @dur.ppq
+  - Also updated `find_smallest_duration_in_layer` to account for Space durations in divisions calculation
+- [x] Emit `<forward>` at correct position in measure content sequence
+  - Added `LayerChild::Space` arm in the layer-child conversion loop (content.rs ~line 1963)
+- [x] Handle space elements within beams (extract to measure level)
+  - MEI `BeamChild` enum does not include Space — Space can only appear at LayerChild level, not within beams. No extraction needed.
 
 ### 33.2 Voice Assignment
 

@@ -1954,8 +1954,14 @@ fn convert_staff_content(
                         .content
                         .push(MeasureContent::Note(Box::new(mxml_note)));
                 }
+                LayerChild::Space(space) => {
+                    let forward = convert_mei_space(space, ctx);
+                    mxml_measure
+                        .content
+                        .push(MeasureContent::Forward(Box::new(forward)));
+                }
                 _ => {
-                    // Other layer children (space, divLine, etc.) not handled yet
+                    // Other layer children (divLine, etc.) not handled yet
                 }
             }
             i += 1;
@@ -2159,6 +2165,32 @@ fn collect_beam_events(
         }
     }
     Ok(events)
+}
+
+/// Convert MEI `<space>` → MusicXML `<forward>`.
+///
+/// Calculates duration in divisions from `@dur`/`@dots`, falling back to
+/// `@dur.ppq` (raw divisions) if written duration is absent.
+fn convert_mei_space(
+    space: &tusk_model::elements::Space,
+    ctx: &ConversionContext,
+) -> crate::model::note::Forward {
+    use super::utils::{apply_dots, duration_to_quarter_notes};
+
+    let divisions = ctx.divisions();
+
+    let duration = if let Some(ref dur) = space.space_log.dur {
+        let base = duration_to_quarter_notes(dur);
+        let dot_count = space.space_log.dots.as_ref().map(|d| d.0).unwrap_or(0);
+        apply_dots(base, dot_count) * divisions
+    } else if let Some(ref ppq) = space.space_ges.dur_ppq {
+        ppq.parse::<f64>().unwrap_or(divisions)
+    } else {
+        // Default: one quarter note
+        divisions
+    };
+
+    crate::model::note::Forward::new(duration)
 }
 
 /// Derive tremolo mark count from MEI bTrem/fTrem @unitdur attribute.
@@ -2395,9 +2427,16 @@ fn find_smallest_duration_in_layer(
             LayerChild::FTrem(ftrem) => {
                 find_smallest_duration_in_ftrem(&ftrem.children, smallest);
             }
+            LayerChild::Space(space) => {
+                if let Some(ref dur) = space.space_log.dur {
+                    let quarters = duration_to_quarter_notes(dur);
+                    if quarters < *smallest && quarters > 0.0 {
+                        *smallest = quarters;
+                    }
+                }
+            }
             LayerChild::MRest(_)
             | LayerChild::DivLine(_)
-            | LayerChild::Space(_)
             | LayerChild::KeySig(_)
             | LayerChild::MeterSig(_)
             | LayerChild::Clef(_) => {}
@@ -3288,5 +3327,65 @@ mod tests {
         let t2 = orn2.tremolo.as_ref().expect("should have tremolo");
         assert_eq!(t2.tremolo_type, crate::model::data::TremoloType::Stop);
         assert_eq!(t2.value, Some(2));
+    }
+
+    // ========================================================================
+    // Space → Forward Tests
+    // ========================================================================
+
+    #[test]
+    fn test_convert_mei_space_quarter_note() {
+        use tusk_model::data::{DataDuration, DataDurationCmn};
+        use tusk_model::elements::Space;
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let mut space = Space::default();
+        space.space_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N4));
+
+        let forward = convert_mei_space(&space, &ctx);
+        assert!((forward.duration - 4.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_convert_mei_space_dotted_half() {
+        use tusk_model::data::{DataAugmentdot, DataDuration, DataDurationCmn};
+        use tusk_model::elements::Space;
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let mut space = Space::default();
+        space.space_log.dur = Some(DataDuration::MeiDataDurationCmn(DataDurationCmn::N2));
+        space.space_log.dots = Some(DataAugmentdot(1));
+
+        let forward = convert_mei_space(&space, &ctx);
+        // Dotted half = 2.0 + 1.0 = 3.0 quarter notes × 4 divisions = 12
+        assert!((forward.duration - 12.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_convert_mei_space_dur_ppq_fallback() {
+        use tusk_model::elements::Space;
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let mut space = Space::default();
+        space.space_ges.dur_ppq = Some("7".to_string());
+
+        let forward = convert_mei_space(&space, &ctx);
+        assert!((forward.duration - 7.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_convert_mei_space_no_duration_defaults_to_quarter() {
+        use tusk_model::elements::Space;
+        let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+        ctx.set_divisions(4.0);
+
+        let space = Space::default();
+
+        let forward = convert_mei_space(&space, &ctx);
+        // Default: one quarter note = 4 divisions
+        assert!((forward.duration - 4.0).abs() < 1e-10);
     }
 }
