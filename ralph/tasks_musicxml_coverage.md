@@ -1472,10 +1472,16 @@ structure.
 
 ### 33.3 Tests
 
-- [ ] Add roundtrip fixture with multi-voice measure (two voices in one staff)
-- [ ] Add roundtrip fixture with rests-as-forward (voice padding)
-- [ ] Verify `<voice>` and `<forward>` appear in output
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with multi-voice measure (two voices in one staff)
+  - `tests/fixtures/musicxml/multi_voice.musicxml`: 2 measures, voice 1 melody + voice 2 bass with backup
+  - Registered as `test_roundtrip_multi_voice` in roundtrip.rs — all 4 roundtrip levels pass
+- [x] Add roundtrip fixture with rests-as-forward (voice padding)
+  - `tests/fixtures/musicxml/voice_forward.musicxml`: forward elements for voice padding in multi-voice context
+  - Registered as `test_roundtrip_voice_forward` in roundtrip.rs — all 4 roundtrip levels pass
+- [x] Verify `<voice>` and `<forward>` appear in output
+  - `test_voice_and_forward_in_output`: verifies serialized XML contains `<voice>` and all exported notes have voice assigned
+- [x] Existing tests pass (0 regressions)
+  - All 2488+ tests pass, 0 failures, clippy clean
 
 ---
 

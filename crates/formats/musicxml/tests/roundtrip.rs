@@ -835,6 +835,16 @@ fn test_roundtrip_visual_attributes() {
     assert_roundtrip("visual_attributes.musicxml");
 }
 
+#[test]
+fn test_roundtrip_multi_voice() {
+    assert_roundtrip("multi_voice.musicxml");
+}
+
+#[test]
+fn test_roundtrip_voice_forward() {
+    assert_roundtrip("voice_forward.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================
@@ -856,6 +866,47 @@ fn debug_roundtrip_output() {
     println!("Measures: {}", exported.measures.len());
     for m in &exported.measures {
         println!("  Measure '{}': {} parts", m.number, m.parts.len());
+    }
+}
+
+/// Verify that voice and forward elements appear in exported MusicXML.
+#[test]
+fn test_voice_and_forward_in_output() {
+    // multi_voice: import flattens voices, export assigns voice "1"
+    let xml = load_fixture("multi_voice.musicxml").unwrap();
+    let partwise = parse_score_partwise(&xml).unwrap();
+    let (mei, ext_store) = import(&partwise).unwrap();
+    let exported = export_with_ext(&mei, &ext_store).unwrap();
+    let output = serialize(&exported).unwrap();
+    assert!(
+        output.contains("<voice>"),
+        "Exported MusicXML should contain <voice> elements"
+    );
+
+    // voice_forward: forward elements should survive roundtrip
+    let xml2 = load_fixture("voice_forward.musicxml").unwrap();
+    let partwise2 = parse_score_partwise(&xml2).unwrap();
+    let (mei2, ext_store2) = import(&partwise2).unwrap();
+    let exported2 = export_with_ext(&mei2, &ext_store2).unwrap();
+    let output2 = serialize(&exported2).unwrap();
+    assert!(
+        output2.contains("<voice>"),
+        "voice_forward output should contain <voice>"
+    );
+
+    // Check that the exported timewise model has voice set on notes
+    let tw = export_timewise_with_ext(&mei, &ext_store).unwrap();
+    for measure in &tw.measures {
+        for part in &measure.parts {
+            for content in &part.content {
+                if let MeasureContent::Note(note) = content {
+                    assert!(
+                        note.voice.is_some(),
+                        "Every note should have a voice assigned"
+                    );
+                }
+            }
+        }
     }
 }
 
