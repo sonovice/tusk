@@ -1555,6 +1555,10 @@ fragment_roundtrip_test!(wood_element);
 fragment_roundtrip_test!(piano_two_staves);
 fragment_roundtrip_test!(organ_three_staves);
 fragment_roundtrip_test!(cross_staff_notes);
+// Inline attribute changes (Phase 32)
+fragment_roundtrip_test!(inline_key_change);
+fragment_roundtrip_test!(inline_clef_change);
+fragment_roundtrip_test!(inline_time_change);
 
 // ============================================================================
 // .mxl Compressed MusicXML Roundtrip Tests (Phase 22)

@@ -1418,18 +1418,27 @@ scoreDef/staffDef; subsequent changes are lost.
 
 ### 32.2 Export — Inline Attribute Changes to MusicXML
 
-- [ ] Detect inline `<clef>` / `<staffDef>` changes in MEI sections → emit `<attributes>` with the changed element in the correct MusicXML measure
-- [ ] Detect inline `<keySig>` changes → emit `<attributes><key>`
-- [ ] Detect inline `<meterSig>` / `<scoreDef>` changes → emit `<attributes><time>`
-- [ ] Handle attribute changes that coincide with measure starts vs mid-measure positions
+- [x] Detect inline `<clef>` / `<staffDef>` changes in MEI sections → emit `<attributes>` with the changed element in the correct MusicXML measure
+  - Implemented in convert_staff_content with merge_inline_clef
+- [x] Detect inline `<keySig>` changes → emit `<attributes><key>`
+  - Implemented in convert_staff_content with merge_inline_keysig
+- [x] Detect inline `<meterSig>` / `<scoreDef>` changes → emit `<attributes><time>`
+  - Implemented in convert_staff_content with merge_inline_metersig
+- [x] Handle attribute changes that coincide with measure starts vs mid-measure positions
+  - Consecutive inline LayerChild elements merged into single <attributes> block
 
 ### 32.3 Tests
 
-- [ ] Add roundtrip fixture with mid-score key change (e.g. from C major to G major in measure 3)
-- [ ] Add roundtrip fixture with mid-score clef change (treble to bass)
-- [ ] Add roundtrip fixture with mid-score time signature change (4/4 to 3/4)
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with mid-score key change (e.g. from C major to G major in measure 3)
+  - inline_key_change.musicxml: C major → G major at measure 3
+- [x] Add roundtrip fixture with mid-score clef change (treble to bass)
+  - inline_clef_change.musicxml: treble → bass at measure 3
+- [x] Add roundtrip fixture with mid-score time signature change (4/4 to 3/4)
+  - inline_time_change.musicxml: 4/4 → 3/4 at measure 3
+- [x] Existing tests pass (0 regressions)
+  - 350 roundtrip, 540 unit, 97 MEI, 50 MEI→MusicXML integration
 
+(Don't forget to commit the changes here.)
 ---
 
 ## Phase 33: Export — Forward & Voice Generation
