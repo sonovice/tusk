@@ -574,40 +574,21 @@ fn convert_ties(note: &MusicXmlNote, mei_note: &mut MeiNote) {
 // Articulation Conversion
 // ============================================================================
 
-/// Convert MusicXML articulations to MEI @artic attribute and note label for breath/caesura.
+/// Convert MusicXML articulations to MEI @artic attribute.
 ///
 /// Maps MusicXML articulation elements (accent, staccato, tenuto, etc.)
-/// to MEI DataArticulation. Breath-mark and caesura are stored in note common.label
-/// (e.g. "musicxml:breath-mark", "musicxml:caesura") for roundtrip since MEI @artic
-/// has no equivalent and Breath/Caesura are not note children in our schema.
-fn convert_articulations(note: &MusicXmlNote, mei_note: &mut MeiNote, ctx: &mut ConversionContext) {
+/// to MEI DataArticulation. Only the first articulation is stored in @artic
+/// (MEI model limitation); full articulation data is preserved in the
+/// ExtensionStore for lossless roundtrip.
+fn convert_articulations(
+    note: &MusicXmlNote,
+    mei_note: &mut MeiNote,
+    _ctx: &mut ConversionContext,
+) {
     if let Some(ref notations) = note.notations {
         if let Some(ref artics) = notations.articulations {
             let tokens = articulations_to_mei(artics);
-            if tokens.len() > 1 {
-                ctx.add_warning(
-                    "artic",
-                    "Multiple articulations on note; only first is stored in MEI @artic",
-                );
-            }
             mei_note.note_anl.artic = tokens.first().copied();
-
-            // Store breath-mark and/or caesura as JSON-in-label for lossless roundtrip
-            if let Some(ref bm) = artics.breath_mark {
-                if let Ok(json) = serde_json::to_string(bm) {
-                    append_note_label(mei_note, &format!("musicxml:breath-mark,{json}"));
-                }
-            }
-            if let Some(ref cs) = artics.caesura {
-                if let Ok(json) = serde_json::to_string(cs) {
-                    append_note_label(mei_note, &format!("musicxml:caesura,{json}"));
-                }
-            }
-            for oa in &artics.other_articulation {
-                if let Ok(json) = serde_json::to_string(oa) {
-                    append_note_label(mei_note, &format!("musicxml:other-articulation,{json}"));
-                }
-            }
         }
     }
 }
@@ -2022,6 +2003,16 @@ fn populate_note_ext_store(
     if !note.instruments.is_empty() {
         extras.instruments = note.instruments.iter().map(|i| i.id.clone()).collect();
         has_extras = true;
+    }
+
+    // Store full articulations for lossless multi-artic roundtrip
+    if let Some(ref notations) = note.notations {
+        if let Some(ref artics) = notations.articulations {
+            if let Ok(val) = serde_json::to_value(artics) {
+                extras.articulations = Some(val);
+                has_extras = true;
+            }
+        }
     }
 
     if has_extras {

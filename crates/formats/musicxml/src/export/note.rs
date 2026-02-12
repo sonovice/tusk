@@ -144,11 +144,8 @@ pub fn convert_mei_note(
         mxml_note.cue = Some(Empty);
     }
 
-    // Convert articulations from MEI @artic to MusicXML <articulations>
-    convert_mei_artic(mei_note.note_anl.artic.as_ref(), &mut mxml_note);
-
-    // Restore breath-mark and caesura from note label (roundtrip from import)
-    convert_mei_note_label_articulations(mei_note, &mut mxml_note, ctx);
+    // Convert articulations from ExtensionStore (full data) or MEI @artic (single value)
+    convert_mei_articulations(mei_note, &mut mxml_note, ctx);
 
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
@@ -451,8 +448,45 @@ fn convert_mei_written_accid_to_mxml(
     }
 }
 
-/// Convert MEI @artic (single DataArticulation) to MusicXML articulations.
-fn convert_mei_artic(
+/// Convert MEI articulations to MusicXML.
+///
+/// Preferred path: read full `Articulations` from ExtensionStore (lossless roundtrip
+/// of multiple articulations, breath-mark, caesura, other-articulation).
+/// Fallback: reconstruct from MEI `@artic` (single value) + label segments.
+fn convert_mei_articulations(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+    ctx: &ConversionContext,
+) {
+    use crate::model::notations::{Articulations, Notations};
+
+    // Preferred: read full articulations from ExtensionStore
+    if let Some(id) = &mei_note.common.xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref extras) = ext.note_extras {
+                if let Some(ref val) = extras.articulations {
+                    if let Ok(artics) = serde_json::from_value::<Articulations>(val.clone()) {
+                        if artics != Articulations::default() {
+                            let notations =
+                                mxml_note.notations.get_or_insert_with(Notations::default);
+                            notations.articulations = Some(artics);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: reconstruct from MEI @artic (single value)
+    convert_mei_artic_single(mei_note.note_anl.artic.as_ref(), mxml_note);
+
+    // Fallback: restore breath-mark, caesura, other-articulation from label segments
+    convert_mei_note_label_articulations(mei_note, mxml_note);
+}
+
+/// Convert a single MEI DataArticulation to MusicXML articulations (fallback path).
+fn convert_mei_artic_single(
     artic: Option<&tusk_model::data::DataArticulation>,
     mxml_note: &mut crate::model::note::Note,
 ) {
@@ -488,11 +522,10 @@ fn convert_mei_artic(
     }
 }
 
-/// Apply breath-mark and caesura from MEI note label (JSON-in-label for lossless roundtrip).
+/// Restore breath-mark, caesura, other-articulation from MEI note label (fallback).
 fn convert_mei_note_label_articulations(
     mei_note: &tusk_model::elements::Note,
     mxml_note: &mut crate::model::note::Note,
-    _ctx: &ConversionContext,
 ) {
     let label = match mei_note.common.label.as_deref() {
         Some(l) => l,
@@ -1505,16 +1538,13 @@ pub fn convert_mei_chord(
             }
         }
 
-        // Convert articulations from MEI @artic on individual notes
-        convert_mei_artic(mei_note.note_anl.artic.as_ref(), &mut mxml_note);
+        // Convert articulations from ExtensionStore (full data) or MEI @artic (single value)
+        convert_mei_articulations(mei_note, &mut mxml_note, ctx);
 
-        // Apply chord-level articulations to the first note
+        // Apply chord-level articulations to the first note (fallback for non-roundtrip MEI)
         if i == 0 {
-            convert_mei_artic(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
+            convert_mei_artic_single(mei_chord.chord_log.artic.as_ref(), &mut mxml_note);
         }
-
-        // Restore breath-mark, caesura, other-articulation from note label
-        convert_mei_note_label_articulations(mei_note, &mut mxml_note, ctx);
 
         // Convert ties from MEI @tie attribute to MusicXML <tie> elements
         convert_mei_ties(mei_note, &mut mxml_note);

@@ -1492,9 +1492,16 @@ structure.
 Currently only the first articulation is stored in MEI `@artic`; the rest are lost
 (warning emitted). MEI `@artic` is a space-separated list and supports multiple values.
 
-- [ ] Import: store all articulations as space-separated values in MEI `@artic` (e.g. `artic="acc stacc"`)
-  - MEI `DataArticulation` supports this via `SpaceSeparated<DataArticulation>`
-- [ ] Export: parse space-separated `@artic` → multiple `<articulations>` children
+- [x] Import: store all articulations as space-separated values in MEI `@artic` (e.g. `artic="acc stacc"`)
+  - MEI generated model only supports `Option<DataArticulation>` (single value); can't edit generated files
+  - Solution: first articulation stored in `@artic` for MEI consumers; full `Articulations` struct stored in `NoteExtras.articulations` via `ExtensionStore` for lossless roundtrip
+  - Added `articulations: Option<serde_json::Value>` field to `NoteExtras` in `musicxml_ext/mod.rs`
+  - Removed multiple-articulations warning from import
+  - Removed label-based breath-mark/caesura/other-articulation storage (now in ExtensionStore)
+- [x] Export: parse space-separated `@artic` → multiple `<articulations>` children
+  - New unified `convert_mei_articulations()` checks ExtensionStore first for full `Articulations` data
+  - Falls back to single `@artic` value + label segments for legacy MEI files
+  - Updated chord export to use same unified path
 
 ### 34.2 Compound Articulations
 

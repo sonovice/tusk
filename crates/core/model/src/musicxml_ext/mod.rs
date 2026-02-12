@@ -1075,6 +1075,10 @@ pub struct NoteExtras {
     /// Instrument references.
     #[serde(rename = "inst", skip_serializing_if = "Vec::is_empty")]
     pub instruments: Vec<String>,
+
+    /// Full MusicXML articulations data for lossless multi-artic roundtrip.
+    #[serde(rename = "art", skip_serializing_if = "Option::is_none")]
+    pub articulations: Option<serde_json::Value>,
 }
 
 /// Play data for note-level or sound-level playback.
