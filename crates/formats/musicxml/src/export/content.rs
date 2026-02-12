@@ -1567,6 +1567,46 @@ fn convert_ornament_events(
                         .push(crate::model::notations::AccidentalMark { value, placement });
                     // Skip adding to ornaments for accidental-mark
                     continue;
+                } else if let Some(rest) = label.strip_prefix("musicxml:other-notation,") {
+                    // Other-notation → goes on notations (not ornaments)
+                    use crate::model::data::StartStopSingle;
+                    let mut notation_type = StartStopSingle::Single;
+                    let mut number: Option<u8> = None;
+                    let mut smufl: Option<String> = None;
+                    for part in rest.split(',') {
+                        if let Some(v) = part.strip_prefix("type=") {
+                            notation_type = match v {
+                                "start" => StartStopSingle::Start,
+                                "stop" => StartStopSingle::Stop,
+                                _ => StartStopSingle::Single,
+                            };
+                        } else if let Some(v) = part.strip_prefix("number=") {
+                            number = v.parse().ok();
+                        } else if let Some(v) = part.strip_prefix("smufl=") {
+                            smufl = Some(v.to_string());
+                        }
+                    }
+                    // Collect text from ornam children
+                    let text: String = ornam
+                        .children
+                        .iter()
+                        .map(|c| {
+                            let tusk_model::elements::OrnamChild::Text(t) = c;
+                            t.as_str()
+                        })
+                        .collect::<Vec<_>>()
+                        .join("");
+                    let notations = note.notations.get_or_insert_with(Notations::default);
+                    notations
+                        .other_notations
+                        .push(crate::model::notations::OtherNotation {
+                            notation_type,
+                            number,
+                            placement,
+                            smufl,
+                            text,
+                        });
+                    continue;
                 }
             }
             _ => {}

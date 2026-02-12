@@ -152,6 +152,9 @@ pub fn convert_note(
     // Process standalone accidental marks
     process_accidental_marks(note, &note_id, ctx);
 
+    // Process other-notation elements
+    process_other_notations(note, &note_id, ctx);
+
     // Process notation-level dynamics
     process_notation_dynamics(note, &note_id, ctx);
 
@@ -1201,6 +1204,60 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
         }
         if !am.value.is_empty() {
             ornam.children.push(OrnamChild::Text(am.value.clone()));
+        }
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+    }
+}
+
+// ============================================================================
+// Other-Notation Processing
+// ============================================================================
+
+/// Process `<other-notation>` elements into MEI `<ornam>` control events with label.
+///
+/// Uses the same label-based roundtrip pattern as accidental-marks and technical notations.
+/// Label format: `musicxml:other-notation,type=<type>[,number=<num>][,smufl=<name>]`
+fn process_other_notations(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use tusk_model::data::DataUri;
+    use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+
+    let notations = match note.notations {
+        Some(ref n) => n,
+        None => return,
+    };
+    if notations.other_notations.is_empty() {
+        return;
+    }
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    for on in &notations.other_notations {
+        let type_str = match on.notation_type {
+            crate::model::data::StartStopSingle::Start => "start",
+            crate::model::data::StartStopSingle::Stop => "stop",
+            crate::model::data::StartStopSingle::Single => "single",
+        };
+        let mut label = format!("musicxml:other-notation,type={}", type_str);
+        if let Some(n) = on.number {
+            label.push_str(&format!(",number={}", n));
+        }
+        if let Some(ref s) = on.smufl {
+            label.push_str(&format!(",smufl={}", s));
+        }
+
+        let mut ornam = Ornam::default();
+        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        ornam.common.label = Some(label);
+        ornam.ornam_log.startid = Some(startid.clone());
+        ornam.ornam_log.staff = Some(staff_str.clone());
+        if let Some(ref placement) = on.placement {
+            use crate::import::direction::convert_placement;
+            ornam.ornam_vis.place = convert_placement(Some(placement));
+        }
+        if !on.text.is_empty() {
+            ornam.children.push(OrnamChild::Text(on.text.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }

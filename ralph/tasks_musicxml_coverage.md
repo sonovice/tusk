@@ -1525,9 +1525,16 @@ MEI has compound articulation values that MusicXML represents as separate elemen
 
 ### 34.3 Other-Notation
 
-- [ ] Import: `<other-notation>` (start/stop/single with number, placement, smufl, text) → MEI annotation or extension
-- [ ] Export: reverse mapping
-- [ ] Add `other-notation` handling to the notations processing pipeline
+- [x] Import: `<other-notation>` (start/stop/single with number, placement, smufl, text) → MEI annotation or extension
+  - Added `process_other_notations()` in import/note.rs
+  - Creates MEI `<ornam>` with label `musicxml:other-notation,type=<type>[,number=<num>][,smufl=<name>]`
+  - Preserves placement, text content
+- [x] Export: reverse mapping
+  - Added `musicxml:other-notation,` label dispatch in export/content.rs ornam handler
+  - Parses type, number, smufl from label; text from ornam children
+  - Reconstructs full OtherNotation struct
+- [x] Add `other-notation` handling to the notations processing pipeline
+  - Added `process_other_notations()` call in note conversion between accidental-marks and dynamics
 
 ### 34.4 Direction Lossy Path Improvement
 
