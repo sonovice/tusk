@@ -1459,12 +1459,16 @@ structure.
 
 ### 33.2 Voice Assignment
 
-- [ ] Assign `<voice>` numbers to notes based on MEI layer structure
+- [x] Assign `<voice>` numbers to notes based on MEI layer structure
   - Each `<layer>` in a `<staff>` corresponds to a voice number
   - Layer `@n` → voice number (or 1-based sequential assignment)
-- [ ] Handle multi-staff parts: voice numbers should be unique across staves within a part
+  - In `convert_staff_content()`, derive voice from layer @n; after processing each layer's children, iterate new content items and set `note.voice` / `forward.voice`
+- [x] Handle multi-staff parts: voice numbers should be unique across staves within a part
   - Typical convention: staff 1 voices 1–2, staff 2 voices 3–4
-- [ ] Emit `<voice>` on each note element
+  - For multi-staff: voice = (staff-1) * max(layers_per_staff, 2) + layer_n
+  - Single-staff: voice = layer_n
+- [x] Emit `<voice>` on each note element
+  - Voice set on Note and Forward elements via post-loop assignment over `mxml_measure.content[content_start..]`
 
 ### 33.3 Tests
 

@@ -425,7 +425,13 @@ pub fn convert_mei_score_content(
                 )?;
 
                 if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
-                    convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
+                    convert_staff_content(
+                        staff,
+                        local_staff_n,
+                        num_staves as usize,
+                        &mut mxml_measure,
+                        ctx,
+                    )?;
                 }
 
                 convert_slur_events(
@@ -472,7 +478,13 @@ pub fn convert_mei_score_content(
 
                     // Staff content
                     if let Some(staff) = find_staff_in_measure(mei_measure, global_staff_n) {
-                        convert_staff_content(staff, local_staff_n, &mut mxml_measure, ctx)?;
+                        convert_staff_content(
+                            staff,
+                            local_staff_n,
+                            num_staves as usize,
+                            &mut mxml_measure,
+                            ctx,
+                        )?;
                     }
 
                     // Slur events
@@ -1862,19 +1874,46 @@ fn find_note_by_id_mut<'a>(
 
 /// Convert an MEI staff's content to MusicXML measure content.
 ///
-/// The `staff_n` parameter is the 1-based staff number, used to set the
-/// `<staff>` element on notes for multi-staff part roundtrip fidelity.
+/// The `staff_n` parameter is the 1-based within-part staff number, used to set
+/// the `<staff>` element on notes for multi-staff part roundtrip fidelity.
+///
+/// The `num_staves` parameter is the total number of staves in the part, used
+/// to compute voice numbers that are unique across staves.
 fn convert_staff_content(
     staff: &Staff,
     staff_n: usize,
+    num_staves: usize,
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::attributes::Attributes;
 
     // Find all layers in the staff
-    for child in &staff.children {
+    let layer_count = staff.children.len();
+    for (layer_idx, child) in staff.children.iter().enumerate() {
         let StaffChild::Layer(layer) = child;
+
+        // Derive MusicXML voice number from MEI layer @n and staff number.
+        // For single-staff parts: voice = layer @n (typically 1).
+        // For multi-staff parts: offset by (staff-1) * layers_per_staff
+        // to ensure unique voice numbers across staves.
+        let layer_n: usize = layer
+            .n_integer
+            .n
+            .as_ref()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(layer_idx + 1);
+        let voice_number = if num_staves > 1 {
+            // Use max(layer_count, 2) so staff 2 starts at voice 3+ even with 1 layer
+            let layers_per_staff = layer_count.max(2);
+            (staff_n - 1) * layers_per_staff + layer_n
+        } else {
+            layer_n
+        };
+        let voice_str = voice_number.to_string();
+
+        // Track content start index so we can assign voice after processing
+        let content_start = mxml_measure.content.len();
 
         // Process layer children, merging consecutive inline attribute changes
         // (KeySig, MeterSig, Clef) into a single MusicXML <attributes> block.
@@ -1972,6 +2011,19 @@ fn convert_staff_content(
             mxml_measure
                 .content
                 .push(MeasureContent::Attributes(Box::new(attrs)));
+        }
+
+        // Assign voice to all notes and forwards added by this layer
+        for item in &mut mxml_measure.content[content_start..] {
+            match item {
+                MeasureContent::Note(note) => {
+                    note.voice = Some(voice_str.clone());
+                }
+                MeasureContent::Forward(forward) => {
+                    forward.voice = Some(voice_str.clone());
+                }
+                _ => {}
+            }
         }
     }
     Ok(())
