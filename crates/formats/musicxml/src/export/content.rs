@@ -180,7 +180,11 @@ fn collect_note_ids_from_layer(
                     map.insert(id.clone(), measure_idx);
                 }
             }
-            LayerChild::DivLine(_) | LayerChild::Space(_) => {}
+            LayerChild::DivLine(_)
+            | LayerChild::Space(_)
+            | LayerChild::KeySig(_)
+            | LayerChild::MeterSig(_)
+            | LayerChild::Clef(_) => {}
         }
     }
 }
@@ -2270,7 +2274,12 @@ fn find_smallest_duration_in_layer(
             LayerChild::FTrem(ftrem) => {
                 find_smallest_duration_in_ftrem(&ftrem.children, smallest);
             }
-            LayerChild::MRest(_) | LayerChild::DivLine(_) | LayerChild::Space(_) => {}
+            LayerChild::MRest(_)
+            | LayerChild::DivLine(_)
+            | LayerChild::Space(_)
+            | LayerChild::KeySig(_)
+            | LayerChild::MeterSig(_)
+            | LayerChild::Clef(_) => {}
         }
     }
 }
