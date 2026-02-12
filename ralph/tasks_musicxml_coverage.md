@@ -1507,12 +1507,21 @@ Currently only the first articulation is stored in MEI `@artic`; the rest are lo
 
 MEI has compound articulation values that MusicXML represents as separate elements.
 
-- [ ] Import: `<detached-legato>` → MEI `@artic="det-legato"` (add mapping if not present)
-- [ ] Export: MEI `@artic` containing `det-legato`/`marc-stacc`/`ten-stacc` → corresponding MusicXML elements
+- [x] Import: `<detached-legato>` → MEI `@artic="det-legato"` (add mapping if not present)
+  - Already mapped: import converts detached-legato → Ten+Stacc in articulations_to_mei()
+  - MEI 5.x has no compound artic values (det-legato/marc-stacc/ten-stacc removed since v3)
+  - Full Articulations struct preserved via ExtensionStore for lossless roundtrip
+- [x] Export: MEI `@artic` containing `det-legato`/`marc-stacc`/`ten-stacc` → corresponding MusicXML elements
   - `det-legato` → `<detached-legato>`
   - `marc-stacc` → `<staccato>` + `<strong-accent>` (or use label roundtrip)
   - `ten-stacc` → `<staccato>` + `<tenuto>` (or use label roundtrip)
-- [ ] Remove silent `_ => {}` drop in `note.rs` articulation match
+  - N/A: MEI 5.x DataArticulation enum has no compound values; export uses ExtensionStore
+- [x] Remove silent `_ => {}` drop in `note.rs` articulation match
+  - Replaced with exhaustive match covering all 37 DataArticulation variants
+  - Artic values mapping to MusicXML `<articulations>` (13 variants) emit articulation elements
+  - Artic values mapping to MusicXML `<technical>` (13 variants: upbow, dnbow, harm, snap, etc.) emit technical elements
+  - Remaining 11 variants (acc-inv, acc-long, rip, longfall, etc.) emit `<other-articulation>`
+  - Added Default derive to OtherArticulation and Tap structs
 
 ### 34.3 Other-Notation
 

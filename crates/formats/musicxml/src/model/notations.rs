@@ -546,7 +546,7 @@ pub struct Articulations {
 ///
 /// Matches the MusicXML `other-articulation` element with text content,
 /// print-style (position/color), placement, and smufl attributes.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct OtherArticulation {
     /// Text content.
     #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]

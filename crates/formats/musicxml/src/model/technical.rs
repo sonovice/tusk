@@ -413,7 +413,7 @@ pub enum BendShape {
 }
 
 /// Tap notation on fretboard.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Tap {
     /// Text content (e.g. "+", "T").
     #[serde(rename = "$value", default, skip_serializing_if = "String::is_empty")]

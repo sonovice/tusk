@@ -485,12 +485,19 @@ fn convert_mei_articulations(
     convert_mei_note_label_articulations(mei_note, mxml_note);
 }
 
-/// Convert a single MEI DataArticulation to MusicXML articulations (fallback path).
+/// Convert a single MEI DataArticulation to MusicXML notations (fallback path).
+///
+/// This handles all DataArticulation variants explicitly. Values that map to MusicXML
+/// `<articulations>` are emitted there; values that map to `<technical>` are emitted
+/// in the technical container; remaining values become `<other-articulation>`.
 fn convert_mei_artic_single(
     artic: Option<&tusk_model::data::DataArticulation>,
     mxml_note: &mut crate::model::note::Note,
 ) {
-    use crate::model::notations::{Articulations, EmptyPlacement, Notations, StrongAccent};
+    use crate::model::notations::{
+        Articulations, EmptyPlacement, Notations, OtherArticulation, StrongAccent,
+    };
+    use crate::model::technical::{EmptyPlacementSmufl, Technical};
     use tusk_model::data::DataArticulation;
 
     let a = match artic {
@@ -499,7 +506,11 @@ fn convert_mei_artic_single(
     };
 
     let mut mxml_artic = Articulations::default();
+    let mut mxml_tech = Technical::default();
+    let mut other_name: Option<&str> = None;
+
     match a {
+        // Direct articulation mappings
         DataArticulation::Acc => mxml_artic.accent = Some(EmptyPlacement::default()),
         DataArticulation::Marc => mxml_artic.strong_accent = Some(StrongAccent::default()),
         DataArticulation::Stacc => mxml_artic.staccato = Some(EmptyPlacement::default()),
@@ -513,12 +524,56 @@ fn convert_mei_artic_single(
         DataArticulation::Stress => mxml_artic.stress = Some(EmptyPlacement::default()),
         DataArticulation::Unstress => mxml_artic.unstress = Some(EmptyPlacement::default()),
         DataArticulation::AccSoft => mxml_artic.soft_accent = Some(EmptyPlacement::default()),
-        _ => {}
+        // Technical mappings (MEI artic values that correspond to MusicXML <technical>)
+        DataArticulation::Upbow => mxml_tech.up_bow.push(EmptyPlacement::default()),
+        DataArticulation::Dnbow => mxml_tech.down_bow.push(EmptyPlacement::default()),
+        DataArticulation::Harm => mxml_tech.harmonic.push(Default::default()),
+        DataArticulation::Snap => mxml_tech.snap_pizzicato.push(EmptyPlacement::default()),
+        DataArticulation::Fingernail => mxml_tech.fingernails.push(EmptyPlacement::default()),
+        DataArticulation::Open => {
+            mxml_tech.open.push(EmptyPlacementSmufl::default());
+        }
+        DataArticulation::Stop => {
+            mxml_tech.stopped.push(EmptyPlacementSmufl::default());
+        }
+        DataArticulation::Dbltongue => mxml_tech.double_tongue.push(EmptyPlacement::default()),
+        DataArticulation::Trpltongue => mxml_tech.triple_tongue.push(EmptyPlacement::default()),
+        DataArticulation::Heel => mxml_tech.heel.push(Default::default()),
+        DataArticulation::Toe => mxml_tech.toe.push(Default::default()),
+        DataArticulation::Tap => mxml_tech.tap.push(Default::default()),
+        DataArticulation::Flip => mxml_tech.flip.push(EmptyPlacement::default()),
+        DataArticulation::Smear => mxml_tech.smear.push(EmptyPlacement::default()),
+        // No direct MusicXML equivalent → other-articulation
+        DataArticulation::AccInv => other_name = Some("acc-inv"),
+        DataArticulation::AccLong => other_name = Some("acc-long"),
+        DataArticulation::Rip => other_name = Some("rip"),
+        DataArticulation::Longfall => other_name = Some("longfall"),
+        DataArticulation::Bend => other_name = Some("bend"),
+        DataArticulation::Shake => other_name = Some("shake"),
+        DataArticulation::Damp => other_name = Some("damp"),
+        DataArticulation::Dampall => other_name = Some("dampall"),
+        DataArticulation::Lhpizz => other_name = Some("lhpizz"),
+        DataArticulation::Dot => other_name = Some("dot"),
+        DataArticulation::Stroke => other_name = Some("stroke"),
     }
 
     if mxml_artic != Articulations::default() {
         let notations = mxml_note.notations.get_or_insert_with(Notations::default);
         notations.articulations = Some(mxml_artic);
+    }
+    if !mxml_tech.is_empty() {
+        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+        notations.technical = Some(mxml_tech);
+    }
+    if let Some(name) = other_name {
+        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+        let artics = notations
+            .articulations
+            .get_or_insert_with(Articulations::default);
+        artics.other_articulation.push(OtherArticulation {
+            value: name.to_string(),
+            ..Default::default()
+        });
     }
 }
 
