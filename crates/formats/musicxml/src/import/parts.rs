@@ -841,6 +841,67 @@ pub fn convert_staff_def_from_score_part(
         });
     }
 
+    // Initialize tracked attribute state for mid-score change detection.
+    // Record the initial key/time/clef so that subsequent attributes blocks
+    // can be compared to detect changes. Always set defaults so that any
+    // attribute change in later measures is detected — even for parts that
+    // omit key/clef/time in their first measure.
+    {
+        use crate::model::attributes::ClefSign;
+        let local = clef_number.unwrap_or(1);
+
+        // Default key: C major (0 fifths)
+        let mut init_key_fifths: i8 = 0;
+        // Default clef: G on line 2
+        let mut init_clef = (format!("{:?}", ClefSign::G), Some(2u32), None::<i32>);
+
+        if let Some(attrs) = initial_attrs {
+            if let Some(key) = attrs.keys.first() {
+                if let KeyContent::Traditional(trad) = &key.content {
+                    init_key_fifths = trad.fifths;
+                }
+            }
+            if let Some(time) = attrs.times.first() {
+                let (count, unit, sym) = convert_time_signature(time);
+                ctx.tracked_attrs_mut().time_sig.insert(
+                    score_part.id.clone(),
+                    (
+                        count,
+                        unit.map(|u| u.to_string()),
+                        sym.map(|s| format!("{:?}", s)),
+                    ),
+                );
+            }
+            let clef = match clef_number {
+                Some(n) => attrs
+                    .clefs
+                    .iter()
+                    .find(|c| c.number == Some(n) || (n == 1 && c.number.is_none()))
+                    .or_else(|| attrs.clefs.first()),
+                None => attrs
+                    .clefs
+                    .iter()
+                    .find(|c| c.number.is_none() || c.number == Some(1))
+                    .or_else(|| attrs.clefs.first()),
+            };
+            if let Some(clef) = clef {
+                init_clef = (
+                    format!("{:?}", clef.sign),
+                    clef.line,
+                    clef.clef_octave_change,
+                );
+            }
+        }
+
+        ctx.tracked_attrs_mut()
+            .key_fifths
+            .insert(score_part.id.clone(), init_key_fifths);
+        ctx.tracked_attrs_mut()
+            .clef
+            .insert((score_part.id.clone(), local), init_clef);
+    }
+    ctx.tracked_attrs_mut().initialized = true;
+
     Ok(staff_def)
 }
 

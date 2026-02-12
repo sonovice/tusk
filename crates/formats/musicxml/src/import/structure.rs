@@ -698,6 +698,10 @@ pub fn convert_layer(
         })
         .collect();
 
+    // Collect inline attribute changes separately so beam restructuring
+    // (which uses index-based ranges) isn't disrupted by non-note elements.
+    let mut inline_attr_changes: Vec<LayerChild> = Vec::new();
+
     // Track which notes we've processed (for chord grouping)
     let mut processed_note_indices: std::collections::HashSet<usize> =
         std::collections::HashSet::new();
@@ -777,11 +781,14 @@ pub fn convert_layer(
                 }
             }
             MeasureContent::Attributes(attrs) => {
-                // Process attributes: divisions, key signature, time signature, clef
-                // Note: For now, we only update the context state.
-                // The initial staffDef is updated separately in convert_score_def.
-                // Mid-measure changes would need staffDef change elements (future work).
+                // Process attributes for context state (divisions, key, etc.)
                 process_attributes(attrs, ctx, None);
+
+                // Emit inline MEI elements for mid-score attribute changes.
+                // The first measure's first attributes block is already in the staffDef,
+                // so only emit for changes detected against tracked state.
+                // Collected separately to avoid disrupting beam restructuring indices.
+                emit_inline_attribute_changes(attrs, &mut inline_attr_changes, ctx);
             }
             MeasureContent::Backup(backup) => {
                 // Move beat position backward
@@ -799,7 +806,103 @@ pub fn convert_layer(
     // Restructure layer children to wrap beamed notes/chords in <beam> elements
     layer.children = restructure_with_beams(layer.children, &notes);
 
+    // Prepend inline attribute changes (collected separately to avoid
+    // disrupting beam restructuring which uses index-based ranges).
+    if !inline_attr_changes.is_empty() {
+        inline_attr_changes.append(&mut layer.children);
+        layer.children = inline_attr_changes;
+    }
+
     Ok(layer)
+}
+
+// ============================================================================
+// Inline Attribute Changes
+// ============================================================================
+
+/// Emit inline MEI elements for mid-score attribute changes.
+///
+/// Compares the given MusicXML attributes against tracked state in the context.
+/// When a clef, key, or time signature differs from the last-known value,
+/// emits the corresponding inline MEI element (Clef, KeySig, MeterSig) into
+/// the layer and updates the tracked state.
+///
+/// The first-measure attributes are already in the staffDef, so this function
+/// only emits inline elements when changes are detected.
+fn emit_inline_attribute_changes(
+    attrs: &crate::model::attributes::Attributes,
+    inline_children: &mut Vec<LayerChild>,
+    ctx: &mut ConversionContext,
+) {
+    use crate::import::attributes::{
+        convert_clef_attributes, convert_key_fifths, convert_time_signature,
+    };
+    use crate::model::attributes::KeyContent;
+
+    let part_id = ctx.position().part_id.clone().unwrap_or_default();
+
+    // --- Key signature changes ---
+    for key in &attrs.keys {
+        if let KeyContent::Traditional(trad) = &key.content {
+            let tracked = ctx.tracked_attrs().key_fifths.get(&part_id).copied();
+            if tracked.is_some() && tracked != Some(trad.fifths) {
+                // Key changed — emit inline keySig
+                let mut keysig = tusk_model::elements::KeySig::default();
+                keysig.key_sig_log.sig = Some(convert_key_fifths(trad.fifths));
+                inline_children.push(LayerChild::KeySig(Box::new(keysig)));
+            }
+            ctx.tracked_attrs_mut()
+                .key_fifths
+                .insert(part_id.clone(), trad.fifths);
+        }
+    }
+
+    // --- Time signature changes ---
+    for time in &attrs.times {
+        let (count, unit, sym) = convert_time_signature(time);
+        let new_val = (
+            count.clone(),
+            unit.map(|u| u.to_string()),
+            sym.map(|s| format!("{:?}", s)),
+        );
+        let tracked = ctx.tracked_attrs().time_sig.get(&part_id).cloned();
+        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
+            // Time changed — emit inline meterSig
+            let mut metersig = tusk_model::elements::MeterSig::default();
+            metersig.meter_sig_log.count = count.clone();
+            metersig.meter_sig_log.unit = unit.map(|u| u.to_string());
+            metersig.meter_sig_log.sym = sym;
+            inline_children.push(LayerChild::MeterSig(Box::new(metersig)));
+        }
+        ctx.tracked_attrs_mut()
+            .time_sig
+            .insert(part_id.clone(), new_val);
+    }
+
+    // --- Clef changes ---
+    for clef in &attrs.clefs {
+        let local_staff = clef.number.unwrap_or(1);
+        let new_val = (
+            format!("{:?}", clef.sign),
+            clef.line,
+            clef.clef_octave_change,
+        );
+        let key = (part_id.clone(), local_staff);
+        let tracked = ctx.tracked_attrs().clef.get(&key).cloned();
+        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
+            // Clef changed — emit inline clef
+            let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
+            let mut mei_clef = tusk_model::elements::Clef::default();
+            mei_clef.clef_log.shape = shape;
+            mei_clef.clef_log.line = line;
+            mei_clef.clef_log.dis = dis;
+            mei_clef.clef_log.dis_place = dis_place;
+            // Carry the within-part staff number so export can reconstruct clef@number
+            mei_clef.event.staff = Some(local_staff.to_string());
+            inline_children.push(LayerChild::Clef(Box::new(mei_clef)));
+        }
+        ctx.tracked_attrs_mut().clef.insert(key, new_val);
+    }
 }
 
 // ============================================================================

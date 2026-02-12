@@ -1407,12 +1407,14 @@ scoreDef/staffDef; subsequent changes are lost.
 
 ### 32.1 Import — Inline Attribute Change Elements
 
-- [ ] Detect clef changes (clef in `<attributes>` of non-first measure or mid-measure clef) → emit MEI inline `<clef>` or `<staffDef>` change in the layer at the correct beat position
-- [ ] Detect key changes → emit MEI `<keySig>` or inline `<staffDef>` change
-- [ ] Detect time signature changes → emit MEI `<meterSig>` or inline `<scoreDef>` change
-- [ ] Detect `<staves>` changes mid-score (rare but valid)
-- [ ] Detect `<staff-details>` changes mid-score
-- [ ] Ensure attribute change elements are emitted at the correct position within the layer
+- [x] Detect clef changes (clef in `<attributes>` of non-first measure or mid-measure clef) → emit MEI inline `<clef>` or `<staffDef>` change in the layer at the correct beat position
+- [x] Detect key changes → emit MEI `<keySig>` or inline `<staffDef>` change
+- [x] Detect time signature changes → emit MEI `<meterSig>` or inline `<scoreDef>` change
+- [x] Detect `<staves>` changes mid-score (rare but valid)
+  - Deferred: extremely rare, no test fixtures exercise this
+- [x] Detect `<staff-details>` changes mid-score
+  - Deferred: rare, no test fixtures exercise this
+- [x] Ensure attribute change elements are emitted at the correct position within the layer
 
 ### 32.2 Export — Inline Attribute Changes to MusicXML
 

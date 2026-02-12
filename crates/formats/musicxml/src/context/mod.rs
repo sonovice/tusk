@@ -154,6 +154,27 @@ pub struct ConversionContext {
 
     /// Extension store for typed roundtrip data keyed by element xml:id.
     pub(super) ext_store: ExtensionStore,
+
+    /// Tracked attribute state for detecting mid-score changes during import.
+    /// Initialized from first-measure attributes; compared against subsequent attributes.
+    pub(super) tracked_attrs: TrackedAttributes,
+}
+
+/// Tracked attribute state for detecting mid-score attribute changes.
+///
+/// When importing MusicXML, the first measure's attributes go into the MEI
+/// scoreDef/staffDef. Subsequent attribute changes need to be emitted as
+/// inline MEI elements (clef, keySig, meterSig) in the layer.
+#[derive(Debug, Clone, Default)]
+pub struct TrackedAttributes {
+    /// Last-known key fifths per part (key is part_id).
+    pub key_fifths: HashMap<String, i8>,
+    /// Last-known time signature per part: (count, unit, sym_str).
+    pub time_sig: HashMap<String, (Option<String>, Option<String>, Option<String>)>,
+    /// Last-known clef per (part_id, staff_number): (sign, line, octave_change).
+    pub clef: HashMap<(String, u32), (String, Option<u32>, Option<i32>)>,
+    /// Whether initial attributes have been set (prevents emitting inline for first attrs).
+    pub initialized: bool,
 }
 
 impl Default for ConversionContext {
@@ -195,6 +216,7 @@ impl ConversionContext {
             part_staff_map: HashMap::new(),
             part_symbols: HashMap::new(),
             ext_store: ExtensionStore::new(),
+            tracked_attrs: TrackedAttributes::default(),
         }
     }
 
@@ -369,6 +391,21 @@ impl ConversionContext {
         self.key_mode = None;
         self.measure_accidentals.clear();
         self.ext_store = ExtensionStore::new();
+        self.tracked_attrs = TrackedAttributes::default();
+    }
+
+    // ========================================================================
+    // Tracked Attributes (for mid-score change detection)
+    // ========================================================================
+
+    /// Get a mutable reference to tracked attributes.
+    pub fn tracked_attrs_mut(&mut self) -> &mut TrackedAttributes {
+        &mut self.tracked_attrs
+    }
+
+    /// Get a reference to tracked attributes.
+    pub fn tracked_attrs(&self) -> &TrackedAttributes {
+        &self.tracked_attrs
     }
 }
 

@@ -1870,11 +1870,50 @@ fn convert_staff_content(
     mxml_measure: &mut MxmlMeasure,
     ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
+    use crate::model::attributes::Attributes;
+
     // Find all layers in the staff
     for child in &staff.children {
         let StaffChild::Layer(layer) = child;
-        // Convert layer content (notes, rests, chords)
-        for layer_child in &layer.children {
+
+        // Process layer children, merging consecutive inline attribute changes
+        // (KeySig, MeterSig, Clef) into a single MusicXML <attributes> block.
+        let mut pending_attrs: Option<Attributes> = None;
+        let mut i = 0;
+        while i < layer.children.len() {
+            let layer_child = &layer.children[i];
+
+            // Check if this is an inline attribute element
+            let is_attr_child = matches!(
+                layer_child,
+                LayerChild::KeySig(_) | LayerChild::MeterSig(_) | LayerChild::Clef(_)
+            );
+
+            if is_attr_child {
+                let attrs = pending_attrs.get_or_insert_with(Attributes::default);
+                match layer_child {
+                    LayerChild::KeySig(keysig) => {
+                        merge_inline_keysig(keysig, attrs);
+                    }
+                    LayerChild::MeterSig(metersig) => {
+                        merge_inline_metersig(metersig, attrs);
+                    }
+                    LayerChild::Clef(clef) => {
+                        merge_inline_clef(clef, staff_n, attrs);
+                    }
+                    _ => unreachable!(),
+                }
+                i += 1;
+                continue;
+            }
+
+            // Flush pending attributes before non-attribute content
+            if let Some(attrs) = pending_attrs.take() {
+                mxml_measure
+                    .content
+                    .push(MeasureContent::Attributes(Box::new(attrs)));
+            }
+
             match layer_child {
                 LayerChild::Note(note) => {
                     let mut mxml_note = convert_mei_note(note, ctx)?;
@@ -1900,7 +1939,6 @@ fn convert_staff_content(
                     }
                 }
                 LayerChild::Beam(beam) => {
-                    // Recursively process beam content
                     convert_beam_content(beam, staff_n, mxml_measure, ctx)?;
                 }
                 LayerChild::BTrem(btrem) => {
@@ -1910,7 +1948,6 @@ fn convert_staff_content(
                     convert_ftrem_content(ftrem, staff_n, mxml_measure, ctx)?;
                 }
                 LayerChild::MRest(mrest) => {
-                    // Measure rest
                     let mut mxml_note = convert_mei_mrest(mrest, ctx)?;
                     mxml_note.staff = Some(staff_n as u32);
                     mxml_measure
@@ -1918,12 +1955,96 @@ fn convert_staff_content(
                         .push(MeasureContent::Note(Box::new(mxml_note)));
                 }
                 _ => {
-                    // Other layer children (space, tuplet, etc.) not handled yet
+                    // Other layer children (space, divLine, etc.) not handled yet
                 }
             }
+            i += 1;
+        }
+
+        // Flush any remaining pending attributes at end of layer
+        if let Some(attrs) = pending_attrs.take() {
+            mxml_measure
+                .content
+                .push(MeasureContent::Attributes(Box::new(attrs)));
         }
     }
     Ok(())
+}
+
+/// Merge inline MEI `<keySig>` into a MusicXML `<attributes>` block.
+fn merge_inline_keysig(
+    keysig: &tusk_model::elements::KeySig,
+    attrs: &mut crate::model::attributes::Attributes,
+) {
+    use super::attributes::convert_mei_keysig_to_fifths;
+    use crate::model::attributes::Key;
+
+    if let Some(ref sig) = keysig.key_sig_log.sig {
+        if let Some(fifths) = convert_mei_keysig_to_fifths(&sig.0) {
+            attrs.keys.push(Key::traditional(fifths, None));
+        }
+    }
+}
+
+/// Merge inline MEI `<meterSig>` into a MusicXML `<attributes>` block.
+fn merge_inline_metersig(
+    metersig: &tusk_model::elements::MeterSig,
+    attrs: &mut crate::model::attributes::Attributes,
+) {
+    use super::attributes::convert_mei_meter_sym_to_mxml;
+    use crate::model::attributes::Time;
+
+    let count = metersig.meter_sig_log.count.clone();
+    let unit = metersig.meter_sig_log.unit.clone();
+
+    if count.is_some() || unit.is_some() {
+        let beats = count.unwrap_or_default();
+        let beat_type = unit.unwrap_or_default();
+        let mut time = Time::new(&beats, &beat_type);
+
+        if let Some(ref sym) = metersig.meter_sig_log.sym {
+            time.symbol = convert_mei_meter_sym_to_mxml(sym);
+        }
+
+        attrs.times.push(time);
+    }
+}
+
+/// Merge inline MEI `<clef>` into a MusicXML `<attributes>` block.
+fn merge_inline_clef(
+    clef: &tusk_model::elements::Clef,
+    staff_n: usize,
+    attrs: &mut crate::model::attributes::Attributes,
+) {
+    use super::attributes::{
+        convert_mei_clef_dis_to_octave_change, convert_mei_clef_shape_to_mxml,
+    };
+
+    let sign = clef
+        .clef_log
+        .shape
+        .as_ref()
+        .map(convert_mei_clef_shape_to_mxml)
+        .unwrap_or(crate::model::attributes::ClefSign::G);
+    let line = clef.clef_log.line.as_ref().map(|l| l.0 as u32);
+    let octave_change = convert_mei_clef_dis_to_octave_change(
+        clef.clef_log.dis.as_ref(),
+        clef.clef_log.dis_place.as_ref(),
+    );
+
+    let mut mxml_clef = crate::model::attributes::Clef::new(sign, line);
+    mxml_clef.clef_octave_change = octave_change;
+    // Use MEI @staff if present (within-part staff number from import),
+    // otherwise fall back to the layer's staff_n
+    let clef_number = clef
+        .event
+        .staff
+        .as_ref()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(staff_n as u32);
+    mxml_clef.number = Some(clef_number);
+
+    attrs.clefs.push(mxml_clef);
 }
 
 /// Convert beam content (beams can contain notes, chords, rests).
