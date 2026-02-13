@@ -2784,23 +2784,6 @@ fn convert_technical_events(
             }),
 
             // Text-content types
-            "fingering" => tech.fingering.push(Fingering {
-                value: text,
-                substitution: if has_flag("substitution=yes") {
-                    Some(YesNo::Yes)
-                } else {
-                    None
-                },
-                alternate: if has_flag("alternate=yes") {
-                    Some(YesNo::Yes)
-                } else {
-                    None
-                },
-                placement,
-                default_x: None,
-                default_y: None,
-                color: None,
-            }),
             "pluck" => tech.pluck.push(PlacementText {
                 value: text,
                 placement,
@@ -3072,6 +3055,72 @@ fn convert_technical_events(
             _ => {}
         }
     }
+
+    // Handle native MEI <fing> elements → MusicXML <fingering>
+    for child in &mei_measure.children {
+        let MeasureChild::Fing(fing) = child else {
+            continue;
+        };
+        let fing_staff = fing
+            .fing_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if fing_staff != staff_n {
+            continue;
+        }
+        let start_id = fing
+            .fing_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        let tech = notations.technical.get_or_insert_with(Technical::default);
+
+        let placement = convert_place_to_placement(&fing.fing_vis.place);
+
+        // Extract text content
+        let text: String = fing
+            .children
+            .iter()
+            .map(|c| match c {
+                tusk_model::elements::FingChild::Text(t) => t.as_str(),
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        // Parse substitution/alternate from label
+        let mut substitution = None;
+        let mut alternate = None;
+        if let Some(label) = fing.common.label.as_deref() {
+            if let Some(rest) = label.strip_prefix("musicxml:fingering,") {
+                let params: Vec<&str> = rest.split(',').collect();
+                if params.contains(&"substitution=yes") {
+                    substitution = Some(YesNo::Yes);
+                }
+                if params.contains(&"alternate=yes") {
+                    alternate = Some(YesNo::Yes);
+                }
+            }
+        }
+
+        tech.fingering.push(Fingering {
+            value: text,
+            substitution,
+            alternate,
+            placement,
+            default_x: None,
+            default_y: None,
+            color: None,
+        });
+    }
+
     Ok(())
 }
 
@@ -3094,7 +3143,6 @@ fn is_technical_label(name: &str) -> bool {
             | "stopped"
             | "open"
             | "half-muted"
-            | "fingering"
             | "pluck"
             | "fret"
             | "string"

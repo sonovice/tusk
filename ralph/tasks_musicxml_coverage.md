@@ -1622,18 +1622,23 @@ Currently, MusicXML `<tremolo type="single">` imports to `<ornam>` with
 Phase 5 stores all 31 technical types as `<ornam>` with labels. Some have native MEI
 representations:
 
-- [ ] `<fingering>` → MEI `<fing>` element (MEI has a native fingering element)
-  - Import: create `<fing>` with text content instead of `<ornam>` with label
-  - Export: read `<fing>` → `<fingering>`
-- [ ] `<up-bow>` / `<down-bow>` → MEI `@artic` values (`upbow`/`dnbow`)
-  - These are standard MEI articulation values
-  - Import: add to note `@artic` instead of creating `<ornam>`
-  - Export: read `@artic` values → articulation or technical elements
-- [ ] Evaluate other technical elements for native MEI mapping:
-  - `<stopped>` → MEI `@artic="stop"` (if available)
-  - `<snap-pizzicato>` → MEI `@artic="snap"` (if available)
-  - `<harmonic>` → MEI `<harm>` with specific attrs (evaluate feasibility)
-- [ ] Keep label-based fallback for technical types with no MEI equivalent
+- [x] `<fingering>` → MEI `<fing>` element (MEI has a native fingering element)
+  - Import: create `<fing>` with text content, @startid, @staff, @place; substitution/alternate attrs in @label
+  - Export: read `MeasureChild::Fing` → `<fingering>` with text + substitution/alternate from label
+  - Added `("layer", "keySig")`, `("layer", "meterSig")`, `("layer", "clef")` to EXTRA_CHILDREN in codegen (fixing pre-existing compilation errors)
+  - Regenerated MEI serializer/deserializer impls
+- [x] `<up-bow>` / `<down-bow>` → MEI `@artic` values (`upbow`/`dnbow`)
+  - Import: set @artic on note + `musicxml:tech-artic,upbow/dnbow[,above/below]` label segment for placement roundtrip
+  - Export: `convert_mei_note_label_technical()` reads label segments → technical elements with placement; clears @artic duplicates
+  - Backward compat: ornam-based "musicxml:up-bow"/"musicxml:down-bow" labels still handled in `convert_technical_events`
+- [x] Evaluate other technical elements for native MEI mapping:
+  - `<stopped>` → MEI `@artic="stop"` when no smufl attr; ornam fallback with smufl
+  - `<snap-pizzicato>` → MEI `@artic="snap"` + label segment for placement
+  - `<harmonic>` → stays as `<ornam>` with label (too complex for @artic — has natural/artificial/base-pitch/touching-pitch/sounding-pitch sub-elements)
+- [x] Keep label-based fallback for technical types with no MEI equivalent
+  - All other 26 technical types retain ornam-based labels
+  - Harmonic retains ornam-based label due to complexity
+  - Stopped with smufl attr retains ornam-based label
 
 ### 36.3 Breath-Mark / Caesura → Native MEI
 

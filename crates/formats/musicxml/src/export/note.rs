@@ -147,6 +147,9 @@ pub fn convert_mei_note(
     // Convert articulations from ExtensionStore (full data) or MEI @artic (single value)
     convert_mei_articulations(mei_note, &mut mxml_note, ctx);
 
+    // Restore up-bow/down-bow from note label tech-artic segments
+    convert_mei_note_label_technical(mei_note, &mut mxml_note);
+
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
 
@@ -615,6 +618,71 @@ fn convert_mei_note_label_articulations(
                     .articulations
                     .get_or_insert_with(Articulations::default);
                 artics.other_articulation.push(oa);
+            }
+        }
+    }
+}
+
+/// Restore up-bow/down-bow from MEI note label `musicxml:tech-artic` segments.
+///
+/// When these segments are present, they take priority over `@artic` fallback
+/// because they carry placement data. Clear any prior duplicates from `@artic`.
+fn convert_mei_note_label_technical(
+    mei_note: &tusk_model::elements::Note,
+    mxml_note: &mut crate::model::note::Note,
+) {
+    let label = match mei_note.common.label.as_deref() {
+        Some(l) => l,
+        None => return,
+    };
+
+    use crate::model::data::AboveBelow;
+    use crate::model::notations::{EmptyPlacement, Notations};
+    use crate::model::technical::{EmptyPlacementSmufl, Technical};
+
+    for segment in label.split('|') {
+        if let Some(rest) = segment.strip_prefix("musicxml:tech-artic,") {
+            let parts: Vec<&str> = rest.split(',').collect();
+            let artic_name = parts.first().copied().unwrap_or("");
+            let placement = parts.get(1).and_then(|p| match *p {
+                "above" => Some(AboveBelow::Above),
+                "below" => Some(AboveBelow::Below),
+                _ => None,
+            });
+            let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+            let tech = notations.technical.get_or_insert_with(Technical::default);
+            match artic_name {
+                "upbow" => {
+                    // Clear any duplicate from @artic fallback
+                    tech.up_bow.clear();
+                    tech.up_bow.push(EmptyPlacement {
+                        placement,
+                        ..Default::default()
+                    });
+                }
+                "dnbow" => {
+                    tech.down_bow.clear();
+                    tech.down_bow.push(EmptyPlacement {
+                        placement,
+                        ..Default::default()
+                    });
+                }
+                "snap" => {
+                    tech.snap_pizzicato.clear();
+                    tech.snap_pizzicato.push(EmptyPlacement {
+                        placement,
+                        ..Default::default()
+                    });
+                }
+                "stop" => {
+                    tech.stopped.clear();
+                    tech.stopped.push(EmptyPlacementSmufl {
+                        placement,
+                        smufl: None,
+                        ..Default::default()
+                    });
+                }
+                _ => {}
             }
         }
     }
@@ -1595,6 +1663,9 @@ pub fn convert_mei_chord(
 
         // Convert articulations from ExtensionStore (full data) or MEI @artic (single value)
         convert_mei_articulations(mei_note, &mut mxml_note, ctx);
+
+        // Restore up-bow/down-bow from note label tech-artic segments
+        convert_mei_note_label_technical(mei_note, &mut mxml_note);
 
         // Apply chord-level articulations to the first note (fallback for non-roundtrip MEI)
         if i == 0 {

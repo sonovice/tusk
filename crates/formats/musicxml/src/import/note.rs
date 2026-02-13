@@ -159,7 +159,7 @@ pub fn convert_note(
     process_notation_dynamics(note, &note_id, ctx);
 
     // Process technical notations
-    process_technical(note, &note_id, ctx);
+    process_technical(note, &note_id, &mut mei_note, ctx);
 
     // Convert lyrics to MEI verse/syl children
     convert_lyrics(note, &mut mei_note);
@@ -1323,11 +1323,16 @@ fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut Conve
 }
 
 /// Process technical notations into MEI `<ornam>` control events with `musicxml:` labels.
-fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+fn process_technical(
+    note: &MusicXmlNote,
+    note_id: &str,
+    mei_note: &mut MeiNote,
+    ctx: &mut ConversionContext,
+) {
     use crate::import::direction::convert_placement;
     use crate::model::data::AboveBelow;
     use crate::model::technical::*;
-    use tusk_model::data::DataUri;
+    use tusk_model::data::{DataArticulation, DataUri};
     use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
 
     let tech = match note.notations {
@@ -1357,14 +1362,30 @@ fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         }};
     }
 
-    // Simple empty-placement types
+    // Up-bow / down-bow → native MEI @artic
     for v in &tech.up_bow {
-        let o = emit!("musicxml:up-bow".into(), v.placement);
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+        if mei_note.note_anl.artic.is_none() {
+            mei_note.note_anl.artic = Some(DataArticulation::Upbow);
+        }
+        let mut seg = "musicxml:tech-artic,upbow".to_string();
+        if let Some(AboveBelow::Below) = v.placement {
+            seg.push_str(",below");
+        } else if let Some(AboveBelow::Above) = v.placement {
+            seg.push_str(",above");
+        }
+        append_note_label(mei_note, &seg);
     }
     for v in &tech.down_bow {
-        let o = emit!("musicxml:down-bow".into(), v.placement);
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+        if mei_note.note_anl.artic.is_none() {
+            mei_note.note_anl.artic = Some(DataArticulation::Dnbow);
+        }
+        let mut seg = "musicxml:tech-artic,dnbow".to_string();
+        if let Some(AboveBelow::Below) = v.placement {
+            seg.push_str(",below");
+        } else if let Some(AboveBelow::Above) = v.placement {
+            seg.push_str(",above");
+        }
+        append_note_label(mei_note, &seg);
     }
     for v in &tech.open_string {
         let o = emit!("musicxml:open-string".into(), v.placement);
@@ -1382,9 +1403,18 @@ fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         let o = emit!("musicxml:triple-tongue".into(), v.placement);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
+    // Snap-pizzicato → native MEI @artic="snap"
     for v in &tech.snap_pizzicato {
-        let o = emit!("musicxml:snap-pizzicato".into(), v.placement);
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+        if mei_note.note_anl.artic.is_none() {
+            mei_note.note_anl.artic = Some(DataArticulation::Snap);
+        }
+        let mut seg = "musicxml:tech-artic,snap".to_string();
+        if let Some(AboveBelow::Below) = v.placement {
+            seg.push_str(",below");
+        } else if let Some(AboveBelow::Above) = v.placement {
+            seg.push_str(",above");
+        }
+        append_note_label(mei_note, &seg);
     }
     for v in &tech.fingernails {
         let o = emit!("musicxml:fingernails".into(), v.placement);
@@ -1407,14 +1437,27 @@ fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Empty-placement-smufl types (stopped, open, half-muted)
+    // Stopped → native MEI @artic="stop" when no smufl; ornam fallback with smufl
     for v in &tech.stopped {
-        let mut label = "musicxml:stopped".to_string();
-        if let Some(ref s) = v.smufl {
-            label.push_str(&format!(",smufl={}", s));
+        if v.smufl.is_none() {
+            if mei_note.note_anl.artic.is_none() {
+                mei_note.note_anl.artic = Some(DataArticulation::Stop);
+            }
+            let mut seg = "musicxml:tech-artic,stop".to_string();
+            if let Some(AboveBelow::Below) = v.placement {
+                seg.push_str(",below");
+            } else if let Some(AboveBelow::Above) = v.placement {
+                seg.push_str(",above");
+            }
+            append_note_label(mei_note, &seg);
+        } else {
+            let mut label = "musicxml:stopped".to_string();
+            if let Some(ref s) = v.smufl {
+                label.push_str(&format!(",smufl={}", s));
+            }
+            let o = emit!(label, v.placement);
+            ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
         }
-        let o = emit!(label, v.placement);
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.open {
         let mut label = "musicxml:open".to_string();
@@ -1433,20 +1476,29 @@ fn process_technical(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Fingering (text content + substitution/alternate attrs)
+    // Fingering → native MEI <fing> element
     for v in &tech.fingering {
-        let mut label = "musicxml:fingering".to_string();
+        let mut fing = tusk_model::elements::Fing::default();
+        fing.common.xml_id = Some(ctx.generate_id_with_suffix("fing"));
+        fing.fing_log.startid = Some(startid.clone());
+        fing.fing_log.staff = Some(staff_str.clone());
+        fing.fing_vis.place = place_for(v.placement);
+        if !v.value.is_empty() {
+            fing.children
+                .push(tusk_model::elements::FingChild::Text(v.value.clone()));
+        }
+        // Store substitution/alternate attrs in label for roundtrip
+        let mut label_parts = Vec::new();
         if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
-            label.push_str(",substitution=yes");
+            label_parts.push("substitution=yes");
         }
         if matches!(v.alternate, Some(crate::model::data::YesNo::Yes)) {
-            label.push_str(",alternate=yes");
+            label_parts.push("alternate=yes");
         }
-        let mut o = emit!(label, v.placement);
-        if !v.value.is_empty() {
-            o.children.push(OrnamChild::Text(v.value.clone()));
+        if !label_parts.is_empty() {
+            fing.common.label = Some(format!("musicxml:fingering,{}", label_parts.join(",")));
         }
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+        ctx.add_ornament_event(MeasureChild::Fing(Box::new(fing)));
     }
 
     // Pluck (text content)
