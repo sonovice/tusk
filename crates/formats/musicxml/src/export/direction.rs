@@ -91,6 +91,9 @@ pub fn convert_mei_dynam(
     // Convert tstamp to offset for proper repositioning on reimport
     direction.offset = convert_tstamp_to_offset(&dynam.dynam_log.tstamp, ctx);
 
+    // Restore direction-level sound if stored during import
+    restore_direction_sound(&mut direction, dynam.common.xml_id.as_deref(), ctx);
+
     Some(direction)
 }
 
@@ -216,6 +219,9 @@ pub fn convert_mei_hairpin(
         .and_then(|s| s.split_whitespace().next())
         .and_then(|s| s.parse().ok())
         .unwrap_or(1usize);
+
+    // Restore direction-level sound if stored during import
+    restore_direction_sound(&mut direction, hairpin.common.xml_id.as_deref(), ctx);
 
     directions.push(direction);
 
@@ -464,6 +470,9 @@ pub fn convert_mei_dir(
 
     direction.offset = convert_tstamp_to_offset(&dir.dir_log.tstamp, ctx);
 
+    // Restore direction-level sound if stored during import
+    restore_direction_sound(&mut direction, dir.common.xml_id.as_deref(), ctx);
+
     Some(direction)
 }
 
@@ -660,7 +669,7 @@ pub fn convert_mei_tempo(
     // Set placement from MEI @place (no default — only emit if explicitly set)
     direction.placement = convert_place_to_placement(&tempo.tempo_vis.place);
 
-    // Add sound element with tempo if mm is present
+    // Add sound element with tempo if mm is present (fallback)
     if let Some(mm) = &tempo.tempo_log.mm {
         direction.sound = Some(Sound::with_tempo(mm.0));
     }
@@ -673,6 +682,10 @@ pub fn convert_mei_tempo(
 
     // Convert tstamp to offset for proper repositioning on reimport
     direction.offset = convert_tstamp_to_offset(&tempo.tempo_log.tstamp, ctx);
+
+    // Restore full direction-level sound if stored during import
+    // (overrides the tempo-only fallback above with complete original data)
+    restore_direction_sound(&mut direction, tempo.common.xml_id.as_deref(), ctx);
 
     Some(direction)
 }
@@ -711,6 +724,29 @@ pub(crate) fn convert_mei_color_to_string(color: &tusk_model::data::DataColor) -
     match color {
         DataColor::MeiDataColorvalues(v) => v.0.clone(),
         DataColor::MeiDataColornames(n) => format!("{n:?}").to_lowercase(),
+    }
+}
+
+/// Restore direction-level `<sound>` from ExtensionStore if present.
+///
+/// MusicXML `<direction>` elements can have a `<sound>` child for playback data.
+/// During import this is stored in the ExtensionStore keyed by the MEI element ID.
+fn restore_direction_sound(
+    direction: &mut Direction,
+    xml_id: Option<&str>,
+    ctx: &ConversionContext,
+) {
+    if let Some(id) = xml_id {
+        if let Some(ext) = ctx.ext_store().get(id) {
+            if let Some(ref json) = ext.direction_sound_json {
+                let unescaped = json.replace("\\u007c", "|");
+                if let Ok(sound) =
+                    serde_json::from_str::<crate::model::direction::Sound>(&unescaped)
+                {
+                    direction.sound = Some(sound);
+                }
+            }
+        }
     }
 }
 

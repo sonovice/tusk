@@ -1569,19 +1569,25 @@ tempo/dynamics playback to directions this way.
 
 ### 35.1 Implementation
 
-- [ ] Import: when a `<direction>` has a `<sound>` child, preserve the sound data alongside the direction content
-  - Store `SoundData` in `ExtensionStore` keyed by the MEI dir/tempo/dynam element ID
-  - For tempo marks: MEI `<tempo>` already captures `@mm`; store full sound (dacapo, segno, etc.) as extension
-  - For dynamics: MEI `<dynam>` captures text; store playback dynamics value as extension
-  - For other directions: store full sound on the dir extension
-- [ ] Export: when emitting a `<direction>`, check `ExtensionStore` for associated `SoundData` → emit as `<sound>` child of the `<direction>`
-  - Fall back to `Sound::with_tempo()` for `<tempo>` elements (current behavior)
+- [x] Import: when a `<direction>` has a `<sound>` child, preserve the sound data alongside the direction content
+  - Added `direction_sound_json` field to `ExtData` in `extensions.rs`
+  - After `convert_direction()` produces MEI elements, stores full Sound JSON in ExtensionStore keyed by each element's ID
+  - Made `build_sound_data` pub(crate) in `import/sound.rs`
+  - Added `element_id()` method to `DirectionConversionResult` for ID extraction
+- [x] Export: when emitting a `<direction>`, check `ExtensionStore` for associated `SoundData` → emit as `<sound>` child of the `<direction>`
+  - Added `restore_direction_sound()` helper in `export/direction.rs`
+  - Called from all 4 export functions: `convert_mei_dynam`, `convert_mei_hairpin`, `convert_mei_dir`, `convert_mei_tempo`
+  - For tempo: restored sound overrides the `Sound::with_tempo()` fallback (complete original data takes precedence)
 
 ### 35.2 Tests
 
-- [ ] Add roundtrip fixture with direction-level sound (tempo direction with dacapo + sound, dynamic direction with sound dynamics value)
-- [ ] Verify direction-level sound roundtrips losslessly
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with direction-level sound (tempo direction with dacapo + sound, dynamic direction with sound dynamics value)
+  - Created `direction_level_sound.musicxml`: metronome with tempo+dacapo sound, dynamics with dynamics sound, words with dalsegno+fine sound
+  - Validated against MusicXML 4.1 schema
+- [x] Verify direction-level sound roundtrips losslessly
+  - `test_roundtrip_direction_level_sound` passes all 4 roundtrip levels
+- [x] Existing tests pass (0 regressions)
+  - All 2491 tests pass (357 roundtrip + 544 unit + 31 integration + all others)
 
 ---
 

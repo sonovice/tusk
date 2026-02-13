@@ -45,6 +45,18 @@ pub enum DirectionConversionResult {
     Dir(Dir),
 }
 
+impl DirectionConversionResult {
+    /// Get the xml:id of the MEI element wrapped by this result.
+    pub fn element_id(&self) -> Option<&str> {
+        match self {
+            DirectionConversionResult::Dynam(d) => d.common.xml_id.as_deref(),
+            DirectionConversionResult::Hairpin(h) => h.common.xml_id.as_deref(),
+            DirectionConversionResult::Tempo(t) => t.common.xml_id.as_deref(),
+            DirectionConversionResult::Dir(d) => d.common.xml_id.as_deref(),
+        }
+    }
+}
+
 /// Convert a MusicXML direction to MEI control events.
 ///
 /// MusicXML `<direction>` elements can contain multiple direction types.
@@ -346,6 +358,22 @@ pub fn convert_direction(
                     &json,
                 );
                 results.push(DirectionConversionResult::Dir(dir));
+            }
+        }
+    }
+
+    // Store direction-level sound data in ExtensionStore for roundtrip.
+    // A MusicXML <direction> can have a <sound> child — store its JSON keyed by
+    // each produced MEI element's ID so export can reconstruct direction.sound.
+    if let Some(ref sound) = direction.sound {
+        if let Ok(json) = serde_json::to_string(sound) {
+            let escaped = json.replace('|', "\\u007c");
+            for result in &results {
+                if let Some(id) = result.element_id() {
+                    ctx.ext_store_mut()
+                        .entry(id.to_string())
+                        .direction_sound_json = Some(escaped.clone());
+                }
             }
         }
     }

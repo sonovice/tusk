@@ -831,6 +831,11 @@ fn test_roundtrip_standalone_sound() {
 }
 
 #[test]
+fn test_roundtrip_direction_level_sound() {
+    assert_roundtrip("direction_level_sound.musicxml");
+}
+
+#[test]
 fn test_roundtrip_visual_attributes() {
     assert_roundtrip("visual_attributes.musicxml");
 }

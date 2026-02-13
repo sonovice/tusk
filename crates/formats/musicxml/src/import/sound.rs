@@ -89,7 +89,7 @@ fn sound_summary(sound: &Sound) -> String {
     parts.join("; ")
 }
 
-fn build_sound_data(s: &Sound) -> SoundData {
+pub(crate) fn build_sound_data(s: &Sound) -> SoundData {
     use crate::model::data::YesNo;
     use tusk_model::musicxml_ext::OffsetData;
 

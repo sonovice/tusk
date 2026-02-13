@@ -248,6 +248,13 @@ pub struct ExtData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wedge_stop_spread: Option<f64>,
 
+    /// Direction-level sound JSON for lossless roundtrip.
+    ///
+    /// When a MusicXML `<direction>` contains a `<sound>` child, the sound data
+    /// is stored here as a JSON string keyed by the MEI control event ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction_sound_json: Option<String>,
+
     /// Staff-details roundtrip data.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub staff_details_extras: Option<crate::musicxml_ext::StaffDetailsExtras>,
