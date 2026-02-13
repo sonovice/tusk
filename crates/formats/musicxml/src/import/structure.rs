@@ -93,6 +93,12 @@ pub fn convert_section(
     // Completed hairpins reference hairpin elements in earlier measures by ID.
     patch_hairpin_tstamp2(&mut section, ctx);
 
+    // Post-pass: detect barline endings and restructure into MEI <ending> containers.
+    // MusicXML uses <barline><ending> on boundary measures; MEI uses structural <ending>
+    // wrapping the measures. This restructuring also strips ending data from the barline
+    // dirs to avoid duplication on export.
+    super::ending::restructure_endings(score, &mut section, ctx);
+
     Ok(section)
 }
 

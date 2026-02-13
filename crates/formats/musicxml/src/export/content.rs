@@ -15,8 +15,8 @@ use crate::model::elements::{
     TimewisePart,
 };
 use tusk_model::elements::{
-    LayerChild, MeasureChild, Score as MeiScore, ScoreChild, ScoreDefChild, Section, SectionChild,
-    Staff, StaffChild, StaffGrp, StaffGrpChild,
+    Ending as MeiEnding, EndingChild, LayerChild, MeasureChild, Score as MeiScore, ScoreChild,
+    ScoreDefChild, Section, SectionChild, Staff, StaffChild, StaffGrp, StaffGrpChild,
 };
 
 use super::direction::{
@@ -313,8 +313,8 @@ pub fn convert_mei_score_content(
     part_ids: &[String],
     ctx: &mut ConversionContext,
 ) -> ConversionResult<Vec<TimewiseMeasure>> {
-    // Collect all MEI measures from sections
-    let mei_measures = collect_measures_from_score(mei_score);
+    // Collect all MEI measures from sections (and ending spans)
+    let (mei_measures, ending_spans) = collect_measures_from_score(mei_score);
 
     // Pre-assign slur numbers using interval graph coloring so that
     // cross-measure slurs get unique numbers on reimport.
@@ -615,6 +615,13 @@ pub fn convert_mei_score_content(
         }
     }
 
+    // Apply ending/volta brackets from MEI <ending> containers.
+    // For each ending span, add <barline><ending> to the first/last measures
+    // of every part.
+    for span in &ending_spans {
+        apply_ending_barlines(span, &mut part_prev_measures);
+    }
+
     // Build the timewise output from the accumulated measures.
     // At this point, all cross-measure slur notations have been retroactively
     // attached, so the measure content is complete.
@@ -643,17 +650,40 @@ pub fn convert_mei_score_content(
     Ok(timewise_measures)
 }
 
+/// Ending boundary info to emit `<barline><ending>` on MusicXML measures.
+///
+/// Tracks the flat measure-index range covered by an MEI `<ending>` and
+/// the ending metadata (number, label) needed for MusicXML `<ending>` elements.
+struct EndingSpan {
+    /// First measure index (inclusive) in the flat measure list.
+    first: usize,
+    /// Last measure index (inclusive) in the flat measure list.
+    last: usize,
+    /// Ending number from MEI `@n` (e.g. "1", "1, 2").
+    number: String,
+    /// Display label from MEI `@label` (optional text on the volta bracket).
+    label: Option<String>,
+    /// Stop type from MEI `@type`: "stop", "discontinue", or None (open-ended).
+    stop_type: Option<String>,
+}
+
 /// Collect all measures from an MEI score by traversing sections.
-fn collect_measures_from_score(mei_score: &MeiScore) -> Vec<&tusk_model::elements::Measure> {
+///
+/// Also returns ending spans that describe which measure ranges are wrapped
+/// in MEI `<ending>` containers.
+fn collect_measures_from_score(
+    mei_score: &MeiScore,
+) -> (Vec<&tusk_model::elements::Measure>, Vec<EndingSpan>) {
     let mut measures = Vec::new();
+    let mut endings = Vec::new();
 
     for child in &mei_score.children {
         if let ScoreChild::Section(section) = child {
-            collect_measures_from_section(section, &mut measures);
+            collect_measures_from_section(section, &mut measures, &mut endings);
         }
     }
 
-    measures
+    (measures, endings)
 }
 
 /// Collect staffDefs from the scoreDef in an MEI score.
@@ -708,6 +738,7 @@ fn collect_staff_defs_from_staff_grp<'a>(
 fn collect_measures_from_section<'a>(
     section: &'a Section,
     measures: &mut Vec<&'a tusk_model::elements::Measure>,
+    endings: &mut Vec<EndingSpan>,
 ) {
     for child in &section.children {
         match child {
@@ -715,13 +746,144 @@ fn collect_measures_from_section<'a>(
                 measures.push(measure);
             }
             SectionChild::Section(nested_section) => {
-                collect_measures_from_section(nested_section, measures);
+                collect_measures_from_section(nested_section, measures, endings);
+            }
+            SectionChild::Ending(ending) => {
+                collect_measures_from_ending(ending, measures, endings);
             }
             // Expansion defines playback ordering — no MusicXML equivalent.
             SectionChild::Expansion(_) => {
                 tracing::debug!("Skipping MEI <expansion> — no MusicXML equivalent");
             }
         }
+    }
+}
+
+/// Collect measures from an MEI `<ending>` and record its span.
+fn collect_measures_from_ending<'a>(
+    ending: &'a MeiEnding,
+    measures: &mut Vec<&'a tusk_model::elements::Measure>,
+    endings: &mut Vec<EndingSpan>,
+) {
+    let first = measures.len();
+
+    for child in &ending.children {
+        match child {
+            EndingChild::Measure(measure) => {
+                measures.push(measure);
+            }
+            EndingChild::Section(nested_section) => {
+                collect_measures_from_section(nested_section, measures, endings);
+            }
+            EndingChild::Expansion(_) => {
+                tracing::debug!("Skipping MEI <expansion> inside <ending>");
+            }
+        }
+    }
+
+    let last = measures.len().saturating_sub(1);
+    if first <= last {
+        endings.push(EndingSpan {
+            first,
+            last,
+            number: ending
+                .common
+                .n
+                .as_ref()
+                .map(|w| w.0.as_str())
+                .unwrap_or("1")
+                .to_string(),
+            label: ending.common.label.clone(),
+            stop_type: ending.common.r#type.clone(),
+        });
+    }
+}
+
+/// Apply `<barline><ending>` to the first and last measures of an ending span.
+///
+/// MusicXML represents volta brackets as `<ending>` children of `<barline>` elements:
+/// - First measure: `<barline location="left"><ending number="N" type="start">text</ending>`
+/// - Last measure: `<barline location="right"><ending number="N" type="stop"/>` (or "discontinue")
+///
+/// This adds ending data to existing barlines, or creates new barlines if needed.
+fn apply_ending_barlines(span: &EndingSpan, part_measures: &mut [Vec<MxmlMeasure>]) {
+    use crate::model::data::StartStopDiscontinue;
+    use crate::model::elements::Ending as MxmlEnding;
+
+    let start_ending = MxmlEnding {
+        number: span.number.clone(),
+        ending_type: StartStopDiscontinue::Start,
+        text: span.label.clone(),
+        default_y: None,
+        end_length: None,
+        print_object: None,
+        default_x: None,
+        text_x: None,
+        text_y: None,
+    };
+
+    // Determine stop type from @type: "stop" draws closing line, "discontinue" leaves open.
+    // Only emit a stop ending if the original had one (None = open-ended volta).
+    let stop_ending = span.stop_type.as_ref().map(|st| {
+        let ending_type = if st == "discontinue" {
+            StartStopDiscontinue::Discontinue
+        } else {
+            StartStopDiscontinue::Stop
+        };
+        MxmlEnding {
+            number: span.number.clone(),
+            ending_type,
+            text: None,
+            default_y: None,
+            end_length: None,
+            print_object: None,
+            default_x: None,
+            text_x: None,
+            text_y: None,
+        }
+    });
+
+    // Apply to every part's measures
+    for part_measures in part_measures.iter_mut() {
+        // Start ending on the left barline of the first measure
+        if let Some(measure) = part_measures.get_mut(span.first) {
+            add_ending_to_barline(&mut measure.content, &start_ending, BarlineLocation::Left);
+        }
+        // Stop ending on the right barline of the last measure (only if explicitly closed)
+        if let Some(ref stop) = stop_ending {
+            if let Some(measure) = part_measures.get_mut(span.last) {
+                add_ending_to_barline(&mut measure.content, stop, BarlineLocation::Right);
+            }
+        }
+    }
+}
+
+/// Add an `<ending>` element to an existing barline at the given location,
+/// or create a new barline with the ending if none exists.
+fn add_ending_to_barline(
+    content: &mut Vec<MeasureContent>,
+    ending: &crate::model::elements::Ending,
+    location: BarlineLocation,
+) {
+    // Find existing barline at this location
+    for item in content.iter_mut() {
+        if let MeasureContent::Barline(bl) = item {
+            if bl.location == Some(location) {
+                bl.ending = Some(ending.clone());
+                return;
+            }
+        }
+    }
+    // No barline at this location — create one with the ending
+    let barline = Barline {
+        location: Some(location),
+        ending: Some(ending.clone()),
+        ..Barline::default()
+    };
+    let barline_content = MeasureContent::Barline(Box::new(barline));
+    match location {
+        BarlineLocation::Left => content.insert(0, barline_content),
+        _ => content.push(barline_content),
     }
 }
 
@@ -3499,8 +3661,9 @@ mod tests {
     #[test]
     fn test_collect_measures_from_score() {
         let score = create_simple_mei_score();
-        let measures = collect_measures_from_score(&score);
+        let (measures, endings) = collect_measures_from_score(&score);
         assert_eq!(measures.len(), 1);
+        assert!(endings.is_empty());
     }
 
     #[test]

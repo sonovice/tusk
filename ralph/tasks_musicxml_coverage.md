@@ -1740,9 +1740,19 @@ Other section children are silently dropped.
 MEI `<ending>` is a section-level container that wraps measures in an alternative ending
 (volta bracket). MusicXML represents this as `<barline><ending>` on the relevant barlines.
 
-- [ ] Export: detect `SectionChild::Ending` → emit `<barline><ending number="N" type="start/stop/discontinue">` on the first/last measures within the ending
-- [ ] Import: detect `<barline><ending>` → create MEI `<ending>` section container wrapping the relevant measures
-  - Currently barline endings are stored as JSON-in-label barline extras; this would add semantic mapping
+- [x] Export: detect `SectionChild::Ending` → emit `<barline><ending number="N" type="start/stop/discontinue">` on the first/last measures within the ending
+  - Added `EndingSpan` struct tracking measure ranges, number, label, stop_type
+  - `collect_measures_from_ending()` extracts measures and records spans
+  - `apply_ending_barlines()` adds start ending on left barline of first measure
+  - Only emits stop/discontinue barline when original had explicit close (open-ended voltas preserved)
+  - `add_ending_to_barline()` merges ending into existing barline or creates new one
+- [x] Import: detect `<barline><ending>` → create MEI `<ending>` section container wrapping the relevant measures
+  - `restructure_endings()` in new `import/ending.rs` submodule scans first part's barlines for start/stop/discontinue
+  - Groups measures into `EndingBoundary` spans with number, text, stop_type
+  - Wraps measure ranges in `SectionChild::Ending` containers (reverse-order to preserve indices)
+  - Strips ending data from barline dirs in ExtensionStore to avoid duplication
+  - Stop type ("stop"/"discontinue"/None) stored in MEI `@type` for roundtrip
+  - Codegen: added `("section","ending")`, `("ending","measure")`, `("ending","section")` to EXTRA_CHILDREN
 
 ### 38.2 Other Section Children
 
