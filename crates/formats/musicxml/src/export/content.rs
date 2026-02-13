@@ -447,6 +447,8 @@ pub fn convert_mei_score_content(
                 convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
                 convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                convert_breath_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                convert_caesura_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                 convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                 convert_gliss_events(
                     mei_measure,
@@ -502,8 +504,10 @@ pub fn convert_mei_score_content(
                     // Ornament events
                     convert_ornament_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
 
-                    // Fermata, arpeg, gliss events
+                    // Fermata, breath, caesura, arpeg, gliss events
                     convert_fermata_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                    convert_breath_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
+                    convert_caesura_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                     convert_arpeg_events(mei_measure, global_staff_n, &mut mxml_measure, ctx)?;
                     convert_gliss_events(
                         mei_measure,
@@ -1690,6 +1694,115 @@ fn convert_fermata_events(
     Ok(())
 }
 
+/// Convert MEI `<breath>` control events to MusicXML breath-mark articulations.
+fn convert_breath_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::notations::{Articulations, BreathMark, BreathMarkValue, Notations};
+
+    for child in &mei_measure.children {
+        let MeasureChild::Breath(breath) = child else {
+            continue;
+        };
+        let breath_staff = breath
+            .breath_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if breath_staff != staff_n {
+            continue;
+        }
+        let start_id = breath
+            .breath_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+
+        // Map MEI @label → MusicXML breath-mark value
+        let value = breath.common.label.as_deref().and_then(|l| match l {
+            "comma" => Some(BreathMarkValue::Comma),
+            "tick" => Some(BreathMarkValue::Tick),
+            "upbow" => Some(BreathMarkValue::Upbow),
+            "salzedo" => Some(BreathMarkValue::Salzedo),
+            _ => None,
+        });
+
+        // Map MEI @place → MusicXML placement
+        let placement = mei_place_to_above_below(&breath.breath_vis.place);
+
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        let artics = notations
+            .articulations
+            .get_or_insert_with(Articulations::default);
+        artics.breath_mark = Some(BreathMark { value, placement });
+    }
+    Ok(())
+}
+
+/// Convert MEI `<caesura>` control events to MusicXML caesura articulations.
+fn convert_caesura_events(
+    mei_measure: &tusk_model::elements::Measure,
+    staff_n: usize,
+    mxml_measure: &mut MxmlMeasure,
+    _ctx: &mut ConversionContext,
+) -> ConversionResult<()> {
+    use crate::model::notations::{Articulations, Caesura as MxmlCaesura, CaesuraValue, Notations};
+
+    for child in &mei_measure.children {
+        let MeasureChild::Caesura(caesura) = child else {
+            continue;
+        };
+        let caesura_staff = caesura
+            .caesura_log
+            .staff
+            .as_ref()
+            .and_then(|s| s.split_whitespace().next())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1) as usize;
+        if caesura_staff != staff_n {
+            continue;
+        }
+        let start_id = caesura
+            .caesura_log
+            .startid
+            .as_ref()
+            .map(|uri| uri.to_string().trim_start_matches('#').to_string());
+        let Some(sid) = start_id else { continue };
+        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+            continue;
+        };
+
+        // Map MEI @label → MusicXML caesura value
+        let value = caesura.common.label.as_deref().and_then(|l| match l {
+            "normal" => Some(CaesuraValue::Normal),
+            "short" => Some(CaesuraValue::Short),
+            "thick" => Some(CaesuraValue::Thick),
+            "curved" => Some(CaesuraValue::Curved),
+            "single" => Some(CaesuraValue::Single),
+            _ => None,
+        });
+
+        // Map MEI @place → MusicXML placement
+        let placement = mei_place_to_above_below(&caesura.caesura_vis.place);
+
+        let notations = note.notations.get_or_insert_with(Notations::default);
+        let artics = notations
+            .articulations
+            .get_or_insert_with(Articulations::default);
+        artics.caesura = Some(MxmlCaesura { value, placement });
+    }
+    Ok(())
+}
+
 /// Convert MEI `<arpeg>` control events to MusicXML arpeggiate/non-arpeggiate notations.
 fn convert_arpeg_events(
     mei_measure: &tusk_model::elements::Measure,
@@ -1898,6 +2011,22 @@ fn apply_gliss_notation(note: &mut crate::model::note::Note, notation: GlissNota
 }
 
 /// Find a MusicXML note in the measure by its ID (mutable).
+/// Convert MEI `@place` (DataStaffrel) to MusicXML `AboveBelow`.
+fn mei_place_to_above_below(
+    place: &Option<tusk_model::data::DataStaffrel>,
+) -> Option<crate::model::data::AboveBelow> {
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic};
+    match place {
+        Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above)) => {
+            Some(crate::model::data::AboveBelow::Above)
+        }
+        Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below)) => {
+            Some(crate::model::data::AboveBelow::Below)
+        }
+        _ => None,
+    }
+}
+
 fn find_note_by_id_mut<'a>(
     mxml_measure: &'a mut MxmlMeasure,
     id: &str,

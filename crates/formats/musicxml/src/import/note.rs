@@ -143,6 +143,12 @@ pub fn convert_note(
     // Process fermatas
     process_fermatas(note, &note_id, ctx);
 
+    // Process breath marks → MEI <breath> control events
+    process_breath_marks(note, &note_id, ctx);
+
+    // Process caesuras → MEI <caesura> control events
+    process_caesuras(note, &note_id, ctx);
+
     // Process arpeggiate/non-arpeggiate
     process_arpeggiate(note, &note_id, ctx);
 
@@ -1036,6 +1042,121 @@ fn process_fermatas(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCont
 
         ctx.add_ornament_event(MeasureChild::Fermata(Box::new(f)));
     }
+}
+
+// ============================================================================
+// Breath Mark Processing
+// ============================================================================
+
+/// Process breath-mark articulations into MEI `<breath>` control events.
+fn process_breath_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::model::notations::BreathMarkValue;
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::{Breath as MeiBreath, MeasureChild};
+
+    let artics = match note.notations {
+        Some(ref n) => match n.articulations {
+            Some(ref a) => a,
+            None => return,
+        },
+        None => return,
+    };
+    let bm = match artics.breath_mark {
+        Some(ref bm) => bm,
+        None => return,
+    };
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    let mut b = MeiBreath::default();
+    b.common.xml_id = Some(ctx.generate_id_with_suffix("breath"));
+    b.breath_log.startid = Some(startid);
+    b.breath_log.staff = Some(staff_str);
+
+    // Map placement → MEI @place
+    b.breath_vis.place = match bm.placement {
+        Some(crate::model::data::AboveBelow::Above) => {
+            Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above))
+        }
+        Some(crate::model::data::AboveBelow::Below) => {
+            Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below))
+        }
+        None => None,
+    };
+
+    // Store breath-mark value in @label for lossless roundtrip
+    let label = match bm.value {
+        Some(BreathMarkValue::Comma) => Some("comma"),
+        Some(BreathMarkValue::Tick) => Some("tick"),
+        Some(BreathMarkValue::Upbow) => Some("upbow"),
+        Some(BreathMarkValue::Salzedo) => Some("salzedo"),
+        Some(BreathMarkValue::Empty) | None => None,
+    };
+    if let Some(l) = label {
+        b.common.label = Some(l.to_string());
+    }
+
+    ctx.add_ornament_event(MeasureChild::Breath(Box::new(b)));
+}
+
+// ============================================================================
+// Caesura Processing
+// ============================================================================
+
+/// Process caesura articulations into MEI `<caesura>` control events.
+fn process_caesuras(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
+    use crate::model::notations::CaesuraValue;
+    use tusk_model::data::{DataStaffrel, DataStaffrelBasic, DataUri};
+    use tusk_model::elements::{Caesura as MeiCaesura, MeasureChild};
+
+    let artics = match note.notations {
+        Some(ref n) => match n.articulations {
+            Some(ref a) => a,
+            None => return,
+        },
+        None => return,
+    };
+    let cs = match artics.caesura {
+        Some(ref cs) => cs,
+        None => return,
+    };
+
+    let mei_staff = ctx.staff().unwrap_or(1);
+    let staff_str = (mei_staff as u64).to_string();
+    let startid = DataUri::from(format!("#{}", note_id));
+
+    let mut c = MeiCaesura::default();
+    c.common.xml_id = Some(ctx.generate_id_with_suffix("caesura"));
+    c.caesura_log.startid = Some(startid);
+    c.caesura_log.staff = Some(staff_str);
+
+    // Map placement → MEI @place
+    c.caesura_vis.place = match cs.placement {
+        Some(crate::model::data::AboveBelow::Above) => {
+            Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above))
+        }
+        Some(crate::model::data::AboveBelow::Below) => {
+            Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Below))
+        }
+        None => None,
+    };
+
+    // Store caesura value in @label for lossless roundtrip
+    let label = match cs.value {
+        Some(CaesuraValue::Normal) => Some("normal"),
+        Some(CaesuraValue::Short) => Some("short"),
+        Some(CaesuraValue::Thick) => Some("thick"),
+        Some(CaesuraValue::Curved) => Some("curved"),
+        Some(CaesuraValue::Single) => Some("single"),
+        Some(CaesuraValue::Empty) | None => None,
+    };
+    if let Some(l) = label {
+        c.common.label = Some(l.to_string());
+    }
+
+    ctx.add_ornament_event(MeasureChild::Caesura(Box::new(c)));
 }
 
 // ============================================================================
@@ -2125,9 +2246,13 @@ fn populate_note_ext_store(
     }
 
     // Store full articulations for lossless multi-artic roundtrip
+    // Strip breath_mark/caesura — those are now native MEI <breath>/<caesura> control events
     if let Some(ref notations) = note.notations {
         if let Some(ref artics) = notations.articulations {
-            if let Ok(val) = serde_json::to_value(artics) {
+            let mut artics_for_store = artics.clone();
+            artics_for_store.breath_mark = None;
+            artics_for_store.caesura = None;
+            if let Ok(val) = serde_json::to_value(&artics_for_store) {
                 extras.articulations = Some(val);
                 has_extras = true;
             }

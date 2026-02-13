@@ -1642,10 +1642,16 @@ representations:
 
 ### 36.3 Breath-Mark / Caesura → Native MEI
 
-- [ ] `<breath-mark>` → MEI `<breath>` control event (MEI has a native breath mark element)
-  - Currently stored as `@artic` or label segment; MEI `<breath>` is more correct
-- [ ] `<caesura>` → MEI `<caesura>` control event (MEI has a native caesura element)
-  - Currently stored as label segment
+- [x] `<breath-mark>` → MEI `<breath>` control event (MEI has a native breath mark element)
+  - Added Breath/Caesura to MeasureChild via EXTRA_CHILDREN codegen
+  - Import: process_breath_marks() creates MEI <breath> with @startid, @staff, @place, @label (for value roundtrip)
+  - Export: convert_breath_events() maps MEI <breath> back to MusicXML breath-mark articulation
+  - Breath-mark value (comma/tick/upbow/salzedo) stored in MEI @label for lossless roundtrip
+  - Stripped breath_mark/caesura from ExtensionStore articulations to avoid duplication
+- [x] `<caesura>` → MEI `<caesura>` control event (MEI has a native caesura element)
+  - Import: process_caesuras() creates MEI <caesura> with @startid, @staff, @place, @label (for value roundtrip)
+  - Export: convert_caesura_events() maps MEI <caesura> back to MusicXML caesura articulation
+  - Caesura value (normal/short/thick/curved/single) stored in MEI @label for lossless roundtrip
 
 ### 36.4 Tests
 
