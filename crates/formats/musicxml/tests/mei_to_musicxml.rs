@@ -803,3 +803,311 @@ fn test_cue_rest() {
 
     assert!(result.is_cue());
 }
+
+// ============================================================================
+// Native MEI Element Export Tests (Phase 36.4)
+//
+// These tests construct MEI documents with native bTrem, fTrem, and Fing
+// elements (not produced by MusicXML import) and verify they export correctly.
+// ============================================================================
+
+use tusk_model::data::{
+    DataClefline, DataClefshape, DataKeyfifths, DataStaffrel, DataStaffrelBasic, DataUri,
+};
+use tusk_model::elements::{
+    BTrem, BTremChild, Body, BodyChild, FTrem, FTremChild, FileDesc, FileDescChild, Fing,
+    FingChild, Layer, LayerChild, Mdiv, MdivChild, Measure, MeasureChild, Mei, MeiChild, MeiHead,
+    MeiHeadChild, Music, MusicChild, Score, ScoreChild, ScoreDef, ScoreDefChild, Section,
+    SectionChild, Staff, StaffChild, StaffDef, StaffGrp, StaffGrpChild, Title, TitleStmt,
+    TitleStmtChild,
+};
+
+/// Build a minimal MEI document with a single staff and the given layer/measure children.
+fn build_mei_doc(
+    layer_children: Vec<LayerChild>,
+    measure_control_events: Vec<MeasureChild>,
+) -> Mei {
+    // MeiHead
+    let mut mei_head = MeiHead::default();
+    let mut file_desc = FileDesc::default();
+    let mut title_stmt = TitleStmt::default();
+    let mut title = Title::default();
+    title
+        .children
+        .push(tusk_model::elements::TitleChild::Text("Test".to_string()));
+    title_stmt
+        .children
+        .push(TitleStmtChild::Title(Box::new(title)));
+    file_desc
+        .children
+        .push(FileDescChild::TitleStmt(Box::new(title_stmt)));
+    mei_head
+        .children
+        .push(MeiHeadChild::FileDesc(Box::new(file_desc)));
+
+    // StaffDef
+    let mut staff_def = StaffDef::default();
+    staff_def.n_integer.n = Some("1".to_string());
+    staff_def.staff_def_log.lines = Some("5".to_string());
+    staff_def.staff_def_log.clef_shape = Some(DataClefshape::G);
+    staff_def.staff_def_log.clef_line = Some(DataClefline::from(2u64));
+    staff_def.staff_def_log.keysig = Some(DataKeyfifths::from("0".to_string()));
+    staff_def.staff_def_log.meter_count = Some("4".to_string());
+    staff_def.staff_def_log.meter_unit = Some("4".to_string());
+
+    let mut staff_grp = StaffGrp::default();
+    staff_grp
+        .children
+        .push(StaffGrpChild::StaffDef(Box::new(staff_def)));
+
+    let mut score_def = ScoreDef::default();
+    score_def
+        .children
+        .push(ScoreDefChild::StaffGrp(Box::new(staff_grp)));
+
+    // Layer
+    let mut layer = Layer::default();
+    layer.n_integer.n = Some("1".to_string());
+    layer.children = layer_children;
+
+    // Staff
+    let mut staff = Staff::default();
+    staff.n_integer.n = Some("1".to_string());
+    staff.children.push(StaffChild::Layer(Box::new(layer)));
+
+    // Measure
+    let mut measure = Measure::default();
+    measure.common.n = Some(tusk_model::data::DataWord::from("1".to_string()));
+    measure.children.push(MeasureChild::Staff(Box::new(staff)));
+    for ce in measure_control_events {
+        measure.children.push(ce);
+    }
+
+    // Section → Score → Mdiv → Body → Music
+    let mut section = Section::default();
+    section
+        .children
+        .push(SectionChild::Measure(Box::new(measure)));
+
+    let mut score = Score::default();
+    score
+        .children
+        .push(ScoreChild::ScoreDef(Box::new(score_def)));
+    score.children.push(ScoreChild::Section(Box::new(section)));
+
+    let mut mdiv = Mdiv::default();
+    mdiv.children.push(MdivChild::Score(Box::new(score)));
+
+    let mut body = Body::default();
+    body.children.push(BodyChild::Mdiv(Box::new(mdiv)));
+
+    let mut music = Music::default();
+    music.children.push(MusicChild::Body(Box::new(body)));
+
+    let mut mei = Mei::default();
+    mei.mei_version.meiversion = Some("6.0-dev".to_string());
+    mei.children.push(MeiChild::MeiHead(Box::new(mei_head)));
+    mei.children.push(MeiChild::Music(Box::new(music)));
+    mei
+}
+
+#[test]
+fn test_export_btrem_single_tremolo() {
+    use tusk_musicxml::model::data::TremoloType;
+
+    // Create a note wrapped in bTrem with unitdur=N32 (3 marks)
+    let mut note = create_mei_note("c", 4, "4");
+    note.common.xml_id = Some("n1".to_string());
+
+    let mut btrem = BTrem::default();
+    btrem.b_trem_ges.unitdur = Some(DataDurationCmn::N32);
+    btrem.children.push(BTremChild::Note(Box::new(note)));
+
+    let mei = build_mei_doc(vec![LayerChild::BTrem(Box::new(btrem))], vec![]);
+
+    let result = tusk_musicxml::export(&mei).unwrap();
+
+    // Find the note in the exported MusicXML
+    let part = &result.parts[0].measures[0];
+    let notes: Vec<_> = part
+        .content
+        .iter()
+        .filter_map(|c| {
+            if let tusk_musicxml::model::elements::MeasureContent::Note(n) = c {
+                Some(n.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(notes.len(), 1);
+
+    // Verify tremolo notation
+    let notations = notes[0].notations.as_ref().expect("should have notations");
+    let ornaments = notations.ornaments.as_ref().expect("should have ornaments");
+    let tremolo = ornaments.tremolo.as_ref().expect("should have tremolo");
+    assert_eq!(tremolo.tremolo_type, TremoloType::Single);
+    assert_eq!(tremolo.value, Some(3));
+}
+
+#[test]
+fn test_export_ftrem_fingered_tremolo() {
+    use tusk_musicxml::model::data::TremoloType;
+
+    // Create two notes wrapped in fTrem with unitdur=N16 (2 marks)
+    let mut note1 = create_mei_note("c", 4, "4");
+    note1.common.xml_id = Some("n1".to_string());
+    let mut note2 = create_mei_note("e", 4, "4");
+    note2.common.xml_id = Some("n2".to_string());
+
+    let mut ftrem = FTrem::default();
+    ftrem.f_trem_ges.unitdur = Some(DataDurationCmn::N16);
+    ftrem.children.push(FTremChild::Note(Box::new(note1)));
+    ftrem.children.push(FTremChild::Note(Box::new(note2)));
+
+    let mei = build_mei_doc(vec![LayerChild::FTrem(Box::new(ftrem))], vec![]);
+
+    let result = tusk_musicxml::export(&mei).unwrap();
+
+    // Find notes in the exported MusicXML
+    let part = &result.parts[0].measures[0];
+    let notes: Vec<_> = part
+        .content
+        .iter()
+        .filter_map(|c| {
+            if let tusk_musicxml::model::elements::MeasureContent::Note(n) = c {
+                Some(n.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(notes.len(), 2);
+
+    // First note: tremolo type=start, value=2
+    let t1 = notes[0]
+        .notations
+        .as_ref()
+        .unwrap()
+        .ornaments
+        .as_ref()
+        .unwrap()
+        .tremolo
+        .as_ref()
+        .unwrap();
+    assert_eq!(t1.tremolo_type, TremoloType::Start);
+    assert_eq!(t1.value, Some(2));
+
+    // Second note: tremolo type=stop, value=2
+    let t2 = notes[1]
+        .notations
+        .as_ref()
+        .unwrap()
+        .ornaments
+        .as_ref()
+        .unwrap()
+        .tremolo
+        .as_ref()
+        .unwrap();
+    assert_eq!(t2.tremolo_type, TremoloType::Stop);
+    assert_eq!(t2.value, Some(2));
+}
+
+#[test]
+fn test_export_fing_control_event() {
+    // Create a note and a fing control event pointing to it
+    let mut note = create_mei_note("c", 4, "4");
+    note.common.xml_id = Some("n1".to_string());
+
+    let mut fing = Fing::default();
+    fing.common.xml_id = Some("fing1".to_string());
+    fing.fing_log.startid = Some(DataUri::from("#n1".to_string()));
+    fing.fing_log.staff = Some("1".to_string());
+    fing.fing_vis.place = Some(DataStaffrel::MeiDataStaffrelBasic(DataStaffrelBasic::Above));
+    fing.children.push(FingChild::Text("3".to_string()));
+
+    let mei = build_mei_doc(
+        vec![LayerChild::Note(Box::new(note))],
+        vec![MeasureChild::Fing(Box::new(fing))],
+    );
+
+    let result = tusk_musicxml::export(&mei).unwrap();
+
+    // Find the note in the exported MusicXML
+    let part = &result.parts[0].measures[0];
+    let notes: Vec<_> = part
+        .content
+        .iter()
+        .filter_map(|c| {
+            if let tusk_musicxml::model::elements::MeasureContent::Note(n) = c {
+                Some(n.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(notes.len(), 1);
+
+    // Verify fingering notation
+    let notations = notes[0].notations.as_ref().expect("should have notations");
+    let technical = notations.technical.as_ref().expect("should have technical");
+    assert_eq!(technical.fingering.len(), 1);
+    assert_eq!(technical.fingering[0].value, "3");
+    assert_eq!(
+        technical.fingering[0].placement,
+        Some(tusk_musicxml::model::data::AboveBelow::Above)
+    );
+}
+
+#[test]
+fn test_export_btrem_with_different_unitdur() {
+    use tusk_musicxml::model::data::TremoloType;
+
+    // Test unitdur=N8 (1 mark) and unitdur=N64 (4 marks)
+    for (unitdur, expected_marks) in [
+        (DataDurationCmn::N8, 1u8),
+        (DataDurationCmn::N16, 2),
+        (DataDurationCmn::N64, 4),
+    ] {
+        let mut note = create_mei_note("g", 4, "4");
+        note.common.xml_id = Some("n1".to_string());
+
+        let mut btrem = BTrem::default();
+        btrem.b_trem_ges.unitdur = Some(unitdur);
+        btrem.children.push(BTremChild::Note(Box::new(note)));
+
+        let mei = build_mei_doc(vec![LayerChild::BTrem(Box::new(btrem))], vec![]);
+
+        let result = tusk_musicxml::export(&mei).unwrap();
+
+        let part = &result.parts[0].measures[0];
+        let notes: Vec<_> = part
+            .content
+            .iter()
+            .filter_map(|c| {
+                if let tusk_musicxml::model::elements::MeasureContent::Note(n) = c {
+                    Some(n.as_ref())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let tremolo = notes[0]
+            .notations
+            .as_ref()
+            .unwrap()
+            .ornaments
+            .as_ref()
+            .unwrap()
+            .tremolo
+            .as_ref()
+            .unwrap();
+        assert_eq!(tremolo.tremolo_type, TremoloType::Single);
+        assert_eq!(
+            tremolo.value,
+            Some(expected_marks),
+            "unitdur→marks mismatch"
+        );
+    }
+}

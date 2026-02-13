@@ -1655,11 +1655,20 @@ representations:
 
 ### 36.4 Tests
 
-- [ ] Roundtrip fixtures for tremolo (single and double) using native bTrem/fTrem
-- [ ] Roundtrip fixtures for fingering using native MEI fing
-- [ ] Roundtrip fixtures for bowing articulations
-- [ ] Verify external MEI with bTrem/fTrem/fing correctly exports to MusicXML
-- [ ] Existing tests pass (0 regressions)
+- [x] Roundtrip fixtures for tremolo (single and double) using native bTrem/fTrem
+  - `tremolo_btrem_single.musicxml`: 3 notes with single tremolo (3-mark, 1-mark, 2-mark)
+  - `tremolo_ftrem_double.musicxml`: 2 pairs of fingered tremolo (2-mark, 1-mark)
+- [x] Roundtrip fixtures for fingering using native MEI fing
+  - `fingering_native_fing.musicxml`: 4 notes with fingering (plain, substitution, alternate, no placement)
+- [x] Roundtrip fixtures for bowing articulations
+  - `bowing_upbow_downbow.musicxml`: 4 notes with down-bow/up-bow (above, above, below, no placement)
+- [x] Verify external MEI with bTrem/fTrem/fing correctly exports to MusicXML
+  - `test_export_btrem_single_tremolo`: construct MEI bTrem with unitdur=N32, verify tremolo type=single value=3
+  - `test_export_ftrem_fingered_tremolo`: construct MEI fTrem with unitdur=N16, verify start/stop value=2
+  - `test_export_fing_control_event`: construct MEI fing control event, verify fingering "3" above
+  - `test_export_btrem_with_different_unitdur`: N8→1, N16→2, N64→4 mark mapping
+- [x] Existing tests pass (0 regressions)
+  - All 2499 tests pass, 0 failures
 
 ---
 

@@ -1617,6 +1617,11 @@ fragment_roundtrip_test!(cross_staff_notes);
 fragment_roundtrip_test!(inline_key_change);
 fragment_roundtrip_test!(inline_clef_change);
 fragment_roundtrip_test!(inline_time_change);
+// Native MEI element roundtrips (Phase 36.4)
+fragment_roundtrip_test!(tremolo_btrem_single);
+fragment_roundtrip_test!(tremolo_ftrem_double);
+fragment_roundtrip_test!(fingering_native_fing);
+fragment_roundtrip_test!(bowing_upbow_downbow);
 
 // ============================================================================
 // .mxl Compressed MusicXML Roundtrip Tests (Phase 22)
