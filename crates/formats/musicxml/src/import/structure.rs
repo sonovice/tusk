@@ -11,6 +11,9 @@
 
 use crate::context::ConversionContext;
 use crate::convert_error::ConversionResult;
+use crate::import::restructure::{
+    emit_inline_attribute_changes, restructure_with_beams, wrap_tremolo_containers,
+};
 use crate::import::{
     DirectionConversionResult, convert_chord, convert_direction, convert_measure_rest,
     convert_note, convert_rest, convert_score_def, is_measure_rest,
@@ -18,8 +21,8 @@ use crate::import::{
 use crate::model::elements::ScorePartwise;
 use tusk_model::data::{DataBoolean, DataMeasurementunsigned};
 use tusk_model::elements::{
-    Beam, BeamChild, Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild,
-    Section, SectionChild, Slur, StaffChild, TupletSpan,
+    Body, BodyChild, LayerChild, Mdiv, MdivChild, MeasureChild, Score, ScoreChild, Section,
+    SectionChild, Slur, StaffChild, TupletSpan,
 };
 
 /// Convert MusicXML content to MEI body.
@@ -764,12 +767,22 @@ pub fn convert_layer(
                 }
 
                 if chord_notes.len() > 1 {
-                    // Convert as chord
                     let mei_chord = convert_chord(&chord_notes, ctx)?;
+                    // Register tremolo wrapping if pending
+                    if let Some(pt) = ctx.take_pending_tremolo() {
+                        if let Some(ref id) = mei_chord.common.xml_id {
+                            ctx.register_tremolo_for_id(id.clone(), pt);
+                        }
+                    }
                     layer.children.push(LayerChild::Chord(Box::new(mei_chord)));
                 } else {
-                    // Convert as single note
                     let mei_note = convert_note(note, ctx)?;
+                    // Register tremolo wrapping if pending
+                    if let Some(pt) = ctx.take_pending_tremolo() {
+                        if let Some(ref id) = mei_note.common.xml_id {
+                            ctx.register_tremolo_for_id(id.clone(), pt);
+                        }
+                    }
                     layer.children.push(LayerChild::Note(Box::new(mei_note)));
                 }
 
@@ -806,6 +819,14 @@ pub fn convert_layer(
     // Restructure layer children to wrap beamed notes/chords in <beam> elements
     layer.children = restructure_with_beams(layer.children, &notes);
 
+    // Post-process: wrap notes/chords in bTrem/fTrem containers based on
+    // registered tremolo info. Must run AFTER beam restructuring since both
+    // operate on layer children indices.
+    let tremolo_map = ctx.drain_tremolo_map();
+    if !tremolo_map.is_empty() {
+        layer.children = wrap_tremolo_containers(layer.children, &tremolo_map);
+    }
+
     // Prepend inline attribute changes (collected separately to avoid
     // disrupting beam restructuring which uses index-based ranges).
     if !inline_attr_changes.is_empty() {
@@ -814,222 +835,6 @@ pub fn convert_layer(
     }
 
     Ok(layer)
-}
-
-// ============================================================================
-// Inline Attribute Changes
-// ============================================================================
-
-/// Emit inline MEI elements for mid-score attribute changes.
-///
-/// Compares the given MusicXML attributes against tracked state in the context.
-/// When a clef, key, or time signature differs from the last-known value,
-/// emits the corresponding inline MEI element (Clef, KeySig, MeterSig) into
-/// the layer and updates the tracked state.
-///
-/// The first-measure attributes are already in the staffDef, so this function
-/// only emits inline elements when changes are detected.
-fn emit_inline_attribute_changes(
-    attrs: &crate::model::attributes::Attributes,
-    inline_children: &mut Vec<LayerChild>,
-    ctx: &mut ConversionContext,
-) {
-    use crate::import::attributes::{
-        convert_clef_attributes, convert_key_fifths, convert_time_signature,
-    };
-    use crate::model::attributes::KeyContent;
-
-    let part_id = ctx.position().part_id.clone().unwrap_or_default();
-
-    // --- Key signature changes ---
-    for key in &attrs.keys {
-        if let KeyContent::Traditional(trad) = &key.content {
-            let tracked = ctx.tracked_attrs().key_fifths.get(&part_id).copied();
-            if tracked.is_some() && tracked != Some(trad.fifths) {
-                // Key changed — emit inline keySig
-                let mut keysig = tusk_model::elements::KeySig::default();
-                keysig.key_sig_log.sig = Some(convert_key_fifths(trad.fifths));
-                inline_children.push(LayerChild::KeySig(Box::new(keysig)));
-            }
-            ctx.tracked_attrs_mut()
-                .key_fifths
-                .insert(part_id.clone(), trad.fifths);
-        }
-    }
-
-    // --- Time signature changes ---
-    for time in &attrs.times {
-        let (count, unit, sym) = convert_time_signature(time);
-        let new_val = (
-            count.clone(),
-            unit.map(|u| u.to_string()),
-            sym.map(|s| format!("{:?}", s)),
-        );
-        let tracked = ctx.tracked_attrs().time_sig.get(&part_id).cloned();
-        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
-            // Time changed — emit inline meterSig
-            let mut metersig = tusk_model::elements::MeterSig::default();
-            metersig.meter_sig_log.count = count.clone();
-            metersig.meter_sig_log.unit = unit.map(|u| u.to_string());
-            metersig.meter_sig_log.sym = sym;
-            inline_children.push(LayerChild::MeterSig(Box::new(metersig)));
-        }
-        ctx.tracked_attrs_mut()
-            .time_sig
-            .insert(part_id.clone(), new_val);
-    }
-
-    // --- Clef changes ---
-    for clef in &attrs.clefs {
-        let local_staff = clef.number.unwrap_or(1);
-        let new_val = (
-            format!("{:?}", clef.sign),
-            clef.line,
-            clef.clef_octave_change,
-        );
-        let key = (part_id.clone(), local_staff);
-        let tracked = ctx.tracked_attrs().clef.get(&key).cloned();
-        if tracked.is_some() && tracked.as_ref() != Some(&new_val) {
-            // Clef changed — emit inline clef
-            let (shape, line, dis, dis_place) = convert_clef_attributes(clef);
-            let mut mei_clef = tusk_model::elements::Clef::default();
-            mei_clef.clef_log.shape = shape;
-            mei_clef.clef_log.line = line;
-            mei_clef.clef_log.dis = dis;
-            mei_clef.clef_log.dis_place = dis_place;
-            // Carry the within-part staff number so export can reconstruct clef@number
-            mei_clef.event.staff = Some(local_staff.to_string());
-            inline_children.push(LayerChild::Clef(Box::new(mei_clef)));
-        }
-        ctx.tracked_attrs_mut().clef.insert(key, new_val);
-    }
-}
-
-// ============================================================================
-// Beam Restructuring
-// ============================================================================
-
-/// Represents a beam group found in the notes.
-struct BeamRange {
-    /// Starting index in the event sequence (notes/chords/rests, excluding chord members).
-    start: usize,
-    /// Ending index (inclusive).
-    end: usize,
-}
-
-/// Detect beam groups from MusicXML notes.
-///
-/// Scans notes for beam begin/end markers at level 1 (primary beams).
-/// Returns ranges of indices that should be grouped into beams.
-fn detect_beam_groups(notes: &[&crate::model::note::Note]) -> Vec<BeamRange> {
-    use crate::model::note::BeamValue;
-
-    let mut groups = Vec::new();
-    let mut beam_start: Option<usize> = None;
-    let mut event_index = 0;
-
-    for note in notes {
-        // Skip chord notes (they share beams with the root)
-        if note.is_chord() {
-            continue;
-        }
-
-        // Check for beam markers at level 1
-        let has_begin = note
-            .beams
-            .iter()
-            .any(|b| b.number.unwrap_or(1) == 1 && b.value == BeamValue::Begin);
-        let has_end = note
-            .beams
-            .iter()
-            .any(|b| b.number.unwrap_or(1) == 1 && b.value == BeamValue::End);
-
-        if has_begin && beam_start.is_none() {
-            beam_start = Some(event_index);
-        }
-
-        if has_end {
-            if let Some(start) = beam_start {
-                groups.push(BeamRange {
-                    start,
-                    end: event_index,
-                });
-            }
-            beam_start = None;
-        }
-
-        event_index += 1;
-    }
-
-    groups
-}
-
-/// Restructure layer children to wrap beamed elements in Beam containers.
-///
-/// This transforms a flat list of LayerChild elements into a tree where
-/// beamed notes/chords are wrapped in Beam elements.
-fn restructure_with_beams(
-    children: Vec<LayerChild>,
-    notes: &[&crate::model::note::Note],
-) -> Vec<LayerChild> {
-    // Detect beam groups
-    let groups = detect_beam_groups(notes);
-
-    // If no beams, return as-is
-    if groups.is_empty() {
-        return children;
-    }
-
-    let mut result = Vec::new();
-    let mut i = 0;
-    let mut group_idx = 0;
-
-    while i < children.len() {
-        // Check if this index starts a beam group
-        if group_idx < groups.len() && groups[group_idx].start == i {
-            let group = &groups[group_idx];
-
-            // Create beam container
-            let mut beam = Beam::default();
-
-            // Add all children in this range to the beam
-            for j in group.start..=group.end {
-                if j < children.len() {
-                    let beam_child = layer_child_to_beam_child(&children[j]);
-                    if let Some(bc) = beam_child {
-                        beam.children.push(bc);
-                    }
-                }
-            }
-
-            // Only add beam if it has children
-            if !beam.children.is_empty() {
-                result.push(LayerChild::Beam(Box::new(beam)));
-            }
-
-            i = group.end + 1;
-            group_idx += 1;
-        } else {
-            // Not in a beam group, add directly
-            result.push(children[i].clone());
-            i += 1;
-        }
-    }
-
-    result
-}
-
-/// Convert a LayerChild to a BeamChild.
-///
-/// Returns None if the child type cannot be contained in a beam.
-fn layer_child_to_beam_child(child: &LayerChild) -> Option<BeamChild> {
-    match child {
-        LayerChild::Note(n) => Some(BeamChild::Note(n.clone())),
-        LayerChild::Chord(c) => Some(BeamChild::Chord(c.clone())),
-        LayerChild::Rest(r) => Some(BeamChild::Rest(r.clone())),
-        // Other types like MRest, Space, etc. typically aren't beamed
-        _ => None,
-    }
 }
 
 #[cfg(test)]

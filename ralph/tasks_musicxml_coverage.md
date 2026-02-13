@@ -1603,11 +1603,19 @@ Currently, MusicXML `<tremolo type="single">` imports to `<ornam>` with
 `musicxml:tremolo,type=single,value=N` label. The export path already handles
 `<bTrem>` → tremolo (Phase 3), but the import doesn't produce `<bTrem>`.
 
-- [ ] Import: `<tremolo type="single">` → MEI `<bTrem>` container around the note, with `@unitdur` computed from tremolo value
+- [x] Import: `<tremolo type="single">` → MEI `<bTrem>` container around the note, with `@unitdur` computed from tremolo value
   - value=1 → unitdur=8, value=2 → unitdur=16, value=3 → unitdur=32
-- [ ] Import: `<tremolo type="start/stop">` → MEI `<fTrem>` container around the two notes, with `@unitdur`
-- [ ] Remove `musicxml:tremolo` label-based fallback (or keep as legacy compatibility)
-- [ ] Verify existing bTrem/fTrem export still works with the new import path
+  - Implemented in import/note.rs (pending tremolo in context) + import/restructure.rs (post-processing wrap)
+  - Handles notes both inside and outside beam groups
+- [x] Import: `<tremolo type="start/stop">` → MEI `<fTrem>` container around the two notes, with `@unitdur`
+  - Start note stashed, paired with stop note to create fTrem container
+  - Works within beams (beam children get wrapped) and at layer level
+- [x] Remove `musicxml:tremolo` label-based fallback (or keep as legacy compatibility)
+  - Removed for single/start/stop; kept for unmeasured (no MEI container equivalent)
+  - Beam groups containing only tremolo notes are suppressed (fTrem handles visual grouping)
+- [x] Verify existing bTrem/fTrem export still works with the new import path
+  - All 356 roundtrip tests pass including tremolo_element_single and tremolo_element_double
+  - Extracted beam/tremolo restructuring into import/restructure.rs submodule (structure.rs was over 1500 lines)
 
 ### 36.2 Technical Notations → Native MEI Where Possible
 

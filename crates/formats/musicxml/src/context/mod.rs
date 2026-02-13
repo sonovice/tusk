@@ -28,6 +28,7 @@ mod ids;
 mod positions;
 mod slurs;
 mod ties;
+mod tremolos;
 mod tuplets;
 
 use std::collections::HashMap;
@@ -40,6 +41,7 @@ pub use hairpins::{CompletedHairpin, DeferredHairpinStop, PendingHairpin};
 pub use positions::{ConversionWarning, DocumentPosition};
 pub use slurs::{CompletedSlur, DeferredSlurStop, PendingSlur};
 pub use ties::PendingTie;
+pub use tremolos::PendingTremolo;
 pub use tuplets::{CompletedTuplet, PendingTuplet};
 
 /// Direction of conversion.
@@ -115,6 +117,14 @@ pub struct ConversionContext {
 
     /// Ornament control events collected during note processing, emitted after all staves.
     pub(super) pending_ornament_events: Vec<tusk_model::elements::MeasureChild>,
+
+    /// Pending tremolo info from the current note's ornaments, consumed in structure.rs
+    /// to wrap the note/chord in bTrem or start an fTrem.
+    pub(super) pending_tremolo: Option<tremolos::PendingTremolo>,
+
+    /// Map of MEI note/chord xml:id → pending tremolo info, used after beam restructuring
+    /// to wrap notes in bTrem/fTrem containers.
+    pub(super) tremolo_map: HashMap<String, tremolos::PendingTremolo>,
 
     /// Warnings generated during lossy conversion.
     pub(super) warnings: Vec<ConversionWarning>,
@@ -206,6 +216,8 @@ impl ConversionContext {
             completed_hairpins: Vec::new(),
             deferred_hairpin_stops: Vec::new(),
             pending_ornament_events: Vec::new(),
+            pending_tremolo: None,
+            tremolo_map: HashMap::new(),
             warnings: Vec::new(),
             position: DocumentPosition::default(),
             key_fifths: 0,
@@ -385,6 +397,8 @@ impl ConversionContext {
         self.completed_hairpins.clear();
         self.deferred_hairpin_stops.clear();
         self.pending_ornament_events.clear();
+        self.pending_tremolo = None;
+        self.tremolo_map.clear();
         self.warnings.clear();
         self.position = DocumentPosition::default();
         self.key_fifths = 0;

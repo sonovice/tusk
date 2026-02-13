@@ -31,6 +31,7 @@ pub(crate) mod measure_style;
 mod note;
 pub(crate) mod parts;
 pub(crate) mod print;
+mod restructure;
 pub(crate) mod sound;
 mod structure;
 mod utils;

@@ -724,7 +724,8 @@ fn process_tuplets(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionConte
 /// - delayed-inverted-turn → MEI `<turn>` with @form="lower", @delayed="true"
 /// - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn → MEI `<ornam>`
 ///   with musicxml: label for lossless roundtrip
-/// - tremolo → MEI `<ornam>` with musicxml:tremolo label (bTrem/fTrem are containers)
+/// - tremolo single → pending bTrem wrapper; start/stop → pending fTrem wrapper
+///   (resolved in structure.rs); unmeasured → ornam label fallback
 /// - wavy-line → MEI `<ornam>` with musicxml:wavy-line label
 /// - other-ornament → MEI `<ornam>` with musicxml:other-ornament label
 fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
@@ -878,25 +879,34 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // tremolo → MEI <ornam> with label encoding type and value
+    // tremolo → store type/value in context for post-processing in structure.rs.
+    // After beam restructuring, the layer children are scanned to wrap notes in
+    // bTrem (single) or fTrem (start/stop) containers.
+    // Unmeasured tremolo has no MEI container equivalent; uses ornam label fallback.
     if let Some(ref tremolo) = ornaments.tremolo {
-        let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        let type_str = match tremolo.tremolo_type {
-            crate::model::data::TremoloType::Single => "single",
-            crate::model::data::TremoloType::Start => "start",
-            crate::model::data::TremoloType::Stop => "stop",
-            crate::model::data::TremoloType::Unmeasured => "unmeasured",
-        };
-        let value_str = tremolo.value.unwrap_or(0).to_string();
-        ornam.common.label = Some(format!(
-            "musicxml:tremolo,type={},value={}",
-            type_str, value_str
-        ));
-        ornam.ornam_log.startid = Some(startid.clone());
-        ornam.ornam_log.staff = Some(staff_str.clone());
-        ornam.ornam_vis.place = place_for(tremolo.placement);
-        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+        use crate::context::PendingTremolo;
+        match tremolo.tremolo_type {
+            crate::model::data::TremoloType::Single
+            | crate::model::data::TremoloType::Start
+            | crate::model::data::TremoloType::Stop => {
+                ctx.set_pending_tremolo(PendingTremolo {
+                    tremolo_type: tremolo.tremolo_type,
+                    value: tremolo.value.unwrap_or(3),
+                });
+            }
+            crate::model::data::TremoloType::Unmeasured => {
+                let mut ornam = Ornam::default();
+                ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+                ornam.common.label = Some(format!(
+                    "musicxml:tremolo,type=unmeasured,value={}",
+                    tremolo.value.unwrap_or(0)
+                ));
+                ornam.ornam_log.startid = Some(startid.clone());
+                ornam.ornam_log.staff = Some(staff_str.clone());
+                ornam.ornam_vis.place = place_for(tremolo.placement);
+                ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
+            }
+        }
     }
 
     // haydn → MEI <ornam> with label
