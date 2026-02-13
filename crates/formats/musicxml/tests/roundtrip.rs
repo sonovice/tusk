@@ -850,6 +850,11 @@ fn test_roundtrip_voice_forward() {
     assert_roundtrip("voice_forward.musicxml");
 }
 
+#[test]
+fn test_roundtrip_volta_brackets() {
+    assert_roundtrip("volta_brackets.musicxml");
+}
+
 // ============================================================================
 // Debug Helper Tests (can be used to inspect conversion output)
 // ============================================================================

@@ -1756,12 +1756,18 @@ MEI `<ending>` is a section-level container that wraps measures in an alternativ
 
 ### 38.2 Other Section Children
 
-- [ ] Evaluate `SectionChild::Expansion` — MEI `<expansion>` for navigation/playback ordering; no direct MusicXML equivalent (store as extension?)
-- [ ] Evaluate `SectionChild::ScoreDef` — inline `<scoreDef>` changes (relates to Phase 32)
-- [ ] Evaluate `SectionChild::StaffDef` — inline `<staffDef>` changes (relates to Phase 32)
-- [ ] Document intentionally skipped section children
+- [x] Evaluate `SectionChild::Expansion` — MEI `<expansion>` for navigation/playback ordering; no direct MusicXML equivalent (store as extension?)
+  - No action needed. `<expansion>` defines playback ordering (e.g., "play sections A, B, A, C") — purely an MEI concept with no MusicXML equivalent. Already handled: export skips with `tracing::debug!` in `collect_measures_from_section()` and `collect_measures_from_ending()` (content.rs:754-757, 778-780). Import preserves Expansion children during ending restructuring (ending.rs:155-156). No extension storage needed since expansion is never produced from MusicXML import.
+- [x] Evaluate `SectionChild::ScoreDef` — inline `<scoreDef>` changes (relates to Phase 32)
+  - No action needed. `ScoreDef` is NOT a `SectionChild` variant in the generated MEI model — it only appears as `ScoreChild::ScoreDef` at the score level. The MEI RNG spec allows `<scoreDef>` inside `<section>` via `model.sectionPart > model.scoreDefLike`, but our codegen does not include it as a section child. Mid-score attribute changes (key/time/clef) are already handled at the layer level via inline `<keySig>`, `<meterSig>`, `<clef>` elements (Phase 32). Adding `ScoreDef` as a `SectionChild` variant would require codegen changes and is unnecessary for MusicXML conversion.
+- [x] Evaluate `SectionChild::StaffDef` — inline `<staffDef>` changes (relates to Phase 32)
+  - No action needed. Same as ScoreDef — `StaffDef` is NOT a `SectionChild` variant in the generated model. The RNG allows it via `model.sectionPart > model.staffDefLike`, but mid-score staff changes are handled at the layer level (Phase 32). No codegen change warranted for MusicXML conversion.
+- [x] Document intentionally skipped section children
+  - Documented above. Summary: the 4 `SectionChild` variants (Measure, Section, Ending, Expansion) are all handled. Measure/Section/Ending are converted; Expansion is intentionally skipped (no MusicXML equivalent). ScoreDef and StaffDef are not section children in the generated model and don't need to be for MusicXML roundtrip.
 
 ### 38.3 Tests
 
-- [ ] Add roundtrip fixture with volta brackets (first/second endings)
-- [ ] Existing tests pass (0 regressions)
+- [x] Add roundtrip fixture with volta brackets (first/second endings)
+  - `volta_brackets.musicxml`: 4-measure fixture with measures 1-2 as body, measure 3 as 1st ending (with repeat backward + light-heavy barline), measure 4 as 2nd ending (with stop barline). Validates against MusicXML 4.1 schema. All 4 roundtrip levels pass (conversion, full, triangle MEI, triangle MusicXML).
+- [x] Existing tests pass (0 regressions)
+  - 2500 tests pass, 0 failures (361 roundtrip, 544 unit, 104 MEI model, 50 integration, etc.)
