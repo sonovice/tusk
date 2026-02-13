@@ -446,8 +446,10 @@ fn convert_mei_written_accid_to_mxml(
             DataAccidentalWrittenExtended::N1qs => AccidentalValue::QuarterSharp,
             DataAccidentalWrittenExtended::N3qs => AccidentalValue::ThreeQuartersSharp,
         },
-        // AEU/Persian — closest MusicXML equivalents
-        _ => AccidentalValue::Natural,
+        // AEU/Persian microtonal systems — no direct MusicXML equivalents;
+        // fall back to natural as the closest approximation.
+        DataAccidentalWritten::MeiDataAccidentalAeu(_)
+        | DataAccidentalWritten::MeiDataAccidentalPersian(_) => AccidentalValue::Natural,
     }
 }
 
@@ -682,6 +684,8 @@ fn convert_mei_note_label_technical(
                         ..Default::default()
                     });
                 }
+                // All known tech-artic names (upbow, dnbow, snap, stop) are
+                // handled above. Unknown names are silently ignored.
                 _ => {}
             }
         }
@@ -941,6 +945,8 @@ fn convert_mei_ties(
                 let notations = mxml_note.notations.get_or_insert_with(Notations::default);
                 notations.tied.push(Tied::new(TiedType::Stop));
             }
+            // MEI @tie values: "i" (initial), "m" (medial), "t" (terminal).
+            // Unknown values are silently ignored.
             _ => {}
         }
     }
@@ -1738,7 +1744,8 @@ fn convert_mei_grace_chord(mei_chord: &tusk_model::elements::Chord) -> crate::mo
         match grace_type {
             DataGrace::Acc => grace.slash = Some(crate::model::data::YesNo::Yes),
             DataGrace::Unacc => grace.slash = Some(crate::model::data::YesNo::No),
-            _ => {}
+            // Unknown grace type — emit grace without slash attribute.
+            DataGrace::Unknown => {}
         }
     }
 

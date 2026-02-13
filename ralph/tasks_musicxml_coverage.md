@@ -1679,19 +1679,27 @@ These should be replaced with exhaustive matches or explicit logging.
 
 ### 37.1 Identify and Fix Catch-Alls
 
-- [ ] `content.rs:679` — `SectionChild::_` catch-all: handle `SectionChild::Ending` (MEI ending/volta → MusicXML `<barline><ending>`), `SectionChild::Expansion`, and other section children
-- [ ] `content.rs:980` — `MeasureChild::_` in `convert_direction_events`: audit remaining unhandled MeasureChild variants; add explicit skip with comment or implement conversion
-- [ ] `content.rs:1534` — `_ => {}` in ornament event conversion: audit and document what's skipped
-- [ ] `content.rs:1895` — `LayerChild::_` catch-all ("Other layer children (space, tuplet, etc.) not handled yet"):
-  - `LayerChild::Space` addressed in Phase 33
-  - `LayerChild::Tuplet` (MEI container-style tuplet, distinct from tupletSpan): evaluate if conversion is needed
-  - `LayerChild::Clef` / `LayerChild::KeySig` / `LayerChild::MeterSig` — inline attribute changes, addressed in Phase 32
-  - Document any intentionally skipped types
-- [ ] `content.rs:2382` — `_ => {}` in duration calculation: ensure all duration-carrying elements are counted
-- [ ] `content.rs:2789` — `_ => {}` in technical label conversion: audit for missing technical types
-- [ ] `note.rs:468` — `DataArticulation::_` catch-all: replace with exhaustive match listing all MEI articulation values, mapping or explicitly skipping each (see Phase 34.2 for compound articulations)
-- [ ] `note.rs:633` — `DataTie::_` catch-all: audit and handle any missing tie variants
-- [ ] `note.rs:1390` — `_ => {}` in visual attribute parsing: audit
+- [x] `content.rs:679` — `SectionChild::_` catch-all: handle `SectionChild::Ending` (MEI ending/volta → MusicXML `<barline><ending>`), `SectionChild::Expansion`, and other section children
+  - SectionChild only has 3 variants: Measure, Section, Expansion. Replaced `_` with explicit `SectionChild::Expansion(_) => {}` — no Ending variant exists in generated model
+  - Also fixed adjacent StaffGrpChild catch-all → explicit GrpSym/Label/LabelAbbr skip
+- [x] `content.rs:980` — `MeasureChild::_` in `convert_direction_events`: audit remaining unhandled MeasureChild variants; add explicit skip with comment or implement conversion
+  - Replaced with exhaustive listing of all 15 variants handled elsewhere (Staff, Layer, Slur, Gliss, Arpeg, Fermata, Trill, Mordent, Turn, Ornam, TupletSpan, Fing, MNum, Breath, Caesura) with comments documenting which function handles each
+- [x] `content.rs:1534` — `_ => {}` in ornament event conversion: audit and document what's skipped
+  - Replaced with exhaustive listing of all 19 non-ornament MeasureChild variants with comment
+- [x] `content.rs:1895` — `LayerChild::_` catch-all ("Other layer children (space, tuplet, etc.) not handled yet"):
+  - Replaced with explicit `LayerChild::DivLine(_) => {}` (MEI-only mensural concept) + unreachable arm for KeySig/MeterSig/Clef (handled by inline attribute merging above)
+  - LayerChild enum has no Tuplet variant — tuplets use TupletSpan control events
+  - Space, Note, Rest, Chord, Beam, BTrem, FTrem, MRest all handled in preceding match arms
+- [x] `content.rs:2382` — `_ => {}` in duration calculation: ensure all duration-carrying elements are counted
+  - Replaced with exhaustive listing of all 11 non-duration-carrying MeasureContent variants (Attributes, Direction, Harmony, FiguredBass, Print, Sound, Listening, Barline, Grouping, Link, Bookmark)
+- [x] `content.rs:2789` — `_ => {}` in technical label conversion: audit for missing technical types
+  - Audited: is_technical_label() pre-filters all 29 technical names, every accepted name is matched. Added comment documenting that fingering is handled separately via native <fing> elements
+- [x] `note.rs:468` — `DataArticulation::_` catch-all: replace with exhaustive match listing all MEI articulation values, mapping or explicitly skipping each (see Phase 34.2 for compound articulations)
+  - Already exhaustive! All 38 DataArticulation variants are explicitly handled (no catch-all exists). Also fixed DataAccidentalWritten catch-all → explicit AEU/Persian variants
+- [x] `note.rs:633` — `DataTie::_` catch-all: audit and handle any missing tie variants
+  - DataTie is a newtype struct (String), not an enum. Match is on string values "i"/"m"/"t". Added comment documenting the MEI @tie value space. String catch-all is unavoidable but documented
+- [x] `note.rs:1390` — `_ => {}` in visual attribute parsing: audit
+  - No catch-all exists at this location. The code at line 1390 is a `}` closing a mensural duration warning block. No action needed
 
 ### 37.2 Add Warnings for Intentional Skips
 

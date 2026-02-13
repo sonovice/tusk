@@ -697,7 +697,9 @@ fn collect_staff_defs_from_staff_grp<'a>(
             StaffGrpChild::StaffGrp(nested_grp) => {
                 collect_staff_defs_from_staff_grp(nested_grp, staff_defs);
             }
-            _ => {}
+            // These StaffGrp children carry display/grouping metadata only —
+            // not needed when collecting staffDefs for part→staff mapping.
+            StaffGrpChild::GrpSym(_) | StaffGrpChild::Label(_) | StaffGrpChild::LabelAbbr(_) => {}
         }
     }
 }
@@ -715,9 +717,8 @@ fn collect_measures_from_section<'a>(
             SectionChild::Section(nested_section) => {
                 collect_measures_from_section(nested_section, measures);
             }
-            _ => {
-                // Other section children (ending, expansion, etc.) not handled yet
-            }
+            // Expansion defines playback ordering — no MusicXML equivalent.
+            SectionChild::Expansion(_) => {}
         }
     }
 }
@@ -1019,7 +1020,29 @@ fn convert_direction_events(
                     }
                 }
             }
-            _ => {}
+            // These MeasureChild variants are handled by other conversion functions:
+            // - Staff/Layer: structural, processed by convert_staff_content
+            // - Slur/Gliss/Arpeg/Fermata: notation events, processed by convert_slur_events etc.
+            // - Trill/Mordent/Turn/Ornam: ornament events, processed by convert_ornament_events
+            // - TupletSpan: processed by convert_tuplet_events
+            // - Fing: processed by convert_technical_events
+            // - MNum: measure number display, no MusicXML equivalent
+            // - Breath/Caesura: native MEI elements, processed by convert_breath_caesura_events
+            MeasureChild::Staff(_)
+            | MeasureChild::Layer(_)
+            | MeasureChild::Slur(_)
+            | MeasureChild::Gliss(_)
+            | MeasureChild::Arpeg(_)
+            | MeasureChild::Fermata(_)
+            | MeasureChild::Trill(_)
+            | MeasureChild::Mordent(_)
+            | MeasureChild::Turn(_)
+            | MeasureChild::Ornam(_)
+            | MeasureChild::TupletSpan(_)
+            | MeasureChild::Fing(_)
+            | MeasureChild::MNum(_)
+            | MeasureChild::Breath(_)
+            | MeasureChild::Caesura(_) => {}
         }
     }
     Ok(())
@@ -1613,7 +1636,26 @@ fn convert_ornament_events(
                     continue;
                 }
             }
-            _ => {}
+            // Non-ornament MeasureChild variants — handled by other conversion functions.
+            MeasureChild::Fing(_)
+            | MeasureChild::Dynam(_)
+            | MeasureChild::Dir(_)
+            | MeasureChild::Harm(_)
+            | MeasureChild::Pb(_)
+            | MeasureChild::Slur(_)
+            | MeasureChild::Arpeg(_)
+            | MeasureChild::Fermata(_)
+            | MeasureChild::Sb(_)
+            | MeasureChild::Gliss(_)
+            | MeasureChild::TupletSpan(_)
+            | MeasureChild::MNum(_)
+            | MeasureChild::Staff(_)
+            | MeasureChild::Layer(_)
+            | MeasureChild::Hairpin(_)
+            | MeasureChild::Tempo(_)
+            | MeasureChild::Fb(_)
+            | MeasureChild::Breath(_)
+            | MeasureChild::Caesura(_) => {}
         }
     }
     Ok(())
@@ -2168,8 +2210,12 @@ fn convert_staff_content(
                         .content
                         .push(MeasureContent::Forward(Box::new(forward)));
                 }
-                _ => {
-                    // Other layer children (divLine, etc.) not handled yet
+                // DivLine is an MEI-only concept (division line in mensural notation)
+                // with no MusicXML equivalent.
+                LayerChild::DivLine(_) => {}
+                // KeySig, MeterSig, Clef handled as inline attributes above.
+                LayerChild::KeySig(_) | LayerChild::MeterSig(_) | LayerChild::Clef(_) => {
+                    unreachable!("inline attribute elements handled before this match")
                 }
             }
             i += 1;
@@ -2191,7 +2237,20 @@ fn convert_staff_content(
                 MeasureContent::Forward(forward) => {
                     forward.voice = Some(voice_str.clone());
                 }
-                _ => {}
+                // Other MeasureContent variants (Backup, Attributes, Direction, etc.)
+                // don't carry a voice element.
+                MeasureContent::Backup(_)
+                | MeasureContent::Attributes(_)
+                | MeasureContent::Direction(_)
+                | MeasureContent::Harmony(_)
+                | MeasureContent::FiguredBass(_)
+                | MeasureContent::Print(_)
+                | MeasureContent::Sound(_)
+                | MeasureContent::Listening(_)
+                | MeasureContent::Barline(_)
+                | MeasureContent::Grouping(_)
+                | MeasureContent::Link(_)
+                | MeasureContent::Bookmark(_) => {}
             }
         }
     }
@@ -2791,7 +2850,18 @@ fn calculate_staff_duration(mxml_measure: &MxmlMeasure, content_from: usize) -> 
             MeasureContent::Backup(bk) => {
                 total -= bk.duration;
             }
-            _ => {}
+            // Non-duration-carrying elements don't affect timing.
+            MeasureContent::Attributes(_)
+            | MeasureContent::Direction(_)
+            | MeasureContent::Harmony(_)
+            | MeasureContent::FiguredBass(_)
+            | MeasureContent::Print(_)
+            | MeasureContent::Sound(_)
+            | MeasureContent::Listening(_)
+            | MeasureContent::Barline(_)
+            | MeasureContent::Grouping(_)
+            | MeasureContent::Link(_)
+            | MeasureContent::Bookmark(_) => {}
         }
     }
     total.max(0.0)
@@ -3181,6 +3251,8 @@ fn convert_technical_events(
                 });
             }
 
+            // is_technical_label() pre-filters; all known names are matched above.
+            // Fingering is handled separately via native MEI <fing> elements below.
             _ => {}
         }
     }
