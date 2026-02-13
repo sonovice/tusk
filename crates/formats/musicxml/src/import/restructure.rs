@@ -202,6 +202,8 @@ fn wrap_tremolo_in_beam(
                             continue;
                         }
                     }
+                    // Unmeasured tremolo: no bTrem/fTrem wrapping needed —
+                    // handled as regular ornament notation on the note.
                     TremoloType::Unmeasured => {}
                 }
             }

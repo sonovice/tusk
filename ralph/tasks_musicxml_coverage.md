@@ -1703,13 +1703,30 @@ These should be replaced with exhaustive matches or explicit logging.
 
 ### 37.2 Add Warnings for Intentional Skips
 
-- [ ] For elements that genuinely cannot be converted (MEI-only concepts), emit a structured warning/log instead of silent skip
-- [ ] Consider a conversion diagnostics system that collects warnings during export for user feedback
+- [x] For elements that genuinely cannot be converted (MEI-only concepts), emit a structured warning/log instead of silent skip
+  - Export: `SectionChild::Expansion` → tracing::debug (no MusicXML equivalent)
+  - Export: `LayerChild::DivLine` → ctx.add_warning (mensural-only, no MusicXML equivalent)
+  - Export: unknown tech-artic names → tracing::debug
+  - Export: unknown MEI @tie values → tracing::debug
+  - Export: unknown technical labels → tracing::debug
+  - Export: barline rendition catch-all replaced with exhaustive match (End→LightHeavy, repeat/segno→debug)
+  - Import: `_ => {}` at line 351 replaced with explicit `MeasureContent::Barline(_)` arm (documented)
+  - Import: `_ => {}` at line 815 replaced with exhaustive non-note content arms (documented)
+  - Import: `BarlineLocation::Middle` documented (preserved via barline extras roundtrip)
+  - Import: `TremoloType::Unmeasured` documented (handled as ornament notation)
+  - Import: MIDI assignment id mismatch documented
+- [x] Consider a conversion diagnostics system that collects warnings during export for user feedback
+  - Existing `ConversionWarning` system already provides structured warnings via `ctx.add_warning()`
+  - Added `convert_mei_with_diagnostics()` and `convert_mei_with_ext_diagnostics()` to export::mod.rs — returns `(ScorePartwise, Vec<ConversionWarning>)`
+  - Added `export_with_diagnostics()` and `export_with_ext_diagnostics()` to lib.rs public API
+  - Re-exported `ConversionWarning` from lib.rs for consumer convenience
 
 ### 37.3 Tests
 
-- [ ] No behavior change expected — this is a code quality improvement
-- [ ] Existing tests pass (0 regressions)
+- [x] No behavior change expected — this is a code quality improvement
+- [x] Existing tests pass (0 regressions)
+  - All 2499 tests pass, 0 failures
+  - Clippy clean (only pre-existing type_complexity warnings)
 
 ---
 

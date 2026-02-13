@@ -103,6 +103,35 @@ pub fn convert_mei_with_ext(
     Ok(crate::convert::timewise_to_partwise(timewise))
 }
 
+/// Convert MEI to MusicXML score-partwise, returning diagnostics.
+///
+/// Like `convert_mei`, but also returns any conversion warnings generated
+/// during the lossy MEI→MusicXML conversion.
+pub fn convert_mei_with_diagnostics(
+    mei: &Mei,
+) -> ConversionResult<(
+    crate::model::elements::ScorePartwise,
+    Vec<crate::context::ConversionWarning>,
+)> {
+    convert_mei_with_ext_diagnostics(mei, &ExtensionStore::new())
+}
+
+/// Convert MEI to MusicXML score-partwise with extension data, returning diagnostics.
+pub fn convert_mei_with_ext_diagnostics(
+    mei: &Mei,
+    ext_store: &ExtensionStore,
+) -> ConversionResult<(
+    crate::model::elements::ScorePartwise,
+    Vec<crate::context::ConversionWarning>,
+)> {
+    let mut ctx = ConversionContext::new(ConversionDirection::MeiToMusicXml);
+    ctx.set_ext_store(ext_store.clone());
+    let timewise = convert_mei_to_timewise_with_context(mei, &mut ctx)?;
+    let partwise = crate::convert::timewise_to_partwise(timewise);
+    let warnings = ctx.warnings().to_vec();
+    Ok((partwise, warnings))
+}
+
 /// Convert an MEI document to MusicXML timewise format.
 ///
 /// This is the core conversion function. It produces a `ScoreTimewise`

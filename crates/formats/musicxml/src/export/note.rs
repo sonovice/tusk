@@ -685,8 +685,10 @@ fn convert_mei_note_label_technical(
                     });
                 }
                 // All known tech-artic names (upbow, dnbow, snap, stop) are
-                // handled above. Unknown names are silently ignored.
-                _ => {}
+                // handled above. Unknown names get a debug trace.
+                unknown => {
+                    tracing::debug!("Unknown tech-artic name {:?} — skipped", unknown);
+                }
             }
         }
     }
@@ -946,8 +948,9 @@ fn convert_mei_ties(
                 notations.tied.push(Tied::new(TiedType::Stop));
             }
             // MEI @tie values: "i" (initial), "m" (medial), "t" (terminal).
-            // Unknown values are silently ignored.
-            _ => {}
+            other => {
+                tracing::debug!("Unknown MEI @tie value {:?} — skipped", other);
+            }
         }
     }
 }

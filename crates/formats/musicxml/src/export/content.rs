@@ -718,7 +718,9 @@ fn collect_measures_from_section<'a>(
                 collect_measures_from_section(nested_section, measures);
             }
             // Expansion defines playback ordering — no MusicXML equivalent.
-            SectionChild::Expansion(_) => {}
+            SectionChild::Expansion(_) => {
+                tracing::debug!("Skipping MEI <expansion> — no MusicXML equivalent");
+            }
         }
     }
 }
@@ -762,7 +764,21 @@ fn mei_barrendition_to_barline(
         DataBarrendition::Invis => BarStyle::None,
         DataBarrendition::Dbldashed => BarStyle::Dashed,
         DataBarrendition::Dbldotted => BarStyle::Dotted,
-        _ => BarStyle::Regular,
+        // These MEI bar renditions have no exact MusicXML bar-style equivalent.
+        // Repeat-related renditions (rptstart/rptend/rptboth) are handled separately
+        // via barline extras roundtrip; if they reach here, fall back to regular.
+        DataBarrendition::End => BarStyle::LightHeavy,
+        DataBarrendition::Rptstart
+        | DataBarrendition::Rptend
+        | DataBarrendition::Rptboth
+        | DataBarrendition::Segno
+        | DataBarrendition::Dblsegno => {
+            tracing::debug!(
+                "MEI bar rendition {:?} mapped to regular — repeat/segno info preserved in barline extras",
+                rend
+            );
+            BarStyle::Regular
+        }
     };
     Barline {
         location: Some(location),
@@ -2212,7 +2228,12 @@ fn convert_staff_content(
                 }
                 // DivLine is an MEI-only concept (division line in mensural notation)
                 // with no MusicXML equivalent.
-                LayerChild::DivLine(_) => {}
+                LayerChild::DivLine(_) => {
+                    ctx.add_warning(
+                        "divLine",
+                        "MEI <divLine> (mensural) has no MusicXML equivalent — skipped",
+                    );
+                }
                 // KeySig, MeterSig, Clef handled as inline attributes above.
                 LayerChild::KeySig(_) | LayerChild::MeterSig(_) | LayerChild::Clef(_) => {
                     unreachable!("inline attribute elements handled before this match")
@@ -3253,7 +3274,9 @@ fn convert_technical_events(
 
             // is_technical_label() pre-filters; all known names are matched above.
             // Fingering is handled separately via native MEI <fing> elements below.
-            _ => {}
+            unknown => {
+                tracing::debug!("Unknown technical label {:?} — skipped", unknown);
+            }
         }
     }
 

@@ -79,7 +79,9 @@ pub use model::*;
 pub use parser::{ParseError, parse_score_partwise, parse_score_timewise};
 
 // Re-export conversion context types
-pub use context::{ConversionContext, ConversionDirection, PendingSlur, PendingTie};
+pub use context::{
+    ConversionContext, ConversionDirection, ConversionWarning, PendingSlur, PendingTie,
+};
 pub use convert::{partwise_to_timewise, timewise_to_partwise};
 pub use convert_error::{ConversionError, ConversionResult};
 
@@ -150,6 +152,24 @@ pub fn export_with_ext(
     ext_store: &tusk_model::extensions::ExtensionStore,
 ) -> ConversionResult<model::elements::ScorePartwise> {
     export::convert_mei_with_ext(mei, ext_store)
+}
+
+/// Export an MEI document to MusicXML, returning conversion diagnostics.
+///
+/// Like `export`, but also returns any warnings generated during the
+/// lossy MEI→MusicXML conversion (e.g. MEI-only concepts that were dropped).
+pub fn export_with_diagnostics(
+    mei: &tusk_model::elements::Mei,
+) -> ConversionResult<(model::elements::ScorePartwise, Vec<ConversionWarning>)> {
+    export::convert_mei_with_diagnostics(mei)
+}
+
+/// Export an MEI document to MusicXML with extension data, returning diagnostics.
+pub fn export_with_ext_diagnostics(
+    mei: &tusk_model::elements::Mei,
+    ext_store: &tusk_model::extensions::ExtensionStore,
+) -> ConversionResult<(model::elements::ScorePartwise, Vec<ConversionWarning>)> {
+    export::convert_mei_with_ext_diagnostics(mei, ext_store)
 }
 
 /// Export an MEI document to MusicXML timewise (lossy conversion).

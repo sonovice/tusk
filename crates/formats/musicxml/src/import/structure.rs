@@ -348,7 +348,8 @@ fn convert_measure_directions(
                         .push(super::listening::convert_bookmark(bookmark, ctx));
                 }
             }
-            _ => {}
+            // Barlines are handled separately in convert_measure_barlines().
+            MeasureContent::Barline(_) => {}
         }
     }
 
@@ -572,7 +573,10 @@ fn convert_measure_barlines(
             match loc {
                 BarlineLocation::Left => mei_measure.measure_log.left = Some(rend),
                 BarlineLocation::Right => mei_measure.measure_log.right = Some(rend),
-                BarlineLocation::Middle => {}
+                BarlineLocation::Middle => {
+                    // Middle barlines have no direct MEI @left/@right mapping;
+                    // the barline extras roundtrip (JSON-in-label) preserves them.
+                }
             }
 
             // Extra children/attrs → JSON-in-label <dir>
@@ -811,8 +815,20 @@ pub fn convert_layer(
                 // Move beat position forward
                 ctx.advance_beat_position(forward.duration);
             }
-            // Other content types will be handled in subsequent tasks
-            _ => {}
+            // Non-note content types are handled in convert_measure_content_phase1
+            // (directions, harmony, figured bass, print, sound, listening, grouping,
+            // link, bookmark) or convert_measure_barlines (barlines). They don't
+            // appear in layers — only notes, attributes, backup, and forward do.
+            MeasureContent::Direction(_)
+            | MeasureContent::Harmony(_)
+            | MeasureContent::FiguredBass(_)
+            | MeasureContent::Print(_)
+            | MeasureContent::Sound(_)
+            | MeasureContent::Listening(_)
+            | MeasureContent::Barline(_)
+            | MeasureContent::Grouping(_)
+            | MeasureContent::Link(_)
+            | MeasureContent::Bookmark(_) => {}
         }
     }
 

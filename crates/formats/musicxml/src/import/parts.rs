@@ -1096,6 +1096,7 @@ fn apply_instruments_to_staff_def(
                         }
                         matching_midi.push(ma.clone());
                     }
+                    // MIDI assignments whose id doesn't match this instrument — skip.
                     _ => {}
                 }
             }
