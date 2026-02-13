@@ -1445,6 +1445,7 @@ fragment_roundtrip_test!(midi_name_and_midi_bank_elements);
 fragment_roundtrip_test!(midi_unpitched_element);
 fragment_roundtrip_test!(mordent_element);
 fragment_roundtrip_test!(mp_element);
+fragment_roundtrip_test!(multiple_articulations_element);
 fragment_roundtrip_test!(multiple_rest_element);
 // Batch 31
 fragment_roundtrip_test!(n_element);
@@ -1464,6 +1465,7 @@ fragment_roundtrip_test!(open_element);
 fragment_roundtrip_test!(open_string_element);
 fragment_roundtrip_test!(other_articulation_element);
 fragment_roundtrip_test!(other_direction_element);
+fragment_roundtrip_test!(other_notation_element);
 fragment_roundtrip_test!(p_element);
 fragment_roundtrip_test!(pan_and_elevation_elements);
 // Batch 34

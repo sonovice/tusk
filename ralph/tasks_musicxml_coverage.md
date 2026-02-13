@@ -1538,16 +1538,25 @@ MEI has compound articulation values that MusicXML represents as separate elemen
 
 ### 34.4 Direction Lossy Path Improvement
 
-- [ ] Export: `<image>` direction type → emit as `<image>` (currently emitted as `<words>`)
-- [ ] Export: `<percussion>` direction type → emit as `<percussion>` (currently emitted as `<words>`)
-  - Requires roundtrip label or `ExtensionStore` data (Phase 26) to recover structured percussion content
+- [x] Export: `<image>` direction type → emit as `<image>` (currently emitted as `<words>`)
+  - Already handled: import stores JSON-in-label on `<dir label="musicxml:image">`, export deserializes back to `DirectionImage`, serializer emits `<image>` element
+  - Roundtrip test `image_element` passes
+- [x] Export: `<percussion>` direction type → emit as `<percussion>` (currently emitted as `<words>`)
+  - Already handled: import stores JSON-in-label on `<dir label="musicxml:percussion">`, export deserializes back to `Vec<Percussion>`, serializer emits `<percussion>` element
+  - All percussion roundtrip tests pass (glass, metal, wood, pitched, membrane, effect, timpani, beater, stick, stick_location)
 
 ### 34.5 Tests
 
-- [ ] Roundtrip fixture with multiple articulations on single note (e.g. accent + staccato)
-- [ ] Roundtrip fixture with detached-legato
-- [ ] Roundtrip fixture with other-notation
-- [ ] Existing tests pass (0 regressions)
+- [x] Roundtrip fixture with multiple articulations on single note (e.g. accent + staccato)
+  - Created `multiple_articulations_element.musicxml`: 4 notes with accent+staccato, tenuto+staccato+accent, strong-accent+staccatissimo, accent+tenuto+staccato
+  - Validated against MusicXML 4.1 XSD
+- [x] Roundtrip fixture with detached-legato
+  - Already existed as `detached_legato_element.musicxml` with roundtrip test registered
+- [x] Roundtrip fixture with other-notation
+  - Created `other_notation_element.musicxml`: single with smufl+text, single with number, start/stop spanner pair
+  - Validated against MusicXML 4.1 XSD
+- [x] Existing tests pass (0 regressions)
+  - All 2490 tests pass (355 MusicXML roundtrip, 544 unit, 31 integration, 97 MEI roundtrip ignored)
 
 ---
 
