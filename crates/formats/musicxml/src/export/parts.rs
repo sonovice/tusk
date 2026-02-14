@@ -58,10 +58,16 @@ pub fn convert_mei_staff_grp_to_part_list(
     // Only emit a part-group if this staffGrp has explicit grouping attributes
     // (symbol, bar_thru, label, or group-details label). A plain staffGrp with
     // multiple children does NOT need a part-group wrapper — it's just the root container.
-    let has_group_details_label = staff_grp.common.label.as_ref().is_some_and(|l| {
-        l.split('|')
-            .any(|seg| seg.starts_with(crate::import::parts::GROUP_DETAILS_LABEL_PREFIX))
-    });
+    let has_group_details_ext = staff_grp
+        .common
+        .xml_id
+        .as_ref()
+        .is_some_and(|id| ctx.ext_store().group_details(id).is_some());
+    let has_group_details_label = has_group_details_ext
+        || staff_grp.common.label.as_ref().is_some_and(|l| {
+            l.split('|')
+                .any(|seg| seg.starts_with(crate::import::parts::GROUP_DETAILS_LABEL_PREFIX))
+        });
     let has_group_attrs = staff_grp.staff_grp_vis.symbol.is_some()
         || staff_grp.staff_grp_vis.bar_thru.is_some()
         || extract_label_text(staff_grp).is_some()
@@ -83,7 +89,7 @@ pub fn convert_mei_staff_grp_to_part_list(
             group_time: None,
         };
         // Recover extra group details from JSON-in-label
-        extract_group_details_from_staff_grp(staff_grp, &mut part_group);
+        extract_group_details_from_staff_grp(staff_grp, &mut part_group, ctx);
         part_list
             .items
             .push(PartListItem::PartGroup(Box::new(part_group)));
@@ -281,10 +287,10 @@ fn convert_multi_staff_grp_to_score_part(
     extract_part_symbol_from_staff_grp(staff_grp, &part_id, ctx);
 
     // Extract instrument definitions from first staffDef
-    extract_instruments_from_staff_def(first_def, &mut score_part);
+    extract_instruments_from_staff_def(first_def, &mut score_part, ctx);
 
     // Recover extra part details from JSON-in-label on first staffDef
-    extract_part_details_from_staff_def(first_def, &mut score_part);
+    extract_part_details_from_staff_def(first_def, &mut score_part, ctx);
 
     // Register all staffDefs in the context for staff number mapping
     for (idx, staff_def) in staff_defs.iter().enumerate() {
@@ -334,10 +340,10 @@ pub fn convert_mei_staff_def_to_score_part(
     }
 
     // Extract instrument definitions from instrDef children
-    extract_instruments_from_staff_def(staff_def, &mut score_part);
+    extract_instruments_from_staff_def(staff_def, &mut score_part, ctx);
 
     // Recover extra part details from JSON-in-label
-    extract_part_details_from_staff_def(staff_def, &mut score_part);
+    extract_part_details_from_staff_def(staff_def, &mut score_part, ctx);
 
     // Map MEI staffDef ID to MusicXML part ID
     if let Some(ref xml_id) = staff_def.basic.xml_id {
@@ -358,8 +364,9 @@ pub fn convert_mei_staff_def_to_score_part(
 
 /// Extract MusicXML PartSymbol from a multi-staff MEI staffGrp and store in context.
 ///
-/// Primary: recover full PartSymbol from JSON in @label (`musicxml:part-symbol,{json}`).
-/// Fallback: build PartSymbol from @symbol attribute only.
+/// Primary: recover from ExtensionStore typed data.
+/// Fallback 1: recover full PartSymbol from JSON in @label (`musicxml:part-symbol,{json}`).
+/// Fallback 2: build PartSymbol from @symbol attribute only.
 fn extract_part_symbol_from_staff_grp(
     staff_grp: &StaffGrp,
     part_id: &str,
@@ -368,7 +375,32 @@ fn extract_part_symbol_from_staff_grp(
     use crate::import::parts::PART_SYMBOL_LABEL_PREFIX;
     use crate::model::attributes::{PartSymbol, PartSymbolValue};
 
-    // Try JSON label first (lossless roundtrip)
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_grp.common.xml_id {
+        if let Some(pse) = ctx.ext_store().part_symbol(id) {
+            let value = match pse.value.as_str() {
+                "brace" => PartSymbolValue::Brace,
+                "bracket" => PartSymbolValue::Bracket,
+                "bracketsq" => PartSymbolValue::Square,
+                "line" => PartSymbolValue::Line,
+                "none" => PartSymbolValue::None,
+                _ => PartSymbolValue::Brace,
+            };
+            ctx.set_part_symbol(
+                part_id,
+                PartSymbol {
+                    value,
+                    top_staff: pse.top_staff,
+                    bottom_staff: pse.bottom_staff,
+                    default_x: pse.default_x,
+                    color: pse.color.clone(),
+                },
+            );
+            return;
+        }
+    }
+
+    // Fallback: try JSON label (lossless roundtrip)
     if let Some(ref label) = staff_grp.common.label {
         if let Some(json) = label.strip_prefix(PART_SYMBOL_LABEL_PREFIX) {
             if let Ok(ps) = serde_json::from_str::<PartSymbol>(json) {
@@ -406,12 +438,30 @@ fn extract_part_symbol_from_staff_grp(
 
 /// Extract instrument definitions from MEI instrDef children on a staffDef.
 ///
-/// Recovers MusicXML score-instruments and midi-assignments from instrDef @label JSON.
-fn extract_instruments_from_staff_def(staff_def: &StaffDef, score_part: &mut ScorePart) {
+/// Primary: recover from ExtensionStore typed data.
+/// Fallback: recover from instrDef @label JSON.
+fn extract_instruments_from_staff_def(
+    staff_def: &StaffDef,
+    score_part: &mut ScorePart,
+    ctx: &ConversionContext,
+) {
     use crate::import::parts::{INSTRUMENT_LABEL_PREFIX, InstrumentData};
 
     for child in &staff_def.children {
         if let StaffDefChild::InstrDef(instr_def) = child {
+            // Try ExtensionStore first
+            if let Some(ref id) = instr_def.basic.xml_id {
+                if let Some(ext_data) = ctx.ext_store().instrument(id) {
+                    let si = convert_ext_instrument_to_score_instrument(&ext_data.score_instrument);
+                    score_part.score_instruments.push(si);
+                    for ma in &ext_data.midi_assignments {
+                        let assignments = convert_ext_midi_assignment(ma);
+                        score_part.midi_assignments.extend(assignments);
+                    }
+                    continue;
+                }
+            }
+            // Fallback: label JSON
             if let Some(ref label) = instr_def.labelled.label {
                 if let Some(json) = label.strip_prefix(INSTRUMENT_LABEL_PREFIX) {
                     if let Ok(data) = serde_json::from_str::<InstrumentData>(json) {
@@ -425,14 +475,98 @@ fn extract_instruments_from_staff_def(staff_def: &StaffDef, score_part: &mut Sco
     }
 }
 
-/// Recover extra part details from JSON-in-label on a staffDef.
+/// Convert ExtensionStore ScoreInstrumentData to MusicXML ScoreInstrument.
+fn convert_ext_instrument_to_score_instrument(
+    si: &tusk_model::musicxml_ext::ScoreInstrumentData,
+) -> crate::model::elements::ScoreInstrument {
+    use crate::model::elements::{Ensemble, ScoreInstrument, VirtualInstrument};
+
+    ScoreInstrument {
+        id: si.id.clone(),
+        instrument_name: si.name.clone(),
+        instrument_abbreviation: si.abbreviation.clone(),
+        instrument_sound: si.sound.clone(),
+        solo: si.solo,
+        ensemble: si.ensemble.map(|v| Ensemble { value: v }),
+        virtual_instrument: si.virtual_instrument.as_ref().map(|vi| VirtualInstrument {
+            virtual_library: vi.library.clone(),
+            virtual_name: vi.name.clone(),
+        }),
+    }
+}
+
+/// Convert ExtensionStore MidiAssignmentData to MusicXML MidiAssignment(s).
+fn convert_ext_midi_assignment(
+    ma: &tusk_model::musicxml_ext::MidiAssignmentData,
+) -> Vec<crate::model::elements::MidiAssignment> {
+    use crate::model::elements::{MidiAssignment, MidiDevice, MidiInstrument};
+
+    let mut result = Vec::new();
+
+    if let Some(ref dev) = ma.device {
+        result.push(MidiAssignment::MidiDevice(MidiDevice {
+            value: dev.value.clone(),
+            port: dev.port,
+            id: dev.id.clone(),
+        }));
+    }
+
+    if let Some(ref instr) = ma.instrument {
+        result.push(MidiAssignment::MidiInstrument(MidiInstrument {
+            id: instr.id.clone(),
+            midi_channel: instr.channel,
+            midi_name: instr.name.clone(),
+            midi_bank: instr.bank,
+            midi_program: instr.program,
+            midi_unpitched: instr.unpitched,
+            volume: instr.volume,
+            pan: instr.pan,
+            elevation: instr.elevation,
+        }));
+    }
+
+    result
+}
+
+/// Recover extra part details from ExtensionStore or JSON-in-label on a staffDef.
 ///
-/// Reads `musicxml:part-details,{json}` from the staffDef @label and populates
-/// part-name-display, part-abbreviation-display, players, part-links, groups.
-fn extract_part_details_from_staff_def(staff_def: &StaffDef, score_part: &mut ScorePart) {
+/// Primary: read from ExtensionStore typed data.
+/// Fallback: read `musicxml:part-details,{json}` from the staffDef @label.
+fn extract_part_details_from_staff_def(
+    staff_def: &StaffDef,
+    score_part: &mut ScorePart,
+    ctx: &ConversionContext,
+) {
     use crate::import::attributes::extract_label_segment;
     use crate::import::parts::{PART_DETAILS_LABEL_PREFIX, PartExtraDetails};
 
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_def.basic.xml_id {
+        if let Some(pd) = ctx.ext_store().part_details(id) {
+            score_part.part_name_display = pd
+                .part_name_display
+                .as_ref()
+                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            score_part.part_abbreviation_display = pd
+                .part_abbreviation_display
+                .as_ref()
+                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            score_part.players = pd
+                .players
+                .iter()
+                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .collect();
+            score_part.part_links = pd
+                .part_links
+                .iter()
+                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .collect();
+            score_part.groups = pd.groups.clone();
+            return;
+        }
+    }
+
+    // Fallback: label JSON
     if let Some(ref label) = staff_def.labelled.label {
         if let Some(json) = extract_label_segment(label, PART_DETAILS_LABEL_PREFIX) {
             if let Ok(details) = serde_json::from_str::<PartExtraDetails>(json) {
@@ -446,16 +580,36 @@ fn extract_part_details_from_staff_def(staff_def: &StaffDef, score_part: &mut Sc
     }
 }
 
-/// Extract group extra details from JSON-in-label on a staffGrp.
+/// Extract group extra details from ExtensionStore or JSON-in-label on a staffGrp.
 ///
-/// Reads `musicxml:group-details,{json}` from the staffGrp @label and populates
-/// group-name-display, group-abbreviation-display, group-time on the PartGroup.
+/// Primary: read from ExtensionStore typed data.
+/// Fallback: read `musicxml:group-details,{json}` from the staffGrp @label.
 fn extract_group_details_from_staff_grp(
     staff_grp: &StaffGrp,
     part_group: &mut crate::model::elements::PartGroup,
+    ctx: &ConversionContext,
 ) {
     use crate::import::parts::{GROUP_DETAILS_LABEL_PREFIX, GroupExtraDetails};
 
+    // Try ExtensionStore first
+    if let Some(ref id) = staff_grp.common.xml_id {
+        if let Some(gd) = ctx.ext_store().group_details(id) {
+            part_group.group_name_display = gd
+                .group_name_display
+                .as_ref()
+                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            part_group.group_abbreviation_display = gd
+                .group_abbreviation_display
+                .as_ref()
+                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            if gd.group_time == Some(true) {
+                part_group.group_time = Some(crate::model::elements::Empty);
+            }
+            return;
+        }
+    }
+
+    // Fallback: label JSON
     if let Some(ref label) = staff_grp.common.label {
         for segment in label.split('|') {
             if let Some(json) = segment.strip_prefix(GROUP_DETAILS_LABEL_PREFIX) {

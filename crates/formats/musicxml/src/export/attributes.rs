@@ -28,13 +28,11 @@ const CLEF_JIANPU_LABEL: &str = "musicxml:clef-jianpu";
 /// Fallback 1: recover full StaffDetails from JSON in @label (lossless roundtrip).
 /// Fallback 2: build minimal StaffDetails from @lines only.
 fn extract_staff_details(staff_def: &StaffDef, ctx: &ConversionContext) -> Option<StaffDetails> {
-    // Try ExtensionStore first
+    // Try ExtensionStore per-concept map first
     if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref sde) = ext.staff_details_extras {
-                if let Ok(sd) = serde_json::from_value::<StaffDetails>(sde.details.clone()) {
-                    return Some(sd);
-                }
+        if let Some(sde) = ctx.ext_store().staff_details(id) {
+            if let Ok(sd) = serde_json::from_value::<StaffDetails>(sde.details.clone()) {
+                return Some(sd);
             }
         }
     }
@@ -66,15 +64,12 @@ fn extract_key_from_label(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<crate::model::attributes::Key> {
-    // Try ExtensionStore first
+    // Try ExtensionStore per-concept map first
     if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref ke) = ext.key_extras {
-                if let Ok(key) =
-                    serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone())
-                {
-                    return Some(key);
-                }
+        if let Some(ke) = ctx.ext_store().key_extras(id) {
+            if let Ok(key) = serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone())
+            {
+                return Some(key);
             }
         }
     }
@@ -89,15 +84,13 @@ fn extract_time_from_label(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<crate::model::attributes::Time> {
-    // Try ExtensionStore first
+    // Try ExtensionStore per-concept map first
     if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref te) = ext.time_extras {
-                if let Ok(time) =
-                    serde_json::from_value::<crate::model::attributes::Time>(te.time.clone())
-                {
-                    return Some(time);
-                }
+        if let Some(te) = ctx.ext_store().time_extras(id) {
+            if let Ok(time) =
+                serde_json::from_value::<crate::model::attributes::Time>(te.time.clone())
+            {
+                return Some(time);
             }
         }
     }
@@ -112,18 +105,16 @@ fn extract_for_parts_from_label(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<Vec<crate::model::attributes::ForPart>> {
-    // Try ExtensionStore first
+    // Try ExtensionStore per-concept map first
     if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref fpd) = ext.for_part {
-                let entries: Vec<crate::model::attributes::ForPart> = fpd
-                    .entries
-                    .iter()
-                    .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                    .collect();
-                if !entries.is_empty() {
-                    return Some(entries);
-                }
+        if let Some(fpd) = ctx.ext_store().for_part(id) {
+            let entries: Vec<crate::model::attributes::ForPart> = fpd
+                .entries
+                .iter()
+                .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                .collect();
+            if !entries.is_empty() {
+                return Some(entries);
             }
         }
     }
@@ -153,12 +144,10 @@ fn extract_transpose_from_ext(
     use crate::model::attributes::Transpose;
     use tusk_model::musicxml_ext::TransposeData;
 
-    // Try ExtensionStore first
+    // Try ExtensionStore per-concept map first
     if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref td) = ext.transpose {
-                return Some(transpose_data_to_mxml(td));
-            }
+        if let Some(td) = ctx.ext_store().transpose(id) {
+            return Some(transpose_data_to_mxml(td));
         }
     }
 

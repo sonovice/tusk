@@ -488,17 +488,20 @@ fn convert_staff_grp_from_part_group(
             );
         }
         if let Some(ref id) = staff_grp.common.xml_id {
-            ctx.ext_store_mut().entry(id.clone()).group_details = Some(GroupDetailsData {
-                group_name_display: part_group
-                    .group_name_display
-                    .as_ref()
-                    .and_then(|v| serde_json::to_value(v).ok()),
-                group_abbreviation_display: part_group
-                    .group_abbreviation_display
-                    .as_ref()
-                    .and_then(|v| serde_json::to_value(v).ok()),
-                group_time: part_group.group_time.map(|_| true),
-            });
+            ctx.ext_store_mut().insert_group_details(
+                id.clone(),
+                GroupDetailsData {
+                    group_name_display: part_group
+                        .group_name_display
+                        .as_ref()
+                        .and_then(|v| serde_json::to_value(v).ok()),
+                    group_abbreviation_display: part_group
+                        .group_abbreviation_display
+                        .as_ref()
+                        .and_then(|v| serde_json::to_value(v).ok()),
+                    group_time: part_group.group_time.map(|_| true),
+                },
+            );
         }
     }
 
@@ -625,10 +628,12 @@ pub fn convert_staff_def_from_score_part(
                                 format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                             );
                         }
-                        ctx.ext_store_mut().entry(score_part.id.clone()).key_extras =
-                            Some(KeyExtras {
+                        ctx.ext_store_mut().insert_key_extras(
+                            score_part.id.clone(),
+                            KeyExtras {
                                 key: serde_json::to_value(key).unwrap_or_default(),
-                            });
+                            },
+                        );
                     }
                 }
                 KeyContent::NonTraditional(_) => {
@@ -639,9 +644,12 @@ pub fn convert_staff_def_from_score_part(
                             format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
                         );
                     }
-                    ctx.ext_store_mut().entry(score_part.id.clone()).key_extras = Some(KeyExtras {
-                        key: serde_json::to_value(key).unwrap_or_default(),
-                    });
+                    ctx.ext_store_mut().insert_key_extras(
+                        score_part.id.clone(),
+                        KeyExtras {
+                            key: serde_json::to_value(key).unwrap_or_default(),
+                        },
+                    );
                 }
             }
         }
@@ -664,9 +672,12 @@ pub fn convert_staff_def_from_score_part(
                         format!("{}{}", crate::import::attributes::TIME_LABEL_PREFIX, json),
                     );
                 }
-                ctx.ext_store_mut().entry(score_part.id.clone()).time_extras = Some(TimeExtras {
-                    time: serde_json::to_value(time).unwrap_or_default(),
-                });
+                ctx.ext_store_mut().insert_time_extras(
+                    score_part.id.clone(),
+                    TimeExtras {
+                        time: serde_json::to_value(time).unwrap_or_default(),
+                    },
+                );
             }
         }
 
@@ -744,7 +755,8 @@ pub fn convert_staff_def_from_score_part(
                     ),
                 );
             }
-            ctx.ext_store_mut().entry(score_part.id.clone()).transpose = Some(td);
+            ctx.ext_store_mut()
+                .insert_transpose(score_part.id.clone(), td);
         }
 
         // Apply for-part (concert score per-part transposition)
@@ -759,14 +771,16 @@ pub fn convert_staff_def_from_score_part(
                     ),
                 );
             }
-            ctx.ext_store_mut().entry(score_part.id.clone()).for_part =
-                Some(tusk_model::musicxml_ext::ForPartData {
+            ctx.ext_store_mut().insert_for_part(
+                score_part.id.clone(),
+                tusk_model::musicxml_ext::ForPartData {
                     entries: attrs
                         .for_parts
                         .iter()
                         .filter_map(|fp| serde_json::to_value(fp).ok())
                         .collect(),
-                });
+                },
+            );
         }
     }
 
@@ -816,29 +830,30 @@ pub fn convert_staff_def_from_score_part(
                 format!("{}{}", PART_DETAILS_LABEL_PREFIX, json),
             );
         }
-        ctx.ext_store_mut()
-            .entry(score_part.id.clone())
-            .part_details = Some(PartDetailsData {
-            part_name_display: score_part
-                .part_name_display
-                .as_ref()
-                .and_then(|v| serde_json::to_value(v).ok()),
-            part_abbreviation_display: score_part
-                .part_abbreviation_display
-                .as_ref()
-                .and_then(|v| serde_json::to_value(v).ok()),
-            players: score_part
-                .players
-                .iter()
-                .filter_map(|p| serde_json::to_value(p).ok())
-                .collect(),
-            part_links: score_part
-                .part_links
-                .iter()
-                .filter_map(|p| serde_json::to_value(p).ok())
-                .collect(),
-            groups: score_part.groups.clone(),
-        });
+        ctx.ext_store_mut().insert_part_details(
+            score_part.id.clone(),
+            PartDetailsData {
+                part_name_display: score_part
+                    .part_name_display
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
+                part_abbreviation_display: score_part
+                    .part_abbreviation_display
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
+                players: score_part
+                    .players
+                    .iter()
+                    .filter_map(|p| serde_json::to_value(p).ok())
+                    .collect(),
+                part_links: score_part
+                    .part_links
+                    .iter()
+                    .filter_map(|p| serde_json::to_value(p).ok())
+                    .collect(),
+                groups: score_part.groups.clone(),
+            },
+        );
     }
 
     // Initialize tracked attribute state for mid-score change detection.
@@ -999,10 +1014,12 @@ fn apply_staff_details_to_staff_def(
                 format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json),
             );
             if let Some(ref id) = staff_def.basic.xml_id {
-                ctx.ext_store_mut().entry(id.clone()).staff_details_extras =
-                    Some(StaffDetailsExtras {
+                ctx.ext_store_mut().insert_staff_details(
+                    id.clone(),
+                    StaffDetailsExtras {
                         details: serde_json::to_value(&sd_for_json).unwrap_or_default(),
-                    });
+                    },
+                );
             }
         }
     }
@@ -1109,8 +1126,10 @@ fn apply_instruments_to_staff_def(
             if let Ok(json) = serde_json::to_string(&data) {
                 instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
             }
-            ctx.ext_store_mut().entry(si.id.clone()).instrument_data =
-                Some(convert_to_ext_instrument_data(si, &matching_midi));
+            ctx.ext_store_mut().insert_instrument(
+                si.id.clone(),
+                convert_to_ext_instrument_data(si, &matching_midi),
+            );
 
             staff_def
                 .children
@@ -1158,7 +1177,8 @@ fn apply_instruments_to_staff_def(
             instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
         }
         if let Some(ref id) = instr_def.basic.xml_id {
-            ctx.ext_store_mut().entry(id.clone()).instrument_data = Some(
+            ctx.ext_store_mut().insert_instrument(
+                id.clone(),
                 convert_to_ext_instrument_data(&dummy_si, &score_part.midi_assignments),
             );
         }
@@ -1229,19 +1249,22 @@ fn convert_multi_staff_part(
             || ps.default_x.is_some()
             || ps.color.is_some();
         if has_extra {
-            ctx.ext_store_mut().entry(grp_id.clone()).part_symbol_extras = Some(PartSymbolExtras {
-                value: match ps.value {
-                    PartSymbolValue::Brace => "brace".to_string(),
-                    PartSymbolValue::Bracket => "bracket".to_string(),
-                    PartSymbolValue::Square => "bracketsq".to_string(),
-                    PartSymbolValue::Line => "line".to_string(),
-                    PartSymbolValue::None => "none".to_string(),
+            ctx.ext_store_mut().insert_part_symbol(
+                grp_id.clone(),
+                PartSymbolExtras {
+                    value: match ps.value {
+                        PartSymbolValue::Brace => "brace".to_string(),
+                        PartSymbolValue::Bracket => "bracket".to_string(),
+                        PartSymbolValue::Square => "bracketsq".to_string(),
+                        PartSymbolValue::Line => "line".to_string(),
+                        PartSymbolValue::None => "none".to_string(),
+                    },
+                    top_staff: ps.top_staff,
+                    bottom_staff: ps.bottom_staff,
+                    default_x: ps.default_x,
+                    color: ps.color.clone(),
                 },
-                top_staff: ps.top_staff,
-                bottom_staff: ps.bottom_staff,
-                default_x: ps.default_x,
-                color: ps.color.clone(),
-            });
+            );
         }
     }
 

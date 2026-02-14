@@ -188,9 +188,20 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.10 Staff/Part/Group fields migration
 
-- [ ] Import (`import/parts.rs`, `import/attributes.rs`): write `instruments`, `part_details`, `group_details`, `key_extras`, `time_extras`, `for_parts`, `staff_details`, `part_symbols`, `transposes`, `lyric_extras` to per-concept maps
-- [ ] Export: read from per-concept maps
-- [ ] Tests pass
+- [x] Import (`import/parts.rs`, `import/attributes.rs`): write `instruments`, `part_details`, `group_details`, `key_extras`, `time_extras`, `for_parts`, `staff_details`, `part_symbols`, `transposes`, `lyric_extras` to per-concept maps
+  - Uses `insert_key_extras()`, `insert_time_extras()`, `insert_for_part()`, `insert_transpose()`, `insert_staff_details()`, `insert_part_details()`, `insert_group_details()`, `insert_part_symbol()`, `insert_instrument()` directly; no more `entry()` + ExtData
+- [x] Export: read from per-concept maps
+  - `extract_staff_details()`: uses `ctx.ext_store().staff_details(id)` instead of `.get(id)?.staff_details_extras`
+  - `extract_key_from_label()`: uses `ctx.ext_store().key_extras(id)` instead of `.get(id)?.key_extras`
+  - `extract_time_from_label()`: uses `ctx.ext_store().time_extras(id)` instead of `.get(id)?.time_extras`
+  - `extract_for_parts_from_label()`: uses `ctx.ext_store().for_part(id)` instead of `.get(id)?.for_part`
+  - `extract_transpose_from_ext()`: uses `ctx.ext_store().transpose(id)` instead of `.get(id)?.transpose`
+  - `extract_instruments_from_staff_def()`: uses `ctx.ext_store().instrument(id)` with typed conversion; added `convert_ext_instrument_to_score_instrument()` and `convert_ext_midi_assignment()`
+  - `extract_part_details_from_staff_def()`: uses `ctx.ext_store().part_details(id)` with serde_json conversion
+  - `extract_group_details_from_staff_grp()`: uses `ctx.ext_store().group_details(id)` with serde_json conversion
+  - `extract_part_symbol_from_staff_grp()`: uses `ctx.ext_store().part_symbol(id)` with typed conversion
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ### 2.11 Score header migration
 

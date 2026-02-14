@@ -220,10 +220,12 @@ pub fn process_attributes(
                         if let Ok(json) = serde_json::to_string(key) {
                             append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
                             if let Some(ref id) = sd.basic.xml_id {
-                                ctx.ext_store_mut().entry(id.clone()).key_extras =
-                                    Some(KeyExtras {
+                                ctx.ext_store_mut().insert_key_extras(
+                                    id.clone(),
+                                    KeyExtras {
                                         key: serde_json::to_value(key).unwrap_or_default(),
-                                    });
+                                    },
+                                );
                             }
                         }
                     }
@@ -233,9 +235,12 @@ pub fn process_attributes(
                     if let Ok(json) = serde_json::to_string(key) {
                         append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
                         if let Some(ref id) = sd.basic.xml_id {
-                            ctx.ext_store_mut().entry(id.clone()).key_extras = Some(KeyExtras {
-                                key: serde_json::to_value(key).unwrap_or_default(),
-                            });
+                            ctx.ext_store_mut().insert_key_extras(
+                                id.clone(),
+                                KeyExtras {
+                                    key: serde_json::to_value(key).unwrap_or_default(),
+                                },
+                            );
                         }
                     }
                 }
@@ -258,9 +263,12 @@ pub fn process_attributes(
                 if let Ok(json) = serde_json::to_string(time) {
                     append_label(sd, format!("{}{}", TIME_LABEL_PREFIX, json));
                     if let Some(ref id) = sd.basic.xml_id {
-                        ctx.ext_store_mut().entry(id.clone()).time_extras = Some(TimeExtras {
-                            time: serde_json::to_value(time).unwrap_or_default(),
-                        });
+                        ctx.ext_store_mut().insert_time_extras(
+                            id.clone(),
+                            TimeExtras {
+                                time: serde_json::to_value(time).unwrap_or_default(),
+                            },
+                        );
                     }
                 }
             }
@@ -313,7 +321,7 @@ pub fn process_attributes(
                 append_label(sd, format!("{}{}", TRANSPOSE_LABEL_PREFIX, json));
             }
             if let Some(ref id) = sd.basic.xml_id {
-                ctx.ext_store_mut().entry(id.clone()).transpose = Some(td);
+                ctx.ext_store_mut().insert_transpose(id.clone(), td);
             }
         }
     }
@@ -324,13 +332,16 @@ pub fn process_attributes(
             if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
                 append_label(sd, format!("{}{}", FOR_PART_LABEL_PREFIX, json));
                 if let Some(ref id) = sd.basic.xml_id {
-                    ctx.ext_store_mut().entry(id.clone()).for_part = Some(ForPartData {
-                        entries: attrs
-                            .for_parts
-                            .iter()
-                            .filter_map(|fp| serde_json::to_value(fp).ok())
-                            .collect(),
-                    });
+                    ctx.ext_store_mut().insert_for_part(
+                        id.clone(),
+                        ForPartData {
+                            entries: attrs
+                                .for_parts
+                                .iter()
+                                .filter_map(|fp| serde_json::to_value(fp).ok())
+                                .collect(),
+                        },
+                    );
                 }
             }
         }
