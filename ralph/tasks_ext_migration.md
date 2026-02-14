@@ -156,9 +156,17 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.8 Note visual + extras + stem migration
 
-- [ ] Import (`import/note.rs`): write to `ext_store.note_visuals`, `ext_store.note_extras_map`, `ext_store.stem_extras_map` instead of ExtData entry
-- [ ] Export (`export/note.rs`): read from new per-concept maps
-- [ ] Tests pass
+- [x] Import (`import/note.rs`): write to `ext_store.note_visuals`, `ext_store.note_extras_map`, `ext_store.stem_extras_map` instead of ExtData entry
+  - Uses `insert_stem_extras()`, `insert_note_visual()`, `insert_note_extras()`, `insert_lyric_extras()` directly; no more `entry()` + ExtData
+- [x] Export (`export/note.rs`): read from new per-concept maps
+  - Stem: uses `ctx.ext_store().stem_extras(id)` instead of `.get(id)?.stem_extras`
+  - Articulations: uses `ctx.ext_store().note_extras(id)` instead of `.get(id)?.note_extras`
+  - Instruments: uses `ctx.ext_store().note_extras(id)` instead of `.get(id)?.note_extras`
+  - Note labels: uses `ctx.ext_store().note_extras(id)` and `ctx.ext_store().note_visual(id)`
+  - Visual: new `apply_note_visual_data()` converts NoteVisualData directly (no JSON label roundtrip)
+  - Lyrics: uses `ctx.ext_store().lyric_extras(&verse_key)` instead of `.get(&verse_key)?.lyric_extras`
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ### 2.9 Direction visual + metronome + direction sound + wedge spread
 

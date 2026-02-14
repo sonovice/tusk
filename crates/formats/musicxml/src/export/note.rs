@@ -111,16 +111,10 @@ pub fn convert_mei_note(
 
     // Convert stem direction — check ext_store/label for special stems (Double/None)
     let stem_from_ext = mei_note.common.xml_id.as_ref().and_then(|id| {
-        ctx.ext_store()
-            .get(id)?
-            .stem_extras
-            .as_ref()
-            .map(|se| match se {
-                tusk_model::musicxml_ext::StemExtras::Double => {
-                    crate::model::note::StemValue::Double
-                }
-                tusk_model::musicxml_ext::StemExtras::None => crate::model::note::StemValue::None,
-            })
+        ctx.ext_store().stem_extras(id).map(|se| match se {
+            tusk_model::musicxml_ext::StemExtras::Double => crate::model::note::StemValue::Double,
+            tusk_model::musicxml_ext::StemExtras::None => crate::model::note::StemValue::None,
+        })
     });
     let stem_from_label = stem_from_ext.or_else(|| {
         mei_note.common.label.as_deref().and_then(|l| {
@@ -467,17 +461,14 @@ fn convert_mei_articulations(
 
     // Preferred: read full articulations from ExtensionStore
     if let Some(id) = &mei_note.common.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref extras) = ext.note_extras {
-                if let Some(ref val) = extras.articulations {
-                    if let Ok(artics) = serde_json::from_value::<Articulations>(val.clone()) {
-                        if artics != Articulations::default() {
-                            let notations =
-                                mxml_note.notations.get_or_insert_with(Notations::default);
-                            notations.articulations = Some(artics);
-                        }
-                        return;
+        if let Some(extras) = ctx.ext_store().note_extras(id) {
+            if let Some(ref val) = extras.articulations {
+                if let Ok(artics) = serde_json::from_value::<Articulations>(val.clone()) {
+                    if artics != Articulations::default() {
+                        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                        notations.articulations = Some(artics);
                     }
+                    return;
                 }
             }
         }
@@ -702,16 +693,14 @@ fn convert_mei_note_label_instruments(
 ) {
     // Preferred: read from ExtensionStore
     if let Some(id) = &mei_note.common.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref extras) = ext.note_extras {
-                if !extras.instruments.is_empty() {
-                    for inst_id in &extras.instruments {
-                        mxml_note
-                            .instruments
-                            .push(crate::model::note::Instrument::new(inst_id));
-                    }
-                    return;
+        if let Some(extras) = ctx.ext_store().note_extras(id) {
+            if !extras.instruments.is_empty() {
+                for inst_id in &extras.instruments {
+                    mxml_note
+                        .instruments
+                        .push(crate::model::note::Instrument::new(inst_id));
                 }
+                return;
             }
         }
     }
@@ -743,105 +732,85 @@ fn restore_note_label_elements(
 ) {
     // Preferred: read typed data from ExtensionStore
     if let Some(id) = &mei_note.common.xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            let mut found = false;
+        let mut found = false;
 
-            // NoteExtras (notehead, play, listen, footnote, level, etc.)
-            if let Some(ref extras) = ext.note_extras {
-                if let Some(ref val) = extras.notehead {
-                    if let Ok(nh) =
-                        serde_json::from_value::<crate::model::note::Notehead>(val.clone())
-                    {
-                        mxml_note.notehead = Some(nh);
-                        found = true;
-                    }
+        // NoteExtras (notehead, play, listen, footnote, level, etc.)
+        if let Some(extras) = ctx.ext_store().note_extras(id) {
+            if let Some(ref val) = extras.notehead {
+                if let Ok(nh) = serde_json::from_value::<crate::model::note::Notehead>(val.clone())
+                {
+                    mxml_note.notehead = Some(nh);
+                    found = true;
                 }
-                if let Some(ref val) = extras.notehead_text {
-                    if let Ok(nht) =
-                        serde_json::from_value::<crate::model::note::NoteheadText>(val.clone())
-                    {
-                        mxml_note.notehead_text = Some(nht);
-                        found = true;
-                    }
+            }
+            if let Some(ref val) = extras.notehead_text {
+                if let Ok(nht) =
+                    serde_json::from_value::<crate::model::note::NoteheadText>(val.clone())
+                {
+                    mxml_note.notehead_text = Some(nht);
+                    found = true;
                 }
-                if let Some(ref play_data) = extras.play {
-                    if let Ok(val) = serde_json::to_value(play_data) {
-                        if let Ok(play) =
-                            serde_json::from_value::<crate::model::direction::Play>(val)
-                        {
-                            mxml_note.play = Some(play);
-                            found = true;
-                        }
-                    }
-                }
-                if let Some(ref val) = extras.listen {
-                    if let Ok(listen) =
-                        serde_json::from_value::<crate::model::listening::Listen>(val.clone())
-                    {
-                        mxml_note.listen = Some(listen);
-                        found = true;
-                    }
-                }
-                if let Some(ref val) = extras.footnote {
-                    if let Ok(ft) =
-                        serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
-                    {
-                        mxml_note.footnote = Some(ft);
-                        found = true;
-                    }
-                }
-                if let Some(ref val) = extras.level {
-                    if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone())
-                    {
-                        mxml_note.level = Some(lv);
-                        found = true;
-                    }
-                }
-                if let Some(ref val) = extras.notations_footnote {
-                    if let Ok(ft) =
-                        serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
-                    {
-                        let notations = mxml_note
-                            .notations
-                            .get_or_insert_with(crate::model::notations::Notations::default);
-                        notations.footnote = Some(ft);
-                        found = true;
-                    }
-                }
-                if let Some(ref val) = extras.notations_level {
-                    if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone())
-                    {
-                        let notations = mxml_note
-                            .notations
-                            .get_or_insert_with(crate::model::notations::Notations::default);
-                        notations.level = Some(lv);
+            }
+            if let Some(ref play_data) = extras.play {
+                if let Ok(val) = serde_json::to_value(play_data) {
+                    if let Ok(play) = serde_json::from_value::<crate::model::direction::Play>(val) {
+                        mxml_note.play = Some(play);
                         found = true;
                     }
                 }
             }
-
-            // NoteVisualData
-            if let Some(ref _nvd) = ext.note_visual {
-                // Visual data exists; reconstruct NoteVisualAttrs from label for now
-                // (the typed NoteVisualData uses different field types than NoteVisualAttrs)
-            }
-
-            if found {
-                // Also try visual from label (NoteVisualData→NoteVisualAttrs conversion
-                // requires going through JSON anyway, so just parse label segment)
-                if let Some(label) = mei_note.common.label.as_deref() {
-                    for segment in label.split('|') {
-                        if let Some(json) = segment.strip_prefix("musicxml:visual,") {
-                            if let Ok(vis) =
-                                serde_json::from_str::<crate::model::note::NoteVisualAttrs>(json)
-                            {
-                                vis.apply_to_note(mxml_note);
-                            }
-                        }
-                    }
+            if let Some(ref val) = extras.listen {
+                if let Ok(listen) =
+                    serde_json::from_value::<crate::model::listening::Listen>(val.clone())
+                {
+                    mxml_note.listen = Some(listen);
+                    found = true;
                 }
-                return;
             }
+            if let Some(ref val) = extras.footnote {
+                if let Ok(ft) =
+                    serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
+                {
+                    mxml_note.footnote = Some(ft);
+                    found = true;
+                }
+            }
+            if let Some(ref val) = extras.level {
+                if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone()) {
+                    mxml_note.level = Some(lv);
+                    found = true;
+                }
+            }
+            if let Some(ref val) = extras.notations_footnote {
+                if let Ok(ft) =
+                    serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
+                {
+                    let notations = mxml_note
+                        .notations
+                        .get_or_insert_with(crate::model::notations::Notations::default);
+                    notations.footnote = Some(ft);
+                    found = true;
+                }
+            }
+            if let Some(ref val) = extras.notations_level {
+                if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone()) {
+                    let notations = mxml_note
+                        .notations
+                        .get_or_insert_with(crate::model::notations::Notations::default);
+                    notations.level = Some(lv);
+                    found = true;
+                }
+            }
+        }
+
+        // NoteVisualData — apply directly from typed data
+        if let Some(nvd) = ctx.ext_store().note_visual(id) {
+            apply_note_visual_data(nvd, mxml_note);
+            found = true;
+        }
+
+        if found {
+            return;
         }
     }
 
@@ -895,6 +864,58 @@ fn restore_note_label_elements(
                 vis.apply_to_note(mxml_note);
             }
         }
+    }
+}
+
+/// Apply NoteVisualData from ExtensionStore directly to a MusicXML note.
+fn apply_note_visual_data(
+    nvd: &tusk_model::musicxml_ext::NoteVisualData,
+    note: &mut crate::model::note::Note,
+) {
+    use crate::model::data::YesNo;
+
+    fn bool_to_yesno(b: bool) -> YesNo {
+        if b { YesNo::Yes } else { YesNo::No }
+    }
+
+    if let Some(v) = nvd.default_x {
+        note.default_x = Some(v);
+    }
+    if let Some(v) = nvd.default_y {
+        note.default_y = Some(v);
+    }
+    if let Some(v) = nvd.relative_x {
+        note.relative_x = Some(v);
+    }
+    if let Some(v) = nvd.relative_y {
+        note.relative_y = Some(v);
+    }
+    if let Some(v) = nvd.print_object {
+        note.print_object = Some(bool_to_yesno(v));
+    }
+    if let Some(v) = nvd.print_leger {
+        note.print_leger = Some(bool_to_yesno(v));
+    }
+    if let Some(v) = nvd.print_spacing {
+        note.print_spacing = Some(bool_to_yesno(v));
+    }
+    if let Some(ref c) = nvd.color {
+        note.color = Some(c.clone());
+    }
+    if let Some(v) = nvd.dynamics {
+        note.dynamics = Some(v);
+    }
+    if let Some(v) = nvd.end_dynamics {
+        note.end_dynamics = Some(v);
+    }
+    if let Some(v) = nvd.attack {
+        note.attack = Some(v);
+    }
+    if let Some(v) = nvd.release {
+        note.release = Some(v);
+    }
+    if let Some(v) = nvd.pizzicato {
+        note.pizzicato = Some(bool_to_yesno(v));
     }
 }
 
@@ -1011,14 +1032,12 @@ fn convert_mei_lyrics(
                 Some(n) => format!("{}_v{}", note_id, n.0),
                 None => format!("{}_v", note_id),
             };
-            if let Some(ext) = ctx.ext_store().get(&verse_key) {
-                if let Some(ref le) = ext.lyric_extras {
-                    if let Ok(lyric) =
-                        serde_json::from_value::<crate::model::lyric::Lyric>(le.lyric.clone())
-                    {
-                        mxml_note.lyrics.push(lyric);
-                        continue;
-                    }
+            if let Some(le) = ctx.ext_store().lyric_extras(&verse_key) {
+                if let Ok(lyric) =
+                    serde_json::from_value::<crate::model::lyric::Lyric>(le.lyric.clone())
+                {
+                    mxml_note.lyrics.push(lyric);
+                    continue;
                 }
             }
         }
@@ -1624,18 +1643,14 @@ pub fn convert_mei_chord(
         // Check ext_store/label for special stems (Double/None), then chord-level, then note-level
         if i == 0 {
             let stem_from_ext = mei_note.common.xml_id.as_ref().and_then(|id| {
-                ctx.ext_store()
-                    .get(id)?
-                    .stem_extras
-                    .as_ref()
-                    .map(|se| match se {
-                        tusk_model::musicxml_ext::StemExtras::Double => {
-                            crate::model::note::StemValue::Double
-                        }
-                        tusk_model::musicxml_ext::StemExtras::None => {
-                            crate::model::note::StemValue::None
-                        }
-                    })
+                ctx.ext_store().stem_extras(id).map(|se| match se {
+                    tusk_model::musicxml_ext::StemExtras::Double => {
+                        crate::model::note::StemValue::Double
+                    }
+                    tusk_model::musicxml_ext::StemExtras::None => {
+                        crate::model::note::StemValue::None
+                    }
+                })
             });
             let chord_stem_from_label = stem_from_ext.or_else(|| {
                 mei_note.common.label.as_deref().and_then(|l| {

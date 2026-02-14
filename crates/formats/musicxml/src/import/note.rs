@@ -2151,7 +2151,7 @@ fn populate_note_ext_store(
             _ => None,
         };
         if let Some(ext) = stem_ext {
-            ctx.ext_store_mut().entry(note_id.clone()).stem_extras = Some(ext);
+            ctx.ext_store_mut().insert_stem_extras(note_id.clone(), ext);
         }
     }
 
@@ -2181,7 +2181,7 @@ fn populate_note_ext_store(
                 .pizzicato
                 .map(|v| matches!(v, crate::model::data::YesNo::Yes)),
         };
-        ctx.ext_store_mut().entry(note_id.clone()).note_visual = Some(nvd);
+        ctx.ext_store_mut().insert_note_visual(note_id.clone(), nvd);
     }
 
     // NoteExtras
@@ -2260,7 +2260,8 @@ fn populate_note_ext_store(
     }
 
     if has_extras {
-        ctx.ext_store_mut().entry(note_id.clone()).note_extras = Some(extras);
+        ctx.ext_store_mut()
+            .insert_note_extras(note_id.clone(), extras);
     }
 
     // LyricExtras — store per-verse ext data on note id with verse suffix
@@ -2270,7 +2271,8 @@ fn populate_note_ext_store(
                 Some(num) => format!("{}_v{}", note_id, num),
                 None => format!("{}_v", note_id),
             };
-            ctx.ext_store_mut().entry(verse_key).lyric_extras = Some(LyricExtras { lyric: val });
+            ctx.ext_store_mut()
+                .insert_lyric_extras(verse_key, LyricExtras { lyric: val });
         }
     }
 }
