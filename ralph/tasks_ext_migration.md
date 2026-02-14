@@ -47,13 +47,20 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.1 Harmony migration
 
-- [ ] Import (`import/harmony.rs`): write to `ext_store.harmonies` instead of `ext_store.entry(id).harmony`
-- [ ] Import: stop writing to `ext_store.entry(id).mxml_json`
-- [ ] Import: stop setting `musicxml:harmony` label on `<harm>` element
-- [ ] Export (`export/harmony.rs`): read from `ext_store.harmonies.get(id)` instead of `ext_store.get(id)?.mxml_json`
-- [ ] Export: remove label-based identification; use `ext_store.harmonies.contains_key(id)` instead
-- [ ] Remove `harmony_from_label()` legacy function
-- [ ] Tests pass
+- [x] Import (`import/harmony.rs`): write to `ext_store.harmonies` instead of `ext_store.entry(id).harmony`
+  - Uses `insert_harmony()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing to `ext_store.entry(id).mxml_json`
+  - Removed `entry.mxml_json = serde_json::to_value(...)` line
+- [x] Import: stop setting `musicxml:harmony` label on `<harm>` element
+  - Removed `harm.common.label = Some(HARM_LABEL_PREFIX.to_string())`
+- [x] Export (`export/harmony.rs`): read from `ext_store.harmonies.get(id)` instead of `ext_store.get(id)?.mxml_json`
+  - New `build_harmony_from_data()` reconstructs Harmony from HarmonyData (typed, no JSON deser)
+- [x] Export: remove label-based identification; use `ext_store.harmonies.contains_key(id)` instead
+  - Removed `harmony_from_label()` fallback path; only ExtensionStore + text fallback remain
+- [x] Remove `harmony_from_label()` legacy function
+  - Removed function + `HARM_LABEL_PREFIX` constant + legacy JSON roundtrip test
+- [x] Tests pass
+  - All 2501 tests pass, clippy clean
 
 ### 2.2 Barline migration
 

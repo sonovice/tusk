@@ -14,9 +14,6 @@ use tusk_model::musicxml_ext::{
     NumeralKeyData, OffsetData, VisualAttrs,
 };
 
-/// Label marker for MEI harm elements carrying MusicXML harmony data (via ExtensionStore).
-pub const HARM_LABEL_PREFIX: &str = "musicxml:harmony";
-
 /// Convert a MusicXML `<harmony>` element to an MEI `<harm>` control event.
 ///
 /// Data is stored in ExtensionStore for lossless roundtrip.
@@ -36,27 +33,23 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
     // and canonicalize `offset` to encode the absolute beat position in divisions.
     // On export, harmony elements are placed before notes (like directions), so
     // beat_position=0 on re-import — the offset ensures correct tstamp.
-    let mut harmony_for_json = harmony.clone();
-    harmony_for_json.staff = None;
+    let mut harmony_normalized = harmony.clone();
+    harmony_normalized.staff = None;
     let abs_position =
         ctx.beat_position() + harmony.offset.as_ref().map(|o| o.value).unwrap_or(0.0);
     if abs_position != 0.0 || harmony.offset.is_some() {
-        harmony_for_json.offset = Some(crate::model::direction::Offset {
+        harmony_normalized.offset = Some(crate::model::direction::Offset {
             value: abs_position,
             sound: harmony.offset.as_ref().and_then(|o| o.sound),
         });
     } else {
-        harmony_for_json.offset = None;
+        harmony_normalized.offset = None;
     }
 
-    // Short marker label for identification
-    harm.common.label = Some(HARM_LABEL_PREFIX.to_string());
-
-    // Store typed HarmonyData + raw MusicXML JSON in ExtensionStore
+    // Store typed HarmonyData in ExtensionStore (no label, no mxml_json)
     if let Some(ref id) = harm.common.xml_id {
-        let entry = ctx.ext_store_mut().entry(id.clone());
-        entry.harmony = Some(build_harmony_data(&harmony_for_json));
-        entry.mxml_json = serde_json::to_value(&harmony_for_json).ok();
+        ctx.ext_store_mut()
+            .insert_harmony(id.clone(), build_harmony_data(&harmony_normalized));
     }
 
     // Set tstamp and staff
@@ -388,23 +381,6 @@ fn build_harmony_data(h: &Harmony) -> HarmonyData {
     }
 }
 
-/// Reconstruct a MusicXML `Harmony` from the `@label` JSON data.
-///
-/// Returns `None` if the label doesn't contain valid harmony JSON data.
-/// Deserialize a Harmony from a legacy JSON roundtrip label.
-///
-/// Handles old-format labels like `"musicxml:harmony,{json}"`. New imports use
-/// ExtensionStore instead, with a simple `"musicxml:harmony"` marker label.
-pub fn harmony_from_label(label: &str) -> Option<Harmony> {
-    // New format: just the marker — data is in ExtensionStore
-    if label == HARM_LABEL_PREFIX {
-        return None;
-    }
-    // Legacy format: "musicxml:harmony,{json}"
-    let json = label.strip_prefix("musicxml:harmony,")?;
-    serde_json::from_str(json).ok()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -563,60 +539,5 @@ mod tests {
             id: None,
         };
         assert_eq!(harmony_to_text(&harmony), "F#m");
-    }
-
-    #[test]
-    fn test_harmony_json_roundtrip() {
-        let harmony = Harmony {
-            chords: vec![HarmonyChord {
-                root_type: HarmonyChordRoot::Root(Root {
-                    root_step: RootStep {
-                        value: Step::C,
-                        text: None,
-                    },
-                    root_alter: None,
-                }),
-                kind: Kind {
-                    value: KindValue::MajorSeventh,
-                    text: None,
-                    use_symbols: None,
-                    stack_degrees: None,
-                    parentheses_degrees: None,
-                    bracket_degrees: None,
-                    halign: None,
-                    valign: None,
-                },
-                inversion: None,
-                bass: None,
-                degrees: vec![],
-            }],
-            frame: None,
-            offset: None,
-            footnote: None,
-            level: None,
-            staff: None,
-            harmony_type: None,
-            print_object: None,
-            print_frame: None,
-            arrangement: None,
-            placement: None,
-            font_family: None,
-            font_size: None,
-            font_style: None,
-            font_weight: None,
-            default_x: None,
-            default_y: None,
-            color: None,
-            id: None,
-        };
-
-        // Test legacy format label roundtrip
-        let json = serde_json::to_string(&harmony).unwrap();
-        let label = format!("musicxml:harmony,{}", json);
-        let recovered = harmony_from_label(&label).unwrap();
-        assert_eq!(harmony, recovered);
-
-        // New marker label returns None (data is in ExtensionStore)
-        assert!(harmony_from_label(HARM_LABEL_PREFIX).is_none());
     }
 }
