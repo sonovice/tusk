@@ -3,13 +3,9 @@ use super::*;
 #[test]
 fn ext_data_default_is_empty() {
     let ext = ExtData::default();
-    assert!(ext.format_origin.is_none());
-    assert!(ext.pitch_context.is_none());
-    assert!(ext.output_def.is_none());
-    assert!(ext.event_sequence.is_none());
-    assert!(ext.tweaks.is_empty());
-    assert!(ext.output_defs.is_empty());
-    assert!(ext.property_ops.is_empty());
+    // ExtData is now an empty struct (all fields migrated to per-concept maps)
+    let json = serde_json::to_string(&ext).unwrap();
+    assert_eq!(json, "{}");
 }
 
 #[test]
@@ -223,28 +219,8 @@ fn lyrics_info_roundtrip() {
 }
 
 #[test]
-fn ext_data_with_multiple_fields_roundtrip() {
-    let ext = ExtData {
-        format_origin: Some(FormatOrigin {
-            format: SourceFormat::LilyPond,
-            version: Some("2.24.0".into()),
-            pitch_language: None,
-        }),
-        pitch_context: Some(PitchContext::Relative {
-            ref_pitch: Some(ExtPitch {
-                step: 'c',
-                alter: 0.0,
-                octave: 1,
-            }),
-        }),
-        grace_info: Some(GraceInfo::Acciaccatura),
-        tweaks: vec![TweakInfo {
-            path: "Stem.direction".into(),
-            value: ExtValue::Scheme("#UP".into()),
-        }],
-        ..Default::default()
-    };
-
+fn ext_data_empty_roundtrip() {
+    let ext = ExtData::default();
     let json = serde_json::to_string(&ext).unwrap();
     let back: ExtData = serde_json::from_str(&json).unwrap();
     assert_eq!(ext, back);
@@ -255,14 +231,7 @@ fn extension_store_basic_operations() {
     let mut store = ExtensionStore::new();
     assert!(store.is_empty());
 
-    let ext = ExtData {
-        format_origin: Some(FormatOrigin {
-            format: SourceFormat::LilyPond,
-            version: None,
-            pitch_language: None,
-        }),
-        ..Default::default()
-    };
+    let ext = ExtData::default();
 
     store.insert("note-1".into(), ext.clone());
     assert_eq!(store.len(), 1);
@@ -272,8 +241,7 @@ fn extension_store_basic_operations() {
     assert_eq!(retrieved, &ext);
 
     // entry() for new element
-    let entry = store.entry("note-2".into());
-    entry.grace_info = Some(GraceInfo::Grace);
+    let _entry = store.entry("note-2".into());
     assert_eq!(store.len(), 2);
 
     // remove
@@ -287,31 +255,25 @@ fn extension_store_basic_operations() {
 fn extension_store_roundtrip() {
     let mut store = ExtensionStore::new();
 
-    store.insert(
+    store.insert_staff_context(
         "staff-1".into(),
-        ExtData {
-            staff_context: Some(StaffContext {
-                context_type: "Staff".into(),
-                name: None,
-                with_block: None,
-                keyword: Some(ContextKeywordExt::New),
-            }),
-            ..Default::default()
+        StaffContext {
+            context_type: "Staff".into(),
+            name: None,
+            with_block: None,
+            keyword: Some(ContextKeywordExt::New),
         },
     );
 
-    store.insert(
+    store.insert_event_sequence(
         "staff-2".into(),
-        ExtData {
-            event_sequence: Some(EventSequence {
-                events: vec![PositionedEvent {
-                    position: 0,
-                    event: ControlEvent::Clef {
-                        name: "bass".into(),
-                    },
-                }],
-            }),
-            ..Default::default()
+        EventSequence {
+            events: vec![PositionedEvent {
+                position: 0,
+                event: ControlEvent::Clef {
+                    name: "bass".into(),
+                },
+            }],
         },
     );
 
@@ -398,10 +360,8 @@ fn book_structure_roundtrip() {
 fn ext_data_skips_none_in_json() {
     let ext = ExtData::default();
     let json = serde_json::to_string(&ext).unwrap();
-    // Should be a nearly empty object (only non-skip fields)
-    assert!(!json.contains("format_origin"));
-    assert!(!json.contains("pitch_context"));
-    assert!(!json.contains("output_def"));
+    // Empty struct serializes to empty object
+    assert_eq!(json, "{}");
 }
 
 #[test]

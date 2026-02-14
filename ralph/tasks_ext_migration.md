@@ -542,9 +542,14 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 12.1 Migrate remaining LilyPond fields
 
-- [ ] Move all LilyPond fields from ExtData to per-concept maps (format_origins, pitch_contexts, output_defs, book_structures, staff_contexts, repeat_infos, grace_infos, property_ops, function_calls, event_sequences, variable_assignments, toplevel_markups, lyrics_infos, chord_repetitions, context_changes, tweak_infos, pitched_rests, mrest_infos, drum_events, lyric_extenders)
-- [ ] Update extension.rs unit tests
-- [ ] Tests pass
+- [x] Move all LilyPond fields from ExtData to per-concept maps (format_origins, pitch_contexts, output_defs, book_structures, staff_contexts, repeat_infos, grace_infos, property_ops, function_calls, event_sequences, variable_assignments, toplevel_markups, lyrics_infos, chord_repetitions, context_changes, tweak_infos, pitched_rests, mrest_infos, drum_events, lyric_extenders)
+  - Removed all 23 LilyPond fields + 20 MusicXML fields from ExtData (now empty struct)
+  - Per-concept maps already existed on ExtensionStore (Phase 1.1); LilyPond crate uses label-based JSON, never wrote to ExtData fields
+- [x] Update extension.rs unit tests
+  - Updated ext_data_default_is_empty, ext_data_with_multiple_fields_roundtrip, extension_store_basic_operations, extension_store_roundtrip, ext_data_skips_none_in_json tests
+  - extension_store_roundtrip now uses per-concept accessors (insert_staff_context, insert_event_sequence)
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 12.2 Remove ExtData struct
 
