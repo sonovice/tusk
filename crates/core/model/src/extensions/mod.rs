@@ -1050,6 +1050,8 @@ pub struct ExtensionStore {
     pub direction_contents: HashMap<String, crate::musicxml_ext::DirectionContentData>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub ornament_details: HashMap<String, crate::musicxml_ext::OrnamentDetailData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub technical_details: HashMap<String, crate::musicxml_ext::TechnicalDetailData>,
 
     // ----- MusicXML singleton -----
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1147,6 +1149,7 @@ ext_store_accessors! {
     figured_bass_data / insert_figured_bass => figured_basses: crate::musicxml_ext::FiguredBassData,
     direction_content / insert_direction_content => direction_contents: crate::musicxml_ext::DirectionContentData,
     ornament_detail / insert_ornament_detail => ornament_details: crate::musicxml_ext::OrnamentDetailData,
+    technical_detail / insert_technical_detail => technical_details: crate::musicxml_ext::TechnicalDetailData,
 
     // LilyPond per-concept maps
     format_origin / insert_format_origin => format_origins: FormatOrigin,

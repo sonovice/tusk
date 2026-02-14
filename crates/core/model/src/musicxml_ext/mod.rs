@@ -1370,6 +1370,9 @@ pub use metronome::*;
 mod ornament;
 pub use ornament::*;
 
+mod technical;
+pub use technical::*;
+
 // ---------------------------------------------------------------------------
 // DirectionContentData
 // ---------------------------------------------------------------------------

@@ -369,9 +369,13 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 6.1 Create TechnicalDetailData
 
-- [ ] Create `TechnicalDetailData` enum in `musicxml_ext/` covering all ~25 technical types: Fingering { value, substitution, alternate }, Pluck { value, placement }, Fret { value }, StringNum { value, placement }, HammerOn { type, number, text }, PullOff { type, number, text }, Tap { hand, value }, Heel { substitution }, Toe { substitution }, Bend { alter, pre_bend, release, shape }, Hole { closed, location, type, shape }, Arrow { direction_or_circular, style, arrowhead }, Handbell { value }, HarmonMute { closed, location }, Harmonic { flags }, OpenString, ThumbPosition, DoubleTongue, TripleTongue, Fingernails, BrassBend, Flip, Smear, Golpe, Stopped { smufl }, Open { smufl }, HalfMuted { smufl }, SnapPizzicato, UpBow, DownBow, OtherTechnical { smufl, text }
-- [ ] Add `technical_details: HashMap<String, TechnicalDetailData>` to ExtensionStore
-- [ ] Tests pass
+- [x] Create `TechnicalDetailData` enum in `musicxml_ext/` covering all ~25 technical types: Fingering { value, substitution, alternate }, Pluck { value, placement }, Fret { value }, StringNum { value, placement }, HammerOn { type, number, text }, PullOff { type, number, text }, Tap { hand, value }, Heel { substitution }, Toe { substitution }, Bend { alter, pre_bend, release, shape }, Hole { closed, location, type, shape }, Arrow { direction_or_circular, style, arrowhead }, Handbell { value }, HarmonMute { closed, location }, Harmonic { flags }, OpenString, ThumbPosition, DoubleTongue, TripleTongue, Fingernails, BrassBend, Flip, Smear, Golpe, Stopped { smufl }, Open { smufl }, HalfMuted { smufl }, SnapPizzicato, UpBow, DownBow, OtherTechnical { smufl, text }
+  - 31-variant TechnicalDetailData enum + ArrowContentData enum in musicxml_ext/technical.rs submodule
+  - Covers all MusicXML technical types: 12 simple placement, 3 placement+smufl, 4 text content, 5 parameterized, 5 complex, 1 extensibility, 1 fingering (fing element), 1 tech-artic (note artic marker)
+- [x] Add `technical_details: HashMap<String, TechnicalDetailData>` to ExtensionStore
+  - HashMap field + `technical_detail`/`insert_technical_detail` accessors via macro
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 6.2 Technical import migration
 
