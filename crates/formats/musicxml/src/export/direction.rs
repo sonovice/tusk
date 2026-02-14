@@ -328,9 +328,9 @@ pub fn resolve_deferred_hairpin_stops(
 
 /// Convert an MEI dir (directive) element to a MusicXML direction.
 ///
-/// If MEI dir has @label starting with "musicxml:", the label is used to emit the
-/// corresponding MusicXML direction type (rehearsal, segno, coda, pedal, octave-shift, etc.)
-/// for roundtrip. Otherwise, dir text is emitted as MusicXML words.
+/// Checks ExtensionStore for stored direction content data first, then falls back
+/// to label-based dispatch for backward compatibility. Plain text dirs are emitted
+/// as MusicXML words.
 pub fn convert_mei_dir(
     dir: &tusk_model::elements::Dir,
     ctx: &mut ConversionContext,
@@ -347,105 +347,119 @@ pub fn convert_mei_dir(
         .collect::<Vec<_>>()
         .join("");
 
-    let direction_type_content = match dir.common.label.as_deref() {
-        Some("musicxml:rehearsal") => {
-            DirectionTypeContent::Rehearsal(vec![Rehearsal::new(&text_content)])
-        }
-        Some("musicxml:segno") => DirectionTypeContent::Segno(vec![Segno::default()]),
-        Some("musicxml:coda") => DirectionTypeContent::Coda(vec![Coda::default()]),
-        Some("musicxml:symbol") => DirectionTypeContent::Symbol(vec![Symbol::new(&text_content)]),
+    // Try ExtensionStore first — direction content data stored during import
+    let direction_type_content = if let Some(data) = dir
+        .common
+        .xml_id
+        .as_ref()
+        .and_then(|id| ctx.ext_store().direction_content(id))
+    {
+        build_direction_type_from_data(data)
+    } else if let Some(content) = match dir.common.label.as_deref() {
+        // Legacy label-based fallback for backward compat
+        Some("musicxml:rehearsal") => Some(DirectionTypeContent::Rehearsal(vec![Rehearsal::new(
+            &text_content,
+        )])),
+        Some("musicxml:segno") => Some(DirectionTypeContent::Segno(vec![Segno::default()])),
+        Some("musicxml:coda") => Some(DirectionTypeContent::Coda(vec![Coda::default()])),
+        Some("musicxml:symbol") => Some(DirectionTypeContent::Symbol(vec![Symbol::new(
+            &text_content,
+        )])),
         Some("musicxml:dashes") => {
             let dash_type = parse_start_stop_continue(&text_content);
-            DirectionTypeContent::Dashes(Dashes::new(dash_type))
+            Some(DirectionTypeContent::Dashes(Dashes::new(dash_type)))
         }
         Some("musicxml:bracket") => {
             let (bracket_type, line_end) = parse_bracket_payload(&text_content);
-            DirectionTypeContent::Bracket(Bracket::new(bracket_type, line_end))
+            Some(DirectionTypeContent::Bracket(Bracket::new(
+                bracket_type,
+                line_end,
+            )))
         }
         Some("musicxml:pedal") => {
             let pedal_type = parse_pedal_type(&text_content);
-            DirectionTypeContent::Pedal(Pedal::new(pedal_type))
+            Some(DirectionTypeContent::Pedal(Pedal::new(pedal_type)))
         }
         Some("musicxml:octave-shift") => {
             let (shift_type, size) = parse_octave_shift_payload(&text_content);
             let mut shift = OctaveShift::new(shift_type);
             shift.size = Some(size);
-            DirectionTypeContent::OctaveShift(shift)
+            Some(DirectionTypeContent::OctaveShift(shift))
         }
         Some("musicxml:harp-pedals") => serde_json::from_str::<HarpPedals>(&text_content)
             .map(DirectionTypeContent::HarpPedals)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        Some("musicxml:damp") => DirectionTypeContent::Damp(Damp::default()),
-        Some("musicxml:damp-all") => DirectionTypeContent::DampAll(DampAll::default()),
-        Some("musicxml:eyeglasses") => DirectionTypeContent::Eyeglasses(Eyeglasses::default()),
+            .ok(),
+        Some("musicxml:damp") => Some(DirectionTypeContent::Damp(Damp::default())),
+        Some("musicxml:damp-all") => Some(DirectionTypeContent::DampAll(DampAll::default())),
+        Some("musicxml:eyeglasses") => {
+            Some(DirectionTypeContent::Eyeglasses(Eyeglasses::default()))
+        }
         Some("musicxml:string-mute") => {
             serde_json::from_str::<crate::model::direction::StringMute>(&text_content)
                 .map(DirectionTypeContent::StringMute)
-                .unwrap_or(DirectionTypeContent::Words(vec![]))
+                .ok()
         }
         Some("musicxml:scordatura") => {
             serde_json::from_str::<crate::model::direction::Scordatura>(&text_content)
                 .map(DirectionTypeContent::Scordatura)
-                .unwrap_or(DirectionTypeContent::Words(vec![]))
+                .ok()
         }
         Some("musicxml:image") => {
             serde_json::from_str::<crate::model::direction::DirectionImage>(&text_content)
                 .map(DirectionTypeContent::Image)
-                .unwrap_or(DirectionTypeContent::Words(vec![]))
+                .ok()
         }
         Some("musicxml:principal-voice") => serde_json::from_str::<PrincipalVoice>(&text_content)
             .map(DirectionTypeContent::PrincipalVoice)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
+            .ok(),
         Some("musicxml:percussion") => {
             serde_json::from_str::<Vec<crate::model::direction::Percussion>>(&text_content)
                 .map(DirectionTypeContent::Percussion)
-                .unwrap_or(DirectionTypeContent::Words(vec![]))
+                .ok()
         }
         Some("musicxml:accordion-registration") => {
             serde_json::from_str::<crate::model::direction::AccordionRegistration>(&text_content)
                 .map(DirectionTypeContent::AccordionRegistration)
-                .unwrap_or(DirectionTypeContent::AccordionRegistration(
-                    Default::default(),
-                ))
+                .ok()
         }
         Some("musicxml:staff-divide") => serde_json::from_str::<StaffDivide>(&text_content)
             .map(DirectionTypeContent::StaffDivide)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
+            .ok(),
         Some("musicxml:other") => {
             serde_json::from_str::<crate::model::direction::OtherDirection>(&text_content)
                 .map(DirectionTypeContent::OtherDirection)
-                .unwrap_or(DirectionTypeContent::Words(vec![]))
+                .ok()
         }
-        _ => {
-            // Check for stored words visual attrs — prefer ExtensionStore
-            let restored_words = dir
-                .common
-                .xml_id
-                .as_ref()
-                .and_then(|id| ctx.ext_store().direction_visual(id))
-                .and_then(|dv| {
-                    if dv.words.is_empty() {
-                        None
-                    } else {
-                        // Convert WordsVisualData back to Vec<Words>
-                        let val = serde_json::to_value(&dv.words).ok()?;
-                        serde_json::from_value::<Vec<Words>>(val).ok()
-                    }
-                })
-                .or_else(|| {
-                    // Fallback: parse from label
-                    dir.common.label.as_deref().and_then(|label| {
-                        label.split('|').find_map(|seg| {
-                            seg.strip_prefix("musicxml:words-vis,")
-                                .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
-                        })
+        _ => None,
+    } {
+        content
+    } else {
+        // Words: check for stored visual attrs in ExtensionStore
+        let restored_words = dir
+            .common
+            .xml_id
+            .as_ref()
+            .and_then(|id| ctx.ext_store().direction_visual(id))
+            .and_then(|dv| {
+                if dv.words.is_empty() {
+                    None
+                } else {
+                    Some(build_words_from_visual_data(&dv.words))
+                }
+            })
+            .or_else(|| {
+                // Fallback: parse from label
+                dir.common.label.as_deref().and_then(|label| {
+                    label.split('|').find_map(|seg| {
+                        seg.strip_prefix("musicxml:words-vis,")
+                            .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
                     })
-                });
-            if let Some(words) = restored_words {
-                DirectionTypeContent::Words(words)
-            } else {
-                DirectionTypeContent::Words(vec![Words::new(&text_content)])
-            }
+                })
+            });
+        if let Some(words) = restored_words {
+            DirectionTypeContent::Words(words)
+        } else {
+            DirectionTypeContent::Words(vec![Words::new(&text_content)])
         }
     };
 
@@ -473,6 +487,147 @@ pub fn convert_mei_dir(
     restore_direction_sound(&mut direction, dir.common.xml_id.as_deref(), ctx);
 
     Some(direction)
+}
+
+/// Build a MusicXML DirectionTypeContent from stored DirectionContentData.
+fn build_direction_type_from_data(
+    data: &tusk_model::musicxml_ext::DirectionContentData,
+) -> DirectionTypeContent {
+    use tusk_model::musicxml_ext::DirectionContentData as D;
+    match data {
+        D::Rehearsal(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Rehearsal)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Segno(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Segno)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Coda(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Coda)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Symbol(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Symbol)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Dashes(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Dashes)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Bracket(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Bracket)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Pedal(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Pedal)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::OctaveShift(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::OctaveShift)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::HarpPedals(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::HarpPedals)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Damp(_) => DirectionTypeContent::Damp(Damp::default()),
+        D::DampAll(_) => DirectionTypeContent::DampAll(DampAll::default()),
+        D::Eyeglasses(_) => DirectionTypeContent::Eyeglasses(Eyeglasses::default()),
+        D::StringMute(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::StringMute)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Scordatura(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Scordatura)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Image(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Image)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::PrincipalVoice(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::PrincipalVoice)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Percussion(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::Percussion)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::AccordionRegistration(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::AccordionRegistration)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::StaffDivide(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::StaffDivide)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::OtherDirection(v) => serde_json::from_value(v.clone())
+            .map(DirectionTypeContent::OtherDirection)
+            .unwrap_or(DirectionTypeContent::Words(vec![])),
+    }
+}
+
+/// Build MusicXML Words from stored WordsVisualData (typed conversion, no serde roundtrip).
+fn build_words_from_visual_data(
+    words_vis: &[tusk_model::musicxml_ext::WordsVisualData],
+) -> Vec<Words> {
+    use crate::model::data::{EnclosureShape, FontSize, FontStyle, FontWeight};
+    words_vis
+        .iter()
+        .map(|wv| {
+            let mut w = Words::new(&wv.value);
+            w.font_family = wv.visual.font_family.clone();
+            w.font_style = wv.visual.font_style.as_deref().and_then(|s| match s {
+                "italic" => Some(FontStyle::Italic),
+                "normal" => Some(FontStyle::Normal),
+                _ => None,
+            });
+            w.font_size = wv.visual.font_size.map(FontSize::Points);
+            w.font_weight = wv.visual.font_weight.as_deref().and_then(|s| match s {
+                "bold" => Some(FontWeight::Bold),
+                "normal" => Some(FontWeight::Normal),
+                _ => None,
+            });
+            w.color = wv.visual.color.clone();
+            w.default_x = wv.visual.default_x;
+            w.default_y = wv.visual.default_y;
+            w.relative_x = wv.visual.relative_x;
+            w.relative_y = wv.visual.relative_y;
+            w.enclosure = wv.enclosure.as_deref().and_then(|s| match s {
+                "rectangle" => Some(EnclosureShape::Rectangle),
+                "square" => Some(EnclosureShape::Square),
+                "oval" => Some(EnclosureShape::Oval),
+                "circle" => Some(EnclosureShape::Circle),
+                "bracket" => Some(EnclosureShape::Bracket),
+                "inverted-bracket" => Some(EnclosureShape::InvertedBracket),
+                "triangle" => Some(EnclosureShape::Triangle),
+                "diamond" => Some(EnclosureShape::Diamond),
+                "pentagon" => Some(EnclosureShape::Pentagon),
+                "hexagon" => Some(EnclosureShape::Hexagon),
+                "heptagon" => Some(EnclosureShape::Heptagon),
+                "octagon" => Some(EnclosureShape::Octagon),
+                "nonagon" => Some(EnclosureShape::Nonagon),
+                "decagon" => Some(EnclosureShape::Decagon),
+                "none" => Some(EnclosureShape::None),
+                _ => None,
+            });
+            w.halign = wv.halign.as_deref().and_then(|s| {
+                use crate::model::data::LeftCenterRight;
+                match s {
+                    "left" => Some(LeftCenterRight::Left),
+                    "center" => Some(LeftCenterRight::Center),
+                    "right" => Some(LeftCenterRight::Right),
+                    _ => None,
+                }
+            });
+            w.valign = wv.valign.as_deref().and_then(|s| {
+                use crate::model::data::Valign;
+                match s {
+                    "top" => Some(Valign::Top),
+                    "middle" => Some(Valign::Middle),
+                    "bottom" => Some(Valign::Bottom),
+                    "baseline" => Some(Valign::Baseline),
+                    _ => None,
+                }
+            });
+            w.justify = wv.justify.as_deref().and_then(|s| {
+                use crate::model::data::LeftCenterRight;
+                match s {
+                    "left" => Some(LeftCenterRight::Left),
+                    "center" => Some(LeftCenterRight::Center),
+                    "right" => Some(LeftCenterRight::Right),
+                    _ => None,
+                }
+            });
+            w.id = wv.id.clone();
+            w
+        })
+        .collect()
 }
 
 fn parse_start_stop_continue(s: &str) -> StartStopContinue {

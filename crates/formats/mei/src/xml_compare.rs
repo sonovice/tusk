@@ -596,13 +596,18 @@ fn control_event_type_key(name: &str, elem: &CanonicalElement) -> String {
             .get("dir")
             .map(|d| format!(",dir={}", d))
             .unwrap_or_default(),
-        // Dir @label prefix disambiguates musicxml:sound, musicxml:direction-sound,
-        // musicxml:rehearsal etc. from plain text dirs at the same position
+        // Dir disambiguation: prefer @label prefix if present (legacy), fall back to
+        // @xml:id for dirs that store direction content in ExtensionStore
         "dir" => elem
             .attributes
             .get("label")
             .and_then(|l| l.split(',').next())
             .map(|prefix| format!(",label={}", prefix))
+            .or_else(|| {
+                elem.attributes
+                    .get("xml:id")
+                    .map(|id| format!(",id={}", id))
+            })
             .unwrap_or_default(),
         _ => String::new(),
     }

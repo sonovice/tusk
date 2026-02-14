@@ -261,10 +261,20 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 4.2 Direction import migration
 
-- [ ] Import (`import/direction.rs`): for each direction type, store `DirectionContentData` in `ext_store.direction_contents`
-- [ ] Stop setting `musicxml:rehearsal`, `musicxml:segno`, `musicxml:coda`, etc. labels on `<dir>` elements
-- [ ] Stop encoding direction data as text children of `<dir>` elements (currently stores JSON in dir text for some types)
-- [ ] Tests pass
+- [x] Import (`import/direction.rs`): for each direction type, store `DirectionContentData` in `ext_store.direction_contents`
+  - Replaced `dir_with_label()` with `dir_with_ext()` that stores typed data via `insert_direction_content()`
+  - All 20 direction types serialize MusicXML model structs to `serde_json::Value` for storage
+- [x] Stop setting `musicxml:rehearsal`, `musicxml:segno`, `musicxml:coda`, etc. labels on `<dir>` elements
+  - Removed `MXML_DIR_LABEL_PREFIX` constant, `dir_with_label()`, `append_dir_label()`, and all label-setting code
+  - Removed `musicxml:words-vis,` label from `convert_words()` (keeps ExtensionStore-only path)
+  - Removed unused helpers: `dash_bracket_type_to_str`, `line_end_to_str`, `pedal_type_to_str`, `octave_shift_type_to_str`
+- [x] Stop encoding direction data as text children of `<dir>` elements (currently stores JSON in dir text for some types)
+  - `dir_with_ext()` creates bare dirs with no text children; data stored in ExtensionStore
+- [x] Tests pass
+  - Export updated with `build_direction_type_from_data()` to reconstruct from ExtensionStore (label fallback retained for backward compat)
+  - Fixed `build_words_from_visual_data()` — proper typed conversion replacing broken serde roundtrip (WordsVisualData field names differ from Words)
+  - Updated xml_compare `control_event_type_key` for "dir": uses @xml:id fallback when no label present
+  - All 2500 tests pass, clippy clean
 
 ### 4.3 Direction export migration
 
