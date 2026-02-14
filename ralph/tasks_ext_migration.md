@@ -335,18 +335,35 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 5.2 Ornament import migration
 
-- [ ] Import (`import/note.rs`): store `OrnamentDetailData` in `ext_store.ornament_details` for each ornament type
-- [ ] Stop encoding ornament data in `<ornam>` labels (e.g., `musicxml:vertical-turn`, `musicxml:tremolo,type=...`)
-- [ ] Stop encoding data in `<arpeg>` labels (e.g., `musicxml:non-arpeggiate`)
-- [ ] Stop encoding data in `<gliss>` labels (e.g., `musicxml:slide`)
-- [ ] Stop encoding data in `<dynam>` labels (e.g., `musicxml:notation-dynamics`)
-- [ ] Tests pass
+- [x] Import (`import/note.rs`): store `OrnamentDetailData` in `ext_store.ornament_details` for each ornament type
+  - All 12 ornam types: VerticalTurn, InvertedVerticalTurn, Shake, Schleifer, Haydn, UnmeasuredTremolo, WavyLine, OtherOrnament, OrnamentAccidentalMark + AccidentalMark, OtherNotation
+  - Uses `insert_ornament_detail()` accessor directly; no more label assignment
+- [x] Stop encoding ornament data in `<ornam>` labels (e.g., `musicxml:vertical-turn`, `musicxml:tremolo,type=...`)
+  - Removed all 10 label assignments in `process_ornaments()`, `process_accidental_marks()`, `process_other_notations()`
+- [x] Stop encoding data in `<arpeg>` labels (e.g., `musicxml:non-arpeggiate`)
+  - Stores `OrnamentDetailData::NonArpeggiate` in ExtensionStore; removed `"musicxml:non-arpeggiate"` label
+- [x] Stop encoding data in `<gliss>` labels (e.g., `musicxml:slide`)
+  - Changed PendingGliss/CompletedGliss: `label: Option<String>` → `is_slide: bool`
+  - `emit_gliss_events()` stores `OrnamentDetailData::Slide` in ExtensionStore; no more label on gliss element
+- [x] Stop encoding data in `<dynam>` labels (e.g., `musicxml:notation-dynamics`)
+  - Stores `OrnamentDetailData::NotationDynamics` in ExtensionStore; removed label assignment
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 5.3 Ornament export migration
 
-- [ ] Export (`export/content.rs`): read from `ext_store.ornament_details.get(id)` instead of parsing label strings
-- [ ] Remove ornament label-parsing code
-- [ ] Tests pass
+- [x] Export (`export/content.rs`): read from `ext_store.ornament_details.get(id)` instead of parsing label strings
+  - `convert_ornament_events()`: reads `ctx.ext_store().ornament_detail(ornam_id)` instead of parsing label strings
+  - `convert_arpeg_events()`: uses `ctx.ext_store().ornament_detail(arpeg_id)` instead of `arpeg.common.label`
+  - `convert_gliss_events()`: uses `ctx.ext_store().ornament_detail(gliss_id)` instead of `gliss.common.label`
+  - `convert_notation_dynamics()`: uses `ctx.ext_store().ornament_detail(id)` instead of `dynam.common.label`
+  - Main dynamics loop skip check also uses ExtensionStore instead of label
+- [x] Remove ornament label-parsing code
+  - Removed entire label-based if/else chain for 12 ornament types; replaced with match on OrnamentDetailData
+  - Removed label-based `is_nonarp` and `is_slide` checks
+  - Removed label-based notation-dynamics identification
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 6: Technical details to ExtensionStore
 

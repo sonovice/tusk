@@ -15,8 +15,8 @@ pub struct PendingGliss {
     pub line_type: Option<String>,
     /// Text content (e.g. "gliss.").
     pub text: String,
-    /// Label to distinguish glissando vs slide for roundtrip.
-    pub label: Option<String>,
+    /// True if this is a MusicXML `<slide>` (vs `<glissando>`).
+    pub is_slide: bool,
 }
 
 /// A completed glissando/slide with start and end IDs.
@@ -27,7 +27,8 @@ pub struct CompletedGliss {
     pub mei_staff: u32,
     pub line_type: Option<String>,
     pub text: String,
-    pub label: Option<String>,
+    /// True if this is a MusicXML `<slide>` (vs `<glissando>`).
+    pub is_slide: bool,
 }
 
 /// Glissando-tracking methods for `ConversionContext`.

@@ -475,10 +475,12 @@ fn emit_ornament_events(
 fn emit_gliss_events(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut ConversionContext) {
     use tusk_model::data::{DataLineform, DataUri};
     use tusk_model::elements::{Gliss, GlissChild, MeasureChild};
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     for completed in ctx.drain_completed_glisses() {
         let mut gliss = Gliss::default();
-        gliss.common.xml_id = Some(ctx.generate_id_with_suffix("gliss"));
+        let id = ctx.generate_id_with_suffix("gliss");
+        gliss.common.xml_id = Some(id.clone());
         gliss.gliss_log.startid = Some(DataUri::from(format!("#{}", completed.start_id)));
         gliss.gliss_log.endid = Some(DataUri::from(format!("#{}", completed.end_id)));
         gliss.gliss_log.staff = Some((completed.mei_staff as u64).to_string());
@@ -497,9 +499,10 @@ fn emit_gliss_events(mei_measure: &mut tusk_model::elements::Measure, ctx: &mut 
             gliss.children.push(GlissChild::Text(completed.text));
         }
 
-        // Label for slide roundtrip
-        if let Some(label) = completed.label {
-            gliss.common.label = Some(label);
+        // Slide → store in ExtensionStore for roundtrip
+        if completed.is_slide {
+            ctx.ext_store_mut()
+                .insert_ornament_detail(id, OrnamentDetailData::Slide);
         }
 
         mei_measure

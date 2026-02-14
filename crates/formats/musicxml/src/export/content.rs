@@ -1071,13 +1071,13 @@ fn convert_direction_events(
         match child {
             MeasureChild::Dynam(dynam) => {
                 // Skip notation-level dynamics — handled by convert_notation_dynamics()
-                if dynam
-                    .common
-                    .label
-                    .as_deref()
-                    .is_some_and(|l| l == "musicxml:notation-dynamics")
-                {
-                    continue;
+                if let Some(id) = dynam.common.xml_id.as_deref() {
+                    if matches!(
+                        ctx.ext_store().ornament_detail(id),
+                        Some(tusk_model::musicxml_ext::OrnamentDetailData::NotationDynamics)
+                    ) {
+                        continue;
+                    }
                 }
                 let event_staff = dynam
                     .dynam_log
@@ -1547,7 +1547,7 @@ fn convert_ornament_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use super::direction::convert_place_to_placement;
     use crate::model::data::{StartStopContinue, TremoloType, YesNo};
@@ -1555,6 +1555,7 @@ fn convert_ornament_events(
         EmptyPlacement, EmptyTrillSound, HorizontalTurn, Mordent as MxmlMordent, Notations,
         Ornaments, OtherOrnament, Tremolo, WavyLine,
     };
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     for child in &mei_measure.children {
         match child {
@@ -1684,8 +1685,67 @@ fn convert_ornament_events(
                     .as_ref()
                     .map(|uri| uri.to_string().trim_start_matches('#').to_string());
                 let Some(sid) = start_id else { continue };
-                let label = ornam.common.label.as_deref().unwrap_or("");
+                let ornam_id = ornam.common.xml_id.as_deref().unwrap_or("");
                 let placement = convert_place_to_placement(&ornam.ornam_vis.place);
+
+                let Some(detail) = ctx.ext_store().ornament_detail(ornam_id) else {
+                    continue;
+                };
+                let detail = detail.clone();
+
+                // AccidentalMark and OtherNotation go on notations, not ornaments
+                match &detail {
+                    OrnamentDetailData::AccidentalMark {
+                        value,
+                        placement: p,
+                    } => {
+                        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                            continue;
+                        };
+                        let notations = note.notations.get_or_insert_with(Notations::default);
+                        notations
+                            .accidental_marks
+                            .push(crate::model::notations::AccidentalMark {
+                                value: value.clone(),
+                                placement: placement.or_else(|| {
+                                    p.as_deref().and_then(|s| match s {
+                                        "above" => Some(crate::model::data::AboveBelow::Above),
+                                        "below" => Some(crate::model::data::AboveBelow::Below),
+                                        _ => None,
+                                    })
+                                }),
+                            });
+                        continue;
+                    }
+                    OrnamentDetailData::OtherNotation {
+                        notation_type,
+                        number,
+                        smufl,
+                        text,
+                    } => {
+                        use crate::model::data::StartStopSingle;
+                        let nt = match notation_type.as_str() {
+                            "start" => StartStopSingle::Start,
+                            "stop" => StartStopSingle::Stop,
+                            _ => StartStopSingle::Single,
+                        };
+                        let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
+                            continue;
+                        };
+                        let notations = note.notations.get_or_insert_with(Notations::default);
+                        notations
+                            .other_notations
+                            .push(crate::model::notations::OtherNotation {
+                                notation_type: nt,
+                                number: *number,
+                                placement,
+                                smufl: smufl.clone(),
+                                text: text.clone(),
+                            });
+                        continue;
+                    }
+                    _ => {}
+                }
 
                 let Some(note) = find_note_by_id_mut(mxml_measure, &sid) else {
                     continue;
@@ -1693,172 +1753,111 @@ fn convert_ornament_events(
                 let notations = note.notations.get_or_insert_with(Notations::default);
                 let ornaments = notations.ornaments.get_or_insert_with(Ornaments::default);
 
-                if label == "musicxml:vertical-turn" {
-                    ornaments.vertical_turn = Some(EmptyTrillSound {
-                        placement,
-                        ..Default::default()
-                    });
-                } else if label == "musicxml:inverted-vertical-turn" {
-                    ornaments.inverted_vertical_turn = Some(EmptyTrillSound {
-                        placement,
-                        ..Default::default()
-                    });
-                } else if label == "musicxml:shake" {
-                    ornaments.shake = Some(EmptyTrillSound {
-                        placement,
-                        ..Default::default()
-                    });
-                } else if label == "musicxml:schleifer" {
-                    ornaments.schleifer = Some(EmptyPlacement {
-                        placement,
-                        ..Default::default()
-                    });
-                } else if label == "musicxml:haydn" {
-                    ornaments.haydn = Some(EmptyTrillSound {
-                        placement,
-                        ..Default::default()
-                    });
-                } else if label.starts_with("musicxml:tremolo,") {
-                    // Parse "musicxml:tremolo,type=<type>,value=<value>"
-                    let mut ttype = TremoloType::Single;
-                    let mut tvalue: Option<u8> = None;
-                    for part in label.trim_start_matches("musicxml:tremolo,").split(',') {
-                        if let Some(v) = part.strip_prefix("type=") {
-                            ttype = match v {
-                                "start" => TremoloType::Start,
-                                "stop" => TremoloType::Stop,
-                                "unmeasured" => TremoloType::Unmeasured,
-                                _ => TremoloType::Single,
-                            };
-                        } else if let Some(v) = part.strip_prefix("value=") {
-                            tvalue = v.parse().ok();
-                        }
-                    }
-                    ornaments.tremolo = Some(Tremolo {
-                        tremolo_type: ttype,
-                        value: tvalue,
-                        placement,
-                        default_x: None,
-                        default_y: None,
-                        color: None,
-                        smufl: None,
-                    });
-                } else if label.starts_with("musicxml:wavy-line,") {
-                    // Parse "musicxml:wavy-line,type=<type>,number=<num>"
-                    let mut wtype = StartStopContinue::Start;
-                    let mut wnumber: Option<u8> = None;
-                    for part in label.trim_start_matches("musicxml:wavy-line,").split(',') {
-                        if let Some(v) = part.strip_prefix("type=") {
-                            wtype = match v {
-                                "stop" => StartStopContinue::Stop,
-                                "continue" => StartStopContinue::Continue,
-                                _ => StartStopContinue::Start,
-                            };
-                        } else if let Some(v) = part.strip_prefix("number=") {
-                            wnumber = v.parse().ok();
-                        }
-                    }
-                    ornaments.wavy_line = Some(WavyLine {
-                        wavy_line_type: wtype,
-                        number: wnumber,
-                        placement,
-                        default_x: None,
-                        default_y: None,
-                        color: None,
-                        smufl: None,
-                        trill_sound: Default::default(),
-                    });
-                } else if label == "musicxml:other-ornament" {
-                    // Collect text content from ornam children
-                    let text: String = ornam
-                        .children
-                        .iter()
-                        .map(|c| {
-                            let tusk_model::elements::OrnamChild::Text(t) = c;
-                            t.as_str()
-                        })
-                        .collect::<Vec<_>>()
-                        .join("");
-                    ornaments.other_ornament = Some(OtherOrnament {
-                        value: text,
-                        placement,
-                    });
-                } else if let Some(rest) = label.strip_prefix("musicxml:ornament-accidental-mark,")
-                {
-                    // Accidental-mark within ornaments
-                    let mut value = String::new();
-                    let mut acc_placement = None;
-                    for part in rest.split(',') {
-                        if let Some(v) = part.strip_prefix("value=") {
-                            value = v.to_string();
-                        } else if let Some(v) = part.strip_prefix("placement=") {
-                            acc_placement = match v {
-                                "above" => Some(crate::model::data::AboveBelow::Above),
-                                "below" => Some(crate::model::data::AboveBelow::Below),
-                                _ => None,
-                            };
-                        }
-                    }
-                    ornaments
-                        .accidental_marks
-                        .push(crate::model::notations::AccidentalMark {
-                            value,
-                            placement: acc_placement,
-                        });
-                } else if let Some(rest) = label.strip_prefix("musicxml:accidental-mark,") {
-                    // Standalone accidental-mark → goes on notations (not ornaments)
-                    let mut value = String::new();
-                    for part in rest.split(',') {
-                        if let Some(v) = part.strip_prefix("value=") {
-                            value = v.to_string();
-                        }
-                    }
-                    let notations = note.notations.get_or_insert_with(Notations::default);
-                    notations
-                        .accidental_marks
-                        .push(crate::model::notations::AccidentalMark { value, placement });
-                    // Skip adding to ornaments for accidental-mark
-                    continue;
-                } else if let Some(rest) = label.strip_prefix("musicxml:other-notation,") {
-                    // Other-notation → goes on notations (not ornaments)
-                    use crate::model::data::StartStopSingle;
-                    let mut notation_type = StartStopSingle::Single;
-                    let mut number: Option<u8> = None;
-                    let mut smufl: Option<String> = None;
-                    for part in rest.split(',') {
-                        if let Some(v) = part.strip_prefix("type=") {
-                            notation_type = match v {
-                                "start" => StartStopSingle::Start,
-                                "stop" => StartStopSingle::Stop,
-                                _ => StartStopSingle::Single,
-                            };
-                        } else if let Some(v) = part.strip_prefix("number=") {
-                            number = v.parse().ok();
-                        } else if let Some(v) = part.strip_prefix("smufl=") {
-                            smufl = Some(v.to_string());
-                        }
-                    }
-                    // Collect text from ornam children
-                    let text: String = ornam
-                        .children
-                        .iter()
-                        .map(|c| {
-                            let tusk_model::elements::OrnamChild::Text(t) = c;
-                            t.as_str()
-                        })
-                        .collect::<Vec<_>>()
-                        .join("");
-                    let notations = note.notations.get_or_insert_with(Notations::default);
-                    notations
-                        .other_notations
-                        .push(crate::model::notations::OtherNotation {
-                            notation_type,
-                            number,
+                match &detail {
+                    OrnamentDetailData::VerticalTurn => {
+                        ornaments.vertical_turn = Some(EmptyTrillSound {
                             placement,
-                            smufl,
-                            text,
+                            ..Default::default()
                         });
-                    continue;
+                    }
+                    OrnamentDetailData::InvertedVerticalTurn => {
+                        ornaments.inverted_vertical_turn = Some(EmptyTrillSound {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    OrnamentDetailData::Shake => {
+                        ornaments.shake = Some(EmptyTrillSound {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    OrnamentDetailData::Schleifer => {
+                        ornaments.schleifer = Some(EmptyPlacement {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    OrnamentDetailData::Haydn => {
+                        ornaments.haydn = Some(EmptyTrillSound {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    OrnamentDetailData::UnmeasuredTremolo {
+                        tremolo_type,
+                        value,
+                    } => {
+                        let ttype = match tremolo_type.as_str() {
+                            "start" => TremoloType::Start,
+                            "stop" => TremoloType::Stop,
+                            "unmeasured" => TremoloType::Unmeasured,
+                            _ => TremoloType::Single,
+                        };
+                        ornaments.tremolo = Some(Tremolo {
+                            tremolo_type: ttype,
+                            value: *value,
+                            placement,
+                            default_x: None,
+                            default_y: None,
+                            color: None,
+                            smufl: None,
+                        });
+                    }
+                    OrnamentDetailData::WavyLine {
+                        wavy_line_type,
+                        number,
+                    } => {
+                        let wtype = match wavy_line_type.as_str() {
+                            "stop" => StartStopContinue::Stop,
+                            "continue" => StartStopContinue::Continue,
+                            _ => StartStopContinue::Start,
+                        };
+                        ornaments.wavy_line = Some(WavyLine {
+                            wavy_line_type: wtype,
+                            number: *number,
+                            placement,
+                            default_x: None,
+                            default_y: None,
+                            color: None,
+                            smufl: None,
+                            trill_sound: Default::default(),
+                        });
+                    }
+                    OrnamentDetailData::OtherOrnament { .. } => {
+                        // Collect text content from ornam children
+                        let text: String = ornam
+                            .children
+                            .iter()
+                            .map(|c| {
+                                let tusk_model::elements::OrnamChild::Text(t) = c;
+                                t.as_str()
+                            })
+                            .collect::<Vec<_>>()
+                            .join("");
+                        ornaments.other_ornament = Some(OtherOrnament {
+                            value: text,
+                            placement,
+                        });
+                    }
+                    OrnamentDetailData::OrnamentAccidentalMark {
+                        value,
+                        placement: p,
+                    } => {
+                        let acc_placement = p.as_deref().and_then(|s| match s {
+                            "above" => Some(crate::model::data::AboveBelow::Above),
+                            "below" => Some(crate::model::data::AboveBelow::Below),
+                            _ => None,
+                        });
+                        ornaments
+                            .accidental_marks
+                            .push(crate::model::notations::AccidentalMark {
+                                value: value.clone(),
+                                placement: acc_placement,
+                            });
+                    }
+                    // AccidentalMark and OtherNotation handled above
+                    _ => {}
                 }
             }
             // Non-ornament MeasureChild variants — handled by other conversion functions.
@@ -2075,10 +2074,11 @@ fn convert_arpeg_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::data::{TopBottom, UpDown};
     use crate::model::notations::{Arpeggiate, NonArpeggiate, Notations};
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     for child in &mei_measure.children {
         let MeasureChild::Arpeg(arpeg) = child else {
@@ -2104,7 +2104,11 @@ fn convert_arpeg_events(
             continue;
         };
 
-        let is_nonarp = arpeg.common.label.as_deref() == Some("musicxml:non-arpeggiate");
+        let arpeg_id = arpeg.common.xml_id.as_deref().unwrap_or("");
+        let is_nonarp = matches!(
+            ctx.ext_store().ornament_detail(arpeg_id),
+            Some(OrnamentDetailData::NonArpeggiate)
+        );
         let notations = note.notations.get_or_insert_with(Notations::default);
 
         if is_nonarp {
@@ -2139,11 +2143,12 @@ fn convert_gliss_events(
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
     prev_measures: &mut [MxmlMeasure],
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::data::LineType;
     use crate::model::notations::{Glissando, Slide};
     use tusk_model::data::DataLineform;
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     for child in &mei_measure.children {
         let MeasureChild::Gliss(gliss) = child else {
@@ -2189,7 +2194,11 @@ fn convert_gliss_events(
             .collect::<Vec<_>>()
             .join("");
 
-        let is_slide = gliss.common.label.as_deref() == Some("musicxml:slide");
+        let gliss_id = gliss.common.xml_id.as_deref().unwrap_or("");
+        let is_slide = matches!(
+            ctx.ext_store().ornament_detail(gliss_id),
+            Some(OrnamentDetailData::Slide)
+        );
 
         // Helper to create start notation
         let make_start = |line_type: &Option<LineType>, text: &str, is_slide: bool| {
@@ -3594,30 +3603,32 @@ fn is_technical_label(name: &str) -> bool {
     )
 }
 
-/// Convert MEI `<dynam>` control events with `musicxml:notation-dynamics` label back to
-/// MusicXML `<dynamics>` within `<notations>` on the referenced notes.
+/// Convert MEI `<dynam>` control events marked as NotationDynamics in ExtensionStore
+/// back to MusicXML `<dynamics>` within `<notations>` on the referenced notes.
 fn convert_notation_dynamics(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use super::direction::{convert_place_to_placement, parse_dynamics_text};
     use crate::model::direction::Dynamics;
     use crate::model::notations::Notations;
     use tusk_model::elements::DynamChild;
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     for child in &mei_measure.children {
         let MeasureChild::Dynam(dynam) = child else {
             continue;
         };
-        // Only process notation-level dynamics
-        if dynam
-            .common
-            .label
-            .as_deref()
-            .is_none_or(|l| l != "musicxml:notation-dynamics")
-        {
+        // Only process notation-level dynamics (identified via ExtensionStore)
+        let is_notation_dyn = dynam.common.xml_id.as_deref().is_some_and(|id| {
+            matches!(
+                ctx.ext_store().ornament_detail(id),
+                Some(OrnamentDetailData::NotationDynamics)
+            )
+        });
+        if !is_notation_dyn {
             continue;
         }
         let event_staff = dynam

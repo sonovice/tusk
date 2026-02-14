@@ -729,11 +729,10 @@ fn process_tuplets(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionConte
 /// - inverted-turn → MEI `<turn>` with @form="lower"
 /// - delayed-inverted-turn → MEI `<turn>` with @form="lower", @delayed="true"
 /// - vertical-turn, inverted-vertical-turn, shake, schleifer, haydn → MEI `<ornam>`
-///   with musicxml: label for lossless roundtrip
+///   with OrnamentDetailData in ExtensionStore
 /// - tremolo single → pending bTrem wrapper; start/stop → pending fTrem wrapper
-///   (resolved in structure.rs); unmeasured → ornam label fallback
-/// - wavy-line → MEI `<ornam>` with musicxml:wavy-line label
-/// - other-ornament → MEI `<ornam>` with musicxml:other-ornament label
+///   (resolved in structure.rs); unmeasured → OrnamentDetailData in ExtensionStore
+/// - wavy-line, other-ornament → MEI `<ornam>` + OrnamentDetailData
 fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
     use crate::import::direction::convert_placement;
     use crate::model::data::AboveBelow;
@@ -741,6 +740,7 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
     use tusk_model::elements::{
         MeasureChild, Mordent as MeiMordent, Ornam, OrnamChild, Trill, Turn,
     };
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     let ornaments = match note.notations {
         Some(ref notations) => match notations.ornaments {
@@ -842,46 +842,54 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
         ctx.add_ornament_event(MeasureChild::Turn(Box::new(mei_turn)));
     }
 
-    // vertical-turn → MEI <ornam> with label for roundtrip
+    // vertical-turn → MEI <ornam> + ExtensionStore
     if let Some(ref vt) = ornaments.vertical_turn {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:vertical-turn".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(vt.placement);
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::VerticalTurn);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // inverted-vertical-turn → MEI <ornam> with label
+    // inverted-vertical-turn → MEI <ornam> + ExtensionStore
     if let Some(ref ivt) = ornaments.inverted_vertical_turn {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:inverted-vertical-turn".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(ivt.placement);
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::InvertedVerticalTurn);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // shake → MEI <ornam> with label
+    // shake → MEI <ornam> + ExtensionStore
     if let Some(ref shake) = ornaments.shake {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:shake".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(shake.placement);
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::Shake);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // schleifer → MEI <ornam> with label
+    // schleifer → MEI <ornam> + ExtensionStore
     if ornaments.schleifer.is_some() {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:schleifer".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::Schleifer);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
@@ -902,82 +910,97 @@ fn process_ornaments(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCon
             }
             crate::model::data::TremoloType::Unmeasured => {
                 let mut ornam = Ornam::default();
-                ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-                ornam.common.label = Some(format!(
-                    "musicxml:tremolo,type=unmeasured,value={}",
-                    tremolo.value.unwrap_or(0)
-                ));
+                let id = ctx.generate_id_with_suffix("ornam");
+                ornam.common.xml_id = Some(id.clone());
                 ornam.ornam_log.startid = Some(startid.clone());
                 ornam.ornam_log.staff = Some(staff_str.clone());
                 ornam.ornam_vis.place = place_for(tremolo.placement);
+                ctx.ext_store_mut().insert_ornament_detail(
+                    id,
+                    OrnamentDetailData::UnmeasuredTremolo {
+                        tremolo_type: "unmeasured".to_string(),
+                        value: tremolo.value,
+                    },
+                );
                 ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
             }
         }
     }
 
-    // haydn → MEI <ornam> with label
+    // haydn → MEI <ornam> + ExtensionStore
     if let Some(ref haydn) = ornaments.haydn {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:haydn".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(haydn.placement);
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::Haydn);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // wavy-line → MEI <ornam> with label encoding type and number
+    // wavy-line → MEI <ornam> + ExtensionStore
     if let Some(ref wavy) = ornaments.wavy_line {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         let type_str = match wavy.wavy_line_type {
             StartStopContinue::Start => "start",
             StartStopContinue::Stop => "stop",
             StartStopContinue::Continue => "continue",
         };
-        let number_str = wavy.number.unwrap_or(1).to_string();
-        ornam.common.label = Some(format!(
-            "musicxml:wavy-line,type={},number={}",
-            type_str, number_str
-        ));
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(wavy.placement);
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            OrnamentDetailData::WavyLine {
+                wavy_line_type: type_str.to_string(),
+                number: wavy.number,
+            },
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // other-ornament → MEI <ornam> with label and text content
+    // other-ornament → MEI <ornam> + ExtensionStore
     if let Some(ref other) = ornaments.other_ornament {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some("musicxml:other-ornament".to_string());
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(other.placement);
         if !other.value.is_empty() {
             ornam.children.push(OrnamChild::Text(other.value.clone()));
         }
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            OrnamentDetailData::OtherOrnament {
+                text: other.value.clone(),
+            },
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 
-    // accidental-mark within ornaments → MEI <ornam> with label for roundtrip
+    // accidental-mark within ornaments → MEI <ornam> + ExtensionStore
     for acc_mark in &ornaments.accidental_marks {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        let mut label = format!("musicxml:ornament-accidental-mark,value={}", acc_mark.value);
-        if let Some(ref p) = acc_mark.placement {
-            label.push_str(&format!(
-                ",placement={}",
-                match p {
-                    AboveBelow::Above => "above",
-                    AboveBelow::Below => "below",
-                }
-            ));
-        }
-        ornam.common.label = Some(label);
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         ornam.ornam_vis.place = place_for(acc_mark.placement);
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            OrnamentDetailData::OrnamentAccidentalMark {
+                value: acc_mark.value.clone(),
+                placement: acc_mark.placement.as_ref().map(|p| match p {
+                    AboveBelow::Above => "above".to_string(),
+                    AboveBelow::Below => "below".to_string(),
+                }),
+            },
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 }
@@ -1191,14 +1214,18 @@ fn process_arpeggiate(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
         ctx.add_ornament_event(MeasureChild::Arpeg(Box::new(a)));
     }
 
-    // non-arpeggiate → MEI <arpeg> with @order="nonarp"
+    // non-arpeggiate → MEI <arpeg> with @order="nonarp" + ExtensionStore
     if let Some(ref _nonarp) = notations.non_arpeggiate {
         let mut a = Arpeg::default();
-        a.common.xml_id = Some(ctx.generate_id_with_suffix("arpeg"));
+        let id = ctx.generate_id_with_suffix("arpeg");
+        a.common.xml_id = Some(id.clone());
         a.arpeg_log.startid = Some(startid.clone());
         a.arpeg_log.staff = Some(staff_str.clone());
         a.arpeg_log.order = Some("nonarp".to_string());
-        a.common.label = Some("musicxml:non-arpeggiate".to_string());
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            tusk_model::musicxml_ext::OrnamentDetailData::NonArpeggiate,
+        );
         ctx.add_ornament_event(MeasureChild::Arpeg(Box::new(a)));
     }
 }
@@ -1247,7 +1274,7 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                         .as_ref()
                         .map(|lt| line_type_str(lt).to_string()),
                     text: gliss.text.clone(),
-                    label: None,
+                    is_slide: false,
                 });
             }
             StartStop::Stop => {
@@ -1258,14 +1285,14 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                         mei_staff: pending.mei_staff,
                         line_type: pending.line_type,
                         text: pending.text,
-                        label: None,
+                        is_slide: pending.is_slide,
                     });
                 }
             }
         }
     }
 
-    // slide elements → same as glissando but with label for roundtrip
+    // slide elements → same as glissando but stored as OrnamentDetailData::Slide
     for slide in &notations.slides {
         let number = slide.number.unwrap_or(1);
         match slide.slide_type {
@@ -1281,7 +1308,7 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                         .as_ref()
                         .map(|lt| line_type_str(lt).to_string()),
                     text: slide.text.clone(),
-                    label: Some("musicxml:slide".to_string()),
+                    is_slide: true,
                 });
             }
             StartStop::Stop => {
@@ -1292,7 +1319,7 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
                         mei_staff: pending.mei_staff,
                         line_type: pending.line_type,
                         text: pending.text,
-                        label: pending.label,
+                        is_slide: pending.is_slide,
                     });
                 }
             }
@@ -1306,10 +1333,11 @@ fn process_glissandos(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCo
 
 /// Process standalone accidental-mark notations (outside ornaments).
 ///
-/// Maps to MEI `<ornam>` with label for roundtrip fidelity.
+/// Maps to MEI `<ornam>` + OrnamentDetailData in ExtensionStore.
 fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
     use tusk_model::data::DataUri;
     use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     let notations = match note.notations {
         Some(ref n) => n,
@@ -1325,8 +1353,8 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
 
     for am in &notations.accidental_marks {
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some(format!("musicxml:accidental-mark,value={}", am.value));
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         if let Some(ref placement) = am.placement {
@@ -1336,6 +1364,19 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
         if !am.value.is_empty() {
             ornam.children.push(OrnamChild::Text(am.value.clone()));
         }
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            OrnamentDetailData::AccidentalMark {
+                value: am.value.clone(),
+                placement: am.placement.as_ref().map(|p| {
+                    use crate::model::data::AboveBelow;
+                    match p {
+                        AboveBelow::Above => "above".to_string(),
+                        AboveBelow::Below => "below".to_string(),
+                    }
+                }),
+            },
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 }
@@ -1344,13 +1385,13 @@ fn process_accidental_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conver
 // Other-Notation Processing
 // ============================================================================
 
-/// Process `<other-notation>` elements into MEI `<ornam>` control events with label.
+/// Process `<other-notation>` elements into MEI `<ornam>` control events.
 ///
-/// Uses the same label-based roundtrip pattern as accidental-marks and technical notations.
-/// Label format: `musicxml:other-notation,type=<type>[,number=<num>][,smufl=<name>]`
+/// Stores OrnamentDetailData::OtherNotation in ExtensionStore.
 fn process_other_notations(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
     use tusk_model::data::DataUri;
     use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     let notations = match note.notations {
         Some(ref n) => n,
@@ -1370,17 +1411,10 @@ fn process_other_notations(note: &MusicXmlNote, note_id: &str, ctx: &mut Convers
             crate::model::data::StartStopSingle::Stop => "stop",
             crate::model::data::StartStopSingle::Single => "single",
         };
-        let mut label = format!("musicxml:other-notation,type={}", type_str);
-        if let Some(n) = on.number {
-            label.push_str(&format!(",number={}", n));
-        }
-        if let Some(ref s) = on.smufl {
-            label.push_str(&format!(",smufl={}", s));
-        }
 
         let mut ornam = Ornam::default();
-        ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-        ornam.common.label = Some(label);
+        let id = ctx.generate_id_with_suffix("ornam");
+        ornam.common.xml_id = Some(id.clone());
         ornam.ornam_log.startid = Some(startid.clone());
         ornam.ornam_log.staff = Some(staff_str.clone());
         if let Some(ref placement) = on.placement {
@@ -1390,6 +1424,15 @@ fn process_other_notations(note: &MusicXmlNote, note_id: &str, ctx: &mut Convers
         if !on.text.is_empty() {
             ornam.children.push(OrnamChild::Text(on.text.clone()));
         }
+        ctx.ext_store_mut().insert_ornament_detail(
+            id,
+            OrnamentDetailData::OtherNotation {
+                notation_type: type_str.to_string(),
+                number: on.number,
+                smufl: on.smufl.clone(),
+                text: on.text.clone(),
+            },
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(ornam)));
     }
 }
@@ -1401,13 +1444,14 @@ fn process_other_notations(note: &MusicXmlNote, note_id: &str, ctx: &mut Convers
 /// Process dynamics within `<notations>` into MEI `<dynam>` control events with `@startid`.
 ///
 /// Unlike direction-level dynamics (which use `@tstamp`), notation-level dynamics
-/// are attached to a specific note via `@startid`. We add a `musicxml:notation-dynamics`
-/// label to distinguish them from direction-level dynamics during export.
+/// are attached to a specific note via `@startid`. OrnamentDetailData::NotationDynamics
+/// is stored in ExtensionStore to distinguish them from direction-level dynamics.
 fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionContext) {
     use crate::import::direction::convert_placement;
     use crate::import::utils::dynamics_value_to_string;
     use tusk_model::data::DataUri;
     use tusk_model::elements::{Dynam, DynamChild, MeasureChild};
+    use tusk_model::musicxml_ext::OrnamentDetailData;
 
     let notations = match note.notations {
         Some(ref n) => n,
@@ -1423,8 +1467,8 @@ fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut Conve
 
     for dyn_elem in &notations.dynamics {
         let mut dynam = Dynam::default();
-        dynam.common.xml_id = Some(ctx.generate_id_with_suffix("dynam"));
-        dynam.common.label = Some("musicxml:notation-dynamics".to_string());
+        let id = ctx.generate_id_with_suffix("dynam");
+        dynam.common.xml_id = Some(id.clone());
         dynam.dynam_log.startid = Some(startid.clone());
         dynam.dynam_log.staff = Some(staff_str.clone());
         dynam.dynam_vis.place = convert_placement(dyn_elem.placement.as_ref());
@@ -1439,6 +1483,8 @@ fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut Conve
             dynam.children.push(DynamChild::Text(text_content));
         }
 
+        ctx.ext_store_mut()
+            .insert_ornament_detail(id, OrnamentDetailData::NotationDynamics);
         ctx.add_ornament_event(MeasureChild::Dynam(Box::new(dynam)));
     }
 }
