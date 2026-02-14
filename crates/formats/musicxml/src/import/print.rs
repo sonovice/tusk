@@ -59,35 +59,13 @@ fn build_print_data(print: &Print) -> PrintData {
         blank_page: print.blank_page,
         page_number: print.page_number.clone(),
         staff_spacing: print.staff_spacing,
-        page_layout: print
-            .page_layout
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
-        system_layout: print
-            .system_layout
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
-        staff_layouts: print
-            .staff_layouts
-            .iter()
-            .filter_map(|v| serde_json::to_value(v).ok())
-            .collect(),
-        measure_layout: print
-            .measure_layout
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
-        measure_numbering: print
-            .measure_numbering
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
-        part_name_display: print
-            .part_name_display
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
-        part_abbreviation_display: print
-            .part_abbreviation_display
-            .as_ref()
-            .and_then(|v| serde_json::to_value(v).ok()),
+        page_layout: print.page_layout.clone(),
+        system_layout: print.system_layout.clone(),
+        staff_layouts: print.staff_layouts.clone(),
+        measure_layout: print.measure_layout.clone(),
+        measure_numbering: print.measure_numbering.clone(),
+        part_name_display: print.part_name_display.clone(),
+        part_abbreviation_display: print.part_abbreviation_display.clone(),
         id: print.id.clone(),
     }
 }

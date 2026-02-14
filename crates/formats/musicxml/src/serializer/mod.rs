@@ -154,7 +154,7 @@ pub fn serialize_timewise_with_config(
     let mut writer = MusicXmlWriter::new(&mut buffer, config);
     writer.write_declaration()?;
     writer.write_doctype_timewise()?;
-    score.serialize_timewise(&mut writer)?;
+    score::serialize_score_timewise(score, &mut writer)?;
     Ok(String::from_utf8(buffer)?)
 }
 

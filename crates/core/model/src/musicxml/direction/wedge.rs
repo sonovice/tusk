@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::data::{LineType, YesNo};
+use crate::musicxml::data::{LineType, YesNo};
 
 /// Wedge type for crescendo/diminuendo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

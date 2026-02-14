@@ -344,7 +344,7 @@ fn header_from_ext_store(
     movement_number: &mut Option<String>,
     movement_title: &mut Option<String>,
 ) {
-    use crate::model::elements::{Encoding, Miscellaneous, MiscellaneousField, Opus, TypedText};
+    use crate::model::elements::{Miscellaneous, MiscellaneousField, Opus, TypedText};
 
     // Identification
     if let Some(id_data) = &hdr.identification {
@@ -361,10 +361,8 @@ fn header_from_ext_store(
                 value: r.value.clone(),
             });
         }
-        if let Some(enc_val) = &id_data.encoding {
-            if let Ok(enc) = serde_json::from_value::<Encoding>(enc_val.clone()) {
-                ident.encoding = Some(enc);
-            }
+        if let Some(ref enc) = id_data.encoding {
+            ident.encoding = Some(enc.clone());
         }
         ident.source = id_data.source.clone();
         for rel in &id_data.relations {
@@ -408,19 +406,14 @@ fn header_from_ext_store(
     *movement_number = hdr.movement_number.clone();
     *movement_title = hdr.movement_title.clone();
 
-    // Defaults (stored as serde_json::Value)
-    if let Some(def_val) = &hdr.defaults {
-        if let Ok(d) = serde_json::from_value::<Defaults>(def_val.clone()) {
-            *defaults = Some(d);
-        }
+    // Defaults
+    if let Some(ref d) = hdr.defaults {
+        *defaults = Some(d.clone());
     }
 
-    // Credits (stored as Vec<serde_json::Value>)
-    for credit_val in &hdr.credits {
-        if let Ok(c) = serde_json::from_value::<crate::model::elements::Credit>(credit_val.clone())
-        {
-            credits.push(c);
-        }
+    // Credits
+    for credit in &hdr.credits {
+        credits.push(credit.clone());
     }
 }
 

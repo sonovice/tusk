@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::data::{LeftCenterRight, StartStop, Valign, YesNo};
+use crate::musicxml::data::{LeftCenterRight, StartStop, Valign, YesNo};
 
 /// Metronome/tempo marking.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

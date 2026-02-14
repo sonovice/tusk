@@ -18,7 +18,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::data::{
+use crate::musicxml::data::{
     EnclosureShape, FontSize, FontStyle, FontWeight, LeftCenterRight, StartStop, StartStopContinue,
     Valign, ValignImage, YesNo,
 };
@@ -383,7 +383,7 @@ pub struct Bracket {
 
     /// Line type (solid, dashed, dotted, wavy)
     #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
-    pub line_type: Option<crate::model::data::LineType>,
+    pub line_type: Option<crate::musicxml::data::LineType>,
 
     /// Dash length in tenths
     #[serde(rename = "@dash-length", skip_serializing_if = "Option::is_none")]

@@ -65,11 +65,8 @@ fn build_figured_bass_data(fb: &FiguredBass, offset: Option<OffsetData>) -> Figu
     FiguredBassData {
         figures,
         duration: fb.duration,
-        footnote: fb
-            .footnote
-            .as_ref()
-            .and_then(|f| serde_json::to_value(f).ok()),
-        level: fb.level.as_ref().and_then(|l| serde_json::to_value(l).ok()),
+        footnote: fb.footnote.clone(),
+        level: fb.level.clone(),
         offset,
         parentheses: fb.parentheses.map(|p| p == crate::model::data::YesNo::Yes),
         placement: fb.placement.map(|p| format!("{:?}", p).to_lowercase()),

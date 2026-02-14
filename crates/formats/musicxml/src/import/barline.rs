@@ -105,17 +105,10 @@ fn build_barline_data(b: &Barline) -> BarlineData {
             text: e.text.clone(),
             visual: None,
         }),
-        fermatas: b
-            .fermatas
-            .iter()
-            .filter_map(|f| serde_json::to_value(f).ok())
-            .collect(),
-        segno: b.segno.as_ref().and_then(|s| serde_json::to_value(s).ok()),
-        coda: b.coda.as_ref().and_then(|c| serde_json::to_value(c).ok()),
-        wavy_line: b
-            .wavy_line
-            .as_ref()
-            .and_then(|w| serde_json::to_value(w).ok()),
+        fermatas: b.fermatas.clone(),
+        segno: b.segno.clone(),
+        coda: b.coda.clone(),
+        wavy_line: b.wavy_line.clone(),
         segno_attr: b.segno_attr.clone(),
         coda_attr: b.coda_attr.clone(),
         divisions: b.divisions,

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::data::*;
+use crate::musicxml::data::*;
 
 // ============================================================================
 // Core Document Types

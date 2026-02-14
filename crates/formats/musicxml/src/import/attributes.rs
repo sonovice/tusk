@@ -186,7 +186,7 @@ pub fn process_attributes(
                             ctx.ext_store_mut().insert_key_extras(
                                 id.clone(),
                                 KeyExtras {
-                                    key: serde_json::to_value(key).unwrap_or_default(),
+                                    key: Some(key.clone()),
                                 },
                             );
                         }
@@ -198,7 +198,7 @@ pub fn process_attributes(
                         ctx.ext_store_mut().insert_key_extras(
                             id.clone(),
                             KeyExtras {
-                                key: serde_json::to_value(key).unwrap_or_default(),
+                                key: Some(key.clone()),
                             },
                         );
                     }
@@ -223,7 +223,7 @@ pub fn process_attributes(
                     ctx.ext_store_mut().insert_time_extras(
                         id.clone(),
                         TimeExtras {
-                            time: serde_json::to_value(time).unwrap_or_default(),
+                            time: Some(time.clone()),
                         },
                     );
                 }
@@ -288,11 +288,7 @@ pub fn process_attributes(
                 ctx.ext_store_mut().insert_for_part(
                     id.clone(),
                     ForPartData {
-                        entries: attrs
-                            .for_parts
-                            .iter()
-                            .filter_map(|fp| serde_json::to_value(fp).ok())
-                            .collect(),
+                        entries: attrs.for_parts.clone(),
                     },
                 );
             }

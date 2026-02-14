@@ -504,24 +504,10 @@ fn extract_part_details_from_staff_def(
 ) {
     if let Some(ref id) = staff_def.basic.xml_id {
         if let Some(pd) = ctx.ext_store().part_details(id) {
-            score_part.part_name_display = pd
-                .part_name_display
-                .as_ref()
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            score_part.part_abbreviation_display = pd
-                .part_abbreviation_display
-                .as_ref()
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            score_part.players = pd
-                .players
-                .iter()
-                .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                .collect();
-            score_part.part_links = pd
-                .part_links
-                .iter()
-                .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                .collect();
+            score_part.part_name_display = pd.part_name_display.clone();
+            score_part.part_abbreviation_display = pd.part_abbreviation_display.clone();
+            score_part.players = pd.players.clone();
+            score_part.part_links = pd.part_links.clone();
             score_part.groups = pd.groups.clone();
         }
     }
@@ -535,14 +521,8 @@ fn extract_group_details_from_staff_grp(
 ) {
     if let Some(ref id) = staff_grp.common.xml_id {
         if let Some(gd) = ctx.ext_store().group_details(id) {
-            part_group.group_name_display = gd
-                .group_name_display
-                .as_ref()
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
-            part_group.group_abbreviation_display = gd
-                .group_abbreviation_display
-                .as_ref()
-                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            part_group.group_name_display = gd.group_name_display.clone();
+            part_group.group_abbreviation_display = gd.group_abbreviation_display.clone();
             if gd.group_time == Some(true) {
                 part_group.group_time = Some(crate::model::elements::Empty);
             }

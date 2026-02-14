@@ -45,15 +45,9 @@ fn build_figured_bass_from_data(data: &FiguredBassData) -> FiguredBass {
         sound: o.sound.map(|b| if b { YesNo::Yes } else { YesNo::No }),
     });
 
-    let footnote = data
-        .footnote
-        .as_ref()
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
+    let footnote = data.footnote.clone();
 
-    let level = data
-        .level
-        .as_ref()
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
+    let level = data.level.clone();
 
     let parentheses = data
         .parentheses

@@ -18,10 +18,8 @@ pub fn convert_listening(listening: &Listening, ctx: &mut ConversionContext) -> 
     dir.dir_log.staff = Some("1".to_string());
 
     if let Some(ref id) = dir.common.xml_id {
-        if let Ok(val) = serde_json::to_value(listening) {
-            ctx.ext_store_mut()
-                .insert_listening(id.clone(), ListeningData::Listening(val));
-        }
+        ctx.ext_store_mut()
+            .insert_listening(id.clone(), ListeningData::Listening(listening.clone()));
     }
 
     MeasureChild::Dir(Box::new(dir))
@@ -37,10 +35,8 @@ pub fn convert_grouping(grouping: &Grouping, ctx: &mut ConversionContext) -> Mea
     dir.dir_log.staff = Some("1".to_string());
 
     if let Some(ref id) = dir.common.xml_id {
-        if let Ok(val) = serde_json::to_value(grouping) {
-            ctx.ext_store_mut()
-                .insert_listening(id.clone(), ListeningData::Grouping(val));
-        }
+        ctx.ext_store_mut()
+            .insert_listening(id.clone(), ListeningData::Grouping(grouping.clone()));
     }
 
     MeasureChild::Dir(Box::new(dir))
@@ -56,10 +52,8 @@ pub fn convert_link(link: &Link, ctx: &mut ConversionContext) -> MeasureChild {
     dir.dir_log.staff = Some("1".to_string());
 
     if let Some(ref id) = dir.common.xml_id {
-        if let Ok(val) = serde_json::to_value(link) {
-            ctx.ext_store_mut()
-                .insert_listening(id.clone(), ListeningData::Link(val));
-        }
+        ctx.ext_store_mut()
+            .insert_listening(id.clone(), ListeningData::Link(link.clone()));
     }
 
     MeasureChild::Dir(Box::new(dir))
@@ -75,10 +69,8 @@ pub fn convert_bookmark(bookmark: &Bookmark, ctx: &mut ConversionContext) -> Mea
     dir.dir_log.staff = Some("1".to_string());
 
     if let Some(ref id) = dir.common.xml_id {
-        if let Ok(val) = serde_json::to_value(bookmark) {
-            ctx.ext_store_mut()
-                .insert_listening(id.clone(), ListeningData::Bookmark(val));
-        }
+        ctx.ext_store_mut()
+            .insert_listening(id.clone(), ListeningData::Bookmark(bookmark.clone()));
     }
 
     MeasureChild::Dir(Box::new(dir))

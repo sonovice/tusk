@@ -19,8 +19,8 @@
 //! # Example
 //!
 //! ```
-//! use tusk_musicxml::model::duration::DurationContext;
-//! use tusk_musicxml::model::note::NoteTypeValue;
+//! use tusk_model::musicxml::duration::DurationContext;
+//! use tusk_model::musicxml::note::NoteTypeValue;
 //!
 //! let mut ctx = DurationContext::new();
 //! ctx.set_divisions(4.0);

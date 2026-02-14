@@ -980,26 +980,13 @@ fn build_barline_from_data(data: &tusk_model::musicxml_ext::BarlineData) -> Barl
         }
     });
 
-    let fermatas = data
-        .fermatas
-        .iter()
-        .filter_map(|f| serde_json::from_value(f.clone()).ok())
-        .collect();
+    let fermatas = data.fermatas.clone();
 
-    let segno = data
-        .segno
-        .as_ref()
-        .and_then(|s| serde_json::from_value(s.clone()).ok());
+    let segno = data.segno.clone();
 
-    let coda = data
-        .coda
-        .as_ref()
-        .and_then(|c| serde_json::from_value(c.clone()).ok());
+    let coda = data.coda.clone();
 
-    let wavy_line = data
-        .wavy_line
-        .as_ref()
-        .and_then(|w| serde_json::from_value(w.clone()).ok());
+    let wavy_line = data.wavy_line.clone();
 
     Barline {
         location,

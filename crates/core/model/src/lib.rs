@@ -22,6 +22,7 @@
 
 pub mod extensions;
 pub mod generated;
+pub mod musicxml;
 pub mod musicxml_ext;
 
 // Re-export all generated modules at crate root for cleaner imports

@@ -108,126 +108,102 @@ pub fn convert_direction(
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Rehearsal(rehearsals) => {
-                let data = DirectionContentData::Rehearsal(
-                    serde_json::to_value(rehearsals).unwrap_or_default(),
-                );
+                let data = DirectionContentData::Rehearsal(rehearsals.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Segno(segnos) => {
-                let data =
-                    DirectionContentData::Segno(serde_json::to_value(segnos).unwrap_or_default());
+                let data = DirectionContentData::Segno(segnos.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Coda(codas) => {
-                let data =
-                    DirectionContentData::Coda(serde_json::to_value(codas).unwrap_or_default());
+                let data = DirectionContentData::Coda(codas.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Symbol(symbols) => {
-                let data =
-                    DirectionContentData::Symbol(serde_json::to_value(symbols).unwrap_or_default());
+                let data = DirectionContentData::Symbol(symbols.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Dashes(dashes) => {
-                let data =
-                    DirectionContentData::Dashes(serde_json::to_value(dashes).unwrap_or_default());
+                let data = DirectionContentData::Dashes(dashes.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Bracket(bracket) => {
-                let data = DirectionContentData::Bracket(
-                    serde_json::to_value(bracket).unwrap_or_default(),
-                );
+                let data = DirectionContentData::Bracket(bracket.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Pedal(pedal) => {
-                let data =
-                    DirectionContentData::Pedal(serde_json::to_value(pedal).unwrap_or_default());
+                let data = DirectionContentData::Pedal(pedal.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::OctaveShift(shift) => {
-                let data = DirectionContentData::OctaveShift(
-                    serde_json::to_value(shift).unwrap_or_default(),
-                );
+                let data = DirectionContentData::OctaveShift(shift.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::HarpPedals(hp) => {
-                let data =
-                    DirectionContentData::HarpPedals(serde_json::to_value(hp).unwrap_or_default());
+                let data = DirectionContentData::HarpPedals(hp.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::Damp(_) => {
-                let data = DirectionContentData::Damp(serde_json::Value::Null);
+            DirectionTypeContent::Damp(d) => {
+                let data = DirectionContentData::Damp(d.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::DampAll(_) => {
-                let data = DirectionContentData::DampAll(serde_json::Value::Null);
+            DirectionTypeContent::DampAll(da) => {
+                let data = DirectionContentData::DampAll(da.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
-            DirectionTypeContent::Eyeglasses(_) => {
-                let data = DirectionContentData::Eyeglasses(serde_json::Value::Null);
+            DirectionTypeContent::Eyeglasses(eg) => {
+                let data = DirectionContentData::Eyeglasses(eg.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::StringMute(sm) => {
-                let data =
-                    DirectionContentData::StringMute(serde_json::to_value(sm).unwrap_or_default());
+                let data = DirectionContentData::StringMute(sm.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Scordatura(sc) => {
-                let data =
-                    DirectionContentData::Scordatura(serde_json::to_value(sc).unwrap_or_default());
+                let data = DirectionContentData::Scordatura(sc.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Image(img) => {
-                let data =
-                    DirectionContentData::Image(serde_json::to_value(img).unwrap_or_default());
+                let data = DirectionContentData::Image(img.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::PrincipalVoice(pv) => {
-                let data = DirectionContentData::PrincipalVoice(
-                    serde_json::to_value(pv).unwrap_or_default(),
-                );
+                let data = DirectionContentData::PrincipalVoice(pv.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::Percussion(perc) => {
-                let data = DirectionContentData::Percussion(
-                    serde_json::to_value(perc).unwrap_or_default(),
-                );
+                let data = DirectionContentData::Percussion(perc.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::AccordionRegistration(ar) => {
-                let data = DirectionContentData::AccordionRegistration(
-                    serde_json::to_value(ar).unwrap_or_default(),
-                );
+                let data = DirectionContentData::AccordionRegistration(ar.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::StaffDivide(sd) => {
-                let data =
-                    DirectionContentData::StaffDivide(serde_json::to_value(sd).unwrap_or_default());
+                let data = DirectionContentData::StaffDivide(sd.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }
             DirectionTypeContent::OtherDirection(other) => {
-                let data = DirectionContentData::OtherDirection(
-                    serde_json::to_value(other).unwrap_or_default(),
-                );
+                let data = DirectionContentData::OtherDirection(other.clone());
                 let dir = dir_with_ext(tstamp.clone(), staff, place.clone(), ctx, data);
                 results.push(DirectionConversionResult::Dir(dir));
             }

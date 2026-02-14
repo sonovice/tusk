@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::musicxml;
+
 // ---------------------------------------------------------------------------
 // HarmonyData
 // ---------------------------------------------------------------------------
@@ -461,11 +463,11 @@ pub struct ScoreHeaderData {
 
     /// Defaults (layout, appearance, fonts).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub defaults: Option<serde_json::Value>,
+    pub defaults: Option<musicxml::elements::Defaults>,
 
     /// Credits (title page elements).
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub credits: Vec<serde_json::Value>,
+    pub credits: Vec<musicxml::elements::Credit>,
 }
 
 /// Identification metadata.
@@ -482,7 +484,7 @@ pub struct IdentificationData {
 
     /// Encoding info.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub encoding: Option<serde_json::Value>,
+    pub encoding: Option<musicxml::elements::Encoding>,
 
     /// Source description.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -556,31 +558,31 @@ pub struct PrintData {
 
     /// Inline page layout.
     #[serde(rename = "pl", skip_serializing_if = "Option::is_none")]
-    pub page_layout: Option<serde_json::Value>,
+    pub page_layout: Option<musicxml::elements::PageLayout>,
 
     /// Inline system layout.
     #[serde(rename = "sl", skip_serializing_if = "Option::is_none")]
-    pub system_layout: Option<serde_json::Value>,
+    pub system_layout: Option<musicxml::elements::SystemLayout>,
 
     /// Staff layouts.
     #[serde(rename = "stl", skip_serializing_if = "Vec::is_empty")]
-    pub staff_layouts: Vec<serde_json::Value>,
+    pub staff_layouts: Vec<musicxml::elements::StaffLayout>,
 
     /// Measure layout.
     #[serde(rename = "ml", skip_serializing_if = "Option::is_none")]
-    pub measure_layout: Option<serde_json::Value>,
+    pub measure_layout: Option<musicxml::print::MeasureLayout>,
 
     /// Measure numbering.
     #[serde(rename = "mnum", skip_serializing_if = "Option::is_none")]
-    pub measure_numbering: Option<serde_json::Value>,
+    pub measure_numbering: Option<musicxml::print::MeasureNumbering>,
 
     /// Part name display.
     #[serde(rename = "pnd", skip_serializing_if = "Option::is_none")]
-    pub part_name_display: Option<serde_json::Value>,
+    pub part_name_display: Option<musicxml::elements::NameDisplay>,
 
     /// Part abbreviation display.
     #[serde(rename = "pad", skip_serializing_if = "Option::is_none")]
-    pub part_abbreviation_display: Option<serde_json::Value>,
+    pub part_abbreviation_display: Option<musicxml::elements::NameDisplay>,
 
     /// Element ID.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -671,19 +673,19 @@ pub struct BarlineData {
 
     /// Fermatas (up to 2).
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub fermatas: Vec<serde_json::Value>,
+    pub fermatas: Vec<musicxml::notations::Fermata>,
 
     /// Segno mark.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub segno: Option<serde_json::Value>,
+    pub segno: Option<musicxml::direction::Segno>,
 
     /// Coda mark.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub coda: Option<serde_json::Value>,
+    pub coda: Option<musicxml::direction::Coda>,
 
     /// Wavy line.
     #[serde(rename = "wl", skip_serializing_if = "Option::is_none")]
-    pub wavy_line: Option<serde_json::Value>,
+    pub wavy_line: Option<musicxml::notations::WavyLine>,
 
     /// Segno attribute.
     #[serde(rename = "sa", skip_serializing_if = "Option::is_none")]
@@ -740,13 +742,13 @@ pub struct EndingData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ListeningData {
     /// MusicXML `<listening>`.
-    Listening(serde_json::Value),
+    Listening(musicxml::listening::Listening),
     /// MusicXML `<grouping>`.
-    Grouping(serde_json::Value),
+    Grouping(musicxml::listening::Grouping),
     /// MusicXML `<link>`.
-    Link(serde_json::Value),
+    Link(musicxml::elements::Link),
     /// MusicXML `<bookmark>`.
-    Bookmark(serde_json::Value),
+    Bookmark(musicxml::elements::Bookmark),
 }
 
 // ---------------------------------------------------------------------------
@@ -988,19 +990,19 @@ pub struct MidiInstrumentDataInner {
 pub struct PartDetailsData {
     /// Part name display.
     #[serde(rename = "pnd", skip_serializing_if = "Option::is_none")]
-    pub part_name_display: Option<serde_json::Value>,
+    pub part_name_display: Option<musicxml::elements::NameDisplay>,
 
     /// Part abbreviation display.
     #[serde(rename = "pad", skip_serializing_if = "Option::is_none")]
-    pub part_abbreviation_display: Option<serde_json::Value>,
+    pub part_abbreviation_display: Option<musicxml::elements::NameDisplay>,
 
     /// Players.
     #[serde(rename = "pl", skip_serializing_if = "Vec::is_empty")]
-    pub players: Vec<serde_json::Value>,
+    pub players: Vec<musicxml::elements::Player>,
 
     /// Part links.
     #[serde(rename = "plk", skip_serializing_if = "Vec::is_empty")]
-    pub part_links: Vec<serde_json::Value>,
+    pub part_links: Vec<musicxml::elements::PartLink>,
 
     /// Groups this part belongs to.
     #[serde(rename = "grp", skip_serializing_if = "Vec::is_empty")]
@@ -1019,11 +1021,11 @@ pub struct PartDetailsData {
 pub struct GroupDetailsData {
     /// Group name display.
     #[serde(rename = "gnd", skip_serializing_if = "Option::is_none")]
-    pub group_name_display: Option<serde_json::Value>,
+    pub group_name_display: Option<musicxml::elements::NameDisplay>,
 
     /// Group abbreviation display.
     #[serde(rename = "gad", skip_serializing_if = "Option::is_none")]
-    pub group_abbreviation_display: Option<serde_json::Value>,
+    pub group_abbreviation_display: Option<musicxml::elements::NameDisplay>,
 
     /// Group time flag.
     #[serde(rename = "gt", skip_serializing_if = "Option::is_none")]
@@ -1042,11 +1044,11 @@ pub struct GroupDetailsData {
 pub struct NoteExtras {
     /// Notehead data.
     #[serde(rename = "nh", skip_serializing_if = "Option::is_none")]
-    pub notehead: Option<serde_json::Value>,
+    pub notehead: Option<musicxml::note::Notehead>,
 
     /// Notehead text.
     #[serde(rename = "nht", skip_serializing_if = "Option::is_none")]
-    pub notehead_text: Option<serde_json::Value>,
+    pub notehead_text: Option<musicxml::note::NoteheadText>,
 
     /// Play data.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1054,23 +1056,23 @@ pub struct NoteExtras {
 
     /// Listen data.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen: Option<serde_json::Value>,
+    pub listen: Option<musicxml::listening::Listen>,
 
     /// Footnote.
     #[serde(rename = "fn", skip_serializing_if = "Option::is_none")]
-    pub footnote: Option<serde_json::Value>,
+    pub footnote: Option<musicxml::note::FormattedText>,
 
     /// Level.
     #[serde(rename = "lv", skip_serializing_if = "Option::is_none")]
-    pub level: Option<serde_json::Value>,
+    pub level: Option<musicxml::note::Level>,
 
     /// Notations-level footnote.
     #[serde(rename = "nfn", skip_serializing_if = "Option::is_none")]
-    pub notations_footnote: Option<serde_json::Value>,
+    pub notations_footnote: Option<musicxml::note::FormattedText>,
 
     /// Notations-level level.
     #[serde(rename = "nlv", skip_serializing_if = "Option::is_none")]
-    pub notations_level: Option<serde_json::Value>,
+    pub notations_level: Option<musicxml::note::Level>,
 
     /// Instrument references.
     #[serde(rename = "inst", skip_serializing_if = "Vec::is_empty")]
@@ -1078,7 +1080,7 @@ pub struct NoteExtras {
 
     /// Full MusicXML articulations data for lossless multi-artic roundtrip.
     #[serde(rename = "art", skip_serializing_if = "Option::is_none")]
-    pub articulations: Option<serde_json::Value>,
+    pub articulations: Option<musicxml::notations::Articulations>,
 
     /// Technical articulations mapped to MEI @artic (up-bow, down-bow, snap, stopped).
     /// Each entry carries placement info for lossless roundtrip.
@@ -1095,7 +1097,7 @@ pub struct PlayData {
     pub id: Option<String>,
     /// Play entries (IPA, mute, semi-pitched, other-play).
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub entries: Vec<serde_json::Value>,
+    pub entries: Vec<musicxml::direction::PlayEntry>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1122,7 +1124,7 @@ pub enum StemExtras {
 #[serde(default)]
 pub struct KeyExtras {
     /// Full key data for non-traditional keys, cancel, or key-octaves.
-    pub key: serde_json::Value,
+    pub key: Option<musicxml::attributes::Key>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1136,7 +1138,7 @@ pub struct KeyExtras {
 #[serde(default)]
 pub struct TimeExtras {
     /// Full time data for interchangeable or complex time signatures.
-    pub time: serde_json::Value,
+    pub time: Option<musicxml::attributes::Time>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1150,7 +1152,7 @@ pub struct TimeExtras {
 #[serde(default)]
 pub struct ForPartData {
     /// Full for-part entries.
-    pub entries: Vec<serde_json::Value>,
+    pub entries: Vec<musicxml::attributes::ForPart>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1164,7 +1166,7 @@ pub struct ForPartData {
 #[serde(default)]
 pub struct StaffDetailsExtras {
     /// Full staff-details data.
-    pub details: serde_json::Value,
+    pub details: musicxml::attributes::StaffDetails,
 }
 
 // ---------------------------------------------------------------------------
@@ -1209,7 +1211,7 @@ pub struct PartSymbolExtras {
 #[serde(default)]
 pub struct LyricExtras {
     /// Full lyric data for attributes not in MEI (justify, time-only, etc).
-    pub lyric: serde_json::Value,
+    pub lyric: Option<musicxml::lyric::Lyric>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1280,11 +1282,11 @@ pub struct FiguredBassData {
 
     /// Editorial footnote.
     #[serde(rename = "fn", skip_serializing_if = "Option::is_none")]
-    pub footnote: Option<serde_json::Value>,
+    pub footnote: Option<musicxml::note::FormattedText>,
 
     /// Editorial level.
     #[serde(rename = "lv", skip_serializing_if = "Option::is_none")]
-    pub level: Option<serde_json::Value>,
+    pub level: Option<musicxml::note::Level>,
 
     /// Offset from current position.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1390,45 +1392,45 @@ pub use technical::*;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DirectionContentData {
     /// Rehearsal mark(s) — text content.
-    Rehearsal(serde_json::Value),
+    Rehearsal(Vec<musicxml::direction::Rehearsal>),
     /// Segno sign(s).
-    Segno(serde_json::Value),
+    Segno(Vec<musicxml::direction::Segno>),
     /// Coda sign(s).
-    Coda(serde_json::Value),
+    Coda(Vec<musicxml::direction::Coda>),
     /// SMuFL symbol(s) — glyph names.
-    Symbol(serde_json::Value),
+    Symbol(Vec<musicxml::direction::Symbol>),
     /// Dashes (cresc./dim. text extension).
-    Dashes(serde_json::Value),
+    Dashes(musicxml::direction::Dashes),
     /// Bracket line.
-    Bracket(serde_json::Value),
+    Bracket(musicxml::direction::Bracket),
     /// Piano pedal mark.
-    Pedal(serde_json::Value),
+    Pedal(musicxml::direction::Pedal),
     /// Octave shift (8va, 8vb, 15ma, etc.).
-    OctaveShift(serde_json::Value),
+    OctaveShift(musicxml::direction::OctaveShift),
     /// Harp pedal diagram.
-    HarpPedals(serde_json::Value),
+    HarpPedals(musicxml::direction::HarpPedals),
     /// Harp damping.
-    Damp(serde_json::Value),
+    Damp(musicxml::direction::Damp),
     /// Damp all strings.
-    DampAll(serde_json::Value),
+    DampAll(musicxml::direction::DampAll),
     /// Eyeglasses symbol.
-    Eyeglasses(serde_json::Value),
+    Eyeglasses(musicxml::direction::Eyeglasses),
     /// String mute on/off.
-    StringMute(serde_json::Value),
+    StringMute(musicxml::direction::StringMute),
     /// Scordatura (string tuning).
-    Scordatura(serde_json::Value),
+    Scordatura(musicxml::direction::Scordatura),
     /// Embedded image.
-    Image(serde_json::Value),
+    Image(musicxml::direction::DirectionImage),
     /// Principal voice marking.
-    PrincipalVoice(serde_json::Value),
+    PrincipalVoice(musicxml::direction::PrincipalVoice),
     /// Percussion pictogram(s).
-    Percussion(serde_json::Value),
+    Percussion(Vec<musicxml::direction::Percussion>),
     /// Accordion registration diagram.
-    AccordionRegistration(serde_json::Value),
+    AccordionRegistration(musicxml::direction::AccordionRegistration),
     /// Staff division symbol.
-    StaffDivide(serde_json::Value),
+    StaffDivide(musicxml::direction::StaffDivide),
     /// Other direction type.
-    OtherDirection(serde_json::Value),
+    OtherDirection(musicxml::direction::OtherDirection),
 }
 
 #[cfg(test)]

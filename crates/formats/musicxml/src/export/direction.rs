@@ -6,9 +6,7 @@
 use super::utils::convert_mei_duration_to_beat_unit;
 use crate::context::ConversionContext;
 use crate::model::data::AboveBelow;
-use crate::model::direction::{
-    Damp, DampAll, Direction, DirectionType, DirectionTypeContent, Eyeglasses, Words,
-};
+use crate::model::direction::{Direction, DirectionType, DirectionTypeContent, Words};
 use crate::model::elements::MeasureContent;
 
 /// Convert an MEI dynam element to a MusicXML direction with dynamics.
@@ -406,60 +404,26 @@ fn build_direction_type_from_data(
 ) -> DirectionTypeContent {
     use tusk_model::musicxml_ext::DirectionContentData as D;
     match data {
-        D::Rehearsal(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Rehearsal)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Segno(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Segno)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Coda(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Coda)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Symbol(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Symbol)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Dashes(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Dashes)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Bracket(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Bracket)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Pedal(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Pedal)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::OctaveShift(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::OctaveShift)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::HarpPedals(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::HarpPedals)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Damp(_) => DirectionTypeContent::Damp(Damp::default()),
-        D::DampAll(_) => DirectionTypeContent::DampAll(DampAll::default()),
-        D::Eyeglasses(_) => DirectionTypeContent::Eyeglasses(Eyeglasses::default()),
-        D::StringMute(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::StringMute)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Scordatura(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Scordatura)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Image(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Image)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::PrincipalVoice(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::PrincipalVoice)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::Percussion(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::Percussion)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::AccordionRegistration(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::AccordionRegistration)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::StaffDivide(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::StaffDivide)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
-        D::OtherDirection(v) => serde_json::from_value(v.clone())
-            .map(DirectionTypeContent::OtherDirection)
-            .unwrap_or(DirectionTypeContent::Words(vec![])),
+        D::Rehearsal(v) => DirectionTypeContent::Rehearsal(v.clone()),
+        D::Segno(v) => DirectionTypeContent::Segno(v.clone()),
+        D::Coda(v) => DirectionTypeContent::Coda(v.clone()),
+        D::Symbol(v) => DirectionTypeContent::Symbol(v.clone()),
+        D::Dashes(v) => DirectionTypeContent::Dashes(v.clone()),
+        D::Bracket(v) => DirectionTypeContent::Bracket(v.clone()),
+        D::Pedal(v) => DirectionTypeContent::Pedal(v.clone()),
+        D::OctaveShift(v) => DirectionTypeContent::OctaveShift(v.clone()),
+        D::HarpPedals(v) => DirectionTypeContent::HarpPedals(v.clone()),
+        D::Damp(v) => DirectionTypeContent::Damp(v.clone()),
+        D::DampAll(v) => DirectionTypeContent::DampAll(v.clone()),
+        D::Eyeglasses(v) => DirectionTypeContent::Eyeglasses(v.clone()),
+        D::StringMute(v) => DirectionTypeContent::StringMute(v.clone()),
+        D::Scordatura(v) => DirectionTypeContent::Scordatura(v.clone()),
+        D::Image(v) => DirectionTypeContent::Image(v.clone()),
+        D::PrincipalVoice(v) => DirectionTypeContent::PrincipalVoice(v.clone()),
+        D::Percussion(v) => DirectionTypeContent::Percussion(v.clone()),
+        D::AccordionRegistration(v) => DirectionTypeContent::AccordionRegistration(v.clone()),
+        D::StaffDivide(v) => DirectionTypeContent::StaffDivide(v.clone()),
+        D::OtherDirection(v) => DirectionTypeContent::OtherDirection(v.clone()),
     }
 }
 

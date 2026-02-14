@@ -451,14 +451,12 @@ fn convert_mei_articulations(
     // Preferred: read full articulations from ExtensionStore
     if let Some(id) = &mei_note.common.xml_id {
         if let Some(extras) = ctx.ext_store().note_extras(id) {
-            if let Some(ref val) = extras.articulations {
-                if let Ok(artics) = serde_json::from_value::<Articulations>(val.clone()) {
-                    if artics != Articulations::default() {
-                        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
-                        notations.articulations = Some(artics);
-                    }
-                    return;
+            if let Some(ref artics) = extras.articulations {
+                if *artics != Articulations::default() {
+                    let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+                    notations.articulations = Some(artics.clone());
                 }
+                return;
             }
         }
     }
@@ -696,58 +694,38 @@ fn restore_note_label_elements(
 
     // NoteExtras (notehead, play, listen, footnote, level, etc.)
     if let Some(extras) = ctx.ext_store().note_extras(id) {
-        if let Some(ref val) = extras.notehead {
-            if let Ok(nh) = serde_json::from_value::<crate::model::note::Notehead>(val.clone()) {
-                mxml_note.notehead = Some(nh);
-            }
+        if let Some(ref nh) = extras.notehead {
+            mxml_note.notehead = Some(nh.clone());
         }
-        if let Some(ref val) = extras.notehead_text {
-            if let Ok(nht) = serde_json::from_value::<crate::model::note::NoteheadText>(val.clone())
-            {
-                mxml_note.notehead_text = Some(nht);
-            }
+        if let Some(ref nht) = extras.notehead_text {
+            mxml_note.notehead_text = Some(nht.clone());
         }
         if let Some(ref play_data) = extras.play {
-            if let Ok(val) = serde_json::to_value(play_data) {
-                if let Ok(play) = serde_json::from_value::<crate::model::direction::Play>(val) {
-                    mxml_note.play = Some(play);
-                }
-            }
+            mxml_note.play = Some(crate::model::direction::Play {
+                id: play_data.id.clone(),
+                entries: play_data.entries.clone(),
+            });
         }
-        if let Some(ref val) = extras.listen {
-            if let Ok(listen) =
-                serde_json::from_value::<crate::model::listening::Listen>(val.clone())
-            {
-                mxml_note.listen = Some(listen);
-            }
+        if let Some(ref listen) = extras.listen {
+            mxml_note.listen = Some(listen.clone());
         }
-        if let Some(ref val) = extras.footnote {
-            if let Ok(ft) = serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
-            {
-                mxml_note.footnote = Some(ft);
-            }
+        if let Some(ref ft) = extras.footnote {
+            mxml_note.footnote = Some(ft.clone());
         }
-        if let Some(ref val) = extras.level {
-            if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone()) {
-                mxml_note.level = Some(lv);
-            }
+        if let Some(ref lv) = extras.level {
+            mxml_note.level = Some(lv.clone());
         }
-        if let Some(ref val) = extras.notations_footnote {
-            if let Ok(ft) = serde_json::from_value::<crate::model::note::FormattedText>(val.clone())
-            {
-                let notations = mxml_note
-                    .notations
-                    .get_or_insert_with(crate::model::notations::Notations::default);
-                notations.footnote = Some(ft);
-            }
+        if let Some(ref ft) = extras.notations_footnote {
+            let notations = mxml_note
+                .notations
+                .get_or_insert_with(crate::model::notations::Notations::default);
+            notations.footnote = Some(ft.clone());
         }
-        if let Some(ref val) = extras.notations_level {
-            if let Ok(lv) = serde_json::from_value::<crate::model::note::Level>(val.clone()) {
-                let notations = mxml_note
-                    .notations
-                    .get_or_insert_with(crate::model::notations::Notations::default);
-                notations.level = Some(lv);
-            }
+        if let Some(ref lv) = extras.notations_level {
+            let notations = mxml_note
+                .notations
+                .get_or_insert_with(crate::model::notations::Notations::default);
+            notations.level = Some(lv.clone());
         }
     }
 
@@ -924,10 +902,8 @@ fn convert_mei_lyrics(
                 None => format!("{}_v", note_id),
             };
             if let Some(le) = ctx.ext_store().lyric_extras(&verse_key) {
-                if let Ok(lyric) =
-                    serde_json::from_value::<crate::model::lyric::Lyric>(le.lyric.clone())
-                {
-                    mxml_note.lyrics.push(lyric);
+                if let Some(ref lyric) = le.lyric {
+                    mxml_note.lyrics.push(lyric.clone());
                     continue;
                 }
             }

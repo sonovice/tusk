@@ -17,9 +17,7 @@ fn extract_staff_details(staff_def: &StaffDef, ctx: &ConversionContext) -> Optio
     // Try ExtensionStore per-concept map
     if let Some(ref id) = staff_def.basic.xml_id {
         if let Some(sde) = ctx.ext_store().staff_details(id) {
-            if let Ok(sd) = serde_json::from_value::<StaffDetails>(sde.details.clone()) {
-                return Some(sd);
-            }
+            return Some(sde.details.clone());
         }
     }
 
@@ -43,7 +41,7 @@ fn extract_key_from_ext(
 ) -> Option<crate::model::attributes::Key> {
     let id = staff_def.basic.xml_id.as_ref()?;
     let ke = ctx.ext_store().key_extras(id)?;
-    serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone()).ok()
+    ke.key.clone()
 }
 
 /// Extract MusicXML Time from ExtensionStore.
@@ -53,7 +51,7 @@ fn extract_time_from_ext(
 ) -> Option<crate::model::attributes::Time> {
     let id = staff_def.basic.xml_id.as_ref()?;
     let te = ctx.ext_store().time_extras(id)?;
-    serde_json::from_value::<crate::model::attributes::Time>(te.time.clone()).ok()
+    te.time.clone()
 }
 
 /// Extract ForPart vec from ExtensionStore.
@@ -63,15 +61,10 @@ fn extract_for_parts_from_ext(
 ) -> Option<Vec<crate::model::attributes::ForPart>> {
     let id = staff_def.basic.xml_id.as_ref()?;
     let fpd = ctx.ext_store().for_part(id)?;
-    let entries: Vec<crate::model::attributes::ForPart> = fpd
-        .entries
-        .iter()
-        .filter_map(|v| serde_json::from_value(v.clone()).ok())
-        .collect();
-    if entries.is_empty() {
+    if fpd.entries.is_empty() {
         None
     } else {
-        Some(entries)
+        Some(fpd.entries.clone())
     }
 }
 

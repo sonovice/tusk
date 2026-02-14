@@ -2114,55 +2114,40 @@ fn populate_note_ext_store(
     let mut has_extras = false;
 
     if let Some(ref nh) = note.notehead {
-        if let Ok(val) = serde_json::to_value(nh) {
-            extras.notehead = Some(val);
-            has_extras = true;
-        }
+        extras.notehead = Some(nh.clone());
+        has_extras = true;
     }
     if let Some(ref nht) = note.notehead_text {
-        if let Ok(val) = serde_json::to_value(nht) {
-            extras.notehead_text = Some(val);
-            has_extras = true;
-        }
+        extras.notehead_text = Some(nht.clone());
+        has_extras = true;
     }
     if let Some(ref play) = note.play {
-        if let Ok(val) = serde_json::to_value(play) {
-            extras.play = serde_json::from_value::<PlayData>(val).ok();
-            if extras.play.is_some() {
-                has_extras = true;
-            }
-        }
+        extras.play = Some(PlayData {
+            id: play.id.clone(),
+            entries: play.entries.clone(),
+        });
+        has_extras = true;
     }
     if let Some(ref listen) = note.listen {
-        if let Ok(val) = serde_json::to_value(listen) {
-            extras.listen = Some(val);
-            has_extras = true;
-        }
+        extras.listen = Some(listen.clone());
+        has_extras = true;
     }
     if let Some(ref ft) = note.footnote {
-        if let Ok(val) = serde_json::to_value(ft) {
-            extras.footnote = Some(val);
-            has_extras = true;
-        }
+        extras.footnote = Some(ft.clone());
+        has_extras = true;
     }
     if let Some(ref lv) = note.level {
-        if let Ok(val) = serde_json::to_value(lv) {
-            extras.level = Some(val);
-            has_extras = true;
-        }
+        extras.level = Some(lv.clone());
+        has_extras = true;
     }
     if let Some(ref notations) = note.notations {
         if let Some(ref ft) = notations.footnote {
-            if let Ok(val) = serde_json::to_value(ft) {
-                extras.notations_footnote = Some(val);
-                has_extras = true;
-            }
+            extras.notations_footnote = Some(ft.clone());
+            has_extras = true;
         }
         if let Some(ref lv) = notations.level {
-            if let Ok(val) = serde_json::to_value(lv) {
-                extras.notations_level = Some(val);
-                has_extras = true;
-            }
+            extras.notations_level = Some(lv.clone());
+            has_extras = true;
         }
     }
     if !note.instruments.is_empty() {
@@ -2177,10 +2162,8 @@ fn populate_note_ext_store(
             let mut artics_for_store = artics.clone();
             artics_for_store.breath_mark = None;
             artics_for_store.caesura = None;
-            if let Ok(val) = serde_json::to_value(&artics_for_store) {
-                extras.articulations = Some(val);
-                has_extras = true;
-            }
+            extras.articulations = Some(artics_for_store);
+            has_extras = true;
         }
     }
 
@@ -2191,14 +2174,12 @@ fn populate_note_ext_store(
 
     // LyricExtras — store per-verse ext data on note id with verse suffix
     for lyric in &note.lyrics {
-        if let Ok(val) = serde_json::to_value(lyric) {
-            let verse_key = match &lyric.number {
-                Some(num) => format!("{}_v{}", note_id, num),
-                None => format!("{}_v", note_id),
-            };
-            ctx.ext_store_mut()
-                .insert_lyric_extras(verse_key, LyricExtras { lyric: val });
-        }
+        let verse_key = match &lyric.number {
+            Some(num) => format!("{}_v{}", note_id, num),
+            None => format!("{}_v", note_id),
+        };
+        ctx.ext_store_mut()
+            .insert_lyric_extras(verse_key, LyricExtras { lyric: Some(lyric.clone()) });
     }
 }
 

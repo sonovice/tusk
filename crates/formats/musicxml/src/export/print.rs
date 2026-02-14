@@ -73,35 +73,13 @@ pub fn convert_mei_pb(pb: &Pb, ctx: &mut ConversionContext) -> Option<MeasureCon
 /// Build a MusicXML `Print` from typed `PrintData`.
 fn build_print_from_data(data: &PrintData) -> Print {
     Print {
-        page_layout: data
-            .page_layout
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        system_layout: data
-            .system_layout
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        staff_layouts: data
-            .staff_layouts
-            .iter()
-            .filter_map(|v| serde_json::from_value(v.clone()).ok())
-            .collect(),
-        measure_layout: data
-            .measure_layout
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        measure_numbering: data
-            .measure_numbering
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        part_name_display: data
-            .part_name_display
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
-        part_abbreviation_display: data
-            .part_abbreviation_display
-            .as_ref()
-            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        page_layout: data.page_layout.clone(),
+        system_layout: data.system_layout.clone(),
+        staff_layouts: data.staff_layouts.clone(),
+        measure_layout: data.measure_layout.clone(),
+        measure_numbering: data.measure_numbering.clone(),
+        part_name_display: data.part_name_display.clone(),
+        part_abbreviation_display: data.part_abbreviation_display.clone(),
         staff_spacing: data.staff_spacing,
         new_system: data
             .new_system

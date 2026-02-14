@@ -167,7 +167,7 @@ fn populate_ext_store_header(
                 });
             }
             if let Some(enc) = &ident.encoding {
-                id_data.encoding = serde_json::to_value(enc).ok();
+                id_data.encoding = Some(enc.clone());
             }
             id_data.source = ident.source.clone();
             for rel in &ident.relations {
@@ -215,18 +215,14 @@ fn populate_ext_store_header(
 
     // Defaults
     if let Some(defaults) = &score.defaults {
-        if let Ok(val) = serde_json::to_value(defaults) {
-            header.defaults = Some(val);
-            has_data = true;
-        }
+        header.defaults = Some(defaults.clone());
+        has_data = true;
     }
 
     // Credits
     if !score.credits.is_empty() {
         for credit in &score.credits {
-            if let Ok(val) = serde_json::to_value(credit) {
-                header.credits.push(val);
-            }
+            header.credits.push(credit.clone());
         }
         if !header.credits.is_empty() {
             has_data = true;

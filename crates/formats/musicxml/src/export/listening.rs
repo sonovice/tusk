@@ -3,8 +3,6 @@
 
 use crate::context::ConversionContext;
 use crate::model::elements::MeasureContent;
-use crate::model::elements::score::{Bookmark, Link};
-use crate::model::listening::{Grouping, Listening};
 use tusk_model::elements::Dir;
 use tusk_model::musicxml_ext::ListeningData;
 
@@ -16,20 +14,16 @@ pub fn convert_mei_listening_dir(dir: &Dir, ctx: &mut ConversionContext) -> Opti
     let data = ctx.ext_store().listening(id)?;
     match data {
         ListeningData::Listening(val) => {
-            let l: Listening = serde_json::from_value(val.clone()).ok()?;
-            Some(MeasureContent::Listening(Box::new(l)))
+            Some(MeasureContent::Listening(Box::new(val.clone())))
         }
         ListeningData::Grouping(val) => {
-            let g: Grouping = serde_json::from_value(val.clone()).ok()?;
-            Some(MeasureContent::Grouping(Box::new(g)))
+            Some(MeasureContent::Grouping(Box::new(val.clone())))
         }
         ListeningData::Link(val) => {
-            let l: Link = serde_json::from_value(val.clone()).ok()?;
-            Some(MeasureContent::Link(Box::new(l)))
+            Some(MeasureContent::Link(Box::new(val.clone())))
         }
         ListeningData::Bookmark(val) => {
-            let b: Bookmark = serde_json::from_value(val.clone()).ok()?;
-            Some(MeasureContent::Bookmark(Box::new(b)))
+            Some(MeasureContent::Bookmark(Box::new(val.clone())))
         }
     }
 }

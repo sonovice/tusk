@@ -29,7 +29,7 @@ pub struct Listening {
 
     /// Optional offset from current position in divisions
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<crate::model::direction::Offset>,
+    pub offset: Option<crate::musicxml::direction::Offset>,
 }
 
 /// A child of the `<listening>` element.

@@ -4,15 +4,15 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::data::YesNo;
+use crate::musicxml::data::YesNo;
 
 use super::barline::Barline;
 use super::score::{Bookmark, Link};
-use crate::model::direction::Sound;
-use crate::model::figured_bass::FiguredBass;
-use crate::model::harmony::Harmony;
-use crate::model::listening::{Grouping, Listening};
-use crate::model::print::Print;
+use crate::musicxml::direction::Sound;
+use crate::musicxml::figured_bass::FiguredBass;
+use crate::musicxml::harmony::Harmony;
+use crate::musicxml::listening::{Grouping, Listening};
+use crate::musicxml::print::Print;
 
 /// A measure in a part.
 ///
@@ -71,15 +71,15 @@ impl Measure {
 #[serde(rename_all = "lowercase")]
 pub enum MeasureContent {
     /// A note or rest.
-    Note(Box<crate::model::note::Note>),
+    Note(Box<crate::musicxml::note::Note>),
     /// Backup - moves the cursor backward in time.
-    Backup(Box<crate::model::note::Backup>),
+    Backup(Box<crate::musicxml::note::Backup>),
     /// Forward - moves the cursor forward in time.
-    Forward(Box<crate::model::note::Forward>),
+    Forward(Box<crate::musicxml::note::Forward>),
     /// Attributes (key, time, clef, divisions, etc.).
-    Attributes(Box<crate::model::attributes::Attributes>),
+    Attributes(Box<crate::musicxml::attributes::Attributes>),
     /// Direction (dynamics, tempo, pedals, wedges, etc.).
-    Direction(Box<crate::model::direction::Direction>),
+    Direction(Box<crate::musicxml::direction::Direction>),
     /// Harmony (chord symbols, Roman numerals, fretboard diagrams).
     Harmony(Box<Harmony>),
     /// Figured bass notation.

@@ -7,8 +7,7 @@
 use crate::context::ConversionContext;
 use crate::model::data::YesNo;
 use crate::model::direction::{
-    InstrumentChange, Offset, Play, PlayEntry, Sound, SoundMidiGroup, Swing, SwingContent,
-    SwingRatio,
+    InstrumentChange, Offset, Play, Sound, SoundMidiGroup, Swing, SwingContent, SwingRatio,
 };
 use crate::model::elements::MeasureContent;
 use crate::model::elements::score::{MidiDevice, MidiInstrument};
@@ -94,11 +93,7 @@ fn build_midi_group(g: &SoundMidiGroupData) -> SoundMidiGroup {
         }),
         play: g.play.as_ref().map(|p| Play {
             id: p.id.clone(),
-            entries: p
-                .entries
-                .iter()
-                .filter_map(|v| serde_json::from_value::<PlayEntry>(v.clone()).ok())
-                .collect(),
+            entries: p.entries.clone(),
         }),
     }
 }

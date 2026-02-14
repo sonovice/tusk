@@ -184,10 +184,11 @@ fn barline_data_roundtrip() {
 
 #[test]
 fn listening_data_roundtrip() {
-    let data = ListeningData::Grouping(serde_json::json!({
-        "type": "start",
-        "member_of": "phrase"
-    }));
+    let data = ListeningData::Grouping(musicxml::listening::Grouping {
+        grouping_type: "start".into(),
+        member_of: Some("phrase".into()),
+        ..Default::default()
+    });
     let json = serde_json::to_string(&data).unwrap();
     let back: ListeningData = serde_json::from_str(&json).unwrap();
     assert_eq!(data, back);
@@ -268,8 +269,12 @@ fn instrument_data_roundtrip() {
 
 #[test]
 fn part_details_data_roundtrip() {
+    use crate::musicxml::elements::NameDisplay;
     let data = PartDetailsData {
-        part_name_display: Some(serde_json::json!({"print_object": "yes"})),
+        part_name_display: Some(NameDisplay {
+            print_object: Some(crate::musicxml::data::YesNo::Yes),
+            ..Default::default()
+        }),
         groups: vec!["group1".into()],
         ..Default::default()
     };
@@ -280,8 +285,9 @@ fn part_details_data_roundtrip() {
 
 #[test]
 fn group_details_data_roundtrip() {
+    use crate::musicxml::elements::NameDisplay;
     let data = GroupDetailsData {
-        group_name_display: Some(serde_json::json!({"content": []})),
+        group_name_display: Some(NameDisplay::default()),
         group_time: Some(true),
         ..Default::default()
     };
@@ -293,11 +299,15 @@ fn group_details_data_roundtrip() {
 #[test]
 fn note_extras_roundtrip() {
     let data = NoteExtras {
-        notehead: Some(serde_json::json!({"value": "diamond", "filled": "yes"})),
+        notehead: Some(musicxml::note::Notehead {
+            value: musicxml::note::NoteheadValue::Diamond,
+            filled: Some(musicxml::data::YesNo::Yes),
+            ..Default::default()
+        }),
         instruments: vec!["P1-I1".into(), "P1-I2".into()],
         play: Some(PlayData {
             id: Some("play-1".into()),
-            entries: vec![serde_json::json!({"mute": "straight"})],
+            entries: vec![musicxml::direction::PlayEntry::Mute("straight".into())],
         }),
         ..Default::default()
     };
@@ -318,7 +328,19 @@ fn stem_extras_roundtrip() {
 #[test]
 fn key_extras_roundtrip() {
     let data = KeyExtras {
-        key: serde_json::json!({"alterations": [{"step": "F", "alter": 1.0}]}),
+        key: Some(musicxml::attributes::Key {
+            number: None,
+            print_object: None,
+            id: None,
+            content: musicxml::attributes::KeyContent::Traditional(
+                musicxml::attributes::TraditionalKey {
+                    cancel: None,
+                    fifths: 2,
+                    mode: Some(musicxml::attributes::Mode::Major),
+                },
+            ),
+            key_octaves: Vec::new(),
+        }),
     };
     let json = serde_json::to_string(&data).unwrap();
     let back: KeyExtras = serde_json::from_str(&json).unwrap();
@@ -328,7 +350,22 @@ fn key_extras_roundtrip() {
 #[test]
 fn time_extras_roundtrip() {
     let data = TimeExtras {
-        time: serde_json::json!({"interchangeable": {"symbol": "common"}}),
+        time: Some(musicxml::attributes::Time {
+            number: None,
+            symbol: Some(musicxml::attributes::TimeSymbol::Common),
+            separator: None,
+            print_object: None,
+            id: None,
+            content: musicxml::attributes::TimeContent::Standard(
+                musicxml::attributes::StandardTime {
+                    signatures: vec![musicxml::attributes::TimeSignature {
+                        beats: "4".into(),
+                        beat_type: "4".into(),
+                    }],
+                    interchangeable: None,
+                },
+            ),
+        }),
     };
     let json = serde_json::to_string(&data).unwrap();
     let back: TimeExtras = serde_json::from_str(&json).unwrap();
@@ -338,7 +375,16 @@ fn time_extras_roundtrip() {
 #[test]
 fn for_part_data_roundtrip() {
     let data = ForPartData {
-        entries: vec![serde_json::json!({"chromatic": -2, "diatonic": -1})],
+        entries: vec![musicxml::attributes::ForPart {
+            number: None,
+            id: None,
+            part_clef: None,
+            part_transpose: musicxml::attributes::PartTranspose {
+                diatonic: Some(-1),
+                chromatic: -2.0,
+                ..Default::default()
+            },
+        }],
     };
     let json = serde_json::to_string(&data).unwrap();
     let back: ForPartData = serde_json::from_str(&json).unwrap();
@@ -348,7 +394,10 @@ fn for_part_data_roundtrip() {
 #[test]
 fn staff_details_extras_roundtrip() {
     let data = StaffDetailsExtras {
-        details: serde_json::json!({"staff_type": "alternate", "staff_lines": 6}),
+        details: musicxml::attributes::StaffDetails {
+            staff_lines: Some(6),
+            ..Default::default()
+        },
     };
     let json = serde_json::to_string(&data).unwrap();
     let back: StaffDetailsExtras = serde_json::from_str(&json).unwrap();
@@ -372,7 +421,25 @@ fn part_symbol_extras_roundtrip() {
 #[test]
 fn lyric_extras_roundtrip() {
     let data = LyricExtras {
-        lyric: serde_json::json!({"justify": "left", "time_only": "1"}),
+        lyric: Some(musicxml::lyric::Lyric {
+            number: Some("1".into()),
+            name: None,
+            justify: Some(musicxml::data::LeftCenterRight::Left),
+            default_x: None,
+            default_y: None,
+            relative_x: None,
+            relative_y: None,
+            placement: None,
+            color: None,
+            print_object: None,
+            time_only: Some("1".into()),
+            id: None,
+            content: musicxml::lyric::LyricContent::Humming,
+            end_line: false,
+            end_paragraph: false,
+            footnote: None,
+            level: None,
+        }),
     };
     let json = serde_json::to_string(&data).unwrap();
     let back: LyricExtras = serde_json::from_str(&json).unwrap();
@@ -436,22 +503,21 @@ fn offset_data_roundtrip() {
 #[test]
 fn direction_content_data_roundtrip() {
     // Simple marker type
-    let damp = DirectionContentData::Damp(serde_json::Value::Null);
+    let damp = DirectionContentData::Damp(musicxml::direction::Damp::default());
     let json = serde_json::to_string(&damp).unwrap();
     let back: DirectionContentData = serde_json::from_str(&json).unwrap();
     assert_eq!(damp, back);
 
     // Type with structured data
-    let pedal = DirectionContentData::Pedal(serde_json::json!({
-        "@type": "start",
-        "@line": "yes"
-    }));
+    let mut pedal_val = musicxml::direction::Pedal::new(musicxml::direction::PedalType::Start);
+    pedal_val.line = Some(musicxml::data::YesNo::Yes);
+    let pedal = DirectionContentData::Pedal(pedal_val);
     let json = serde_json::to_string(&pedal).unwrap();
     let back: DirectionContentData = serde_json::from_str(&json).unwrap();
     assert_eq!(pedal, back);
 
     // Rehearsal with text
-    let rehearsal = DirectionContentData::Rehearsal(serde_json::json!([{"$value": "A"}]));
+    let rehearsal = DirectionContentData::Rehearsal(vec![musicxml::direction::Rehearsal::new("A")]);
     let json = serde_json::to_string(&rehearsal).unwrap();
     let back: DirectionContentData = serde_json::from_str(&json).unwrap();
     assert_eq!(rehearsal, back);

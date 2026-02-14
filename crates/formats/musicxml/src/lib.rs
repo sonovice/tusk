@@ -68,11 +68,13 @@ pub mod convert;
 pub mod convert_error;
 pub mod export;
 pub mod import;
-pub mod model;
 pub mod mxl;
 pub mod parser;
 pub mod serializer;
 pub mod versions;
+
+/// MusicXML model types (re-exported from tusk-model core crate).
+pub use tusk_model::musicxml as model;
 
 // Re-export commonly used types from model
 pub use model::*;

@@ -1675,101 +1675,104 @@ pub(crate) fn push_opt_str_attr_start(
 // ScoreTimewise serialization
 // ============================================================================
 
-impl ScoreTimewise {
-    /// Serialize this timewise score to a MusicXML writer.
-    ///
-    /// Uses `<score-timewise>` as the root element and nests parts inside
-    /// measures (the inverse of partwise).
-    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        let mut start = w.start_element("score-timewise");
-        if let Some(ref v) = self.version {
-            start.push_attribute(("version", v.as_str()));
-        }
-        w.write_start(start)?;
-
-        // Header elements (same order as partwise)
-        if let Some(ref work) = self.work {
-            work.serialize(w)?;
-        }
-        w.write_opt_text_element("movement-number", &self.movement_number)?;
-        w.write_opt_text_element("movement-title", &self.movement_title)?;
-        if let Some(ref ident) = self.identification {
-            ident.serialize(w)?;
-        }
-        if let Some(ref defaults) = self.defaults {
-            defaults.serialize(w)?;
-        }
-        for credit in &self.credits {
-            credit.serialize(w)?;
-        }
-        self.part_list.serialize(w)?;
-
-        // Measures (each containing parts)
-        for measure in &self.measures {
-            measure.serialize_timewise(w)?;
-        }
-
-        w.write_end("score-timewise")?;
-        Ok(())
+/// Serialize a timewise score to a MusicXML writer.
+///
+/// Uses `<score-timewise>` as the root element and nests parts inside
+/// measures (the inverse of partwise).
+pub fn serialize_score_timewise<W: Write>(
+    score: &ScoreTimewise,
+    w: &mut MusicXmlWriter<W>,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("score-timewise");
+    if let Some(ref v) = score.version {
+        start.push_attribute(("version", v.as_str()));
     }
+    w.write_start(start)?;
+
+    // Header elements (same order as partwise)
+    if let Some(ref work) = score.work {
+        work.serialize(w)?;
+    }
+    w.write_opt_text_element("movement-number", &score.movement_number)?;
+    w.write_opt_text_element("movement-title", &score.movement_title)?;
+    if let Some(ref ident) = score.identification {
+        ident.serialize(w)?;
+    }
+    if let Some(ref defaults) = score.defaults {
+        defaults.serialize(w)?;
+    }
+    for credit in &score.credits {
+        credit.serialize(w)?;
+    }
+    score.part_list.serialize(w)?;
+
+    // Measures (each containing parts)
+    for measure in &score.measures {
+        serialize_timewise_measure(measure, w)?;
+    }
+
+    w.write_end("score-timewise")?;
+    Ok(())
 }
 
-impl TimewiseMeasure {
-    /// Serialize a timewise measure to the writer.
-    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        let mut start = w.start_element("measure");
-        start.push_attribute(("number", self.number.as_str()));
-        if let Some(ref text) = self.text {
-            start.push_attribute(("text", text.as_str()));
-        }
-        if let Some(ref imp) = self.implicit {
-            start.push_attribute(("implicit", yes_no_str(imp)));
-        }
-        if let Some(ref nc) = self.non_controlling {
-            start.push_attribute(("non-controlling", yes_no_str(nc)));
-        }
-        if let Some(width) = self.width {
-            let s = width.to_string();
-            start.push_attribute(("width", s.as_str()));
-        }
-        w.write_start(start)?;
-
-        for part in &self.parts {
-            part.serialize_timewise(w)?;
-        }
-
-        w.write_end("measure")?;
-        Ok(())
+/// Serialize a timewise measure to the writer.
+fn serialize_timewise_measure<W: Write>(
+    measure: &TimewiseMeasure,
+    w: &mut MusicXmlWriter<W>,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("measure");
+    start.push_attribute(("number", measure.number.as_str()));
+    if let Some(ref text) = measure.text {
+        start.push_attribute(("text", text.as_str()));
     }
+    if let Some(ref imp) = measure.implicit {
+        start.push_attribute(("implicit", yes_no_str(imp)));
+    }
+    if let Some(ref nc) = measure.non_controlling {
+        start.push_attribute(("non-controlling", yes_no_str(nc)));
+    }
+    if let Some(width) = measure.width {
+        let s = width.to_string();
+        start.push_attribute(("width", s.as_str()));
+    }
+    w.write_start(start)?;
+
+    for part in &measure.parts {
+        serialize_timewise_part(part, w)?;
+    }
+
+    w.write_end("measure")?;
+    Ok(())
 }
 
-impl TimewisePart {
-    /// Serialize a timewise part (within a measure) to the writer.
-    pub fn serialize_timewise<W: Write>(&self, w: &mut MusicXmlWriter<W>) -> SerializeResult<()> {
-        let mut start = w.start_element("part");
-        start.push_attribute(("id", self.id.as_str()));
-        w.write_start(start)?;
+/// Serialize a timewise part (within a measure) to the writer.
+fn serialize_timewise_part<W: Write>(
+    part: &TimewisePart,
+    w: &mut MusicXmlWriter<W>,
+) -> SerializeResult<()> {
+    let mut start = w.start_element("part");
+    start.push_attribute(("id", part.id.as_str()));
+    w.write_start(start)?;
 
-        for item in &self.content {
-            match item {
-                MeasureContent::Note(note) => note.serialize(w)?,
-                MeasureContent::Backup(backup) => backup.serialize(w)?,
-                MeasureContent::Forward(forward) => forward.serialize(w)?,
-                MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
-                MeasureContent::Direction(dir) => dir.serialize(w)?,
-                MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
-                MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
-                MeasureContent::Print(print) => print.serialize(w)?,
-                MeasureContent::Sound(sound) => sound.serialize(w)?,
-                MeasureContent::Listening(listening) => listening.serialize(w)?,
-                MeasureContent::Barline(barline) => barline.serialize(w)?,
-                MeasureContent::Grouping(grouping) => grouping.serialize(w)?,
-                MeasureContent::Link(link) => link.serialize(w)?,
-                MeasureContent::Bookmark(bookmark) => bookmark.serialize(w)?,
-            }
+    for item in &part.content {
+        match item {
+            MeasureContent::Note(note) => note.serialize(w)?,
+            MeasureContent::Backup(backup) => backup.serialize(w)?,
+            MeasureContent::Forward(forward) => forward.serialize(w)?,
+            MeasureContent::Attributes(attrs) => attrs.serialize(w)?,
+            MeasureContent::Direction(dir) => dir.serialize(w)?,
+            MeasureContent::Harmony(harmony) => harmony.serialize(w)?,
+            MeasureContent::FiguredBass(fb) => fb.serialize(w)?,
+            MeasureContent::Print(print) => print.serialize(w)?,
+            MeasureContent::Sound(sound) => sound.serialize(w)?,
+            MeasureContent::Listening(listening) => listening.serialize(w)?,
+            MeasureContent::Barline(barline) => barline.serialize(w)?,
+            MeasureContent::Grouping(grouping) => grouping.serialize(w)?,
+            MeasureContent::Link(link) => link.serialize(w)?,
+            MeasureContent::Bookmark(bookmark) => bookmark.serialize(w)?,
         }
-
-        w.write_end("part")?;
-        Ok(())
     }
+
+    w.write_end("part")?;
+    Ok(())
 }

@@ -480,14 +480,8 @@ fn convert_staff_grp_from_part_group(
             ctx.ext_store_mut().insert_group_details(
                 id.clone(),
                 GroupDetailsData {
-                    group_name_display: part_group
-                        .group_name_display
-                        .as_ref()
-                        .and_then(|v| serde_json::to_value(v).ok()),
-                    group_abbreviation_display: part_group
-                        .group_abbreviation_display
-                        .as_ref()
-                        .and_then(|v| serde_json::to_value(v).ok()),
+                    group_name_display: part_group.group_name_display.clone(),
+                    group_abbreviation_display: part_group.group_abbreviation_display.clone(),
                     group_time: part_group.group_time.map(|_| true),
                 },
             );
@@ -601,7 +595,7 @@ pub fn convert_staff_def_from_score_part(
                         ctx.ext_store_mut().insert_key_extras(
                             score_part.id.clone(),
                             KeyExtras {
-                                key: serde_json::to_value(key).unwrap_or_default(),
+                                key: Some(key.clone()),
                             },
                         );
                     }
@@ -611,7 +605,7 @@ pub fn convert_staff_def_from_score_part(
                     ctx.ext_store_mut().insert_key_extras(
                         score_part.id.clone(),
                         KeyExtras {
-                            key: serde_json::to_value(key).unwrap_or_default(),
+                            key: Some(key.clone()),
                         },
                     );
                 }
@@ -633,7 +627,7 @@ pub fn convert_staff_def_from_score_part(
                 ctx.ext_store_mut().insert_time_extras(
                     score_part.id.clone(),
                     TimeExtras {
-                        time: serde_json::to_value(time).unwrap_or_default(),
+                        time: Some(time.clone()),
                     },
                 );
             }
@@ -712,11 +706,7 @@ pub fn convert_staff_def_from_score_part(
             ctx.ext_store_mut().insert_for_part(
                 score_part.id.clone(),
                 tusk_model::musicxml_ext::ForPartData {
-                    entries: attrs
-                        .for_parts
-                        .iter()
-                        .filter_map(|fp| serde_json::to_value(fp).ok())
-                        .collect(),
+                    entries: attrs.for_parts.clone(),
                 },
             );
         }
@@ -758,24 +748,10 @@ pub fn convert_staff_def_from_score_part(
         ctx.ext_store_mut().insert_part_details(
             score_part.id.clone(),
             PartDetailsData {
-                part_name_display: score_part
-                    .part_name_display
-                    .as_ref()
-                    .and_then(|v| serde_json::to_value(v).ok()),
-                part_abbreviation_display: score_part
-                    .part_abbreviation_display
-                    .as_ref()
-                    .and_then(|v| serde_json::to_value(v).ok()),
-                players: score_part
-                    .players
-                    .iter()
-                    .filter_map(|p| serde_json::to_value(p).ok())
-                    .collect(),
-                part_links: score_part
-                    .part_links
-                    .iter()
-                    .filter_map(|p| serde_json::to_value(p).ok())
-                    .collect(),
+                part_name_display: score_part.part_name_display.clone(),
+                part_abbreviation_display: score_part.part_abbreviation_display.clone(),
+                players: score_part.players.clone(),
+                part_links: score_part.part_links.clone(),
                 groups: score_part.groups.clone(),
             },
         );
@@ -888,7 +864,7 @@ fn apply_staff_details_to_staff_def(
             ctx.ext_store_mut().insert_staff_details(
                 id.clone(),
                 StaffDetailsExtras {
-                    details: serde_json::to_value(&sd_for_json).unwrap_or_default(),
+                    details: sd_for_json,
                 },
             );
         }

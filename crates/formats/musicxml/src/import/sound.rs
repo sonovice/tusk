@@ -156,11 +156,7 @@ pub(crate) fn build_sound_data(s: &Sound) -> SoundData {
                     }),
                 play: g.play.as_ref().map(|p| PlayData {
                     id: p.id.clone(),
-                    entries: p
-                        .entries
-                        .iter()
-                        .filter_map(|e| serde_json::to_value(e).ok())
-                        .collect(),
+                    entries: p.entries.clone(),
                 }),
             })
             .collect(),
