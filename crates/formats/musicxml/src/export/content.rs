@@ -1116,9 +1116,9 @@ fn convert_direction_events(
                 // Standalone sound elements — emit on first staff only
                 if dir
                     .common
-                    .label
-                    .as_deref()
-                    .is_some_and(|l| l.starts_with(crate::import::sound::SOUND_LABEL_PREFIX))
+                    .xml_id
+                    .as_ref()
+                    .is_some_and(|id| ctx.ext_store().sound(id).is_some())
                 {
                     if local_staff_n == 1 {
                         if let Some(content) = super::sound::convert_mei_sound_dir(dir, ctx) {

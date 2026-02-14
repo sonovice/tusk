@@ -8,9 +8,6 @@ use crate::model::direction::Sound;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::SoundData;
 
-/// Label marker for MEI dir elements carrying standalone sound data (via ExtensionStore).
-pub const SOUND_LABEL_PREFIX: &str = "musicxml:sound";
-
 /// Convert a standalone MusicXML `<sound>` element to an MEI `<dir>` measure child.
 ///
 /// Data is stored in ExtensionStore for lossless roundtrip.
@@ -18,13 +15,11 @@ pub const SOUND_LABEL_PREFIX: &str = "musicxml:sound";
 pub fn convert_sound(sound: &Sound, ctx: &mut ConversionContext) -> MeasureChild {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("sound"));
-    dir.common.label = Some(SOUND_LABEL_PREFIX.to_string());
 
-    // Store typed SoundData + raw MusicXML JSON in ExtensionStore
+    // Store typed SoundData in ExtensionStore per-concept map
     if let Some(ref id) = dir.common.xml_id {
-        let entry = ctx.ext_store_mut().entry(id.clone());
-        entry.sound = Some(build_sound_data(sound));
-        entry.mxml_json = serde_json::to_value(sound).ok();
+        ctx.ext_store_mut()
+            .insert_sound(id.clone(), build_sound_data(sound));
     }
 
     // Human-readable summary
@@ -91,7 +86,11 @@ fn sound_summary(sound: &Sound) -> String {
 
 pub(crate) fn build_sound_data(s: &Sound) -> SoundData {
     use crate::model::data::YesNo;
-    use tusk_model::musicxml_ext::OffsetData;
+    use crate::model::direction::SwingContent;
+    use tusk_model::musicxml_ext::{
+        InstrumentChangeData, MidiDeviceData, MidiInstrumentDataInner, OffsetData, PlayData,
+        SoundMidiGroupData, SwingData, VirtualInstrumentData,
+    };
 
     SoundData {
         tempo: s.tempo,
@@ -114,13 +113,74 @@ pub(crate) fn build_sound_data(s: &Sound) -> SoundData {
         midi_groups: s
             .midi_instrument_changes
             .iter()
-            .filter_map(|g| serde_json::to_value(g).ok())
-            .filter_map(|v| serde_json::from_value(v).ok())
+            .map(|g| SoundMidiGroupData {
+                instrument_change: g.instrument_change.as_ref().map(|ic| InstrumentChangeData {
+                    id: ic.id.clone(),
+                    instrument_sound: ic.instrument_sound.clone(),
+                    solo: ic.solo,
+                    ensemble: ic.ensemble.as_ref().map(|e| {
+                        if e.is_empty() {
+                            None
+                        } else {
+                            e.parse::<u32>().ok()
+                        }
+                    }),
+                    virtual_instrument: if ic.virtual_library.is_some() || ic.virtual_name.is_some()
+                    {
+                        Some(VirtualInstrumentData {
+                            library: ic.virtual_library.clone(),
+                            name: ic.virtual_name.clone(),
+                        })
+                    } else {
+                        None
+                    },
+                }),
+                midi_device: g.midi_device.as_ref().map(|md| MidiDeviceData {
+                    value: md.value.clone(),
+                    port: md.port,
+                    id: md.id.clone(),
+                }),
+                midi_instrument: g
+                    .midi_instrument
+                    .as_ref()
+                    .map(|mi| MidiInstrumentDataInner {
+                        id: mi.id.clone(),
+                        channel: mi.midi_channel,
+                        name: mi.midi_name.clone(),
+                        bank: mi.midi_bank,
+                        program: mi.midi_program,
+                        unpitched: mi.midi_unpitched,
+                        volume: mi.volume,
+                        pan: mi.pan,
+                        elevation: mi.elevation,
+                    }),
+                play: g.play.as_ref().map(|p| PlayData {
+                    id: p.id.clone(),
+                    entries: p
+                        .entries
+                        .iter()
+                        .filter_map(|e| serde_json::to_value(e).ok())
+                        .collect(),
+                }),
+            })
             .collect(),
-        swing: s.swing.as_ref().and_then(|sw| {
-            serde_json::to_value(sw)
-                .ok()
-                .and_then(|v| serde_json::from_value(v).ok())
+        swing: s.swing.as_ref().map(|sw| {
+            let (content_type, first, second, swing_type) = match &sw.content {
+                SwingContent::Straight => ("straight".to_string(), None, None, None),
+                SwingContent::Ratio(r) => (
+                    "ratio".to_string(),
+                    Some(r.first),
+                    Some(r.second),
+                    r.swing_type.clone(),
+                ),
+            };
+            SwingData {
+                content_type,
+                first,
+                second,
+                swing_type,
+                style: sw.swing_style.clone(),
+            }
         }),
         offset: s.offset.as_ref().map(|o| OffsetData {
             value: o.value,
@@ -128,13 +188,4 @@ pub(crate) fn build_sound_data(s: &Sound) -> SoundData {
         }),
         id: s.id.clone(),
     }
-}
-
-/// Deserialize a Sound from a legacy JSON roundtrip label.
-pub fn sound_from_label(label: &str) -> Option<Sound> {
-    if label == SOUND_LABEL_PREFIX {
-        return None;
-    }
-    let json = label.strip_prefix("musicxml:sound,")?;
-    serde_json::from_str(json).ok()
 }

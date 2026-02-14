@@ -95,11 +95,19 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.4 Sound migration
 
-- [ ] Import (`import/sound.rs`): write to `ext_store.sounds`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:sound` label
-- [ ] Export (`export/sound.rs`): read from `ext_store.sounds.get(id)`
-- [ ] Remove `sound_from_label()` legacy function
-- [ ] Tests pass
+- [x] Import (`import/sound.rs`): write to `ext_store.sounds`
+  - Uses `insert_sound()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:sound` label
+  - Removed label assignment, mxml_json write
+  - Fixed `build_sound_data()` to use manual conversion for swing/midi_groups (serde roundtrip between mismatched types was lossy)
+- [x] Export (`export/sound.rs`): read from `ext_store.sounds.get(id)`
+  - New `build_sound_from_data()` reconstructs Sound from SoundData (typed, no JSON deser)
+  - Manual `build_midi_group()` and `build_swing()` helpers for struct conversion
+  - Sound dir identification uses ExtensionStore membership instead of label prefix check
+- [x] Remove `sound_from_label()` legacy function
+  - Removed function + `SOUND_LABEL_PREFIX` constant
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.5 MeasureStyle migration
 
