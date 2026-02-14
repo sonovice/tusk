@@ -46,7 +46,7 @@ pub fn convert_harmony(harmony: &Harmony, ctx: &mut ConversionContext) -> Harm {
         harmony_normalized.offset = None;
     }
 
-    // Store typed HarmonyData in ExtensionStore (no label, no mxml_json)
+    // Store typed HarmonyData in ExtensionStore
     if let Some(ref id) = harm.common.xml_id {
         ctx.ext_store_mut()
             .insert_harmony(id.clone(), build_harmony_data(&harmony_normalized));

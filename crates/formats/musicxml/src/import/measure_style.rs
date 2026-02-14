@@ -26,7 +26,7 @@ fn convert_one(ms: &MeasureStyle, ctx: &mut ConversionContext) -> Option<Measure
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("mstyle"));
 
-    // Store typed MeasureStyleData in ExtensionStore (no label, no mxml_json)
+    // Store typed MeasureStyleData in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
         ctx.ext_store_mut()
             .insert_measure_style(id.clone(), build_measure_style_data(ms));

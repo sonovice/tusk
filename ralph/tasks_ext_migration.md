@@ -217,21 +217,34 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 3.1 Build MusicXML structs from typed data
 
-- [ ] Harmony: implement `HarmonyData → Harmony` conversion in export (instead of deserializing mxml_json)
-- [ ] Barline: implement `BarlineData → Barline` conversion
-- [ ] Print: implement `PrintData → Print` conversion
-- [ ] Sound: implement `SoundData → Sound` conversion
-- [ ] MeasureStyle: implement `MeasureStyleData → MeasureStyle` conversion
-- [ ] Listening: implement `ListeningData → MeasureContent` conversion
-- [ ] FiguredBass: implement `FiguredBassData → FiguredBass` conversion
-- [ ] Tests pass
+- [x] Harmony: implement `HarmonyData → Harmony` conversion in export (instead of deserializing mxml_json)
+  - Already done in Phase 2.1: `build_harmony_from_data()` in export/harmony.rs
+- [x] Barline: implement `BarlineData → Barline` conversion
+  - Already done in Phase 2.2: `build_barline_from_data()` in export/content.rs
+- [x] Print: implement `PrintData → Print` conversion
+  - Already done in Phase 2.3: `build_print_from_data()` in export/print.rs
+- [x] Sound: implement `SoundData → Sound` conversion
+  - Already done in Phase 2.4: `build_sound_from_data()` in export/sound.rs
+- [x] MeasureStyle: implement `MeasureStyleData → MeasureStyle` conversion
+  - Already done in Phase 2.5: `build_measure_style_from_data()` in export/measure_style.rs
+- [x] Listening: implement `ListeningData → MeasureContent` conversion
+  - Already done in Phase 2.6: `convert_mei_listening_dir()` in export/listening.rs
+- [x] FiguredBass: implement `FiguredBassData → FiguredBass` conversion
+  - Already done in Phase 2.7: `build_figured_bass_from_data()` in export/figured_bass.rs
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ### 3.2 Remove mxml_json
 
-- [ ] Remove all `mxml_json` writes from import code
-- [ ] Remove all `mxml_json` reads from export code
-- [ ] Remove `mxml_json` field from `ExtData`
-- [ ] Tests pass
+- [x] Remove all `mxml_json` writes from import code
+  - Already done in Phase 2: zero writes remain
+- [x] Remove all `mxml_json` reads from export code
+  - Already done in Phase 2: zero reads remain
+- [x] Remove `mxml_json` field from `ExtData`
+  - Removed field + doc comment + serde attribute from extensions/mod.rs
+  - Cleaned up 4 stale mxml_json comments in import (harmony, barline, measure_style, ending)
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ## Phase 4: Direction types to ExtensionStore
 

@@ -106,7 +106,7 @@ pub fn restructure_endings(
         return;
     }
 
-    // Strip ending data from barline dirs on boundary measures (ExtensionStore + mxml_json).
+    // Strip ending data from barline dirs on boundary measures.
     // This avoids double-emitting endings on export — the structural <ending> container
     // takes precedence.
     for boundary in &boundaries {

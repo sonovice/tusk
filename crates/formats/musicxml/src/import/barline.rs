@@ -20,7 +20,7 @@ pub fn convert_barline(barline: &Barline, ctx: &mut ConversionContext) -> Measur
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("barline"));
 
-    // Store typed BarlineData in ExtensionStore (no label, no mxml_json)
+    // Store typed BarlineData in ExtensionStore
     if let Some(ref id) = dir.common.xml_id {
         ctx.ext_store_mut()
             .insert_barline(id.clone(), build_barline_data(barline));
