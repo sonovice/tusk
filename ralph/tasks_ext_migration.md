@@ -291,11 +291,21 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 4.4 MetronomeData typed struct
 
-- [ ] Create `MetronomeData` typed struct (replaces `metronome_json: Option<String>`)
-- [ ] Add `metronomes: HashMap<String, MetronomeData>` to ExtensionStore
-- [ ] Import: store typed MetronomeData
-- [ ] Export: read MetronomeData and build MusicXML Metronome
-- [ ] Tests pass
+- [x] Create `MetronomeData` typed struct (replaces `metronome_json: Option<String>`)
+  - MetronomeData + MetronomeContentData enum + BeatUnitTiedData + MetricModulationData + MetronomeNotesData + MetronomeNoteData + MetronomeBeamData + MetronomeTupletData in musicxml_ext/metronome.rs submodule
+  - Covers all 3 content variants: BeatUnit (with tied), Modulation (metric modulation), Notes (metronome-note with arrows/beams/tuplets)
+  - Visual attrs: parentheses, print_object, justify, default_x/y, halign, valign, id
+- [x] Add `metronomes: HashMap<String, MetronomeData>` to ExtensionStore
+  - Replaced `metronome_jsons: HashMap<String, String>` with typed map
+  - Accessor pair: `metronome`/`insert_metronome` via macro
+- [x] Import: store typed MetronomeData
+  - `build_metronome_data()` in import/direction.rs converts MusicXML Metronome to MetronomeData
+  - No more JSON serialization or pipe escaping
+- [x] Export: read MetronomeData and build MusicXML Metronome
+  - `build_metronome_from_data()` in export/direction.rs reconstructs Metronome from typed data
+  - Direct typed conversion replaces JSON deserialization
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 4.5 Direction sound typed
 

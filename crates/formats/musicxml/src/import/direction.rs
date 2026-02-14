@@ -20,6 +20,10 @@ use tusk_model::data::{
 };
 use tusk_model::elements::{Dir, DirChild, Dynam, DynamChild, Hairpin, Tempo, TempoChild};
 use tusk_model::musicxml_ext::DirectionContentData;
+use tusk_model::musicxml_ext::{
+    BeatUnitTiedData, MetricModulationData, MetronomeBeamData, MetronomeContentData, MetronomeData,
+    MetronomeNoteData, MetronomeNotesData, MetronomeTupletData,
+};
 
 // ============================================================================
 // Direction to Control Event Conversion
@@ -497,17 +501,118 @@ fn convert_metronome(
         }
     }
 
-    // Store full metronome JSON in ExtensionStore for lossless roundtrip
+    // Store typed metronome data in ExtensionStore for lossless roundtrip
     // of beat-unit-tied, metronome-note, and other details not captured in MEI
     if let Some(ref id) = tempo.common.xml_id {
-        if let Ok(json) = serde_json::to_string(metronome) {
-            let escaped = json.replace('|', "\\u007c");
-            ctx.ext_store_mut()
-                .insert_metronome_json(id.clone(), escaped);
-        }
+        let data = build_metronome_data(metronome);
+        ctx.ext_store_mut().insert_metronome(id.clone(), data);
     }
 
     tempo
+}
+
+/// Build typed `MetronomeData` from a MusicXML `Metronome`.
+fn build_metronome_data(m: &crate::model::direction::Metronome) -> MetronomeData {
+    use crate::model::data::{LeftCenterRight, Valign, YesNo};
+    use crate::model::direction::{BeatUnitTied, MetronomeNote};
+
+    fn convert_tied(tied: &[BeatUnitTied]) -> Vec<BeatUnitTiedData> {
+        tied.iter()
+            .map(|t| BeatUnitTiedData {
+                unit: t.beat_unit.clone(),
+                dots: t.beat_unit_dots.len() as u32,
+            })
+            .collect()
+    }
+
+    fn convert_note(n: &MetronomeNote) -> MetronomeNoteData {
+        MetronomeNoteData {
+            note_type: n.note_type.clone(),
+            dots: n.dots.len() as u32,
+            beams: n
+                .beams
+                .iter()
+                .map(|b| MetronomeBeamData {
+                    number: b.number,
+                    value: b.value.clone(),
+                })
+                .collect(),
+            tied: n
+                .tied
+                .as_ref()
+                .map(|t| format!("{:?}", t.tied_type).to_lowercase()),
+            tuplet: n.tuplet.as_ref().map(|t| MetronomeTupletData {
+                tuplet_type: format!("{:?}", t.tuplet_type).to_lowercase(),
+                bracket: t.bracket.as_ref().map(|b| *b == YesNo::Yes),
+                show_number: t.show_number.clone(),
+                actual_notes: t.actual_notes,
+                normal_notes: t.normal_notes,
+                normal_type: t.normal_type.clone(),
+                normal_dots: t.normal_dots.len() as u32,
+            }),
+        }
+    }
+
+    let content = match &m.content {
+        MetronomeContent::BeatUnit {
+            beat_unit,
+            beat_unit_dots,
+            beat_unit_tied,
+            per_minute,
+        } => MetronomeContentData::BeatUnit {
+            unit: beat_unit.clone(),
+            dots: beat_unit_dots.len() as u32,
+            tied: convert_tied(beat_unit_tied),
+            pm: per_minute.clone(),
+        },
+        MetronomeContent::BeatUnitEquivalent(mod_) => {
+            MetronomeContentData::Modulation(MetricModulationData {
+                unit1: mod_.beat_unit_1.clone(),
+                dots1: mod_.beat_unit_dots_1.len() as u32,
+                tied1: convert_tied(&mod_.beat_unit_tied_1),
+                unit2: mod_.beat_unit_2.clone(),
+                dots2: mod_.beat_unit_dots_2.len() as u32,
+                tied2: convert_tied(&mod_.beat_unit_tied_2),
+            })
+        }
+        MetronomeContent::MetronomeNotes(notes) => {
+            MetronomeContentData::Notes(MetronomeNotesData {
+                arrows: notes.arrows,
+                notes1: notes.notes_1.iter().map(convert_note).collect(),
+                relation: notes.relation.clone(),
+                notes2: notes.notes_2.iter().map(convert_note).collect(),
+            })
+        }
+    };
+
+    fn lcr_str(v: &LeftCenterRight) -> String {
+        match v {
+            LeftCenterRight::Left => "left".to_string(),
+            LeftCenterRight::Center => "center".to_string(),
+            LeftCenterRight::Right => "right".to_string(),
+        }
+    }
+
+    fn valign_str(v: &Valign) -> String {
+        match v {
+            Valign::Top => "top".to_string(),
+            Valign::Middle => "middle".to_string(),
+            Valign::Bottom => "bottom".to_string(),
+            Valign::Baseline => "baseline".to_string(),
+        }
+    }
+
+    MetronomeData {
+        content,
+        parentheses: m.parentheses.as_ref().map(|p| *p == YesNo::Yes),
+        print_object: m.print_object.as_ref().map(|p| *p == YesNo::Yes),
+        justify: m.justify.as_ref().map(lcr_str),
+        default_x: m.default_x,
+        default_y: m.default_y,
+        halign: m.halign.as_ref().map(lcr_str),
+        valign: m.valign.as_ref().map(valign_str),
+        id: m.id.clone(),
+    }
 }
 
 /// Convert MusicXML words to MEI dir element.

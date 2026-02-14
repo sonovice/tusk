@@ -579,16 +579,13 @@ pub fn convert_mei_tempo(
         .collect::<Vec<_>>()
         .join("");
 
-    // Check for stored metronome JSON for lossless roundtrip
+    // Check for stored typed metronome data for lossless roundtrip
     let stored_metronome: Option<Metronome> = tempo
         .common
         .xml_id
         .as_ref()
-        .and_then(|id| ctx.ext_store().metronome_json_data(id))
-        .and_then(|json| {
-            let unescaped = json.replace("\\u007c", "|");
-            serde_json::from_str(&unescaped).ok()
-        });
+        .and_then(|id| ctx.ext_store().metronome(id))
+        .map(build_metronome_from_data);
 
     // Metronome is present if mm_unit is set or stored JSON exists
     let has_metronome = tempo.tempo_log.mm_unit.is_some() || stored_metronome.is_some();
@@ -735,6 +732,129 @@ pub(crate) fn convert_mei_color_to_string(color: &tusk_model::data::DataColor) -
     match color {
         DataColor::MeiDataColorvalues(v) => v.0.clone(),
         DataColor::MeiDataColornames(n) => format!("{n:?}").to_lowercase(),
+    }
+}
+
+/// Build a MusicXML `Metronome` from typed `MetronomeData`.
+fn build_metronome_from_data(
+    data: &tusk_model::musicxml_ext::MetronomeData,
+) -> crate::model::direction::Metronome {
+    use crate::model::data::{LeftCenterRight, StartStop, Valign, YesNo};
+    use crate::model::direction::{
+        BeatUnitTied, MetricModulation, Metronome, MetronomeBeam, MetronomeContent, MetronomeNote,
+        MetronomeNoteContent, MetronomeTied, MetronomeTuplet,
+    };
+    use tusk_model::musicxml_ext::{MetronomeContentData, MetronomeTupletData};
+
+    fn convert_tied(tied: &[tusk_model::musicxml_ext::BeatUnitTiedData]) -> Vec<BeatUnitTied> {
+        tied.iter()
+            .map(|t| BeatUnitTied {
+                beat_unit: t.unit.clone(),
+                beat_unit_dots: vec![(); t.dots as usize],
+            })
+            .collect()
+    }
+
+    fn parse_start_stop(s: &str) -> StartStop {
+        match s {
+            "start" => StartStop::Start,
+            _ => StartStop::Stop,
+        }
+    }
+
+    fn convert_note(n: &tusk_model::musicxml_ext::MetronomeNoteData) -> MetronomeNote {
+        MetronomeNote {
+            note_type: n.note_type.clone(),
+            dots: vec![(); n.dots as usize],
+            beams: n
+                .beams
+                .iter()
+                .map(|b| MetronomeBeam {
+                    number: b.number,
+                    value: b.value.clone(),
+                })
+                .collect(),
+            tied: n.tied.as_ref().map(|t| MetronomeTied {
+                tied_type: parse_start_stop(t),
+            }),
+            tuplet: n
+                .tuplet
+                .as_ref()
+                .map(|t: &MetronomeTupletData| MetronomeTuplet {
+                    tuplet_type: parse_start_stop(&t.tuplet_type),
+                    bracket: t.bracket.map(|b| if b { YesNo::Yes } else { YesNo::No }),
+                    show_number: t.show_number.clone(),
+                    actual_notes: t.actual_notes,
+                    normal_notes: t.normal_notes,
+                    normal_type: t.normal_type.clone(),
+                    normal_dots: vec![(); t.normal_dots as usize],
+                }),
+        }
+    }
+
+    fn parse_lcr(s: &str) -> LeftCenterRight {
+        match s {
+            "left" => LeftCenterRight::Left,
+            "right" => LeftCenterRight::Right,
+            _ => LeftCenterRight::Center,
+        }
+    }
+
+    fn parse_valign(s: &str) -> Valign {
+        match s {
+            "top" => Valign::Top,
+            "bottom" => Valign::Bottom,
+            "baseline" => Valign::Baseline,
+            _ => Valign::Middle,
+        }
+    }
+
+    let content = match &data.content {
+        MetronomeContentData::BeatUnit {
+            unit,
+            dots,
+            tied,
+            pm,
+        } => MetronomeContent::BeatUnit {
+            beat_unit: unit.clone(),
+            beat_unit_dots: vec![(); *dots as usize],
+            beat_unit_tied: convert_tied(tied),
+            per_minute: pm.clone(),
+        },
+        MetronomeContentData::Modulation(mod_) => {
+            MetronomeContent::BeatUnitEquivalent(MetricModulation {
+                beat_unit_1: mod_.unit1.clone(),
+                beat_unit_dots_1: vec![(); mod_.dots1 as usize],
+                beat_unit_tied_1: convert_tied(&mod_.tied1),
+                beat_unit_2: mod_.unit2.clone(),
+                beat_unit_dots_2: vec![(); mod_.dots2 as usize],
+                beat_unit_tied_2: convert_tied(&mod_.tied2),
+            })
+        }
+        MetronomeContentData::Notes(notes) => {
+            MetronomeContent::MetronomeNotes(MetronomeNoteContent {
+                arrows: notes.arrows,
+                notes_1: notes.notes1.iter().map(convert_note).collect(),
+                relation: notes.relation.clone(),
+                notes_2: notes.notes2.iter().map(convert_note).collect(),
+            })
+        }
+    };
+
+    Metronome {
+        content,
+        parentheses: data
+            .parentheses
+            .map(|b| if b { YesNo::Yes } else { YesNo::No }),
+        print_object: data
+            .print_object
+            .map(|b| if b { YesNo::Yes } else { YesNo::No }),
+        justify: data.justify.as_ref().map(|s| parse_lcr(s)),
+        default_x: data.default_x,
+        default_y: data.default_y,
+        halign: data.halign.as_ref().map(|s| parse_lcr(s)),
+        valign: data.valign.as_ref().map(|s| parse_valign(s)),
+        id: data.id.clone(),
     }
 }
 
