@@ -1367,6 +1367,9 @@ pub struct FigureExtendData {
 mod metronome;
 pub use metronome::*;
 
+mod ornament;
+pub use ornament::*;
+
 // ---------------------------------------------------------------------------
 // DirectionContentData
 // ---------------------------------------------------------------------------

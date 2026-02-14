@@ -326,9 +326,12 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 5.1 Create OrnamentDetailData
 
-- [ ] Create `OrnamentDetailData` enum in `musicxml_ext/` covering: VerticalTurn, InvertedVerticalTurn, Shake, Schleifer, Haydn, UnmeasuredTremolo { type, value }, WavyLine { type, number }, OtherOrnament, OrnamentAccidentalMark { value, placement }, AccidentalMark { value, placement }, OtherNotation { type, number, smufl, text }, NonArpeggiate, Slide, NotationDynamics
-- [ ] Add `ornament_details: HashMap<String, OrnamentDetailData>` to ExtensionStore
-- [ ] Tests pass
+- [x] Create `OrnamentDetailData` enum in `musicxml_ext/` covering: VerticalTurn, InvertedVerticalTurn, Shake, Schleifer, Haydn, UnmeasuredTremolo { type, value }, WavyLine { type, number }, OtherOrnament, OrnamentAccidentalMark { value, placement }, AccidentalMark { value, placement }, OtherNotation { type, number, smufl, text }, NonArpeggiate, Slide, NotationDynamics
+  - 14-variant enum in musicxml_ext/ornament.rs submodule; placement-only types are unit variants, parameterized types use named fields with serde skip/rename
+- [x] Add `ornament_details: HashMap<String, OrnamentDetailData>` to ExtensionStore
+  - HashMap field + `ornament_detail`/`insert_ornament_detail` accessors via macro
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 5.2 Ornament import migration
 
