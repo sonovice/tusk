@@ -1,14 +1,6 @@
 use super::*;
 
 #[test]
-fn ext_data_default_is_empty() {
-    let ext = ExtData::default();
-    // ExtData is now an empty struct (all fields migrated to per-concept maps)
-    let json = serde_json::to_string(&ext).unwrap();
-    assert_eq!(json, "{}");
-}
-
-#[test]
 fn format_origin_roundtrip() {
     let origin = FormatOrigin {
         format: SourceFormat::LilyPond,
@@ -219,36 +211,22 @@ fn lyrics_info_roundtrip() {
 }
 
 #[test]
-fn ext_data_empty_roundtrip() {
-    let ext = ExtData::default();
-    let json = serde_json::to_string(&ext).unwrap();
-    let back: ExtData = serde_json::from_str(&json).unwrap();
-    assert_eq!(ext, back);
-}
-
-#[test]
-fn extension_store_basic_operations() {
+fn extension_store_per_concept_operations() {
     let mut store = ExtensionStore::new();
-    assert!(store.is_empty());
 
-    let ext = ExtData::default();
+    // insert + get
+    let harmony = crate::musicxml_ext::HarmonyData::default();
+    store.insert_harmony("h1".into(), harmony.clone());
+    assert_eq!(store.harmony("h1"), Some(&harmony));
 
-    store.insert("note-1".into(), ext.clone());
-    assert_eq!(store.len(), 1);
-    assert!(!store.is_empty());
-
-    let retrieved = store.get("note-1").unwrap();
-    assert_eq!(retrieved, &ext);
-
-    // entry() for new element
-    let _entry = store.entry("note-2".into());
-    assert_eq!(store.len(), 2);
+    // get_mut
+    let h = store.harmony_mut("h1").unwrap();
+    *h = crate::musicxml_ext::HarmonyData::default();
 
     // remove
-    let removed = store.remove("note-1");
+    let removed = store.remove_harmony("h1");
     assert!(removed.is_some());
-    assert_eq!(store.len(), 1);
-    assert!(store.get("note-1").is_none());
+    assert!(store.harmony("h1").is_none());
 }
 
 #[test]
@@ -354,14 +332,6 @@ fn book_structure_roundtrip() {
     let json = serde_json::to_string(&bs).unwrap();
     let back: BookStructure = serde_json::from_str(&json).unwrap();
     assert_eq!(bs, back);
-}
-
-#[test]
-fn ext_data_skips_none_in_json() {
-    let ext = ExtData::default();
-    let json = serde_json::to_string(&ext).unwrap();
-    // Empty struct serializes to empty object
-    assert_eq!(json, "{}");
 }
 
 #[test]

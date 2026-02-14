@@ -11,9 +11,9 @@
 //! # Typed Extensions
 //!
 //! Format-specific roundtrip data is stored in typed structs rather than opaque
-//! label strings. The [`ExtData`] container holds `Option<T>` for each applicable
-//! extension type. A side table ([`ExtensionStore`]) maps MEI element IDs to
-//! their extension data without modifying the generated MEI types.
+//! label strings. Per-concept `HashMap<String, T>` fields on [`ExtensionStore`]
+//! map MEI element IDs to their extension data without modifying the generated
+//! MEI types.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -61,19 +61,6 @@ pub enum ExtensionContent {
     /// Child extension elements only.
     Children(Vec<ExtensionElement>),
 }
-
-// ---------------------------------------------------------------------------
-// Typed extension data
-// ---------------------------------------------------------------------------
-
-/// Legacy container for typed extension data on a single MEI element.
-///
-/// All fields have been migrated to per-concept HashMaps on [`ExtensionStore`].
-/// This struct is retained temporarily for backward compatibility during
-/// deserialization of old data. Will be removed in Phase 12.2.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ExtData {}
 
 // ---------------------------------------------------------------------------
 // FormatOrigin
@@ -799,11 +786,6 @@ pub struct TextScriptInfo {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ExtensionStore {
-    /// Map from element ID (`@xml:id` value) to extension data.
-    /// Retained for backward compatibility during migration; will be removed.
-    #[serde(flatten)]
-    pub data: HashMap<String, ExtData>,
-
     // ----- MusicXML per-concept maps -----
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub harmonies: HashMap<String, crate::musicxml_ext::HarmonyData>,
@@ -992,41 +974,6 @@ impl ExtensionStore {
     /// Create an empty store.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Get extension data for an element by ID (legacy ExtData).
-    pub fn get(&self, id: &str) -> Option<&ExtData> {
-        self.data.get(id)
-    }
-
-    /// Get mutable extension data for an element by ID (legacy ExtData).
-    pub fn get_mut(&mut self, id: &str) -> Option<&mut ExtData> {
-        self.data.get_mut(id)
-    }
-
-    /// Insert or replace extension data for an element (legacy ExtData).
-    pub fn insert(&mut self, id: String, ext: ExtData) {
-        self.data.insert(id, ext);
-    }
-
-    /// Get extension data for an element, creating a default entry if absent (legacy ExtData).
-    pub fn entry(&mut self, id: String) -> &mut ExtData {
-        self.data.entry(id).or_default()
-    }
-
-    /// Remove extension data for an element (legacy ExtData).
-    pub fn remove(&mut self, id: &str) -> Option<ExtData> {
-        self.data.remove(id)
-    }
-
-    /// Returns true if the store has no entries (legacy ExtData).
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-
-    /// Number of elements with extension data (legacy ExtData).
-    pub fn len(&self) -> usize {
-        self.data.len()
     }
 }
 

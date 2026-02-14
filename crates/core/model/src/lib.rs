@@ -39,12 +39,12 @@ pub use elements::*;
 pub use extensions::{
     ArticulationInfo, ArticulationKind, BookStructure, ChordModeInfo, ChordRepetition,
     ContextChange, ContextKeywordExt, ControlEvent, DirectionExt, DrumEvent, DurationInfo,
-    EndingInfo, EventSequence, ExtAssignment, ExtContextBlock, ExtContextModItem, ExtData,
-    ExtPitch, ExtValue, ExtensionBag, ExtensionContent, ExtensionElement, ExtensionStore,
-    FiguredBassInfo, FormatOrigin, FunctionCall, GraceInfo, LyricExtender, LyricsInfo, LyricsStyle,
-    MarkInfo, MultiMeasureRestInfo, OrnamentInfo, OutputDef, OutputDefKind, PhrasingSlur,
-    PitchContext, PitchedRest, PositionedEvent, PropertyOp, PropertyOpInfo, PropertyOpType,
-    RepeatInfo, RepeatTypeExt, SchemeMusicInfo, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo,
+    EndingInfo, EventSequence, ExtAssignment, ExtContextBlock, ExtContextModItem, ExtPitch,
+    ExtValue, ExtensionBag, ExtensionContent, ExtensionElement, ExtensionStore, FiguredBassInfo,
+    FormatOrigin, FunctionCall, GraceInfo, LyricExtender, LyricsInfo, LyricsStyle, MarkInfo,
+    MultiMeasureRestInfo, OrnamentInfo, OutputDef, OutputDefKind, PhrasingSlur, PitchContext,
+    PitchedRest, PositionedEvent, PropertyOp, PropertyOpInfo, PropertyOpType, RepeatInfo,
+    RepeatTypeExt, SchemeMusicInfo, SourceFormat, StaffContext, TUSK_EXT_NS, TempoInfo,
     TextMarkInfo, TextScriptInfo, ToplevelMarkup, ToplevelMarkupKind, TremoloInfo, TupletInfo,
     TweakInfo, VariableAssignments,
 };

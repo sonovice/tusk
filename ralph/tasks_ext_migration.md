@@ -553,10 +553,17 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 12.2 Remove ExtData struct
 
-- [ ] Remove `ExtData` struct from `extensions.rs`
-- [ ] Remove `data: HashMap<String, ExtData>` from ExtensionStore
-- [ ] Remove ExtensionStore methods that return ExtData (`get`, `get_mut`, `entry`, `insert` that take ExtData)
-- [ ] Tests pass
+- [x] Remove `ExtData` struct from `extensions.rs`
+  - Removed empty legacy struct + doc comment + serde derives
+  - Updated module doc to reference per-concept maps instead of ExtData
+- [x] Remove `data: HashMap<String, ExtData>` from ExtensionStore
+  - Removed `#[serde(flatten)] pub data: HashMap<String, ExtData>` field
+- [x] Remove ExtensionStore methods that return ExtData (`get`, `get_mut`, `entry`, `insert` that take ExtData)
+  - Removed 7 legacy methods: `get`, `get_mut`, `insert`, `entry`, `remove`, `is_empty`, `len`
+  - Removed `ExtData` from lib.rs re-export
+  - Replaced 3 ExtData tests with `extension_store_per_concept_operations` test using typed accessors
+- [x] Tests pass
+  - All 2497 tests pass, clippy clean
 
 ## Phase 13: Final cleanup
 
