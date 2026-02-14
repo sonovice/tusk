@@ -1097,18 +1097,23 @@ pub struct ExtensionStore {
     pub lyric_extenders: HashMap<String, LyricExtender>,
 }
 
-/// Generate get/insert accessor methods for ExtensionStore HashMap fields.
+/// Generate get/get_mut/insert accessor methods for ExtensionStore HashMap fields.
 macro_rules! ext_store_accessors {
     ($($getter:ident / $inserter:ident => $field:ident : $type:ty),* $(,)?) => {
-        impl ExtensionStore {
-            $(
-                pub fn $getter(&self, id: &str) -> Option<&$type> {
-                    self.$field.get(id)
-                }
-                pub fn $inserter(&mut self, id: String, data: $type) {
-                    self.$field.insert(id, data);
-                }
-            )*
+        paste::paste! {
+            impl ExtensionStore {
+                $(
+                    pub fn $getter(&self, id: &str) -> Option<&$type> {
+                        self.$field.get(id)
+                    }
+                    pub fn [<$getter _mut>](&mut self, id: &str) -> Option<&mut $type> {
+                        self.$field.get_mut(id)
+                    }
+                    pub fn $inserter(&mut self, id: String, data: $type) {
+                        self.$field.insert(id, data);
+                    }
+                )*
+            }
         }
     };
 }

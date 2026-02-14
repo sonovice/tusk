@@ -64,11 +64,19 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.2 Barline migration
 
-- [ ] Import (`import/barline.rs`): write to `ext_store.barlines`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:barline` label
-- [ ] Export (`export/barline.rs`): read from `ext_store.barlines.get(id)`
-- [ ] Remove `barline_from_label()` legacy function
-- [ ] Tests pass
+- [x] Import (`import/barline.rs`): write to `ext_store.barlines`
+  - Uses `insert_barline()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:barline` label
+  - Removed label assignment and mxml_json write
+- [x] Export (`export/content.rs`): read from `ext_store.barlines.get(id)`
+  - New `build_barline_from_data()` reconstructs Barline from BarlineData (typed, no JSON deser)
+  - Barline dir identification uses ExtensionStore membership instead of label prefix check
+- [x] Remove `barline_from_label()` legacy function
+  - Removed function + `BARLINE_LABEL_PREFIX` constant
+- [x] Ending strip uses `barline_mut()` accessor for direct map mutation
+  - Extended `ext_store_accessors!` macro to generate `_mut` methods via `paste` crate
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.3 Print migration
 

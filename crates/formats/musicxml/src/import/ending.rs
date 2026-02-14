@@ -166,34 +166,19 @@ pub fn restructure_endings(
 
 /// Strip ending data from barline dirs on a measure.
 ///
-/// Removes the `ending` field from `BarlineData` in ExtensionStore and from the
-/// raw `mxml_json` for each barline dir on the measure. This prevents the ending
-/// from being double-emitted on export (the structural `<ending>` container takes over).
+/// Removes the `ending` field from `BarlineData` in ExtensionStore for each
+/// barline dir on the measure. This prevents the ending from being double-emitted
+/// on export (the structural `<ending>` container takes over).
 fn strip_ending_from_barline_dirs(
     measure: &mut tusk_model::elements::Measure,
     ctx: &mut ConversionContext,
 ) {
     for child in &measure.children {
         if let MeasureChild::Dir(dir) = child {
-            let is_barline = dir
-                .common
-                .label
-                .as_deref()
-                .is_some_and(|l| l.starts_with(super::barline::BARLINE_LABEL_PREFIX));
-            if !is_barline {
-                continue;
-            }
             if let Some(ref id) = dir.common.xml_id {
-                let entry = ctx.ext_store_mut().entry(id.clone());
-                // Strip ending from typed data
-                if let Some(ref mut bd) = entry.barline_data {
+                // Identify barline dirs by ExtensionStore membership
+                if let Some(bd) = ctx.ext_store_mut().barline_mut(id) {
                     bd.ending = None;
-                }
-                // Strip ending from raw JSON
-                if let Some(ref mut val) = entry.mxml_json {
-                    if let Some(obj) = val.as_object_mut() {
-                        obj.remove("ending");
-                    }
                 }
             }
         }

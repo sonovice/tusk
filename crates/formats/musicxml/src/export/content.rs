@@ -579,33 +579,16 @@ pub fn convert_mei_score_content(
             // Replace basic barlines with decorated versions from barline dirs
             for child in &mei_measure.children {
                 if let MeasureChild::Dir(dir) = child {
-                    let is_barline_dir = dir.common.label.as_deref().is_some_and(|l| {
-                        l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX)
-                    });
-                    if !is_barline_dir {
-                        continue;
-                    }
-                    // Preferred: reconstruct from ExtensionStore mxml_json
-                    let barline_opt = dir
-                        .common
-                        .xml_id
-                        .as_ref()
-                        .and_then(|id| ctx.ext_store().get(id))
-                        .and_then(|ext| ext.mxml_json.as_ref())
-                        .and_then(|val| {
-                            serde_json::from_value::<crate::model::elements::Barline>(val.clone())
-                                .ok()
-                        })
-                        .or_else(|| {
-                            // Fallback: reconstruct from label
-                            dir.common
-                                .label
-                                .as_deref()
-                                .and_then(crate::import::barline::barline_from_label)
-                        });
-                    if let Some(full_barline) = barline_opt {
-                        let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
-                        replace_barline_at_location(&mut mxml_measure.content, &full_barline, loc);
+                    if let Some(ref id) = dir.common.xml_id {
+                        if let Some(data) = ctx.ext_store().barline(id) {
+                            let full_barline = build_barline_from_data(data);
+                            let loc = full_barline.location.unwrap_or(BarlineLocation::Right);
+                            replace_barline_at_location(
+                                &mut mxml_measure.content,
+                                &full_barline,
+                                loc,
+                            );
+                        }
                     }
                 }
             }
@@ -949,6 +932,92 @@ fn mei_barrendition_to_barline(
     }
 }
 
+/// Build a MusicXML `Barline` from typed `BarlineData`.
+fn build_barline_from_data(data: &tusk_model::musicxml_ext::BarlineData) -> Barline {
+    use crate::model::data::YesNo;
+    use crate::model::elements::{BackwardForward, Ending, Repeat, Winged};
+
+    let location = data.location.as_deref().map(|s| match s {
+        "left" => BarlineLocation::Left,
+        "middle" => BarlineLocation::Middle,
+        _ => BarlineLocation::Right,
+    });
+
+    let bar_style = data
+        .bar_style
+        .as_deref()
+        .and_then(crate::model::elements::BarStyle::from_musicxml_str);
+
+    let repeat = data.repeat.as_ref().map(|r| Repeat {
+        direction: if r.direction == "forward" {
+            BackwardForward::Forward
+        } else {
+            BackwardForward::Backward
+        },
+        times: r.times,
+        after_jump: r.after_jump.map(|b| if b { YesNo::Yes } else { YesNo::No }),
+        winged: r.winged.as_deref().and_then(|w| {
+            serde_json::from_value::<Winged>(serde_json::Value::String(w.to_string())).ok()
+        }),
+    });
+
+    let ending = data.ending.as_ref().map(|e| {
+        let ending_type = match e.ending_type.as_str() {
+            "stop" => crate::model::data::StartStopDiscontinue::Stop,
+            "discontinue" => crate::model::data::StartStopDiscontinue::Discontinue,
+            _ => crate::model::data::StartStopDiscontinue::Start,
+        };
+        Ending {
+            number: e.number.clone(),
+            ending_type,
+            text: e.text.clone(),
+            default_y: None,
+            end_length: None,
+            print_object: None,
+            default_x: None,
+            text_x: None,
+            text_y: None,
+        }
+    });
+
+    let fermatas = data
+        .fermatas
+        .iter()
+        .filter_map(|f| serde_json::from_value(f.clone()).ok())
+        .collect();
+
+    let segno = data
+        .segno
+        .as_ref()
+        .and_then(|s| serde_json::from_value(s.clone()).ok());
+
+    let coda = data
+        .coda
+        .as_ref()
+        .and_then(|c| serde_json::from_value(c.clone()).ok());
+
+    let wavy_line = data
+        .wavy_line
+        .as_ref()
+        .and_then(|w| serde_json::from_value(w.clone()).ok());
+
+    Barline {
+        location,
+        bar_style,
+        repeat,
+        ending,
+        fermatas,
+        segno,
+        coda,
+        wavy_line,
+        segno_attr: data.segno_attr.clone(),
+        coda_attr: data.coda_attr.clone(),
+        divisions: data.divisions,
+        footnote: None,
+        level: None,
+    }
+}
+
 /// Replace a basic barline in the measure content with the full decorated barline.
 ///
 /// During export, basic barlines are generated from MEI @left/@right attributes.
@@ -1076,9 +1145,9 @@ fn convert_direction_events(
                 // Barline children — skip here, handled after basic barlines are added
                 if dir
                     .common
-                    .label
-                    .as_deref()
-                    .is_some_and(|l| l.starts_with(crate::import::barline::BARLINE_LABEL_PREFIX))
+                    .xml_id
+                    .as_ref()
+                    .is_some_and(|id| ctx.ext_store().barline(id).is_some())
                 {
                     continue;
                 }

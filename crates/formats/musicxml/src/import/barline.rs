@@ -11,24 +11,19 @@ use crate::model::elements::Barline;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::{BarlineData, EndingData, RepeatData};
 
-/// Label marker for MEI dir elements carrying barline data (via ExtensionStore).
-pub const BARLINE_LABEL_PREFIX: &str = "musicxml:barline";
-
 /// Convert a MusicXML `<barline>` with extra children to an MEI `<dir>` measure child.
 ///
 /// Only called for barlines that have children beyond bar-style (repeat, ending,
 /// fermata, segno, coda, wavy-line) or extra attributes (segno, coda, divisions).
-/// Data is stored in ExtensionStore; the label is a short marker for identification.
+/// Data is stored in ExtensionStore; identified by map membership (no label).
 pub fn convert_barline(barline: &Barline, ctx: &mut ConversionContext) -> MeasureChild {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("barline"));
-    dir.common.label = Some(BARLINE_LABEL_PREFIX.to_string());
 
-    // Store typed BarlineData + raw JSON in ExtensionStore
+    // Store typed BarlineData in ExtensionStore (no label, no mxml_json)
     if let Some(ref id) = dir.common.xml_id {
-        let entry = ctx.ext_store_mut().entry(id.clone());
-        entry.barline_data = Some(build_barline_data(barline));
-        entry.mxml_json = serde_json::to_value(barline).ok();
+        ctx.ext_store_mut()
+            .insert_barline(id.clone(), build_barline_data(barline));
     }
 
     // Human-readable summary
@@ -125,18 +120,4 @@ fn build_barline_data(b: &Barline) -> BarlineData {
         coda_attr: b.coda_attr.clone(),
         divisions: b.divisions,
     }
-}
-
-/// Deserialize a Barline from a legacy JSON roundtrip label string.
-///
-/// Handles old-format labels like `"musicxml:barline,{json}"`. New imports use
-/// ExtensionStore instead, with a simple `"musicxml:barline"` marker label.
-pub fn barline_from_label(label: &str) -> Option<Barline> {
-    // New format: just the marker — data is in ExtensionStore, not here
-    if label == BARLINE_LABEL_PREFIX {
-        return None;
-    }
-    // Legacy format: "musicxml:barline,{json}"
-    let json = label.strip_prefix("musicxml:barline,")?;
-    serde_json::from_str(json).ok()
 }
