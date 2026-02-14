@@ -1048,6 +1048,10 @@ pub struct ExtensionStore {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub wedge_spreads: HashMap<String, f64>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub metronome_jsons: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub direction_sound_jsons: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub lyric_extras_map: HashMap<String, crate::musicxml_ext::LyricExtras>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub figured_basses: HashMap<String, crate::musicxml_ext::FiguredBassData>,
@@ -1142,6 +1146,8 @@ ext_store_accessors! {
     part_symbol / insert_part_symbol => part_symbols: crate::musicxml_ext::PartSymbolExtras,
     transpose / insert_transpose => transposes: crate::musicxml_ext::TransposeData,
     wedge_spread / insert_wedge_spread => wedge_spreads: f64,
+    metronome_json_data / insert_metronome_json => metronome_jsons: String,
+    direction_sound_json_data / insert_direction_sound_json => direction_sound_jsons: String,
     lyric_extras / insert_lyric_extras => lyric_extras_map: crate::musicxml_ext::LyricExtras,
     figured_bass_data / insert_figured_bass => figured_basses: crate::musicxml_ext::FiguredBassData,
 

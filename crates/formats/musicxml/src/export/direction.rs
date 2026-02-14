@@ -234,8 +234,8 @@ pub fn convert_mei_hairpin(
             .common
             .xml_id
             .as_ref()
-            .and_then(|id| ctx.ext_store().get(id))
-            .and_then(|ext| ext.wedge_stop_spread);
+            .and_then(|id| ctx.ext_store().wedge_spread(id))
+            .copied();
 
         if measures_ahead == 0 {
             // Same-measure stop: emit stop wedge immediately
@@ -422,8 +422,7 @@ pub fn convert_mei_dir(
                 .common
                 .xml_id
                 .as_ref()
-                .and_then(|id| ctx.ext_store().get(id))
-                .and_then(|ext| ext.direction_visual.as_ref())
+                .and_then(|id| ctx.ext_store().direction_visual(id))
                 .and_then(|dv| {
                     if dv.words.is_empty() {
                         None
@@ -572,8 +571,7 @@ pub fn convert_mei_tempo(
         .common
         .xml_id
         .as_ref()
-        .and_then(|id| ctx.ext_store().get(id))
-        .and_then(|ext| ext.metronome_json.as_ref())
+        .and_then(|id| ctx.ext_store().metronome_json_data(id))
         .and_then(|json| {
             let unescaped = json.replace("\\u007c", "|");
             serde_json::from_str(&unescaped).ok()
@@ -737,14 +735,10 @@ fn restore_direction_sound(
     ctx: &ConversionContext,
 ) {
     if let Some(id) = xml_id {
-        if let Some(ext) = ctx.ext_store().get(id) {
-            if let Some(ref json) = ext.direction_sound_json {
-                let unescaped = json.replace("\\u007c", "|");
-                if let Ok(sound) =
-                    serde_json::from_str::<crate::model::direction::Sound>(&unescaped)
-                {
-                    direction.sound = Some(sound);
-                }
+        if let Some(json) = ctx.ext_store().direction_sound_json_data(id) {
+            let unescaped = json.replace("\\u007c", "|");
+            if let Ok(sound) = serde_json::from_str::<crate::model::direction::Sound>(&unescaped) {
+                direction.sound = Some(sound);
             }
         }
     }

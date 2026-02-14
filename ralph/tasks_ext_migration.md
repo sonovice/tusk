@@ -170,11 +170,21 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.9 Direction visual + metronome + direction sound + wedge spread
 
-- [ ] Import: write `direction_visuals`, `wedge_spreads` to per-concept maps
-- [ ] Import (`import/direction.rs`): write metronome data to per-concept map (still as JSON string for now)
-- [ ] Import: write direction sound data to per-concept map (still as JSON string for now)
-- [ ] Export: read from per-concept maps
-- [ ] Tests pass
+- [x] Import: write `direction_visuals`, `wedge_spreads` to per-concept maps
+  - Uses `insert_direction_visual()` and `insert_wedge_spread()` accessors directly; no more `entry()` + ExtData
+- [x] Import (`import/direction.rs`): write metronome data to per-concept map (still as JSON string for now)
+  - Added `metronome_jsons: HashMap<String, String>` to ExtensionStore + `metronome_json_data`/`insert_metronome_json` accessors
+  - Uses `insert_metronome_json()` directly; no more `entry()` + ExtData
+- [x] Import: write direction sound data to per-concept map (still as JSON string for now)
+  - Added `direction_sound_jsons: HashMap<String, String>` to ExtensionStore + `direction_sound_json_data`/`insert_direction_sound_json` accessors
+  - Uses `insert_direction_sound_json()` directly; no more `entry()` + ExtData
+- [x] Export: read from per-concept maps
+  - Wedge spread: uses `ctx.ext_store().wedge_spread(id)` instead of `.get(id)?.wedge_stop_spread`
+  - Direction visual: uses `ctx.ext_store().direction_visual(id)` instead of `.get(id)?.direction_visual`
+  - Metronome: uses `ctx.ext_store().metronome_json_data(id)` instead of `.get(id)?.metronome_json`
+  - Direction sound: uses `ctx.ext_store().direction_sound_json_data(id)` instead of `.get(id)?.direction_sound_json`
+- [x] Tests pass
+  - All 2499 tests pass, clippy clean
 
 ### 2.10 Staff/Part/Group fields migration
 

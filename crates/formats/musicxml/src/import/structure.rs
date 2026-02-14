@@ -537,8 +537,7 @@ fn patch_hairpin_tstamp2(section: &mut Section, ctx: &mut ConversionContext) {
                             hairpin.hairpin_log.tstamp2 = Some(DataMeasurebeat::from(tstamp2));
                             // Store stop spread in extension store for roundtrip
                             if let Some(spread) = stop_spread {
-                                ctx.ext_store_mut().entry(id.clone()).wedge_stop_spread =
-                                    Some(spread);
+                                ctx.ext_store_mut().insert_wedge_spread(id.clone(), spread);
                             }
                         }
                     }

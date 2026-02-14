@@ -371,8 +371,7 @@ pub fn convert_direction(
             for result in &results {
                 if let Some(id) = result.element_id() {
                     ctx.ext_store_mut()
-                        .entry(id.to_string())
-                        .direction_sound_json = Some(escaped.clone());
+                        .insert_direction_sound_json(id.to_string(), escaped.clone());
                 }
             }
         }
@@ -680,7 +679,8 @@ fn convert_metronome(
     if let Some(ref id) = tempo.common.xml_id {
         if let Ok(json) = serde_json::to_string(metronome) {
             let escaped = json.replace('|', "\\u007c");
-            ctx.ext_store_mut().entry(id.clone()).metronome_json = Some(escaped);
+            ctx.ext_store_mut()
+                .insert_metronome_json(id.clone(), escaped);
         }
     }
 
@@ -779,11 +779,14 @@ fn convert_words(
                     id: w.id.clone(),
                 })
                 .collect();
-            ctx.ext_store_mut().entry(id.clone()).direction_visual = Some(DirectionVisualData {
-                words: words_vis,
-                wedge_color: None,
-                wedge_niente: None,
-            });
+            ctx.ext_store_mut().insert_direction_visual(
+                id.clone(),
+                DirectionVisualData {
+                    words: words_vis,
+                    wedge_color: None,
+                    wedge_niente: None,
+                },
+            );
         }
     }
 
