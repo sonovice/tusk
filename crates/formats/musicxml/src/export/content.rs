@@ -3109,35 +3109,32 @@ fn calculate_staff_duration(mxml_measure: &MxmlMeasure, content_from: usize) -> 
 // build_first_measure_attributes and build_first_measure_attributes_multi
 // are in super::attributes to keep this module under the line limit.
 
-/// Convert MEI `<ornam>` control events with `musicxml:` technical labels back to MusicXML
-/// `<technical>` notations on the referenced notes.
+/// Convert MEI `<ornam>` and `<fing>` control events with `TechnicalDetailData` in ExtensionStore
+/// back to MusicXML `<technical>` notations on the referenced notes.
 fn convert_technical_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use super::direction::convert_place_to_placement;
     use crate::model::data::{StartStop, YesNo};
     use crate::model::notations::Notations;
     use crate::model::technical::*;
+    use tusk_model::musicxml_ext::TechnicalDetailData;
 
     for child in &mei_measure.children {
         let MeasureChild::Ornam(ornam) = child else {
             continue;
         };
-        let label = match ornam.common.label.as_deref() {
-            Some(l) if l.starts_with("musicxml:") => l,
-            _ => continue,
+        let ornam_id = match ornam.common.xml_id.as_deref() {
+            Some(id) => id,
+            None => continue,
         };
-        // Extract the technical element name (after "musicxml:" prefix, before first comma)
-        let after_prefix = &label["musicxml:".len()..];
-        let element_name = after_prefix.split(',').next().unwrap_or("");
-
-        // Only handle technical element names
-        if !is_technical_label(element_name) {
-            continue;
-        }
+        let data = match ctx.ext_store().technical_detail(ornam_id) {
+            Some(d) => d.clone(),
+            None => continue,
+        };
 
         let ornam_staff = ornam
             .ornam_log
@@ -3168,87 +3165,75 @@ fn convert_technical_events(
             ..Default::default()
         };
 
-        // Collect text from ornam children
-        let text: String = ornam
-            .children
-            .iter()
-            .map(|c| {
-                let tusk_model::elements::OrnamChild::Text(t) = c;
-                t.as_str()
-            })
-            .collect::<Vec<_>>()
-            .join("");
+        match data {
+            // Simple placement-only types
+            TechnicalDetailData::UpBow => tech.up_bow.push(ep()),
+            TechnicalDetailData::DownBow => tech.down_bow.push(ep()),
+            TechnicalDetailData::OpenString => tech.open_string.push(ep()),
+            TechnicalDetailData::ThumbPosition => tech.thumb_position.push(ep()),
+            TechnicalDetailData::DoubleTongue => tech.double_tongue.push(ep()),
+            TechnicalDetailData::TripleTongue => tech.triple_tongue.push(ep()),
+            TechnicalDetailData::SnapPizzicato => tech.snap_pizzicato.push(ep()),
+            TechnicalDetailData::Fingernails => tech.fingernails.push(ep()),
+            TechnicalDetailData::BrassBend => tech.brass_bend.push(ep()),
+            TechnicalDetailData::Flip => tech.flip.push(ep()),
+            TechnicalDetailData::Smear => tech.smear.push(ep()),
+            TechnicalDetailData::Golpe => tech.golpe.push(ep()),
 
-        // Parse comma-separated key=value params from label
-        let params: Vec<&str> = after_prefix.split(',').skip(1).collect();
-
-        let find_param = |key: &str| -> Option<&str> {
-            params
-                .iter()
-                .find_map(|p| p.strip_prefix(key).and_then(|rest| rest.strip_prefix('=')))
-        };
-        let has_flag = |flag: &str| -> bool { params.contains(&flag) };
-
-        match element_name {
-            // Simple empty-placement types
-            "up-bow" => tech.up_bow.push(ep()),
-            "down-bow" => tech.down_bow.push(ep()),
-            "open-string" => tech.open_string.push(ep()),
-            "thumb-position" => tech.thumb_position.push(ep()),
-            "double-tongue" => tech.double_tongue.push(ep()),
-            "triple-tongue" => tech.triple_tongue.push(ep()),
-            "snap-pizzicato" => tech.snap_pizzicato.push(ep()),
-            "fingernails" => tech.fingernails.push(ep()),
-            "brass-bend" => tech.brass_bend.push(ep()),
-            "flip" => tech.flip.push(ep()),
-            "smear" => tech.smear.push(ep()),
-            "golpe" => tech.golpe.push(ep()),
-
-            // Empty-placement-smufl types
-            "stopped" => tech.stopped.push(EmptyPlacementSmufl {
+            // Placement + SMuFL types
+            TechnicalDetailData::Stopped { smufl } => tech.stopped.push(EmptyPlacementSmufl {
                 placement,
-                smufl: find_param("smufl").map(|s| s.to_string()),
+                smufl,
                 ..Default::default()
             }),
-            "open" => tech.open.push(EmptyPlacementSmufl {
+            TechnicalDetailData::Open { smufl } => tech.open.push(EmptyPlacementSmufl {
                 placement,
-                smufl: find_param("smufl").map(|s| s.to_string()),
+                smufl,
                 ..Default::default()
             }),
-            "half-muted" => tech.half_muted.push(EmptyPlacementSmufl {
+            TechnicalDetailData::HalfMuted { smufl } => tech.half_muted.push(EmptyPlacementSmufl {
                 placement,
-                smufl: find_param("smufl").map(|s| s.to_string()),
+                smufl,
                 ..Default::default()
             }),
 
-            // Text-content types
-            "pluck" => tech.pluck.push(PlacementText {
-                value: text,
+            // Text content types
+            TechnicalDetailData::Pluck { value } => tech.pluck.push(PlacementText {
+                value,
                 placement,
                 default_x: None,
                 default_y: None,
                 font_style: None,
                 color: None,
             }),
-            "fret" => tech.fret.push(Fret {
-                value: text.parse().unwrap_or(0),
-                color: None,
-            }),
-            "string" => tech.string.push(TechString {
-                value: text.parse().unwrap_or(1),
+            TechnicalDetailData::Fret { value } => tech.fret.push(Fret { value, color: None }),
+            TechnicalDetailData::StringNum { value } => tech.string.push(TechString {
+                value,
                 placement,
                 default_x: None,
                 default_y: None,
                 color: None,
             }),
-            "hammer-on" => {
-                let ho_type = match find_param("type") {
-                    Some("stop") => StartStop::Stop,
+            TechnicalDetailData::Handbell { value } => tech.handbell.push(Handbell {
+                value,
+                placement,
+                default_x: None,
+                default_y: None,
+                color: None,
+            }),
+
+            // Parameterized types
+            TechnicalDetailData::HammerOn {
+                ho_type,
+                number,
+                text,
+            } => {
+                let ss = match ho_type.as_str() {
+                    "stop" => StartStop::Stop,
                     _ => StartStop::Start,
                 };
-                let number = find_param("number").and_then(|n| n.parse().ok());
                 tech.hammer_on.push(HammerOnPullOff {
-                    ho_type,
+                    ho_type: ss,
                     number,
                     placement,
                     default_x: None,
@@ -3257,14 +3242,17 @@ fn convert_technical_events(
                     text,
                 });
             }
-            "pull-off" => {
-                let ho_type = match find_param("type") {
-                    Some("stop") => StartStop::Stop,
+            TechnicalDetailData::PullOff {
+                po_type,
+                number,
+                text,
+            } => {
+                let ss = match po_type.as_str() {
+                    "stop" => StartStop::Stop,
                     _ => StartStop::Start,
                 };
-                let number = find_param("number").and_then(|n| n.parse().ok());
                 tech.pull_off.push(HammerOnPullOff {
-                    ho_type,
+                    ho_type: ss,
                     number,
                     placement,
                     default_x: None,
@@ -3273,23 +3261,23 @@ fn convert_technical_events(
                     text,
                 });
             }
-            "tap" => {
-                let hand = find_param("hand").and_then(|h| match h {
+            TechnicalDetailData::Tap { hand, value } => {
+                let h = hand.and_then(|s| match s.as_str() {
                     "left" => Some(TapHand::Left),
                     "right" => Some(TapHand::Right),
                     _ => None,
                 });
                 tech.tap.push(Tap {
-                    value: text,
-                    hand,
+                    value,
+                    hand: h,
                     placement,
                     default_x: None,
                     default_y: None,
                     color: None,
                 });
             }
-            "heel" => tech.heel.push(HeelToe {
-                substitution: if has_flag("substitution=yes") {
+            TechnicalDetailData::Heel { substitution } => tech.heel.push(HeelToe {
+                substitution: if substitution == Some(true) {
                     Some(YesNo::Yes)
                 } else {
                     None
@@ -3297,79 +3285,61 @@ fn convert_technical_events(
                 placement,
                 ..Default::default()
             }),
-            "toe" => tech.toe.push(HeelToe {
-                substitution: if has_flag("substitution=yes") {
+            TechnicalDetailData::Toe { substitution } => tech.toe.push(HeelToe {
+                substitution: if substitution == Some(true) {
                     Some(YesNo::Yes)
                 } else {
                     None
                 },
                 placement,
                 ..Default::default()
-            }),
-            "handbell" => tech.handbell.push(Handbell {
-                value: text,
-                placement,
-                default_x: None,
-                default_y: None,
-                color: None,
             }),
 
-            // Bend
-            "bend" => {
-                let alter: f64 = find_param("alter")
-                    .and_then(|a| a.parse().ok())
-                    .unwrap_or(0.0);
-                let pre_bend = if has_flag("pre-bend") {
-                    Some(true)
-                } else {
-                    None
-                };
-                let release = params.iter().find_map(|p| {
-                    if *p == "release" {
-                        Some(BendRelease { offset: None })
-                    } else {
-                        p.strip_prefix("release=").map(|offset_str| BendRelease {
-                            offset: offset_str.parse().ok(),
-                        })
-                    }
-                });
-                let shape = find_param("shape").and_then(|s| match s {
+            // Complex types
+            TechnicalDetailData::Bend {
+                alter,
+                pre_bend,
+                release,
+                shape,
+                with_bar,
+            } => {
+                let bend_release = release.map(|offset| BendRelease { offset });
+                let bend_shape = shape.and_then(|s| match s.as_str() {
                     "straight" => Some(BendShape::Straight),
                     "curved" => Some(BendShape::Curved),
                     _ => None,
                 });
-                let with_bar = if !text.is_empty() {
-                    Some(PlacementText {
-                        value: text,
-                        placement: None,
-                        default_x: None,
-                        default_y: None,
-                        font_style: None,
-                        color: None,
-                    })
-                } else {
-                    None
-                };
+                let with_bar_pt = with_bar.map(|wb| PlacementText {
+                    value: wb,
+                    placement: None,
+                    default_x: None,
+                    default_y: None,
+                    font_style: None,
+                    color: None,
+                });
                 tech.bend.push(Bend {
                     bend_alter: alter,
                     pre_bend,
-                    release,
-                    with_bar,
-                    shape,
+                    release: bend_release,
+                    with_bar: with_bar_pt,
+                    shape: bend_shape,
                     default_x: None,
                     default_y: None,
                     color: None,
                 });
             }
-
-            // Hole
-            "hole" => {
-                let closed_val = match find_param("closed") {
-                    Some("no") => HoleClosedValue::No,
-                    Some("half") => HoleClosedValue::Half,
+            TechnicalDetailData::Hole {
+                closed,
+                location,
+                hole_type,
+                hole_shape,
+            } => {
+                let closed_val = match closed.as_str() {
+                    "no" => HoleClosedValue::No,
+                    "half" => HoleClosedValue::Half,
                     _ => HoleClosedValue::Yes,
                 };
-                let location = find_param("location").and_then(|l| match l {
+                let loc = location.and_then(|l| match l.as_str() {
                     "right" => Some(HoleClosedLocation::Right),
                     "bottom" => Some(HoleClosedLocation::Bottom),
                     "left" => Some(HoleClosedLocation::Left),
@@ -3377,56 +3347,49 @@ fn convert_technical_events(
                     _ => None,
                 });
                 tech.hole.push(Hole {
-                    hole_type: find_param("hole-type").map(|s| s.to_string()),
+                    hole_type,
                     hole_closed: HoleClosed {
                         value: closed_val,
-                        location,
+                        location: loc,
                     },
-                    hole_shape: find_param("hole-shape").map(|s| s.to_string()),
+                    hole_shape,
                     placement,
                     default_x: None,
                     default_y: None,
                     color: None,
                 });
             }
-
-            // Arrow
-            "arrow" => {
-                if let Some(dir) = find_param("direction") {
-                    let style = find_param("style").map(|s| s.to_string());
-                    let arrowhead = has_flag("arrowhead");
-                    tech.arrow.push(Arrow {
-                        content: ArrowContent::Directional {
-                            direction: dir.to_string(),
-                            style,
-                            arrowhead,
-                        },
-                        placement,
-                        default_x: None,
-                        default_y: None,
-                        color: None,
-                        smufl: None,
-                    });
-                } else if let Some(circ) = find_param("circular") {
-                    tech.arrow.push(Arrow {
-                        content: ArrowContent::Circular(circ.to_string()),
-                        placement,
-                        default_x: None,
-                        default_y: None,
-                        color: None,
-                        smufl: None,
-                    });
-                }
+            TechnicalDetailData::Arrow { content } => {
+                let ac = match content {
+                    tusk_model::musicxml_ext::ArrowContentData::Directional {
+                        direction,
+                        style,
+                        arrowhead,
+                    } => ArrowContent::Directional {
+                        direction,
+                        style,
+                        arrowhead,
+                    },
+                    tusk_model::musicxml_ext::ArrowContentData::Circular(v) => {
+                        ArrowContent::Circular(v)
+                    }
+                };
+                tech.arrow.push(Arrow {
+                    content: ac,
+                    placement,
+                    default_x: None,
+                    default_y: None,
+                    color: None,
+                    smufl: None,
+                });
             }
-
-            // Harmon mute
-            "harmon-mute" => {
-                let closed_val = match find_param("closed") {
-                    Some("no") => HarmonClosedValue::No,
-                    Some("half") => HarmonClosedValue::Half,
+            TechnicalDetailData::HarmonMute { closed, location } => {
+                let closed_val = match closed.as_str() {
+                    "no" => HarmonClosedValue::No,
+                    "half" => HarmonClosedValue::Half,
                     _ => HarmonClosedValue::Yes,
                 };
-                let location = find_param("location").and_then(|l| match l {
+                let loc = location.and_then(|l| match l.as_str() {
                     "right" => Some(HarmonClosedLocation::Right),
                     "bottom" => Some(HarmonClosedLocation::Bottom),
                     "left" => Some(HarmonClosedLocation::Left),
@@ -3436,7 +3399,7 @@ fn convert_technical_events(
                 tech.harmon_mute.push(HarmonMute {
                     harmon_closed: HarmonClosed {
                         value: closed_val,
-                        location,
+                        location: loc,
                     },
                     placement,
                     default_x: None,
@@ -3444,57 +3407,38 @@ fn convert_technical_events(
                     color: None,
                 });
             }
-
-            // Harmonic
-            "harmonic" => {
+            TechnicalDetailData::Harmonic {
+                natural,
+                artificial,
+                base_pitch,
+                touching_pitch,
+                sounding_pitch,
+            } => {
                 tech.harmonic.push(Harmonic {
-                    natural: if has_flag("natural") {
-                        Some(true)
-                    } else {
-                        None
-                    },
-                    artificial: if has_flag("artificial") {
-                        Some(true)
-                    } else {
-                        None
-                    },
-                    base_pitch: if has_flag("base-pitch") {
-                        Some(true)
-                    } else {
-                        None
-                    },
-                    touching_pitch: if has_flag("touching-pitch") {
-                        Some(true)
-                    } else {
-                        None
-                    },
-                    sounding_pitch: if has_flag("sounding-pitch") {
-                        Some(true)
-                    } else {
-                        None
-                    },
+                    natural,
+                    artificial,
+                    base_pitch,
+                    touching_pitch,
+                    sounding_pitch,
                     placement,
                     ..Default::default()
                 });
             }
-
-            // Other-technical
-            "other-technical" => {
+            TechnicalDetailData::OtherTechnical { smufl, text } => {
                 tech.other_technical.push(OtherTechnical {
                     value: text,
                     placement,
-                    smufl: find_param("smufl").map(|s| s.to_string()),
+                    smufl,
                     default_x: None,
                     default_y: None,
                     color: None,
                 });
             }
 
-            // is_technical_label() pre-filters; all known names are matched above.
-            // Fingering is handled separately via native MEI <fing> elements below.
-            unknown => {
-                tracing::debug!("Unknown technical label {:?} — skipped", unknown);
-            }
+            // Fingering is handled separately via <fing> below;
+            // TechArticulation is handled in convert_mei_note_label_technical.
+            TechnicalDetailData::Fingering { .. }
+            | TechnicalDetailData::TechArticulation { .. } => {}
         }
     }
 
@@ -3537,16 +3481,19 @@ fn convert_technical_events(
             .collect::<Vec<_>>()
             .join("");
 
-        // Parse substitution/alternate from label
+        // Read substitution/alternate from ExtensionStore
         let mut substitution = None;
         let mut alternate = None;
-        if let Some(label) = fing.common.label.as_deref() {
-            if let Some(rest) = label.strip_prefix("musicxml:fingering,") {
-                let params: Vec<&str> = rest.split(',').collect();
-                if params.contains(&"substitution=yes") {
+        if let Some(fing_id) = fing.common.xml_id.as_deref() {
+            if let Some(TechnicalDetailData::Fingering {
+                substitution: sub,
+                alternate: alt,
+            }) = ctx.ext_store().technical_detail(fing_id)
+            {
+                if *sub == Some(true) {
                     substitution = Some(YesNo::Yes);
                 }
-                if params.contains(&"alternate=yes") {
+                if *alt == Some(true) {
                     alternate = Some(YesNo::Yes);
                 }
             }
@@ -3564,43 +3511,6 @@ fn convert_technical_events(
     }
 
     Ok(())
-}
-
-/// Check if an element name corresponds to a MusicXML technical notation.
-fn is_technical_label(name: &str) -> bool {
-    matches!(
-        name,
-        "up-bow"
-            | "down-bow"
-            | "open-string"
-            | "thumb-position"
-            | "double-tongue"
-            | "triple-tongue"
-            | "snap-pizzicato"
-            | "fingernails"
-            | "brass-bend"
-            | "flip"
-            | "smear"
-            | "golpe"
-            | "stopped"
-            | "open"
-            | "half-muted"
-            | "pluck"
-            | "fret"
-            | "string"
-            | "hammer-on"
-            | "pull-off"
-            | "tap"
-            | "heel"
-            | "toe"
-            | "handbell"
-            | "bend"
-            | "hole"
-            | "arrow"
-            | "harmon-mute"
-            | "harmonic"
-            | "other-technical"
-    )
 }
 
 /// Convert MEI `<dynam>` control events marked as NotationDynamics in ExtensionStore

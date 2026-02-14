@@ -1079,6 +1079,11 @@ pub struct NoteExtras {
     /// Full MusicXML articulations data for lossless multi-artic roundtrip.
     #[serde(rename = "art", skip_serializing_if = "Option::is_none")]
     pub articulations: Option<serde_json::Value>,
+
+    /// Technical articulations mapped to MEI @artic (up-bow, down-bow, snap, stopped).
+    /// Each entry carries placement info for lossless roundtrip.
+    #[serde(rename = "ta", skip_serializing_if = "Vec::is_empty")]
+    pub tech_artics: Vec<crate::musicxml_ext::TechnicalDetailData>,
 }
 
 /// Play data for note-level or sound-level playback.

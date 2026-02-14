@@ -379,15 +379,30 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 6.2 Technical import migration
 
-- [ ] Import (`import/note.rs`): store `TechnicalDetailData` in `ext_store.technical_details`
-- [ ] Stop encoding technical data in `<ornam>` labels and `<fing>` labels
-- [ ] Tests pass
+- [x] Import (`import/note.rs`): store `TechnicalDetailData` in `ext_store.technical_details`
+  - All 30 technical types stored via `insert_technical_detail()` on ornam/fing xml_id
+  - Tech-artics (upbow, dnbow, snap, stop) stored in `NoteExtras.tech_artics` Vec keyed by note_id
+  - Added `tech_artics: Vec<TechnicalDetailData>` field to NoteExtras in musicxml_ext/mod.rs
+- [x] Stop encoding technical data in `<ornam>` labels and `<fing>` labels
+  - Removed all `musicxml:` label assignments from `process_technical()`
+  - Updated `emit!` macro: no label, generates xml_id, stores TechnicalDetailData in ExtensionStore
+  - Fingering: no label, stores Fingering variant via `insert_technical_detail()` when sub/alt present
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 6.3 Technical export migration
 
-- [ ] Export (`export/content.rs`): read from `ext_store.technical_details.get(id)`
-- [ ] Remove technical label-parsing code
-- [ ] Tests pass
+- [x] Export (`export/content.rs`): read from `ext_store.technical_details.get(id)`
+  - `convert_technical_events()` reads from `ctx.ext_store().technical_detail(ornam_id)` instead of label parsing
+  - Fingering reads from `ctx.ext_store().technical_detail(fing_id)` for substitution/alternate attrs
+  - Dispatch uses TechnicalDetailData match instead of string-based `is_technical_label()` + label parsing
+- [x] Remove technical label-parsing code
+  - Removed `is_technical_label()` function
+  - Removed entire label-based dispatch block (400+ lines replaced with typed match)
+  - `convert_mei_note_label_technical()` reads from `NoteExtras.tech_artics` instead of note label segments
+  - Updated xml_compare: ornam/fing keying includes @xml:id for disambiguation (same pattern as dir)
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 7: Note-level label elimination
 

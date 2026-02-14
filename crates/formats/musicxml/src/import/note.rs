@@ -1489,7 +1489,7 @@ fn process_notation_dynamics(note: &MusicXmlNote, note_id: &str, ctx: &mut Conve
     }
 }
 
-/// Process technical notations into MEI `<ornam>` control events with `musicxml:` labels.
+/// Process technical notations into MEI `<ornam>`/`<fing>` control events + ExtensionStore.
 fn process_technical(
     note: &MusicXmlNote,
     note_id: &str,
@@ -1501,6 +1501,7 @@ fn process_technical(
     use crate::model::technical::*;
     use tusk_model::data::{DataArticulation, DataUri};
     use tusk_model::elements::{MeasureChild, Ornam, OrnamChild};
+    use tusk_model::musicxml_ext::TechnicalDetailData;
 
     let tech = match note.notations {
         Some(ref n) => match n.technical {
@@ -1516,137 +1517,186 @@ fn process_technical(
 
     let place_for = |p: Option<AboveBelow>| convert_placement(p.as_ref());
 
-    // Helper macro to create an ornam with label and add it
+    // Helper macro to create an ornam (no label) and add it with ExtensionStore data
     macro_rules! emit {
-        ($label:expr, $placement:expr) => {{
+        ($placement:expr, $data:expr) => {{
             let mut ornam = Ornam::default();
-            ornam.common.xml_id = Some(ctx.generate_id_with_suffix("ornam"));
-            ornam.common.label = Some($label);
+            let id = ctx.generate_id_with_suffix("ornam");
+            ornam.common.xml_id = Some(id.clone());
             ornam.ornam_log.startid = Some(startid.clone());
             ornam.ornam_log.staff = Some(staff_str.clone());
             ornam.ornam_vis.place = place_for($placement);
+            ctx.ext_store_mut().insert_technical_detail(id, $data);
             ornam
         }};
     }
 
-    // Up-bow / down-bow → native MEI @artic
+    // Helper: store a tech-artic in NoteExtras for note-level roundtrip
+    let mut tech_artics: Vec<TechnicalDetailData> = Vec::new();
+
+    // Up-bow / down-bow → native MEI @artic + TechArticulation in NoteExtras
     for v in &tech.up_bow {
         if mei_note.note_anl.artic.is_none() {
             mei_note.note_anl.artic = Some(DataArticulation::Upbow);
         }
-        let mut seg = "musicxml:tech-artic,upbow".to_string();
-        if let Some(AboveBelow::Below) = v.placement {
-            seg.push_str(",below");
-        } else if let Some(AboveBelow::Above) = v.placement {
-            seg.push_str(",above");
+        let mut data = TechnicalDetailData::UpBow;
+        // For tech-artic with placement, use TechArticulation wrapper
+        let placement_str = match v.placement {
+            Some(AboveBelow::Below) => Some("below"),
+            Some(AboveBelow::Above) => Some("above"),
+            _ => None,
+        };
+        if placement_str.is_some() {
+            // Embed placement in a TechArticulation with name encoding
+            data = TechnicalDetailData::TechArticulation {
+                name: format!(
+                    "upbow{}",
+                    placement_str.map(|p| format!(",{}", p)).unwrap_or_default()
+                ),
+            };
         }
-        append_note_label(mei_note, &seg);
+        tech_artics.push(data);
     }
     for v in &tech.down_bow {
         if mei_note.note_anl.artic.is_none() {
             mei_note.note_anl.artic = Some(DataArticulation::Dnbow);
         }
-        let mut seg = "musicxml:tech-artic,dnbow".to_string();
-        if let Some(AboveBelow::Below) = v.placement {
-            seg.push_str(",below");
-        } else if let Some(AboveBelow::Above) = v.placement {
-            seg.push_str(",above");
-        }
-        append_note_label(mei_note, &seg);
+        let placement_str = match v.placement {
+            Some(AboveBelow::Below) => Some("below"),
+            Some(AboveBelow::Above) => Some("above"),
+            _ => None,
+        };
+        let data = if placement_str.is_some() {
+            TechnicalDetailData::TechArticulation {
+                name: format!(
+                    "dnbow{}",
+                    placement_str.map(|p| format!(",{}", p)).unwrap_or_default()
+                ),
+            }
+        } else {
+            TechnicalDetailData::DownBow
+        };
+        tech_artics.push(data);
     }
+
+    // Simple placement-only types → ornam + ExtensionStore
     for v in &tech.open_string {
-        let o = emit!("musicxml:open-string".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::OpenString);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.thumb_position {
-        let o = emit!("musicxml:thumb-position".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::ThumbPosition);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.double_tongue {
-        let o = emit!("musicxml:double-tongue".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::DoubleTongue);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.triple_tongue {
-        let o = emit!("musicxml:triple-tongue".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::TripleTongue);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
-    // Snap-pizzicato → native MEI @artic="snap"
+
+    // Snap-pizzicato → native MEI @artic + TechArticulation
     for v in &tech.snap_pizzicato {
         if mei_note.note_anl.artic.is_none() {
             mei_note.note_anl.artic = Some(DataArticulation::Snap);
         }
-        let mut seg = "musicxml:tech-artic,snap".to_string();
-        if let Some(AboveBelow::Below) = v.placement {
-            seg.push_str(",below");
-        } else if let Some(AboveBelow::Above) = v.placement {
-            seg.push_str(",above");
-        }
-        append_note_label(mei_note, &seg);
+        let placement_str = match v.placement {
+            Some(AboveBelow::Below) => Some("below"),
+            Some(AboveBelow::Above) => Some("above"),
+            _ => None,
+        };
+        let data = if placement_str.is_some() {
+            TechnicalDetailData::TechArticulation {
+                name: format!(
+                    "snap{}",
+                    placement_str.map(|p| format!(",{}", p)).unwrap_or_default()
+                ),
+            }
+        } else {
+            TechnicalDetailData::SnapPizzicato
+        };
+        tech_artics.push(data);
     }
+
     for v in &tech.fingernails {
-        let o = emit!("musicxml:fingernails".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::Fingernails);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.brass_bend {
-        let o = emit!("musicxml:brass-bend".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::BrassBend);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.flip {
-        let o = emit!("musicxml:flip".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::Flip);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.smear {
-        let o = emit!("musicxml:smear".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::Smear);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.golpe {
-        let o = emit!("musicxml:golpe".into(), v.placement);
+        let o = emit!(v.placement, TechnicalDetailData::Golpe);
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Stopped → native MEI @artic="stop" when no smufl; ornam fallback with smufl
+    // Stopped → native MEI @artic when no smufl; ornam + ExtensionStore with smufl
     for v in &tech.stopped {
         if v.smufl.is_none() {
             if mei_note.note_anl.artic.is_none() {
                 mei_note.note_anl.artic = Some(DataArticulation::Stop);
             }
-            let mut seg = "musicxml:tech-artic,stop".to_string();
-            if let Some(AboveBelow::Below) = v.placement {
-                seg.push_str(",below");
-            } else if let Some(AboveBelow::Above) = v.placement {
-                seg.push_str(",above");
-            }
-            append_note_label(mei_note, &seg);
+            let placement_str = match v.placement {
+                Some(AboveBelow::Below) => Some("below"),
+                Some(AboveBelow::Above) => Some("above"),
+                _ => None,
+            };
+            let data = if placement_str.is_some() {
+                TechnicalDetailData::TechArticulation {
+                    name: format!(
+                        "stop{}",
+                        placement_str.map(|p| format!(",{}", p)).unwrap_or_default()
+                    ),
+                }
+            } else {
+                TechnicalDetailData::Stopped { smufl: None }
+            };
+            tech_artics.push(data);
         } else {
-            let mut label = "musicxml:stopped".to_string();
-            if let Some(ref s) = v.smufl {
-                label.push_str(&format!(",smufl={}", s));
-            }
-            let o = emit!(label, v.placement);
+            let o = emit!(
+                v.placement,
+                TechnicalDetailData::Stopped {
+                    smufl: v.smufl.clone(),
+                }
+            );
             ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
         }
     }
     for v in &tech.open {
-        let mut label = "musicxml:open".to_string();
-        if let Some(ref s) = v.smufl {
-            label.push_str(&format!(",smufl={}", s));
-        }
-        let o = emit!(label, v.placement);
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Open {
+                smufl: v.smufl.clone(),
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.half_muted {
-        let mut label = "musicxml:half-muted".to_string();
-        if let Some(ref s) = v.smufl {
-            label.push_str(&format!(",smufl={}", s));
-        }
-        let o = emit!(label, v.placement);
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::HalfMuted {
+                smufl: v.smufl.clone(),
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Fingering → native MEI <fing> element
+    // Fingering → native MEI <fing> + ExtensionStore
     for v in &tech.fingering {
         let mut fing = tusk_model::elements::Fing::default();
-        fing.common.xml_id = Some(ctx.generate_id_with_suffix("fing"));
+        let id = ctx.generate_id_with_suffix("fing");
+        fing.common.xml_id = Some(id.clone());
         fing.fing_log.startid = Some(startid.clone());
         fing.fing_log.staff = Some(staff_str.clone());
         fing.fing_vis.place = place_for(v.placement);
@@ -1654,23 +1704,28 @@ fn process_technical(
             fing.children
                 .push(tusk_model::elements::FingChild::Text(v.value.clone()));
         }
-        // Store substitution/alternate attrs in label for roundtrip
-        let mut label_parts = Vec::new();
-        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
-            label_parts.push("substitution=yes");
-        }
-        if matches!(v.alternate, Some(crate::model::data::YesNo::Yes)) {
-            label_parts.push("alternate=yes");
-        }
-        if !label_parts.is_empty() {
-            fing.common.label = Some(format!("musicxml:fingering,{}", label_parts.join(",")));
+        let sub = matches!(v.substitution, Some(crate::model::data::YesNo::Yes));
+        let alt = matches!(v.alternate, Some(crate::model::data::YesNo::Yes));
+        if sub || alt {
+            ctx.ext_store_mut().insert_technical_detail(
+                id,
+                TechnicalDetailData::Fingering {
+                    substitution: if sub { Some(true) } else { None },
+                    alternate: if alt { Some(true) } else { None },
+                },
+            );
         }
         ctx.add_ornament_event(MeasureChild::Fing(Box::new(fing)));
     }
 
     // Pluck (text content)
     for v in &tech.pluck {
-        let mut o = emit!("musicxml:pluck".into(), v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::Pluck {
+                value: v.value.clone(),
+            }
+        );
         if !v.value.is_empty() {
             o.children.push(OrnamChild::Text(v.value.clone()));
         }
@@ -1679,29 +1734,38 @@ fn process_technical(
 
     // Fret (numeric text)
     for v in &tech.fret {
-        let mut o = emit!("musicxml:fret".into(), None);
+        let mut o = emit!(
+            None::<AboveBelow>,
+            TechnicalDetailData::Fret { value: v.value }
+        );
         o.children.push(OrnamChild::Text(v.value.to_string()));
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
     // String (numeric text)
     for v in &tech.string {
-        let mut o = emit!("musicxml:string".into(), v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::StringNum { value: v.value }
+        );
         o.children.push(OrnamChild::Text(v.value.to_string()));
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Hammer-on / Pull-off (type + number + text)
+    // Hammer-on / Pull-off
     for v in &tech.hammer_on {
         let type_str = match v.ho_type {
             crate::model::data::StartStop::Start => "start",
             crate::model::data::StartStop::Stop => "stop",
         };
-        let mut label = format!("musicxml:hammer-on,type={}", type_str);
-        if let Some(n) = v.number {
-            label.push_str(&format!(",number={}", n));
-        }
-        let mut o = emit!(label, v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::HammerOn {
+                ho_type: type_str.to_string(),
+                number: v.number,
+                text: v.text.clone(),
+            }
+        );
         if !v.text.is_empty() {
             o.children.push(OrnamChild::Text(v.text.clone()));
         }
@@ -1712,11 +1776,14 @@ fn process_technical(
             crate::model::data::StartStop::Start => "start",
             crate::model::data::StartStop::Stop => "stop",
         };
-        let mut label = format!("musicxml:pull-off,type={}", type_str);
-        if let Some(n) = v.number {
-            label.push_str(&format!(",number={}", n));
-        }
-        let mut o = emit!(label, v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::PullOff {
+                po_type: type_str.to_string(),
+                number: v.number,
+                text: v.text.clone(),
+            }
+        );
         if !v.text.is_empty() {
             o.children.push(OrnamChild::Text(v.text.clone()));
         }
@@ -1725,186 +1792,196 @@ fn process_technical(
 
     // Tap (text + hand)
     for v in &tech.tap {
-        let mut label = "musicxml:tap".to_string();
-        if let Some(ref h) = v.hand {
-            let h_str = match h {
-                TapHand::Left => "left",
-                TapHand::Right => "right",
-            };
-            label.push_str(&format!(",hand={}", h_str));
-        }
-        let mut o = emit!(label, v.placement);
+        let hand_str = v.hand.as_ref().map(|h| match h {
+            TapHand::Left => "left".to_string(),
+            TapHand::Right => "right".to_string(),
+        });
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::Tap {
+                hand: hand_str,
+                value: v.value.clone(),
+            }
+        );
         if !v.value.is_empty() {
             o.children.push(OrnamChild::Text(v.value.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Heel / Toe (substitution)
+    // Heel / Toe
     for v in &tech.heel {
-        let mut label = "musicxml:heel".to_string();
-        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
-            label.push_str(",substitution=yes");
-        }
-        let o = emit!(label, v.placement);
+        let sub = matches!(v.substitution, Some(crate::model::data::YesNo::Yes));
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Heel {
+                substitution: if sub { Some(true) } else { None },
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
     for v in &tech.toe {
-        let mut label = "musicxml:toe".to_string();
-        if matches!(v.substitution, Some(crate::model::data::YesNo::Yes)) {
-            label.push_str(",substitution=yes");
-        }
-        let o = emit!(label, v.placement);
+        let sub = matches!(v.substitution, Some(crate::model::data::YesNo::Yes));
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Toe {
+                substitution: if sub { Some(true) } else { None },
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Bend (alter + pre-bend/release/with-bar + shape)
+    // Bend
     for v in &tech.bend {
-        let mut label = format!("musicxml:bend,alter={}", v.bend_alter);
-        if v.pre_bend.is_some() {
-            label.push_str(",pre-bend");
-        }
-        if let Some(ref rel) = v.release {
-            label.push_str(",release");
-            if let Some(offset) = rel.offset {
-                label.push_str(&format!("={}", offset));
+        let release = v.release.as_ref().map(|r| r.offset);
+        let shape_str = v.shape.as_ref().map(|s| match s {
+            BendShape::Straight => "straight".to_string(),
+            BendShape::Curved => "curved".to_string(),
+        });
+        let with_bar_text = v
+            .with_bar
+            .as_ref()
+            .filter(|wb| !wb.value.is_empty())
+            .map(|wb| wb.value.clone());
+        let mut o = emit!(
+            None::<AboveBelow>,
+            TechnicalDetailData::Bend {
+                alter: v.bend_alter,
+                pre_bend: v.pre_bend.as_ref().map(|_| true),
+                release,
+                shape: shape_str,
+                with_bar: with_bar_text.clone(),
             }
-        }
-        if let Some(ref shape) = v.shape {
-            let s = match shape {
-                BendShape::Straight => "straight",
-                BendShape::Curved => "curved",
-            };
-            label.push_str(&format!(",shape={}", s));
-        }
-        let mut o = emit!(label, None);
-        if let Some(ref wb) = v.with_bar {
-            if !wb.value.is_empty() {
-                o.children.push(OrnamChild::Text(wb.value.clone()));
-            }
+        );
+        if let Some(ref wb_text) = with_bar_text {
+            o.children.push(OrnamChild::Text(wb_text.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Hole (hole-type, hole-closed, hole-shape)
+    // Hole
     for v in &tech.hole {
         let closed_str = match v.hole_closed.value {
             HoleClosedValue::Yes => "yes",
             HoleClosedValue::No => "no",
             HoleClosedValue::Half => "half",
         };
-        let mut label = format!("musicxml:hole,closed={}", closed_str);
-        if let Some(ref loc) = v.hole_closed.location {
-            let loc_str = match loc {
-                HoleClosedLocation::Right => "right",
-                HoleClosedLocation::Bottom => "bottom",
-                HoleClosedLocation::Left => "left",
-                HoleClosedLocation::Top => "top",
-            };
-            label.push_str(&format!(",location={}", loc_str));
-        }
-        if let Some(ref ht) = v.hole_type {
-            label.push_str(&format!(",hole-type={}", ht));
-        }
-        if let Some(ref hs) = v.hole_shape {
-            label.push_str(&format!(",hole-shape={}", hs));
-        }
-        let o = emit!(label, v.placement);
+        let loc_str = v.hole_closed.location.as_ref().map(|loc| match loc {
+            HoleClosedLocation::Right => "right".to_string(),
+            HoleClosedLocation::Bottom => "bottom".to_string(),
+            HoleClosedLocation::Left => "left".to_string(),
+            HoleClosedLocation::Top => "top".to_string(),
+        });
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Hole {
+                closed: closed_str.to_string(),
+                location: loc_str,
+                hole_type: v.hole_type.clone(),
+                hole_shape: v.hole_shape.clone(),
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Arrow (directional or circular)
+    // Arrow
     for v in &tech.arrow {
-        match &v.content {
+        let content_data = match &v.content {
             ArrowContent::Directional {
                 direction,
                 style,
                 arrowhead,
-            } => {
-                let mut label = format!("musicxml:arrow,direction={}", direction);
-                if let Some(s) = style {
-                    label.push_str(&format!(",style={}", s));
-                }
-                if *arrowhead {
-                    label.push_str(",arrowhead");
-                }
-                let o = emit!(label, v.placement);
-                ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
-            }
+            } => tusk_model::musicxml_ext::ArrowContentData::Directional {
+                direction: direction.clone(),
+                style: style.clone(),
+                arrowhead: *arrowhead,
+            },
             ArrowContent::Circular(value) => {
-                let label = format!("musicxml:arrow,circular={}", value);
-                let o = emit!(label, v.placement);
-                ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+                tusk_model::musicxml_ext::ArrowContentData::Circular(value.clone())
             }
-        }
+        };
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Arrow {
+                content: content_data,
+            }
+        );
+        ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Handbell (text value)
+    // Handbell
     for v in &tech.handbell {
-        let mut o = emit!("musicxml:handbell".into(), v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::Handbell {
+                value: v.value.clone(),
+            }
+        );
         o.children.push(OrnamChild::Text(v.value.clone()));
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Harmon mute (harmon-closed value + location)
+    // Harmon mute
     for v in &tech.harmon_mute {
         let closed_str = match v.harmon_closed.value {
             HarmonClosedValue::Yes => "yes",
             HarmonClosedValue::No => "no",
             HarmonClosedValue::Half => "half",
         };
-        let mut label = format!("musicxml:harmon-mute,closed={}", closed_str);
-        if let Some(ref loc) = v.harmon_closed.location {
-            let loc_str = match loc {
-                HarmonClosedLocation::Right => "right",
-                HarmonClosedLocation::Bottom => "bottom",
-                HarmonClosedLocation::Left => "left",
-                HarmonClosedLocation::Top => "top",
-            };
-            label.push_str(&format!(",location={}", loc_str));
-        }
-        let o = emit!(label, v.placement);
+        let loc_str = v.harmon_closed.location.as_ref().map(|loc| match loc {
+            HarmonClosedLocation::Right => "right".to_string(),
+            HarmonClosedLocation::Bottom => "bottom".to_string(),
+            HarmonClosedLocation::Left => "left".to_string(),
+            HarmonClosedLocation::Top => "top".to_string(),
+        });
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::HarmonMute {
+                closed: closed_str.to_string(),
+                location: loc_str,
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Harmonic (natural/artificial/base-pitch/touching-pitch/sounding-pitch)
+    // Harmonic
     for v in &tech.harmonic {
-        let mut parts = Vec::new();
-        if v.natural.is_some() {
-            parts.push("natural");
-        }
-        if v.artificial.is_some() {
-            parts.push("artificial");
-        }
-        if v.base_pitch.is_some() {
-            parts.push("base-pitch");
-        }
-        if v.touching_pitch.is_some() {
-            parts.push("touching-pitch");
-        }
-        if v.sounding_pitch.is_some() {
-            parts.push("sounding-pitch");
-        }
-        let label = if parts.is_empty() {
-            "musicxml:harmonic".to_string()
-        } else {
-            format!("musicxml:harmonic,{}", parts.join(","))
-        };
-        let o = emit!(label, v.placement);
+        let o = emit!(
+            v.placement,
+            TechnicalDetailData::Harmonic {
+                natural: v.natural.as_ref().map(|_| true),
+                artificial: v.artificial.as_ref().map(|_| true),
+                base_pitch: v.base_pitch.as_ref().map(|_| true),
+                touching_pitch: v.touching_pitch.as_ref().map(|_| true),
+                sounding_pitch: v.sounding_pitch.as_ref().map(|_| true),
+            }
+        );
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
     }
 
-    // Other-technical (text + smufl)
+    // Other-technical
     for v in &tech.other_technical {
-        let mut label = "musicxml:other-technical".to_string();
-        if let Some(ref s) = v.smufl {
-            label.push_str(&format!(",smufl={}", s));
-        }
-        let mut o = emit!(label, v.placement);
+        let mut o = emit!(
+            v.placement,
+            TechnicalDetailData::OtherTechnical {
+                smufl: v.smufl.clone(),
+                text: v.value.clone(),
+            }
+        );
         if !v.value.is_empty() {
             o.children.push(OrnamChild::Text(v.value.clone()));
         }
         ctx.add_ornament_event(MeasureChild::Ornam(Box::new(o)));
+    }
+
+    // Store tech-artics in NoteExtras
+    if !tech_artics.is_empty() {
+        let extras = ctx
+            .ext_store_mut()
+            .note_extras_map
+            .entry(note_id.to_string())
+            .or_default();
+        extras.tech_artics = tech_artics;
     }
 }
 

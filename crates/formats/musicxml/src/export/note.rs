@@ -142,7 +142,7 @@ pub fn convert_mei_note(
     convert_mei_articulations(mei_note, &mut mxml_note, ctx);
 
     // Restore up-bow/down-bow from note label tech-artic segments
-    convert_mei_note_label_technical(mei_note, &mut mxml_note);
+    convert_mei_note_label_technical(mei_note, &mut mxml_note, ctx);
 
     // Convert ties from MEI @tie attribute to MusicXML <tie> elements
     convert_mei_ties(mei_note, &mut mxml_note);
@@ -616,71 +616,109 @@ fn convert_mei_note_label_articulations(
     }
 }
 
-/// Restore up-bow/down-bow from MEI note label `musicxml:tech-artic` segments.
+/// Restore tech-artic technical notations from ExtensionStore `NoteExtras.tech_artics`.
 ///
-/// When these segments are present, they take priority over `@artic` fallback
+/// When these are present, they take priority over `@artic` fallback
 /// because they carry placement data. Clear any prior duplicates from `@artic`.
 fn convert_mei_note_label_technical(
     mei_note: &tusk_model::elements::Note,
     mxml_note: &mut crate::model::note::Note,
+    ctx: &ConversionContext,
 ) {
-    let label = match mei_note.common.label.as_deref() {
-        Some(l) => l,
+    let note_id = match mei_note.common.xml_id.as_deref() {
+        Some(id) => id,
         None => return,
     };
+    let extras = match ctx.ext_store().note_extras(note_id) {
+        Some(e) => e,
+        None => return,
+    };
+    if extras.tech_artics.is_empty() {
+        return;
+    }
 
     use crate::model::data::AboveBelow;
     use crate::model::notations::{EmptyPlacement, Notations};
     use crate::model::technical::{EmptyPlacementSmufl, Technical};
+    use tusk_model::musicxml_ext::TechnicalDetailData;
 
-    for segment in label.split('|') {
-        if let Some(rest) = segment.strip_prefix("musicxml:tech-artic,") {
-            let parts: Vec<&str> = rest.split(',').collect();
-            let artic_name = parts.first().copied().unwrap_or("");
-            let placement = parts.get(1).and_then(|p| match *p {
-                "above" => Some(AboveBelow::Above),
-                "below" => Some(AboveBelow::Below),
-                _ => None,
-            });
-            let notations = mxml_note.notations.get_or_insert_with(Notations::default);
-            let tech = notations.technical.get_or_insert_with(Technical::default);
-            match artic_name {
-                "upbow" => {
-                    // Clear any duplicate from @artic fallback
-                    tech.up_bow.clear();
-                    tech.up_bow.push(EmptyPlacement {
-                        placement,
-                        ..Default::default()
-                    });
-                }
-                "dnbow" => {
-                    tech.down_bow.clear();
-                    tech.down_bow.push(EmptyPlacement {
-                        placement,
-                        ..Default::default()
-                    });
-                }
-                "snap" => {
-                    tech.snap_pizzicato.clear();
-                    tech.snap_pizzicato.push(EmptyPlacement {
-                        placement,
-                        ..Default::default()
-                    });
-                }
-                "stop" => {
-                    tech.stopped.clear();
-                    tech.stopped.push(EmptyPlacementSmufl {
-                        placement,
-                        smufl: None,
-                        ..Default::default()
-                    });
-                }
-                // All known tech-artic names (upbow, dnbow, snap, stop) are
-                // handled above. Unknown names get a debug trace.
-                unknown => {
-                    tracing::debug!("Unknown tech-artic name {:?} — skipped", unknown);
+    for data in &extras.tech_artics {
+        let notations = mxml_note.notations.get_or_insert_with(Notations::default);
+        let tech = notations.technical.get_or_insert_with(Technical::default);
+
+        match data {
+            TechnicalDetailData::UpBow => {
+                tech.up_bow.clear();
+                tech.up_bow.push(EmptyPlacement {
+                    placement: None,
+                    ..Default::default()
+                });
+            }
+            TechnicalDetailData::DownBow => {
+                tech.down_bow.clear();
+                tech.down_bow.push(EmptyPlacement {
+                    placement: None,
+                    ..Default::default()
+                });
+            }
+            TechnicalDetailData::SnapPizzicato => {
+                tech.snap_pizzicato.clear();
+                tech.snap_pizzicato.push(EmptyPlacement {
+                    placement: None,
+                    ..Default::default()
+                });
+            }
+            TechnicalDetailData::Stopped { smufl } => {
+                tech.stopped.clear();
+                tech.stopped.push(EmptyPlacementSmufl {
+                    placement: None,
+                    smufl: smufl.clone(),
+                    ..Default::default()
+                });
+            }
+            TechnicalDetailData::TechArticulation { name } => {
+                // Parse "artic_name[,placement]" format
+                let parts: Vec<&str> = name.split(',').collect();
+                let artic_name = parts.first().copied().unwrap_or("");
+                let placement = parts.get(1).and_then(|p| match *p {
+                    "above" => Some(AboveBelow::Above),
+                    "below" => Some(AboveBelow::Below),
+                    _ => None,
+                });
+                match artic_name {
+                    "upbow" => {
+                        tech.up_bow.clear();
+                        tech.up_bow.push(EmptyPlacement {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    "dnbow" => {
+                        tech.down_bow.clear();
+                        tech.down_bow.push(EmptyPlacement {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    "snap" => {
+                        tech.snap_pizzicato.clear();
+                        tech.snap_pizzicato.push(EmptyPlacement {
+                            placement,
+                            ..Default::default()
+                        });
+                    }
+                    "stop" => {
+                        tech.stopped.clear();
+                        tech.stopped.push(EmptyPlacementSmufl {
+                            placement,
+                            smufl: None,
+                            ..Default::default()
+                        });
+                    }
+                    _ => {}
                 }
             }
+            _ => {}
         }
     }
 }
@@ -1689,7 +1727,7 @@ pub fn convert_mei_chord(
         convert_mei_articulations(mei_note, &mut mxml_note, ctx);
 
         // Restore up-bow/down-bow from note label tech-artic segments
-        convert_mei_note_label_technical(mei_note, &mut mxml_note);
+        convert_mei_note_label_technical(mei_note, &mut mxml_note, ctx);
 
         // Apply chord-level articulations to the first note (fallback for non-roundtrip MEI)
         if i == 0 {
