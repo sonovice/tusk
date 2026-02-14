@@ -105,13 +105,8 @@ pub fn convert_note(
     if let Some(ref stem) = note.stem {
         use crate::model::note::StemValue;
         match stem.value {
-            StemValue::Double => {
-                // MEI has no double stem — store in label for roundtrip
-                append_note_label(&mut mei_note, "musicxml:stem,double");
-            }
-            StemValue::None => {
-                // MEI has no "no stem" — store in label for roundtrip
-                append_note_label(&mut mei_note, "musicxml:stem,none");
+            StemValue::Double | StemValue::None => {
+                // MEI has no double/none stem — stored in ExtensionStore via populate_note_ext_store
             }
             _ => {
                 mei_note.note_vis.stem_dir = Some(convert_stem_direction(stem.value));
@@ -170,76 +165,15 @@ pub fn convert_note(
     // Convert lyrics to MEI verse/syl children
     convert_lyrics(note, &mut mei_note);
 
-    // Store note-level instrument references in label for roundtrip
-    if !note.instruments.is_empty() {
-        let ids: Vec<&str> = note.instruments.iter().map(|i| i.id.as_str()).collect();
-        append_note_label(
-            &mut mei_note,
-            &format!("musicxml:instruments,{}", ids.join(",")),
-        );
-    }
-
-    // Store notehead in MEI head_shape/head_fill and label for lossless roundtrip
+    // Store notehead in MEI head_shape/head_fill; full data in ExtensionStore via populate_note_ext_store
     if let Some(ref nh) = note.notehead {
         convert_notehead_to_mei(nh, &mut mei_note);
     }
 
-    // Store notehead-text as JSON-in-label
-    if let Some(ref nht) = note.notehead_text {
-        if let Ok(json) = serde_json::to_string(nht) {
-            append_note_label(&mut mei_note, &format!("musicxml:notehead-text,{json}"));
-        }
-    }
-
-    // Store note-level play as JSON-in-label
-    if let Some(ref play) = note.play {
-        if let Ok(json) = serde_json::to_string(play) {
-            append_note_label(&mut mei_note, &format!("musicxml:play,{json}"));
-        }
-    }
-
-    // Store note-level listen as JSON-in-label
-    if let Some(ref listen) = note.listen {
-        if let Ok(json) = serde_json::to_string(listen) {
-            append_note_label(&mut mei_note, &format!("musicxml:listen,{json}"));
-        }
-    }
-
-    // Store note-level footnote as JSON-in-label
-    if let Some(ref ft) = note.footnote {
-        if let Ok(json) = serde_json::to_string(ft) {
-            append_note_label(&mut mei_note, &format!("musicxml:footnote,{json}"));
-        }
-    }
-
-    // Store note-level level as JSON-in-label
-    if let Some(ref lv) = note.level {
-        if let Ok(json) = serde_json::to_string(lv) {
-            append_note_label(&mut mei_note, &format!("musicxml:level,{json}"));
-        }
-    }
-
-    // Store notations-level footnote/level as JSON-in-label
-    if let Some(ref notations) = note.notations {
-        if let Some(ref ft) = notations.footnote {
-            if let Ok(json) = serde_json::to_string(ft) {
-                append_note_label(
-                    &mut mei_note,
-                    &format!("musicxml:notations-footnote,{json}"),
-                );
-            }
-        }
-        if let Some(ref lv) = notations.level {
-            if let Ok(json) = serde_json::to_string(lv) {
-                append_note_label(&mut mei_note, &format!("musicxml:notations-level,{json}"));
-            }
-        }
-    }
-
-    // Import visual/position/print attributes
+    // Import visual/position/print attributes (MEI @color, @visible)
     convert_note_visual_attrs(note, &mut mei_note);
 
-    // Dual-path: store typed extension data in ExtensionStore
+    // Store all note-level extension data in ExtensionStore (typed, not labels)
     populate_note_ext_store(note, &mei_note, ctx);
 
     Ok(mei_note)
@@ -523,12 +457,14 @@ pub fn convert_chord(
         } else {
             mei_note.note_vis.stem_dir = None;
         }
-        // For special stem values (Double/None) stored in label, only keep on the first
+        // For special stem values (Double/None) in ExtensionStore, only keep on the first
         // chord note — chord stem applies to all notes, and export only emits on first note.
-        if first_stem_handled {
-            strip_label_segment(&mut mei_note, "musicxml:stem,");
-        } else if has_label_segment(&mei_note, "musicxml:stem,") {
-            first_stem_handled = true;
+        if let Some(ref note_id) = mei_note.common.xml_id {
+            if first_stem_handled {
+                ctx.ext_store_mut().remove_stem_extras(note_id);
+            } else if ctx.ext_store().stem_extras(note_id).is_some() {
+                first_stem_handled = true;
+            }
         }
         mei_chord
             .children
@@ -2214,44 +2150,6 @@ fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
     result
 }
 
-/// Append a segment to the MEI note's @label, using '|' separator.
-fn append_note_label(mei_note: &mut tusk_model::elements::Note, segment: &str) {
-    match &mut mei_note.common.label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(segment);
-        }
-        None => {
-            mei_note.common.label = Some(segment.to_string());
-        }
-    }
-}
-
-/// Check if a note's label contains a segment with the given prefix.
-fn has_label_segment(mei_note: &tusk_model::elements::Note, prefix: &str) -> bool {
-    mei_note
-        .common
-        .label
-        .as_deref()
-        .map(|l| l.split('|').any(|seg| seg.starts_with(prefix)))
-        .unwrap_or(false)
-}
-
-/// Remove all label segments matching the given prefix from a note.
-fn strip_label_segment(mei_note: &mut tusk_model::elements::Note, prefix: &str) {
-    if let Some(ref label) = mei_note.common.label {
-        let remaining: Vec<&str> = label
-            .split('|')
-            .filter(|seg| !seg.starts_with(prefix))
-            .collect();
-        if remaining.is_empty() {
-            mei_note.common.label = None;
-        } else {
-            mei_note.common.label = Some(remaining.join("|"));
-        }
-    }
-}
-
 /// Populate ExtensionStore with typed note-level extension data.
 fn populate_note_ext_store(
     note: &crate::model::note::Note,
@@ -2412,7 +2310,6 @@ fn convert_note_visual_attrs(
     note: &crate::model::note::Note,
     mei_note: &mut tusk_model::elements::Note,
 ) {
-    use crate::model::note::NoteVisualAttrs;
     use tusk_model::data::{DataBoolean, DataColor, DataColorvalues};
 
     // Map color to MEI @color
@@ -2427,13 +2324,7 @@ fn convert_note_visual_attrs(
         mei_note.note_vis.visible = Some(DataBoolean::False);
     }
 
-    // Store full visual attrs as JSON-in-label for lossless roundtrip
-    let vis = NoteVisualAttrs::from_note(note);
-    if !vis.is_empty() {
-        if let Ok(json) = serde_json::to_string(&vis) {
-            append_note_label(mei_note, &format!("musicxml:visual,{json}"));
-        }
-    }
+    // Full visual attrs stored in ExtensionStore via populate_note_ext_store
 }
 
 /// Convert MusicXML Notehead to MEI head_shape/head_fill + JSON-in-label for lossless roundtrip.
@@ -2486,10 +2377,7 @@ fn convert_notehead_to_mei(
         });
     }
 
-    // Store full notehead as JSON for lossless roundtrip
-    if let Ok(json) = serde_json::to_string(nh) {
-        append_note_label(mei_note, &format!("musicxml:notehead,{json}"));
-    }
+    // Full notehead stored in ExtensionStore via populate_note_ext_store
 }
 
 #[cfg(test)]

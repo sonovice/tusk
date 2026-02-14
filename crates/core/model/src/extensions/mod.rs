@@ -1100,7 +1100,7 @@ pub struct ExtensionStore {
     pub lyric_extenders: HashMap<String, LyricExtender>,
 }
 
-/// Generate get/get_mut/insert accessor methods for ExtensionStore HashMap fields.
+/// Generate get/get_mut/insert/remove accessor methods for ExtensionStore HashMap fields.
 macro_rules! ext_store_accessors {
     ($($getter:ident / $inserter:ident => $field:ident : $type:ty),* $(,)?) => {
         paste::paste! {
@@ -1114,6 +1114,9 @@ macro_rules! ext_store_accessors {
                     }
                     pub fn $inserter(&mut self, id: String, data: $type) {
                         self.$field.insert(id, data);
+                    }
+                    pub fn [<remove_ $getter>](&mut self, id: &str) -> Option<$type> {
+                        self.$field.remove(id)
                     }
                 )*
             }

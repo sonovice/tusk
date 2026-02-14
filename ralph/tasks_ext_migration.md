@@ -408,17 +408,29 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 7.1 Consolidate note label segments into ExtensionStore
 
-- [ ] Ensure `NoteExtras` covers ALL note label segments: instruments, notehead, notehead-text, play, listen, footnote, level, notations-footnote, notations-level
-- [ ] Import (`import/note.rs`): stop encoding `musicxml:instruments,`, `musicxml:notehead,`, `musicxml:notehead-text,`, `musicxml:play,`, `musicxml:listen,`, `musicxml:footnote,`, `musicxml:level,`, `musicxml:notations-footnote,`, `musicxml:notations-level,` in note labels
-- [ ] Import: stop encoding `musicxml:visual,` in note labels (use `note_visuals` map)
-- [ ] Import: stop encoding `musicxml:stem,` in note labels (use `stem_extras_map`)
-- [ ] Tests pass
+- [x] Ensure `NoteExtras` covers ALL note label segments: instruments, notehead, notehead-text, play, listen, footnote, level, notations-footnote, notations-level
+  - Already covered: NoteExtras has all fields + NoteVisualData and StemExtras in separate maps
+- [x] Import (`import/note.rs`): stop encoding `musicxml:instruments,`, `musicxml:notehead,`, `musicxml:notehead-text,`, `musicxml:play,`, `musicxml:listen,`, `musicxml:footnote,`, `musicxml:level,`, `musicxml:notations-footnote,`, `musicxml:notations-level,` in note labels
+  - Removed all 11 `append_note_label()` calls; data stored only in ExtensionStore via `populate_note_ext_store()`
+- [x] Import: stop encoding `musicxml:visual,` in note labels (use `note_visuals` map)
+  - Removed `musicxml:visual,{json}` label write from `convert_note_visual_attrs()`
+- [x] Import: stop encoding `musicxml:stem,` in note labels (use `stem_extras_map`)
+  - Removed `musicxml:stem,double/none` label writes; chord dedup uses `remove_stem_extras()` on ExtensionStore
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 7.2 Note export from ExtensionStore only
 
-- [ ] Export (`export/note.rs`): read ALL note-level data from ExtensionStore maps, remove label segment parsing
-- [ ] Remove `append_note_label`, `has_label_segment`, `strip_label_segment` utilities for notes
-- [ ] Tests pass
+- [x] Export (`export/note.rs`): read ALL note-level data from ExtensionStore maps, remove label segment parsing
+  - `restore_note_label_elements()`: removed label fallback, reads only from ExtensionStore
+  - `convert_mei_note_label_instruments()`: removed label fallback, reads only from ExtensionStore
+  - Stem (single + chord): removed `musicxml:stem,` label fallback, reads only from ExtensionStore
+  - Removed dead `convert_mei_note_label_articulations()` function (breath-mark/caesura/other-artic label segments were never written to notes)
+- [x] Remove `append_note_label`, `has_label_segment`, `strip_label_segment` utilities for notes
+  - Removed all 3 functions from import/note.rs
+  - Added `remove_*` method generation to `ext_store_accessors!` macro
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 7.3 Articulation extras
 
