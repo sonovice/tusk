@@ -139,13 +139,20 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.7 FiguredBass typed struct + migration
 
-- [ ] Create `FiguredBassData` typed struct in `musicxml_ext/` (figures with prefix/number/suffix, extend, duration, offset, parentheses, font/position attrs)
-- [ ] Add `figured_basses: HashMap<String, FiguredBassData>` to ExtensionStore
-- [ ] Import (`import/figured_bass.rs`): build `FiguredBassData` and write to `ext_store.figured_basses`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:figured-bass` label
-- [ ] Export (`export/figured_bass.rs`): read from `ext_store.figured_basses.get(id)` and reconstruct MusicXML `FiguredBass`
-- [ ] Remove `figured_bass_from_label()` legacy function
-- [ ] Tests pass
+- [x] Create `FiguredBassData` typed struct in `musicxml_ext/` (figures with prefix/number/suffix, extend, duration, offset, parentheses, font/position attrs)
+  - FiguredBassData + FigureData + StyleTextData + FigureExtendData structs in musicxml_ext/mod.rs
+- [x] Add `figured_basses: HashMap<String, FiguredBassData>` to ExtensionStore
+  - HashMap field + `figured_bass_data`/`insert_figured_bass` accessors via macro
+- [x] Import (`import/figured_bass.rs`): build `FiguredBassData` and write to `ext_store.figured_basses`
+  - Uses `insert_figured_bass()` directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:figured-bass` label
+  - Removed label assignment, mxml_json write, FB_LABEL_PREFIX constant
+- [x] Export (`export/figured_bass.rs`): read from `ext_store.figured_basses.get(id)` and reconstruct MusicXML `FiguredBass`
+  - New `build_figured_bass_from_data()` reconstructs FiguredBass from typed data (no JSON deser)
+- [x] Remove `figured_bass_from_label()` legacy function
+  - Removed function + legacy JSON roundtrip test
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.8 Note visual + extras + stem migration
 

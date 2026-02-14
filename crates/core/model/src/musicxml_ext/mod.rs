@@ -1254,5 +1254,111 @@ pub struct VisualAttrs {
     pub relative_y: Option<f64>,
 }
 
+// ---------------------------------------------------------------------------
+// FiguredBassData
+// ---------------------------------------------------------------------------
+
+/// Figured bass data from MusicXML `<figured-bass>`.
+///
+/// Covers figures (prefix/number/suffix/extend), duration, offset,
+/// parentheses, and visual attributes for lossless roundtrip.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FiguredBassData {
+    /// One or more figures.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub figures: Vec<FigureData>,
+
+    /// Duration in divisions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
+
+    /// Editorial footnote.
+    #[serde(rename = "fn", skip_serializing_if = "Option::is_none")]
+    pub footnote: Option<serde_json::Value>,
+
+    /// Editorial level.
+    #[serde(rename = "lv", skip_serializing_if = "Option::is_none")]
+    pub level: Option<serde_json::Value>,
+
+    /// Offset from current position.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<OffsetData>,
+
+    /// Whether figures are in parentheses.
+    #[serde(rename = "par", skip_serializing_if = "Option::is_none")]
+    pub parentheses: Option<bool>,
+
+    /// Placement (above/below).
+    #[serde(rename = "pl", skip_serializing_if = "Option::is_none")]
+    pub placement: Option<String>,
+
+    /// Print control.
+    #[serde(rename = "po", skip_serializing_if = "Option::is_none")]
+    pub print_object: Option<bool>,
+
+    /// Visual attributes (font, position, color, alignment).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visual: Option<VisualAttrs>,
+
+    /// Horizontal alignment.
+    #[serde(rename = "ha", skip_serializing_if = "Option::is_none")]
+    pub halign: Option<String>,
+
+    /// Vertical alignment.
+    #[serde(rename = "va", skip_serializing_if = "Option::is_none")]
+    pub valign: Option<String>,
+
+    /// Element ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+}
+
+/// A single figure within figured bass.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FigureData {
+    /// Prefix accidental (e.g. "flat", "sharp").
+    #[serde(rename = "px", skip_serializing_if = "Option::is_none")]
+    pub prefix: Option<StyleTextData>,
+
+    /// Figure number.
+    #[serde(rename = "n", skip_serializing_if = "Option::is_none")]
+    pub figure_number: Option<StyleTextData>,
+
+    /// Suffix accidental.
+    #[serde(rename = "sx", skip_serializing_if = "Option::is_none")]
+    pub suffix: Option<StyleTextData>,
+
+    /// Extend line.
+    #[serde(rename = "ex", skip_serializing_if = "Option::is_none")]
+    pub extend: Option<FigureExtendData>,
+}
+
+/// Styled text with optional font/color attributes (for figure prefix/number/suffix).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StyleTextData {
+    /// Text value.
+    #[serde(rename = "v")]
+    pub value: String,
+
+    /// Font/position/color attributes.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub visual: Option<VisualAttrs>,
+}
+
+/// Extend line for a figure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FigureExtendData {
+    /// Type (start/stop/continue).
+    #[serde(rename = "ty", skip_serializing_if = "Option::is_none")]
+    pub extend_type: Option<String>,
+
+    /// Visual attributes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visual: Option<VisualAttrs>,
+}
+
 #[cfg(test)]
 mod tests;

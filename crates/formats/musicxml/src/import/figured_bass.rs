@@ -7,9 +7,9 @@
 use crate::context::ConversionContext;
 use crate::model::figured_bass::FiguredBass;
 use tusk_model::elements::{F, FChild, Fb, FbChild};
-
-/// Label marker for MEI fb elements carrying figured-bass data (via ExtensionStore).
-pub const FB_LABEL_PREFIX: &str = "musicxml:figured-bass";
+use tusk_model::musicxml_ext::{
+    FigureData, FigureExtendData, FiguredBassData, OffsetData, StyleTextData, VisualAttrs,
+};
 
 /// Convert a MusicXML `<figured-bass>` element to an MEI `<fb>` element.
 ///
@@ -21,25 +21,26 @@ pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb
     let fb_id = ctx.generate_id_with_suffix("fb");
     mei_fb.common.xml_id = Some(fb_id);
 
-    // Normalize: clear staff (handled via context), canonicalize offset.
-    let mut fb_for_json = fb.clone();
-    fb_for_json.staff = None;
+    // Canonicalize offset to absolute position
     let abs_position = ctx.beat_position() + fb.offset.as_ref().map(|o| o.value).unwrap_or(0.0);
-    if abs_position != 0.0 || fb.offset.is_some() {
-        fb_for_json.offset = Some(crate::model::direction::Offset {
+    let offset = if abs_position != 0.0 || fb.offset.is_some() {
+        Some(OffsetData {
             value: abs_position,
-            sound: fb.offset.as_ref().and_then(|o| o.sound),
-        });
+            sound: fb
+                .offset
+                .as_ref()
+                .and_then(|o| o.sound.map(|s| s == crate::model::data::YesNo::Yes)),
+        })
     } else {
-        fb_for_json.offset = None;
-    }
+        None
+    };
 
-    // Short marker label for identification
-    mei_fb.common.label = Some(FB_LABEL_PREFIX.to_string());
+    // Build typed FiguredBassData
+    let data = build_figured_bass_data(fb, offset);
 
-    // Store raw MusicXML JSON in ExtensionStore for direct roundtrip
+    // Store in ExtensionStore
     if let Some(ref id) = mei_fb.common.xml_id {
-        ctx.ext_store_mut().entry(id.clone()).mxml_json = serde_json::to_value(&fb_for_json).ok();
+        ctx.ext_store_mut().insert_figured_bass(id.clone(), data);
     }
 
     // Create <f> children with human-readable text
@@ -55,16 +56,98 @@ pub fn convert_figured_bass(fb: &FiguredBass, ctx: &mut ConversionContext) -> Fb
     mei_fb
 }
 
-/// Reconstruct a MusicXML `FiguredBass` from the `@label` JSON data.
-///
-/// Returns `None` if the label doesn't contain valid figured-bass JSON data.
-/// Deserialize a FiguredBass from a legacy JSON roundtrip label.
-pub fn figured_bass_from_label(label: &str) -> Option<FiguredBass> {
-    if label == FB_LABEL_PREFIX {
-        return None;
+/// Build a `FiguredBassData` from a MusicXML `FiguredBass`.
+fn build_figured_bass_data(fb: &FiguredBass, offset: Option<OffsetData>) -> FiguredBassData {
+    let figures = fb.figures.iter().map(build_figure_data).collect();
+
+    let visual = build_visual_attrs(fb);
+
+    FiguredBassData {
+        figures,
+        duration: fb.duration,
+        footnote: fb
+            .footnote
+            .as_ref()
+            .and_then(|f| serde_json::to_value(f).ok()),
+        level: fb.level.as_ref().and_then(|l| serde_json::to_value(l).ok()),
+        offset,
+        parentheses: fb.parentheses.map(|p| p == crate::model::data::YesNo::Yes),
+        placement: fb.placement.map(|p| format!("{:?}", p).to_lowercase()),
+        print_object: fb.print_object.map(|p| p == crate::model::data::YesNo::Yes),
+        visual: if visual != VisualAttrs::default() {
+            Some(visual)
+        } else {
+            None
+        },
+        halign: fb.halign.clone(),
+        valign: fb.valign.clone(),
+        id: fb.id.clone(),
     }
-    let json = label.strip_prefix("musicxml:figured-bass,")?;
-    serde_json::from_str(json).ok()
+}
+
+/// Build a `FigureData` from a MusicXML `Figure`.
+fn build_figure_data(fig: &crate::model::figured_bass::Figure) -> FigureData {
+    FigureData {
+        prefix: fig.prefix.as_ref().map(build_style_text_data),
+        figure_number: fig.figure_number.as_ref().map(build_style_text_data),
+        suffix: fig.suffix.as_ref().map(build_style_text_data),
+        extend: fig.extend.as_ref().map(build_figure_extend_data),
+    }
+}
+
+/// Build a `StyleTextData` from a MusicXML `StyleText`.
+fn build_style_text_data(st: &crate::model::harmony::StyleText) -> StyleTextData {
+    let visual = VisualAttrs {
+        font_family: st.font_family.clone(),
+        font_size: st.font_size,
+        font_style: st.font_style.clone(),
+        font_weight: st.font_weight.clone(),
+        color: st.color.clone(),
+        ..Default::default()
+    };
+    StyleTextData {
+        value: st.value.clone(),
+        visual: if visual != VisualAttrs::default() {
+            Some(visual)
+        } else {
+            None
+        },
+    }
+}
+
+/// Build a `FigureExtendData` from a MusicXML `FigureExtend`.
+fn build_figure_extend_data(ext: &crate::model::figured_bass::FigureExtend) -> FigureExtendData {
+    let visual = VisualAttrs {
+        default_x: ext.default_x,
+        default_y: ext.default_y,
+        relative_x: ext.relative_x,
+        relative_y: ext.relative_y,
+        color: ext.color.clone(),
+        ..Default::default()
+    };
+    FigureExtendData {
+        extend_type: ext.extend_type.map(|t| format!("{:?}", t).to_lowercase()),
+        visual: if visual != VisualAttrs::default() {
+            Some(visual)
+        } else {
+            None
+        },
+    }
+}
+
+/// Build visual attributes from FiguredBass position/font/color fields.
+fn build_visual_attrs(fb: &FiguredBass) -> VisualAttrs {
+    VisualAttrs {
+        font_family: fb.font_family.clone(),
+        font_size: fb.font_size,
+        font_style: fb.font_style.clone(),
+        font_weight: fb.font_weight.clone(),
+        color: fb.color.clone(),
+        default_x: fb.default_x,
+        default_y: fb.default_y,
+        relative_x: fb.relative_x,
+        relative_y: fb.relative_y,
+    }
 }
 
 /// Generate human-readable text for a single figure.
@@ -105,7 +188,7 @@ fn accidental_abbrev(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::figured_bass::{Figure, FiguredBass};
+    use crate::model::figured_bass::Figure;
     use crate::model::harmony::StyleText;
 
     fn simple_style_text(value: &str) -> StyleText {
@@ -117,47 +200,6 @@ mod tests {
             font_weight: None,
             color: None,
         }
-    }
-
-    #[test]
-    fn test_figured_bass_json_roundtrip() {
-        let fb = FiguredBass {
-            figures: vec![Figure {
-                prefix: Some(simple_style_text("flat")),
-                figure_number: Some(simple_style_text("7")),
-                suffix: None,
-                extend: None,
-            }],
-            duration: None,
-            footnote: None,
-            level: None,
-            offset: None,
-            staff: None,
-            parentheses: None,
-            placement: None,
-            print_object: None,
-            default_x: None,
-            default_y: Some(-80.0),
-            relative_x: None,
-            relative_y: None,
-            font_family: None,
-            font_style: None,
-            font_size: None,
-            font_weight: None,
-            color: None,
-            halign: None,
-            valign: None,
-            id: None,
-        };
-
-        // Test legacy format label roundtrip
-        let json = serde_json::to_string(&fb).unwrap();
-        let label = format!("musicxml:figured-bass,{}", json);
-        let recovered = figured_bass_from_label(&label).unwrap();
-        assert_eq!(fb, recovered);
-
-        // New marker label returns None (data is in ExtensionStore)
-        assert!(figured_bass_from_label(FB_LABEL_PREFIX).is_none());
     }
 
     #[test]
