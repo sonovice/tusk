@@ -1156,43 +1156,18 @@ fn convert_direction_events(
                 }
 
                 // Listening/grouping/link/bookmark — emit on first staff only
-                if let Some(label) = dir.common.label.as_deref() {
-                    use crate::import::listening::{
-                        BOOKMARK_LABEL_PREFIX, GROUPING_LABEL_PREFIX, LINK_LABEL_PREFIX,
-                        LISTENING_LABEL_PREFIX,
-                    };
-                    if label.starts_with(LISTENING_LABEL_PREFIX)
-                        || label.starts_with(GROUPING_LABEL_PREFIX)
-                        || label.starts_with(LINK_LABEL_PREFIX)
-                        || label.starts_with(BOOKMARK_LABEL_PREFIX)
-                    {
-                        if local_staff_n == 1 {
-                            if label.starts_with(LISTENING_LABEL_PREFIX) {
-                                if let Some(c) =
-                                    super::listening::convert_mei_listening_dir(dir, ctx)
-                                {
-                                    mxml_measure.content.push(c);
-                                }
-                            } else if label.starts_with(GROUPING_LABEL_PREFIX) {
-                                if let Some(c) =
-                                    super::listening::convert_mei_grouping_dir(dir, ctx)
-                                {
-                                    mxml_measure.content.push(c);
-                                }
-                            } else if label.starts_with(LINK_LABEL_PREFIX) {
-                                if let Some(c) = super::listening::convert_mei_link_dir(dir, ctx) {
-                                    mxml_measure.content.push(c);
-                                }
-                            } else if label.starts_with(BOOKMARK_LABEL_PREFIX) {
-                                if let Some(c) =
-                                    super::listening::convert_mei_bookmark_dir(dir, ctx)
-                                {
-                                    mxml_measure.content.push(c);
-                                }
-                            }
+                if dir
+                    .common
+                    .xml_id
+                    .as_ref()
+                    .is_some_and(|id| ctx.ext_store().listening(id).is_some())
+                {
+                    if local_staff_n == 1 {
+                        if let Some(c) = super::listening::convert_mei_listening_dir(dir, ctx) {
+                            mxml_measure.content.push(c);
                         }
-                        continue;
                     }
+                    continue;
                 }
 
                 let event_staff = dir

@@ -125,11 +125,17 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.6 Listening migration
 
-- [ ] Import (`import/listening.rs`): write to `ext_store.listenings`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:listening/grouping/link/bookmark` labels
-- [ ] Export (`export/listening.rs`): read from `ext_store.listenings.get(id)`
-- [ ] Remove `listening_from_label()`, `grouping_from_label()`, `link_from_label()`, `bookmark_from_label()` legacy functions
-- [ ] Tests pass
+- [x] Import (`import/listening.rs`): write to `ext_store.listenings`
+  - Uses `insert_listening()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:listening/grouping/link/bookmark` labels
+  - Removed all label assignments, mxml_json writes, and `.clone()` of JSON values
+- [x] Export (`export/listening.rs`): read from `ext_store.listenings.get(id)`
+  - Single `convert_mei_listening_dir()` function uses `ctx.ext_store().listening(id)` and matches on ListeningData variant
+  - Dispatch in content.rs uses ExtensionStore membership instead of label prefix checks
+- [x] Remove `listening_from_label()`, `grouping_from_label()`, `link_from_label()`, `bookmark_from_label()` legacy functions
+  - Removed all 4 functions + 4 label prefix constants
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.7 FiguredBass typed struct + migration
 
