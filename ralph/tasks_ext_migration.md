@@ -11,7 +11,7 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 **File size limit**: No hand-written `.rs` file may exceed 1500 lines. Split into submodules if over. Does **not** apply to generated files.
 
 **Key files**:
-- ExtensionStore + ExtData: `crates/core/model/src/extensions.rs`
+- ExtensionStore + ExtData: `crates/core/model/src/extensions/mod.rs`
 - MusicXML extension types: `crates/core/model/src/musicxml_ext/mod.rs`
 - MusicXML import: `crates/formats/musicxml/src/import/`
 - MusicXML export: `crates/formats/musicxml/src/export/`
@@ -37,8 +37,11 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 1.2 Bridge helpers on ConversionContext
 
-- [ ] Add typed convenience methods to `ExtensionStore` for insert/get on new maps (e.g., `pub fn harmony(&self, id: &str) -> Option<&HarmonyData>`, `pub fn insert_harmony(&mut self, id: String, data: HarmonyData)`)
-- [ ] Tests pass
+- [x] Add typed convenience methods to `ExtensionStore` for insert/get on new maps (e.g., `pub fn harmony(&self, id: &str) -> Option<&HarmonyData>`, `pub fn insert_harmony(&mut self, id: String, data: HarmonyData)`)
+  - 42 accessor pairs (get + insert) generated via `ext_store_accessors!` macro: 21 MusicXML + 21 LilyPond
+  - Split extensions.rs into extensions/mod.rs (1206 lines) + extensions/tests.rs (554 lines) to stay under 1500
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 2: Migrate existing typed fields (MusicXML)
 
