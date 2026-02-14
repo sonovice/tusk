@@ -235,16 +235,14 @@ pub fn convert_direction(
     }
 
     // Store direction-level sound data in ExtensionStore for roundtrip.
-    // A MusicXML <direction> can have a <sound> child — store its JSON keyed by
-    // each produced MEI element's ID so export can reconstruct direction.sound.
+    // A MusicXML <direction> can have a <sound> child — store typed SoundData keyed
+    // by each produced MEI element's ID so export can reconstruct direction.sound.
     if let Some(ref sound) = direction.sound {
-        if let Ok(json) = serde_json::to_string(sound) {
-            let escaped = json.replace('|', "\\u007c");
-            for result in &results {
-                if let Some(id) = result.element_id() {
-                    ctx.ext_store_mut()
-                        .insert_direction_sound_json(id.to_string(), escaped.clone());
-                }
+        let data = crate::import::sound::build_sound_data(sound);
+        for result in &results {
+            if let Some(id) = result.element_id() {
+                ctx.ext_store_mut()
+                    .insert_direction_sound(id.to_string(), data.clone());
             }
         }
     }

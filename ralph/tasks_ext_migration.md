@@ -309,10 +309,18 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 4.5 Direction sound typed
 
-- [ ] Replace `direction_sound_json: Option<String>` with `direction_sounds: HashMap<String, SoundData>`
-- [ ] Import: store typed SoundData for direction-level sounds
-- [ ] Export: read and reconstruct
-- [ ] Tests pass
+- [x] Replace `direction_sound_json: Option<String>` with `direction_sounds: HashMap<String, SoundData>`
+  - Replaced `direction_sound_jsons: HashMap<String, String>` with `direction_sounds: HashMap<String, SoundData>` in ExtensionStore
+  - Updated accessor pair: `direction_sound`/`insert_direction_sound` via macro
+- [x] Import: store typed SoundData for direction-level sounds
+  - Uses existing `build_sound_data()` from import/sound.rs (already pub(crate))
+  - No more JSON serialization or pipe escaping
+- [x] Export: read and reconstruct
+  - Made `build_sound_from_data()` in export/sound.rs `pub(crate)` for reuse
+  - `restore_direction_sound()` reads typed SoundData and calls `build_sound_from_data()`
+  - No more JSON deserialization or pipe unescaping
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 5: Ornament details to ExtensionStore
 

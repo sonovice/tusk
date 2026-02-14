@@ -861,18 +861,16 @@ fn build_metronome_from_data(
 /// Restore direction-level `<sound>` from ExtensionStore if present.
 ///
 /// MusicXML `<direction>` elements can have a `<sound>` child for playback data.
-/// During import this is stored in the ExtensionStore keyed by the MEI element ID.
+/// During import this is stored as typed SoundData in the ExtensionStore keyed by
+/// the MEI element ID.
 fn restore_direction_sound(
     direction: &mut Direction,
     xml_id: Option<&str>,
     ctx: &ConversionContext,
 ) {
     if let Some(id) = xml_id {
-        if let Some(json) = ctx.ext_store().direction_sound_json_data(id) {
-            let unescaped = json.replace("\\u007c", "|");
-            if let Ok(sound) = serde_json::from_str::<crate::model::direction::Sound>(&unescaped) {
-                direction.sound = Some(sound);
-            }
+        if let Some(data) = ctx.ext_store().direction_sound(id) {
+            direction.sound = Some(crate::export::sound::build_sound_from_data(data));
         }
     }
 }

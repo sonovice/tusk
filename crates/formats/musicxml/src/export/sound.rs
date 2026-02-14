@@ -26,7 +26,7 @@ pub fn convert_mei_sound_dir(dir: &Dir, ctx: &mut ConversionContext) -> Option<M
 }
 
 /// Build a MusicXML `Sound` from typed `SoundData`.
-fn build_sound_from_data(data: &SoundData) -> Sound {
+pub(crate) fn build_sound_from_data(data: &SoundData) -> Sound {
     let bool_to_yesno = |b| if b { YesNo::Yes } else { YesNo::No };
 
     Sound {
