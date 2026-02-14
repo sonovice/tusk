@@ -999,10 +999,102 @@ pub struct TextScriptInfo {
 /// For elements without an `@xml:id`, callers must assign a synthetic ID
 /// before storing extension data.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ExtensionStore {
     /// Map from element ID (`@xml:id` value) to extension data.
+    /// Retained for backward compatibility during migration; will be removed.
     #[serde(flatten)]
     pub data: HashMap<String, ExtData>,
+
+    // ----- MusicXML per-concept maps -----
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub harmonies: HashMap<String, crate::musicxml_ext::HarmonyData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub barlines: HashMap<String, crate::musicxml_ext::BarlineData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub sounds: HashMap<String, crate::musicxml_ext::SoundData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub prints: HashMap<String, crate::musicxml_ext::PrintData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub measure_styles: HashMap<String, crate::musicxml_ext::MeasureStyleData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub listenings: HashMap<String, crate::musicxml_ext::ListeningData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub note_visuals: HashMap<String, crate::musicxml_ext::NoteVisualData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub note_extras_map: HashMap<String, crate::musicxml_ext::NoteExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub stem_extras_map: HashMap<String, crate::musicxml_ext::StemExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub direction_visuals: HashMap<String, crate::musicxml_ext::DirectionVisualData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub instruments: HashMap<String, crate::musicxml_ext::InstrumentData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub part_details_map: HashMap<String, crate::musicxml_ext::PartDetailsData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub group_details_map: HashMap<String, crate::musicxml_ext::GroupDetailsData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub key_extras_map: HashMap<String, crate::musicxml_ext::KeyExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub time_extras_map: HashMap<String, crate::musicxml_ext::TimeExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub for_parts: HashMap<String, crate::musicxml_ext::ForPartData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub staff_details_map: HashMap<String, crate::musicxml_ext::StaffDetailsExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub part_symbols: HashMap<String, crate::musicxml_ext::PartSymbolExtras>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub transposes: HashMap<String, crate::musicxml_ext::TransposeData>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub wedge_spreads: HashMap<String, f64>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub lyric_extras_map: HashMap<String, crate::musicxml_ext::LyricExtras>,
+
+    // ----- MusicXML singleton -----
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub score_header: Option<crate::musicxml_ext::ScoreHeaderData>,
+
+    // ----- LilyPond per-concept maps -----
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub format_origins: HashMap<String, FormatOrigin>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub pitch_contexts: HashMap<String, PitchContext>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub output_defs_map: HashMap<String, Vec<OutputDef>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub book_structures: HashMap<String, BookStructure>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub staff_contexts: HashMap<String, StaffContext>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub repeat_infos: HashMap<String, RepeatInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub grace_infos: HashMap<String, GraceInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub property_ops_map: HashMap<String, Vec<PropertyOp>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub function_calls: HashMap<String, FunctionCall>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub event_sequences: HashMap<String, EventSequence>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub variable_assignments_map: HashMap<String, VariableAssignments>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub toplevel_markups_map: HashMap<String, Vec<ToplevelMarkup>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub lyrics_infos: HashMap<String, LyricsInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub chord_repetitions: HashMap<String, ChordRepetition>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub context_changes: HashMap<String, ContextChange>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub tweak_infos_map: HashMap<String, Vec<TweakInfo>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub pitched_rests: HashMap<String, PitchedRest>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub mrest_infos: HashMap<String, MultiMeasureRestInfo>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub drum_events: HashMap<String, DrumEvent>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub lyric_extenders: HashMap<String, LyricExtender>,
 }
 
 impl ExtensionStore {
