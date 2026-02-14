@@ -1129,9 +1129,12 @@ fn convert_direction_events(
                 }
 
                 // Measure-style elements — emit on first staff only
-                if dir.common.label.as_deref().is_some_and(|l| {
-                    l.starts_with(crate::import::measure_style::MEASURE_STYLE_LABEL_PREFIX)
-                }) {
+                if dir
+                    .common
+                    .xml_id
+                    .as_ref()
+                    .is_some_and(|id| ctx.ext_store().measure_style(id).is_some())
+                {
                     if local_staff_n == 1 {
                         if let Some(content) =
                             super::measure_style::convert_mei_measure_style_dir(dir, ctx)

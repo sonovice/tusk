@@ -1,20 +1,17 @@
 //! Measure-style conversion from MusicXML to MEI.
 //!
 //! Converts MusicXML `<measure-style>` elements (inside `<attributes>`) to MEI
-//! `<dir>` control events with ExtensionStore data for lossless roundtrip.
+//! `<dir>` control events with typed data in ExtensionStore for lossless roundtrip.
 
 use crate::context::ConversionContext;
 use crate::model::attributes::MeasureStyle;
 use tusk_model::elements::{Dir, DirChild, MeasureChild};
 use tusk_model::musicxml_ext::{MeasureStyleContentData, MeasureStyleData};
 
-/// Label marker for MEI dir elements carrying measure-style data (via ExtensionStore).
-pub const MEASURE_STYLE_LABEL_PREFIX: &str = "musicxml:measure-style";
-
 /// Convert MusicXML `<measure-style>` elements to MEI `<dir>` measure children.
 ///
-/// Each measure-style becomes a separate dir element with the full MeasureStyle
-/// struct serialized as JSON in @label for lossless roundtrip.
+/// Each measure-style becomes a dir element with typed MeasureStyleData stored
+/// in `ExtensionStore.measure_styles` keyed by the dir's xml:id.
 pub fn convert_measure_styles(
     styles: &[MeasureStyle],
     ctx: &mut ConversionContext,
@@ -28,13 +25,11 @@ pub fn convert_measure_styles(
 fn convert_one(ms: &MeasureStyle, ctx: &mut ConversionContext) -> Option<MeasureChild> {
     let mut dir = Dir::default();
     dir.common.xml_id = Some(ctx.generate_id_with_suffix("mstyle"));
-    dir.common.label = Some(MEASURE_STYLE_LABEL_PREFIX.to_string());
 
-    // Store typed MeasureStyleData + raw JSON in ExtensionStore
+    // Store typed MeasureStyleData in ExtensionStore (no label, no mxml_json)
     if let Some(ref id) = dir.common.xml_id {
-        let entry = ctx.ext_store_mut().entry(id.clone());
-        entry.measure_style = Some(build_measure_style_data(ms));
-        entry.mxml_json = serde_json::to_value(ms).ok();
+        ctx.ext_store_mut()
+            .insert_measure_style(id.clone(), build_measure_style_data(ms));
     }
 
     // Human-readable summary as text child
@@ -100,13 +95,4 @@ fn build_measure_style_data(ms: &MeasureStyle) -> MeasureStyleData {
         number: ms.number,
         content,
     }
-}
-
-/// Deserialize a MeasureStyle from a legacy JSON roundtrip label.
-pub fn measure_style_from_label(label: &str) -> Option<MeasureStyle> {
-    if label == MEASURE_STYLE_LABEL_PREFIX {
-        return None;
-    }
-    let json = label.strip_prefix("musicxml:measure-style,")?;
-    serde_json::from_str(json).ok()
 }

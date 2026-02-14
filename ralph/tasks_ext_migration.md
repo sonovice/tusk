@@ -111,11 +111,17 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 2.5 MeasureStyle migration
 
-- [ ] Import (`import/measure_style.rs`): write to `ext_store.measure_styles`
-- [ ] Import: stop writing mxml_json, stop setting `musicxml:measure-style` label
-- [ ] Export (`export/measure_style.rs`): read from `ext_store.measure_styles.get(id)`
-- [ ] Remove `measure_style_from_label()` legacy function
-- [ ] Tests pass
+- [x] Import (`import/measure_style.rs`): write to `ext_store.measure_styles`
+  - Uses `insert_measure_style()` accessor directly; no more `entry()` + ExtData
+- [x] Import: stop writing mxml_json, stop setting `musicxml:measure-style` label
+  - Removed label assignment, mxml_json write, and serde_json::to_value(ms) call
+- [x] Export (`export/measure_style.rs`): read from `ext_store.measure_styles.get(id)`
+  - New `build_measure_style_from_data()` reconstructs MeasureStyle from MeasureStyleData (typed, no JSON deser)
+  - Measure-style dir identification uses ExtensionStore membership instead of label prefix check
+- [x] Remove `measure_style_from_label()` legacy function
+  - Removed function + `MEASURE_STYLE_LABEL_PREFIX` constant
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 2.6 Listening migration
 
