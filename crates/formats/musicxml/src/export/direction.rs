@@ -5,11 +5,9 @@
 
 use super::utils::convert_mei_duration_to_beat_unit;
 use crate::context::ConversionContext;
-use crate::model::data::{AboveBelow, StartStopContinue};
+use crate::model::data::AboveBelow;
 use crate::model::direction::{
-    Bracket, Coda, Damp, DampAll, Dashes, Direction, DirectionType, DirectionTypeContent,
-    Eyeglasses, HarpPedals, LineEnd, OctaveShift, OctaveShiftType, Pedal, PedalType,
-    PrincipalVoice, Rehearsal, Segno, StaffDivide, Symbol, Words,
+    Damp, DampAll, Direction, DirectionType, DirectionTypeContent, Eyeglasses, Words,
 };
 use crate::model::elements::MeasureContent;
 
@@ -355,84 +353,6 @@ pub fn convert_mei_dir(
         .and_then(|id| ctx.ext_store().direction_content(id))
     {
         build_direction_type_from_data(data)
-    } else if let Some(content) = match dir.common.label.as_deref() {
-        // Legacy label-based fallback for backward compat
-        Some("musicxml:rehearsal") => Some(DirectionTypeContent::Rehearsal(vec![Rehearsal::new(
-            &text_content,
-        )])),
-        Some("musicxml:segno") => Some(DirectionTypeContent::Segno(vec![Segno::default()])),
-        Some("musicxml:coda") => Some(DirectionTypeContent::Coda(vec![Coda::default()])),
-        Some("musicxml:symbol") => Some(DirectionTypeContent::Symbol(vec![Symbol::new(
-            &text_content,
-        )])),
-        Some("musicxml:dashes") => {
-            let dash_type = parse_start_stop_continue(&text_content);
-            Some(DirectionTypeContent::Dashes(Dashes::new(dash_type)))
-        }
-        Some("musicxml:bracket") => {
-            let (bracket_type, line_end) = parse_bracket_payload(&text_content);
-            Some(DirectionTypeContent::Bracket(Bracket::new(
-                bracket_type,
-                line_end,
-            )))
-        }
-        Some("musicxml:pedal") => {
-            let pedal_type = parse_pedal_type(&text_content);
-            Some(DirectionTypeContent::Pedal(Pedal::new(pedal_type)))
-        }
-        Some("musicxml:octave-shift") => {
-            let (shift_type, size) = parse_octave_shift_payload(&text_content);
-            let mut shift = OctaveShift::new(shift_type);
-            shift.size = Some(size);
-            Some(DirectionTypeContent::OctaveShift(shift))
-        }
-        Some("musicxml:harp-pedals") => serde_json::from_str::<HarpPedals>(&text_content)
-            .map(DirectionTypeContent::HarpPedals)
-            .ok(),
-        Some("musicxml:damp") => Some(DirectionTypeContent::Damp(Damp::default())),
-        Some("musicxml:damp-all") => Some(DirectionTypeContent::DampAll(DampAll::default())),
-        Some("musicxml:eyeglasses") => {
-            Some(DirectionTypeContent::Eyeglasses(Eyeglasses::default()))
-        }
-        Some("musicxml:string-mute") => {
-            serde_json::from_str::<crate::model::direction::StringMute>(&text_content)
-                .map(DirectionTypeContent::StringMute)
-                .ok()
-        }
-        Some("musicxml:scordatura") => {
-            serde_json::from_str::<crate::model::direction::Scordatura>(&text_content)
-                .map(DirectionTypeContent::Scordatura)
-                .ok()
-        }
-        Some("musicxml:image") => {
-            serde_json::from_str::<crate::model::direction::DirectionImage>(&text_content)
-                .map(DirectionTypeContent::Image)
-                .ok()
-        }
-        Some("musicxml:principal-voice") => serde_json::from_str::<PrincipalVoice>(&text_content)
-            .map(DirectionTypeContent::PrincipalVoice)
-            .ok(),
-        Some("musicxml:percussion") => {
-            serde_json::from_str::<Vec<crate::model::direction::Percussion>>(&text_content)
-                .map(DirectionTypeContent::Percussion)
-                .ok()
-        }
-        Some("musicxml:accordion-registration") => {
-            serde_json::from_str::<crate::model::direction::AccordionRegistration>(&text_content)
-                .map(DirectionTypeContent::AccordionRegistration)
-                .ok()
-        }
-        Some("musicxml:staff-divide") => serde_json::from_str::<StaffDivide>(&text_content)
-            .map(DirectionTypeContent::StaffDivide)
-            .ok(),
-        Some("musicxml:other") => {
-            serde_json::from_str::<crate::model::direction::OtherDirection>(&text_content)
-                .map(DirectionTypeContent::OtherDirection)
-                .ok()
-        }
-        _ => None,
-    } {
-        content
     } else {
         // Words: check for stored visual attrs in ExtensionStore
         let restored_words = dir
@@ -446,15 +366,6 @@ pub fn convert_mei_dir(
                 } else {
                     Some(build_words_from_visual_data(&dv.words))
                 }
-            })
-            .or_else(|| {
-                // Fallback: parse from label
-                dir.common.label.as_deref().and_then(|label| {
-                    label.split('|').find_map(|seg| {
-                        seg.strip_prefix("musicxml:words-vis,")
-                            .and_then(|json| serde_json::from_str::<Vec<Words>>(json).ok())
-                    })
-                })
             });
         if let Some(words) = restored_words {
             DirectionTypeContent::Words(words)
@@ -628,59 +539,6 @@ fn build_words_from_visual_data(
             w
         })
         .collect()
-}
-
-fn parse_start_stop_continue(s: &str) -> StartStopContinue {
-    match s.trim().to_lowercase().as_str() {
-        "stop" => StartStopContinue::Stop,
-        "continue" => StartStopContinue::Continue,
-        _ => StartStopContinue::Start,
-    }
-}
-
-fn parse_bracket_payload(s: &str) -> (StartStopContinue, LineEnd) {
-    let mut parts = s.splitn(2, ':');
-    let first = parts.next().unwrap_or("").trim().to_lowercase();
-    let second = parts.next().unwrap_or("up").trim().to_lowercase();
-    let bracket_type = match first.as_str() {
-        "stop" => StartStopContinue::Stop,
-        "continue" => StartStopContinue::Continue,
-        _ => StartStopContinue::Start,
-    };
-    let line_end = match second.as_str() {
-        "down" => LineEnd::Down,
-        "both" => LineEnd::Both,
-        "arrow" => LineEnd::Arrow,
-        "none" => LineEnd::None,
-        _ => LineEnd::Up,
-    };
-    (bracket_type, line_end)
-}
-
-fn parse_pedal_type(s: &str) -> PedalType {
-    match s.trim().to_lowercase().as_str() {
-        "stop" => PedalType::Stop,
-        "sostenuto" => PedalType::Sostenuto,
-        "change" => PedalType::Change,
-        "continue" => PedalType::Continue,
-        "discontinue" => PedalType::Discontinue,
-        "resume" => PedalType::Resume,
-        _ => PedalType::Start,
-    }
-}
-
-fn parse_octave_shift_payload(s: &str) -> (OctaveShiftType, u8) {
-    let mut parts = s.splitn(2, ':');
-    let kind = parts.next().unwrap_or("").trim().to_lowercase();
-    let size_str = parts.next().unwrap_or("8").trim();
-    let size = size_str.parse().unwrap_or(8);
-    let shift_type = match kind.as_str() {
-        "down" => OctaveShiftType::Down,
-        "stop" => OctaveShiftType::Stop,
-        "continue" => OctaveShiftType::Continue,
-        _ => OctaveShiftType::Up,
-    };
-    (shift_type, size)
 }
 
 /// Convert an MEI tempo element to a MusicXML direction.

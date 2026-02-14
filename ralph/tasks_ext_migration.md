@@ -278,9 +278,16 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 4.3 Direction export migration
 
-- [ ] Export (`export/direction.rs`): read from `ext_store.direction_contents.get(id)` instead of checking label prefixes
-- [ ] Remove the large `match label.as_deref()` block that dispatches on `musicxml:*` labels
-- [ ] Tests pass
+- [x] Export (`export/direction.rs`): read from `ext_store.direction_contents.get(id)` instead of checking label prefixes
+  - ExtensionStore path already primary; label fallback removed entirely
+- [x] Remove the large `match label.as_deref()` block that dispatches on `musicxml:*` labels
+  - Removed 20-arm match block for `musicxml:rehearsal`, `musicxml:segno`, etc.
+  - Removed `musicxml:words-vis,` label fallback for Words visual data
+  - Removed 4 helper functions only used by label dispatch: `parse_start_stop_continue`, `parse_bracket_payload`, `parse_pedal_type`, `parse_octave_shift_payload`
+  - Cleaned up 14 unused imports (`StartStopContinue`, `Bracket`, `Coda`, `Dashes`, `HarpPedals`, `LineEnd`, `OctaveShift`, `OctaveShiftType`, `Pedal`, `PedalType`, `PrincipalVoice`, `Rehearsal`, `Segno`, `StaffDivide`, `Symbol`)
+  - Updated xml_compare dir keying: removed label prefix fallback, uses @xml:id directly
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 4.4 MetronomeData typed struct
 
