@@ -901,7 +901,8 @@ fn add_note_conversion_warnings(
 
 /// Convert MEI verse/syl children to MusicXML lyrics.
 ///
-/// Decodes roundtrip label from verse `@label` (format: `musicxml:lyric,...`).
+/// Reads full Lyric from ExtensionStore (LyricExtras). Falls back to
+/// structural MEI conversion (verse/syl → lyric text) for native MEI.
 fn convert_mei_lyrics(
     mei_note: &tusk_model::elements::Note,
     mxml_note: &mut crate::model::note::Note,
@@ -932,181 +933,74 @@ fn convert_mei_lyrics(
             }
         }
 
-        // Fallback: parse label
-        let label = verse.common.label.as_deref().unwrap_or("");
-        if !label.starts_with("musicxml:lyric") {
-            continue;
-        }
-
-        let label_parts: Vec<&str> = if label.len() > "musicxml:lyric,".len() {
-            label["musicxml:lyric,".len()..].split(',').collect()
-        } else {
-            Vec::new()
-        };
-
-        // Helper to find label value
-        let label_val = |key: &str| -> Option<&str> {
-            label_parts
-                .iter()
-                .find_map(|p| p.strip_prefix(key).and_then(|rest| rest.strip_prefix('=')))
-        };
-        let label_has = |key: &str| -> bool { label_parts.contains(&key) };
-
-        // Reconstruct lyric number from verse @n
+        // Fallback: structural MEI → MusicXML (native MEI without ExtensionStore)
         let number = verse.common.n.as_ref().map(|n| n.0.clone());
 
-        // Decode MusicXML-specific attributes from label
-        let name = label_val("name").map(String::from);
-        let justify = label_val("justify").and_then(|s| match s {
-            "left" => Some(crate::model::data::LeftCenterRight::Left),
-            "center" => Some(crate::model::data::LeftCenterRight::Center),
-            "right" => Some(crate::model::data::LeftCenterRight::Right),
-            _ => None,
-        });
-        let default_x = label_val("default-x").and_then(|s| s.parse().ok());
-        let default_y = label_val("default-y").and_then(|s| s.parse().ok());
-        let relative_x = label_val("relative-x").and_then(|s| s.parse().ok());
-        let relative_y = label_val("relative-y").and_then(|s| s.parse().ok());
-        let placement = label_val("placement").and_then(|s| match s {
-            "above" => Some(crate::model::data::AboveBelow::Above),
-            "below" => Some(crate::model::data::AboveBelow::Below),
-            _ => None,
-        });
-        let color = label_val("color").map(String::from);
-        let print_object = label_val("print-object").and_then(|s| match s {
-            "yes" => Some(crate::model::data::YesNo::Yes),
-            "no" => Some(crate::model::data::YesNo::No),
-            _ => None,
-        });
-        let time_only = label_val("time-only").map(String::from);
-        let id = label_val("id").map(String::from);
-        let end_line = label_has("end-line");
-        let end_paragraph = label_has("end-paragraph");
-
-        // Determine content type
-        let content = if label_has("laughing") {
-            LyricContent::Laughing
-        } else if label_has("humming") {
-            LyricContent::Humming
-        } else if let Some(ext_type) = label_val("extend-only") {
-            LyricContent::ExtendOnly(Extend {
-                extend_type: parse_ssc(ext_type),
+        let mut syllable_groups = Vec::new();
+        let syls: Vec<&tusk_model::elements::Syl> = verse
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                VerseChild::Syl(s) => Some(s.as_ref()),
+                _ => None,
             })
-        } else if label_has("extend-only") {
-            LyricContent::ExtendOnly(Extend { extend_type: None })
-        } else {
-            // Text content from syl children
-            let mut syllable_groups = Vec::new();
-            let mut elision_values: Vec<&str> = label_parts
-                .iter()
-                .filter_map(|p| p.strip_prefix("elision="))
-                .collect();
+            .collect();
 
-            let syls: Vec<&tusk_model::elements::Syl> = verse
+        for syl in &syls {
+            let text_value = syl
                 .children
                 .iter()
-                .filter_map(|c| match c {
-                    VerseChild::Syl(s) => Some(s.as_ref()),
-                    _ => None,
+                .map(|c| match c {
+                    SylChild::Text(t) => t.as_str(),
                 })
-                .collect();
+                .collect::<Vec<_>>()
+                .join("");
 
-            for (i, syl) in syls.iter().enumerate() {
-                // Extract text from syl children
-                let text_value = syl
-                    .children
-                    .iter()
-                    .map(|c| match c {
-                        SylChild::Text(t) => t.as_str(),
-                    })
-                    .collect::<Vec<_>>()
-                    .join("");
-
-                // Reconstruct syllabic from @wordpos + @con
-                let syllabic = match syl.syl_log.wordpos.as_deref() {
-                    Some("i") => Some(Syllabic::Begin),
-                    Some("m") => Some(Syllabic::Middle),
-                    Some("t") => Some(Syllabic::End),
-                    _ => None, // No wordpos = single (implicit)
-                };
-
-                // Elision: if this is the 2nd+ syl, pop an elision value
-                let elision = if i > 0 && !elision_values.is_empty() {
-                    let val = elision_values.remove(0);
-                    Some(Elision {
-                        value: val.to_string(),
-                        font_family: None,
-                        font_size: None,
-                        font_style: None,
-                        font_weight: None,
-                        color: None,
-                    })
-                } else {
-                    None
-                };
-
-                syllable_groups.push(SyllableGroup {
-                    elision,
-                    syllabic,
-                    text: LyricText {
-                        value: text_value,
-                        font_family: None,
-                        font_size: None,
-                        font_style: None,
-                        font_weight: None,
-                        color: None,
-                    },
-                });
-            }
-
-            // Reconstruct extend
-            let extend = if let Some(ext_type) = label_val("extend") {
-                Some(Extend {
-                    extend_type: parse_ssc(ext_type),
-                })
-            } else if label_has("extend") {
-                Some(Extend { extend_type: None })
-            } else {
-                None
+            let syllabic = match syl.syl_log.wordpos.as_deref() {
+                Some("i") => Some(Syllabic::Begin),
+                Some("m") => Some(Syllabic::Middle),
+                Some("t") => Some(Syllabic::End),
+                _ => None,
             };
 
-            LyricContent::Text {
-                syllable_groups,
-                extend,
-            }
+            syllable_groups.push(SyllableGroup {
+                elision: None,
+                syllabic,
+                text: LyricText {
+                    value: text_value,
+                    font_family: None,
+                    font_size: None,
+                    font_style: None,
+                    font_weight: None,
+                    color: None,
+                },
+            });
+        }
+
+        let content = LyricContent::Text {
+            syllable_groups,
+            extend: None,
         };
 
-        let lyric = Lyric {
+        mxml_note.lyrics.push(Lyric {
             number,
-            name,
-            justify,
-            default_x,
-            default_y,
-            relative_x,
-            relative_y,
-            placement,
-            color,
-            print_object,
-            time_only,
-            id,
+            name: None,
+            justify: None,
+            default_x: None,
+            default_y: None,
+            relative_x: None,
+            relative_y: None,
+            placement: None,
+            color: None,
+            print_object: None,
+            time_only: None,
+            id: None,
             content,
-            end_line,
-            end_paragraph,
+            end_line: false,
+            end_paragraph: false,
             footnote: None,
             level: None,
-        };
-
-        mxml_note.lyrics.push(lyric);
-    }
-}
-
-/// Parse start/stop/continue string.
-fn parse_ssc(s: &str) -> Option<crate::model::StartStopContinue> {
-    match s {
-        "start" => Some(crate::model::StartStopContinue::Start),
-        "stop" => Some(crate::model::StartStopContinue::Stop),
-        "continue" => Some(crate::model::StartStopContinue::Continue),
-        _ => None,
+        });
     }
 }
 

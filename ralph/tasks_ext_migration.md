@@ -509,9 +509,17 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 10.1 Lyric extras
 
-- [ ] Import: stop writing `musicxml:lyric,` labels on `<verse>` elements
-- [ ] Export (`export/note.rs`): read from `ext_store.lyric_extras_map.get(id)` only
-- [ ] Tests pass
+- [x] Import: stop writing `musicxml:lyric,` labels on `<verse>` elements
+  - Removed label_parts building (name, justify, position, color, print-object, time-only, id, end-line, end-paragraph, extend, elision, extend-only, laughing, humming)
+  - Removed `verse.common.label = Some("musicxml:lyric,...")` assignment
+  - Removed unused `ssc_str()` helper function
+  - ExtensionStore LyricExtras (written in `populate_note_ext_store`) is sole roundtrip path
+- [x] Export (`export/note.rs`): read from `ext_store.lyric_extras_map.get(id)` only
+  - Removed 170-line label fallback (label_val/label_has helpers, all MusicXML attr decoding, content type dispatch)
+  - Removed `parse_ssc()` helper function
+  - Structural MEI fallback retained for native MEI (verse/syl → lyric text, no MusicXML-specific attrs)
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 11: xml_compare update
 
