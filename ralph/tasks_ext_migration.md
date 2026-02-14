@@ -569,10 +569,14 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 13.1 Remove label constants and utilities
 
-- [ ] Remove all `musicxml:` label prefix constants (HARM_LABEL_PREFIX, BARLINE_LABEL_PREFIX, PRINT_LABEL_PREFIX, SOUND_LABEL_PREFIX, LISTENING_LABEL_PREFIX, GROUPING_LABEL_PREFIX, LINK_LABEL_PREFIX, BOOKMARK_LABEL_PREFIX, MEASURE_STYLE_LABEL_PREFIX, FB_LABEL_PREFIX, MXML_DIR_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, FOR_PART_LABEL_PREFIX, TRANSPOSE_LABEL_PREFIX, INSTRUMENT_LABEL_PREFIX, PART_DETAILS_LABEL_PREFIX, GROUP_DETAILS_LABEL_PREFIX, PART_SYMBOL_LABEL_PREFIX, STAFF_DETAILS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX, WORK_LABEL_PREFIX, MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, CREDITS_LABEL_PREFIX)
-- [ ] Remove all `*_from_label()` legacy parsing functions
-- [ ] Remove JSON-in-label pipe escaping utilities (`escape_pipe`, `unescape_pipe` or similar)
-- [ ] Tests pass
+- [x] Remove all `musicxml:` label prefix constants (HARM_LABEL_PREFIX, BARLINE_LABEL_PREFIX, PRINT_LABEL_PREFIX, SOUND_LABEL_PREFIX, LISTENING_LABEL_PREFIX, GROUPING_LABEL_PREFIX, LINK_LABEL_PREFIX, BOOKMARK_LABEL_PREFIX, MEASURE_STYLE_LABEL_PREFIX, FB_LABEL_PREFIX, MXML_DIR_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, FOR_PART_LABEL_PREFIX, TRANSPOSE_LABEL_PREFIX, INSTRUMENT_LABEL_PREFIX, PART_DETAILS_LABEL_PREFIX, GROUP_DETAILS_LABEL_PREFIX, PART_SYMBOL_LABEL_PREFIX, STAFF_DETAILS_LABEL_PREFIX, IDENTIFICATION_LABEL_PREFIX, WORK_LABEL_PREFIX, MOVEMENT_NUMBER_LABEL_PREFIX, MOVEMENT_TITLE_LABEL_PREFIX, DEFAULTS_LABEL_PREFIX, CREDITS_LABEL_PREFIX)
+  - Already removed in Phases 2–9: zero label prefix constants remain in MusicXML import/export
+- [x] Remove all `*_from_label()` legacy parsing functions
+  - Already removed in Phases 2–9: zero `*_from_label()` functions in MusicXML code (only LilyPond-specific ones remain, out of scope)
+- [x] Remove JSON-in-label pipe escaping utilities (`escape_pipe`, `unescape_pipe` or similar)
+  - Already removed: zero pipe escaping utilities remain in MusicXML code
+- [x] Tests pass
+  - All 2497 tests pass, clippy clean
 
 ### 13.2 Verification
 
