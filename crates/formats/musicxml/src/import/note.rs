@@ -1045,16 +1045,19 @@ fn process_breath_marks(note: &MusicXmlNote, note_id: &str, ctx: &mut Conversion
         None => None,
     };
 
-    // Store breath-mark value in @label for lossless roundtrip
-    let label = match bm.value {
-        Some(BreathMarkValue::Comma) => Some("comma"),
-        Some(BreathMarkValue::Tick) => Some("tick"),
-        Some(BreathMarkValue::Upbow) => Some("upbow"),
-        Some(BreathMarkValue::Salzedo) => Some("salzedo"),
+    // Store breath-mark value in ExtensionStore for lossless roundtrip
+    let value = match bm.value {
+        Some(BreathMarkValue::Comma) => Some("comma".to_string()),
+        Some(BreathMarkValue::Tick) => Some("tick".to_string()),
+        Some(BreathMarkValue::Upbow) => Some("upbow".to_string()),
+        Some(BreathMarkValue::Salzedo) => Some("salzedo".to_string()),
         Some(BreathMarkValue::Empty) | None => None,
     };
-    if let Some(l) = label {
-        b.common.label = Some(l.to_string());
+    if let Some(ref id) = b.common.xml_id {
+        ctx.ext_store_mut().insert_ornament_detail(
+            id.clone(),
+            tusk_model::musicxml_ext::OrnamentDetailData::BreathMark { value },
+        );
     }
 
     ctx.add_ornament_event(MeasureChild::Breath(Box::new(b)));
@@ -1102,17 +1105,20 @@ fn process_caesuras(note: &MusicXmlNote, note_id: &str, ctx: &mut ConversionCont
         None => None,
     };
 
-    // Store caesura value in @label for lossless roundtrip
-    let label = match cs.value {
-        Some(CaesuraValue::Normal) => Some("normal"),
-        Some(CaesuraValue::Short) => Some("short"),
-        Some(CaesuraValue::Thick) => Some("thick"),
-        Some(CaesuraValue::Curved) => Some("curved"),
-        Some(CaesuraValue::Single) => Some("single"),
+    // Store caesura value in ExtensionStore for lossless roundtrip
+    let value = match cs.value {
+        Some(CaesuraValue::Normal) => Some("normal".to_string()),
+        Some(CaesuraValue::Short) => Some("short".to_string()),
+        Some(CaesuraValue::Thick) => Some("thick".to_string()),
+        Some(CaesuraValue::Curved) => Some("curved".to_string()),
+        Some(CaesuraValue::Single) => Some("single".to_string()),
         Some(CaesuraValue::Empty) | None => None,
     };
-    if let Some(l) = label {
-        c.common.label = Some(l.to_string());
+    if let Some(ref id) = c.common.xml_id {
+        ctx.ext_store_mut().insert_ornament_detail(
+            id.clone(),
+            tusk_model::musicxml_ext::OrnamentDetailData::Caesura { value },
+        );
     }
 
     ctx.add_ornament_event(MeasureChild::Caesura(Box::new(c)));
@@ -2145,7 +2151,7 @@ fn articulations_to_mei(artics: &Articulations) -> Vec<DataArticulation> {
     if artics.soft_accent.is_some() {
         result.push(DataArticulation::AccSoft);
     }
-    // breath_mark and caesura are stored via note common.label in convert_articulations
+    // breath_mark and caesura are stored as native MEI <breath>/<caesura> control events
 
     result
 }

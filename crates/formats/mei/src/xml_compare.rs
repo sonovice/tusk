@@ -596,8 +596,8 @@ fn control_event_type_key(name: &str, elem: &CanonicalElement) -> String {
             .get("dir")
             .map(|d| format!(",dir={}", d))
             .unwrap_or_default(),
-        // Dir/ornam/fing disambiguation: use @xml:id (content stored in ExtensionStore)
-        "dir" | "ornam" | "fing" => elem
+        // Dir/ornam/fing/breath/caesura disambiguation: use @xml:id (content stored in ExtensionStore)
+        "dir" | "ornam" | "fing" | "breath" | "caesura" => elem
             .attributes
             .get("xml:id")
             .map(|id| format!(",id={}", id))

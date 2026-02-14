@@ -1965,7 +1965,7 @@ fn convert_breath_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::notations::{Articulations, BreathMark, BreathMarkValue, Notations};
 
@@ -1993,14 +1993,24 @@ fn convert_breath_events(
             continue;
         };
 
-        // Map MEI @label → MusicXML breath-mark value
-        let value = breath.common.label.as_deref().and_then(|l| match l {
-            "comma" => Some(BreathMarkValue::Comma),
-            "tick" => Some(BreathMarkValue::Tick),
-            "upbow" => Some(BreathMarkValue::Upbow),
-            "salzedo" => Some(BreathMarkValue::Salzedo),
-            _ => None,
-        });
+        // Read breath-mark value from ExtensionStore
+        let value = breath
+            .common
+            .xml_id
+            .as_deref()
+            .and_then(|id| ctx.ext_store().ornament_detail(id))
+            .and_then(|d| match d {
+                tusk_model::musicxml_ext::OrnamentDetailData::BreathMark { value } => {
+                    value.as_deref().and_then(|v| match v {
+                        "comma" => Some(BreathMarkValue::Comma),
+                        "tick" => Some(BreathMarkValue::Tick),
+                        "upbow" => Some(BreathMarkValue::Upbow),
+                        "salzedo" => Some(BreathMarkValue::Salzedo),
+                        _ => None,
+                    })
+                }
+                _ => None,
+            });
 
         // Map MEI @place → MusicXML placement
         let placement = mei_place_to_above_below(&breath.breath_vis.place);
@@ -2019,7 +2029,7 @@ fn convert_caesura_events(
     mei_measure: &tusk_model::elements::Measure,
     staff_n: usize,
     mxml_measure: &mut MxmlMeasure,
-    _ctx: &mut ConversionContext,
+    ctx: &mut ConversionContext,
 ) -> ConversionResult<()> {
     use crate::model::notations::{Articulations, Caesura as MxmlCaesura, CaesuraValue, Notations};
 
@@ -2047,15 +2057,25 @@ fn convert_caesura_events(
             continue;
         };
 
-        // Map MEI @label → MusicXML caesura value
-        let value = caesura.common.label.as_deref().and_then(|l| match l {
-            "normal" => Some(CaesuraValue::Normal),
-            "short" => Some(CaesuraValue::Short),
-            "thick" => Some(CaesuraValue::Thick),
-            "curved" => Some(CaesuraValue::Curved),
-            "single" => Some(CaesuraValue::Single),
-            _ => None,
-        });
+        // Read caesura value from ExtensionStore
+        let value = caesura
+            .common
+            .xml_id
+            .as_deref()
+            .and_then(|id| ctx.ext_store().ornament_detail(id))
+            .and_then(|d| match d {
+                tusk_model::musicxml_ext::OrnamentDetailData::Caesura { value } => {
+                    value.as_deref().and_then(|v| match v {
+                        "normal" => Some(CaesuraValue::Normal),
+                        "short" => Some(CaesuraValue::Short),
+                        "thick" => Some(CaesuraValue::Thick),
+                        "curved" => Some(CaesuraValue::Curved),
+                        "single" => Some(CaesuraValue::Single),
+                        _ => None,
+                    })
+                }
+                _ => None,
+            });
 
         // Map MEI @place → MusicXML placement
         let placement = mei_place_to_above_below(&caesura.caesura_vis.place);

@@ -434,10 +434,19 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 7.3 Articulation extras
 
-- [ ] Import: move breath-mark/caesura/other-articulation JSON into NoteExtras or a new field
-- [ ] Import: stop encoding `musicxml:breath-mark,`, `musicxml:caesura,`, `musicxml:other-articulation,`, `musicxml:tech-artic,` in note labels
-- [ ] Export: read from ExtensionStore
-- [ ] Tests pass
+- [x] Import: move breath-mark/caesura/other-articulation JSON into NoteExtras or a new field
+  - Breath-mark/caesura: value stored in ExtensionStore via `OrnamentDetailData::BreathMark`/`Caesura` variants (keyed by `<breath>`/`<caesura>` @xml:id)
+  - Other-articulation: already in `NoteExtras.articulations` (full Articulations JSON, no label)
+  - Tech-artic: already in `NoteExtras.tech_artics` (Phase 6.2)
+- [x] Import: stop encoding `musicxml:breath-mark,`, `musicxml:caesura,`, `musicxml:other-articulation,`, `musicxml:tech-artic,` in note labels
+  - Breath-mark/caesura: removed `@label` writes from `process_breath_marks()`/`process_caesuras()` — data stored in ExtensionStore only
+  - Other-articulation/tech-artic: no label writes existed (already ExtensionStore-only)
+- [x] Export: read from ExtensionStore
+  - `convert_breath_events()`: reads value from `ctx.ext_store().ornament_detail(id)` instead of `breath.common.label`
+  - `convert_caesura_events()`: reads value from `ctx.ext_store().ornament_detail(id)` instead of `caesura.common.label`
+  - Updated xml_compare: breath/caesura type keys include @xml:id for disambiguation
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ## Phase 8: StaffDef/StaffGrp label elimination
 

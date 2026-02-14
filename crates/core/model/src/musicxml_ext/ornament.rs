@@ -79,4 +79,16 @@ pub enum OrnamentDetailData {
     Slide,
     /// `<dynamics>` within `<notations>` (not direction-level).
     NotationDynamics,
+    /// `<breath-mark>` value for lossless roundtrip (stored on MEI `<breath>` element).
+    BreathMark {
+        /// Breath-mark value: "comma", "tick", "upbow", "salzedo".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<String>,
+    },
+    /// `<caesura>` value for lossless roundtrip (stored on MEI `<caesura>` element).
+    Caesura {
+        /// Caesura value: "normal", "short", "thick", "curved", "single".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<String>,
+    },
 }
