@@ -471,22 +471,11 @@ fn convert_staff_grp_from_part_group(
             .push(StaffGrpChild::LabelAbbr(Box::new(label_abbr)));
     }
 
-    // Store extra group details as JSON-in-label for lossless roundtrip
+    // Store extra group details in ExtensionStore for lossless roundtrip
     let has_group_details = part_group.group_name_display.is_some()
         || part_group.group_abbreviation_display.is_some()
         || part_group.group_time.is_some();
     if has_group_details {
-        let details = GroupExtraDetails {
-            group_name_display: part_group.group_name_display.clone(),
-            group_abbreviation_display: part_group.group_abbreviation_display.clone(),
-            group_time: part_group.group_time.map(|_| true),
-        };
-        if let Ok(json) = serde_json::to_string(&details) {
-            append_group_label(
-                &mut staff_grp,
-                format!("{}{}", GROUP_DETAILS_LABEL_PREFIX, json),
-            );
-        }
         if let Some(ref id) = staff_grp.common.xml_id {
             ctx.ext_store_mut().insert_group_details(
                 id.clone(),
@@ -506,19 +495,6 @@ fn convert_staff_grp_from_part_group(
     }
 
     Ok(staff_grp)
-}
-
-/// Append a label segment to a staffGrp's common.label, using `|` separator.
-fn append_group_label(staff_grp: &mut StaffGrp, segment: String) {
-    match &mut staff_grp.common.label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(&segment);
-        }
-        None => {
-            staff_grp.common.label = Some(segment);
-        }
-    }
 }
 
 /// Convert MusicXML GroupSymbol to MEI @symbol string.
@@ -620,14 +596,8 @@ pub fn convert_staff_def_from_score_part(
                 KeyContent::Traditional(trad) => {
                     let keysig = convert_key_fifths(trad.fifths);
                     staff_def.staff_def_log.keysig = Some(keysig);
-                    // Store full Key as JSON if it has key_octaves
+                    // Store full Key in ExtensionStore if it has key_octaves
                     if !key.key_octaves.is_empty() {
-                        if let Ok(json) = serde_json::to_string(key) {
-                            crate::import::attributes::append_label(
-                                &mut staff_def,
-                                format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
-                            );
-                        }
                         ctx.ext_store_mut().insert_key_extras(
                             score_part.id.clone(),
                             KeyExtras {
@@ -637,13 +607,7 @@ pub fn convert_staff_def_from_score_part(
                     }
                 }
                 KeyContent::NonTraditional(_) => {
-                    // No MEI @keysig equivalent; store full Key as JSON
-                    if let Ok(json) = serde_json::to_string(key) {
-                        crate::import::attributes::append_label(
-                            &mut staff_def,
-                            format!("{}{}", crate::import::attributes::KEY_LABEL_PREFIX, json),
-                        );
-                    }
+                    // No MEI @keysig equivalent; store full Key in ExtensionStore
                     ctx.ext_store_mut().insert_key_extras(
                         score_part.id.clone(),
                         KeyExtras {
@@ -661,17 +625,11 @@ pub fn convert_staff_def_from_score_part(
             staff_def.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             staff_def.staff_def_log.meter_sym = sym;
 
-            // Store full Time as JSON if it has interchangeable or separator
+            // Store full Time in ExtensionStore if it has interchangeable or separator
             let has_extra = matches!(&time.content,
                 crate::model::attributes::TimeContent::Standard(std) if std.interchangeable.is_some())
                 || time.separator.is_some();
             if has_extra {
-                if let Ok(json) = serde_json::to_string(time) {
-                    crate::import::attributes::append_label(
-                        &mut staff_def,
-                        format!("{}{}", crate::import::attributes::TIME_LABEL_PREFIX, json),
-                    );
-                }
                 ctx.ext_store_mut().insert_time_extras(
                     score_part.id.clone(),
                     TimeExtras {
@@ -734,7 +692,7 @@ pub fn convert_staff_def_from_score_part(
                 staff_def.staff_def_log.trans_diat = Some(effective_diat.to_string());
             }
 
-            // Store full TransposeData for lossless roundtrip
+            // Store full TransposeData in ExtensionStore for lossless roundtrip
             let td = TransposeData {
                 number: t.number,
                 diatonic: t.diatonic,
@@ -745,32 +703,12 @@ pub fn convert_staff_def_from_score_part(
                 }),
                 id: t.id.clone(),
             };
-            if let Ok(json) = serde_json::to_string(&td) {
-                crate::import::attributes::append_label(
-                    &mut staff_def,
-                    format!(
-                        "{}{}",
-                        crate::import::attributes::TRANSPOSE_LABEL_PREFIX,
-                        json
-                    ),
-                );
-            }
             ctx.ext_store_mut()
                 .insert_transpose(score_part.id.clone(), td);
         }
 
         // Apply for-part (concert score per-part transposition)
         if !attrs.for_parts.is_empty() {
-            if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
-                crate::import::attributes::append_label(
-                    &mut staff_def,
-                    format!(
-                        "{}{}",
-                        crate::import::attributes::FOR_PART_LABEL_PREFIX,
-                        json
-                    ),
-                );
-            }
             ctx.ext_store_mut().insert_for_part(
                 score_part.id.clone(),
                 tusk_model::musicxml_ext::ForPartData {
@@ -810,26 +748,13 @@ pub fn convert_staff_def_from_score_part(
         }
     }
 
-    // Store extra score-part details as JSON-in-label for lossless roundtrip
+    // Store extra score-part details in ExtensionStore for lossless roundtrip
     let has_part_details = score_part.part_name_display.is_some()
         || score_part.part_abbreviation_display.is_some()
         || !score_part.players.is_empty()
         || !score_part.part_links.is_empty()
         || !score_part.groups.is_empty();
     if has_part_details {
-        let details = PartExtraDetails {
-            part_name_display: score_part.part_name_display.clone(),
-            part_abbreviation_display: score_part.part_abbreviation_display.clone(),
-            players: score_part.players.clone(),
-            part_links: score_part.part_links.clone(),
-            groups: score_part.groups.clone(),
-        };
-        if let Ok(json) = serde_json::to_string(&details) {
-            crate::import::attributes::append_label(
-                &mut staff_def,
-                format!("{}{}", PART_DETAILS_LABEL_PREFIX, json),
-            );
-        }
         ctx.ext_store_mut().insert_part_details(
             score_part.id.clone(),
             PartDetailsData {
@@ -920,55 +845,6 @@ pub fn convert_staff_def_from_score_part(
     Ok(staff_def)
 }
 
-/// Label prefix for instrument JSON stored on instrDef @label.
-pub(crate) const INSTRUMENT_LABEL_PREFIX: &str = "musicxml:instrument,";
-
-/// Label prefix for staff-details JSON stored on staffDef @label.
-const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
-
-/// Label prefix for extra score-part details JSON stored on staffDef @label.
-pub(crate) const PART_DETAILS_LABEL_PREFIX: &str = "musicxml:part-details,";
-
-/// Extra score-part details for JSON-in-label roundtrip.
-///
-/// Bundles part-name-display, part-abbreviation-display, players,
-/// part-links, and groups — fields without direct MEI equivalents.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
-#[serde(default)]
-pub(crate) struct PartExtraDetails {
-    #[serde(rename = "pnd", skip_serializing_if = "Option::is_none")]
-    pub part_name_display: Option<crate::model::elements::NameDisplay>,
-    #[serde(rename = "pad", skip_serializing_if = "Option::is_none")]
-    pub part_abbreviation_display: Option<crate::model::elements::NameDisplay>,
-    #[serde(rename = "pl", default, skip_serializing_if = "Vec::is_empty")]
-    pub players: Vec<crate::model::elements::Player>,
-    #[serde(rename = "plk", default, skip_serializing_if = "Vec::is_empty")]
-    pub part_links: Vec<crate::model::elements::PartLink>,
-    #[serde(rename = "grp", default, skip_serializing_if = "Vec::is_empty")]
-    pub groups: Vec<String>,
-}
-
-/// Label prefix for extra part-group details JSON stored on staffGrp @label.
-pub(crate) const GROUP_DETAILS_LABEL_PREFIX: &str = "musicxml:group-details,";
-
-/// Extra part-group details for JSON-in-label roundtrip.
-///
-/// Bundles group-name-display, group-abbreviation-display, and group-time —
-/// fields without direct MEI equivalents.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
-#[serde(default)]
-pub(crate) struct GroupExtraDetails {
-    #[serde(rename = "gnd", skip_serializing_if = "Option::is_none")]
-    pub group_name_display: Option<crate::model::elements::NameDisplay>,
-    #[serde(rename = "gad", skip_serializing_if = "Option::is_none")]
-    pub group_abbreviation_display: Option<crate::model::elements::NameDisplay>,
-    #[serde(rename = "gt", skip_serializing_if = "Option::is_none")]
-    pub group_time: Option<bool>,
-}
-
-/// Label prefix for part-symbol JSON stored on multi-staff staffGrp @label.
-pub(crate) const PART_SYMBOL_LABEL_PREFIX: &str = "musicxml:part-symbol,";
-
 /// Apply MusicXML StaffDetails to a MEI StaffDef.
 ///
 /// Maps semantic fields to MEI attributes:
@@ -1008,32 +884,15 @@ fn apply_staff_details_to_staff_def(
         // Clear the number field — it's handled via MEI @n / part mapping
         let mut sd_for_json = sd.clone();
         sd_for_json.number = None;
-        if let Ok(json) = serde_json::to_string(&sd_for_json) {
-            crate::import::attributes::append_label(
-                staff_def,
-                format!("{}{}", STAFF_DETAILS_LABEL_PREFIX, json),
+        if let Some(ref id) = staff_def.basic.xml_id {
+            ctx.ext_store_mut().insert_staff_details(
+                id.clone(),
+                StaffDetailsExtras {
+                    details: serde_json::to_value(&sd_for_json).unwrap_or_default(),
+                },
             );
-            if let Some(ref id) = staff_def.basic.xml_id {
-                ctx.ext_store_mut().insert_staff_details(
-                    id.clone(),
-                    StaffDetailsExtras {
-                        details: serde_json::to_value(&sd_for_json).unwrap_or_default(),
-                    },
-                );
-            }
         }
     }
-}
-
-/// JSON container for a single instrument's data (score-instrument + MIDI).
-///
-/// Stores the full ScoreInstrument and any matching MidiAssignment entries
-/// for lossless roundtrip.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub(crate) struct InstrumentData {
-    pub score_instrument: crate::model::elements::ScoreInstrument,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub midi_assignments: Vec<crate::model::elements::MidiAssignment>,
 }
 
 /// Convert score-instruments and MIDI assignments to MEI instrDef children.
@@ -1118,14 +977,7 @@ fn apply_instruments_to_staff_def(
                 }
             }
 
-            // Store full instrument data as JSON in @label for lossless roundtrip
-            let data = InstrumentData {
-                score_instrument: si.clone(),
-                midi_assignments: matching_midi.clone(),
-            };
-            if let Ok(json) = serde_json::to_string(&data) {
-                instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
-            }
+            // Store full instrument data in ExtensionStore for lossless roundtrip
             ctx.ext_store_mut().insert_instrument(
                 si.id.clone(),
                 convert_to_ext_instrument_data(si, &matching_midi),
@@ -1169,13 +1021,6 @@ fn apply_instruments_to_staff_def(
             ensemble: None,
             virtual_instrument: None,
         };
-        let data = InstrumentData {
-            score_instrument: dummy_si.clone(),
-            midi_assignments: score_part.midi_assignments.clone(),
-        };
-        if let Ok(json) = serde_json::to_string(&data) {
-            instr_def.labelled.label = Some(format!("{INSTRUMENT_LABEL_PREFIX}{json}"));
-        }
         if let Some(ref id) = instr_def.basic.xml_id {
             ctx.ext_store_mut().insert_instrument(
                 id.clone(),
@@ -1219,17 +1064,11 @@ fn convert_multi_staff_part(
             PartSymbolValue::None => "none".to_string(),
         });
 
-        // Store full PartSymbol as JSON in @label for lossless roundtrip
-        // (preserves top-staff, bottom-staff, default-x, color)
+        // Check if part-symbol has extra data for ExtensionStore
         let has_extra = ps.top_staff.is_some()
             || ps.bottom_staff.is_some()
             || ps.default_x.is_some()
             || ps.color.is_some();
-        if has_extra {
-            if let Ok(json) = serde_json::to_string(ps) {
-                nested_grp.common.label = Some(format!("{}{}", PART_SYMBOL_LABEL_PREFIX, json));
-            }
-        }
     } else {
         nested_grp.staff_grp_vis.symbol = Some("brace".to_string());
     }

@@ -16,7 +16,7 @@
 //! their extension data without modifying the generated MEI types.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Placeholder URI for Tusk extension namespace. Replace with project URI when defined.
 pub const TUSK_EXT_NS: &str = "http://tusk.example.org/ns/ext";
@@ -1052,6 +1052,10 @@ pub struct ExtensionStore {
     pub ornament_details: HashMap<String, crate::musicxml_ext::OrnamentDetailData>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub technical_details: HashMap<String, crate::musicxml_ext::TechnicalDetailData>,
+
+    /// StaffDef IDs that have Jianpu clef (mapped to G in MEI, needs Jianpu on export).
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    pub jianpu_clefs: HashSet<String>,
 
     // ----- MusicXML singleton -----
     #[serde(default, skip_serializing_if = "Option::is_none")]

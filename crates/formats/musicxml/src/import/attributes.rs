@@ -13,41 +13,6 @@ use tusk_model::data::{
 use tusk_model::elements::StaffDef;
 use tusk_model::musicxml_ext::{DoubleData, ForPartData, KeyExtras, TimeExtras, TransposeData};
 
-/// Label prefix for non-traditional key JSON stored on staffDef @label.
-pub const KEY_LABEL_PREFIX: &str = "musicxml:key,";
-
-/// Label prefix for interchangeable/complex time JSON stored on staffDef @label.
-pub const TIME_LABEL_PREFIX: &str = "musicxml:time,";
-
-/// Label prefix for for-part JSON stored on staffDef @label.
-pub const FOR_PART_LABEL_PREFIX: &str = "musicxml:for-part,";
-
-/// Label prefix for transpose JSON stored on staffDef @label.
-pub const TRANSPOSE_LABEL_PREFIX: &str = "musicxml:transpose,";
-
-/// Append a prefixed JSON segment to a staffDef label, using `|` separator.
-pub fn append_label(staff_def: &mut StaffDef, segment: String) {
-    match &mut staff_def.labelled.label {
-        Some(existing) => {
-            existing.push('|');
-            existing.push_str(&segment);
-        }
-        None => {
-            staff_def.labelled.label = Some(segment);
-        }
-    }
-}
-
-/// Extract a label segment by prefix from a `|`-separated label string.
-pub fn extract_label_segment<'a>(label: &'a str, prefix: &str) -> Option<&'a str> {
-    for segment in label.split('|') {
-        if let Some(json) = segment.strip_prefix(prefix) {
-            return Some(json);
-        }
-    }
-    None
-}
-
 // ============================================================================
 // Attributes Conversion (Key, Time, Clef)
 // ============================================================================
@@ -215,25 +180,8 @@ pub fn process_attributes(
                 KeyContent::Traditional(trad) => {
                     let keysig = convert_key_fifths(trad.fifths);
                     sd.staff_def_log.keysig = Some(keysig);
-                    // Store full Key as JSON if it has key_octaves (extra data beyond keysig)
+                    // Store full Key in ExtensionStore if it has key_octaves (extra data beyond keysig)
                     if !key.key_octaves.is_empty() {
-                        if let Ok(json) = serde_json::to_string(key) {
-                            append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
-                            if let Some(ref id) = sd.basic.xml_id {
-                                ctx.ext_store_mut().insert_key_extras(
-                                    id.clone(),
-                                    KeyExtras {
-                                        key: serde_json::to_value(key).unwrap_or_default(),
-                                    },
-                                );
-                            }
-                        }
-                    }
-                }
-                KeyContent::NonTraditional(_) => {
-                    // No MEI @keysig equivalent; store full Key as JSON
-                    if let Ok(json) = serde_json::to_string(key) {
-                        append_label(sd, format!("{}{}", KEY_LABEL_PREFIX, json));
                         if let Some(ref id) = sd.basic.xml_id {
                             ctx.ext_store_mut().insert_key_extras(
                                 id.clone(),
@@ -242,6 +190,17 @@ pub fn process_attributes(
                                 },
                             );
                         }
+                    }
+                }
+                KeyContent::NonTraditional(_) => {
+                    // No MEI @keysig equivalent; store full Key in ExtensionStore
+                    if let Some(ref id) = sd.basic.xml_id {
+                        ctx.ext_store_mut().insert_key_extras(
+                            id.clone(),
+                            KeyExtras {
+                                key: serde_json::to_value(key).unwrap_or_default(),
+                            },
+                        );
                     }
                 }
             }
@@ -256,20 +215,17 @@ pub fn process_attributes(
             sd.staff_def_log.meter_unit = unit.map(|u| u.to_string());
             sd.staff_def_log.meter_sym = sym;
 
-            // Store full Time as JSON if it has interchangeable or separator (extra data)
+            // Store full Time in ExtensionStore if it has interchangeable or separator (extra data)
             let has_extra = matches!(&time.content, TimeContent::Standard(std) if std.interchangeable.is_some())
                 || time.separator.is_some();
             if has_extra {
-                if let Ok(json) = serde_json::to_string(time) {
-                    append_label(sd, format!("{}{}", TIME_LABEL_PREFIX, json));
-                    if let Some(ref id) = sd.basic.xml_id {
-                        ctx.ext_store_mut().insert_time_extras(
-                            id.clone(),
-                            TimeExtras {
-                                time: serde_json::to_value(time).unwrap_or_default(),
-                            },
-                        );
-                    }
+                if let Some(ref id) = sd.basic.xml_id {
+                    ctx.ext_store_mut().insert_time_extras(
+                        id.clone(),
+                        TimeExtras {
+                            time: serde_json::to_value(time).unwrap_or_default(),
+                        },
+                    );
                 }
             }
         }
@@ -284,9 +240,11 @@ pub fn process_attributes(
             sd.staff_def_log.clef_dis = dis;
             sd.staff_def_log.clef_dis_place = dis_place;
 
-            // Store Jianpu clef in label for lossless roundtrip (mapped to G in MEI)
+            // Track Jianpu clef in ExtensionStore (mapped to G in MEI)
             if clef.sign == ClefSign::Jianpu {
-                append_label(sd, "musicxml:clef-jianpu".to_string());
+                if let Some(ref id) = sd.basic.xml_id {
+                    ctx.ext_store_mut().jianpu_clefs.insert(id.clone());
+                }
             }
         }
     }
@@ -306,7 +264,7 @@ pub fn process_attributes(
                 sd.staff_def_log.trans_diat = Some(effective_diat.to_string());
             }
 
-            // Store full TransposeData for lossless roundtrip (octave_change, double, number, id)
+            // Store full TransposeData in ExtensionStore for lossless roundtrip
             let td = TransposeData {
                 number: t.number,
                 diatonic: t.diatonic,
@@ -317,9 +275,6 @@ pub fn process_attributes(
                 }),
                 id: t.id.clone(),
             };
-            if let Ok(json) = serde_json::to_string(&td) {
-                append_label(sd, format!("{}{}", TRANSPOSE_LABEL_PREFIX, json));
-            }
             if let Some(ref id) = sd.basic.xml_id {
                 ctx.ext_store_mut().insert_transpose(id.clone(), td);
             }
@@ -329,20 +284,17 @@ pub fn process_attributes(
     // Process for-part (concert score per-part transposition)
     if !attrs.for_parts.is_empty() {
         if let Some(sd) = staff_def {
-            if let Ok(json) = serde_json::to_string(&attrs.for_parts) {
-                append_label(sd, format!("{}{}", FOR_PART_LABEL_PREFIX, json));
-                if let Some(ref id) = sd.basic.xml_id {
-                    ctx.ext_store_mut().insert_for_part(
-                        id.clone(),
-                        ForPartData {
-                            entries: attrs
-                                .for_parts
-                                .iter()
-                                .filter_map(|fp| serde_json::to_value(fp).ok())
-                                .collect(),
-                        },
-                    );
-                }
+            if let Some(ref id) = sd.basic.xml_id {
+                ctx.ext_store_mut().insert_for_part(
+                    id.clone(),
+                    ForPartData {
+                        entries: attrs
+                            .for_parts
+                            .iter()
+                            .filter_map(|fp| serde_json::to_value(fp).ok())
+                            .collect(),
+                    },
+                );
             }
         }
     }

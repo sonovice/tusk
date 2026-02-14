@@ -9,38 +9,15 @@
 //! - Staff details (lines)
 
 use crate::context::ConversionContext;
-use crate::import::attributes::{
-    FOR_PART_LABEL_PREFIX, KEY_LABEL_PREFIX, TIME_LABEL_PREFIX, TRANSPOSE_LABEL_PREFIX,
-    extract_label_segment,
-};
 use crate::model::attributes::StaffDetails;
 use tusk_model::elements::{ScoreDef, StaffDef};
 
-/// Label prefix for staff-details JSON stored on staffDef @label.
-const STAFF_DETAILS_LABEL_PREFIX: &str = "musicxml:staff-details,";
-
-/// Label marker for Jianpu clef stored on staffDef @label.
-const CLEF_JIANPU_LABEL: &str = "musicxml:clef-jianpu";
-
-/// Extract MusicXML StaffDetails from ExtensionStore or MEI StaffDef label.
-///
-/// Preferred: read from ExtensionStore typed data.
-/// Fallback 1: recover full StaffDetails from JSON in @label (lossless roundtrip).
-/// Fallback 2: build minimal StaffDetails from @lines only.
+/// Extract MusicXML StaffDetails from ExtensionStore or MEI StaffDef @lines.
 fn extract_staff_details(staff_def: &StaffDef, ctx: &ConversionContext) -> Option<StaffDetails> {
-    // Try ExtensionStore per-concept map first
+    // Try ExtensionStore per-concept map
     if let Some(ref id) = staff_def.basic.xml_id {
         if let Some(sde) = ctx.ext_store().staff_details(id) {
             if let Ok(sd) = serde_json::from_value::<StaffDetails>(sde.details.clone()) {
-                return Some(sd);
-            }
-        }
-    }
-
-    // Fallback: try JSON label
-    if let Some(ref label) = staff_def.labelled.label {
-        if let Some(json) = extract_label_segment(label, STAFF_DETAILS_LABEL_PREFIX) {
-            if let Ok(sd) = serde_json::from_str::<StaffDetails>(json) {
                 return Some(sd);
             }
         }
@@ -59,81 +36,55 @@ fn extract_staff_details(staff_def: &StaffDef, ctx: &ConversionContext) -> Optio
     })
 }
 
-/// Extract MusicXML Key from ExtensionStore or MEI StaffDef label.
-fn extract_key_from_label(
+/// Extract MusicXML Key from ExtensionStore.
+fn extract_key_from_ext(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<crate::model::attributes::Key> {
-    // Try ExtensionStore per-concept map first
-    if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(ke) = ctx.ext_store().key_extras(id) {
-            if let Ok(key) = serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone())
-            {
-                return Some(key);
-            }
-        }
-    }
-    // Fallback: label
-    let label = staff_def.labelled.label.as_ref()?;
-    let json = extract_label_segment(label, KEY_LABEL_PREFIX)?;
-    serde_json::from_str(json).ok()
+    let id = staff_def.basic.xml_id.as_ref()?;
+    let ke = ctx.ext_store().key_extras(id)?;
+    serde_json::from_value::<crate::model::attributes::Key>(ke.key.clone()).ok()
 }
 
-/// Extract MusicXML Time from ExtensionStore or MEI StaffDef label.
-fn extract_time_from_label(
+/// Extract MusicXML Time from ExtensionStore.
+fn extract_time_from_ext(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<crate::model::attributes::Time> {
-    // Try ExtensionStore per-concept map first
-    if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(te) = ctx.ext_store().time_extras(id) {
-            if let Ok(time) =
-                serde_json::from_value::<crate::model::attributes::Time>(te.time.clone())
-            {
-                return Some(time);
-            }
-        }
-    }
-    // Fallback: label
-    let label = staff_def.labelled.label.as_ref()?;
-    let json = extract_label_segment(label, TIME_LABEL_PREFIX)?;
-    serde_json::from_str(json).ok()
+    let id = staff_def.basic.xml_id.as_ref()?;
+    let te = ctx.ext_store().time_extras(id)?;
+    serde_json::from_value::<crate::model::attributes::Time>(te.time.clone()).ok()
 }
 
-/// Extract ForPart vec from ExtensionStore or MEI StaffDef label.
-fn extract_for_parts_from_label(
+/// Extract ForPart vec from ExtensionStore.
+fn extract_for_parts_from_ext(
     staff_def: &StaffDef,
     ctx: &ConversionContext,
 ) -> Option<Vec<crate::model::attributes::ForPart>> {
-    // Try ExtensionStore per-concept map first
-    if let Some(ref id) = staff_def.basic.xml_id {
-        if let Some(fpd) = ctx.ext_store().for_part(id) {
-            let entries: Vec<crate::model::attributes::ForPart> = fpd
-                .entries
-                .iter()
-                .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                .collect();
-            if !entries.is_empty() {
-                return Some(entries);
-            }
-        }
+    let id = staff_def.basic.xml_id.as_ref()?;
+    let fpd = ctx.ext_store().for_part(id)?;
+    let entries: Vec<crate::model::attributes::ForPart> = fpd
+        .entries
+        .iter()
+        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+        .collect();
+    if entries.is_empty() {
+        None
+    } else {
+        Some(entries)
     }
-    // Fallback: label
-    let label = staff_def.labelled.label.as_ref()?;
-    let json = extract_label_segment(label, FOR_PART_LABEL_PREFIX)?;
-    serde_json::from_str(json).ok()
 }
 
-/// Check if a MEI StaffDef has a Jianpu clef marker in its label.
-fn has_jianpu_clef_label(staff_def: &StaffDef) -> bool {
+/// Check if a MEI StaffDef has a Jianpu clef marker in ExtensionStore.
+fn has_jianpu_clef(staff_def: &StaffDef, ctx: &ConversionContext) -> bool {
     staff_def
-        .labelled
-        .label
-        .as_deref()
-        .is_some_and(|l| l.split('|').any(|seg| seg == CLEF_JIANPU_LABEL))
+        .basic
+        .xml_id
+        .as_ref()
+        .is_some_and(|id| ctx.ext_store().jianpu_clefs.contains(id))
 }
 
-/// Extract MusicXML Transpose from ExtensionStore or MEI StaffDef label.
+/// Extract MusicXML Transpose from ExtensionStore or MEI attrs.
 ///
 /// Returns a fully reconstructed Transpose including octave-change and double.
 /// Falls back to MEI @trans.semi / @trans.diat if no stored data available.
@@ -142,21 +93,11 @@ fn extract_transpose_from_ext(
     ctx: &ConversionContext,
 ) -> Option<crate::model::attributes::Transpose> {
     use crate::model::attributes::Transpose;
-    use tusk_model::musicxml_ext::TransposeData;
 
-    // Try ExtensionStore per-concept map first
+    // Try ExtensionStore per-concept map
     if let Some(ref id) = staff_def.basic.xml_id {
         if let Some(td) = ctx.ext_store().transpose(id) {
             return Some(transpose_data_to_mxml(td));
-        }
-    }
-
-    // Fallback: try JSON label
-    if let Some(ref label) = staff_def.labelled.label {
-        if let Some(json) = extract_label_segment(label, TRANSPOSE_LABEL_PREFIX) {
-            if let Ok(td) = serde_json::from_str::<TransposeData>(json) {
-                return Some(transpose_data_to_mxml(&td));
-            }
         }
     }
 
@@ -454,8 +395,8 @@ pub fn convert_mei_staff_def_to_attributes(
 
     let mut attrs = Attributes::default();
 
-    // Convert key signature — try JSON label first for lossless roundtrip
-    if let Some(key) = extract_key_from_label(staff_def, ctx) {
+    // Convert key signature — try ExtensionStore first for lossless roundtrip
+    if let Some(key) = extract_key_from_ext(staff_def, ctx) {
         attrs.keys.push(key);
     } else if let Some(keysig) = staff_def.staff_def_log.keysig.as_ref()
         && let Some(fifths) = convert_mei_keysig_to_fifths(keysig.0.as_str())
@@ -473,8 +414,8 @@ pub fn convert_mei_staff_def_to_attributes(
         });
     }
 
-    // Convert time signature — try JSON label first for lossless roundtrip
-    if let Some(time) = extract_time_from_label(staff_def, ctx) {
+    // Convert time signature — try ExtensionStore first for lossless roundtrip
+    if let Some(time) = extract_time_from_ext(staff_def, ctx) {
         attrs.times.push(time);
     } else if staff_def.staff_def_log.meter_sym.as_ref()
         == Some(&tusk_model::data::DataMetersign::Open)
@@ -524,8 +465,8 @@ pub fn convert_mei_staff_def_to_attributes(
     // Convert clef; MEI uses Option<String> for clef attributes
     if let Some(shape) = &staff_def.staff_def_log.clef_shape {
         let mut sign = convert_mei_clef_shape_to_mxml(shape);
-        // Override with Jianpu if label indicates it (G in MEI but jianpu in MusicXML)
-        if has_jianpu_clef_label(staff_def) {
+        // Override with Jianpu if ExtensionStore indicates it (G in MEI but jianpu in MusicXML)
+        if has_jianpu_clef(staff_def, ctx) {
             sign = crate::model::attributes::ClefSign::Jianpu;
         }
         let line = staff_def
@@ -552,7 +493,7 @@ pub fn convert_mei_staff_def_to_attributes(
     }
 
     // Convert for-part (concert score per-part transposition) from label
-    if let Some(for_parts) = extract_for_parts_from_label(staff_def, ctx) {
+    if let Some(for_parts) = extract_for_parts_from_ext(staff_def, ctx) {
         attrs.for_parts = for_parts;
     }
 
@@ -589,8 +530,8 @@ pub fn build_first_measure_attributes(
     let divisions = ctx.divisions();
     attrs.divisions = Some(divisions);
 
-    // Key signature — try JSON label on staffDef for lossless roundtrip
-    if let Some(key) = staff_def.and_then(|sd| extract_key_from_label(sd, ctx)) {
+    // Key signature — try ExtensionStore on staffDef for lossless roundtrip
+    if let Some(key) = staff_def.and_then(|sd| extract_key_from_ext(sd, ctx)) {
         attrs.keys.push(key);
     } else {
         let keysig = score_def
@@ -614,8 +555,8 @@ pub fn build_first_measure_attributes(
         }
     }
 
-    // Time signature — try JSON label on staffDef for lossless roundtrip
-    if let Some(time) = staff_def.and_then(|sd| extract_time_from_label(sd, ctx)) {
+    // Time signature — try ExtensionStore on staffDef for lossless roundtrip
+    if let Some(time) = staff_def.and_then(|sd| extract_time_from_ext(sd, ctx)) {
         attrs.times.push(time);
     } else {
         let meter_sym = score_def
@@ -666,8 +607,8 @@ pub fn build_first_measure_attributes(
     if let Some(staff_def) = staff_def {
         if let Some(shape) = &staff_def.staff_def_log.clef_shape {
             let mut sign = convert_mei_clef_shape_to_mxml(shape);
-            // Override with Jianpu if label indicates it
-            if has_jianpu_clef_label(staff_def) {
+            // Override with Jianpu if ExtensionStore indicates it
+            if has_jianpu_clef(staff_def, ctx) {
                 sign = crate::model::attributes::ClefSign::Jianpu;
             }
             let line = staff_def
@@ -696,7 +637,7 @@ pub fn build_first_measure_attributes(
         }
 
         // Get for-part from label (concert score per-part transposition)
-        if let Some(for_parts) = extract_for_parts_from_label(staff_def, ctx) {
+        if let Some(for_parts) = extract_for_parts_from_ext(staff_def, ctx) {
             attrs.for_parts = for_parts;
         }
 
@@ -755,8 +696,8 @@ pub fn build_first_measure_attributes_multi(
         ..Default::default()
     };
 
-    // Key signature — try JSON label on first staffDef for lossless roundtrip
-    if let Some(key) = first_def.and_then(|sd| extract_key_from_label(sd, ctx)) {
+    // Key signature — try ExtensionStore on first staffDef for lossless roundtrip
+    if let Some(key) = first_def.and_then(|sd| extract_key_from_ext(sd, ctx)) {
         attrs.keys.push(key);
     } else {
         let keysig = score_def
@@ -779,8 +720,8 @@ pub fn build_first_measure_attributes_multi(
         }
     }
 
-    // Time signature — try JSON label on first staffDef for lossless roundtrip
-    if let Some(time) = first_def.and_then(|sd| extract_time_from_label(sd, ctx)) {
+    // Time signature — try ExtensionStore on first staffDef for lossless roundtrip
+    if let Some(time) = first_def.and_then(|sd| extract_time_from_ext(sd, ctx)) {
         attrs.times.push(time);
     } else {
         let meter_sym = score_def
@@ -829,7 +770,7 @@ pub fn build_first_measure_attributes_multi(
         let local_staff = (idx + 1) as u32;
         if let Some(shape) = &staff_def.staff_def_log.clef_shape {
             let mut sign = convert_mei_clef_shape_to_mxml(shape);
-            if has_jianpu_clef_label(staff_def) {
+            if has_jianpu_clef(staff_def, ctx) {
                 sign = crate::model::attributes::ClefSign::Jianpu;
             }
             let line = staff_def
@@ -856,7 +797,7 @@ pub fn build_first_measure_attributes_multi(
     }
 
     // For-part from first staffDef
-    if let Some(for_parts) = first_def.and_then(|sd| extract_for_parts_from_label(sd, ctx)) {
+    if let Some(for_parts) = first_def.and_then(|sd| extract_for_parts_from_ext(sd, ctx)) {
         attrs.for_parts = for_parts;
     }
 

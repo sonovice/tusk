@@ -452,9 +452,29 @@ Migrate all MusicXML roundtrip data from JSON-in-label and monolithic `ExtData` 
 
 ### 8.1 StaffDef label elimination
 
-- [ ] Import (`import/parts.rs`, `import/attributes.rs`): stop writing pipe-separated `musicxml:key,`, `musicxml:time,`, `musicxml:transpose,`, `musicxml:for-part,`, `musicxml:staff-details,`, `musicxml:instrument,`, `musicxml:part-details,`, `musicxml:clef-jianpu` to staffDef labels
-- [ ] Export (`export/parts.rs`, `export/attributes.rs`): read only from ExtensionStore maps
-- [ ] Tests pass
+- [x] Import (`import/parts.rs`, `import/attributes.rs`): stop writing pipe-separated `musicxml:key,`, `musicxml:time,`, `musicxml:transpose,`, `musicxml:for-part,`, `musicxml:staff-details,`, `musicxml:instrument,`, `musicxml:part-details,`, `musicxml:clef-jianpu` to staffDef labels
+  - Removed all `append_label()` calls from import/attributes.rs and import/parts.rs
+  - Removed `append_label()` function (no longer needed)
+  - Removed 4 label prefix constants from attributes.rs: `KEY_LABEL_PREFIX`, `TIME_LABEL_PREFIX`, `FOR_PART_LABEL_PREFIX`, `TRANSPOSE_LABEL_PREFIX`
+  - Removed 4 label prefix constants from parts.rs: `INSTRUMENT_LABEL_PREFIX`, `PART_DETAILS_LABEL_PREFIX`, `GROUP_DETAILS_LABEL_PREFIX`, `PART_SYMBOL_LABEL_PREFIX`
+  - Removed `STAFF_DETAILS_LABEL_PREFIX` from parts.rs
+  - Removed `PartExtraDetails`, `GroupExtraDetails`, `InstrumentData` (local label serialization structs)
+  - Removed `append_group_label()` function from parts.rs
+  - Jianpu clef: added `jianpu_clefs: HashSet<String>` to ExtensionStore; import stores staffDef IDs there
+  - All instrDef @label writes removed; data stored only in ExtensionStore
+  - All staffDef @label writes removed; data stored only in ExtensionStore
+  - All staffGrp @label writes for group-details and part-symbol removed
+- [x] Export (`export/parts.rs`, `export/attributes.rs`): read only from ExtensionStore maps
+  - Removed all JSON-in-label fallback paths from export/attributes.rs: `extract_key_from_label` → `extract_key_from_ext`, `extract_time_from_label` → `extract_time_from_ext`, `extract_for_parts_from_label` → `extract_for_parts_from_ext`
+  - Removed `STAFF_DETAILS_LABEL_PREFIX`, `CLEF_JIANPU_LABEL` constants from export/attributes.rs
+  - Removed label fallback from `extract_transpose_from_ext` (keeps MEI attr fallback)
+  - Removed label fallback from `extract_staff_details` (keeps @lines fallback)
+  - `has_jianpu_clef_label()` → `has_jianpu_clef()` reads from ExtensionStore
+  - Removed all `extract_label_segment` usage from export
+  - export/parts.rs: removed label fallbacks from `extract_instruments_from_staff_def`, `extract_part_details_from_staff_def`, `extract_group_details_from_staff_grp`, `extract_part_symbol_from_staff_grp`
+  - Removed `GROUP_DETAILS_LABEL_PREFIX` label check from `has_group_details_label` → now just checks ExtensionStore
+- [x] Tests pass
+  - All 2500 tests pass, clippy clean
 
 ### 8.2 StaffGrp label elimination
 
